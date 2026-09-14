@@ -3,8 +3,35 @@ export function validateEnvironment(config: Record<string, unknown>) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT must be a valid TCP port');
   }
-  if (typeof config.DATABASE_URL !== 'string' || !config.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required');
+
+  const databasePort = Number(config.DB_PORT ?? 5432);
+  if (
+    !Number.isInteger(databasePort) ||
+    databasePort < 1 ||
+    databasePort > 65535
+  ) {
+    throw new Error('DB_PORT must be a valid TCP port');
   }
-  return { ...config, PORT: port };
+
+  for (const key of ['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME']) {
+    if (typeof config[key] !== 'string' || !config[key]) {
+      throw new Error(`${key} is required`);
+    }
+  }
+
+  const redisPort = Number(config.REDIS_PORT ?? 6379);
+  if (!Number.isInteger(redisPort) || redisPort < 1 || redisPort > 65535) {
+    throw new Error('REDIS_PORT must be a valid TCP port');
+  }
+
+  if (typeof config.REDIS_HOST !== 'string' || !config.REDIS_HOST) {
+    throw new Error('REDIS_HOST is required');
+  }
+
+  return {
+    ...config,
+    PORT: port,
+    DB_PORT: databasePort,
+    REDIS_PORT: redisPort,
+  };
 }

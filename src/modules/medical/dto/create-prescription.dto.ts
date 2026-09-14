@@ -12,6 +12,11 @@ export class CreatePrescriptionDto {
   @MinLength(1)
   dosage!: string;
 
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  frequency!: string;
+
   @ApiProperty({ format: 'date' })
   @IsDateString()
   startDate!: string;

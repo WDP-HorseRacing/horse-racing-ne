@@ -1,5 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsDateString,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateRaceDto {
   @ApiProperty()
@@ -10,4 +16,9 @@ export class CreateRaceDto {
   @ApiProperty({ format: 'date-time' })
   @IsDateString()
   scheduledAt!: string;
+
+  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
+  @IsOptional()
+  @IsObject()
+  conditions?: Record<string, unknown>;
 }

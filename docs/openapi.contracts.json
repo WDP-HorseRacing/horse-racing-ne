@@ -1,0 +1,4974 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/audit-logs": {
+      "get": {
+        "operationId": "AuditController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List club audit records",
+        "tags": [
+          "audit"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/audit-logs/{id}": {
+      "get": {
+        "operationId": "AuditController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get club audit record",
+        "tags": [
+          "audit"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "summary": "Sign in with club account",
+        "tags": [
+          "auth"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "summary": "Exchange refresh token",
+        "tags": [
+          "auth"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "summary": "Revoke refresh token",
+        "tags": [
+          "auth"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current account and role",
+        "tags": [
+          "auth"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change current account password",
+        "tags": [
+          "auth"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Check API process health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/owners": {
+      "get": {
+        "operationId": "HorseDetailsController_owners",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse ownership history",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/pedigree": {
+      "get": {
+        "operationId": "HorseDetailsController_pedigree",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse pedigree",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/eligibility": {
+      "get": {
+        "operationId": "HorseDetailsController_eligibility",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current training and racing eligibility",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/status": {
+      "patch": {
+        "operationId": "HorseDetailsController_status",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHorseStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change horse health or lifecycle status",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses": {
+      "get": {
+        "operationId": "HorsesController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List visible horses",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "HorsesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create horse profile",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{id}": {
+      "get": {
+        "operationId": "HorsesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse profile",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "HorsesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update horse profile",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "delete": {
+        "operationId": "HorsesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soft-delete horse profile",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{id}/owners": {
+      "put": {
+        "operationId": "HorsesController_setOwners",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHorseOwnersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace active ownership shares",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/owners/me/horses": {
+      "get": {
+        "operationId": "HorsesController_myHorses",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horses owned by current user",
+        "tags": [
+          "horses"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/media/upload-requests": {
+      "post": {
+        "operationId": "MediaController_requestUpload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request time-limited private upload URL",
+        "tags": [
+          "media"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/media/{id}/complete": {
+      "post": {
+        "operationId": "MediaController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm completed object upload",
+        "tags": [
+          "media"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/media/{id}": {
+      "get": {
+        "operationId": "MediaController_media",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get media metadata",
+        "tags": [
+          "media"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/media/{id}/download-url": {
+      "get": {
+        "operationId": "MediaController_downloadUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request time-limited private download URL",
+        "tags": [
+          "media"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/medical-records/{id}": {
+      "get": {
+        "operationId": "MedicalDetailsController_record",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get medical record",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/medical-records/{id}/void": {
+      "post": {
+        "operationId": "MedicalDetailsController_voidRecord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidMedicalRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Void medical record with reason",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/injury-cases/{id}/timeline": {
+      "get": {
+        "operationId": "MedicalDetailsController_injuryTimeline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get append-only injury recovery timeline",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/injury-cases/{id}/recovery-events": {
+      "post": {
+        "operationId": "MedicalDetailsController_recordRecovery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordRecoveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Append injury recovery event",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/training-locks": {
+      "get": {
+        "operationId": "MedicalDetailsController_locks",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse training lock history",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "MedicalController_lock",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingLockDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create veterinary training lock",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/training-locks/{id}": {
+      "get": {
+        "operationId": "MedicalDetailsController_lock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get training lock details",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "MedicalDetailsController_updateLock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingLockDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update active veterinary training lock",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/care-schedules": {
+      "get": {
+        "operationId": "MedicalDetailsController_careSchedules",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List vaccination, deworming and farrier schedule",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "MedicalDetailsController_createCareSchedule",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCareScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Schedule veterinary care",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/care-schedules/{id}": {
+      "patch": {
+        "operationId": "MedicalDetailsController_updateCareSchedule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCareScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update veterinary care schedule",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/care-schedules/{id}/complete": {
+      "post": {
+        "operationId": "MedicalDetailsController_completeCareSchedule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete veterinary care item",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/medical-records": {
+      "get": {
+        "operationId": "MedicalController_listRecords",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse medical records",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "MedicalController_createRecord",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMedicalRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create append-only medical record",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/medical-records/{id}/prescriptions": {
+      "post": {
+        "operationId": "MedicalController_addPrescription",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePrescriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add prescription to medical record",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/medical-records/{id}/injuries": {
+      "post": {
+        "operationId": "MedicalController_addInjury",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInjuryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add injury marker to medical record",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/injuries": {
+      "get": {
+        "operationId": "MedicalController_listInjuries",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse injury timeline",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/training-locks/{id}/release": {
+      "post": {
+        "operationId": "MedicalController_release",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseTrainingLockDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Release veterinary training lock",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List current user notifications",
+        "tags": [
+          "notifications"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Count unread current-user notifications",
+        "tags": [
+          "notifications"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "get": {
+        "operationId": "NotificationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current-user notification",
+        "tags": [
+          "notifications"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark notification as read",
+        "tags": [
+          "notifications"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all current-user notifications as read",
+        "tags": [
+          "notifications"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/metrics/batch": {
+      "post": {
+        "operationId": "PerformanceDetailsController_ingestBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestMetricBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ingest metric batch for active session",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/performance-summary": {
+      "get": {
+        "operationId": "PerformanceDetailsController_sessionSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get session metric and alert summary",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{id}/thresholds": {
+      "get": {
+        "operationId": "PerformanceDetailsController_thresholds",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List current and historical threshold profiles",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "put": {
+        "operationId": "PerformanceDetailsController_setThreshold",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertThresholdDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create new version of horse threshold profile",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{id}/alerts": {
+      "get": {
+        "operationId": "PerformanceDetailsController_alerts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse performance alerts",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{id}/workload": {
+      "get": {
+        "operationId": "PerformanceDetailsController_workload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get configured training workload summary",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/metrics": {
+      "post": {
+        "operationId": "PerformanceController_ingest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestMetricDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ingest session metric",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "get": {
+        "operationId": "PerformanceController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List session metrics",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{id}/performance": {
+      "get": {
+        "operationId": "PerformanceController_summary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse performance summary",
+        "tags": [
+          "performance"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/races/{id}": {
+      "get": {
+        "operationId": "RacingDetailsController_race",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get race and conditions",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "RacingDetailsController_updateRace",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update race before registration closes",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/races/{id}/registrations": {
+      "get": {
+        "operationId": "RacingDetailsController_registrations",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List race registrations",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "RacingController_register",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRegistrationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register eligible horse for race",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/races/{id}/registrations/{registrationId}": {
+      "get": {
+        "operationId": "RacingDetailsController_registration",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "registrationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get race registration and approvals",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "RacingController_updateRegistration",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "registrationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRegistrationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve or reject race registration",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/races/{id}/results": {
+      "get": {
+        "operationId": "RacingDetailsController_results",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get race results",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/race-results": {
+      "get": {
+        "operationId": "RacingDetailsController_horseResults",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse race history",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/races": {
+      "get": {
+        "operationId": "RacingController_list",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List races",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "RacingController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create race",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/races/{id}/registrations/{registrationId}/result": {
+      "patch": {
+        "operationId": "RacingController_recordResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "registrationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record race result for registration",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/dashboard": {
+      "get": {
+        "operationId": "ReportsController_dashboard",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get role-scoped dashboard summary",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/horses/{horseId}/progress": {
+      "get": {
+        "operationId": "ReportsController_progress",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse training progress report",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/horses/{horseId}/health": {
+      "get": {
+        "operationId": "ReportsController_health",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse health history report",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/club/training": {
+      "get": {
+        "operationId": "ReportsController_clubTraining",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get club training activity report",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/club/medical": {
+      "get": {
+        "operationId": "ReportsController_clubMedical",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get club medical activity report",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/club/finance": {
+      "get": {
+        "operationId": "ReportsController_clubFinance",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get later-phase manual finance summary",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/stalls": {
+      "get": {
+        "operationId": "StableDetailsController_stalls",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List club stalls",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "StableDetailsController_createStall",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStallDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create stall",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/stalls/{id}": {
+      "get": {
+        "operationId": "StableDetailsController_stall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get stall",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "StableDetailsController_updateStall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStallDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update stall",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "delete": {
+        "operationId": "StableDetailsController_deleteStall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soft-delete stall",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/stalls/{id}/assignments": {
+      "get": {
+        "operationId": "StableDetailsController_assignments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List stall assignment history",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "StableDetailsController_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStableAssignmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign horse and groom to stall",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/stable-assignments/{id}/end": {
+      "post": {
+        "operationId": "StableDetailsController_endAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "End stable assignment",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/feeding-plans": {
+      "get": {
+        "operationId": "StableDetailsController_feedingPlans",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse feeding plans",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "StableDetailsController_createFeedingPlan",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedingPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create feeding plan for approval",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/feeding-plans/{id}/approve": {
+      "post": {
+        "operationId": "StableDetailsController_approveFeedingPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve feeding plan as Trainer or Vet",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/checklists": {
+      "get": {
+        "operationId": "StableDetailsController_checklists",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse daily checklists",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "StableDetailsController_createChecklist",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChecklistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create assigned daily checklist",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/incidents": {
+      "get": {
+        "operationId": "StableDetailsController_incidents",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List stable incidents",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "StableController_report",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report stable incident",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/incidents/{id}": {
+      "get": {
+        "operationId": "StableDetailsController_incident",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get stable incident",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/incidents/{id}/status": {
+      "patch": {
+        "operationId": "StableDetailsController_incidentStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncidentStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update incident resolution status",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/grooms/me/today": {
+      "get": {
+        "operationId": "StableController_today",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get today assigned groom checklist",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/checklists/{id}/complete": {
+      "patch": {
+        "operationId": "StableController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete assigned checklist item",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/supplies/items": {
+      "get": {
+        "operationId": "SuppliesController_items",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List club supply inventory",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "SuppliesController_createItem",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupplyItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create supply item",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/supplies/items/low-stock": {
+      "get": {
+        "operationId": "SuppliesController_lowStock",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List items at or below reorder threshold",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/supplies/items/{id}": {
+      "get": {
+        "operationId": "SuppliesController_item",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get supply item",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "SuppliesController_updateItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupplyItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update supply quantity or threshold",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "delete": {
+        "operationId": "SuppliesController_deleteItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soft-delete supply item",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/supplies/requests": {
+      "get": {
+        "operationId": "SuppliesController_requests",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List supply requests",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "SuppliesController_createRequest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupplyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request supply replenishment",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/supplies/requests/{id}": {
+      "get": {
+        "operationId": "SuppliesController_request",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get supply request",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/supplies/requests/{id}/status": {
+      "patch": {
+        "operationId": "SuppliesController_updateRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupplyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve, reject or fulfill supply request",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/training-plans/{id}": {
+      "get": {
+        "operationId": "TrainingDetailsController_plan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get training plan",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "TrainingController_updatePlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update training plan",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/training-plans/{id}/activate": {
+      "post": {
+        "operationId": "TrainingDetailsController_activatePlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activate training plan",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/training-plans/{id}/cancel": {
+      "post": {
+        "operationId": "TrainingDetailsController_cancelPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel training plan",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/training-plans/{id}/sessions": {
+      "get": {
+        "operationId": "TrainingDetailsController_sessions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List sessions in training plan",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "TrainingController_createSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Schedule training session",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}": {
+      "get": {
+        "operationId": "TrainingDetailsController_session",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get training session",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "TrainingDetailsController_updateSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reschedule or reassign training session",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/evaluation": {
+      "get": {
+        "operationId": "TrainingDetailsController_evaluation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get session evaluation",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "TrainingController_evaluateSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Evaluate completed session",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/time-trials": {
+      "get": {
+        "operationId": "TrainingDetailsController_timeTrials",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List session time trials",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "TrainingDetailsController_createTimeTrial",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTimeTrialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record session time trial",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/time-trials/{id}": {
+      "get": {
+        "operationId": "TrainingDetailsController_timeTrial",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get time trial result and media",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/training-plans": {
+      "get": {
+        "operationId": "TrainingController_listPlans",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse training plans",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "TrainingController_createPlan",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create training plan",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/start": {
+      "post": {
+        "operationId": "TrainingController_startSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start training session",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/complete": {
+      "post": {
+        "operationId": "TrainingController_completeSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete training session",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/sessions/{id}/cancel": {
+      "post": {
+        "operationId": "TrainingController_cancelSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel training session",
+        "tags": [
+          "training"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/clubs/me": {
+      "get": {
+        "operationId": "ClubsController_me",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current club",
+        "tags": [
+          "clubs"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "ClubsController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClubDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update current club settings",
+        "tags": [
+          "clubs"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "UsersController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List club users",
+        "tags": [
+          "users"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "post": {
+        "operationId": "UsersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create club user",
+        "tags": [
+          "users"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "operationId": "UsersController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get club user",
+        "tags": [
+          "users"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update club user",
+        "tags": [
+          "users"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/users/{id}/status": {
+      "patch": {
+        "operationId": "UsersController_status",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change user account status",
+        "tags": [
+          "users"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    }
+  },
+  "info": {
+    "title": "Racehorse API",
+    "description": "",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "ChangePasswordDto": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "UpdateHorseStatusDto": {
+        "type": "object",
+        "properties": {
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          }
+        }
+      },
+      "CreateHorseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "microchipId": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date"
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "photoAssetId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateHorseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "microchipId": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date"
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "photoAssetId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "HorseOwnerShareDto": {
+        "type": "object",
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "ownerId",
+          "percentage"
+        ]
+      },
+      "SetHorseOwnersDto": {
+        "type": "object",
+        "properties": {
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseOwnerShareDto"
+            }
+          }
+        },
+        "required": [
+          "owners"
+        ]
+      },
+      "RequestUploadDto": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "byteSize": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "fileName",
+          "mimeType",
+          "byteSize"
+        ]
+      },
+      "VoidMedicalRecordDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "RecordRecoveryDto": {
+        "type": "object",
+        "properties": {
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medicalRecordId",
+          "status"
+        ]
+      },
+      "UpdateTrainingLockDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "lockEnd": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "CreateCareScheduleDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "VACCINATION, DEWORMING, FARRIER or other care type"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedTo": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "dueAt"
+        ]
+      },
+      "UpdateCareScheduleDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "VACCINATION, DEWORMING, FARRIER or other care type"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedTo": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateMedicalRecordDto": {
+        "type": "object",
+        "properties": {
+          "examDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "diagnosis": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "resultingStatus": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "examDate",
+          "diagnosis"
+        ]
+      },
+      "CreatePrescriptionDto": {
+        "type": "object",
+        "properties": {
+          "medicine": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "medicine",
+          "dosage",
+          "frequency",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "CreateInjuryDto": {
+        "type": "object",
+        "properties": {
+          "bodyRegion": {
+            "type": "string"
+          },
+          "injuryType": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bodyRegion",
+          "injuryType"
+        ]
+      },
+      "CreateTrainingLockDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "lockEnd": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ReleaseTrainingLockDto": {
+        "type": "object",
+        "properties": {
+          "conclusion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conclusion"
+        ]
+      },
+      "IngestMetricDto": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "heartRateBpm": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 300
+          },
+          "speedMps": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "sourceId",
+          "recordedAt",
+          "heartRateBpm",
+          "speedMps"
+        ]
+      },
+      "IngestMetricBatchDto": {
+        "type": "object",
+        "properties": {
+          "metrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestMetricDto"
+            }
+          }
+        },
+        "required": [
+          "metrics"
+        ]
+      },
+      "UpsertThresholdDto": {
+        "type": "object",
+        "properties": {
+          "profileName": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "limits": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "profileName",
+          "effectiveFrom",
+          "limits"
+        ]
+      },
+      "UpdateRaceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "conditions": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "CreateRaceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "conditions": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "name",
+          "scheduledAt"
+        ]
+      },
+      "CreateRegistrationDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "horseId"
+        ]
+      },
+      "UpdateRegistrationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OWNER_APPROVED",
+              "MANAGER_CONFIRMED",
+              "REJECTED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "RecordResultDto": {
+        "type": "object",
+        "properties": {
+          "placing": {
+            "type": "number",
+            "minimum": 1
+          },
+          "timeSeconds": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "placing",
+          "timeSeconds"
+        ]
+      },
+      "CreateStallDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "CreateStableAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "horseId",
+          "groomId",
+          "startAt"
+        ]
+      },
+      "CreateFeedingPlanDto": {
+        "type": "object",
+        "properties": {
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date"
+          },
+          "ration": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "effectiveFrom",
+          "ration"
+        ]
+      },
+      "CreateChecklistDto": {
+        "type": "object",
+        "properties": {
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "checklistDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": [
+          "groomId",
+          "checklistDate",
+          "items"
+        ]
+      },
+      "UpdateIncidentStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "IN_REVIEW",
+              "RESOLVED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ReportIncidentDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string"
+          },
+          "urgent": {
+            "type": "boolean",
+            "default": false
+          },
+          "mediaAssetId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "horseId",
+          "description"
+        ]
+      },
+      "CreateSupplyItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "quantityOnHand": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reorderThreshold": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "unit",
+          "quantityOnHand",
+          "reorderThreshold"
+        ]
+      },
+      "UpdateSupplyItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "quantityOnHand": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reorderThreshold": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateSupplyRequestDto": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "quantity"
+        ]
+      },
+      "UpdateSupplyRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED",
+              "FULFILLED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "UpdateTrainingSessionDto": {
+        "type": "object",
+        "properties": {
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "distanceKm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "intensity": {
+            "type": "string"
+          },
+          "surface": {
+            "type": "string"
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CreateTimeTrialDto": {
+        "type": "object",
+        "properties": {
+          "distanceMeters": {
+            "type": "number",
+            "minimum": 0
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "videoAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "distanceMeters",
+          "durationSeconds"
+        ]
+      },
+      "CreateTrainingPlanDto": {
+        "type": "object",
+        "properties": {
+          "phaseName": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "phaseName",
+          "goal",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "UpdateTrainingPlanDto": {
+        "type": "object",
+        "properties": {
+          "phaseName": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "CreateTrainingSessionDto": {
+        "type": "object",
+        "properties": {
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "distanceKm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "intensity": {
+            "type": "string"
+          },
+          "surface": {
+            "type": "string"
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "scheduledAt",
+          "distanceKm",
+          "intensity"
+        ]
+      },
+      "EvaluateSessionDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "score"
+        ]
+      },
+      "UpdateClubDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ]
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "role",
+          "password"
+        ]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ]
+          }
+        }
+      },
+      "UpdateUserStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "LOCKED",
+              "INACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    }
+  }
+}

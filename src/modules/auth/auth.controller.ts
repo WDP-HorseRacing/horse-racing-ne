@@ -1,6 +1,12 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PendingApi } from '../../common/api/pending-api';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 
@@ -23,6 +29,20 @@ export class AuthController extends PendingApi {
   @Post('logout')
   @ApiOperation({ summary: 'Revoke refresh token' })
   logout(@Body() _body: RefreshTokenDto) {
+    return this.pending();
+  }
+
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current account and role' })
+  me() {
+    return this.pending();
+  }
+
+  @Post('change-password')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change current account password' })
+  changePassword(@Body() _body: ChangePasswordDto) {
     return this.pending();
   }
 }

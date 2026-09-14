@@ -1,10 +1,22 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { join } from 'node:path';
 
-export function typeOrmOptions(databaseUrl: string): TypeOrmModuleOptions {
+export interface DatabaseConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+}
+
+export function typeOrmOptions(database: DatabaseConfig): TypeOrmModuleOptions {
   return {
     type: 'postgres',
-    url: databaseUrl,
+    host: database.host,
+    port: database.port,
+    username: database.username,
+    password: database.password,
+    database: database.database,
     entities: [join(__dirname, '../../modules/**/*.entity{.ts,.js}')],
     migrations: [join(__dirname, '../../migrations/*{.ts,.js}')],
     synchronize: false,

@@ -15,4 +15,9 @@ export class CreateMedicalRecordDto {
   @IsOptional()
   @IsString()
   severity?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  resultingStatus?: string;
 }

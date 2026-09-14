@@ -21,4 +21,9 @@ export class ReportIncidentDto {
   @IsOptional()
   @IsBoolean()
   urgent?: boolean;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  mediaAssetId?: string;
 }

@@ -1,21 +1,16 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
+import { REDIS_CLIENT } from './redis.token';
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
-  private client?: Redis;
+  constructor(@Inject(REDIS_CLIENT) private readonly client: Redis) {}
 
   getClient(): Redis {
-    const url = process.env.REDIS_URL;
-    if (!url) throw new Error('REDIS_URL is not configured');
-    this.client ??= new Redis(url, {
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-    });
     return this.client;
   }
 
   onModuleDestroy(): void {
-    if (this.client) this.client.disconnect();
+    this.client.disconnect();
   }
 }

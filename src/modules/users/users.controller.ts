@@ -29,6 +29,12 @@ export class UsersController extends PendingApi {
     return this.pending();
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get club user' })
+  get(@Param('id') _id: string) {
+    return this.pending();
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create club user' })
   create(@Body() _body: CreateUserDto) {

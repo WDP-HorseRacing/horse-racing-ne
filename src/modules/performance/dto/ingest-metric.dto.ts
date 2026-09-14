@@ -1,7 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsNumber, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsNumber,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class IngestMetricDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  sourceId!: string;
+
   @ApiProperty({ format: 'date-time' })
   @IsDateString()
   recordedAt!: string;

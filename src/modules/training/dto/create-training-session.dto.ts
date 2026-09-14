@@ -22,6 +22,11 @@ export class CreateTrainingSessionDto {
   @IsString()
   intensity!: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  surface?: string;
+
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()

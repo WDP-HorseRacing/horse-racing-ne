@@ -11,7 +11,7 @@ NestJS modular monolith scaffold for the Racehorse Training and Management Syste
 - Global DTO validation, consistent HTTP error format, and correlation ID header
 - Modules: Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Notifications, Audit, Media, and Realtime
 
-The `HorsesModule` demonstrates the intended `entity → repository → service → DTO mapper` structure. It exports its service so another module can call a public facade instead of importing its repository. Domain route contracts and validated request DTOs are now registered for Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Notifications, and Audit. These routes deliberately return HTTP `501 Not Implemented` until their authentication, authorization, persistence, and business services are added. The health route remains functional. Supplies, Reports, and Media remain module boundaries without HTTP routes.
+The `HorsesModule` demonstrates the intended `entity → repository → service → DTO mapper` structure. It exports its service so another module can call a public facade instead of importing its repository. All current REST route contracts and request DTOs are registered across Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Media, Notifications, and Audit. These routes deliberately return HTTP `501 Not Implemented` until their authentication, authorization, persistence, and business services are added. The health route remains functional. Review the complete [endpoint catalog](docs/api-catalog.md) or [OpenAPI JSON](docs/openapi.contracts.json); regenerate both with `pnpm docs:api` without a database connection.
 
 | API group | Prepared routes |
 | --- | --- |
@@ -20,7 +20,8 @@ The `HorsesModule` demonstrates the intended `entity → repository → service 
 | Training | Plans, sessions, start, complete, cancel and evaluation |
 | Performance | Metric ingestion, session metrics and horse summary |
 | Medical | Records, prescriptions, injuries, training lock and release |
-| Supporting | Notifications, audit, groom checklist, incidents and races |
+| Operations | Stalls, assignments, feeding, checklists, incidents, races and supplies |
+| Supporting | Notifications, audit, media upload/download URL contracts and reports |
 
 See `/docs` for exact paths and request schemas. These contracts do not imply that the corresponding workflows are implemented.
 
@@ -46,5 +47,6 @@ Check `GET http://localhost:3000/api/v1/health` for `{ "status": "ok" }` and ope
 | `pnpm db:migrate` | Apply pending migrations |
 | `pnpm db:revert` | Revert the last migration |
 | `pnpm db:generate src/migrations/Name` | Generate a migration from entity changes |
+| `pnpm docs:api` | Regenerate the REST endpoint catalog from controllers |
 
 The initial migration creates only the minimal `horses` table as an example. The full draft of 28 entity tables is listed in [docs/entity-model.md](docs/entity-model.md); it has not been migrated yet and currently differs from that initial migration. The Socket.IO gateway currently rejects connections until JWT handshake authorization and room policies are added. The HTTP route contracts are visible in Swagger, but Auth, RBAC, notifications, audit workflows, media storage, and domain behavior are not implemented yet.

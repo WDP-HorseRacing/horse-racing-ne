@@ -13,12 +13,18 @@ export class FeedingPlanEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'horse_id' })
   horse!: HorseEntity;
 
-  @Column({ name: 'approved_by', type: 'uuid' })
-  approvedBy!: string;
+  @Column({ name: 'approved_by', type: 'uuid', nullable: true })
+  approvedBy!: string | null;
 
-  @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'approved_by' })
-  approver!: UserEntity;
+  approver!: UserEntity | null;
+
+  @Column({ name: 'approved_at', type: 'timestamptz', nullable: true })
+  approvedAt!: Date | null;
+
+  @Column({ type: 'varchar', length: 16, default: 'DRAFT' })
+  status!: string;
 
   @Column({ name: 'effective_from', type: 'date' })
   effectiveFrom!: string;
