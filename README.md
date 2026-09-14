@@ -1,4 +1,4 @@
-# Racehorse API
+# Race-horse API
 
 NestJS modular monolith scaffold for the Racehorse Training and Management System. This repository provides the module boundaries and infrastructure described in `Racehorse_System_Design_NestJS.docx`; it intentionally has almost no business behavior yet.
 
@@ -47,4 +47,4 @@ Check `GET http://localhost:3000/api/v1/health` for `{ "status": "ok" }` and ope
 | `pnpm db:revert` | Revert the last migration |
 | `pnpm db:generate src/migrations/Name` | Generate a migration from entity changes |
 
-The initial migration creates only the minimal `horses` table as an example. Expand the schema with separate migrations as module requirements are implemented. The Socket.IO gateway currently rejects connections until JWT handshake authorization and room policies are added. The HTTP route contracts are visible in Swagger, but Auth, RBAC, notifications, audit workflows, media storage, and domain behavior are not implemented yet.
+The initial migration creates only the minimal `horses` table as an example. The full draft of 28 entity tables is listed in [docs/entity-model.md](docs/entity-model.md); it has not been migrated yet and currently differs from that initial migration. The Socket.IO gateway currently rejects connections until JWT handshake authorization and room policies are added. The HTTP route contracts are visible in Swagger, but Auth, RBAC, notifications, audit workflows, media storage, and domain behavior are not implemented yet.
