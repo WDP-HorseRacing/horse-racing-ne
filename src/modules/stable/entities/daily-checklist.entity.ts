@@ -3,6 +3,10 @@ import { MutableRecordEntity } from '../../../common/database/base-record.entity
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
+/**
+ * DailyChecklistEntity: checklist hàng ngày của groom đối với một con ngựa.
+ * Dùng để ghi các việc cần kiểm tra mỗi ngày như ăn uống, vệ sinh, điều kiện sức khỏe.
+ */
 @Entity({ name: 'daily_checklists' })
 @Index(
   'daily_checklists_horse_groom_date_uq',

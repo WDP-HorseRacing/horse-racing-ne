@@ -2,13 +2,21 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
 import { ClubEntity } from '../../users/entities/club.entity';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
+import {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../constants/horse-status.enum';
 
+/**
+ * HorseEntity: biểu diễn một con ngựa trong club.
+ * Đây là entity trung tâm cho hầu hết nghiệp vụ như chăm sóc, huấn luyện,
+ * y tế, thể thao và phân quyền sở hữu.
+ */
 @Entity({ name: 'horses' })
 @Index('horses_club_microchip_uq', ['clubId', 'microchipId'], {
   unique: true,
   where: 'microchip_id IS NOT NULL AND deleted_at IS NULL',
 })
-@Index('horses_club_status_idx', ['clubId', 'lifecycleStatus', 'healthStatus'])
 export class HorseEntity extends SoftDeletableRecordEntity {
   @Column({ name: 'club_id', type: 'uuid' })
   clubId!: string;
@@ -27,12 +35,13 @@ export class HorseEntity extends SoftDeletableRecordEntity {
   microchipId!: string | null;
 
   @Column({ name: 'photo_asset_id', type: 'uuid', nullable: true })
-  photoAssetId!: string | null;
+  mediaId!: string | null;
 
   @ManyToOne(() => MediaAssetEntity, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'photo_asset_id' })
-  photoAsset!: MediaAssetEntity | null;
+  media!: MediaAssetEntity | null;
 
+  // Ngựa cha
   @Column({ name: 'sire_id', type: 'uuid', nullable: true })
   sireId!: string | null;
 
@@ -40,6 +49,7 @@ export class HorseEntity extends SoftDeletableRecordEntity {
   @JoinColumn({ name: 'sire_id' })
   sire!: HorseEntity | null;
 
+  // Ngựa má
   @Column({ name: 'dam_id', type: 'uuid', nullable: true })
   damId!: string | null;
 
@@ -51,15 +61,15 @@ export class HorseEntity extends SoftDeletableRecordEntity {
     name: 'health_status',
     type: 'varchar',
     length: 32,
-    default: 'ELIGIBLE',
+    default: HorseHealthStatus.ELIGIBLE,
   })
-  healthStatus!: string;
+  healthStatus!: HorseHealthStatus;
 
   @Column({
     name: 'lifecycle_status',
     type: 'varchar',
     length: 32,
-    default: 'ACTIVE',
+    default: HorseLifecycleStatus.ACTIVE,
   })
-  lifecycleStatus!: string;
+  lifecycleStatus!: HorseLifecycleStatus;
 }

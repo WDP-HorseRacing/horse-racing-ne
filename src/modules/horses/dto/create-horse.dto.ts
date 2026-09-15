@@ -36,5 +36,5 @@ export class CreateHorseDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
-  photoAssetId?: string;
+  mediaId?: string;
 }

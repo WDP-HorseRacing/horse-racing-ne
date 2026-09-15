@@ -1,11 +1,14 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { TrainingSessionStatus } from '../constants/training-session-status.enum';
 import { TrainingPlanEntity } from './training-plan.entity';
 
+/**
+ * TrainingSessionEntity: buổi tập cụ thể nằm trong một TrainingPlan.
+ * Dùng để lên lịch, theo dõi tiến độ và mức độ tập luyện của groom/trainer.
+ */
 @Entity({ name: 'training_sessions' })
-@Index('training_sessions_plan_schedule_idx', ['planId', 'scheduledAt'])
-@Index('training_sessions_groom_schedule_idx', ['groomId', 'scheduledAt'])
 export class TrainingSessionEntity extends MutableRecordEntity {
   @Column({ name: 'plan_id', type: 'uuid' })
   planId!: string;
@@ -36,8 +39,13 @@ export class TrainingSessionEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'groom_id' })
   groom!: UserEntity | null;
 
-  @Column({ type: 'varchar', length: 32, default: 'SCHEDULED' })
-  status!: string;
+  @Column({
+    type: 'varchar',
+    length: 32,
+    default: TrainingSessionStatus.SCHEDULED,
+    enum: TrainingSessionStatus,
+  })
+  status!: TrainingSessionStatus;
 
   @Column({ name: 'started_at', type: 'timestamptz', nullable: true })
   startedAt!: Date | null;

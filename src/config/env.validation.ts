@@ -49,11 +49,55 @@ export function validateEnvironment(config: Record<string, unknown>) {
     );
   }
 
+  for (const key of [
+    'S3_ENDPOINT',
+    'S3_REGION',
+    'S3_BUCKET',
+    'S3_ACCESS_KEY',
+    'S3_SECRET_KEY',
+  ]) {
+    if (typeof config[key] !== 'string' || !config[key]) {
+      throw new Error(`${key} is required`);
+    }
+  }
+
+  try {
+    new URL(config.S3_ENDPOINT as string);
+  } catch {
+    throw new Error('S3_ENDPOINT must be a valid URL');
+  }
+
+  const presignedUrlTtlSeconds = Number(
+    config.S3_PRESIGNED_URL_TTL_SECONDS ?? 900,
+  );
+  if (
+    !Number.isInteger(presignedUrlTtlSeconds) ||
+    presignedUrlTtlSeconds < 60 ||
+    presignedUrlTtlSeconds > 3600
+  ) {
+    throw new Error(
+      'S3_PRESIGNED_URL_TTL_SECONDS must be an integer between 60 and 3600',
+    );
+  }
+
+  const forcePathStyle = parseBoolean(
+    config.S3_FORCE_PATH_STYLE ?? true,
+    'S3_FORCE_PATH_STYLE',
+  );
+
   return {
     ...config,
     PORT: port,
     DB_PORT: databasePort,
     REDIS_PORT: redisPort,
     KEYCLOAK_AUTH_SERVER_URL: authServerUrl,
+    S3_FORCE_PATH_STYLE: forcePathStyle,
+    S3_PRESIGNED_URL_TTL_SECONDS: presignedUrlTtlSeconds,
   };
+}
+
+function parseBoolean(value: unknown, key: string): boolean {
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  throw new Error(`${key} must be true or false`);
 }

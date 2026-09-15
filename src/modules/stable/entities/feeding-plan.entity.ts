@@ -1,10 +1,14 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { FeedingPlanStatus } from '../constants/feeding-plan-status.enum';
 
+/**
+ * FeedingPlanEntity: kế hoạch ăn uống cho ngựa theo một khoảng thời gian hiệu lực.
+ * Dùng để lưu khẩu phần, người duyệt và trạng thái của các giai đoạn dinh dưỡng.
+ */
 @Entity({ name: 'feeding_plans' })
-@Index('feeding_plans_horse_effective_idx', ['horseId', 'effectiveFrom'])
 export class FeedingPlanEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -23,8 +27,13 @@ export class FeedingPlanEntity extends MutableRecordEntity {
   @Column({ name: 'approved_at', type: 'timestamptz', nullable: true })
   approvedAt!: Date | null;
 
-  @Column({ type: 'varchar', length: 16, default: 'DRAFT' })
-  status!: string;
+  @Column({
+    type: 'varchar',
+    length: 32,
+    default: FeedingPlanStatus.DRAFT,
+    enum: FeedingPlanStatus,
+  })
+  status!: FeedingPlanStatus;
 
   @Column({ name: 'effective_from', type: 'date' })
   effectiveFrom!: string;

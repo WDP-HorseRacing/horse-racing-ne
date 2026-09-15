@@ -1,0 +1,125 @@
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks:
+    - racehorse-network
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  race-horse-postgres:
+    <<: *service-defaults
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: racehorse
+      POSTGRES_USER: racehorse
+      POSTGRES_PASSWORD: racehorse
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - "${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    stop_grace_period: 30s
+    shm_size: 256mb
+    security_opt:
+      - no-new-privileges:true
+
+  race-horse-redis:
+    <<: *service-defaults
+    image: redis:7-alpine
+    environment:
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --requirepass
+      - racehorse
+    ports:
+      - "${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    stop_grace_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  race-horse-minio:
+    <<: *service-defaults
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-racehorse}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-racehorse-minio-secret}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - '${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${S3_PORT:-9100}:9000'
+      - '${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9101}:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl --fail --silent http://localhost:9000/minio/health/live || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  race-horse-minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      race-horse-minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-racehorse}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-racehorse-minio-secret}
+      S3_BUCKET: ${S3_BUCKET:-racehorse-media}
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        mc alias set local http://race-horse-minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "local/$${S3_BUCKET}"
+        mc anonymous set none "local/$${S3_BUCKET}"
+    restart: 'no'
+    networks:
+      - racehorse-network
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  racehorse-network:
+    name: racehorse-network
+    driver: bridge
+
+volumes:
+  # Keep the original volume keys so existing local database data remains usable.
+  postgres_data:
+  redis_data:
+  minio_data:
