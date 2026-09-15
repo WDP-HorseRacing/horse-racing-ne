@@ -8,7 +8,6 @@ import { REDIS_CLIENT } from './redis.token';
 @Module({
   providers: [
     {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       provide: REDIS_CLIENT,
       inject: [ConfigService],
       useFactory: (config: ConfigService) =>

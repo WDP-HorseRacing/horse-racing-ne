@@ -28,10 +28,32 @@ export function validateEnvironment(config: Record<string, unknown>) {
     throw new Error('REDIS_HOST is required');
   }
 
+  for (const key of [
+    'KEYCLOAK_AUTH_SERVER_URL',
+    'KEYCLOAK_REALM',
+    'KEYCLOAK_CLIENT_ID',
+    'KEYCLOAK_SECRET',
+  ]) {
+    if (typeof config[key] !== 'string' || !config[key]) {
+      throw new Error(`${key} is required`);
+    }
+  }
+
+  const authServerUrl = String(config.KEYCLOAK_AUTH_SERVER_URL).replace(
+    /\/+$/,
+    '',
+  );
+  if (!/^https?:\/\//.test(authServerUrl)) {
+    throw new Error(
+      'KEYCLOAK_AUTH_SERVER_URL must start with http:// or https://',
+    );
+  }
+
   return {
     ...config,
     PORT: port,
     DB_PORT: databasePort,
     REDIS_PORT: redisPort,
+    KEYCLOAK_AUTH_SERVER_URL: authServerUrl,
   };
 }

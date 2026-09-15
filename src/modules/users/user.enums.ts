@@ -1,0 +1,13 @@
+export enum UserRole {
+  HEAD_TRAINER = 'HEAD_TRAINER',
+  VETERINARIAN = 'VETERINARIAN',
+  GROOM = 'GROOM',
+  HORSE_OWNER = 'HORSE_OWNER',
+  CLUB_MANAGER = 'CLUB_MANAGER',
+}
+
+export enum UserStatus {
+  ACTIVE = 'ACTIVE',
+  LOCKED = 'LOCKED',
+  INACTIVE = 'INACTIVE',
+}

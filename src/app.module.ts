@@ -1,29 +1,32 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { validateEnvironment } from './config/env.validation';
 import { typeOrmOptions } from './common/database/typeorm.options';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
-import { HealthModule } from './modules/health/health.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
-import { HorsesModule } from './modules/horses/horses.module';
-import { TrainingModule } from './modules/training/training.module';
-import { PerformanceModule } from './modules/performance/performance.module';
-import { MedicalModule } from './modules/medical/medical.module';
-import { StableModule } from './modules/stable/stable.module';
-import { RacingModule } from './modules/racing/racing.module';
-import { SuppliesModule } from './modules/supplies/supplies.module';
-import { ReportsModule } from './modules/reports/reports.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { AuditModule } from './modules/audit/audit.module';
-import { MediaModule } from './modules/media/media.module';
-import { RealtimeModule } from './modules/realtime/realtime.module';
-import { RedisModule } from './common/redis/redis.module';
+import { validateEnvironment } from './config/env.validation';
+// import { HealthModule } from './modules/health/health.module';
 import { DomainEventsModule } from './common/events/domain-events.module';
+import { AxiosModule } from './common/integration/axios/axios.module';
+import { KeycloakGuard } from './common/integration/keycloak/guard/keycloak.guard';
+import { KeycloakModule } from './common/integration/keycloak/keycloak.module';
+import { RedisModule } from './common/redis/redis.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { HorsesModule } from './modules/horses/horses.module';
+import { MediaModule } from './modules/media/media.module';
+import { MedicalModule } from './modules/medical/medical.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { RacingModule } from './modules/racing/racing.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { StableModule } from './modules/stable/stable.module';
+import { SuppliesModule } from './modules/supplies/supplies.module';
+import { TrainingModule } from './modules/training/training.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -42,7 +45,9 @@ import { DomainEventsModule } from './common/events/domain-events.module';
     EventEmitterModule.forRoot(),
     DomainEventsModule,
     RedisModule,
-    HealthModule,
+    AxiosModule,
+    KeycloakModule,
+    // HealthModule,
     AuthModule,
     UsersModule,
     HorsesModule,
@@ -61,6 +66,7 @@ import { DomainEventsModule } from './common/events/domain-events.module';
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: CorrelationIdInterceptor },
+    { provide: APP_GUARD, useClass: KeycloakGuard },
   ],
 })
 export class AppModule {}
