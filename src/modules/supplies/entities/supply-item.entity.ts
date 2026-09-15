@@ -2,6 +2,10 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
 import { ClubEntity } from '../../users/entities/club.entity';
 
+/**
+ * SupplyItemEntity: vật tư / hàng hóa tồn kho của club.
+ * Dùng để quản lý tên, đơn vị, số lượng hiện có và mức đặt hàng lại.
+ */
 @Entity({ name: 'supply_items' })
 @Index('supply_items_club_name_uq', ['clubId', 'name'], {
   unique: true,

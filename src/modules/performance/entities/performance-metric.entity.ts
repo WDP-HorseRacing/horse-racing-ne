@@ -2,8 +2,11 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
 
+/**
+ * PerformanceMetricEntity: số liệu hiệu suất thu thập trong một buổi tập.
+ * Dùng để lưu nhịp tim, tốc độ và mức cảnh báo theo thời gian thực.
+ */
 @Entity({ name: 'performance_metrics' })
-@Index('performance_metrics_session_time_idx', ['sessionId', 'recordedAt'])
 @Index(
   'performance_metrics_source_uq',
   ['sessionId', 'recordedAt', 'sourceId'],

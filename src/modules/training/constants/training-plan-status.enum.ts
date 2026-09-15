@@ -1,0 +1,6 @@
+export enum TrainingPlanStatus {
+  SCHEDULED = 'SCHEDULED',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}

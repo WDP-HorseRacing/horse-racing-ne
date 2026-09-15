@@ -1,19 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
+  IsEnum,
   IsOptional,
   IsString,
   IsUUID,
-  MinLength,
 } from 'class-validator';
+import { CareScheduleType } from '../constants/care-schedule.enum';
 
 export class CreateCareScheduleDto {
-  @ApiProperty({
-    description: 'VACCINATION, DEWORMING, FARRIER or other care type',
-  })
-  @IsString()
-  @MinLength(1)
-  type!: string;
+  @ApiProperty({ enum: CareScheduleType })
+  @IsEnum(CareScheduleType)
+  type!: CareScheduleType;
 
   @ApiProperty({ format: 'date-time' })
   @IsDateString()

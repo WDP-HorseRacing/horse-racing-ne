@@ -1,11 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
-
-export enum RecoveryStatus {
-  ACUTE = 'ACUTE',
-  RECOVERING = 'RECOVERING',
-  HEALED = 'HEALED',
-}
+import { RecoveryStatus } from '../constants/injury-marker.enum';
 
 export class RecordRecoveryDto {
   @ApiProperty({ format: 'uuid' })

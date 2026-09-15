@@ -1,16 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  InjuryBodyRegion,
+  InjuryType,
+} from '../constants/injury-marker.enum';
 
 export class CreateInjuryDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  bodyRegion!: string;
+  @ApiProperty({ enum: InjuryBodyRegion })
+  @IsEnum(InjuryBodyRegion)
+  bodyRegion!: InjuryBodyRegion;
 
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  injuryType!: string;
+  @ApiProperty({ enum: InjuryType })
+  @IsEnum(InjuryType)
+  injuryType!: InjuryType;
 
   @ApiPropertyOptional()
   @IsOptional()

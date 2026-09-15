@@ -1,10 +1,15 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { HorseHealthStatus } from '../../horses/constants/horse-status.enum';
 import { UserEntity } from '../../users/entities/user.entity';
+import { MedicalSeverity } from '../constants/medical-record.enum';
 
+/**
+ * MedicalRecordEntity: hồ sơ bệnh án / khám sức khỏe của ngựa.
+ * Dùng để lưu chẩn đoán, mức độ nghiêm trọng và trạng thái sau khi khám.
+ */
 @Entity({ name: 'medical_records' })
-@Index('medical_records_horse_exam_idx', ['horseId', 'examDate'])
 export class MedicalRecordEntity extends BaseRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -27,10 +32,10 @@ export class MedicalRecordEntity extends BaseRecordEntity {
   diagnosis!: string;
 
   @Column({ type: 'varchar', length: 32 })
-  severity!: string;
+  severity!: MedicalSeverity;
 
   @Column({ name: 'resulting_status', type: 'varchar', length: 32 })
-  resultingStatus!: string;
+  resultingStatus!: HorseHealthStatus;
 
   @Column({ name: 'voided_at', type: 'timestamptz', nullable: true })
   voidedAt!: Date | null;

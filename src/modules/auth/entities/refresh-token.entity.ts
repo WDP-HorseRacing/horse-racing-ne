@@ -2,10 +2,13 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
-@Entity({ name: 'refresh_sessions' })
-@Index('refresh_sessions_token_hash_uq', ['tokenHash'], { unique: true })
-@Index('refresh_sessions_user_expires_idx', ['userId', 'expiresAt'])
-export class RefreshSessionEntity extends BaseRecordEntity {
+/**
+ * RefreshTokenEntity: lưu refresh token cho người dùng để hỗ trợ xác thực dài hạn.
+ * Dùng để quản lý thời hạn và trạng thái thu hồi token.
+ */
+@Entity({ name: 'refresh_tokens' })
+@Index('refresh_tokens_token_hash_uq', ['tokenHash'], { unique: true })
+export class RefreshTokenEntity extends BaseRecordEntity {
   @Column({ name: 'user_id', type: 'uuid' })
   userId!: string;
 
@@ -16,9 +19,11 @@ export class RefreshSessionEntity extends BaseRecordEntity {
   @Column({ name: 'token_hash', type: 'varchar', length: 255 })
   tokenHash!: string;
 
+  // hết hạn
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt!: Date;
 
+  // bị thu hồi
   @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt!: Date | null;
 }

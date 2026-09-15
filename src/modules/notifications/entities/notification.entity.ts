@@ -1,13 +1,13 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { NotificationType } from '../constants/notification-type.enum';
 
+/**
+ * NotificationEntity: thông báo nội bộ gửi đến người dùng.
+ * Dùng cho cảnh báo, nhắc nhở và các sự kiện cần người dùng biết.
+ */
 @Entity({ name: 'notifications' })
-@Index('notifications_recipient_read_created_idx', [
-  'recipientId',
-  'readAt',
-  'createdAt',
-])
 @Index('notifications_event_recipient_uq', ['eventId', 'recipientId'], {
   unique: true,
   where: 'event_id IS NOT NULL',
@@ -20,11 +20,8 @@ export class NotificationEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'recipient_id' })
   recipient!: UserEntity;
 
-  @Column({ name: 'event_id', type: 'uuid', nullable: true })
-  eventId!: string | null;
-
-  @Column({ type: 'varchar', length: 80 })
-  type!: string;
+  @Column({ type: 'varchar', length: 80, enum: NotificationType })
+  type!: NotificationType;
 
   @Column({ type: 'varchar', length: 200 })
   title!: string;
