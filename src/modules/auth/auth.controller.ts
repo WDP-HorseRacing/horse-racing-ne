@@ -17,11 +17,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Public } from '../../common/integration/keycloak/decorators/public.decorator';
-import { Registration } from '../../common/integration/keycloak/decorators/registration.decorator';
-import { CurrentUser } from '../../common/integration/keycloak/decorators/current-user.decorator';
-import { KeycloakIdentityProvider } from '../../common/integration/keycloak/types/oidc';
-import type { Actor } from '../../common/auth/actor';
+import { CurrentUser, Public, Registration } from '../../common/decorators';
+import { KeycloakIdentityProvider } from '../../common/infrastructure/keycloak/types/oidc';
+import type { Actor } from '../../common/types/actor';
 import { AuthService } from './services/auth.service';
 import { AuthTokensResponseDto } from './dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from './dto/current-user.response.dto';

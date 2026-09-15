@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AxiosModule } from '../axios/axios.module';
-import { RedisModule } from '../../redis/redis.module';
+import { RedisModule } from '../redis/redis.module';
 import { KeycloakConfig } from './keycloak.config';
 import { KeycloakHttpService } from './keycloak-http.service';
 import { KeycloakService } from './keycloak.service';

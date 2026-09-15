@@ -1,13 +1,13 @@
 import { ForbiddenException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import { UserEntity } from '../../modules/users/entities/user.entity';
-import { UserStatus } from '../../modules/users/user.enums';
-import type { Actor } from './actor';
+import type { Actor } from '../../../common/types/actor';
+import { UserStatus } from '../../../common/enums/user-status.enum';
+import { UserEntity } from '../entities/user.entity';
 
 /**
  * Doi mot Actor lay row `users` tuong ung.
  *
- * Guard goi ham nay de CHAN (phai co ho so, phai dang hoat dong).
+ * Dung khi can lay user record da ACTIVE tu DB theo actor.sub (keycloakId).
  */
 export async function currentUser(
   manager: EntityManager,

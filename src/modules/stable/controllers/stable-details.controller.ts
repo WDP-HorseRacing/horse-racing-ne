@@ -13,7 +13,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PendingApi } from '../../../common/api/pending-api';
+import { PendingApi } from '../../../common/openapi/pending-api';
 import { CreateChecklistDto } from '../dto/create-checklist.dto';
 import { CreateFeedingPlanDto } from '../dto/create-feeding-plan.dto';
 import { CreateStableAssignmentDto } from '../dto/create-stable-assignment.dto';

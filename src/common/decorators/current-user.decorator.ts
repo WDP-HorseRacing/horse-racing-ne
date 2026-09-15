@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import type { Actor } from '../../../auth/actor';
+import type { Actor } from '../types/actor';
 
 /**
  * Lay Actor cua request. Luon co tren route duoc bao ve,

@@ -1,4 +1,4 @@
-import type { Actor } from '../auth/actor';
+import type { Actor } from './actor';
 
 // declare global la BAT BUOC: ngay khi file co import o cap cao nhat, TypeScript
 // coi no la module, va mot `declare namespace Express` tran se chi con pham vi

@@ -7,9 +7,9 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, Socket, type DefaultEventsMap } from 'socket.io';
 import { DataSource } from 'typeorm';
-import { currentUser } from '../../common/auth/access';
-import type { Actor } from '../../common/auth/actor';
-import { KeycloakService } from '../../common/integration/keycloak/keycloak.service';
+import { currentUser } from '../users/utils/current-user';
+import type { Actor } from '../../common/types/actor';
+import { KeycloakService } from '../../common/infrastructure/keycloak/keycloak.service';
 
 /**
  * `socket.data` mac dinh la `any`, nghia la moi lan doc no deu khong duoc kiem

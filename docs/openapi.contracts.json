@@ -310,6 +310,21 @@
         ]
       }
     },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "API process is running"
+          }
+        },
+        "summary": "Check API process health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/owners": {
       "get": {
         "operationId": "HorseDetailsController_owners",
@@ -4505,7 +4520,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "photoAssetId": {
+          "mediaId": {
             "type": "string",
             "format": "uuid"
           }
@@ -4535,7 +4550,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "photoAssetId": {
+          "mediaId": {
             "type": "string",
             "format": "uuid"
           }
@@ -4646,7 +4661,11 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "VACCINATION, DEWORMING, FARRIER or other care type"
+            "enum": [
+              "VACCINATION",
+              "DEWORMING",
+              "FARRIER"
+            ]
           },
           "dueAt": {
             "type": "string",
@@ -4670,7 +4689,11 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "VACCINATION, DEWORMING, FARRIER or other care type"
+            "enum": [
+              "VACCINATION",
+              "DEWORMING",
+              "FARRIER"
+            ]
           },
           "dueAt": {
             "type": "string",
@@ -4696,10 +4719,22 @@
             "type": "string"
           },
           "severity": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MODERATE",
+              "HIGH",
+              "CRITICAL"
+            ]
           },
           "resultingStatus": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
           }
         },
         "required": [
@@ -4740,10 +4775,34 @@
         "type": "object",
         "properties": {
           "bodyRegion": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ]
           },
           "injuryType": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ]
           },
           "notes": {
             "type": "string"

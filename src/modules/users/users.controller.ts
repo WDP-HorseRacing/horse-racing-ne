@@ -16,9 +16,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Access } from '../../common/integration/keycloak/decorators/access.decorator';
-import { CurrentUser } from '../../common/integration/keycloak/decorators/current-user.decorator';
-import type { Actor } from '../../common/auth/actor';
+import { Access, CurrentUser } from '../../common/decorators';
+import type { Actor } from '../../common/types/actor';
 import { ApproveUserDto } from './dto/approve-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';

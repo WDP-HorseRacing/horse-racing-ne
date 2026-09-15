@@ -6,9 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { currentUser } from '../../../common/auth/access';
-import type { Actor } from '../../../common/auth/actor';
-import { KeycloakUserService } from '../../../common/integration/keycloak/user.service';
+import { currentUser } from '../utils/current-user';
+import type { Actor } from '../../../common/types/actor';
+import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserResponseDto } from '../dto/user.response.dto';

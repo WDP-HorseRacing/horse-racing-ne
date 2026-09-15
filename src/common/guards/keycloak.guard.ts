@@ -8,15 +8,16 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { DataSource } from 'typeorm';
-import { currentUser } from '../../../auth/access';
-import type { Actor } from '../../../auth/actor';
-import { UserRole } from '../../../../modules/users/user.enums';
 import {
   ACCESS_KEY,
   IS_PUBLIC_KEY,
   REGISTRATION_KEY,
-} from '../keycloak.constants';
-import { KeycloakService } from '../keycloak.service';
+} from '../constants/auth.constants';
+import { UserRole } from '../enums/role.enum';
+import { UserStatus } from '../enums/user-status.enum';
+import { KeycloakService } from '../infrastructure/keycloak/keycloak.service';
+import type { KeycloakVerifiedToken } from '../infrastructure/keycloak/types/claims';
+import type { Actor } from '../types/actor';
 
 @Injectable()
 export class KeycloakGuard implements CanActivate {
@@ -45,7 +46,10 @@ export class KeycloakGuard implements CanActivate {
       throw new UnauthorizedException('Can bearer token');
     }
 
-    const token = await this.keycloak.verifyToken(header.slice(7));
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const token: KeycloakVerifiedToken = await this.keycloak.verifyToken(
+      header.slice(7),
+    );
     const actor: Actor = {
       sub: token.sub,
       email: token.email,
@@ -65,7 +69,19 @@ export class KeycloakGuard implements CanActivate {
     // Ket qua co y KHONG gan vao request: guard chi chan, con service nao can
     // du lieu nghiep vu thi tu goi currentUser(manager, actor).
     if (!this.reflector.getAllAndOverride<boolean>(REGISTRATION_KEY, targets)) {
-      await currentUser(this.dataSource.manager, actor);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const rows = await this.dataSource.query(
+        `SELECT status FROM users WHERE keycloak_id = $1 AND deleted_at IS NULL LIMIT 1`,
+        [actor.sub],
+      );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (!rows || rows.length === 0) {
+        throw new ForbiddenException('Tài khoản không tồn tại');
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (rows[0].status !== UserStatus.ACTIVE) {
+        throw new ForbiddenException('Tài khoản không ở trạng thái hoạt động');
+      }
     }
 
     request.actor = actor;

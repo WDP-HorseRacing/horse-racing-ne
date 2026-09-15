@@ -1,6 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
-import { UserRole } from '../../../../modules/users/user.enums';
-import { ACCESS_KEY } from '../keycloak.constants';
+import { UserRole } from '../enums/role.enum';
+import { ACCESS_KEY } from '../constants/auth.constants';
 
 /**
  * Gioi han route cho cac role nay, so voi `actor.roles` lay tu token.

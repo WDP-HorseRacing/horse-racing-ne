@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { KeycloakModule } from '../../common/integration/keycloak/keycloak.module';
+import { KeycloakModule } from '../../common/infrastructure/keycloak/keycloak.module';
 import { RealtimeGateway } from './realtime.gateway';
 
 // KeycloakModule khong global nen gateway khong tu thay KeycloakService.

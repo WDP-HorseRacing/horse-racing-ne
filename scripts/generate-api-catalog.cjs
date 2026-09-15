@@ -6,7 +6,7 @@ const { join } = require('node:path');
 const { PATH_METADATA } = require('@nestjs/common/constants');
 const { Test } = require('@nestjs/testing');
 const { DocumentBuilder, SwaggerModule } = require('@nestjs/swagger');
-const { finalizeOpenApi } = require('../src/common/api/finalize-openapi');
+const { finalizeOpenApi } = require('../src/common/openapi/finalize-openapi');
 
 const root = join(__dirname, '../src/modules');
 const methods = ['get', 'post', 'put', 'patch', 'delete'];
