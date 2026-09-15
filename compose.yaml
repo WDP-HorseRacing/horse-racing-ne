@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 x-service-defaults: &service-defaults
   restart: unless-stopped
   networks:
@@ -8,40 +6,20 @@ x-service-defaults: &service-defaults
     driver: json-file
     options:
       max-size: 10m
-      max-file: '3'
+      max-file: "3"
 
->>>>>>> Stashed changes
 services:
-  postgres:
+  race-horse-postgres:
+    <<: *service-defaults
     image: postgres:16-alpine
     environment:
-<<<<<<< Updated upstream
       POSTGRES_DB: racehorse
       POSTGRES_USER: racehorse
       POSTGRES_PASSWORD: racehorse
-    ports:
-      - '5432:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U racehorse -d racehorse']
-      interval: 5s
-      timeout: 3s
-      retries: 10
-  redis:
-    image: redis:7-alpine
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
-=======
-      POSTGRES_DB: ${DB_NAME:-racehorse}
-      POSTGRES_USER: ${DB_USERNAME:-racehorse}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-racehorse}
       PGDATA: /var/lib/postgresql/data/pgdata
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
     ports:
-      - '${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-5432}:5432'
+      - "${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -65,19 +43,15 @@ services:
     command:
       - redis-server
       - --appendonly
-      - 'yes'
+      - "yes"
       - --appendfsync
       - everysec
       - --requirepass
-      - ${REDIS_PASSWORD:-racehorse}
+      - racehorse
     ports:
-      - '${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${REDIS_PORT:-6379}:6379'
+      - "${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - redis-cli --no-auth-warning -a "$${REDIS_PASSWORD:-racehorse}" ping
       interval: 5s
       timeout: 3s
       retries: 10
@@ -143,9 +117,9 @@ networks:
   racehorse-network:
     name: racehorse-network
     driver: bridge
->>>>>>> Stashed changes
 
 volumes:
+  # Keep the original volume keys so existing local database data remains usable.
   postgres_data:
   redis_data:
   minio_data:
