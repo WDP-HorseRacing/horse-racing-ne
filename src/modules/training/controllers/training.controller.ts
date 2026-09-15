@@ -5,7 +5,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PendingApi } from '../../../common/api/pending-api';
+import { PendingApi } from '../../../common/openapi/pending-api';
 import { CreateTrainingPlanDto } from '../dto/create-training-plan.dto';
 import { CreateTrainingSessionDto } from '../dto/create-training-session.dto';
 import { EvaluateSessionDto } from '../dto/evaluate-session.dto';

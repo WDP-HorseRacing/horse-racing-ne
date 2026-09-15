@@ -5,7 +5,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PendingApi } from '../../../common/api/pending-api';
+import { PendingApi } from '../../../common/openapi/pending-api';
 import { IngestMetricBatchDto } from '../dto/ingest-metric-batch.dto';
 import { UpsertThresholdDto } from '../dto/upsert-threshold.dto';
 

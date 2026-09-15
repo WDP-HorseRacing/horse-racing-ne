@@ -15,7 +15,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PendingApi } from '../../../common/api/pending-api';
+import { PendingApi } from '../../../common/openapi/pending-api';
 import { CreateHorseDto } from '../dto/create-horse.dto';
 import { SetHorseOwnersDto } from '../dto/set-horse-owners.dto';
 import { UpdateHorseDto } from '../dto/update-horse.dto';

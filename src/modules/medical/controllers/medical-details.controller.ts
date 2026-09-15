@@ -5,7 +5,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PendingApi } from '../../../common/api/pending-api';
+import { PendingApi } from '../../../common/openapi/pending-api';
 import { CreateCareScheduleDto } from '../dto/create-care-schedule.dto';
 import { RecordRecoveryDto } from '../dto/record-recovery.dto';
 import { UpdateCareScheduleDto } from '../dto/update-care-schedule.dto';
