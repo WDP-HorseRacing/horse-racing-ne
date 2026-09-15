@@ -7,7 +7,6 @@ import { typeOrmOptions } from './common/database/typeorm.options';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
 import { validateEnvironment } from './config/env.validation';
-// import { HealthModule } from './modules/health/health.module';
 import { DomainEventsModule } from './common/events/domain-events.module';
 import { AxiosModule } from './common/integration/axios/axios.module';
 import { KeycloakGuard } from './common/integration/keycloak/guard/keycloak.guard';
@@ -27,6 +26,7 @@ import { StableModule } from './modules/stable/stable.module';
 import { SuppliesModule } from './modules/supplies/supplies.module';
 import { TrainingModule } from './modules/training/training.module';
 import { UsersModule } from './modules/users/users.module';
+import { ObjectStorageModule } from './common/storage/object-storage.module';
 
 @Module({
   imports: [
@@ -47,7 +47,7 @@ import { UsersModule } from './modules/users/users.module';
     RedisModule,
     AxiosModule,
     KeycloakModule,
-    // HealthModule,
+    ObjectStorageModule,
     AuthModule,
     UsersModule,
     HorsesModule,

@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
+import { HorseHealthStatus } from '../../horses/constants/horse-status.enum';
+import { MedicalSeverity } from '../constants/medical-record.enum';
 
 export class CreateMedicalRecordDto {
   @ApiProperty({ format: 'date-time' })
@@ -11,13 +19,13 @@ export class CreateMedicalRecordDto {
   @MinLength(1)
   diagnosis!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: MedicalSeverity })
   @IsOptional()
-  @IsString()
-  severity?: string;
+  @IsEnum(MedicalSeverity)
+  severity?: MedicalSeverity;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: HorseHealthStatus })
   @IsOptional()
-  @IsString()
-  resultingStatus?: string;
+  @IsEnum(HorseHealthStatus)
+  resultingStatus?: HorseHealthStatus;
 }

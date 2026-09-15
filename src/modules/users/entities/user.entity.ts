@@ -3,6 +3,11 @@ import { SoftDeletableRecordEntity } from '../../../common/database/base-record.
 import { ClubEntity } from './club.entity';
 import { UserRole, UserStatus } from '../user.enums';
 
+/**
+ * UserEntity: tài khoản người dùng trong hệ thống.
+ * Mỗi user thuộc về một club và có vai trò như groom, trainer, manager,...
+ * Dùng cho xác thực, phân quyền và theo dõi hoạt động người dùng.
+ */
 @Entity({ name: 'users' })
 @Index('users_club_email_uq', ['clubId', 'email'], {
   unique: true,

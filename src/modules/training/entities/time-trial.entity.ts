@@ -1,10 +1,13 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { TrainingSessionEntity } from './training-session.entity';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
 
+/**
+ * TimeTrialEntity: kết quả thử sức / chạy thử trong một buổi tập.
+ * Dùng để lưu quãng đường, thời gian và video ghi nhận hiệu suất.
+ */
 @Entity({ name: 'time_trials' })
-@Index('time_trials_session_idx', ['sessionId'])
 export class TimeTrialEntity extends MutableRecordEntity {
   @Column({ name: 'session_id', type: 'uuid' })
   sessionId!: string;

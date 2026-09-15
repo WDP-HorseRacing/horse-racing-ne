@@ -1,0 +1,12 @@
+export enum HorseHealthStatus {
+  ELIGIBLE = 'ELIGIBLE',
+  UNDER_OBSERVATION = 'UNDER_OBSERVATION',
+  INJURED = 'INJURED',
+  QUARANTINED = 'QUARANTINED',
+}
+
+export enum HorseLifecycleStatus {
+  ACTIVE = 'ACTIVE',
+  RETIRED = 'RETIRED',
+  TRANSFERRED = 'TRANSFERRED',
+}

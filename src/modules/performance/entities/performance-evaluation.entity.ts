@@ -3,6 +3,10 @@ import { MutableRecordEntity } from '../../../common/database/base-record.entity
 import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
+/**
+ * PerformanceEvaluationEntity: đánh giá kết quả một buổi tập của trainer hoặc giám khảo.
+ * Dùng để lưu điểm số và nhận xét chuyên môn.
+ */
 @Entity({ name: 'performance_evaluations' })
 @Index('performance_evaluations_session_uq', ['sessionId'], { unique: true })
 export class PerformanceEvaluationEntity extends MutableRecordEntity {
