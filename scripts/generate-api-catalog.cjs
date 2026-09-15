@@ -27,7 +27,12 @@ async function main() {
         Reflect.hasMetadata(PATH_METADATA, value),
     ),
   );
-  const module = await Test.createTestingModule({ controllers }).compile();
+  // useMocker: script nay chi doc metadata decorator, khong goi handler nao.
+  // Controller da co constructor (AuthService, UsersService...) nen phai co
+  // cho Nest resolve - mock rong la du, va tu dong dung cho controller sau nay.
+  const module = await Test.createTestingModule({ controllers })
+    .useMocker(() => ({}))
+    .compile();
   const app = module.createNestApplication();
   app.setGlobalPrefix('api/v1');
   await app.init();

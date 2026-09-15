@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 126 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 130 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -21,7 +21,10 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/auth/login` | Sign in with club account |
 | POST | `/api/v1/auth/logout` | Revoke refresh token |
 | GET | `/api/v1/auth/me` | Get current account and role |
+| GET | `/api/v1/auth/oidc/{provider}` | Bat dau luong dang nhap qua identity provider |
+| GET | `/api/v1/auth/oidc/{provider}/callback` | Diem identity provider redirect ve |
 | POST | `/api/v1/auth/refresh` | Exchange refresh token |
+| POST | `/api/v1/auth/register` | Tu dang ky, cho CLUB_MANAGER duyet |
 
 ## clubs
 
@@ -29,12 +32,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | --- | --- | --- |
 | GET | `/api/v1/clubs/me` | Get current club |
 | PATCH | `/api/v1/clubs/me` | Update current club settings |
-
-## health
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/v1/health` | Check API process health |
 
 ## horses
 
@@ -205,5 +202,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/users` | Create club user |
 | GET | `/api/v1/users/{id}` | Get club user |
 | PATCH | `/api/v1/users/{id}` | Update club user |
+| PATCH | `/api/v1/users/{id}/approve` | Duyet ho so: gan CLB va role |
 | PATCH | `/api/v1/users/{id}/status` | Change user account status |
+| GET | `/api/v1/users/pending` | Danh sach ho so cho duyet cua CLB |
 

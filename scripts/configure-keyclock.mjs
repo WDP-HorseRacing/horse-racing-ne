@@ -1,6 +1,30 @@
 import axios from 'axios';
 import 'dotenv/config';
 
+// Loi cua axios rat on: stack di xuyen node internals, khong noi hong o dau.
+// Doi thanh mot dong nguoi doc hieu duoc, roi thoat.
+const explain = (error) => {
+  if (!axios.isAxiosError(error)) return error.message ?? String(error);
+  const { status, data } = error.response ?? {};
+  const detail =
+    data?.error_description ?? data?.errorMessage ?? data?.error ?? '';
+  const where = `${error.config?.method?.toUpperCase() ?? '?'} ${error.config?.url ?? '?'}`;
+  if (status === 401) {
+    return `${where} -> 401. Sai KEYCLOAK_ADMIN_USERNAME/PASSWORD, hoac tai khoan do khong o realm "${process.env.KEYCLOAK_ADMIN_REALM ?? 'master'}".${detail ? ' (' + detail + ')' : ''}`;
+  }
+  if (!status) {
+    return `${where} -> khong ket noi duoc. Keycloak da chay chua? docker compose -f docker/compose.yaml ps`;
+  }
+  return `${where} -> ${status}${detail ? ': ' + detail : ''}`;
+};
+
+for (const signal of ['uncaughtException', 'unhandledRejection']) {
+  process.on(signal, (error) => {
+    console.error(`\n✗ ${explain(error)}\n`);
+    process.exit(1);
+  });
+}
+
 const required = (value, name) => {
   if (!value?.trim()) throw new Error(`${name} is required`);
   return value.trim();
@@ -76,12 +100,24 @@ try {
   await root.post('/realms', {
     realm: realmName,
     enabled: true,
+    // NONE vi moi thu chay tren http://localhost. Mac dinh cua Keycloak la
+    // EXTERNAL: no mien HTTPS cho dia chi noi bo, nhung Docker NAT lam no
+    // nhin request cua host thanh dia chi ngoai -> ca realm tra 403
+    // "HTTPS required", ke ca endpoint JWKS. Dung NONE o moi truong that.
+    sslRequired: 'NONE',
     registrationAllowed: false,
     loginWithEmailAllowed: true,
     duplicateEmailsAllowed: false,
     resetPasswordAllowed: true,
   });
   console.log(`da tao realm "${realmName}"`);
+}
+
+// 1b. sslRequired cho realm da co san (tao tu truoc khi script co buoc nay)
+const current = (await root.get(`/realms/${realm}`)).data;
+if (current.sslRequired !== 'none') {
+  await root.put(`/realms/${realm}`, { ...current, sslRequired: 'NONE' });
+  console.log(`da dat sslRequired=NONE cho realm "${realmName}"`);
 }
 
 // 2. Confidential client  ->  Console: Clients > Create client

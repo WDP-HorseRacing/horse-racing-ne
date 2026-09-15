@@ -61,6 +61,38 @@
         "x-implementation-status": "contract-only"
       }
     },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Tu dang ky, cho CLUB_MANAGER duyet",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "AuthController_login",
@@ -76,15 +108,21 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponseDto"
+                }
+              }
+            }
           }
         },
         "summary": "Sign in with club account",
         "tags": [
           "auth"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/auth/refresh": {
@@ -102,15 +140,21 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponseDto"
+                }
+              }
+            }
           }
         },
         "summary": "Exchange refresh token",
         "tags": [
           "auth"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/auth/logout": {
@@ -128,15 +172,14 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "204": {
+            "description": ""
           }
         },
         "summary": "Revoke refresh token",
         "tags": [
           "auth"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/auth/me": {
@@ -144,8 +187,15 @@
         "operationId": "AuthController_me",
         "parameters": [],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -156,8 +206,7 @@
         "summary": "Get current account and role",
         "tags": [
           "auth"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/auth/change-password": {
@@ -175,8 +224,8 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "204": {
+            "description": ""
           }
         },
         "security": [
@@ -187,22 +236,77 @@
         "summary": "Change current account password",
         "tags": [
           "auth"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/health": {
+    "/api/v1/auth/oidc/{provider}": {
       "get": {
-        "operationId": "HealthController_check",
-        "parameters": [],
+        "operationId": "AuthController_startOidc",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
           }
         },
-        "summary": "Check API process health",
+        "summary": "Bat dau luong dang nhap qua identity provider",
         "tags": [
-          "health"
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/oidc/{provider}/callback": {
+      "get": {
+        "operationId": "AuthController_oidcCallback",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Diem identity provider redirect ve",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -3864,6 +3968,36 @@
         "x-implementation-status": "contract-only"
       }
     },
+    "/api/v1/users/pending": {
+      "get": {
+        "operationId": "UsersController_listPending",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Danh sach ho so cho duyet cua CLB",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/v1/users": {
       "get": {
         "operationId": "UsersController_list",
@@ -3878,8 +4012,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3890,8 +4034,7 @@
         "summary": "List club users",
         "tags": [
           "users"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "UsersController_create",
@@ -3907,8 +4050,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3919,8 +4069,7 @@
         "summary": "Create club user",
         "tags": [
           "users"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/users/{id}": {
@@ -3937,8 +4086,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3949,8 +4105,7 @@
         "summary": "Get club user",
         "tags": [
           "users"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "patch": {
         "operationId": "UsersController_update",
@@ -3975,8 +4130,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3987,8 +4149,53 @@
         "summary": "Update club user",
         "tags": [
           "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/approve": {
+      "patch": {
+        "operationId": "UsersController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Duyet ho so: gan CLB va role",
+        "tags": [
+          "users"
+        ]
       }
     },
     "/api/v1/users/{id}/status": {
@@ -4015,8 +4222,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4027,8 +4241,7 @@
         "summary": "Change user account status",
         "tags": [
           "users"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     }
   },
@@ -4049,6 +4262,80 @@
       }
     },
     "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "writeOnly": true
+          },
+          "clubId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "CLB muon xin vao. Bo trong thi vao hang doi chung."
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "password"
+        ]
+      },
+      "UserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clubId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ],
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACTIVE",
+              "LOCKED",
+              "INACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "status"
+        ]
+      },
       "LoginDto": {
         "type": "object",
         "properties": {
@@ -4066,6 +4353,31 @@
           "password"
         ]
       },
+      "AuthTokensResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "type": "number",
+            "description": "So giay access token con hieu luc"
+          },
+          "tokenType": {
+            "type": "string",
+            "example": "Bearer"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "expiresIn",
+          "tokenType"
+        ]
+      },
       "RefreshTokenDto": {
         "type": "object",
         "properties": {
@@ -4075,6 +4387,63 @@
         },
         "required": [
           "refreshToken"
+        ]
+      },
+      "CurrentUserResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clubId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "NULL khi tai khoan cho duyet ma chua chon CLB"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ],
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACTIVE",
+              "LOCKED",
+              "INACTIVE"
+            ],
+            "description": "PENDING thi frontend dua ve man hinh \"cho duyet\""
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "roles": {
+            "description": "Role theo goc nhin Keycloak",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "status",
+          "email",
+          "fullName",
+          "roles"
         ]
       },
       "ChangePasswordDto": {
@@ -4935,6 +5304,42 @@
           "password"
         ]
       },
+      "ApproveUserDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ],
+            "description": "Role cap cho nguoi duoc duyet"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "UpdateUserStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACTIVE",
+              "LOCKED",
+              "INACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "UpdateUserDto": {
         "type": "object",
         "properties": {
@@ -4952,22 +5357,6 @@
             ]
           }
         }
-      },
-      "UpdateUserStatusDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ACTIVE",
-              "LOCKED",
-              "INACTIVE"
-            ]
-          }
-        },
-        "required": [
-          "status"
-        ]
       }
     }
   }

@@ -160,6 +160,18 @@ export class KeycloakUserService {
     );
   }
 
+  /**
+   * Ket thuc moi session cua user. Bat buoc goi sau khi doi mat khau:
+   * reset-password mot minh KHONG thu hoi refresh token cu, nen nguoi dang
+   * giu token do van truy cap duoc binh thuong.
+   */
+  async logoutUser(userId: string): Promise<void> {
+    await this.request(
+      `/admin/realms/${this.keycloakConfig.realmPath}/users/${encodeURIComponent(userId)}/logout`,
+      { method: 'POST' },
+    );
+  }
+
   /** Hanh dong bu khi tao row local that bai. 404 coi nhu da xoa roi. */
   async deleteUser(userId: string): Promise<void> {
     const token = await this.getAdminToken();
