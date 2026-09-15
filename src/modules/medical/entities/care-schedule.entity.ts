@@ -1,10 +1,17 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import {
+  CareScheduleStatus,
+  CareScheduleType,
+} from '../constants/care-schedule.enum';
 
+/**
+ * CareScheduleEntity: lịch chăm sóc / điều trị định kỳ cho ngựa.
+ * Dùng để lên lịch công việc y tế, chăm sóc hoặc kiểm tra sức khỏe.
+ */
 @Entity({ name: 'care_schedules' })
-@Index('care_schedules_horse_due_idx', ['horseId', 'dueAt'])
 export class CareScheduleEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -14,7 +21,7 @@ export class CareScheduleEntity extends MutableRecordEntity {
   horse!: HorseEntity;
 
   @Column({ type: 'varchar', length: 32 })
-  type!: string;
+  type!: CareScheduleType;
 
   @Column({ name: 'due_at', type: 'timestamptz' })
   dueAt!: Date;
@@ -26,8 +33,12 @@ export class CareScheduleEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'assigned_to' })
   assignee!: UserEntity | null;
 
-  @Column({ type: 'varchar', length: 32, default: 'SCHEDULED' })
-  status!: string;
+  @Column({
+    type: 'varchar',
+    length: 32,
+    default: CareScheduleStatus.SCHEDULED,
+  })
+  status!: CareScheduleStatus;
 
   @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
   completedAt!: Date | null;

@@ -1,11 +1,15 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
+import { IncidentStatus } from '../constants/incident-status.enum';
 
+/**
+ * IncidentEntity: lưu các sự cố / bất thường xảy ra với ngựa.
+ * Dùng để báo cáo, ưu tiên xử lý, đính kèm hình ảnh và theo dõi trạng thái giải quyết.
+ */
 @Entity({ name: 'incidents' })
-@Index('incidents_horse_created_idx', ['horseId', 'createdAt'])
 export class IncidentEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -34,6 +38,11 @@ export class IncidentEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'media_asset_id' })
   mediaAsset!: MediaAssetEntity | null;
 
-  @Column({ type: 'varchar', length: 32, default: 'OPEN' })
-  status!: string;
+  @Column({
+    type: 'varchar',
+    length: 32,
+    default: IncidentStatus.OPEN,
+    enum: IncidentStatus,
+  })
+  status!: IncidentStatus;
 }

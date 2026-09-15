@@ -2,6 +2,11 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
 import { ClubEntity } from './club.entity';
 
+/**
+ * UserEntity: tài khoản người dùng trong hệ thống.
+ * Mỗi user thuộc về một club và có vai trò như groom, trainer, manager,...
+ * Dùng cho xác thực, phân quyền và theo dõi hoạt động người dùng.
+ */
 @Entity({ name: 'users' })
 @Index('users_club_email_uq', ['clubId', 'email'], {
   unique: true,

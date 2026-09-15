@@ -1,0 +1,12 @@
+export enum CareScheduleType {
+  VACCINATION = 'VACCINATION',
+  DEWORMING = 'DEWORMING',
+  FARRIER = 'FARRIER',
+}
+
+export enum CareScheduleStatus {
+  SCHEDULED = 'SCHEDULED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}

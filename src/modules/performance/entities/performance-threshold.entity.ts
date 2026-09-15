@@ -1,14 +1,13 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { ClubEntity } from '../../users/entities/club.entity';
 
+/**
+ * PerformanceThresholdEntity: ngưỡng hiệu suất áp dụng cho club hoặc từng con ngựa.
+ * Dùng để lưu các giới hạn kỹ thuật và thời điểm hiệu lực của chúng.
+ */
 @Entity({ name: 'performance_thresholds' })
-@Index('performance_thresholds_effective_idx', [
-  'clubId',
-  'horseId',
-  'effectiveFrom',
-])
 export class PerformanceThresholdEntity extends MutableRecordEntity {
   @Column({ name: 'club_id', type: 'uuid' })
   clubId!: string;

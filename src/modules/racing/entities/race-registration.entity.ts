@@ -2,8 +2,13 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { RegistrationStatus } from '../constants/registration-status.enum';
 import { RaceEntity } from './race.entity';
 
+/**
+ * RaceRegistrationEntity: đăng ký một con ngựa tham gia cuộc đua.
+ * Lưu trạng thái duyệt, thời điểm phê duyệt và kết quả xếp hạng nếu có.
+ */
 @Entity({ name: 'race_registrations' })
 @Index('race_registrations_race_horse_uq', ['raceId', 'horseId'], {
   unique: true,
@@ -30,8 +35,13 @@ export class RaceRegistrationEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'requested_by' })
   requester!: UserEntity;
 
-  @Column({ type: 'varchar', length: 32, default: 'PROPOSED' })
-  status!: string;
+  @Column({
+    type: 'varchar',
+    length: 32,
+    default: RegistrationStatus.PROPOSED,
+    enum: RegistrationStatus,
+  })
+  status!: RegistrationStatus;
 
   @Column({ name: 'owner_approved_at', type: 'timestamptz', nullable: true })
   ownerApprovedAt!: Date | null;
