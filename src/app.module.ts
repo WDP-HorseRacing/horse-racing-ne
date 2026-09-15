@@ -4,14 +4,15 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmOptions } from './common/database/typeorm.options';
+import { DomainEventsModule } from './common/events/domain-events.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
-import { validateEnvironment } from './config/env.validation';
-import { DomainEventsModule } from './common/events/domain-events.module';
 import { AxiosModule } from './common/integration/axios/axios.module';
 import { KeycloakGuard } from './common/integration/keycloak/guard/keycloak.guard';
 import { KeycloakModule } from './common/integration/keycloak/keycloak.module';
 import { RedisModule } from './common/redis/redis.module';
+import { ObjectStorageModule } from './common/storage/object-storage.module';
+import { validateEnvironment } from './config/env.validation';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HorsesModule } from './modules/horses/horses.module';
@@ -26,7 +27,6 @@ import { StableModule } from './modules/stable/stable.module';
 import { SuppliesModule } from './modules/supplies/supplies.module';
 import { TrainingModule } from './modules/training/training.module';
 import { UsersModule } from './modules/users/users.module';
-import { ObjectStorageModule } from './common/storage/object-storage.module';
 
 @Module({
   imports: [
