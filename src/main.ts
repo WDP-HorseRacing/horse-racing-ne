@@ -1,5 +1,5 @@
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { finalizeOpenApi } from './common/api/finalize-openapi';
@@ -30,6 +30,7 @@ async function bootstrap() {
     'docs',
     app,
     finalizeOpenApi(SwaggerModule.createDocument(app, swaggerConfig)),
+    { swaggerOptions: { persistAuthorization: true } },
   );
 
   await app.listen(Number(process.env.PORT ?? 3000));
