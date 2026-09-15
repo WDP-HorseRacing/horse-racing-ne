@@ -1,9 +1,6 @@
-import {
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Actor } from '../../../common/auth/actor';
+import { KeycloakService } from '../../../common/integration/keycloak/keycloak.service';
 import { KeycloakTokenService } from '../../../common/integration/keycloak/token.service';
 import { KeycloakUserService } from '../../../common/integration/keycloak/user.service';
 import { KeycloakOidcRedirectService } from '../../../common/integration/keycloak/keycloak-oidc-redirect.service';
@@ -11,6 +8,7 @@ import { KeycloakConfig } from '../../../common/integration/keycloak/keycloak.co
 import type { KeycloakIdentityProvider } from '../../../common/integration/keycloak/types/oidc';
 import type { KeycloakTokenResponse } from '../../../common/integration/keycloak/types/token';
 import { UsersRepository } from '../../users/repositories/users.repository';
+import { ProvisioningService } from '../../users/services/provisioning.service';
 import { toUserResponse } from '../../users/mappers/user.mapper';
 import { UserResponseDto } from '../../users/dto/user.response.dto';
 import { UserStatus } from '../../users/user.enums';
@@ -26,7 +24,9 @@ export class AuthService {
     private readonly keycloakUsers: KeycloakUserService,
     private readonly oidcRedirect: KeycloakOidcRedirectService,
     private readonly keycloakConfig: KeycloakConfig,
+    private readonly keycloak: KeycloakService,
     private readonly users: UsersRepository,
+    private readonly provisioning: ProvisioningService,
   ) {}
 
   /**
@@ -62,11 +62,13 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<AuthTokensResponseDto> {
-    return this.toTokenResponse(
-      await this.keycloakTokens.exchangePasswordForToken({
-        username: email,
-        password,
-      }),
+    return this.issueSession(
+      this.toTokenResponse(
+        await this.keycloakTokens.exchangePasswordForToken({
+          username: email,
+          password,
+        }),
+      ),
     );
   }
 
@@ -81,10 +83,9 @@ export class AuthService {
   }
 
   async me(actor: Actor): Promise<CurrentUserResponseDto> {
-    const user = await this.users.findByKeycloakId(actor.sub);
-    if (!user) {
-      throw new ForbiddenException('Tai khoan chua dang ky trong he thong');
-    }
+    const user =
+      (await this.users.findByKeycloakId(actor.sub)) ??
+      (await this.provisioning.ensureUser(actor));
     return {
       userId: user.id,
       clubId: user.clubId,
@@ -138,13 +139,32 @@ export class AuthService {
   ): Promise<AuthTokensResponseDto> {
     const { codeVerifier, redirectUri } =
       await this.oidcRedirect.consumePkceBundle(provider, state);
-    return this.toTokenResponse(
-      await this.keycloakTokens.exchangeCodeForToken({
-        code,
-        redirectUri,
-        codeVerifier,
-      }),
+    return this.issueSession(
+      this.toTokenResponse(
+        await this.keycloakTokens.exchangeCodeForToken({
+          code,
+          redirectUri,
+          codeVerifier,
+        }),
+      ),
     );
+  }
+
+  /**
+   * Cua ngo chung cua MOI luong dang nhap: doc claim tu access token vua cap,
+   * bao dam co row `users` roi moi tra token ve.
+   *
+   * Co y KHONG goi o refresh(): row da duoc cap o lan dang nhap, va neu admin
+   * vua xoa mem no thi refresh khong phai cho de hoi sinh lai.
+   *
+   * Them identity provider thu ba sau nay chi can goi lai ham nay.
+   */
+  private async issueSession(
+    tokens: AuthTokensResponseDto,
+  ): Promise<AuthTokensResponseDto> {
+    const claims = await this.keycloak.verifyToken(tokens.accessToken);
+    await this.provisioning.ensureUser(claims);
+    return tokens;
   }
 
   private toTokenResponse(
