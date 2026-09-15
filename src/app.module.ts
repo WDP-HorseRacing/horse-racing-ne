@@ -24,6 +24,7 @@ import { MediaModule } from './modules/media/media.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { RedisModule } from './common/redis/redis.module';
 import { DomainEventsModule } from './common/events/domain-events.module';
+import { ObjectStorageModule } from './common/storage/object-storage.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { DomainEventsModule } from './common/events/domain-events.module';
     EventEmitterModule.forRoot(),
     DomainEventsModule,
     RedisModule,
+    ObjectStorageModule,
     HealthModule,
     AuthModule,
     UsersModule,
