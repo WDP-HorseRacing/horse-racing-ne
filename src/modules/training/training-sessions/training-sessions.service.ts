@@ -140,7 +140,7 @@ export class TrainingSessionsService {
       const current = await this.access.lockedSessionInClub(
         manager,
         sessionId,
-        caller.clubId!,
+        caller.clubId,
       );
       this.access.assertCanOperateSession(actor, caller.id, current);
       assertSessionAbleToStart(current.status);
@@ -152,7 +152,7 @@ export class TrainingSessionsService {
       const horse = await this.access.lockedHorseInClub(
         manager,
         plan.horseId,
-        caller.clubId!,
+        caller.clubId,
       );
       if (
         horse.lifecycleStatus !== HorseLifecycleStatus.ACTIVE ||
@@ -197,7 +197,7 @@ export class TrainingSessionsService {
       const current = await this.access.lockedSessionInClub(
         manager,
         sessionId,
-        caller.clubId!,
+        caller.clubId,
       );
       this.access.assertCanOperateSession(actor, caller.id, current);
       assertSessionCompletable(current.status);
@@ -229,7 +229,7 @@ export class TrainingSessionsService {
       const current = await this.access.lockedSessionInClub(
         manager,
         sessionId,
-        caller.clubId!,
+        caller.clubId,
       );
       this.access.assertCanOperateSession(actor, caller.id, current);
       assertSessionCancellable(current.status);

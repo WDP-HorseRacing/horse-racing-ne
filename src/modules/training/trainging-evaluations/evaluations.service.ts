@@ -33,7 +33,7 @@ export class EvaluationsService {
       const session = await this.access.lockedSessionInClub(
         manager,
         sessionId,
-        caller.clubId!,
+        caller.clubId,
       );
       if (session.status !== TrainingSessionStatus.COMPLETED) {
         throw new ConflictException('Chỉ đánh giá buổi tập đã COMPLETED');

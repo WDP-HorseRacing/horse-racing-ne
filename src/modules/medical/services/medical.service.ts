@@ -1,20 +1,26 @@
 import { Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { currentUserForActor } from '../../users/utils/current-user';
 import { InjuryMarkerResponseDto } from '../dto/injury-marker.response.dto';
 import { MedicalRecordResponseDto } from '../dto/medical-record.response.dto';
 import { MedicalRepository } from '../repositories/medical.repository';
 
 @Injectable()
 export class MedicalService {
-  constructor(private readonly medicalRepository: MedicalRepository) {}
+  constructor(
+    private readonly medicalRepository: MedicalRepository,
+    private readonly dataSource: DataSource,
+  ) {}
 
   async listRecords(
     actor: Actor,
     horseId: string,
   ): Promise<MedicalRecordResponseDto[]> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const records = await this.medicalRepository.listRecordsByHorse(
       horseId,
-      actor.clubId,
+      caller.clubId,
     );
     const prescriptions = await this.medicalRepository.listPrescriptions(
       records.map((record) => record.id),
@@ -54,9 +60,10 @@ export class MedicalService {
     actor: Actor,
     horseId: string,
   ): Promise<InjuryMarkerResponseDto[]> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const injuries = await this.medicalRepository.listInjuries(
       horseId,
-      actor.clubId,
+      caller.clubId,
     );
     return injuries.map((injury) => ({
       id: injury.id,

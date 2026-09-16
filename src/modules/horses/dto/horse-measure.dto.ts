@@ -22,3 +22,38 @@ export class CreateHorseMeasurementDto {
   @IsDateString()
   measuredAt?: string;
 }
+
+export class HorseMeasurementListQueryDto {
+  @ApiPropertyOptional({ enum: HorseMeasurementType })
+  @IsOptional()
+  @IsEnum(HorseMeasurementType)
+  type?: HorseMeasurementType;
+}
+
+export class HorseLatestMeasurementDto {
+  @ApiProperty({ enum: HorseMeasurementType })
+  type!: HorseMeasurementType;
+
+  @ApiProperty({ example: '512.50' })
+  value!: string;
+
+  @ApiProperty({ example: 'kg' })
+  unit!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  measuredAt!: Date;
+}
+
+export class HorseMeasurementResponseDto extends HorseLatestMeasurementDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  measuredBy!: string;
+
+  @ApiProperty()
+  measuredByName!: string;
+}

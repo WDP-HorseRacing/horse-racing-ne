@@ -12,6 +12,7 @@ import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { currentUserForActor } from '../../users/utils/current-user';
 import { HorseGender } from '../constants/horse-gender.enum';
 import {
   HorseHealthStatus,
@@ -25,22 +26,24 @@ import {
   parentIdError,
   parentProfileError,
 } from '../domain/horse.rules';
-import { CreateHorseMeasurementDto } from '../dto/create-horse-measurement.dto';
-import { CreateHorseDto } from '../dto/create-horse.dto';
-import { HorseEligibilityResponseDto } from '../dto/horse-eligibility.response.dto';
-import { HorseListQueryDto } from '../dto/horse-list-query.dto';
-import { HorseOwnershipResponseDto } from '../dto/horse-ownership.response.dto';
-import { HorsePedigreeResponseDto } from '../dto/horse-pedigree.response.dto';
-import { HorseMeasurementListQueryDto } from '../dto/horse-measurement-list-query.dto';
-import { HorseMeasurementResponseDto } from '../dto/horse-measurement.response.dto';
 import {
+  CreateHorseMeasurementDto,
+  HorseMeasurementListQueryDto,
+  HorseMeasurementResponseDto,
+} from '../dto/horse-measure.dto';
+import {
+  CreateHorseDto,
   HorseDetailResponseDto,
+  HorseEligibilityResponseDto,
+  HorseListQueryDto,
+  HorseOwnershipResponseDto,
+  HorsePedigreeResponseDto,
   HorseResponseDto,
-} from '../dto/horse.response.dto';
-import { SetHorseOwnersDto } from '../dto/set-horse-owners.dto';
-import { UpdateHorseHealthDto } from '../dto/update-horse-health.dto';
-import { UpdateHorseLifecycleDto } from '../dto/update-horse-lifecycle.dto';
-import { UpdateHorseDto } from '../dto/update-horse.dto';
+  SetHorseOwnersDto,
+  UpdateHorseDto,
+  UpdateHorseHealthDto,
+  UpdateHorseLifecycleDto,
+} from '../dto/horse.dto';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import {
@@ -70,6 +73,7 @@ export class HorsesService {
     actor: Actor,
     query: HorseListQueryDto,
   ): Promise<PaginationResponseDto<HorseResponseDto>> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     if (
       query.reference &&
       !this.hasRole(actor, UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER)
@@ -77,8 +81,8 @@ export class HorsesService {
       throw new ForbiddenException('Không có quyền xem ngựa tham chiếu');
     }
     const [rows, total] = await this.horsesRepository.list(
-      actor.clubId,
-      this.scopeOf(actor),
+      caller.clubId,
+      this.scopeOf(actor, caller.id),
       query,
     );
     return new PaginationResponseDto(
@@ -90,8 +94,12 @@ export class HorsesService {
   }
 
   async get(actor: Actor, id: string): Promise<HorseDetailResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.findVisible(actor, id);
-    const horse = await this.horsesRepository.findWithParents(id, actor.clubId);
+    const horse = await this.horsesRepository.findWithParents(
+      id,
+      caller.clubId,
+    );
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
     const [latestMeasurements, activeTrainingLock] = await Promise.all([
       this.horsesRepository.latestMeasurements(id),
@@ -99,42 +107,41 @@ export class HorsesService {
     ]);
     return {
       ...toHorseResponse(horse),
-      sire: toParentSummary(horse.sire),
-      dam: toParentSummary(horse.dam),
+      sire: horse.sire ? toParentSummary(horse.sire) : null,
+      dam: horse.dam ? toParentSummary(horse.dam) : null,
       latestMeasurements: latestMeasurements.map(toLatestMeasurement),
       activeTrainingLock,
     };
   }
 
   async create(actor: Actor, body: CreateHorseDto): Promise<HorseResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
     const sireId = body.sireId ?? null;
     const damId = body.damId ?? null;
     await this.validateParents(
-      actor.clubId,
+      clubId,
       { dateOfBirth: body.dateOfBirth },
       sireId,
       damId,
     );
-    await this.validateMedia(actor.clubId, body.mediaId);
+    await this.validateMedia(clubId, body.mediaId);
 
-    const horses = this.dataSource.getRepository(HorseEntity);
     const horse = await this.saveUnique(() =>
-      horses.save(
-        horses.create({
-          clubId: actor.clubId,
-          name: body.name.trim(),
-          gender: body.gender,
-          breed: body.breed ?? null,
-          color: body.color ?? null,
-          raceAptitude: body.raceAptitude ?? null,
-          microchipId: body.microchipId?.trim() || null,
-          dateOfBirth: body.dateOfBirth ?? null,
-          mediaId: body.mediaId ?? null,
-          sireId,
-          damId,
-          isReference: body.isReference ?? false,
-        }),
-      ),
+      this.dataSource.manager.save(HorseEntity, {
+        clubId,
+        name: body.name.trim(),
+        gender: body.gender,
+        breed: body.breed ?? null,
+        color: body.color ?? null,
+        raceAptitude: body.raceAptitude ?? null,
+        microchipId: body.microchipId?.trim() || null,
+        dateOfBirth: body.dateOfBirth ?? null,
+        mediaId: body.mediaId ?? null,
+        sireId,
+        damId,
+        isReference: body.isReference ?? false,
+      }),
     );
     return toHorseResponse(horse);
   }
@@ -144,7 +151,9 @@ export class HorsesService {
     id: string,
     body: UpdateHorseDto,
   ): Promise<HorseResponseDto> {
-    const horse = await this.findInClub(id, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
+    const horse = await this.findInClub(id, clubId);
     this.assertNotTransferred(horse);
 
     if (body.gender !== undefined && body.gender !== horse.gender) {
@@ -157,7 +166,7 @@ export class HorsesService {
       body.dateOfBirth !== undefined
     ) {
       await this.validateParents(
-        actor.clubId,
+        clubId,
         {
           id: horse.id,
           dateOfBirth:
@@ -170,7 +179,7 @@ export class HorsesService {
       );
     }
     if (body.mediaId !== undefined) {
-      await this.validateMedia(actor.clubId, body.mediaId);
+      await this.validateMedia(clubId, body.mediaId);
     }
 
     const changes: Partial<HorseEntity> = { ...body };
@@ -183,14 +192,16 @@ export class HorsesService {
       await this.saveUnique(() =>
         this.dataSource
           .getRepository(HorseEntity)
-          .update({ id, clubId: actor.clubId }, changes),
+          .update({ id, clubId }, changes),
       );
     }
-    return toHorseResponse(await this.findInClub(id, actor.clubId));
+    return toHorseResponse(await this.findInClub(id, clubId));
   }
 
   async remove(actor: Actor, id: string): Promise<void> {
-    const horse = await this.findInClub(id, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
+    const horse = await this.findInClub(id, clubId);
     const usage = await this.horsesRepository.parentUsage(horse.id);
     if (usage.asSire || usage.asDam) {
       throw new ConflictException(
@@ -202,9 +213,7 @@ export class HorsesService {
         'Ngựa đã có lịch sử sở hữu, hãy đổi trạng thái vòng đời thay vì xóa',
       );
     }
-    await this.dataSource
-      .getRepository(HorseEntity)
-      .softDelete({ id, clubId: actor.clubId });
+    await this.dataSource.getRepository(HorseEntity).softDelete({ id, clubId });
   }
 
   async updateLifecycle(
@@ -212,7 +221,9 @@ export class HorsesService {
     id: string,
     body: UpdateHorseLifecycleDto,
   ): Promise<HorseResponseDto> {
-    const horse = await this.findInClub(id, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
+    const horse = await this.findInClub(id, clubId);
     this.assertOperational(horse);
     if (horse.lifecycleStatus === body.lifecycleStatus) {
       return toHorseResponse(horse);
@@ -226,10 +237,7 @@ export class HorsesService {
     await this.dataSource.transaction(async (manager) => {
       await manager
         .getRepository(HorseEntity)
-        .update(
-          { id, clubId: actor.clubId },
-          { lifecycleStatus: body.lifecycleStatus },
-        );
+        .update({ id, clubId }, { lifecycleStatus: body.lifecycleStatus });
       if (body.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
         await this.horsesRepository.closeActiveOwnerships(
           manager,
@@ -238,7 +246,7 @@ export class HorsesService {
         );
       }
     });
-    return toHorseResponse(await this.findInClub(id, actor.clubId));
+    return toHorseResponse(await this.findInClub(id, clubId));
   }
 
   async updateHealth(
@@ -246,7 +254,9 @@ export class HorsesService {
     id: string,
     body: UpdateHorseHealthDto,
   ): Promise<HorseResponseDto> {
-    const horse = await this.findInClub(id, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
+    const horse = await this.findInClub(id, clubId);
     this.assertOperational(horse);
     this.assertNotTransferred(horse);
     if (
@@ -259,11 +269,8 @@ export class HorsesService {
     }
     await this.dataSource
       .getRepository(HorseEntity)
-      .update(
-        { id, clubId: actor.clubId },
-        { healthStatus: body.healthStatus },
-      );
-    return toHorseResponse(await this.findInClub(id, actor.clubId));
+      .update({ id, clubId }, { healthStatus: body.healthStatus });
+    return toHorseResponse(await this.findInClub(id, clubId));
   }
 
   async getPedigree(
@@ -271,11 +278,12 @@ export class HorsesService {
     id: string,
     depthInput?: string,
   ): Promise<HorsePedigreeResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const horse = await this.findVisible(actor, id);
     const depth = this.parsePedigreeDepth(depthInput);
     const ancestors = await this.horsesRepository.findPedigreeAncestors(
       id,
-      actor.clubId,
+      caller.clubId,
       depth,
     );
     return { horseId: horse.id, horseName: horse.name, depth, ancestors };
@@ -296,7 +304,9 @@ export class HorsesService {
     horseId: string,
     body: SetHorseOwnersDto,
   ): Promise<HorseOwnershipResponseDto[]> {
-    const horse = await this.findInClub(horseId, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
+    const horse = await this.findInClub(horseId, clubId);
     this.assertOperational(horse);
     this.assertNotTransferred(horse);
 
@@ -307,7 +317,7 @@ export class HorsesService {
     const owners = await this.dataSource.getRepository(UserEntity).find({
       where: {
         id: In(ownerIds),
-        clubId: actor.clubId,
+        clubId,
         role: UserRole.HORSE_OWNER,
         status: UserStatus.ACTIVE,
       },
@@ -347,9 +357,10 @@ export class HorsesService {
   }
 
   async listMyHorses(actor: Actor): Promise<HorseResponseDto[]> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const horses = await this.horsesRepository.listOwnedBy(
-      actor.userId,
-      actor.clubId,
+      caller.id,
+      caller.clubId,
     );
     return horses.map(toHorseResponse);
   }
@@ -372,6 +383,7 @@ export class HorsesService {
     horseId: string,
     body: CreateHorseMeasurementDto,
   ): Promise<HorseMeasurementResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const horse = await this.findVisible(actor, horseId);
     this.assertOperational(horse);
     this.assertNotTransferred(horse);
@@ -389,7 +401,7 @@ export class HorsesService {
       type: body.type,
       value: body.value.toFixed(2),
       measuredAt,
-      measuredBy: actor.userId,
+      measuredBy: caller.id,
     });
     return toMeasurementResponse(measurement);
   }
@@ -417,21 +429,22 @@ export class HorsesService {
   }
 
   async findVisible(actor: Actor, horseId: string): Promise<HorseEntity> {
-    const horse = await this.findInClub(horseId, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const horse = await this.findInClub(horseId, caller.clubId);
     const visible = await this.horsesRepository.isVisible(
       horseId,
-      this.scopeOf(actor),
+      this.scopeOf(actor, caller.id),
     );
     if (!visible) throw new NotFoundException('Không tìm thấy ngựa');
     return horse;
   }
 
-  private scopeOf(actor: Actor): HorseScope {
+  private scopeOf(actor: Actor, userId: string): HorseScope {
     if (this.hasRole(actor, UserRole.GROOM)) {
-      return { kind: 'GROOM', userId: actor.userId };
+      return { kind: 'GROOM', userId };
     }
     if (this.hasRole(actor, UserRole.HORSE_OWNER)) {
-      return { kind: 'OWNER', userId: actor.userId };
+      return { kind: 'OWNER', userId };
     }
     return { kind: 'CLUB' };
   }

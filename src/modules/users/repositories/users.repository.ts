@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Not, Repository } from 'typeorm';
-import { UserEntity } from '../entities/user.entity';
+import { EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
+import { StableAssignmentEntity } from '../../stable/entities/stable-assignment.entity';
 import { UserListQueryDto } from '../dto/user-list-query.dto';
+import { UserEntity } from '../entities/user.entity';
 import { UserRole, UserStatus } from '../user.enums';
 
 @Injectable()
@@ -77,19 +79,23 @@ export class UsersRepository {
     });
   }
 
-  async hasActiveOwnership(userId: string): Promise<boolean> {
-    const rows: Array<{ exists: boolean }> = await this.repository.query(
-      `SELECT EXISTS (SELECT 1 FROM horse_ownerships WHERE owner_id = $1 AND end_date IS NULL) AS exists`,
-      [userId],
-    );
-    return rows[0]?.exists === true;
+  hasActiveOwnership(
+    userId: string,
+    manager: EntityManager = this.repository.manager,
+  ): Promise<boolean> {
+    return manager.getRepository(HorseOwnershipEntity).existsBy({
+      ownerId: userId,
+      endDate: IsNull(),
+    });
   }
 
-  async hasActiveStableAssignment(userId: string): Promise<boolean> {
-    const rows: Array<{ exists: boolean }> = await this.repository.query(
-      `SELECT EXISTS (SELECT 1 FROM stable_assignments WHERE groom_id = $1 AND end_at IS NULL) AS exists`,
-      [userId],
-    );
-    return rows[0]?.exists === true;
+  hasActiveStableAssignment(
+    userId: string,
+    manager: EntityManager = this.repository.manager,
+  ): Promise<boolean> {
+    return manager.getRepository(StableAssignmentEntity).existsBy({
+      groomId: userId,
+      endAt: IsNull(),
+    });
   }
 }

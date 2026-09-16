@@ -41,7 +41,7 @@ export class TimeTrialsService {
       const session = await this.access.lockedSessionInClub(
         manager,
         sessionId,
-        caller.clubId!,
+        caller.clubId,
       );
       this.access.assertCanOperateSession(actor, caller.id, session);
       if (session.status !== TrainingSessionStatus.IN_PROGRESS) {
@@ -52,7 +52,7 @@ export class TimeTrialsService {
       if (body.videoAssetId) {
         const media = await manager.findOneBy(MediaAssetEntity, {
           id: body.videoAssetId,
-          clubId: caller.clubId!,
+          clubId: caller.clubId,
         });
         if (!media)
           throw new NotFoundException('Không tìm thấy media trong CLB');

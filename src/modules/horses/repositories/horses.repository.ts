@@ -12,7 +12,7 @@ import { HorseGender } from '../constants/horse-gender.enum';
 import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
 import { HorseParentRole } from '../constants/horse-parent-role.enum';
 import { RaceAptitude } from '../constants/race-aptitude.enum';
-import { HorseListQueryDto } from '../dto/horse-list-query.dto';
+import { HorseListQueryDto } from '../dto/horse.dto';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import { HorseEntity } from '../entities/horse.entity';

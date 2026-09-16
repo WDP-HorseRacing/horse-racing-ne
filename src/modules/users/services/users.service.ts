@@ -22,6 +22,7 @@ import { UserEntity } from '../entities/user.entity';
 import { toUserResponse } from '../mappers/user.mapper';
 import { UsersRepository } from '../repositories/users.repository';
 import { UserRole, UserStatus } from '../user.enums';
+import { currentUserForActor } from '../utils/current-user';
 import { splitFullName } from '../utils/name';
 
 @Injectable()
@@ -38,24 +39,28 @@ export class UsersService {
     actor: Actor,
     query: UserListQueryDto,
   ): Promise<PaginationResponseDto<UserResponseDto>> {
-    const [rows, total] = await this.users.listByClub(actor.clubId, query);
-    return new PaginationResponseDto(
-      rows.map(toUserResponse),
-      total,
-      query.page,
-      query.limit,
+    const { clubId } = await currentUserForActor(
+      this.dataSource.manager,
+      actor,
     );
+    const [users, total] = await this.users.listByClub(clubId, query);
+    const items = users.map((user) => toUserResponse(user));
+
+    return new PaginationResponseDto(items, total, query.page, query.limit);
   }
 
   async get(actor: Actor, id: string): Promise<UserResponseDto> {
-    return toUserResponse(await this.findInClub(id, actor.clubId));
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    return toUserResponse(await this.findInClub(id, caller.clubId));
   }
 
   async create(actor: Actor, body: CreateUserDto): Promise<UserResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
     const email = body.email.trim().toLowerCase();
     const fullName = body.fullName.trim();
 
-    if (await this.users.findByEmail(email, actor.clubId)) {
+    if (await this.users.findByEmail(email, clubId)) {
       throw new ConflictException('Email này đã có trong câu lạc bộ');
     }
 
@@ -79,7 +84,7 @@ export class UsersService {
     try {
       await this.keycloakUsers.assignRealmRole(keycloakId, body.role);
       const created = await this.users.create({
-        clubId: actor.clubId,
+        clubId,
         keycloakId,
         fullName,
         email,
@@ -99,12 +104,14 @@ export class UsersService {
     id: string,
     body: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const user = await this.findInClub(id, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
+    const user = await this.findInClub(id, clubId);
     const newRole = body.role;
     const roleChanged = newRole !== undefined && newRole !== user.role;
 
     if (roleChanged) {
-      this.assertChangeAllowed(actor, user, { role: body.role });
+      this.assertChangeAllowed(caller.id, user, { role: body.role });
       await this.assertRoleReleasable(user);
     }
 
@@ -114,16 +121,16 @@ export class UsersService {
     if (Object.keys(changes).length === 0) return toUserResponse(user);
 
     await this.dataSource.transaction(async (manager) => {
-      if (roleChanged) await this.lockClub(manager, actor.clubId);
+      if (roleChanged) await this.lockClub(manager, clubId);
       if (removesActiveManager(user, { role: body.role })) {
-        await this.assertAnotherActiveManager(manager, actor.clubId, user.id);
+        await this.assertAnotherActiveManager(manager, clubId, user.id);
       }
-      await this.users.updateFields(id, actor.clubId, changes, manager);
+      await this.users.updateFields(id, clubId, changes, manager);
       if (roleChanged && newRole) await this.syncKeycloakRole(user, newRole);
     });
 
     if (roleChanged) await this.revokeSessions(user);
-    return toUserResponse(await this.findInClub(id, actor.clubId));
+    return toUserResponse(await this.findInClub(id, clubId));
   }
 
   async setStatus(
@@ -131,16 +138,18 @@ export class UsersService {
     id: string,
     status: UserStatus,
   ): Promise<UserResponseDto> {
-    const user = await this.findInClub(id, actor.clubId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const clubId = caller.clubId;
+    const user = await this.findInClub(id, clubId);
     if (user.status === status) return toUserResponse(user);
-    this.assertChangeAllowed(actor, user, { status });
+    this.assertChangeAllowed(caller.id, user, { status });
 
     await this.dataSource.transaction(async (manager) => {
-      await this.lockClub(manager, actor.clubId);
+      await this.lockClub(manager, clubId);
       if (removesActiveManager(user, { status })) {
-        await this.assertAnotherActiveManager(manager, actor.clubId, user.id);
+        await this.assertAnotherActiveManager(manager, clubId, user.id);
       }
-      await this.users.updateFields(id, actor.clubId, { status }, manager);
+      await this.users.updateFields(id, clubId, { status }, manager);
       await this.keycloakUsers.setUserEnabled(
         user.keycloakId,
         status === UserStatus.ACTIVE,
@@ -148,15 +157,15 @@ export class UsersService {
     });
 
     if (status !== UserStatus.ACTIVE) await this.revokeSessions(user);
-    return toUserResponse(await this.findInClub(id, actor.clubId));
+    return toUserResponse(await this.findInClub(id, clubId));
   }
 
   private assertChangeAllowed(
-    actor: Actor,
+    callerId: string,
     user: UserEntity,
     change: UserChange,
   ): void {
-    const error = selfChangeError(actor.userId, user, change);
+    const error = selfChangeError(callerId, user, change);
     if (error) throw new BadRequestException(error);
   }
 
@@ -220,7 +229,7 @@ export class UsersService {
       await this.keycloakUsers.logoutUser(user.keycloakId);
     } catch {
       this.logger.warn(
-        `Khong thu hoi duoc phien Keycloak cua ${user.id}; quyen moi van ap dung ngay vi guard doc role tu DB`,
+        `Khong thu hoi duoc phien Keycloak cua ${user.id}; token cu co the giu quyen den khi het han`,
       );
     }
   }

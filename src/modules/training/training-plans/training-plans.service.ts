@@ -163,7 +163,7 @@ export class TrainingPlansService {
       const current = await this.access.lockedPlanInClub(
         manager,
         planId,
-        caller.clubId!,
+        caller.clubId,
       );
       assertPlanCancellable(current.status);
       const running = await manager.countBy(TrainingSessionEntity, {

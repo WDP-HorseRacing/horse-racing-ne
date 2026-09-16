@@ -9,6 +9,7 @@ import { Server, Socket, type DefaultEventsMap } from 'socket.io';
 import { DataSource } from 'typeorm';
 import { currentUser } from '../users/utils/current-user';
 import type { Actor } from '../../common/types/actor';
+import { UserRole } from '../../common/enums/role.enum';
 import { KeycloakService } from '../../common/infrastructure/keycloak/keycloak.service';
 
 /**
@@ -70,11 +71,11 @@ export class RealtimeGateway
       }
       const actor: Actor = {
         sub: token.sub,
-        userId: user.id,
-        clubId: user.clubId,
         email: token.email,
         name: token.name,
-        roles: [user.role],
+        roles: token.roles.filter((role): role is UserRole =>
+          Object.values(UserRole).includes(role as UserRole),
+        ),
       };
 
       client.data.actor = actor;

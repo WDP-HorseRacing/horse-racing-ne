@@ -1,41 +1,31 @@
-import { HorseOwnershipResponseDto } from '../dto/horse-ownership.response.dto';
+import { plainToInstance } from 'class-transformer';
 import { HORSE_MEASUREMENT_SPECS } from '../constants/horse-measurement-type.enum';
-import {
+import type {
   HorseLatestMeasurementDto,
   HorseMeasurementResponseDto,
-} from '../dto/horse-measurement.response.dto';
-import {
+} from '../dto/horse-measure.dto';
+import type {
+  HorseOwnershipResponseDto,
   HorseParentSummaryDto,
-  HorseResponseDto,
-} from '../dto/horse.response.dto';
-import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
-import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
-import { HorseEntity } from '../entities/horse.entity';
+} from '../dto/horse.dto';
+import { HorseResponseDto } from '../dto/horse.dto';
+import type { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
+import type { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
+import type { HorseEntity } from '../entities/horse.entity';
 
 export function toHorseResponse(entity: HorseEntity): HorseResponseDto {
+  return plainToInstance(HorseResponseDto, entity, {
+    excludeExtraneousValues: true,
+  });
+}
+
+export function toParentSummary(entity: HorseEntity): HorseParentSummaryDto {
+  if (!entity) throw new Error('Ngựa không tồn tại');
   return {
     id: entity.id,
     name: entity.name,
-    gender: entity.gender,
-    breed: entity.breed,
-    color: entity.color,
-    raceAptitude: entity.raceAptitude,
-    dateOfBirth: entity.dateOfBirth,
-    microchipId: entity.microchipId,
-    mediaId: entity.mediaId,
-    sireId: entity.sireId,
-    damId: entity.damId,
     isReference: entity.isReference,
-    healthStatus: entity.healthStatus,
-    lifecycleStatus: entity.lifecycleStatus,
   };
-}
-
-export function toParentSummary(
-  entity: HorseEntity | null,
-): HorseParentSummaryDto | null {
-  if (!entity) return null;
-  return { id: entity.id, name: entity.name, isReference: entity.isReference };
 }
 
 export function toOwnershipResponse(
@@ -45,7 +35,7 @@ export function toOwnershipResponse(
     id: entity.id,
     horseId: entity.horseId,
     ownerId: entity.ownerId,
-    ownerName: entity.owner.fullName,
+    ownerName: requiredRelationName(entity.owner, 'owner'),
     percentage: entity.percentage,
     startDate: entity.startDate,
     endDate: entity.endDate,
@@ -67,10 +57,22 @@ export function toMeasurementResponse(
   entity: HorseMeasurementEntity,
 ): HorseMeasurementResponseDto {
   return {
-    ...toLatestMeasurement(entity),
     id: entity.id,
     horseId: entity.horseId,
     measuredBy: entity.measuredBy,
-    measuredByName: entity.measurer.fullName,
+    measuredByName: requiredRelationName(entity.measurer, 'measurer'),
+    ...toLatestMeasurement(entity),
   };
+}
+
+function requiredRelationName(
+  user: { fullName: string } | null | undefined,
+  relation: 'owner' | 'measurer',
+): string {
+  if (!user) {
+    throw new Error(
+      `Quan hệ ${relation} chưa được load khi ánh xạ dữ liệu ngựa`,
+    );
+  }
+  return user.fullName;
 }

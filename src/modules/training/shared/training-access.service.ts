@@ -9,7 +9,10 @@ import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { UserRole, UserStatus } from '../../users/user.enums';
-import { currentUser } from '../../users/utils/current-user';
+import {
+  type CurrentActorUser,
+  currentUserForActor,
+} from '../../users/utils/current-user';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 
@@ -24,8 +27,8 @@ export class TrainingAccessService {
    * @returns UserEntity - Thực thể người dùng hiện tại
    * @throws ForbiddenException Nếu tài khoản không hoạt động.
    */
-  async currentUser(actor: Actor): Promise<UserEntity> {
-    const caller = await currentUser(this.dataSource.manager, actor);
+  async currentUser(actor: Actor): Promise<CurrentActorUser> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     if (!caller || caller.status !== UserStatus.ACTIVE) {
       throw new ForbiddenException('Tài khoản không hoạt động.');
     }
@@ -40,7 +43,7 @@ export class TrainingAccessService {
    * @throws ForbiddenException Nếu tài khoản chưa thuộc CLB nào
    */
   async clubId(actor: Actor): Promise<string> {
-    return (await this.currentUser(actor)).clubId!;
+    return (await this.currentUser(actor)).clubId;
   }
 
   /**
