@@ -61,38 +61,6 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/auth/register": {
-      "post": {
-        "operationId": "AuthController_register",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Tu dang ky, cho CLUB_MANAGER duyet",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "AuthController_login",
@@ -325,6 +293,144 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}/lifecycle-status": {
+      "patch": {
+        "operationId": "HorseDetailsController_lifecycle",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHorseLifecycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change horse lifecycle status",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/health-status": {
+      "patch": {
+        "operationId": "HorseDetailsController_health",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHorseHealthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change horse health status",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/pedigree": {
+      "get": {
+        "operationId": "HorseDetailsController_pedigree",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "depth",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 4,
+              "default": 2
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorsePedigreeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse pedigree up to 4 generations",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/owners": {
       "get": {
         "operationId": "HorseDetailsController_owners",
@@ -339,8 +445,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseOwnershipResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -351,13 +467,10 @@
         "summary": "List horse ownership history",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{horseId}/pedigree": {
-      "get": {
-        "operationId": "HorseDetailsController_pedigree",
+        ]
+      },
+      "put": {
+        "operationId": "HorseDetailsController_setOwners",
         "parameters": [
           {
             "name": "horseId",
@@ -368,9 +481,29 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHorseOwnersDto"
+              }
+            }
+          }
+        },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseOwnershipResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -378,11 +511,107 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse pedigree",
+        "summary": "Replace active ownership shares",
         "tags": [
           "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/measurements": {
+      "get": {
+        "operationId": "HorseDetailsController_measurements",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WEIGHT",
+                "HEIGHT",
+                "BODY_CONDITION",
+                "TEMPERATURE"
+              ]
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseMeasurementResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse measurement history",
+        "tags": [
+          "horses"
+        ]
+      },
+      "post": {
+        "operationId": "HorseDetailsController_addMeasurement",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHorseMeasurementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseMeasurementResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a horse measurement",
+        "tags": [
+          "horses"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/eligibility": {
@@ -399,8 +628,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseEligibilityResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -411,66 +647,117 @@
         "summary": "Get current training and racing eligibility",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{horseId}/status": {
-      "patch": {
-        "operationId": "HorseDetailsController_status",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateHorseStatusDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Change horse health or lifecycle status",
-        "tags": [
-          "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses": {
       "get": {
+        "description": "Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stable assignment. Horse Owner: horses currently owned.",
         "operationId": "HorsesController_list",
         "parameters": [
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
             "name": "limit",
-            "required": true,
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Tìm theo tên hoặc microchip",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "healthStatus",
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "number"
+              "type": "string",
+              "enum": [
+                "ELIGIBLE",
+                "UNDER_OBSERVATION",
+                "INJURED",
+                "QUARANTINED"
+              ]
+            }
+          },
+          {
+            "name": "lifecycleStatus",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "RETIRED",
+                "TRANSFERRED"
+              ]
+            }
+          },
+          {
+            "name": "reference",
+            "required": false,
+            "in": "query",
+            "description": "true để xem ngựa tham chiếu (chỉ Club Manager, Head Trainer)",
+            "schema": {
+              "default": false,
+              "type": "boolean"
             }
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginationResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -478,11 +765,10 @@
             "bearer": []
           }
         ],
-        "summary": "List visible horses",
+        "summary": "List horses visible to the current user",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "HorsesController_create",
@@ -498,8 +784,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -510,8 +803,7 @@
         "summary": "Create horse profile",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses/{id}": {
@@ -528,8 +820,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseDetailResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -537,11 +836,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse profile",
+        "summary": "Get horse profile detail",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "patch": {
         "operationId": "HorsesController_update",
@@ -566,8 +864,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -575,13 +880,13 @@
             "bearer": []
           }
         ],
-        "summary": "Update horse profile",
+        "summary": "Update horse profile and pedigree parents",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "delete": {
+        "description": "Rejected when the horse is a pedigree parent or has ownership history.",
         "operationId": "HorsesController_remove",
         "parameters": [
           {
@@ -594,8 +899,8 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "204": {
+            "description": ""
           }
         },
         "security": [
@@ -603,51 +908,10 @@
             "bearer": []
           }
         ],
-        "summary": "Soft-delete horse profile",
+        "summary": "Soft-delete a horse profile created by mistake",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{id}/owners": {
-      "put": {
-        "operationId": "HorsesController_setOwners",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetHorseOwnersDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Replace active ownership shares",
-        "tags": [
-          "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/owners/me/horses": {
@@ -655,8 +919,18 @@
         "operationId": "HorsesController_myHorses",
         "parameters": [],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -664,11 +938,10 @@
             "bearer": []
           }
         ],
-        "summary": "List horses owned by current user",
+        "summary": "List horses currently owned by the current user",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/media/upload-requests": {
@@ -1220,8 +1493,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1232,8 +1515,7 @@
         "summary": "List horse medical records",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "MedicalController_createRecord",
@@ -1368,8 +1650,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InjuryMarkerResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1380,8 +1672,7 @@
         "summary": "List horse injury timeline",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/training-locks/{id}/release": {
@@ -1827,8 +2118,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorsePerformanceResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1839,8 +2137,7 @@
         "summary": "Get horse performance summary",
         "tags": [
           "performance"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/races/{id}": {
@@ -2107,8 +2404,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseRaceResultResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2119,8 +2426,7 @@
         "summary": "Get horse race history",
         "tags": [
           "racing"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/races": {
@@ -4166,46 +4472,91 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/users/pending": {
-      "get": {
-        "operationId": "UsersController_listPending",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserResponseDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Danh sach ho so cho duyet cua CLB",
-        "tags": [
-          "users"
-        ]
-      }
-    },
     "/api/v1/users": {
       "get": {
         "operationId": "UsersController_list",
         "parameters": [
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
             "name": "limit",
-            "required": true,
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "number"
+              "type": "string",
+              "enum": [
+                "HEAD_TRAINER",
+                "VETERINARIAN",
+                "GROOM",
+                "HORSE_OWNER",
+                "CLUB_MANAGER"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "LOCKED",
+                "INACTIVE"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Tìm theo họ tên hoặc email",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -4215,10 +4566,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserResponseDto"
-                  }
+                  "$ref": "#/components/schemas/PaginationResponseDto"
                 }
               }
             }
@@ -4350,52 +4698,6 @@
         ]
       }
     },
-    "/api/v1/users/{id}/approve": {
-      "patch": {
-        "operationId": "UsersController_approve",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApproveUserDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Duyet ho so: gan CLB va role",
-        "tags": [
-          "users"
-        ]
-      }
-    },
     "/api/v1/users/{id}/status": {
       "patch": {
         "operationId": "UsersController_status",
@@ -4460,80 +4762,6 @@
       }
     },
     "schemas": {
-      "RegisterDto": {
-        "type": "object",
-        "properties": {
-          "fullName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "password": {
-            "type": "string",
-            "minLength": 8,
-            "writeOnly": true
-          },
-          "clubId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "CLB muon xin vao. Bo trong thi vao hang doi chung."
-          }
-        },
-        "required": [
-          "fullName",
-          "email",
-          "password"
-        ]
-      },
-      "UserResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "clubId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "HEAD_TRAINER",
-              "VETERINARIAN",
-              "GROOM",
-              "HORSE_OWNER",
-              "CLUB_MANAGER"
-            ],
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "PENDING",
-              "ACTIVE",
-              "LOCKED",
-              "INACTIVE"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "fullName",
-          "email",
-          "status"
-        ]
-      },
       "LoginDto": {
         "type": "object",
         "properties": {
@@ -4595,10 +4823,9 @@
             "format": "uuid"
           },
           "clubId": {
-            "type": "object",
+            "type": "string",
             "format": "uuid",
-            "nullable": true,
-            "description": "NULL khi tai khoan cho duyet ma chua chon CLB"
+            "nullable": true
           },
           "role": {
             "type": "string",
@@ -4614,12 +4841,10 @@
           "status": {
             "type": "string",
             "enum": [
-              "PENDING",
               "ACTIVE",
               "LOCKED",
               "INACTIVE"
-            ],
-            "description": "PENDING thi frontend dua ve man hinh \"cho duyet\""
+            ]
           },
           "email": {
             "type": "string",
@@ -4629,7 +4854,7 @@
             "type": "string"
           },
           "roles": {
-            "description": "Role theo goc nhin Keycloak",
+            "description": "Vai trò có hiệu lực, lấy từ dữ liệu tài khoản",
             "type": "array",
             "items": {
               "type": "string"
@@ -4660,9 +4885,85 @@
           "newPassword"
         ]
       },
-      "UpdateHorseStatusDto": {
+      "UpdateHorseLifecycleDto": {
         "type": "object",
         "properties": {
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          }
+        },
+        "required": [
+          "lifecycleStatus"
+        ]
+      },
+      "HorseResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ],
+            "nullable": true
+          },
+          "breed": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean"
+          },
           "healthStatus": {
             "type": "string",
             "enum": [
@@ -4680,64 +4981,158 @@
               "TRANSFERRED"
             ]
           }
-        }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference",
+          "healthStatus",
+          "lifecycleStatus"
+        ]
       },
-      "CreateHorseDto": {
+      "UpdateHorseHealthDto": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "microchipId": {
-            "type": "string"
-          },
-          "dateOfBirth": {
+          "healthStatus": {
             "type": "string",
-            "format": "date"
-          },
-          "sireId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "damId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "mediaId": {
-            "type": "string",
-            "format": "uuid"
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
           }
         },
         "required": [
-          "name"
+          "healthStatus"
         ]
       },
-      "UpdateHorseDto": {
+      "HorsePedigreeNodeResponseDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "name": {
             "type": "string"
           },
-          "microchipId": {
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ],
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean"
+          },
+          "generation": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "parentRole": {
+            "type": "string",
+            "enum": [
+              "SIRE",
+              "DAM"
+            ]
+          },
+          "childId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ngựa con của node này trong cây"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference",
+          "generation",
+          "parentRole",
+          "childId"
+        ]
+      },
+      "HorsePedigreeResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
             "type": "string"
           },
-          "dateOfBirth": {
+          "depth": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "ancestors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorsePedigreeNodeResponseDto"
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "depth",
+          "ancestors"
+        ]
+      },
+      "HorseOwnershipResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "string"
+          },
+          "startDate": {
             "type": "string",
             "format": "date"
           },
-          "sireId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "damId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "mediaId": {
-            "type": "string",
-            "format": "uuid"
+          "endDate": {
+            "type": "object",
+            "format": "date",
+            "nullable": true
           }
-        }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "ownerId",
+          "ownerName",
+          "percentage",
+          "startDate"
+        ]
       },
       "HorseOwnerShareDto": {
         "type": "object",
@@ -4748,7 +5143,7 @@
           },
           "percentage": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.01,
             "maximum": 100
           }
         },
@@ -4770,6 +5165,489 @@
         "required": [
           "owners"
         ]
+      },
+      "HorseMeasurementResponseDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "WEIGHT",
+              "HEIGHT",
+              "BODY_CONDITION",
+              "TEMPERATURE"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "example": "512.50"
+          },
+          "unit": {
+            "type": "string",
+            "example": "kg"
+          },
+          "measuredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measuredBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measuredByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "unit",
+          "measuredAt",
+          "id",
+          "horseId",
+          "measuredBy",
+          "measuredByName"
+        ]
+      },
+      "CreateHorseMeasurementDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "WEIGHT",
+              "HEIGHT",
+              "BODY_CONDITION",
+              "TEMPERATURE"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "description": "Đơn vị cố định theo loại: WEIGHT kg (30–1500), HEIGHT cm (50–250), BODY_CONDITION điểm (1–9), TEMPERATURE °C (30–45)"
+          },
+          "measuredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Mặc định là thời điểm hiện tại"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      },
+      "HorseEligibilityResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trainingEligible": {
+            "type": "boolean"
+          },
+          "racingEligible": {
+            "type": "boolean"
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          },
+          "activeTrainingLock": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "REFERENCE_HORSE",
+                "LIFECYCLE_NOT_ACTIVE",
+                "HEALTH_UNDER_OBSERVATION",
+                "HEALTH_INJURED",
+                "HEALTH_QUARANTINED",
+                "ACTIVE_TRAINING_LOCK"
+              ]
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "trainingEligible",
+          "racingEligible",
+          "healthStatus",
+          "lifecycleStatus",
+          "activeTrainingLock",
+          "reasons"
+        ]
+      },
+      "PaginationMetaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Tổng số phần tử"
+          },
+          "page": {
+            "type": "number",
+            "description": "Trang hiện tại"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Số phần tử mỗi trang"
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "Tổng số trang"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "PaginationResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
+      "CreateHorseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ]
+          },
+          "breed": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean",
+            "default": false,
+            "description": "true cho ngựa giống bên ngoài, chỉ dùng làm tổ tiên trong phả hệ"
+          }
+        },
+        "required": [
+          "name",
+          "gender"
+        ]
+      },
+      "HorseParentSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isReference": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference"
+        ]
+      },
+      "HorseLatestMeasurementDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "WEIGHT",
+              "HEIGHT",
+              "BODY_CONDITION",
+              "TEMPERATURE"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "example": "512.50"
+          },
+          "unit": {
+            "type": "string",
+            "example": "kg"
+          },
+          "measuredAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "unit",
+          "measuredAt"
+        ]
+      },
+      "HorseDetailResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ],
+            "nullable": true
+          },
+          "breed": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean"
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          },
+          "sire": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseParentSummaryDto"
+              }
+            ]
+          },
+          "dam": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseParentSummaryDto"
+              }
+            ]
+          },
+          "latestMeasurements": {
+            "description": "Giá trị mới nhất của từng loại chỉ số",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseLatestMeasurementDto"
+            }
+          },
+          "activeTrainingLock": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference",
+          "healthStatus",
+          "lifecycleStatus",
+          "latestMeasurements",
+          "activeTrainingLock"
+        ]
+      },
+      "UpdateHorseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ]
+          },
+          "breed": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
       },
       "RequestUploadDto": {
         "type": "object",
@@ -4891,6 +5769,98 @@
           }
         }
       },
+      "PrescriptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "medicine": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "object",
+            "format": "date",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "medicine",
+          "dosage",
+          "frequency",
+          "startDate"
+        ]
+      },
+      "MedicalRecordResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagnosis": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MODERATE",
+              "HIGH",
+              "CRITICAL"
+            ]
+          },
+          "resultingStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "vetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voidedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "prescriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrescriptionResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "examDate",
+          "diagnosis",
+          "severity",
+          "resultingStatus",
+          "vetId",
+          "prescriptions"
+        ]
+      },
       "CreateMedicalRecordDto": {
         "type": "object",
         "properties": {
@@ -4996,6 +5966,68 @@
           "injuryType"
         ]
       },
+      "InjuryMarkerResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bodyRegion": {
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ]
+          },
+          "injuryType": {
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ]
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          },
+          "notes": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "medicalRecordId",
+          "bodyRegion",
+          "injuryType",
+          "recoveryStatus"
+        ]
+      },
       "CreateTrainingLockDto": {
         "type": "object",
         "properties": {
@@ -5091,6 +6123,91 @@
           "limits"
         ]
       },
+      "PerformanceMetricPointDto": {
+        "type": "object",
+        "properties": {
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "heartRateBpm": {
+            "type": "number"
+          },
+          "speedMps": {
+            "type": "string"
+          },
+          "alertLevel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordedAt",
+          "heartRateBpm",
+          "speedMps",
+          "alertLevel"
+        ]
+      },
+      "PerformanceEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "createdAt",
+          "score"
+        ]
+      },
+      "HorsePerformanceResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionsTracked": {
+            "type": "number"
+          },
+          "latestMetric": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceMetricPointDto"
+              }
+            ]
+          },
+          "recentMetrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PerformanceMetricPointDto"
+            }
+          },
+          "latestEvaluation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceEvaluationDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "horseId",
+          "sessionsTracked",
+          "recentMetrics"
+        ]
+      },
       "UpdateRaceDto": {
         "type": "object",
         "properties": {
@@ -5106,6 +6223,61 @@
             "additionalProperties": true
           }
         }
+      },
+      "HorseRaceResultResponseDto": {
+        "type": "object",
+        "properties": {
+          "registrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "raceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "raceName": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "raceStatus": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "OPEN",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "registrationStatus": {
+            "type": "string",
+            "enum": [
+              "PROPOSED",
+              "OWNER_APPROVED",
+              "MANAGER_CONFIRMED",
+              "REJECTED"
+            ]
+          },
+          "placing": {
+            "type": "object",
+            "nullable": true
+          },
+          "timeSeconds": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "registrationId",
+          "raceId",
+          "raceName",
+          "scheduledAt",
+          "raceStatus",
+          "registrationStatus"
+        ]
       },
       "CreateRaceDto": {
         "type": "object",
@@ -5781,6 +6953,52 @@
           }
         }
       },
+      "UserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clubId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ],
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "LOCKED",
+              "INACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "status"
+        ]
+      },
       "CreateUserDto": {
         "type": "object",
         "properties": {
@@ -5814,32 +7032,12 @@
           "password"
         ]
       },
-      "ApproveUserDto": {
-        "type": "object",
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": [
-              "HEAD_TRAINER",
-              "VETERINARIAN",
-              "GROOM",
-              "HORSE_OWNER",
-              "CLUB_MANAGER"
-            ],
-            "description": "Role cap cho nguoi duoc duyet"
-          }
-        },
-        "required": [
-          "role"
-        ]
-      },
       "UpdateUserStatusDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
             "enum": [
-              "PENDING",
               "ACTIVE",
               "LOCKED",
               "INACTIVE"

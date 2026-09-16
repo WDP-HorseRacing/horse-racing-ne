@@ -1,21 +1,13 @@
 import { ForbiddenException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import type { Actor } from '../../../common/types/actor';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { UserEntity } from '../entities/user.entity';
 
-/**
- * Doi mot Actor lay row `users` tuong ung.
- *
- * Dung khi can lay user record da ACTIVE tu DB theo actor.sub (keycloakId).
- */
 export async function currentUser(
   manager: EntityManager,
-  actor: Actor,
+  keycloakId: string,
 ): Promise<UserEntity> {
-  const user = await manager.findOne(UserEntity, {
-    where: { keycloakId: actor.sub },
-  });
+  const user = await manager.findOne(UserEntity, { where: { keycloakId } });
   if (!user) {
     throw new ForbiddenException('Tài khoản không tồn tại');
   }

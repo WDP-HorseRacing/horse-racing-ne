@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { EntityManager, Not, Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
-import { UserStatus } from '../user.enums';
+import { UserListQueryDto } from '../dto/user-list-query.dto';
+import { UserRole, UserStatus } from '../user.enums';
 
 @Injectable()
 export class UsersRepository {
@@ -15,40 +16,37 @@ export class UsersRepository {
     return this.repository.findOneBy({ id, clubId });
   }
 
-  listByClub(clubId: string, limit: number): Promise<UserEntity[]> {
-    return this.repository.find({
-      where: { clubId },
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
+  listByClub(
+    clubId: string,
+    query: UserListQueryDto,
+  ): Promise<[UserEntity[], number]> {
+    const qb = this.repository
+      .createQueryBuilder('user')
+      .where('user.clubId = :clubId', { clubId });
+    if (query.role) {
+      qb.andWhere('user.role = :role', { role: query.role });
+    }
+    if (query.status) {
+      qb.andWhere('user.status = :status', { status: query.status });
+    }
+    if (query.search) {
+      qb.andWhere('(user.fullName ILIKE :search OR user.email ILIKE :search)', {
+        search: `%${query.search}%`,
+      });
+    }
+    return qb
+      .orderBy('user.fullName', 'ASC')
+      .skip(query.skip)
+      .take(query.limit)
+      .getManyAndCount();
   }
 
   findByEmail(email: string, clubId: string): Promise<UserEntity | null> {
     return this.repository.findOneBy({ email, clubId });
   }
 
-  /** Khong co clubId: dung luc dang ky, truoc khi biet nguoi nay thuoc CLB nao. */
   findByKeycloakId(keycloakId: string): Promise<UserEntity | null> {
     return this.repository.findOneBy({ keycloakId });
-  }
-
-  /**
-   * Hang doi duyet cua mot CLB: nguoi da chon dung CLB nay, cong nhung nguoi
-   * dang ky ma khong chon CLB nao (clubId NULL) - ho nam o ho chung.
-   */
-  listPending(clubId: string): Promise<UserEntity[]> {
-    return this.repository.find({
-      where: [
-        { status: UserStatus.PENDING, clubId },
-        { status: UserStatus.PENDING, clubId: IsNull() },
-      ],
-      order: { createdAt: 'ASC' },
-    });
-  }
-
-  /** Tim theo id trong hang doi duyet. Khong loc clubId vi no co the dang NULL. */
-  findPendingById(id: string): Promise<UserEntity | null> {
-    return this.repository.findOneBy({ id, status: UserStatus.PENDING });
   }
 
   create(user: Partial<UserEntity>): Promise<UserEntity> {
@@ -59,16 +57,39 @@ export class UsersRepository {
     id: string,
     clubId: string,
     changes: Partial<UserEntity>,
+    manager: EntityManager = this.repository.manager,
   ): Promise<void> {
-    await this.repository.update({ id, clubId }, changes);
+    await manager.getRepository(UserEntity).update({ id, clubId }, changes);
   }
 
-  /** Chi dung cho buoc duyet: luc nay row co the chua co clubId de doi chieu. */
-  async updateById(id: string, changes: Partial<UserEntity>): Promise<void> {
-    await this.repository.update({ id }, changes);
+  countOtherActiveManagers(
+    clubId: string,
+    excludeUserId: string,
+    manager: EntityManager = this.repository.manager,
+  ): Promise<number> {
+    return manager.getRepository(UserEntity).count({
+      where: {
+        clubId,
+        id: Not(excludeUserId),
+        role: UserRole.CLUB_MANAGER,
+        status: UserStatus.ACTIVE,
+      },
+    });
   }
 
-  async deleteById(id: string): Promise<void> {
-    await this.repository.delete({ id });
+  async hasActiveOwnership(userId: string): Promise<boolean> {
+    const rows: Array<{ exists: boolean }> = await this.repository.query(
+      `SELECT EXISTS (SELECT 1 FROM horse_ownerships WHERE owner_id = $1 AND end_date IS NULL) AS exists`,
+      [userId],
+    );
+    return rows[0]?.exists === true;
+  }
+
+  async hasActiveStableAssignment(userId: string): Promise<boolean> {
+    const rows: Array<{ exists: boolean }> = await this.repository.query(
+      `SELECT EXISTS (SELECT 1 FROM stable_assignments WHERE groom_id = $1 AND end_at IS NULL) AS exists`,
+      [userId],
+    );
+    return rows[0]?.exists === true;
   }
 }

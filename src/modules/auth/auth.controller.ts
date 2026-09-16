@@ -12,12 +12,11 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser, Public, Registration } from '../../common/decorators';
+import { CurrentUser, Public } from '../../common/decorators';
 import { KeycloakIdentityProvider } from '../../common/infrastructure/keycloak/types/oidc';
 import type { Actor } from '../../common/types/actor';
 import { AuthService } from './services/auth.service';
@@ -26,21 +25,11 @@ import { CurrentUserResponseDto } from './dto/current-user.response.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { RegisterDto } from './dto/register.dto';
-import { UserResponseDto } from '../users/dto/user.response.dto';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Public()
-  @Post('register')
-  @ApiOperation({ summary: 'Tu dang ky, cho CLUB_MANAGER duyet' })
-  @ApiCreatedResponse({ type: UserResponseDto })
-  register(@Body() body: RegisterDto): Promise<UserResponseDto> {
-    return this.authService.register(body);
-  }
 
   @Public()
   @Post('login')
@@ -68,7 +57,6 @@ export class AuthController {
     return this.authService.logout(body.refreshToken);
   }
 
-  @Registration()
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current account and role' })

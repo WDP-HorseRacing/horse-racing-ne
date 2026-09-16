@@ -64,16 +64,18 @@ export class RealtimeGateway
 
       // Cung mot ham verify voi HTTP guard: mot bo luat duy nhat.
       const token = await this.keycloak.verifyToken(raw);
+      const user = await currentUser(this.dataSource.manager, token.sub);
+      if (!user.clubId || !user.role) {
+        throw new Error('Tai khoan chua duoc gan cau lac bo hoac vai tro');
+      }
       const actor: Actor = {
         sub: token.sub,
+        userId: user.id,
+        clubId: user.clubId,
         email: token.email,
         name: token.name,
-        roles: token.roles,
+        roles: [user.role],
       };
-
-      // Cung ham currentUser() ma guard dung: mot cho duy nhat quyet dinh
-      // "tai khoan nay con duoc vao khong". Nguoi PENDING bi chan o day.
-      const user = await currentUser(this.dataSource.manager, actor);
 
       client.data.actor = actor;
       client.data.userId = user.id;
