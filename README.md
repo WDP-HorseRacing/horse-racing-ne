@@ -12,7 +12,7 @@ NestJS modular monolith scaffold for the Racehorse Training and Management Syste
 - Global DTO validation, consistent HTTP error format, and correlation ID header
 - Modules: Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Notifications, Audit, Media, and Realtime
 
-The `HorsesModule` demonstrates the intended `entity → repository → service → DTO mapper` structure. It exports its service so another module can call a public facade instead of importing its repository. All current REST route contracts and request DTOs are registered across Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Media, Notifications, and Audit. These routes deliberately return HTTP `501 Not Implemented` until their authentication, authorization, persistence, and business services are added. The health route remains functional. Review the complete [endpoint catalog](docs/api-catalog.md) or [OpenAPI JSON](docs/openapi.contracts.json); regenerate both with `pnpm docs:api` without a database connection.
+The implemented modules follow the `entity → repository → service → DTO mapper` structure. Users and Training have persistence and business services; the remaining contract-only routes return HTTP `501 Not Implemented` until their workflows are added. Review the complete [endpoint catalog](docs/api-catalog.md), [OpenAPI JSON](docs/openapi.contracts.json), or the detailed [Flow 2 training guide](docs/flow2-training.md). Regenerate API documentation with `pnpm docs:api` without a database connection.
 
 | API group      | Prepared routes                                                         |
 | -------------- | ----------------------------------------------------------------------- |
@@ -24,7 +24,7 @@ The `HorsesModule` demonstrates the intended `entity → repository → service 
 | Operations     | Stalls, assignments, feeding, checklists, incidents, races and supplies |
 | Supporting     | Notifications, audit, media upload/download URL contracts and reports   |
 
-See `/docs` for exact paths and request schemas. These contracts do not imply that the corresponding workflows are implemented.
+See `/docs` for exact paths and request schemas. A listed contract does not imply implementation unless its module documentation says otherwise.
 
 For each new use case, place HTTP or socket handling in `controllers/`, orchestration and transactions in `services/`, persistence in `repositories/`, data models in `entities/`, request/response types in `dto/`, and rules in `policies/`. Publish internal events only after a transaction commits. Keep TypeORM entities out of API responses.
 

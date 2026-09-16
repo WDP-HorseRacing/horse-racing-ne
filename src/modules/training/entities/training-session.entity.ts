@@ -24,7 +24,10 @@ export class TrainingSessionEntity extends MutableRecordEntity {
   scheduledAt!: Date;
 
   @Column({ name: 'distance_km', type: 'numeric', precision: 8, scale: 2 })
-  distanceKm!: string;
+  distanceKm!: number;
+
+  @Column({ name: 'planned_duration_minutes', type: 'integer', nullable: true })
+  plannedDurationMinutes!: number | null;
 
   @Column({ type: 'varchar', length: 32 })
   intensity!: string;
@@ -52,4 +55,35 @@ export class TrainingSessionEntity extends MutableRecordEntity {
 
   @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
   completedAt!: Date | null;
+
+  @Column({
+    name: 'actual_distance_km',
+    type: 'numeric',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+  })
+  actualDistanceKm!: string | null;
+
+  @Column({ name: 'actual_duration_seconds', type: 'integer', nullable: true })
+  actualDurationSeconds!: number | null;
+
+  @Column({ name: 'perceived_effort', type: 'smallint', nullable: true })
+  perceivedEffort!: number | null;
+
+  @Column({ name: 'completion_notes', type: 'text', nullable: true })
+  completionNotes!: string | null;
+
+  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  cancelledAt!: Date | null;
+
+  @Column({ name: 'cancelled_by', type: 'uuid', nullable: true })
+  cancelledBy!: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cancelled_by' })
+  canceller!: UserEntity | null;
+
+  @Column({ name: 'cancel_reason', type: 'text', nullable: true })
+  cancelReason!: string | null;
 }

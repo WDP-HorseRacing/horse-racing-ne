@@ -1,6 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TrainingController } from './controllers/training.controller';
-import { TrainingDetailsController } from './controllers/training-details.controller';
+import { EvaluationsModule } from './trainging-evaluations/evaluations.module';
+import { TrainingPlansModule } from './training-plans/training-plans.module';
+import { TrainingSessionsModule } from './training-sessions/training-sessions.module';
+import { TimeTrialsModule } from './time-trials/time-trials.module';
 
-@Module({ controllers: [TrainingController, TrainingDetailsController] })
+@Module({
+  imports: [
+    TrainingPlansModule,
+    TrainingSessionsModule,
+    TimeTrialsModule,
+    EvaluationsModule,
+  ],
+})
 export class TrainingModule {}
