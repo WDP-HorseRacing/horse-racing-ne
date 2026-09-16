@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 131 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 132 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -186,19 +186,20 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{horseId}/training-plans` | List horse training plans |
 | POST | `/api/v1/horses/{horseId}/training-plans` | Create training plan |
 | GET | `/api/v1/sessions/{id}` | Get training session |
-| PATCH | `/api/v1/sessions/{id}` | Reschedule or reassign training session |
-| POST | `/api/v1/sessions/{id}/cancel` | Cancel training session |
-| POST | `/api/v1/sessions/{id}/complete` | Complete training session |
+| PATCH | `/api/v1/sessions/{id}` | Reschedule or reassign a scheduled session |
+| POST | `/api/v1/sessions/{id}/cancel` | Cancel training session with a reason |
+| POST | `/api/v1/sessions/{id}/complete` | Complete training session and record actual result |
 | GET | `/api/v1/sessions/{id}/evaluation` | Get session evaluation |
 | POST | `/api/v1/sessions/{id}/evaluation` | Evaluate completed session |
 | POST | `/api/v1/sessions/{id}/start` | Start training session |
 | GET | `/api/v1/sessions/{id}/time-trials` | List session time trials |
-| POST | `/api/v1/sessions/{id}/time-trials` | Record session time trial |
-| GET | `/api/v1/time-trials/{id}` | Get time trial result and media |
+| POST | `/api/v1/sessions/{id}/time-trials` | Record time trial during an active session |
+| GET | `/api/v1/time-trials/{id}` | Get time trial result and media reference |
 | GET | `/api/v1/training-plans/{id}` | Get training plan |
-| PATCH | `/api/v1/training-plans/{id}` | Update training plan |
+| PATCH | `/api/v1/training-plans/{id}` | Update a scheduled training plan |
 | POST | `/api/v1/training-plans/{id}/activate` | Activate training plan |
-| POST | `/api/v1/training-plans/{id}/cancel` | Cancel training plan |
+| POST | `/api/v1/training-plans/{id}/cancel` | Cancel training plan and scheduled sessions |
+| POST | `/api/v1/training-plans/{id}/complete` | Complete training plan |
 | GET | `/api/v1/training-plans/{id}/sessions` | List sessions in training plan |
 | POST | `/api/v1/training-plans/{id}/sessions` | Schedule training session |
 

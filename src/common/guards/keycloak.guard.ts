@@ -44,6 +44,7 @@ export class KeycloakGuard implements CanActivate {
       throw new UnauthorizedException('Can bearer token');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const token: KeycloakVerifiedToken = await this.keycloak.verifyToken(
       header.slice(7),
     );

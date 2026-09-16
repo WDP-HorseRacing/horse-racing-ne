@@ -3651,301 +3651,9 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/training-plans/{id}": {
-      "get": {
-        "operationId": "TrainingDetailsController_plan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "TrainingController_updatePlan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTrainingPlanDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/training-plans/{id}/activate": {
-      "post": {
-        "operationId": "TrainingDetailsController_activatePlan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Activate training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/training-plans/{id}/cancel": {
-      "post": {
-        "operationId": "TrainingDetailsController_cancelPlan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Cancel training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/training-plans/{id}/sessions": {
-      "get": {
-        "operationId": "TrainingDetailsController_sessions",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List sessions in training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "post": {
-        "operationId": "TrainingController_createSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTrainingSessionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Schedule training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/sessions/{id}": {
-      "get": {
-        "operationId": "TrainingDetailsController_session",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "TrainingDetailsController_updateSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTrainingSessionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Reschedule or reassign training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/sessions/{id}/evaluation": {
-      "get": {
-        "operationId": "TrainingDetailsController_evaluation",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get session evaluation",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
       "post": {
-        "operationId": "TrainingController_evaluateSession",
+        "operationId": "EvaluationsController_create",
         "parameters": [
           {
             "name": "id",
@@ -3967,8 +3675,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionEvaluationResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3979,13 +3694,10 @@
         "summary": "Evaluate completed session",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/sessions/{id}/time-trials": {
+        ]
+      },
       "get": {
-        "operationId": "TrainingDetailsController_timeTrials",
+        "operationId": "EvaluationsController_get",
         "parameters": [
           {
             "name": "id",
@@ -3997,93 +3709,31 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List session time trials",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "post": {
-        "operationId": "TrainingDetailsController_createTimeTrial",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTimeTrialDto"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionEvaluationResponseDto"
+                }
               }
             }
           }
         },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
         "security": [
           {
             "bearer": []
           }
         ],
-        "summary": "Record session time trial",
+        "summary": "Get session evaluation",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/time-trials/{id}": {
-      "get": {
-        "operationId": "TrainingDetailsController_timeTrial",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get time trial result and media",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/training-plans": {
       "get": {
-        "operationId": "TrainingController_listPlans",
+        "operationId": "TrainingPlansController_list",
         "parameters": [
           {
             "name": "horseId",
@@ -4095,8 +3745,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4107,11 +3767,10 @@
         "summary": "List horse training plans",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
-        "operationId": "TrainingController_createPlan",
+        "operationId": "TrainingPlansController_create",
         "parameters": [
           {
             "name": "horseId",
@@ -4133,8 +3792,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4145,13 +3811,12 @@
         "summary": "Create training plan",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/sessions/{id}/start": {
-      "post": {
-        "operationId": "TrainingController_startSession",
+    "/api/v1/training-plans/{id}": {
+      "get": {
+        "operationId": "TrainingPlansController_get",
         "parameters": [
           {
             "name": "id",
@@ -4163,8 +3828,376 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get training plan",
+        "tags": [
+          "training"
+        ]
+      },
+      "patch": {
+        "operationId": "TrainingPlansController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a scheduled training plan",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-plans/{id}/activate": {
+      "post": {
+        "operationId": "TrainingPlansController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activate training plan",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-plans/{id}/complete": {
+      "post": {
+        "operationId": "TrainingPlansController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete training plan",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-plans/{id}/cancel": {
+      "post": {
+        "operationId": "TrainingPlansController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelTrainingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel training plan and scheduled sessions",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-plans/{id}/sessions": {
+      "get": {
+        "operationId": "TrainingSessionsController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List sessions in training plan",
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "operationId": "TrainingSessionsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Schedule training session",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}": {
+      "get": {
+        "operationId": "TrainingSessionsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get training session",
+        "tags": [
+          "training"
+        ]
+      },
+      "patch": {
+        "operationId": "TrainingSessionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reschedule or reassign a scheduled session",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}/start": {
+      "post": {
+        "operationId": "TrainingSessionsController_start",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4175,13 +4208,12 @@
         "summary": "Start training session",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/sessions/{id}/complete": {
       "post": {
-        "operationId": "TrainingController_completeSession",
+        "operationId": "TrainingSessionsController_complete",
         "parameters": [
           {
             "name": "id",
@@ -4192,9 +4224,26 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteTrainingSessionDto"
+              }
+            }
+          }
+        },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4202,16 +4251,61 @@
             "bearer": []
           }
         ],
-        "summary": "Complete training session",
+        "summary": "Complete training session and record actual result",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/sessions/{id}/cancel": {
       "post": {
-        "operationId": "TrainingController_cancelSession",
+        "operationId": "TrainingSessionsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelTrainingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel training session with a reason",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}/time-trials": {
+      "get": {
+        "operationId": "TimeTrialsController_list",
         "parameters": [
           {
             "name": "id",
@@ -4223,8 +4317,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeTrialResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4232,11 +4336,90 @@
             "bearer": []
           }
         ],
-        "summary": "Cancel training session",
+        "summary": "List session time trials",
         "tags": [
           "training"
+        ]
+      },
+      "post": {
+        "operationId": "TimeTrialsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTimeTrialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record time trial during an active session",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/time-trials/{id}": {
+      "get": {
+        "operationId": "TimeTrialsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get time trial result and media reference",
+        "tags": [
+          "training"
+        ]
       }
     },
     "/api/v1/clubs/me": {
@@ -6359,51 +6542,129 @@
           "status"
         ]
       },
-      "UpdateTrainingSessionDto": {
+      "EvaluateSessionDto": {
         "type": "object",
         "properties": {
-          "scheduledAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "distanceKm": {
+          "score": {
             "type": "number",
-            "minimum": 0
+            "minimum": 1,
+            "maximum": 10
           },
-          "intensity": {
-            "type": "string"
-          },
-          "surface": {
-            "type": "string"
-          },
-          "groomId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      },
-      "CreateTimeTrialDto": {
-        "type": "object",
-        "properties": {
-          "distanceMeters": {
-            "type": "number",
-            "minimum": 0
-          },
-          "durationSeconds": {
-            "type": "number",
-            "minimum": 0
-          },
-          "videoAssetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "notes": {
+          "comment": {
             "type": "string"
           }
         },
         "required": [
-          "distanceMeters",
-          "durationSeconds"
+          "score"
+        ]
+      },
+      "SessionEvaluationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "evaluatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "score": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "evaluatorId",
+          "score",
+          "createdAt"
+        ]
+      },
+      "TrainingPlanResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phaseName": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "ACTIVE",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "activatedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelReason": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "createdBy",
+          "phaseName",
+          "goal",
+          "startDate",
+          "endDate",
+          "status",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "CreateTrainingPlanDto": {
@@ -6450,6 +6711,99 @@
           }
         }
       },
+      "CancelTrainingDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "TrainingSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "distanceKm": {
+            "type": "string"
+          },
+          "plannedDurationMinutes": {
+            "type": "object"
+          },
+          "intensity": {
+            "type": "string"
+          },
+          "surface": {
+            "type": "object"
+          },
+          "groomId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "startedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "actualDistanceKm": {
+            "type": "object"
+          },
+          "actualDurationSeconds": {
+            "type": "object"
+          },
+          "perceivedEffort": {
+            "type": "object"
+          },
+          "completionNotes": {
+            "type": "object"
+          },
+          "cancelledAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelledBy": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "cancelReason": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "planId",
+          "scheduledAt",
+          "distanceKm",
+          "intensity",
+          "status"
+        ]
+      },
       "CreateTrainingSessionDto": {
         "type": "object",
         "properties": {
@@ -6467,6 +6821,10 @@
           "surface": {
             "type": "string"
           },
+          "plannedDurationMinutes": {
+            "type": "number",
+            "minimum": 1
+          },
           "groomId": {
             "type": "string",
             "format": "uuid"
@@ -6478,20 +6836,113 @@
           "intensity"
         ]
       },
-      "EvaluateSessionDto": {
+      "UpdateTrainingSessionDto": {
         "type": "object",
         "properties": {
-          "score": {
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "distanceKm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "intensity": {
+            "type": "string"
+          },
+          "surface": {
+            "type": "string"
+          },
+          "plannedDurationMinutes": {
+            "type": "number",
+            "minimum": 1
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CompleteTrainingSessionDto": {
+        "type": "object",
+        "properties": {
+          "actualDistanceKm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "actualDurationSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "perceivedEffort": {
             "type": "number",
             "minimum": 1,
             "maximum": 10
           },
-          "comment": {
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "TimeTrialResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "distanceMeters": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "string"
+          },
+          "videoAssetId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
             "type": "string"
           }
         },
         "required": [
-          "score"
+          "id",
+          "sessionId",
+          "distanceMeters",
+          "durationSeconds",
+          "createdAt"
+        ]
+      },
+      "CreateTimeTrialDto": {
+        "type": "object",
+        "properties": {
+          "distanceMeters": {
+            "type": "number",
+            "minimum": 0
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "videoAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "distanceMeters",
+          "durationSeconds"
         ]
       },
       "UpdateClubDto": {

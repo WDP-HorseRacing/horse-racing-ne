@@ -43,4 +43,16 @@ export class TrainingPlanEntity extends MutableRecordEntity {
     enum: TrainingPlanStatus,
   })
   status!: TrainingPlanStatus;
+
+  @Column({ name: 'activated_at', type: 'timestamptz', nullable: true })
+  activatedAt!: Date | null;
+
+  @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
+  completedAt!: Date | null;
+
+  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  cancelledAt!: Date | null;
+
+  @Column({ name: 'cancel_reason', type: 'text', nullable: true })
+  cancelReason!: string | null;
 }
