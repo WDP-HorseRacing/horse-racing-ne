@@ -24,7 +24,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/auth/oidc/{provider}` | Bat dau luong dang nhap qua identity provider |
 | GET | `/api/v1/auth/oidc/{provider}/callback` | Diem identity provider redirect ve |
 | POST | `/api/v1/auth/refresh` | Exchange refresh token |
-| POST | `/api/v1/auth/register` | Tu dang ky, cho CLUB_MANAGER duyet |
 
 ## clubs
 
@@ -43,17 +42,20 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/horses` | List visible horses |
+| GET | `/api/v1/horses` | List horses visible to the current user |
 | POST | `/api/v1/horses` | Create horse profile |
 | GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
+| PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status |
+| PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
+| GET | `/api/v1/horses/{horseId}/measurements` | List horse measurement history |
+| POST | `/api/v1/horses/{horseId}/measurements` | Record a horse measurement |
 | GET | `/api/v1/horses/{horseId}/owners` | List horse ownership history |
-| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree |
-| PATCH | `/api/v1/horses/{horseId}/status` | Change horse health or lifecycle status |
-| DELETE | `/api/v1/horses/{id}` | Soft-delete horse profile |
-| GET | `/api/v1/horses/{id}` | Get horse profile |
-| PATCH | `/api/v1/horses/{id}` | Update horse profile |
-| PUT | `/api/v1/horses/{id}/owners` | Replace active ownership shares |
-| GET | `/api/v1/owners/me/horses` | List horses owned by current user |
+| PUT | `/api/v1/horses/{horseId}/owners` | Replace active ownership shares |
+| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree up to 4 generations |
+| DELETE | `/api/v1/horses/{id}` | Soft-delete a horse profile created by mistake |
+| GET | `/api/v1/horses/{id}` | Get horse profile detail |
+| PATCH | `/api/v1/horses/{id}` | Update horse profile and pedigree parents |
+| GET | `/api/v1/owners/me/horses` | List horses currently owned by the current user |
 
 ## media
 
@@ -208,7 +210,5 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/users` | Create club user |
 | GET | `/api/v1/users/{id}` | Get club user |
 | PATCH | `/api/v1/users/{id}` | Update club user |
-| PATCH | `/api/v1/users/{id}/approve` | Duyet ho so: gan CLB va role |
 | PATCH | `/api/v1/users/{id}/status` | Change user account status |
-| GET | `/api/v1/users/pending` | Danh sach ho so cho duyet cua CLB |
 

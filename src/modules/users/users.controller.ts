@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -17,44 +16,34 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../common/decorators';
+import { PaginationResponseDto } from '../../common/dto/pagination-response.dto';
 import type { Actor } from '../../common/types/actor';
-import { ApproveUserDto } from './dto/approve-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { UserListQueryDto } from './dto/user-list-query.dto';
 import { UserResponseDto } from './dto/user.response.dto';
 import { UsersService } from './services/users.service';
 import { UserRole } from './user.enums';
 
-// Da bo `extends PendingApi` va @ApiResponse({ status: 501 }) o cap class:
-// finalizeOpenApi xoa moi response 2xx cua operation nao con khai 501.
 @ApiTags('users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Dat TRUOC @Get(':id') - nguoc lai thi 'pending' bi :id nuot mat.
   @Access([UserRole.CLUB_MANAGER])
-  @Get('pending')
-  @ApiOperation({ summary: 'Danh sach ho so cho duyet cua CLB' })
-  @ApiOkResponse({ type: [UserResponseDto] })
-  listPending(@CurrentUser() actor: Actor): Promise<UserResponseDto[]> {
-    return this.usersService.listPending(actor);
-  }
-
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER])
   @Get()
   @ApiOperation({ summary: 'List club users' })
-  @ApiOkResponse({ type: [UserResponseDto] })
+  @ApiOkResponse({ type: PaginationResponseDto })
   list(
     @CurrentUser() actor: Actor,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
-  ): Promise<UserResponseDto[]> {
-    return this.usersService.list(actor, limit);
+    @Query() query: UserListQueryDto,
+  ): Promise<PaginationResponseDto<UserResponseDto>> {
+    return this.usersService.list(actor, query);
   }
 
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER])
+  @Access([UserRole.CLUB_MANAGER])
   @Get(':id')
   @ApiOperation({ summary: 'Get club user' })
   @ApiOkResponse({ type: UserResponseDto })
@@ -74,18 +63,6 @@ export class UsersController {
     @Body() body: CreateUserDto,
   ): Promise<UserResponseDto> {
     return this.usersService.create(actor, body);
-  }
-
-  @Access([UserRole.CLUB_MANAGER])
-  @Patch(':id/approve')
-  @ApiOperation({ summary: 'Duyet ho so: gan CLB va role' })
-  @ApiOkResponse({ type: UserResponseDto })
-  approve(
-    @CurrentUser() actor: Actor,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: ApproveUserDto,
-  ): Promise<UserResponseDto> {
-    return this.usersService.approve(actor, id, body.role);
   }
 
   @Access([UserRole.CLUB_MANAGER])

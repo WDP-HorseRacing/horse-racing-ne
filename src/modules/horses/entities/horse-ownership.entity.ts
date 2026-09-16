@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from './horse.entity';
@@ -9,6 +9,8 @@ import { HorseEntity } from './horse.entity';
  * như một bản ghi ownership với startDate/endDate.
  */
 @Entity({ name: 'horse_ownerships' })
+@Index('horse_ownerships_owner_active_idx', ['ownerId', 'endDate'])
+@Index('horse_ownerships_horse_active_idx', ['horseId', 'endDate'])
 export class HorseOwnershipEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;

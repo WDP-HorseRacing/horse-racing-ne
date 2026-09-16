@@ -7,16 +7,10 @@ import type { KeycloakIdentityProvider } from '../../../common/infrastructure/ke
 import type { KeycloakTokenResponse } from '../../../common/infrastructure/keycloak/types/token';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
-import { UserResponseDto } from '../../users/dto/user.response.dto';
-import { toUserResponse } from '../../users/mappers/user.mapper';
 import { UsersRepository } from '../../users/repositories/users.repository';
 import { ProvisioningService } from '../../users/services/provisioning.service';
-import { UserStatus } from '../../users/user.enums';
-import { splitFullName } from '../../users/utils/name';
 import { AuthTokensResponseDto } from '../dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from '../dto/current-user.response.dto';
-import { RegisterDto } from '../dto/register.dto';
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -28,29 +22,6 @@ export class AuthService {
     private readonly users: UsersRepository,
     private readonly provisioning: ProvisioningService,
   ) {}
-
-  async register(dto: RegisterDto): Promise<UserResponseDto> {
-    const keycloakId = await this.keycloakUsers.registerUserWithPassword({
-      username: dto.email,
-      email: dto.email,
-      password: dto.password,
-      ...splitFullName(dto.fullName),
-    });
-    try {
-      const user = await this.users.create({
-        keycloakId,
-        clubId: dto.clubId ?? null,
-        fullName: dto.fullName,
-        email: dto.email,
-        role: null,
-        status: UserStatus.PENDING,
-      });
-      return toUserResponse(user);
-    } catch (error) {
-      await this.keycloakUsers.deleteUser(keycloakId);
-      throw error;
-    }
-  }
 
   async login(email: string, password: string): Promise<AuthTokensResponseDto> {
     return this.issueSession(

@@ -13,6 +13,9 @@ import { NotificationType } from '../constants/notification-type.enum';
   where: 'event_id IS NOT NULL',
 })
 export class NotificationEntity extends MutableRecordEntity {
+  @Column({ name: 'event_id', type: 'uuid', nullable: true })
+  eventId!: string | null;
+
   @Column({ name: 'recipient_id', type: 'uuid' })
   recipientId!: string;
 
