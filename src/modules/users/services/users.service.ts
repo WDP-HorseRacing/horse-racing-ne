@@ -6,16 +6,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { currentUser } from '../utils/current-user';
-import type { Actor } from '../../../common/types/actor';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
+import type { Actor } from '../../../common/types/actor';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserResponseDto } from '../dto/user.response.dto';
 import { toUserResponse } from '../mappers/user.mapper';
 import { UsersRepository } from '../repositories/users.repository';
 import { UserRole, UserStatus } from '../user.enums';
-import { splitFullName } from '../utils/split-full-name';
+import { currentUser } from '../utils/current-user';
+import { splitFullName } from '../utils/name';
 
 @Injectable()
 export class UsersService {
