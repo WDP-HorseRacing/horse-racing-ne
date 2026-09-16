@@ -1,21 +1,28 @@
 import {
+  BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-import { currentUser } from '../utils/current-user';
-import type { Actor } from '../../../common/types/actor';
+import { DataSource, EntityManager } from 'typeorm';
+import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
+import type { Actor } from '../../../common/types/actor';
+import {
+  removesActiveManager,
+  selfChangeError,
+  UserChange,
+} from '../domain/user.rules';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { UserListQueryDto } from '../dto/user-list-query.dto';
 import { UserResponseDto } from '../dto/user.response.dto';
+import { UserEntity } from '../entities/user.entity';
 import { toUserResponse } from '../mappers/user.mapper';
 import { UsersRepository } from '../repositories/users.repository';
 import { UserRole, UserStatus } from '../user.enums';
-import { splitFullName } from '../utils/split-full-name';
+import { splitFullName } from '../utils/name';
 
 @Injectable()
 export class UsersService {
@@ -27,177 +34,209 @@ export class UsersService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async list(actor: Actor, limit = 50): Promise<UserResponseDto[]> {
-    const clubId = await this.callerClubId(actor);
-    const rows = await this.users.listByClub(clubId, Math.min(limit, 200));
-    return rows.map(toUserResponse);
+  async list(
+    actor: Actor,
+    query: UserListQueryDto,
+  ): Promise<PaginationResponseDto<UserResponseDto>> {
+    const [rows, total] = await this.users.listByClub(actor.clubId, query);
+    return new PaginationResponseDto(
+      rows.map(toUserResponse),
+      total,
+      query.page,
+      query.limit,
+    );
   }
 
   async get(actor: Actor, id: string): Promise<UserResponseDto> {
-    const clubId = await this.callerClubId(actor);
-    return toUserResponse(await this.findInClub(id, clubId));
+    return toUserResponse(await this.findInClub(id, actor.clubId));
   }
 
-  /**
-   * Ba buoc: tao danh tinh Keycloak -> gan realm role -> ghi row local.
-   * Hong o bat ky buoc nao sau buoc 1 thi xoa danh tinh vua tao.
-   *
-   * Keycloak truoc, DB sau: hong giua chung thi con lai mot user Keycloak mo
-   * coi - nguoi do xac thuc duoc nhung guard tra 403 vi khong co row local,
-   * vo hai. Lam nguoc lai se de lai row chiem mat unique (club_id, email),
-   * goi lai POST /users la 409 vinh vien, phai vao xoa tay moi go duoc.
-   */
   async create(actor: Actor, body: CreateUserDto): Promise<UserResponseDto> {
-    const clubId = await this.callerClubId(actor);
+    const email = body.email.trim().toLowerCase();
+    const fullName = body.fullName.trim();
 
-    const existing = await this.users.findByEmail(body.email, clubId);
-    if (existing) {
-      throw new ConflictException('Email nay da co trong cau lac bo');
+    if (await this.users.findByEmail(email, actor.clubId)) {
+      throw new ConflictException('Email này đã có trong câu lạc bộ');
     }
 
-    const keycloakId = await this.keycloakUsers.registerUserWithPassword({
-      // username == email: POST /auth/login gui email, Direct Access Grant
-      // lai doi username, nen hai thu nay phai la mot.
-      username: body.email,
-      email: body.email,
-      password: body.password,
-      ...splitFullName(body.fullName),
-    });
+    let keycloakId: string;
+    try {
+      keycloakId = await this.keycloakUsers.registerUserWithPassword({
+        username: email,
+        email,
+        password: body.password,
+        ...splitFullName(fullName),
+      });
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw new ConflictException(
+          'Email này đã được dùng cho tài khoản khác',
+        );
+      }
+      throw error;
+    }
 
     try {
-      // Gan realm role la BAT BUOC, khong phai trang tri: @Access() doc role
-      // tu TOKEN, nen user khong co realm role se 403 o moi route phan quyen.
       await this.keycloakUsers.assignRealmRole(keycloakId, body.role);
-
       const created = await this.users.create({
-        clubId,
+        clubId: actor.clubId,
         keycloakId,
-        fullName: body.fullName,
-        email: body.email,
+        fullName,
+        email,
         role: body.role,
         status: UserStatus.ACTIVE,
         passwordHash: null,
       });
       return toUserResponse(created);
     } catch (error) {
-      await this.compensate(keycloakId, body.email);
-      throw error; // nem lai loi GOC
+      await this.compensate(keycloakId, email);
+      throw error;
     }
   }
 
-  /** Doi role phai cap nhat CA HAI phia - Keycloak la nguon phan quyen. */
   async update(
     actor: Actor,
     id: string,
     body: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const clubId = await this.callerClubId(actor);
-    const user = await this.findInClub(id, clubId);
+    const user = await this.findInClub(id, actor.clubId);
+    const newRole = body.role;
+    const roleChanged = newRole !== undefined && newRole !== user.role;
 
-    if (body.role && body.role !== user.role) {
-      if (user.role) {
-        await this.keycloakUsers.removeRealmRole(user.keycloakId, user.role);
-      }
-      await this.keycloakUsers.assignRealmRole(user.keycloakId, body.role);
+    if (roleChanged) {
+      this.assertChangeAllowed(actor, user, { role: body.role });
+      await this.assertRoleReleasable(user);
     }
-    await this.users.updateFields(id, clubId, {
-      ...(body.fullName ? { fullName: body.fullName } : {}),
-      ...(body.role ? { role: body.role } : {}),
+
+    const changes: Partial<UserEntity> = {};
+    if (body.fullName !== undefined) changes.fullName = body.fullName.trim();
+    if (roleChanged) changes.role = body.role;
+    if (Object.keys(changes).length === 0) return toUserResponse(user);
+
+    await this.dataSource.transaction(async (manager) => {
+      if (roleChanged) await this.lockClub(manager, actor.clubId);
+      if (removesActiveManager(user, { role: body.role })) {
+        await this.assertAnotherActiveManager(manager, actor.clubId, user.id);
+      }
+      await this.users.updateFields(id, actor.clubId, changes, manager);
+      if (roleChanged && newRole) await this.syncKeycloakRole(user, newRole);
     });
-    return toUserResponse(await this.findInClub(id, clubId));
+
+    if (roleChanged) await this.revokeSessions(user);
+    return toUserResponse(await this.findInClub(id, actor.clubId));
   }
 
-  /**
-   * Khoa user: cap nhat DB (currentUser() nem 403 ngay o request ke tiep) VA
-   * tat o Keycloak (refresh token con song khong the de ra access token moi).
-   *
-   * Day la cong cu chan TUC THI - khac voi doi role, thu phai doi token moi.
-   */
   async setStatus(
     actor: Actor,
     id: string,
     status: UserStatus,
   ): Promise<UserResponseDto> {
-    const clubId = await this.callerClubId(actor);
-    const user = await this.findInClub(id, clubId);
+    const user = await this.findInClub(id, actor.clubId);
+    if (user.status === status) return toUserResponse(user);
+    this.assertChangeAllowed(actor, user, { status });
 
-    await this.users.updateFields(id, clubId, { status });
-    await this.keycloakUsers.setUserEnabled(
-      user.keycloakId,
-      status === UserStatus.ACTIVE,
-    );
-    return toUserResponse(await this.findInClub(id, clubId));
+    await this.dataSource.transaction(async (manager) => {
+      await this.lockClub(manager, actor.clubId);
+      if (removesActiveManager(user, { status })) {
+        await this.assertAnotherActiveManager(manager, actor.clubId, user.id);
+      }
+      await this.users.updateFields(id, actor.clubId, { status }, manager);
+      await this.keycloakUsers.setUserEnabled(
+        user.keycloakId,
+        status === UserStatus.ACTIVE,
+      );
+    });
+
+    if (status !== UserStatus.ACTIVE) await this.revokeSessions(user);
+    return toUserResponse(await this.findInClub(id, actor.clubId));
   }
 
-  /** Hang doi duyet: nguoi chon dung CLB nay, cong nguoi chua chon CLB nao. */
-  async listPending(actor: Actor): Promise<UserResponseDto[]> {
-    const clubId = await this.callerClubId(actor);
-    const rows = await this.users.listPending(clubId);
-    return rows.map(toUserResponse);
-  }
-
-  /**
-   * Duyet mot ho so cho: gan CLB + role, mo khoa tai khoan.
-   * Keycloak truoc, DB sau - vi @Access() doc role tu token, nen chua gan
-   * realm role thi du DB co ghi ACTIVE nguoi do van 403.
-   */
-  async approve(
+  private assertChangeAllowed(
     actor: Actor,
-    id: string,
+    user: UserEntity,
+    change: UserChange,
+  ): void {
+    const error = selfChangeError(actor.userId, user, change);
+    if (error) throw new BadRequestException(error);
+  }
+
+  private async assertRoleReleasable(user: UserEntity): Promise<void> {
+    if (
+      user.role === UserRole.HORSE_OWNER &&
+      (await this.users.hasActiveOwnership(user.id))
+    ) {
+      throw new ConflictException(
+        'Người này đang sở hữu ngựa, cần chuyển quyền sở hữu trước khi đổi vai trò',
+      );
+    }
+    if (
+      user.role === UserRole.GROOM &&
+      (await this.users.hasActiveStableAssignment(user.id))
+    ) {
+      throw new ConflictException(
+        'Người này đang phụ trách chuồng ngựa, cần phân công lại trước khi đổi vai trò',
+      );
+    }
+  }
+
+  private async assertAnotherActiveManager(
+    manager: EntityManager,
+    clubId: string,
+    userId: string,
+  ): Promise<void> {
+    const others = await this.users.countOtherActiveManagers(
+      clubId,
+      userId,
+      manager,
+    );
+    if (others === 0) {
+      throw new ConflictException(
+        'Câu lạc bộ phải còn ít nhất một Club Manager đang hoạt động',
+      );
+    }
+  }
+
+  private async lockClub(
+    manager: EntityManager,
+    clubId: string,
+  ): Promise<void> {
+    await manager.query(`SELECT id FROM clubs WHERE id = $1 FOR UPDATE`, [
+      clubId,
+    ]);
+  }
+
+  private async syncKeycloakRole(
+    user: UserEntity,
     role: UserRole,
-  ): Promise<UserResponseDto> {
-    const clubId = await this.callerClubId(actor);
-    const target = await this.users.findPendingById(id);
-    // Da chon CLB khac thi khong phai viec cua quan ly nay. Tra 404 chu khong
-    // 403: noi "co ho so nay nhung anh khong duoc xem" cung la mot ro ri.
-    if (!target || (target.clubId !== null && target.clubId !== clubId)) {
-      throw new NotFoundException('Khong tim thay ho so cho duyet');
+  ): Promise<void> {
+    if (user.role) {
+      await this.keycloakUsers.removeRealmRole(user.keycloakId, user.role);
     }
-
-    await this.keycloakUsers.assignRealmRole(target.keycloakId, role);
-    await this.users.updateById(id, {
-      clubId,
-      role,
-      status: UserStatus.ACTIVE,
-    });
-    return toUserResponse({
-      ...target,
-      clubId,
-      role,
-      status: UserStatus.ACTIVE,
-    });
+    await this.keycloakUsers.assignRealmRole(user.keycloakId, role);
   }
 
-  /**
-   * clubId khong nam trong token, nen moi thao tac deu bat dau bang viec doi
-   * actor lay row that. Guard da dam bao row nay ton tai va dang ACTIVE.
-   */
-  private async callerClubId(actor: Actor): Promise<string> {
-    const caller = await currentUser(this.dataSource.manager, actor);
-    if (!caller.clubId) {
-      throw new ForbiddenException('Tai khoan chua thuoc cau lac bo nao');
+  private async revokeSessions(user: UserEntity): Promise<void> {
+    try {
+      await this.keycloakUsers.logoutUser(user.keycloakId);
+    } catch {
+      this.logger.warn(
+        `Khong thu hoi duoc phien Keycloak cua ${user.id}; quyen moi van ap dung ngay vi guard doc role tu DB`,
+      );
     }
-    return caller.clubId;
   }
 
-  private async findInClub(id: string, clubId: string) {
+  private async findInClub(id: string, clubId: string): Promise<UserEntity> {
     const user = await this.users.findById(id, clubId);
-    if (!user) throw new NotFoundException('Khong tim thay user');
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
     return user;
   }
 
-  /**
-   * Nuot loi cua chinh no va log that to. Neu rollback cung fail thi client
-   * van phai thay loi GOC - thay bang "Keycloak khong ket noi duoc" se che mat
-   * thong tin that su huu ich nhu "email da ton tai".
-   */
   private async compensate(keycloakId: string, email: string): Promise<void> {
     try {
       await this.keycloakUsers.deleteUser(keycloakId);
     } catch {
       this.logger.error(
-        `User Keycloak mo coi ${keycloakId} (${email}): row local khong tao duoc ` +
-          'va lenh xoa bu cung that bai. Vao Admin Console xoa tay.',
+        `User Keycloak mo coi ${keycloakId} (${email}): row local khong tao duoc va lenh xoa bu cung that bai. Vao Admin Console xoa tay.`,
       );
     }
   }

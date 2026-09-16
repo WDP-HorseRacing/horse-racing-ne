@@ -1,22 +1,16 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import type { Actor } from '../../../common/types/actor';
-import { KeycloakService } from '../../../common/infrastructure/keycloak/keycloak.service';
-import { KeycloakTokenService } from '../../../common/infrastructure/keycloak/token.service';
-import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import { KeycloakOidcRedirectService } from '../../../common/infrastructure/keycloak/keycloak-oidc-redirect.service';
 import { KeycloakConfig } from '../../../common/infrastructure/keycloak/keycloak.config';
+import { KeycloakService } from '../../../common/infrastructure/keycloak/keycloak.service';
+import { KeycloakTokenService } from '../../../common/infrastructure/keycloak/token.service';
 import type { KeycloakIdentityProvider } from '../../../common/infrastructure/keycloak/types/oidc';
 import type { KeycloakTokenResponse } from '../../../common/infrastructure/keycloak/types/token';
+import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
+import type { Actor } from '../../../common/types/actor';
 import { UsersRepository } from '../../users/repositories/users.repository';
 import { ProvisioningService } from '../../users/services/provisioning.service';
-import { toUserResponse } from '../../users/mappers/user.mapper';
-import { UserResponseDto } from '../../users/dto/user.response.dto';
-import { UserStatus } from '../../users/user.enums';
-import { splitFullName } from '../../users/utils/split-full-name';
 import { AuthTokensResponseDto } from '../dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from '../dto/current-user.response.dto';
-import { RegisterDto } from '../dto/register.dto';
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -28,38 +22,6 @@ export class AuthService {
     private readonly users: UsersRepository,
     private readonly provisioning: ProvisioningService,
   ) {}
-
-  /**
-   * Tu dang ky: tao danh tinh Keycloak KHONG gan realm role nao, va row local
-   * o trang thai PENDING. Nguoi nay dang nhap duoc, nhung `actor.roles` rong
-   * nen moi @Access() deu truot, va currentUser() chan vi status != ACTIVE.
-   * Ho chi cham duoc route @Registration() cho toi khi CLUB_MANAGER duyet.
-   */
-  async register(dto: RegisterDto): Promise<UserResponseDto> {
-    // Keycloak truoc: hong o day thi chua co gi de don dep.
-    const keycloakId = await this.keycloakUsers.registerUserWithPassword({
-      username: dto.email,
-      email: dto.email,
-      password: dto.password,
-      ...splitFullName(dto.fullName),
-    });
-    try {
-      const user = await this.users.create({
-        keycloakId,
-        clubId: dto.clubId ?? null,
-        fullName: dto.fullName,
-        email: dto.email,
-        role: null,
-        status: UserStatus.PENDING,
-      });
-      return toUserResponse(user);
-    } catch (error) {
-      // Hanh dong bu: khong xoa thi con lai danh tinh Keycloak mo coi, va lan
-      // dang ky sau cung email se dinh 409 vinh vien.
-      await this.keycloakUsers.deleteUser(keycloakId);
-      throw error;
-    }
-  }
 
   async login(email: string, password: string): Promise<AuthTokensResponseDto> {
     return this.issueSession(
@@ -97,14 +59,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Keycloak khong co REST endpoint "tu doi mat khau cua chinh minh" cho
-   * confidential client (/account/credentials/password tra 404). Cach chuan
-   * la: dang nhap that bang mat khau cu de CHUNG MINH nguoi goi biet no,
-   * roi dung Admin API dat mat khau moi.
-   *
-   * Khong can cham database: email va keycloak id deu nam san trong actor.
-   */
   async changePassword(
     actor: Actor,
     currentPassword: string,
@@ -153,11 +107,6 @@ export class AuthService {
   /**
    * Cua ngo chung cua MOI luong dang nhap: doc claim tu access token vua cap,
    * bao dam co row `users` roi moi tra token ve.
-   *
-   * Co y KHONG goi o refresh(): row da duoc cap o lan dang nhap, va neu admin
-   * vua xoa mem no thi refresh khong phai cho de hoi sinh lai.
-   *
-   * Them identity provider thu ba sau nay chi can goi lai ham nay.
    */
   private async issueSession(
     tokens: AuthTokensResponseDto,
