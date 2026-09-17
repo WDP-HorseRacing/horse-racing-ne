@@ -85,7 +85,9 @@ Không có bảng riêng. Groom phụ trách ngựa được xác định bởi 
 ## Users
 
 - `users.status` mặc định `INACTIVE` (fail-closed); tài khoản do Club Manager tạo được set `ACTIVE` tường minh.
-- Guard đọc `role`, `status`, `club_id` từ `users` ở mỗi request; đổi role hoặc khóa có hiệu lực ngay, không chờ token hết hạn.
+- `KeycloakGuard` chỉ verify chữ ký JWT (JWKS, không introspect) và kiểm tra `@Access` dựa trên realm role trong token; guard không đọc bảng `users`.
+- `status` và `club_id` được chặn ở service qua `currentUserForActor` (đọc `users` theo `keycloak_id`, cache theo từng request): user không tồn tại, không `ACTIVE`, hoặc chưa có club/role bị trả `403`. Service nào dùng helper này thì khóa tài khoản có hiệu lực ngay.
+- Vì role trong guard lấy từ JWT, sau khi đổi role (`PATCH /users/:id`) hoặc chuyển status khác `ACTIVE`, `UsersService` gọi Keycloak logout để thu hồi mọi session/refresh token của user. Access token đã cấp vẫn hợp lệ với guard đến khi hết hạn, nên TTL access token cần ngắn. Logout là best-effort: nếu Keycloak lỗi, service chỉ ghi warning và không rollback thay đổi.
 
 ## Schema Delivery
 
