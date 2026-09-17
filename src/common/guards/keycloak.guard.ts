@@ -31,7 +31,7 @@ export class KeycloakGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const header = request.headers.authorization;
     if (typeof header !== 'string' || !/^Bearer \S+$/i.test(header)) {
-      throw new UnauthorizedException('Can bearer token');
+      throw new UnauthorizedException('Cần có bearer token');
     }
 
     const token: KeycloakVerifiedToken = await this.keycloak.verifyToken(

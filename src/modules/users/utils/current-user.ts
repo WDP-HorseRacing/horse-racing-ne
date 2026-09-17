@@ -12,6 +12,13 @@ export type CurrentActorUser = UserEntity & {
 
 const actorUserCache = new WeakMap<Actor, Promise<CurrentActorUser>>();
 
+/**
+ * Find the active user linked to a Keycloak account
+ * @param manager The entity manager to run the query with
+ * @param keycloakId The Keycloak ID of the user
+ * @returns A promise resolving to the active user
+ * @throws ForbiddenException if the user does not exist or is not active
+ */
 export async function currentUser(
   manager: EntityManager,
   keycloakId: string,
@@ -27,8 +34,11 @@ export async function currentUser(
 }
 
 /**
- * Resolve Actor từ JWT sang user nghiệp vụ. Kết quả được cache theo object
- * Actor nên các service dùng chung một request không query lại bảng users.
+ * Resolve the business user for an actor, cached per actor object
+ * @param manager The entity manager to run the query with
+ * @param actor The actor resolved from the JWT
+ * @returns A promise resolving to the user with an assigned club and role
+ * @throws ForbiddenException if the user is missing, inactive, or has no club or role
  */
 export function currentUserForActor(
   manager: EntityManager,
@@ -45,6 +55,11 @@ export function currentUserForActor(
   return pending;
 }
 
+/**
+ * Assert that a user has been assigned a club and a role
+ * @param user The user to check
+ * @throws ForbiddenException if the user has no club or role
+ */
 function assertAssignedUser(
   user: UserEntity,
 ): asserts user is CurrentActorUser {
@@ -56,9 +71,10 @@ function assertAssignedUser(
 }
 
 /**
- * Kiểm tra role của user ứng với actor có tồn tại role đó hay không.
- * Nếu không tồn tại role đó thì ném ra ForbiddenException.
- * Nếu tồn tại role đó thì trả về void.
+ * Ensure the actor has at least one of the given roles
+ * @param actor The actor resolved from the JWT
+ * @param roles The roles allowed to perform the action
+ * @throws ForbiddenException if the actor has none of the given roles
  */
 export function role(actor: Actor, ...roles: UserRole[]): void {
   if (!roles.some((r) => actor.roles.includes(r))) {

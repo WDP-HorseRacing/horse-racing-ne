@@ -14,10 +14,22 @@ export class UsersRepository {
     private readonly repository: Repository<UserEntity>,
   ) {}
 
+  /**
+   * Find a user by id within a club
+   * @param id The ID of the user
+   * @param clubId The ID of the club
+   * @returns A promise resolving to the user, or null if not found
+   */
   findById(id: string, clubId: string): Promise<UserEntity | null> {
     return this.repository.findOneBy({ id, clubId });
   }
 
+  /**
+   * List users by club
+   * @param clubId The ID of the club
+   * @param query The query parameters
+   * @returns A promise resolving to an array of users and the total count
+   */
   listByClub(
     clubId: string,
     query: UserListQueryDto,
@@ -43,18 +55,42 @@ export class UsersRepository {
       .getManyAndCount();
   }
 
+  /**
+   * Find a user by email within a club
+   * @param email The email of the user
+   * @param clubId The ID of the club
+   * @returns A promise resolving to the user, or null if not found
+   */
   findByEmail(email: string, clubId: string): Promise<UserEntity | null> {
     return this.repository.findOneBy({ email, clubId });
   }
 
+  /**
+   * Find a user by their Keycloak identifier
+   * @param keycloakId The Keycloak ID of the user
+   * @returns A promise resolving to the user, or null if not found
+   */
   findByKeycloakId(keycloakId: string): Promise<UserEntity | null> {
     return this.repository.findOneBy({ keycloakId });
   }
 
+  /**
+   * Create and persist a new user
+   * @param user The user fields to persist
+   * @returns A promise resolving to the created user
+   */
   create(user: Partial<UserEntity>): Promise<UserEntity> {
     return this.repository.save(this.repository.create(user));
   }
 
+  /**
+   * Update selected fields of a user within a club
+   * @param id The ID of the user
+   * @param clubId The ID of the club
+   * @param changes The fields to update
+   * @param manager The entity manager to run the update with, defaults to the repository manager
+   * @returns A promise resolving once the update is applied
+   */
   async updateFields(
     id: string,
     clubId: string,
@@ -64,6 +100,13 @@ export class UsersRepository {
     await manager.getRepository(UserEntity).update({ id, clubId }, changes);
   }
 
+  /**
+   * Count the active club managers of a club, excluding one user
+   * @param clubId The ID of the club
+   * @param excludeUserId The ID of the user to exclude from the count
+   * @param manager The entity manager to run the query with, defaults to the repository manager
+   * @returns A promise resolving to the number of other active club managers
+   */
   countOtherActiveManagers(
     clubId: string,
     excludeUserId: string,
@@ -79,6 +122,12 @@ export class UsersRepository {
     });
   }
 
+  /**
+   * Check whether a user still owns a horse with an open ownership record
+   * @param userId The ID of the user
+   * @param manager The entity manager to run the query with, defaults to the repository manager
+   * @returns A promise resolving to true if an active ownership exists
+   */
   hasActiveOwnership(
     userId: string,
     manager: EntityManager = this.repository.manager,
@@ -89,6 +138,12 @@ export class UsersRepository {
     });
   }
 
+  /**
+   * Check whether a user still has an open stable assignment as a groom
+   * @param userId The ID of the user
+   * @param manager The entity manager to run the query with, defaults to the repository manager
+   * @returns A promise resolving to true if an active stable assignment exists
+   */
   hasActiveStableAssignment(
     userId: string,
     manager: EntityManager = this.repository.manager,
