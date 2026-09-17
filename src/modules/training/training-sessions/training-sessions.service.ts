@@ -63,9 +63,15 @@ export class TrainingSessionsService {
     planId: string,
     body: CreateTrainingSessionDto,
   ): Promise<TrainingSessionResponseDto> {
-    const clubId = await this.access.clubId(actor);
+    const caller = await this.access.currentUser(actor);
     const row = await this.dataSource.transaction(async (manager) => {
-      const plan = await this.access.lockedPlanInClub(manager, planId, clubId);
+      const plan = await this.access.lockedPlan(manager, planId);
+      await this.access.assertTrainerBarn(
+        manager,
+        actor,
+        caller.id,
+        plan.horseId,
+      );
       if (
         plan.status !== TrainingPlanStatus.SCHEDULED &&
         plan.status !== TrainingPlanStatus.ACTIVE
@@ -77,7 +83,7 @@ export class TrainingSessionsService {
       assertSessionDateInPlan(body.scheduledAt, plan.startDate, plan.endDate);
       if (body.groomId)
         // kiểm tra Groom có trong club hay không
-        await this.access.assertGroom(manager, body.groomId, clubId);
+        await this.access.assertGroom(manager, body.groomId);
       return manager.save(
         manager.create(TrainingSessionEntity, {
           planId,
@@ -99,23 +105,25 @@ export class TrainingSessionsService {
     sessionId: string,
     body: UpdateTrainingSessionDto,
   ): Promise<TrainingSessionResponseDto> {
-    const clubId = await this.access.clubId(actor);
+    const caller = await this.access.currentUser(actor);
     const session = await this.dataSource.transaction(async (manager) => {
-      const curSession = await this.access.lockedSessionInClub(
-        manager,
-        sessionId,
-        clubId,
-      );
+      const curSession = await this.access.lockedSession(manager, sessionId);
       assertSessionEditable(curSession.status);
       const plan = await manager.findOneByOrFail(TrainingPlanEntity, {
         id: curSession.planId,
       });
+      await this.access.assertTrainerBarn(
+        manager,
+        actor,
+        caller.id,
+        plan.horseId,
+      );
       if (body.scheduledAt) {
         assertSessionDateInPlan(body.scheduledAt, plan.startDate, plan.endDate);
         curSession.scheduledAt = new Date(body.scheduledAt);
       }
       if (body.groomId) {
-        await this.access.assertGroom(manager, body.groomId, clubId);
+        await this.access.assertGroom(manager, body.groomId);
         curSession.groomId = body.groomId;
       }
       if (body.distanceKm !== undefined) {
@@ -137,23 +145,20 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const caller = await this.access.currentUser(actor);
     const session = await this.dataSource.transaction(async (manager) => {
-      const current = await this.access.lockedSessionInClub(
+      const current = await this.access.lockedSession(manager, sessionId);
+      await this.access.assertCanOperateSession(
         manager,
-        sessionId,
-        caller.clubId,
+        actor,
+        caller.id,
+        current,
       );
-      this.access.assertCanOperateSession(actor, caller.id, current);
       assertSessionAbleToStart(current.status);
       const plan = await manager.findOneByOrFail(TrainingPlanEntity, {
         id: current.planId,
       });
       if (plan.status !== TrainingPlanStatus.ACTIVE)
         throw new ConflictException('Giáo án chưa ACTIVE');
-      const horse = await this.access.lockedHorseInClub(
-        manager,
-        plan.horseId,
-        caller.clubId,
-      );
+      const horse = await this.access.lockedHorse(manager, plan.horseId);
       if (
         horse.lifecycleStatus !== HorseLifecycleStatus.ACTIVE ||
         horse.healthStatus !== HorseHealthStatus.ELIGIBLE
@@ -194,12 +199,13 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const caller = await this.access.currentUser(actor);
     const session = await this.dataSource.transaction(async (manager) => {
-      const current = await this.access.lockedSessionInClub(
+      const current = await this.access.lockedSession(manager, sessionId);
+      await this.access.assertCanOperateSession(
         manager,
-        sessionId,
-        caller.clubId,
+        actor,
+        caller.id,
+        current,
       );
-      this.access.assertCanOperateSession(actor, caller.id, current);
       assertSessionCompletable(current.status);
       current.status = TrainingSessionStatus.COMPLETED;
       current.completedAt = new Date();
@@ -226,12 +232,13 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const caller = await this.access.currentUser(actor);
     const session = await this.dataSource.transaction(async (manager) => {
-      const current = await this.access.lockedSessionInClub(
+      const current = await this.access.lockedSession(manager, sessionId);
+      await this.access.assertCanOperateSession(
         manager,
-        sessionId,
-        caller.clubId,
+        actor,
+        caller.id,
+        current,
       );
-      this.access.assertCanOperateSession(actor, caller.id, current);
       assertSessionCancellable(current.status);
       current.status = TrainingSessionStatus.CANCELLED;
       current.cancelledAt = new Date();

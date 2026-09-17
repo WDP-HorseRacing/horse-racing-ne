@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
-import { StableAssignmentEntity } from '../../stable/entities/stable-assignment.entity';
+import { BarnEntity } from '../../stable/entities/barn.entity';
+import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import { UserListQueryDto } from '../dto/user-list-query.dto';
 import { UserEntity } from '../entities/user.entity';
 import { UserRole, UserStatus } from '../user.enums';
@@ -15,28 +16,21 @@ export class UsersRepository {
   ) {}
 
   /**
-   * Find a user by id within a club
+   * Find a user by id
    * @param id The ID of the user
-   * @param clubId The ID of the club
    * @returns A promise resolving to the user, or null if not found
    */
-  findById(id: string, clubId: string): Promise<UserEntity | null> {
-    return this.repository.findOneBy({ id, clubId });
+  findById(id: string): Promise<UserEntity | null> {
+    return this.repository.findOneBy({ id });
   }
 
   /**
-   * List users by club
-   * @param clubId The ID of the club
+   * List users
    * @param query The query parameters
    * @returns A promise resolving to an array of users and the total count
    */
-  listByClub(
-    clubId: string,
-    query: UserListQueryDto,
-  ): Promise<[UserEntity[], number]> {
-    const qb = this.repository
-      .createQueryBuilder('user')
-      .where('user.clubId = :clubId', { clubId });
+  list(query: UserListQueryDto): Promise<[UserEntity[], number]> {
+    const qb = this.repository.createQueryBuilder('user');
     if (query.role) {
       qb.andWhere('user.role = :role', { role: query.role });
     }
@@ -56,13 +50,12 @@ export class UsersRepository {
   }
 
   /**
-   * Find a user by email within a club
+   * Find a user by email
    * @param email The email of the user
-   * @param clubId The ID of the club
    * @returns A promise resolving to the user, or null if not found
    */
-  findByEmail(email: string, clubId: string): Promise<UserEntity | null> {
-    return this.repository.findOneBy({ email, clubId });
+  findByEmail(email: string): Promise<UserEntity | null> {
+    return this.repository.findOneBy({ email });
   }
 
   /**
@@ -84,37 +77,32 @@ export class UsersRepository {
   }
 
   /**
-   * Update selected fields of a user within a club
+   * Update selected fields of a user
    * @param id The ID of the user
-   * @param clubId The ID of the club
    * @param changes The fields to update
    * @param manager The entity manager to run the update with, defaults to the repository manager
    * @returns A promise resolving once the update is applied
    */
   async updateFields(
     id: string,
-    clubId: string,
     changes: Partial<UserEntity>,
     manager: EntityManager = this.repository.manager,
   ): Promise<void> {
-    await manager.getRepository(UserEntity).update({ id, clubId }, changes);
+    await manager.getRepository(UserEntity).update({ id }, changes);
   }
 
   /**
-   * Count the active club managers of a club, excluding one user
-   * @param clubId The ID of the club
+   * Count the active club managers, excluding one user
    * @param excludeUserId The ID of the user to exclude from the count
    * @param manager The entity manager to run the query with, defaults to the repository manager
    * @returns A promise resolving to the number of other active club managers
    */
   countOtherActiveManagers(
-    clubId: string,
     excludeUserId: string,
     manager: EntityManager = this.repository.manager,
   ): Promise<number> {
     return manager.getRepository(UserEntity).count({
       where: {
-        clubId,
         id: Not(excludeUserId),
         role: UserRole.CLUB_MANAGER,
         status: UserStatus.ACTIVE,
@@ -139,18 +127,46 @@ export class UsersRepository {
   }
 
   /**
-   * Check whether a user still has an open stable assignment as a groom
+   * Check whether a user still has an open stall assignment as a groom
    * @param userId The ID of the user
    * @param manager The entity manager to run the query with, defaults to the repository manager
-   * @returns A promise resolving to true if an active stable assignment exists
+   * @returns A promise resolving to true if an active stall assignment exists
    */
-  hasActiveStableAssignment(
+  hasActiveStallAssignment(
     userId: string,
     manager: EntityManager = this.repository.manager,
   ): Promise<boolean> {
-    return manager.getRepository(StableAssignmentEntity).existsBy({
+    return manager.getRepository(StallAssignmentEntity).existsBy({
       groomId: userId,
       endAt: IsNull(),
+    });
+  }
+
+  /**
+   * Check whether a user still leads a barn
+   * @param userId The ID of the user
+   * @param manager The entity manager to run the query with
+   * @returns A promise resolving to true if the user is the head trainer of a barn that is not deleted
+   */
+  hasActiveBarn(
+    userId: string,
+    manager: EntityManager = this.repository.manager,
+  ): Promise<boolean> {
+    return manager.getRepository(BarnEntity).existsBy({
+      headTrainerId: userId,
+    });
+  }
+
+  /**
+   * Lock the active club manager rows so concurrent role or status changes cannot remove the last active manager
+   * @param manager The entity manager of the current transaction
+   * @returns A promise resolving once the rows are locked
+   */
+  async lockActiveManagers(manager: EntityManager): Promise<void> {
+    await manager.getRepository(UserEntity).find({
+      select: { id: true },
+      where: { role: UserRole.CLUB_MANAGER, status: UserStatus.ACTIVE },
+      lock: { mode: 'pessimistic_write' },
     });
   }
 }

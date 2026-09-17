@@ -1,26 +1,22 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
-import { ClubEntity } from '../../users/entities/club.entity';
+import { SupplyCategory } from '../constants/supply-category.enum';
 
 /**
  * SupplyItemEntity: vật tư / hàng hóa tồn kho của club.
  * Dùng để quản lý tên, đơn vị, số lượng hiện có và mức đặt hàng lại.
  */
 @Entity({ name: 'supply_items' })
-@Index('supply_items_club_name_uq', ['clubId', 'name'], {
+@Index('supply_items_name_uq', ['name'], {
   unique: true,
   where: 'deleted_at IS NULL',
 })
 export class SupplyItemEntity extends SoftDeletableRecordEntity {
-  @Column({ name: 'club_id', type: 'uuid' })
-  clubId!: string;
-
-  @ManyToOne(() => ClubEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'club_id' })
-  club!: ClubEntity;
-
   @Column({ type: 'varchar', length: 160 })
   name!: string;
+
+  @Column({ type: 'varchar', length: 32, enum: SupplyCategory })
+  category!: SupplyCategory;
 
   @Column({ type: 'varchar', length: 32 })
   unit!: string;

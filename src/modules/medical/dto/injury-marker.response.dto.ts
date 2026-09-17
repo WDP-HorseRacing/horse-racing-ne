@@ -4,6 +4,7 @@ import {
   InjuryType,
   RecoveryStatus,
 } from '../constants/injury-marker.enum';
+import { InjuryPositionDto } from './create-injury.dto';
 
 export class InjuryMarkerResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -14,6 +15,9 @@ export class InjuryMarkerResponseDto {
 
   @ApiProperty({ enum: InjuryBodyRegion })
   bodyRegion!: InjuryBodyRegion;
+
+  @ApiPropertyOptional({ type: InjuryPositionDto, nullable: true })
+  position!: InjuryPositionDto | null;
 
   @ApiProperty({ enum: InjuryType })
   injuryType!: InjuryType;

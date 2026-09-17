@@ -10,10 +10,7 @@ export class RacingRepository {
     private readonly registrations: Repository<RaceRegistrationEntity>,
   ) {}
 
-  listResultsByHorse(
-    horseId: string,
-    clubId: string,
-  ): Promise<RaceRegistrationEntity[]> {
+  listResultsByHorse(horseId: string): Promise<RaceRegistrationEntity[]> {
     return this.registrations.find({
       select: {
         id: true,
@@ -22,7 +19,7 @@ export class RacingRepository {
         timeSeconds: true,
         race: { id: true, name: true, scheduledAt: true, status: true },
       },
-      where: { horseId, horse: { clubId } },
+      where: { horseId },
       relations: { race: true },
       order: { race: { scheduledAt: 'DESC' } },
     });

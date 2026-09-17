@@ -652,7 +652,7 @@
     },
     "/api/v1/horses": {
       "get": {
-        "description": "Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stable assignment. Horse Owner: horses currently owned.",
+        "description": "Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stall assignment. Horse Owner: horses currently owned.",
         "operationId": "HorsesController_list",
         "parameters": [
           {
@@ -2783,6 +2783,118 @@
         "x-implementation-status": "contract-only"
       }
     },
+    "/api/v1/barns": {
+      "get": {
+        "operationId": "BarnsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BarnResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List barns of the club with their head trainer",
+        "tags": [
+          "stable"
+        ]
+      },
+      "post": {
+        "operationId": "BarnsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBarnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarnResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create barn",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/barns/{id}": {
+      "patch": {
+        "description": "A head trainer makes decisions and reads sensitive data only for horses stabled in barns they lead.",
+        "operationId": "BarnsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBarnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarnResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename barn or assign its head trainer",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
     "/api/v1/stalls": {
       "get": {
         "operationId": "StableDetailsController_stalls",
@@ -2975,7 +3087,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateStableAssignmentDto"
+                "$ref": "#/components/schemas/CreateStallAssignmentDto"
               }
             }
           }
@@ -2997,7 +3109,7 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/stable-assignments/{id}/end": {
+    "/api/v1/stall-assignments/{id}/end": {
       "post": {
         "operationId": "StableDetailsController_endAssignment",
         "parameters": [
@@ -3020,7 +3132,7 @@
             "bearer": []
           }
         ],
-        "summary": "End stable assignment",
+        "summary": "End stall assignment",
         "tags": [
           "stable"
         ],
@@ -3651,6 +3763,125 @@
         "x-implementation-status": "contract-only"
       }
     },
+    "/api/v1/sessions/{id}/time-trials": {
+      "get": {
+        "operationId": "TimeTrialsController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeTrialResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List session time trials",
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "operationId": "TimeTrialsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTimeTrialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record time trial during an active session",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/time-trials/{id}": {
+      "get": {
+        "operationId": "TimeTrialsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get time trial result and media reference",
+        "tags": [
+          "training"
+        ]
+      }
+    },
     "/api/v1/sessions/{id}/evaluation": {
       "post": {
         "operationId": "EvaluationsController_create",
@@ -3984,7 +4215,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CancelTrainingDto"
+                "$ref": "#/components/schemas/CancelTrainingPlanDto"
               }
             }
           }
@@ -4275,7 +4506,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CancelTrainingDto"
+                "$ref": "#/components/schemas/CancelTrainingSessionDto"
               }
             }
           }
@@ -4301,175 +4532,6 @@
         "tags": [
           "training"
         ]
-      }
-    },
-    "/api/v1/sessions/{id}/time-trials": {
-      "get": {
-        "operationId": "TimeTrialsController_list",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TimeTrialResponseDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List session time trials",
-        "tags": [
-          "training"
-        ]
-      },
-      "post": {
-        "operationId": "TimeTrialsController_create",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTimeTrialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TimeTrialResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Record time trial during an active session",
-        "tags": [
-          "training"
-        ]
-      }
-    },
-    "/api/v1/time-trials/{id}": {
-      "get": {
-        "operationId": "TimeTrialsController_get",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TimeTrialResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get time trial result and media reference",
-        "tags": [
-          "training"
-        ]
-      }
-    },
-    "/api/v1/clubs/me": {
-      "get": {
-        "operationId": "ClubsController_me",
-        "parameters": [],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get current club",
-        "tags": [
-          "clubs"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "ClubsController_update",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateClubDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update current club settings",
-        "tags": [
-          "clubs"
-        ],
-        "x-implementation-status": "contract-only"
       }
     },
     "/api/v1/users": {
@@ -4821,11 +4883,6 @@
           "userId": {
             "type": "string",
             "format": "uuid"
-          },
-          "clubId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
           },
           "role": {
             "type": "string",
@@ -5924,6 +5981,25 @@
           "endDate"
         ]
       },
+      "InjuryPositionDto": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ]
+      },
       "CreateInjuryDto": {
         "type": "object",
         "properties": {
@@ -5941,6 +6017,14 @@
               "LEFT_HIND_LEG",
               "RIGHT_HIND_LEG",
               "OTHER"
+            ]
+          },
+          "position": {
+            "description": "Point on the 3D horse model, in model coordinates",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
             ]
           },
           "injuryType": {
@@ -5991,6 +6075,15 @@
               "LEFT_HIND_LEG",
               "RIGHT_HIND_LEG",
               "OTHER"
+            ]
+          },
+          "position": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
             ]
           },
           "injuryType": {
@@ -6344,18 +6437,71 @@
           "timeSeconds"
         ]
       },
+      "BarnResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "headTrainerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CreateBarnDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateBarnDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "headTrainerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Head Trainer in charge; null clears the assignment"
+          }
+        }
+      },
       "CreateStallDto": {
         "type": "object",
         "properties": {
+          "barnId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "code": {
             "type": "string"
           }
         },
         "required": [
+          "barnId",
           "code"
         ]
       },
-      "CreateStableAssignmentDto": {
+      "CreateStallAssignmentDto": {
         "type": "object",
         "properties": {
           "horseId": {
@@ -6468,6 +6614,14 @@
           "name": {
             "type": "string"
           },
+          "category": {
+            "type": "string",
+            "enum": [
+              "FEED",
+              "MEDICINE",
+              "EQUIPMENT"
+            ]
+          },
           "unit": {
             "type": "string"
           },
@@ -6482,6 +6636,7 @@
         },
         "required": [
           "name",
+          "category",
           "unit",
           "quantityOnHand",
           "reorderThreshold"
@@ -6492,6 +6647,14 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "FEED",
+              "MEDICINE",
+              "EQUIPMENT"
+            ]
           },
           "unit": {
             "type": "string"
@@ -6540,6 +6703,67 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "TimeTrialResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "distanceMeters": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "string"
+          },
+          "videoAssetId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "distanceMeters",
+          "durationSeconds",
+          "createdAt"
+        ]
+      },
+      "CreateTimeTrialDto": {
+        "type": "object",
+        "properties": {
+          "distanceMeters": {
+            "type": "number",
+            "minimum": 0
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "videoAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "distanceMeters",
+          "durationSeconds"
         ]
       },
       "EvaluateSessionDto": {
@@ -6711,12 +6935,13 @@
           }
         }
       },
-      "CancelTrainingDto": {
+      "CancelTrainingPlanDto": {
         "type": "object",
         "properties": {
           "reason": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Lý do hủy kế hoạch huấn luyện"
           }
         },
         "required": [
@@ -6884,74 +7109,18 @@
           }
         }
       },
-      "TimeTrialResponseDto": {
+      "CancelTrainingSessionDto": {
         "type": "object",
         "properties": {
-          "id": {
+          "reason": {
             "type": "string",
-            "format": "uuid"
-          },
-          "sessionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "distanceMeters": {
-            "type": "string"
-          },
-          "durationSeconds": {
-            "type": "string"
-          },
-          "videoAssetId": {
-            "type": "object",
-            "format": "uuid"
-          },
-          "notes": {
-            "type": "object"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
+            "minLength": 1,
+            "description": "Lý do hủy buổi tập"
           }
         },
         "required": [
-          "id",
-          "sessionId",
-          "distanceMeters",
-          "durationSeconds",
-          "createdAt"
+          "reason"
         ]
-      },
-      "CreateTimeTrialDto": {
-        "type": "object",
-        "properties": {
-          "distanceMeters": {
-            "type": "number",
-            "minimum": 0
-          },
-          "durationSeconds": {
-            "type": "number",
-            "minimum": 0
-          },
-          "videoAssetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "notes": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "distanceMeters",
-          "durationSeconds"
-        ]
-      },
-      "UpdateClubDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          }
-        }
       },
       "UserResponseDto": {
         "type": "object",
@@ -6959,11 +7128,6 @@
           "id": {
             "type": "string",
             "format": "uuid"
-          },
-          "clubId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true
           },
           "fullName": {
             "type": "string"

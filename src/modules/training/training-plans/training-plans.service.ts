@@ -56,6 +56,12 @@ export class TrainingPlansService {
     body: CreateTrainingPlanDto,
   ): Promise<TrainingPlanResponseDto> {
     const { user, horse } = await this.access.horseForActor(actor, horseId);
+    await this.access.assertTrainerBarn(
+      this.dataSource.manager,
+      actor,
+      user.id,
+      horse.id,
+    );
     return toTrainingPlanResponse(
       await this.planRepo.save({
         horseId: horse.id,
@@ -74,9 +80,15 @@ export class TrainingPlansService {
     planId: string,
     updateDto: UpdateTrainingPlanDto,
   ): Promise<TrainingPlanResponseDto> {
-    const clubId = await this.access.clubId(actor);
+    const caller = await this.access.currentUser(actor);
     const updated = await this.dataSource.transaction(async (manager) => {
-      const plan = await this.access.lockedPlanInClub(manager, planId, clubId);
+      const plan = await this.access.lockedPlan(manager, planId);
+      await this.access.assertTrainerBarn(
+        manager,
+        actor,
+        caller.id,
+        plan.horseId,
+      );
       assertPlanEditable(plan.status); // kiểm tra: plan phải có status SCHEDULED
       const startDate = updateDto.startDate
         ? dateOnly(updateDto.startDate)
@@ -112,17 +124,19 @@ export class TrainingPlansService {
     actor: Actor,
     planId: string,
   ): Promise<TrainingPlanResponseDto> {
-    const clubId = await this.access.clubId(actor);
+    const caller = await this.access.currentUser(actor);
     const updatedPlan = await this.dataSource.transaction(async (manager) => {
       // khóa training plan
-      const curPlan = await this.access.lockedPlanInClub(
+      const curPlan = await this.access.lockedPlan(manager, planId);
+      await this.access.assertTrainerBarn(
         manager,
-        planId,
-        clubId,
+        actor,
+        caller.id,
+        curPlan.horseId,
       );
       assertPlanActivatable(curPlan.status); // kiểm tra: plan phải có status SCHEDULED
       // khóa horse ứng với training plan
-      await this.access.lockedHorseInClub(manager, curPlan.horseId, clubId);
+      await this.access.lockedHorse(manager, curPlan.horseId);
       // kiểm tra: plan phải có ít nhất một session
       const sessionCount = await manager.countBy(TrainingSessionEntity, {
         planId: planId,
@@ -160,10 +174,12 @@ export class TrainingPlansService {
     const now = new Date();
     const plan = await this.dataSource.transaction(async (manager) => {
       // lock training-plan
-      const current = await this.access.lockedPlanInClub(
+      const current = await this.access.lockedPlan(manager, planId);
+      await this.access.assertTrainerBarn(
         manager,
-        planId,
-        caller.clubId,
+        actor,
+        caller.id,
+        current.horseId,
       );
       assertPlanCancellable(current.status);
       const running = await manager.countBy(TrainingSessionEntity, {
@@ -211,12 +227,14 @@ export class TrainingPlansService {
     actor: Actor,
     planId: string,
   ): Promise<TrainingPlanResponseDto> {
-    const clubId = await this.access.clubId(actor);
+    const caller = await this.access.currentUser(actor);
     const plan = await this.dataSource.transaction(async (manager) => {
-      const current = await this.access.lockedPlanInClub(
+      const current = await this.access.lockedPlan(manager, planId);
+      await this.access.assertTrainerBarn(
         manager,
-        planId,
-        clubId,
+        actor,
+        caller.id,
+        current.horseId,
       );
       assertPlanCompletable(current.status); // kiểm tra: status của Plan phải là ACTIVE
       await this.assertCanComplete(manager, planId); // kiểm tra: Plan phải có ít nhất một buổi tập và không có buổi tập IN_PROGRESS nào

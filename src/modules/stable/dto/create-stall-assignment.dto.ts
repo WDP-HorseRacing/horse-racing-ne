@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsUUID } from 'class-validator';
 
-export class CreateStableAssignmentDto {
+export class CreateStallAssignmentDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   horseId!: string;

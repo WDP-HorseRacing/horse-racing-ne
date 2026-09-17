@@ -8,10 +8,6 @@ export class UserResponseDto {
   id!: string;
 
   @Expose()
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
-  clubId!: string | null;
-
-  @Expose()
   @ApiProperty()
   fullName!: string;
 

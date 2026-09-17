@@ -1,6 +1,5 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
-import { ClubEntity } from '../../users/entities/club.entity';
 import { RaceStatus } from '../constants/race-status.enum';
 
 /**
@@ -9,13 +8,6 @@ import { RaceStatus } from '../constants/race-status.enum';
  */
 @Entity({ name: 'races' })
 export class RaceEntity extends MutableRecordEntity {
-  @Column({ name: 'club_id', type: 'uuid' })
-  clubId!: string;
-
-  @ManyToOne(() => ClubEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'club_id' })
-  club!: ClubEntity;
-
   @Column({ type: 'varchar', length: 200 })
   name!: string;
 

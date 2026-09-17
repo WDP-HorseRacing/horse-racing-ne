@@ -5,20 +5,20 @@ import { UserEntity } from '../../users/entities/user.entity';
 import { StallEntity } from './stall.entity';
 
 /**
- * StableAssignmentEntity: lịch sử phân công ngựa vào chuồng và groom phụ trách.
+ * StallAssignmentEntity: lịch sử phân công ngựa vào chuồng và groom phụ trách.
  * Dùng để đảm bảo một ngựa chỉ đang ở một chuồng, và một chuồng chỉ có một ngựa
  * active trong cùng thời điểm.
  */
-@Entity({ name: 'stable_assignments' })
-@Index('stable_assignments_active_horse_uq', ['horseId'], {
+@Entity({ name: 'stall_assignments' })
+@Index('stall_assignments_active_horse_uq', ['horseId'], {
   unique: true,
   where: 'end_at IS NULL',
 })
-@Index('stable_assignments_active_stall_uq', ['stallId'], {
+@Index('stall_assignments_active_stall_uq', ['stallId'], {
   unique: true,
   where: 'end_at IS NULL',
 })
-export class StableAssignmentEntity extends MutableRecordEntity {
+export class StallAssignmentEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
 

@@ -16,7 +16,7 @@ import {
 import { PendingApi } from '../../../common/openapi/pending-api';
 import { CreateChecklistDto } from '../dto/create-checklist.dto';
 import { CreateFeedingPlanDto } from '../dto/create-feeding-plan.dto';
-import { CreateStableAssignmentDto } from '../dto/create-stable-assignment.dto';
+import { CreateStallAssignmentDto } from '../dto/create-stall-assignment.dto';
 import { CreateStallDto } from '../dto/create-stall.dto';
 import { UpdateIncidentStatusDto } from '../dto/update-incident-status.dto';
 
@@ -63,12 +63,12 @@ export class StableDetailsController extends PendingApi {
 
   @Post('stalls/:id/assignments')
   @ApiOperation({ summary: 'Assign horse and groom to stall' })
-  assign(@Param('id') _id: string, @Body() _body: CreateStableAssignmentDto) {
+  assign(@Param('id') _id: string, @Body() _body: CreateStallAssignmentDto) {
     return this.pending();
   }
 
-  @Post('stable-assignments/:id/end')
-  @ApiOperation({ summary: 'End stable assignment' })
+  @Post('stall-assignments/:id/end')
+  @ApiOperation({ summary: 'End stall assignment' })
   endAssignment(@Param('id') _id: string) {
     return this.pending();
   }

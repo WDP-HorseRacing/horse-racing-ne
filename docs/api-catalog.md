@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 132 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 133 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -24,13 +24,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/auth/oidc/{provider}` | Bat dau luong dang nhap qua identity provider |
 | GET | `/api/v1/auth/oidc/{provider}/callback` | Diem identity provider redirect ve |
 | POST | `/api/v1/auth/refresh` | Exchange refresh token |
-
-## clubs
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/v1/clubs/me` | Get current club |
-| PATCH | `/api/v1/clubs/me` | Update current club settings |
 
 ## health
 
@@ -144,6 +137,9 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | `/api/v1/barns` | List barns of the club with their head trainer |
+| POST | `/api/v1/barns` | Create barn |
+| PATCH | `/api/v1/barns/{id}` | Rename barn or assign its head trainer |
 | PATCH | `/api/v1/checklists/{id}/complete` | Complete assigned checklist item |
 | POST | `/api/v1/feeding-plans/{id}/approve` | Approve feeding plan as Trainer or Vet |
 | GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |
@@ -155,7 +151,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/incidents` | Report stable incident |
 | GET | `/api/v1/incidents/{id}` | Get stable incident |
 | PATCH | `/api/v1/incidents/{id}/status` | Update incident resolution status |
-| POST | `/api/v1/stable-assignments/{id}/end` | End stable assignment |
+| POST | `/api/v1/stall-assignments/{id}/end` | End stall assignment |
 | GET | `/api/v1/stalls` | List club stalls |
 | POST | `/api/v1/stalls` | Create stall |
 | DELETE | `/api/v1/stalls/{id}` | Soft-delete stall |

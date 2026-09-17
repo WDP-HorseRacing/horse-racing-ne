@@ -16,15 +16,10 @@ export class PerformanceService {
     actor: Actor,
     horseId: string,
   ): Promise<HorsePerformanceResponseDto> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const metrics = await this.performanceRepository.listMetrics(
-      horseId,
-      caller.clubId,
-    );
-    const evaluations = await this.performanceRepository.listEvaluations(
-      horseId,
-      caller.clubId,
-    );
+    await currentUserForActor(this.dataSource.manager, actor);
+    const metrics = await this.performanceRepository.listMetrics(horseId);
+    const evaluations =
+      await this.performanceRepository.listEvaluations(horseId);
     const recentMetrics = metrics.map((metric) => ({
       recordedAt: metric.recordedAt,
       heartRateBpm: metric.heartRateBpm,

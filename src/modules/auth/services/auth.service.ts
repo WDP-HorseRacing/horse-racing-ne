@@ -46,7 +46,6 @@ export class AuthService {
     const user = await this.provisioning.requireProvisionedUser(actor);
     return {
       userId: user.id,
-      clubId: user.clubId,
       role: user.role,
       status: user.status,
       email: user.email,

@@ -1,11 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString, Min, MinLength } from 'class-validator';
+import { IsEnum, IsNumber, IsString, Min, MinLength } from 'class-validator';
+import { SupplyCategory } from '../constants/supply-category.enum';
 
 export class CreateSupplyItemDto {
   @ApiProperty()
   @IsString()
   @MinLength(1)
   name!: string;
+
+  @ApiProperty({ enum: SupplyCategory })
+  @IsEnum(SupplyCategory)
+  category!: SupplyCategory;
 
   @ApiProperty()
   @IsString()

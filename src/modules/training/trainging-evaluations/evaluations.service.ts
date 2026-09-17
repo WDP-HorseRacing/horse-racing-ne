@@ -30,10 +30,12 @@ export class EvaluationsService {
   ): Promise<SessionEvaluationResponseDto> {
     const caller = await this.access.currentUser(actor);
     const row = await this.dataSource.transaction(async (manager) => {
-      const session = await this.access.lockedSessionInClub(
+      const session = await this.access.lockedSession(manager, sessionId);
+      await this.access.assertCanOperateSession(
         manager,
-        sessionId,
-        caller.clubId,
+        actor,
+        caller.id,
+        session,
       );
       if (session.status !== TrainingSessionStatus.COMPLETED) {
         throw new ConflictException('Chỉ đánh giá buổi tập đã COMPLETED');
@@ -57,7 +59,14 @@ export class EvaluationsService {
     actor: Actor,
     sessionId: string,
   ): Promise<SessionEvaluationResponseDto> {
-    await this.access.sessionForActor(actor, sessionId);
+    const caller = await this.access.currentUser(actor);
+    const session = await this.access.sessionForActor(actor, sessionId);
+    await this.access.assertTrainerBarn(
+      this.dataSource.manager,
+      actor,
+      caller.id,
+      session.plan.horseId,
+    );
     const row = await this.evaluations.findBySession(sessionId);
     if (!row) throw new NotFoundException('Buổi tập chưa có đánh giá');
     return toEvaluationResponse(row);
