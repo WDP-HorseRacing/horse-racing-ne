@@ -3870,6 +3870,44 @@
           "supplies"
         ],
         "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "SuppliesController_editRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditSupplyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a pending supply request",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
       }
     },
     "/api/v1/supplies/requests/{id}/status": {
@@ -3890,7 +3928,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateSupplyRequestDto"
+                "$ref": "#/components/schemas/UpdateSupplyRequestStatusDto"
               }
             }
           }
@@ -7112,7 +7150,7 @@
           },
           "quantity": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
           "note": {
             "type": "string"
@@ -7123,7 +7161,19 @@
           "quantity"
         ]
       },
-      "UpdateSupplyRequestDto": {
+      "EditSupplyRequestDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateSupplyRequestStatusDto": {
         "type": "object",
         "properties": {
           "status": {
@@ -7133,6 +7183,10 @@
               "REJECTED",
               "FULFILLED"
             ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Required when status is REJECTED"
           }
         },
         "required": [
