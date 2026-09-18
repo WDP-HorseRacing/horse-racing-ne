@@ -88,6 +88,20 @@ Không có bảng riêng. Groom phụ trách ngựa được xác định bởi 
 - `stalls.barn_id -> barns.id` (NOT NULL). Migration backfill một khu `Main` nếu đã có stall.
 - `head_trainer_id` phải là user `HEAD_TRAINER` `ACTIVE` (kiểm tra ở service). Không đổi role của Head Trainer còn phụ trách khu.
 
+### `stalls`
+
+- Primary key: `id`. Soft delete bằng `deleted_at`.
+- Foreign keys: `barn_id -> barns.id` (`ON DELETE RESTRICT`).
+- `code` unique (`stalls_code_uq`, bản ghi chưa xóa). Mã ô chuồng duy nhất trong toàn hệ thống.
+- `type` (`StallType`, default `STANDARD`):
+  - `STANDARD`: Ô chuồng tiêu chuẩn phục vụ lưu trú thường nhật.
+  - `ISOLATION`: Ô chuồng cách ly y tế, kiểm dịch bệnh dịch lây nhiễm.
+  - `RECOVERY`: Ô chuồng tịnh dưỡng chuyên biệt sau phẫu thuật / chấn thương.
+  - `FOALING`: Ô chuồng đẻ rộng rãi, an toàn cho ngựa mang thai / ngựa con sơ sinh.
+- `status` (`StallStatus`, default `AVAILABLE`): `AVAILABLE`, `OCCUPIED`, `MAINTENANCE`, `RESERVED`.
+- `description` (`text`, nullable): Mô tả đặc thù ô chuồng, tiện ích hoặc ghi chú cơ sở vật chất.
+- `has_camera` (`boolean`, default `false`): Ô chuồng có trang bị hệ thống camera giám sát 24/7.
+
 ### Ngựa thuộc khu
 
 Ngựa thuộc khu của Head Trainer khi có `stall_assignments` active (`end_at IS NULL`) vào stall có `barn_id` trỏ tới khu có `head_trainer_id` là Head Trainer đó (`src/modules/stable/utils/trainer-barn.ts`). Ngựa chưa xếp chuồng không thuộc khu nào: Head Trainer chỉ xem thông tin công khai, Club Manager xếp chuồng trước khi Head Trainer thao tác.
