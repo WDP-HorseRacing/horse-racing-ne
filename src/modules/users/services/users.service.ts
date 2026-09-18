@@ -5,22 +5,27 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
+import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
+import { BarnEntity } from '../../stable/entities/barn.entity';
+import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import {
   getSelfChangeError,
   isRemovingActiveManager,
   UserChange,
 } from '../domain/user.rules';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
-import { UserListQueryDto } from '../dto/user-list-query.dto';
-import { UserResponseDto } from '../dto/user.response.dto';
+import {
+  CreateUserDto,
+  UpdateUserDto,
+  UserListQueryDto,
+  UserResponseDto,
+} from '../dto/user.dto';
 import { UserEntity } from '../entities/user.entity';
 import { toUserResponse } from '../mappers/user.mapper';
-import { UsersRepository } from '../repositories/users.repository';
 import { UserRole, UserStatus } from '../user.enums';
 import { currentUserForActor } from '../utils/current-user';
 import { splitFullName } from '../utils/name';
@@ -30,7 +35,8 @@ export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
   constructor(
-    private readonly users: UsersRepository,
+    @InjectRepository(UserEntity)
+    private readonly users: Repository<UserEntity>,
     private readonly keycloakUsers: KeycloakUserService,
     private readonly dataSource: DataSource,
   ) {}
@@ -46,7 +52,24 @@ export class UsersService {
     query: UserListQueryDto,
   ): Promise<PaginationResponseDto<UserResponseDto>> {
     await currentUserForActor(this.dataSource.manager, actor);
-    const [users, total] = await this.users.list(query);
+    const queryBuilder = this.users.createQueryBuilder('user');
+    if (query.role) {
+      queryBuilder.andWhere('user.role = :role', { role: query.role });
+    }
+    if (query.status) {
+      queryBuilder.andWhere('user.status = :status', { status: query.status });
+    }
+    if (query.search) {
+      queryBuilder.andWhere(
+        '(user.fullName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
+    }
+    const [users, total] = await queryBuilder
+      .orderBy('user.fullName', 'ASC')
+      .skip(query.skip)
+      .take(query.limit)
+      .getManyAndCount();
     const items = users.map((user) => toUserResponse(user));
 
     return new PaginationResponseDto(items, total, query.page, query.limit);
@@ -76,7 +99,7 @@ export class UsersService {
     const email = body.email.trim().toLowerCase();
     const fullName = body.fullName.trim();
 
-    if (await this.users.findByEmail(email)) {
+    if (await this.users.findOneBy({ email })) {
       throw new ConflictException('Email này đã được dùng cho tài khoản khác');
     }
 
@@ -99,14 +122,16 @@ export class UsersService {
 
     try {
       await this.keycloakUsers.assignRealmRole(keycloakId, body.role);
-      const created = await this.users.create({
-        keycloakId,
-        fullName,
-        email,
-        role: body.role,
-        status: UserStatus.ACTIVE,
-        passwordHash: null,
-      });
+      const created = await this.users.save(
+        this.users.create({
+          keycloakId,
+          fullName,
+          email,
+          role: body.role,
+          status: UserStatus.ACTIVE,
+          passwordHash: null,
+        }),
+      );
       return toUserResponse(created);
     } catch (error) {
       await this.compensate(keycloakId, email);
@@ -149,13 +174,13 @@ export class UsersService {
     if (Object.keys(changes).length === 0) return toUserResponse(user);
 
     await this.dataSource.transaction(async (manager) => {
-      if (roleChanged) await this.users.lockActiveManagers(manager);
+      if (roleChanged) await this.lockActiveManagers(manager);
       // Đảm bảo nếu đang đổi role của 1 club manager đang active thì còn ít nhất 1 club manager khác đang active
       // Bỏ trong transaction để tránh race condition với các request khác đang đổi role/status của các club manager khác
       if (isRemovingActiveManager(user, { role: body.role })) {
         await this.assertAnotherActiveManager(manager, user.id);
       }
-      await this.users.updateFields(id, changes, manager);
+      await manager.getRepository(UserEntity).update({ id }, changes);
       if (roleChanged && newRole) await this.syncKeycloakRole(user, newRole);
     });
 
@@ -184,14 +209,14 @@ export class UsersService {
     this.assertChangeAllowed(caller.id, user, { status });
 
     await this.dataSource.transaction(async (manager) => {
-      await this.users.lockActiveManagers(manager);
+      await this.lockActiveManagers(manager);
       // Muốn thay đổi role or status của 1 club manager đang active thì
       // phải đảm bảo còn ít nhất 1 club manager khác đang active
       if (isRemovingActiveManager(user, { status })) {
         // Đảm bảo trong hệ thống còn ít nhất 1 club manager khác đang active
         await this.assertAnotherActiveManager(manager, user.id);
       }
-      await this.users.updateFields(id, { status }, manager);
+      await manager.getRepository(UserEntity).update({ id }, { status });
       await this.keycloakUsers.setUserEnabled(
         user.keycloakId,
         status === UserStatus.ACTIVE,
@@ -227,7 +252,7 @@ export class UsersService {
   private async assertRoleReleasable(user: UserEntity): Promise<void> {
     if (
       user.role === UserRole.HORSE_OWNER &&
-      (await this.users.hasActiveOwnership(user.id))
+      (await this.hasActiveOwnership(user.id))
     ) {
       throw new ConflictException(
         'Người này đang sở hữu ngựa, cần chuyển quyền sở hữu trước khi đổi vai trò',
@@ -235,7 +260,7 @@ export class UsersService {
     }
     if (
       user.role === UserRole.GROOM &&
-      (await this.users.hasActiveStallAssignment(user.id))
+      (await this.hasActiveStallAssignment(user.id))
     ) {
       throw new ConflictException(
         'Người này đang phụ trách chuồng ngựa, cần phân công lại trước khi đổi vai trò',
@@ -243,7 +268,7 @@ export class UsersService {
     }
     if (
       user.role === UserRole.HEAD_TRAINER &&
-      (await this.users.hasActiveBarn(user.id))
+      (await this.hasActiveBarn(user.id))
     ) {
       throw new ConflictException(
         'Người này đang phụ trách khu chuồng, cần giao khu cho Head Trainer khác trước khi đổi vai trò',
@@ -262,7 +287,13 @@ export class UsersService {
     manager: EntityManager,
     userId: string,
   ): Promise<void> {
-    const others = await this.users.countOtherActiveManagers(userId, manager);
+    const others = await manager.getRepository(UserEntity).count({
+      where: {
+        id: Not(userId),
+        role: UserRole.CLUB_MANAGER,
+        status: UserStatus.ACTIVE,
+      },
+    });
     if (others === 0) {
       throw new ConflictException(
         'Câu lạc bộ phải còn ít nhất một Club Manager đang hoạt động',
@@ -308,9 +339,35 @@ export class UsersService {
    * @throws NotFoundException if the user is not found
    */
   private async findUser(id: string): Promise<UserEntity> {
-    const user = await this.users.findById(id);
+    const user = await this.users.findOneBy({ id });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
     return user;
+  }
+
+  private async hasActiveOwnership(userId: string): Promise<boolean> {
+    return this.dataSource.manager
+      .getRepository(HorseOwnershipEntity)
+      .existsBy({ ownerId: userId, endDate: IsNull() });
+  }
+
+  private async hasActiveStallAssignment(userId: string): Promise<boolean> {
+    return this.dataSource.manager
+      .getRepository(StallAssignmentEntity)
+      .existsBy({ groomId: userId, endAt: IsNull() });
+  }
+
+  private async hasActiveBarn(userId: string): Promise<boolean> {
+    return this.dataSource.manager
+      .getRepository(BarnEntity)
+      .existsBy({ headTrainerId: userId });
+  }
+
+  private async lockActiveManagers(manager: EntityManager): Promise<void> {
+    await manager.getRepository(UserEntity).find({
+      select: { id: true },
+      where: { role: UserRole.CLUB_MANAGER, status: UserStatus.ACTIVE },
+      lock: { mode: 'pessimistic_write' },
+    });
   }
 
   /**
