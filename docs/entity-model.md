@@ -82,6 +82,9 @@ Không có bảng riêng. Groom phụ trách ngựa được xác định bởi 
 - Primary key: `id`. Soft delete bằng `deleted_at`.
 - Foreign keys: `head_trainer_id -> users.id` (`ON DELETE SET NULL`).
 - `name` unique (`barns_name_uq`, bản ghi chưa xóa). Mỗi khu có tối đa 1 Head Trainer; một Head Trainer có thể phụ trách nhiều khu.
+- `description` (`text`, nullable): Mô tả khu chuồng, ghi chú cơ sở vật chất.
+- `capacity` (`int`, nullable): Sức chứa tối đa (số lượng ô chuồng).
+- `status` (`BarnStatus`, default `ACTIVE`): `ACTIVE`, `MAINTENANCE`, `CLOSED`.
 - `stalls.barn_id -> barns.id` (NOT NULL). Migration backfill một khu `Main` nếu đã có stall.
 - `head_trainer_id` phải là user `HEAD_TRAINER` `ACTIVE` (kiểm tra ở service). Không đổi role của Head Trainer còn phụ trách khu.
 

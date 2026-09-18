@@ -6447,6 +6447,22 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "capacity": {
+            "type": "number",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "MAINTENANCE",
+              "CLOSED"
+            ]
+          },
           "headTrainerId": {
             "type": "string",
             "format": "uuid",
@@ -6455,7 +6471,8 @@
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "status"
         ]
       },
       "CreateBarnDto": {
@@ -6464,6 +6481,23 @@
           "name": {
             "type": "string",
             "maxLength": 80
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả khu chuồng"
+          },
+          "capacity": {
+            "type": "number",
+            "description": "Sức chứa tối đa (số ô chuồng)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "MAINTENANCE",
+              "CLOSED"
+            ],
+            "default": "ACTIVE"
           }
         },
         "required": [
@@ -6482,6 +6516,24 @@
             "format": "uuid",
             "nullable": true,
             "description": "Head Trainer in charge; null clears the assignment"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mô tả khu chuồng"
+          },
+          "capacity": {
+            "type": "number",
+            "nullable": true,
+            "description": "Sức chứa tối đa"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "MAINTENANCE",
+              "CLOSED"
+            ]
           }
         }
       },

@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -10,6 +13,7 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -39,6 +43,22 @@ export class BarnsController {
     return this.barnsService.list(actor);
   }
 
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.GROOM,
+  ])
+  @Get(':id')
+  @ApiOperation({ summary: 'Get barn details' })
+  @ApiOkResponse({ type: BarnResponseDto })
+  get(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<BarnResponseDto> {
+    return this.barnsService.get(actor, id);
+  }
+
   @Access([UserRole.CLUB_MANAGER])
   @Post()
   @ApiOperation({ summary: 'Create barn' })
@@ -64,5 +84,17 @@ export class BarnsController {
     @Body() body: UpdateBarnDto,
   ): Promise<BarnResponseDto> {
     return this.barnsService.update(actor, id, body);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Delete(':id')
+  @ApiOperation({ summary: 'Soft-delete barn' })
+  @ApiNoContentResponse()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.barnsService.remove(actor, id);
   }
 }

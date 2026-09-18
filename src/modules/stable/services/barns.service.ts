@@ -4,18 +4,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, QueryFailedError } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, QueryFailedError, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
+import { BarnStatus } from '../constants/barn-status.enum';
 import { BarnResponseDto, CreateBarnDto, UpdateBarnDto } from '../dto/barn.dto';
 import { BarnEntity } from '../entities/barn.entity';
+import { StallEntity } from '../entities/stall.entity';
+import { toBarnResponse } from '../mappers/barn.mapper';
 
 @Injectable()
 export class BarnsService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(BarnEntity)
+    private readonly barnRepository: Repository<BarnEntity>,
+    private readonly dataSource: DataSource,
+  ) {}
 
   /**
    * List the barns
@@ -24,10 +32,24 @@ export class BarnsService {
    */
   async list(actor: Actor): Promise<BarnResponseDto[]> {
     await currentUserForActor(this.dataSource.manager, actor);
-    const barns = await this.dataSource.getRepository(BarnEntity).find({
+    const barns = await this.barnRepository.find({
       order: { name: 'ASC' },
     });
-    return barns.map((barn) => this.toResponse(barn));
+    return barns.map((barn) => toBarnResponse(barn));
+  }
+
+  /**
+   * Get barn details by ID
+   * @param actor The actor resolved from the JWT
+   * @param barnId The ID of the barn
+   * @returns A promise resolving to the barn
+   * @throws NotFoundException if the barn is not found
+   */
+  async get(actor: Actor, barnId: string): Promise<BarnResponseDto> {
+    await currentUserForActor(this.dataSource.manager, actor);
+    const barn = await this.barnRepository.findOneBy({ id: barnId });
+    if (!barn) throw new NotFoundException('Không tìm thấy khu chuồng');
+    return toBarnResponse(barn);
   }
 
   /**
@@ -39,19 +61,29 @@ export class BarnsService {
    */
   async create(actor: Actor, body: CreateBarnDto): Promise<BarnResponseDto> {
     await currentUserForActor(this.dataSource.manager, actor);
-    const barn = await this.saveUnique(() =>
-      this.dataSource.getRepository(BarnEntity).save({
-        name: body.name.trim(),
-        headTrainerId: null,
-      }),
-    );
-    return this.toResponse(barn);
+
+    const name = body.name.trim();
+    const exists = await this.barnRepository.existsBy({ name });
+    if (exists) {
+      throw new ConflictException('Tên khu chuồng đã tồn tại');
+    }
+
+    const barn = this.barnRepository.create({
+      name,
+      description: body.description?.trim() ?? null,
+      capacity: body.capacity ?? null,
+      status: body.status ?? BarnStatus.ACTIVE,
+      headTrainerId: null,
+    });
+
+    const saved = await this.saveUnique(() => this.barnRepository.save(barn));
+    return toBarnResponse(saved);
   }
 
   /**
    * Rename a barn or change its head trainer
    * @param actor The actor resolved from the JWT
-   * @param id The ID of the barn
+   * @param barnId The ID of the barn
    * @param body The fields to change
    * @returns A promise resolving to the updated barn
    * @throws NotFoundException if the barn is not found
@@ -60,48 +92,69 @@ export class BarnsService {
    */
   async update(
     actor: Actor,
-    id: string,
+    barnId: string,
     body: UpdateBarnDto,
   ): Promise<BarnResponseDto> {
     await currentUserForActor(this.dataSource.manager, actor);
-    const repository = this.dataSource.getRepository(BarnEntity);
-    const barn = await repository.findOneBy({ id });
+
+    const barn = await this.barnRepository.findOneBy({ id: barnId });
     if (!barn) throw new NotFoundException('Không tìm thấy khu chuồng');
 
     if (body.headTrainerId) {
-      const trainer = await this.dataSource
-        .getRepository(UserEntity)
-        .findOneBy({
+      const isValidTrainer = await this.dataSource.manager.exists(UserEntity, {
+        where: {
           id: body.headTrainerId,
           role: UserRole.HEAD_TRAINER,
           status: UserStatus.ACTIVE,
-        });
-      if (!trainer) {
+        },
+      });
+      if (!isValidTrainer) {
         throw new BadRequestException(
           'Người phụ trách phải là Head Trainer đang hoạt động',
         );
       }
     }
 
-    if (body.name !== undefined) barn.name = body.name.trim();
-    if (body.headTrainerId !== undefined) {
-      barn.headTrainerId = body.headTrainerId;
-    }
-    const saved = await this.saveUnique(() => repository.save(barn));
-    return this.toResponse(saved);
+    const updates = Object.fromEntries(
+      Object.entries({
+        name: body.name?.trim(),
+        headTrainerId: body.headTrainerId,
+        description:
+          body.description !== undefined
+            ? (body.description?.trim() ?? null)
+            : undefined,
+        capacity: body.capacity,
+        status: body.status,
+      }).filter(([_, value]) => value !== undefined),
+    );
+    Object.assign(barn, updates);
+    const saved = await this.saveUnique(() => this.barnRepository.save(barn));
+    return toBarnResponse(saved);
   }
 
   /**
-   * Map a barn entity to its response
-   * @param barn The barn entity
-   * @returns The barn response
+   * Soft-delete a barn
+   * @param actor The actor resolved from the JWT
+   * @param barnId The ID of the barn to delete
+   * @throws NotFoundException if the barn is not found
+   * @throws ConflictException if the barn still contains stalls
    */
-  private toResponse(barn: BarnEntity): BarnResponseDto {
-    return {
-      id: barn.id,
-      name: barn.name,
-      headTrainerId: barn.headTrainerId,
-    };
+  async remove(actor: Actor, barnId: string): Promise<void> {
+    await currentUserForActor(this.dataSource.manager, actor);
+
+    const barn = await this.barnRepository.findOneBy({ id: barnId });
+    if (!barn) throw new NotFoundException('Không tìm thấy khu chuồng');
+
+    const hasStalls = await this.dataSource.manager.exists(StallEntity, {
+      where: { barnId },
+    });
+    if (hasStalls) {
+      throw new ConflictException(
+        'Không thể xóa khu chuồng khi vẫn còn ô chuồng bên trong',
+      );
+    }
+
+    await this.barnRepository.softDelete({ id: barnId });
   }
 
   /**

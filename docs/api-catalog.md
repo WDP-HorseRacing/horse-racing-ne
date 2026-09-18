@@ -138,8 +138,10 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/v1/barns` | List barns of the club with their head trainer |
+| GET | `/api/v1/barns/{id}` | Get barn details |
 | POST | `/api/v1/barns` | Create barn |
 | PATCH | `/api/v1/barns/{id}` | Rename barn or assign its head trainer |
+| DELETE | `/api/v1/barns/{id}` | Soft-delete barn |
 | PATCH | `/api/v1/checklists/{id}/complete` | Complete assigned checklist item |
 | POST | `/api/v1/feeding-plans/{id}/approve` | Approve feeding plan as Trainer or Vet |
 | GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |
