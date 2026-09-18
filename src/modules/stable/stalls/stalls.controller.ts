@@ -30,7 +30,7 @@ import {
   StallResponseDto,
   UpdateStallDto,
 } from '../dto/stall.dto';
-import { StallsService } from '../services/stalls.service';
+import { StallsService } from './stalls.service';
 
 @ApiTags('stable')
 @ApiBearerAuth()

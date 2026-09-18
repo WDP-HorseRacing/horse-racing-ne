@@ -1,28 +1,18 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { BarnsController } from './controllers/barns.controller';
-import { DailyChecklistsController } from './controllers/daily-checklists.controller';
-import { FeedingPlansController } from './controllers/feeding-plans.controller';
-import { IncidentsController } from './controllers/incidents.controller';
-import { StallsController } from './controllers/stalls.controller';
-import { BarnEntity } from './entities/barn.entity';
-import { StallAssignmentEntity } from './entities/stall-assignment.entity';
-import { StallEntity } from './entities/stall.entity';
-import { BarnsService } from './services/barns.service';
-import { StallsService } from './services/stalls.service';
+import { BarnsModule } from './barns/barns.module';
+import { DailyChecklistsModule } from './daily-checklists/daily-checklists.module';
+import { FeedingPlansModule } from './feeding-plans/feeding-plans.module';
+import { IncidentsModule } from './incidents/incidents.module';
+import { StallsModule } from './stalls/stalls.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([BarnEntity, StallEntity, StallAssignmentEntity]),
+    BarnsModule,
+    StallsModule,
+    FeedingPlansModule,
+    DailyChecklistsModule,
+    IncidentsModule,
   ],
-  providers: [BarnsService, StallsService],
-  controllers: [
-    BarnsController,
-    StallsController,
-    FeedingPlansController,
-    DailyChecklistsController,
-    IncidentsController,
-  ],
-  exports: [BarnsService, StallsService],
+  exports: [BarnsModule, StallsModule],
 })
 export class StableModule {}

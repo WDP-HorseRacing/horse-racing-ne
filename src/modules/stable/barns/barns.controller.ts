@@ -22,7 +22,7 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { BarnResponseDto, CreateBarnDto, UpdateBarnDto } from '../dto/barn.dto';
-import { BarnsService } from '../services/barns.service';
+import { BarnsService } from './barns.service';
 
 @ApiTags('stable')
 @ApiBearerAuth()
