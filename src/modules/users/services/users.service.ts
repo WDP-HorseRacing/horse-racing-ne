@@ -12,7 +12,7 @@ import { KeycloakUserService } from '../../../common/infrastructure/keycloak/use
 import type { Actor } from '../../../common/types/actor';
 import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
 import { BarnEntity } from '../../stable/entities/barn.entity';
-import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
   getSelfChangeError,
   isRemovingActiveManager,
@@ -244,7 +244,7 @@ export class UsersService {
   }
 
   /**
-   * Ensure a user has no active horse ownership, stall assignment or barn tied to their current role
+   * Ensure a user has no active horse ownership, groom assignment or barn tied to their current role
    * @param user The user whose role is changing
    * @returns A promise resolving once the check passes
    * @throws ConflictException if the user still holds responsibilities for their current role
@@ -260,10 +260,10 @@ export class UsersService {
     }
     if (
       user.role === UserRole.GROOM &&
-      (await this.hasActiveStallAssignment(user.id))
+      (await this.hasActiveGroomAssignment(user.id))
     ) {
       throw new ConflictException(
-        'Người này đang phụ trách chuồng ngựa, cần phân công lại trước khi đổi vai trò',
+        'Người này đang phụ trách ngựa, cần giao ngựa cho groom khác trước khi đổi vai trò',
       );
     }
     if (
@@ -347,12 +347,17 @@ export class UsersService {
   private async hasActiveOwnership(userId: string): Promise<boolean> {
     return this.dataSource.manager
       .getRepository(HorseOwnershipEntity)
-      .existsBy({ ownerId: userId, endDate: IsNull() });
+      .existsBy({ ownerId: userId, endAt: IsNull() });
   }
 
-  private async hasActiveStallAssignment(userId: string): Promise<boolean> {
+  /**
+   * Check whether a groom is currently caring for any horse
+   * @param userId The ID of the groom
+   * @returns A promise resolving to true if the groom has an open groom assignment
+   */
+  private async hasActiveGroomAssignment(userId: string): Promise<boolean> {
     return this.dataSource.manager
-      .getRepository(StallAssignmentEntity)
+      .getRepository(GroomAssignmentEntity)
       .existsBy({ groomId: userId, endAt: IsNull() });
   }
 

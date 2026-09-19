@@ -41,3 +41,26 @@ export class HorsePerformanceResponseDto {
   @ApiPropertyOptional({ type: PerformanceEvaluationDto, nullable: true })
   latestEvaluation!: PerformanceEvaluationDto | null;
 }
+
+export class SessionPerformanceSummaryDto {
+  @ApiProperty({ format: 'uuid' })
+  sessionId!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  scheduledAt!: Date;
+
+  @ApiProperty({ description: 'Nhịp tim trung bình trong buổi (bpm)' })
+  avgHeartRateBpm!: number;
+
+  @ApiProperty({ description: 'Nhịp tim cao nhất trong buổi (bpm)' })
+  maxHeartRateBpm!: number;
+
+  @ApiProperty({ description: 'Tốc độ trung bình trong buổi (m/s)' })
+  avgSpeedMps!: string;
+
+  @ApiProperty({ description: 'Tốc độ cao nhất trong buổi (m/s)' })
+  maxSpeedMps!: string;
+
+  @ApiProperty({ description: 'Số điểm đo có alertLevel khác NORMAL' })
+  alertCount!: number;
+}

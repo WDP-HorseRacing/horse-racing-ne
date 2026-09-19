@@ -12,12 +12,16 @@ import {
 } from '../dto/training-plan.dto';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
-import { toTrainingPlanResponse } from '../mappers/training.mapper';
+import {
+  toTrainingPlanResponse,
+  toTrainingPlanView,
+} from '../mappers/training.mapper';
 import {
   assertPlanActivatable,
   assertPlanCancellable,
   assertPlanCompletable,
   assertPlanEditable,
+  assertTrainableHorse,
   assertValidPlanDates,
   dateOnly,
 } from '../policies/training.policy';
@@ -33,21 +37,40 @@ export class TrainingPlansService {
     private readonly events: DomainEventPublisher,
   ) {}
 
+  /**
+   * Lấy danh sách giáo án của con ngựa mà người gọi được xem. Groom nhận giáo án không có goal.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns Danh sách giáo án của con ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
   async listPlansByHorse(
     actor: Actor,
     horseId: string,
   ): Promise<TrainingPlanResponseDto[]> {
-    await this.access.horseForActor(actor, horseId);
+    await this.access.readableHorseForActor(actor, horseId);
+    const includeGoal = this.access.seesPlanGoal(actor);
     return (await this.planRepo.listByHorse(horseId)).map((plan) =>
-      toTrainingPlanResponse(plan),
+      toTrainingPlanView(plan, includeGoal),
     );
   }
 
+  /**
+   * Lấy một giáo án của con ngựa mà người gọi được xem. Groom nhận giáo án không có goal.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của giáo án
+   * @returns Giáo án
+   * @throws NotFoundException Nếu không có giáo án, hoặc ngựa của giáo án nằm ngoài phạm vi của người gọi
+   */
   async getPlanById(
     actor: Actor,
     id: string,
   ): Promise<TrainingPlanResponseDto> {
-    return toTrainingPlanResponse(await this.access.planForActor(actor, id));
+    const plan = await this.access.planForActor(actor, id);
+    await this.access.readableHorseForActor(actor, plan.horseId);
+    return toTrainingPlanView(plan, this.access.seesPlanGoal(actor));
   }
 
   async createTrainingPlan(
@@ -56,6 +79,7 @@ export class TrainingPlansService {
     body: CreateTrainingPlanDto,
   ): Promise<TrainingPlanResponseDto> {
     const { user, horse } = await this.access.horseForActor(actor, horseId);
+    assertTrainableHorse(horse.isReference);
     await this.access.assertTrainerBarn(
       this.dataSource.manager,
       actor,

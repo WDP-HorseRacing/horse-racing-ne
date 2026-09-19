@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 136 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 143 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -37,14 +37,17 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | --- | --- | --- |
 | GET | `/api/v1/horses` | List horses visible to the current user |
 | POST | `/api/v1/horses` | Create horse profile |
+| POST | `/api/v1/horses/{horseId}/activate` | Activate a reference horse as a club horse |
 | GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
 | PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status |
 | PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
 | GET | `/api/v1/horses/{horseId}/measurements` | List horse measurement history |
 | POST | `/api/v1/horses/{horseId}/measurements` | Record a horse measurement |
+| DELETE | `/api/v1/horses/{horseId}/measurements/{measurementId}` | Soft-delete a horse measurement recorded by the caller |
 | GET | `/api/v1/horses/{horseId}/owners` | List horse ownership history |
 | PUT | `/api/v1/horses/{horseId}/owners` | Replace active ownership shares |
 | GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree up to 4 generations |
+| GET | `/api/v1/horses/{horseId}/permissions` | Get what the current user can do on this horse profile |
 | DELETE | `/api/v1/horses/{id}` | Soft-delete a horse profile created by mistake |
 | GET | `/api/v1/horses/{id}` | Get horse profile detail |
 | PATCH | `/api/v1/horses/{id}` | Update horse profile and pedigree parents |
@@ -98,6 +101,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | --- | --- | --- |
 | GET | `/api/v1/horses/{id}/alerts` | List horse performance alerts |
 | GET | `/api/v1/horses/{id}/performance` | Get horse performance summary |
+| GET | `/api/v1/horses/{id}/performance/sessions` | List per-session performance summary of a horse |
 | GET | `/api/v1/horses/{id}/thresholds` | List current and historical threshold profiles |
 | PUT | `/api/v1/horses/{id}/thresholds` | Create new version of horse threshold profile |
 | GET | `/api/v1/horses/{id}/workload` | Get configured training workload summary |
@@ -149,6 +153,9 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/horses/{horseId}/checklists` | Create assigned daily checklist |
 | GET | `/api/v1/horses/{horseId}/feeding-plans` | List horse feeding plans |
 | POST | `/api/v1/horses/{horseId}/feeding-plans` | Create feeding plan for approval |
+| DELETE | `/api/v1/horses/{id}/groom` | End the current groom assignment of a horse |
+| PUT | `/api/v1/horses/{id}/groom` | Assign or change the groom of a horse |
+| GET | `/api/v1/horses/{id}/grooms` | List the groom history of a horse |
 | GET | `/api/v1/incidents` | List stable incidents |
 | POST | `/api/v1/incidents` | Report stable incident |
 | GET | `/api/v1/incidents/{id}` | Get stable incident |
@@ -160,7 +167,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/stalls/{id}` | Get stall |
 | PATCH | `/api/v1/stalls/{id}` | Update stall |
 | GET | `/api/v1/stalls/{id}/assignments` | List stall assignment history |
-| POST | `/api/v1/stalls/{id}/assignments` | Assign horse and groom to stall |
+| POST | `/api/v1/stalls/{id}/assignments` | Assign horse to stall |
 
 ## supplies
 

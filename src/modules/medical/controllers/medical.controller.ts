@@ -34,9 +34,18 @@ export class MedicalController extends PendingApi {
     super();
   }
 
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.VETERINARIAN])
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.HORSE_OWNER,
+  ])
   @Get('horses/:horseId/medical-records')
-  @ApiOperation({ summary: 'List horse medical records' })
+  @ApiOperation({
+    summary: 'List horse medical records',
+    description:
+      'Head Trainer: chỉ ngựa trong khu mình. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency.',
+  })
   @ApiOkResponse({ type: [MedicalRecordResponseDto] })
   listRecords(
     @CurrentUser() actor: Actor,
@@ -73,8 +82,17 @@ export class MedicalController extends PendingApi {
   }
 
   @Get('horses/:horseId/injuries')
-  @ApiOperation({ summary: 'List horse injury timeline' })
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.VETERINARIAN])
+  @ApiOperation({
+    summary: 'List horse injury timeline',
+    description:
+      'Head Trainer: chỉ ngựa trong khu mình. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ.',
+  })
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.HORSE_OWNER,
+  ])
   @ApiOkResponse({ type: [InjuryMarkerResponseDto] })
   listInjuries(
     @CurrentUser() actor: Actor,

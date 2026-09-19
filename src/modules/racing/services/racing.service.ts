@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../../common/types/actor';
-import { HorsesService } from '../../horses/services/horses.service';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { HorseRaceResultResponseDto } from '../dto/horse-race-result.response.dto';
 import { RacingRepository } from '../repositories/racing.repository';
 
@@ -8,14 +8,14 @@ import { RacingRepository } from '../repositories/racing.repository';
 export class RacingService {
   constructor(
     private readonly racingRepository: RacingRepository,
-    private readonly horsesService: HorsesService,
+    private readonly horseAccess: HorseAccessService,
   ) {}
 
   async listHorseResults(
     actor: Actor,
     horseId: string,
   ): Promise<HorseRaceResultResponseDto[]> {
-    await this.horsesService.findVisible(actor, horseId);
+    await this.horseAccess.findVisible(actor, horseId);
     const registrations =
       await this.racingRepository.listResultsByHorse(horseId);
     return registrations.map((registration) => ({

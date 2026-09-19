@@ -55,12 +55,22 @@ export class EvaluationsService {
     return toEvaluationResponse(row);
   }
 
+  /**
+   * Lấy đánh giá của một buổi tập, khi người gọi được xem con ngựa của buổi tập đó.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @returns Đánh giá của buổi tập
+   * @throws NotFoundException Nếu không có buổi tập hoặc chưa có đánh giá, hoặc ngựa nằm ngoài phạm vi của người gọi
+   * @throws ForbiddenException Nếu người gọi là Head Trainer mà ngựa không thuộc khu mình phụ trách
+   */
   async get(
     actor: Actor,
     sessionId: string,
   ): Promise<SessionEvaluationResponseDto> {
     const caller = await this.access.currentUser(actor);
     const session = await this.access.sessionForActor(actor, sessionId);
+    await this.access.readableHorseForActor(actor, session.plan.horseId);
     await this.access.assertTrainerBarn(
       this.dataSource.manager,
       actor,

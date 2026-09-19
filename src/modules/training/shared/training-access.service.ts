@@ -7,6 +7,7 @@ import {
 import { DataSource, EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { findReadableHorse } from '../../horses/utils/horse-access';
 import { assertTrainerBarn } from '../../stable/utils/trainer-barn';
 import { UserEntity } from '../../users/entities/user.entity';
 import { UserRole, UserStatus } from '../../users/user.enums';
@@ -20,6 +21,42 @@ import { TrainingSessionEntity } from '../entities/training-session.entity';
 @Injectable()
 export class TrainingAccessService {
   constructor(private readonly dataSource: DataSource) {}
+
+  /**
+   * Xác thực người gọi và lấy con ngựa mà người gọi được xem dữ liệu huấn luyện, cùng phạm vi với hồ sơ ngựa:
+   * - Kiểm tra user tồn tại và đang ACTIVE
+   * - Kiểm tra ngựa tồn tại và nằm trong phạm vi của người gọi
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @param manager EntityManager tùy chọn (mặc định dataSource.manager)
+   * @returns Người gọi và ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
+  async readableHorseForActor(
+    actor: Actor,
+    horseId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<{ user: UserEntity; horse: HorseEntity }> {
+    const caller = await this.currentUser(actor);
+    const horse = await findReadableHorse(manager, actor, caller.id, horseId);
+    return { user: caller, horse };
+  }
+
+  /**
+   * Kiểm tra người gọi có được xem mục tiêu (goal) của giáo án không. Groom chỉ xem tên giai đoạn.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @returns true nếu người gọi có role khác Groom được đọc giáo án
+   */
+  seesPlanGoal(actor: Actor): boolean {
+    return [
+      UserRole.CLUB_MANAGER,
+      UserRole.HEAD_TRAINER,
+      UserRole.VETERINARIAN,
+      UserRole.HORSE_OWNER,
+    ].some((role) => actor.roles.includes(role));
+  }
 
   /**
    * Lấy thông tin User hiện tại từ token Actor.

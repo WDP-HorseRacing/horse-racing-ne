@@ -123,7 +123,7 @@ export class StallsController {
 
   @Access([UserRole.CLUB_MANAGER])
   @Post('stalls/:id/assignments')
-  @ApiOperation({ summary: 'Assign horse and groom to stall' })
+  @ApiOperation({ summary: 'Assign horse to stall' })
   @ApiCreatedResponse({ type: StallAssignmentResponseDto })
   assign(
     @CurrentUser() actor: Actor,

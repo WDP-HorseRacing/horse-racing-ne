@@ -79,4 +79,17 @@ export class HorseEntity extends SoftDeletableRecordEntity {
     default: HorseLifecycleStatus.ACTIVE,
   })
   lifecycleStatus!: HorseLifecycleStatus;
+
+  @Column({ name: 'lifecycle_reason', type: 'text', nullable: true })
+  lifecycleReason!: string | null;
+
+  @Column({
+    name: 'lifecycle_changed_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  lifecycleChangedAt!: Date | null;
+
+  @Column({ name: 'deleted_reason', type: 'text', nullable: true })
+  deletedReason!: string | null;
 }

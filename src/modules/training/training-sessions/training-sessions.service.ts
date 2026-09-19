@@ -39,23 +39,40 @@ export class TrainingSessionsService {
     private readonly events: DomainEventPublisher,
   ) {}
 
+  /**
+   * Lấy danh sách buổi tập của một giáo án, khi người gọi được xem con ngựa của giáo án đó.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param planId UUID của giáo án
+   * @returns Danh sách buổi tập của giáo án
+   * @throws NotFoundException Nếu không có giáo án, hoặc ngựa của giáo án nằm ngoài phạm vi của người gọi
+   */
   async listSessions(
     actor: Actor,
     planId: string,
   ): Promise<TrainingSessionResponseDto[]> {
-    await this.access.planForActor(actor, planId);
+    const plan = await this.access.planForActor(actor, planId);
+    await this.access.readableHorseForActor(actor, plan.horseId);
     return (await this.sessions.listByPlan(planId)).map(
       toTrainingSessionResponse,
     );
   }
 
+  /**
+   * Lấy một buổi tập, khi người gọi được xem con ngựa của buổi tập đó.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @returns Buổi tập
+   * @throws NotFoundException Nếu không có buổi tập, hoặc ngựa của buổi tập nằm ngoài phạm vi của người gọi
+   */
   async getSessionById(
     actor: Actor,
     sessionId: string,
   ): Promise<TrainingSessionResponseDto> {
-    return toTrainingSessionResponse(
-      await this.access.sessionForActor(actor, sessionId),
-    );
+    const session = await this.access.sessionForActor(actor, sessionId);
+    await this.access.readableHorseForActor(actor, session.plan.horseId);
+    return toTrainingSessionResponse(session);
   }
 
   async createSession(

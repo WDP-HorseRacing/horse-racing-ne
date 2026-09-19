@@ -46,6 +46,21 @@ export function assertSessionDateInPlan(
 }
 
 /**
+ * Kiểm tra con ngựa được phép lập giáo án.
+ * Ngựa tham chiếu chỉ dùng cho phả hệ, không thuộc đàn nên không lập giáo án được.
+ *
+ * @param isReference true nếu là ngựa tham chiếu
+ * @throws BadRequestException Nếu là ngựa tham chiếu
+ */
+export function assertTrainableHorse(isReference: boolean): void {
+  if (isReference) {
+    throw new BadRequestException(
+      'Ngựa tham chiếu không thuộc đàn, không lập giáo án được',
+    );
+  }
+}
+
+/**
  * Kiểm tra điều kiện trạng thái để được phép chỉnh sửa kế hoạch huấn luyện.
  * Chỉ cho phép cập nhật khi giáo án chưa bắt đầu (vẫn đang SCHEDULED).
  *
