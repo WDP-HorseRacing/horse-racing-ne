@@ -229,18 +229,59 @@ if (missingRoles.length) {
 // 6. Google identity provider  ->  Console: Identity providers > Google
 //    Bo qua neu chua cau hinh GOOGLE_* - phan con lai cua script van chay duoc.
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  // 6a. First broker login flow chi LIEN KET, khong TAO user
+  //     ->  Console: Authentication > Create flow
+  //     Flow mac dinh `first broker login` tu tao user Keycloak cho bat ky ai
+  //     login Google lan dau. User do khong co row `users` nen bi backend chan,
+  //     nhung van nam lai trong realm va chiem email -> Club Manager tao lai
+  //     cung email se bi 409. Flow nay chi cho qua khi realm da co user cung
+  //     email (tuc la da duoc Club Manager cap), con lai dung o Keycloak.
+  const linkFlowAlias = 'link existing only';
+  const linkSteps = ['idp-detect-existing-broker-user', 'idp-auto-link'];
+  const flowPath = `/authentication/flows/${encodeURIComponent(linkFlowAlias)}/executions`;
+
+  const flows = (await admin.get('/authentication/flows')).data;
+  if (!flows.some((f) => f.alias === linkFlowAlias)) {
+    await admin.post('/authentication/flows', {
+      alias: linkFlowAlias,
+      description: 'Chi lien ket IdP vao user da ton tai, khong tao user moi',
+      providerId: 'basic-flow',
+      topLevel: true,
+      builtIn: false,
+    });
+    console.log(`da tao flow "${linkFlowAlias}"`);
+  }
+
+  let executions = (await admin.get(flowPath)).data;
+  for (const provider of linkSteps) {
+    if (!executions.some((e) => e.providerId === provider)) {
+      await admin.post(`${flowPath}/execution`, { provider });
+      console.log(`da them buoc "${provider}" vao flow "${linkFlowAlias}"`);
+    }
+  }
+  executions = (await admin.get(flowPath)).data;
+  for (const execution of executions) {
+    if (
+      linkSteps.includes(execution.providerId) &&
+      execution.requirement !== 'REQUIRED'
+    ) {
+      await admin.put(flowPath, { ...execution, requirement: 'REQUIRED' });
+    }
+  }
+
   const provider = {
     alias: 'google',
     providerId: 'google',
     enabled: true,
     // trustEmail: tin email Google tra ve da xac minh -> cho phep lien ket tu
-    // dong voi tai khoan cung email da co san trong realm.
+    // dong voi tai khoan cung email da co san trong realm. Buoc `idp-auto-link`
+    // khong hoi lai chu tai khoan, nen CHI dung flow nay cho IdP xac minh email.
     trustEmail: true,
     storeToken: false,
     addReadTokenRoleOnCreate: false,
     authenticateByDefault: false,
     linkOnly: false,
-    firstBrokerLoginFlowAlias: 'first broker login',
+    firstBrokerLoginFlowAlias: linkFlowAlias,
     config: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,

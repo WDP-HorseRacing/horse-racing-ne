@@ -20,16 +20,20 @@ import {
 import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { CreateHorseMeasurementDto } from '../dto/create-horse-measurement.dto';
-import { HorseEligibilityResponseDto } from '../dto/horse-eligibility.response.dto';
-import { HorseOwnershipResponseDto } from '../dto/horse-ownership.response.dto';
-import { HorsePedigreeResponseDto } from '../dto/horse-pedigree.response.dto';
-import { HorseMeasurementListQueryDto } from '../dto/horse-measurement-list-query.dto';
-import { HorseMeasurementResponseDto } from '../dto/horse-measurement.response.dto';
-import { HorseResponseDto } from '../dto/horse.response.dto';
-import { SetHorseOwnersDto } from '../dto/set-horse-owners.dto';
-import { UpdateHorseHealthDto } from '../dto/update-horse-health.dto';
-import { UpdateHorseLifecycleDto } from '../dto/update-horse-lifecycle.dto';
+import {
+  CreateHorseMeasurementDto,
+  HorseMeasurementListQueryDto,
+  HorseMeasurementResponseDto,
+} from '../dto/horse-measure.dto';
+import {
+  HorseEligibilityResponseDto,
+  HorseOwnershipResponseDto,
+  HorsePedigreeResponseDto,
+  HorseResponseDto,
+  SetHorseOwnersDto,
+  UpdateHorseHealthDto,
+  UpdateHorseLifecycleDto,
+} from '../dto/horse.dto';
 import { HorsesService } from '../services/horses.service';
 
 @ApiTags('horses')

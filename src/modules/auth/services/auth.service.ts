@@ -7,7 +7,6 @@ import type { KeycloakIdentityProvider } from '../../../common/infrastructure/ke
 import type { KeycloakTokenResponse } from '../../../common/infrastructure/keycloak/types/token';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
-import { UsersRepository } from '../../users/repositories/users.repository';
 import { ProvisioningService } from '../../users/services/provisioning.service';
 import { AuthTokensResponseDto } from '../dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from '../dto/current-user.response.dto';
@@ -19,7 +18,6 @@ export class AuthService {
     private readonly oidcRedirect: KeycloakOidcRedirectService,
     private readonly keycloakConfig: KeycloakConfig,
     private readonly keycloak: KeycloakService,
-    private readonly users: UsersRepository,
     private readonly provisioning: ProvisioningService,
   ) {}
 
@@ -45,12 +43,9 @@ export class AuthService {
   }
 
   async me(actor: Actor): Promise<CurrentUserResponseDto> {
-    const user =
-      (await this.users.findByKeycloakId(actor.sub)) ??
-      (await this.provisioning.ensureUser(actor));
+    const user = await this.provisioning.requireProvisionedUser(actor);
     return {
       userId: user.id,
-      clubId: user.clubId,
       role: user.role,
       status: user.status,
       email: user.email,
@@ -112,7 +107,7 @@ export class AuthService {
     tokens: AuthTokensResponseDto,
   ): Promise<AuthTokensResponseDto> {
     const claims = await this.keycloak.verifyToken(tokens.accessToken);
-    await this.provisioning.ensureUser(claims);
+    await this.provisioning.requireProvisionedUser(claims);
     return tokens;
   }
 

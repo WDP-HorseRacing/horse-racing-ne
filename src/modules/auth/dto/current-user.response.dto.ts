@@ -5,9 +5,6 @@ export class CurrentUserResponseDto {
   @ApiProperty({ format: 'uuid' })
   userId!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true, type: String })
-  clubId!: string | null;
-
   @ApiPropertyOptional({ enum: UserRole, nullable: true })
   role!: UserRole | null;
 

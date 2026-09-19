@@ -23,13 +23,13 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { CreateHorseDto } from '../dto/create-horse.dto';
-import { HorseListQueryDto } from '../dto/horse-list-query.dto';
 import {
+  CreateHorseDto,
   HorseDetailResponseDto,
+  HorseListQueryDto,
   HorseResponseDto,
-} from '../dto/horse.response.dto';
-import { UpdateHorseDto } from '../dto/update-horse.dto';
+  UpdateHorseDto,
+} from '../dto/horse.dto';
 import { HorsesService } from '../services/horses.service';
 
 const ALL_ROLES = [
@@ -51,7 +51,7 @@ export class HorsesController {
   @ApiOperation({
     summary: 'List horses visible to the current user',
     description:
-      'Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stable assignment. Horse Owner: horses currently owned.',
+      'Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stall assignment. Horse Owner: horses currently owned.',
   })
   @ApiOkResponse({ type: PaginationResponseDto })
   list(

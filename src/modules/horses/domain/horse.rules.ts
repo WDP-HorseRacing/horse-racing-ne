@@ -8,17 +8,26 @@ import {
   HorseLifecycleStatus,
 } from '../constants/horse-status.enum';
 
+/**
+ * The horse fields needed to validate a sire or dam
+ */
 export interface ParentCandidate {
   id: string;
   gender: HorseGender | null;
   dateOfBirth: string | null;
 }
 
+/**
+ * The child horse fields needed to validate its parents
+ */
 export interface ChildProfile {
   id?: string;
   dateOfBirth?: string | null;
 }
 
+/**
+ * The reasons a horse is not fully eligible for training or racing
+ */
 export enum EligibilityReason {
   REFERENCE_HORSE = 'REFERENCE_HORSE',
   LIFECYCLE_NOT_ACTIVE = 'LIFECYCLE_NOT_ACTIVE',
@@ -28,6 +37,9 @@ export enum EligibilityReason {
   ACTIVE_TRAINING_LOCK = 'ACTIVE_TRAINING_LOCK',
 }
 
+/**
+ * The horse state needed to evaluate training and racing eligibility
+ */
 export interface EligibilityInput {
   isReference: boolean;
   lifecycleStatus: HorseLifecycleStatus;
@@ -35,12 +47,18 @@ export interface EligibilityInput {
   hasActiveTrainingLock: boolean;
 }
 
+/**
+ * The training and racing eligibility of a horse with the blocking reasons
+ */
 export interface EligibilityResult {
   trainingEligible: boolean;
   racingEligible: boolean;
   reasons: EligibilityReason[];
 }
 
+/**
+ * The allowed lifecycle transitions from each status; TRANSFERRED is terminal
+ */
 const LIFECYCLE_TRANSITIONS: Record<
   HorseLifecycleStatus,
   HorseLifecycleStatus[]
@@ -53,6 +71,9 @@ const LIFECYCLE_TRANSITIONS: Record<
   [HorseLifecycleStatus.TRANSFERRED]: [],
 };
 
+/**
+ * The eligibility reason for each non-eligible health status
+ */
 const HEALTH_REASONS: Partial<Record<HorseHealthStatus, EligibilityReason>> = {
   [HorseHealthStatus.UNDER_OBSERVATION]:
     EligibilityReason.HEALTH_UNDER_OBSERVATION,
@@ -60,6 +81,13 @@ const HEALTH_REASONS: Partial<Record<HorseHealthStatus, EligibilityReason>> = {
   [HorseHealthStatus.QUARANTINED]: EligibilityReason.HEALTH_QUARANTINED,
 };
 
+/**
+ * Check the sire and dam IDs against the child and each other
+ * @param childId The ID of the child horse, undefined when creating a new horse
+ * @param sireId The ID of the sire
+ * @param damId The ID of the dam
+ * @returns The error message if a parent is the child itself or the parents are the same, or null otherwise
+ */
 export function parentIdError(
   childId: string | undefined,
   sireId: string | null,
@@ -74,6 +102,13 @@ export function parentIdError(
   return null;
 }
 
+/**
+ * Check the gender and date of birth of the sire and dam against the child
+ * @param child The child horse profile
+ * @param sire The sire, or null if not set
+ * @param dam The dam, or null if not set
+ * @returns The error message if the sire is female, the dam is not female, or a parent is not born before the child, or null otherwise
+ */
 export function parentProfileError(
   child: ChildProfile,
   sire: ParentCandidate | null,
@@ -97,6 +132,12 @@ export function parentProfileError(
   return null;
 }
 
+/**
+ * Check whether a horse can move from one lifecycle status to another
+ * @param from The current lifecycle status
+ * @param to The target lifecycle status
+ * @returns True if the transition is allowed
+ */
 export function canTransitionLifecycle(
   from: HorseLifecycleStatus,
   to: HorseLifecycleStatus,
@@ -104,6 +145,11 @@ export function canTransitionLifecycle(
   return LIFECYCLE_TRANSITIONS[from].includes(to);
 }
 
+/**
+ * Validate the ownership shares of a horse
+ * @param shares The owners with their ownership percentages
+ * @returns The error message if an owner is duplicated, a share is not positive, or the shares do not sum to 100, or null otherwise
+ */
 export function ownerSharesError(
   shares: Array<{ ownerId: string; percentage: number }>,
 ): string | null {
@@ -124,6 +170,11 @@ export function ownerSharesError(
   return null;
 }
 
+/**
+ * Evaluate whether a horse can train and race; training allows UNDER_OBSERVATION health, racing requires ELIGIBLE health
+ * @param input The horse state to evaluate
+ * @returns The training and racing eligibility with all blocking reasons
+ */
 export function evaluateEligibility(
   input: EligibilityInput,
 ): EligibilityResult {
@@ -160,6 +211,12 @@ export function evaluateEligibility(
   };
 }
 
+/**
+ * Check a measurement value against the allowed range of its type
+ * @param type The measurement type
+ * @param value The measured value
+ * @returns The error message if the value is out of range, or null otherwise
+ */
 export function measurementValueError(
   type: HorseMeasurementType,
   value: number,

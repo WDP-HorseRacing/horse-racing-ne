@@ -38,12 +38,13 @@ export class TimeTrialsService {
   ): Promise<TimeTrialResponseDto> {
     const caller = await this.access.currentUser(actor);
     const row = await this.dataSource.transaction(async (manager) => {
-      const session = await this.access.lockedSessionInClub(
+      const session = await this.access.lockedSession(manager, sessionId);
+      await this.access.assertCanOperateSession(
         manager,
-        sessionId,
-        caller.clubId!,
+        actor,
+        caller.id,
+        session,
       );
-      this.access.assertCanOperateSession(actor, caller.id, session);
       if (session.status !== TrainingSessionStatus.IN_PROGRESS) {
         throw new ConflictException(
           'Chỉ ghi time trial khi buổi tập IN_PROGRESS',
@@ -52,10 +53,8 @@ export class TimeTrialsService {
       if (body.videoAssetId) {
         const media = await manager.findOneBy(MediaAssetEntity, {
           id: body.videoAssetId,
-          clubId: caller.clubId!,
         });
-        if (!media)
-          throw new NotFoundException('Không tìm thấy media trong CLB');
+        if (!media) throw new NotFoundException('Không tìm thấy media');
       }
       return manager.save(
         manager.create(TimeTrialEntity, {
@@ -71,9 +70,9 @@ export class TimeTrialsService {
   }
 
   async get(actor: Actor, id: string): Promise<TimeTrialResponseDto> {
-    const clubId = await this.access.clubId(actor);
+    await this.access.currentUser(actor);
     const row = await this.timeTrialsRepo.findById(id);
-    if (!row || row.session.plan.horse.clubId !== clubId) {
+    if (!row) {
       throw new NotFoundException('Không tìm thấy kết quả time trial');
     }
     return toTimeTrialResponse(row);

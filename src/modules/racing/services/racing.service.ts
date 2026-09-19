@@ -16,10 +16,8 @@ export class RacingService {
     horseId: string,
   ): Promise<HorseRaceResultResponseDto[]> {
     await this.horsesService.findVisible(actor, horseId);
-    const registrations = await this.racingRepository.listResultsByHorse(
-      horseId,
-      actor.clubId,
-    );
+    const registrations =
+      await this.racingRepository.listResultsByHorse(horseId);
     return registrations.map((registration) => ({
       registrationId: registration.id,
       raceId: registration.race.id,

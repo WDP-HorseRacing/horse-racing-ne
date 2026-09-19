@@ -53,3 +53,5 @@ MinIO's S3 API is available at `http://localhost:9000` and its management consol
 | `pnpm docs:api`                        | Regenerate the REST endpoint catalog from controllers |
 
 The current schema is managed by the versioned migrations and documented in [docs/entity-model.md](docs/entity-model.md) and [docs/database-schema.html](docs/database-schema.html). The Socket.IO gateway currently rejects connections until JWT handshake authorization and room policies are added. The HTTP route contracts are visible in Swagger; consult [docs/flow1-overview.html](docs/flow1-overview.html) and [docs/flow1-checklist.html](docs/flow1-checklist.html) for the current Flow 1 scope and remaining work.
+
+For the recommended structure and implementation workflow for large domain modules, see [docs/module-development-guide.md](docs/module-development-guide.md).

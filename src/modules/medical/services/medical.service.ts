@@ -1,21 +1,26 @@
 import { Injectable } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { assertTrainerBarn } from '../../stable/utils/trainer-barn';
+import { currentUserForActor } from '../../users/utils/current-user';
 import { InjuryMarkerResponseDto } from '../dto/injury-marker.response.dto';
 import { MedicalRecordResponseDto } from '../dto/medical-record.response.dto';
 import { MedicalRepository } from '../repositories/medical.repository';
 
 @Injectable()
 export class MedicalService {
-  constructor(private readonly medicalRepository: MedicalRepository) {}
+  constructor(
+    private readonly medicalRepository: MedicalRepository,
+    private readonly dataSource: DataSource,
+  ) {}
 
   async listRecords(
     actor: Actor,
     horseId: string,
   ): Promise<MedicalRecordResponseDto[]> {
-    const records = await this.medicalRepository.listRecordsByHorse(
-      horseId,
-      actor.clubId,
-    );
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    await assertTrainerBarn(this.dataSource.manager, actor, caller.id, horseId);
+    const records = await this.medicalRepository.listRecordsByHorse(horseId);
     const prescriptions = await this.medicalRepository.listPrescriptions(
       records.map((record) => record.id),
     );
@@ -54,14 +59,14 @@ export class MedicalService {
     actor: Actor,
     horseId: string,
   ): Promise<InjuryMarkerResponseDto[]> {
-    const injuries = await this.medicalRepository.listInjuries(
-      horseId,
-      actor.clubId,
-    );
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    await assertTrainerBarn(this.dataSource.manager, actor, caller.id, horseId);
+    const injuries = await this.medicalRepository.listInjuries(horseId);
     return injuries.map((injury) => ({
       id: injury.id,
       medicalRecordId: injury.medicalRecordId,
       bodyRegion: injury.bodyRegion,
+      position: injury.position,
       injuryType: injury.injuryType,
       recoveryStatus: injury.recoveryStatus,
       notes: injury.notes,

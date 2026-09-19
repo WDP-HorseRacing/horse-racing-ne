@@ -16,12 +16,9 @@ export class MedicalRepository {
     private readonly injuries: Repository<InjuryMarkerEntity>,
   ) {}
 
-  listRecordsByHorse(
-    horseId: string,
-    clubId: string,
-  ): Promise<MedicalRecordEntity[]> {
+  listRecordsByHorse(horseId: string): Promise<MedicalRecordEntity[]> {
     return this.records.find({
-      where: { horseId, horse: { clubId } },
+      where: { horseId },
       order: { examDate: 'DESC' },
     });
   }
@@ -34,11 +31,9 @@ export class MedicalRepository {
     });
   }
 
-  listInjuries(horseId: string, clubId: string): Promise<InjuryMarkerEntity[]> {
+  listInjuries(horseId: string): Promise<InjuryMarkerEntity[]> {
     return this.injuries.find({
-      where: {
-        medicalRecord: { horseId, horse: { clubId } },
-      },
+      where: { medicalRecord: { horseId } },
       order: { createdAt: 'DESC' },
     });
   }

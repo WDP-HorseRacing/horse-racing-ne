@@ -1,7 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { ClubEntity } from '../../users/entities/club.entity';
 
 /**
  * PerformanceThresholdEntity: ngưỡng hiệu suất áp dụng cho club hoặc từng con ngựa.
@@ -9,13 +8,6 @@ import { ClubEntity } from '../../users/entities/club.entity';
  */
 @Entity({ name: 'performance_thresholds' })
 export class PerformanceThresholdEntity extends MutableRecordEntity {
-  @Column({ name: 'club_id', type: 'uuid' })
-  clubId!: string;
-
-  @ManyToOne(() => ClubEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'club_id' })
-  club!: ClubEntity;
-
   @Column({ name: 'horse_id', type: 'uuid', nullable: true })
   horseId!: string | null;
 
