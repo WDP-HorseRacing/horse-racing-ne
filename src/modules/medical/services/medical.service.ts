@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { assertTrainerBarn } from '../../stable/utils/trainer-barn';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { InjuryMarkerResponseDto } from '../dto/injury-marker.response.dto';
 import { MedicalRecordResponseDto } from '../dto/medical-record.response.dto';
@@ -18,10 +19,8 @@ export class MedicalService {
     horseId: string,
   ): Promise<MedicalRecordResponseDto[]> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const records = await this.medicalRepository.listRecordsByHorse(
-      horseId,
-      caller.clubId,
-    );
+    await assertTrainerBarn(this.dataSource.manager, actor, caller.id, horseId);
+    const records = await this.medicalRepository.listRecordsByHorse(horseId);
     const prescriptions = await this.medicalRepository.listPrescriptions(
       records.map((record) => record.id),
     );
@@ -61,14 +60,13 @@ export class MedicalService {
     horseId: string,
   ): Promise<InjuryMarkerResponseDto[]> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const injuries = await this.medicalRepository.listInjuries(
-      horseId,
-      caller.clubId,
-    );
+    await assertTrainerBarn(this.dataSource.manager, actor, caller.id, horseId);
+    const injuries = await this.medicalRepository.listInjuries(horseId);
     return injuries.map((injury) => ({
       id: injury.id,
       medicalRecordId: injury.medicalRecordId,
       bodyRegion: injury.bodyRegion,
+      position: injury.position,
       injuryType: injury.injuryType,
       recoveryStatus: injury.recoveryStatus,
       notes: injury.notes,

@@ -6,7 +6,6 @@ import type { Actor } from '../../../common/types/actor';
 import { UserEntity } from '../entities/user.entity';
 
 export type CurrentActorUser = UserEntity & {
-  clubId: string;
   role: UserRole;
 };
 
@@ -37,8 +36,8 @@ export async function currentUser(
  * Resolve the business user for an actor, cached per actor object
  * @param manager The entity manager to run the query with
  * @param actor The actor resolved from the JWT
- * @returns A promise resolving to the user with an assigned club and role
- * @throws ForbiddenException if the user is missing, inactive, or has no club or role
+ * @returns A promise resolving to the user with an assigned role
+ * @throws ForbiddenException if the user is missing, inactive, or has no role
  */
 export function currentUserForActor(
   manager: EntityManager,
@@ -56,17 +55,15 @@ export function currentUserForActor(
 }
 
 /**
- * Assert that a user has been assigned a club and a role
+ * Assert that a user has been assigned a role
  * @param user The user to check
- * @throws ForbiddenException if the user has no club or role
+ * @throws ForbiddenException if the user has no role
  */
 function assertAssignedUser(
   user: UserEntity,
 ): asserts user is CurrentActorUser {
-  if (!user.clubId || !user.role) {
-    throw new ForbiddenException(
-      'Tài khoản chưa được gán câu lạc bộ hoặc vai trò',
-    );
+  if (!user.role) {
+    throw new ForbiddenException('Tài khoản chưa được gán vai trò');
   }
 }
 

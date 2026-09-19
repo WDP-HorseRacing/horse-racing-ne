@@ -3,6 +3,7 @@ import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { MedicalRecordEntity } from './medical-record.entity';
 import {
   InjuryBodyRegion,
+  InjuryPosition,
   InjuryType,
   RecoveryStatus,
 } from '../constants/injury-marker.enum';
@@ -25,6 +26,9 @@ export class InjuryMarkerEntity extends BaseRecordEntity {
 
   @Column({ name: 'body_region', type: 'varchar', length: 80 })
   bodyRegion!: InjuryBodyRegion;
+
+  @Column({ type: 'jsonb', nullable: true })
+  position!: InjuryPosition | null;
 
   @Column({ name: 'injury_type', type: 'varchar', length: 100 })
   injuryType!: InjuryType;

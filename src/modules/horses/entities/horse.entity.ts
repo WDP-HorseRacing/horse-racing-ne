@@ -1,7 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
-import { ClubEntity } from '../../users/entities/club.entity';
 import { HorseGender } from '../constants/horse-gender.enum';
 import {
   HorseHealthStatus,
@@ -10,19 +9,11 @@ import {
 import { RaceAptitude } from '../constants/race-aptitude.enum';
 
 @Entity({ name: 'horses' })
-@Index('horses_club_status_idx', ['clubId', 'lifecycleStatus', 'healthStatus'])
-@Index('horses_club_microchip_uq', ['clubId', 'microchipId'], {
+@Index('horses_microchip_uq', ['microchipId'], {
   unique: true,
   where: 'microchip_id IS NOT NULL AND deleted_at IS NULL',
 })
 export class HorseEntity extends SoftDeletableRecordEntity {
-  @Column({ name: 'club_id', type: 'uuid' })
-  clubId!: string;
-
-  @ManyToOne(() => ClubEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'club_id' })
-  club!: ClubEntity;
-
   @Column({ type: 'varchar', length: 160 })
   name!: string;
 

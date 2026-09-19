@@ -13,24 +13,18 @@ export class PerformanceRepository {
     private readonly evaluations: Repository<PerformanceEvaluationEntity>,
   ) {}
 
-  listMetrics(
-    horseId: string,
-    clubId: string,
-  ): Promise<PerformanceMetricEntity[]> {
+  listMetrics(horseId: string): Promise<PerformanceMetricEntity[]> {
     return this.metrics.find({
-      where: { session: { plan: { horseId, horse: { clubId } } } },
+      where: { session: { plan: { horseId } } },
       relations: { session: { plan: true } },
       order: { recordedAt: 'DESC' },
       take: 100,
     });
   }
 
-  listEvaluations(
-    horseId: string,
-    clubId: string,
-  ): Promise<PerformanceEvaluationEntity[]> {
+  listEvaluations(horseId: string): Promise<PerformanceEvaluationEntity[]> {
     return this.evaluations.find({
-      where: { session: { plan: { horseId, horse: { clubId } } } },
+      where: { session: { plan: { horseId } } },
       relations: { session: { plan: true } },
       order: { createdAt: 'DESC' },
       take: 1,

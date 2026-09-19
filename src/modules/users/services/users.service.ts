@@ -5,23 +5,27 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
+import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
+import { BarnEntity } from '../../stable/entities/barn.entity';
+import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import {
   getSelfChangeError,
   isRemovingActiveManager,
   UserChange,
 } from '../domain/user.rules';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
-import { UserListQueryDto } from '../dto/user-list-query.dto';
-import { UserResponseDto } from '../dto/user.response.dto';
-import { ClubEntity } from '../entities/club.entity';
+import {
+  CreateUserDto,
+  UpdateUserDto,
+  UserListQueryDto,
+  UserResponseDto,
+} from '../dto/user.dto';
 import { UserEntity } from '../entities/user.entity';
 import { toUserResponse } from '../mappers/user.mapper';
-import { UsersRepository } from '../repositories/users.repository';
 import { UserRole, UserStatus } from '../user.enums';
 import { currentUserForActor } from '../utils/current-user';
 import { splitFullName } from '../utils/name';
@@ -31,13 +35,14 @@ export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
   constructor(
-    private readonly users: UsersRepository,
+    @InjectRepository(UserEntity)
+    private readonly users: Repository<UserEntity>,
     private readonly keycloakUsers: KeycloakUserService,
     private readonly dataSource: DataSource,
   ) {}
 
   /**
-   * List users in the caller's club
+   * List users
    * @param actor The actor resolved from the JWT
    * @param query The query parameters
    * @returns A promise resolving to a paginated list of users
@@ -46,43 +51,56 @@ export class UsersService {
     actor: Actor,
     query: UserListQueryDto,
   ): Promise<PaginationResponseDto<UserResponseDto>> {
-    const { clubId } = await currentUserForActor(
-      this.dataSource.manager,
-      actor,
-    );
-    const [users, total] = await this.users.listByClub(clubId, query);
+    await currentUserForActor(this.dataSource.manager, actor);
+    const queryBuilder = this.users.createQueryBuilder('user');
+    if (query.role) {
+      queryBuilder.andWhere('user.role = :role', { role: query.role });
+    }
+    if (query.status) {
+      queryBuilder.andWhere('user.status = :status', { status: query.status });
+    }
+    if (query.search) {
+      queryBuilder.andWhere(
+        '(user.fullName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
+    }
+    const [users, total] = await queryBuilder
+      .orderBy('user.fullName', 'ASC')
+      .skip(query.skip)
+      .take(query.limit)
+      .getManyAndCount();
     const items = users.map((user) => toUserResponse(user));
 
     return new PaginationResponseDto(items, total, query.page, query.limit);
   }
 
   /**
-   * Get a user in the caller's club
+   * Get a user
    * @param actor The actor resolved from the JWT
    * @param id The ID of the user
    * @returns A promise resolving to the user
-   * @throws NotFoundException if the user is not in the caller's club
+   * @throws NotFoundException if the user is not found
    */
   async get(actor: Actor, id: string): Promise<UserResponseDto> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
-    return toUserResponse(await this.findInClub(id, caller.clubId));
+    await currentUserForActor(this.dataSource.manager, actor);
+    return toUserResponse(await this.findUser(id));
   }
 
   /**
-   * Create a user in the caller's club and register them in Keycloak
+   * Create a user and register them in Keycloak
    * @param actor The actor resolved from the JWT
    * @param body The user data to create
    * @returns A promise resolving to the created user
-   * @throws ConflictException if the email is already used in the club or in Keycloak
+   * @throws ConflictException if the email is already used locally or in Keycloak
    */
   async create(actor: Actor, body: CreateUserDto): Promise<UserResponseDto> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const clubId = caller.clubId;
+    await currentUserForActor(this.dataSource.manager, actor);
     const email = body.email.trim().toLowerCase();
     const fullName = body.fullName.trim();
 
-    if (await this.users.findByEmail(email, clubId)) {
-      throw new ConflictException('Email này đã có trong câu lạc bộ');
+    if (await this.users.findOneBy({ email })) {
+      throw new ConflictException('Email này đã được dùng cho tài khoản khác');
     }
 
     let keycloakId: string;
@@ -104,15 +122,16 @@ export class UsersService {
 
     try {
       await this.keycloakUsers.assignRealmRole(keycloakId, body.role);
-      const created = await this.users.create({
-        clubId,
-        keycloakId,
-        fullName,
-        email,
-        role: body.role,
-        status: UserStatus.ACTIVE,
-        passwordHash: null,
-      });
+      const created = await this.users.save(
+        this.users.create({
+          keycloakId,
+          fullName,
+          email,
+          role: body.role,
+          status: UserStatus.ACTIVE,
+          passwordHash: null,
+        }),
+      );
       return toUserResponse(created);
     } catch (error) {
       await this.compensate(keycloakId, email);
@@ -121,12 +140,12 @@ export class UsersService {
   }
 
   /**
-   * Update a user's name or role in the caller's club
+   * Update a user's name or role
    * @param actor The actor resolved from the JWT
    * @param id The ID of the user
    * @param body The fields to update
    * @returns A promise resolving to the updated user
-   * @throws NotFoundException if the user is not in the caller's club
+   * @throws NotFoundException if the user is not found
    * @throws BadRequestException if the caller changes their own role
    * @throws ConflictException if the role cannot be released or the club would lose its last active manager
    */
@@ -136,8 +155,7 @@ export class UsersService {
     body: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const clubId = caller.clubId;
-    const user = await this.findInClub(id, clubId);
+    const user = await this.findUser(id);
     const newRole = body.role;
     const roleChanged = newRole !== undefined && newRole !== user.role;
 
@@ -156,27 +174,27 @@ export class UsersService {
     if (Object.keys(changes).length === 0) return toUserResponse(user);
 
     await this.dataSource.transaction(async (manager) => {
-      if (roleChanged) await this.lockClubForManagerCheck(manager, clubId);
+      if (roleChanged) await this.lockActiveManagers(manager);
       // Đảm bảo nếu đang đổi role của 1 club manager đang active thì còn ít nhất 1 club manager khác đang active
       // Bỏ trong transaction để tránh race condition với các request khác đang đổi role/status của các club manager khác
       if (isRemovingActiveManager(user, { role: body.role })) {
-        await this.assertAnotherActiveManager(manager, clubId, user.id);
+        await this.assertAnotherActiveManager(manager, user.id);
       }
-      await this.users.updateFields(id, clubId, changes, manager);
+      await manager.getRepository(UserEntity).update({ id }, changes);
       if (roleChanged && newRole) await this.syncKeycloakRole(user, newRole);
     });
 
     if (roleChanged) await this.revokeSessions(user);
-    return toUserResponse(await this.findInClub(id, clubId));
+    return toUserResponse(await this.findUser(id));
   }
 
   /**
-   * Change a user's status in the caller's club and sync it to Keycloak
+   * Change a user's status and sync it to Keycloak
    * @param actor The actor resolved from the JWT
    * @param id The ID of the user
    * @param status The new status
    * @returns A promise resolving to the updated user
-   * @throws NotFoundException if the user is not in the caller's club
+   * @throws NotFoundException if the user is not found
    * @throws BadRequestException if the caller changes their own status
    * @throws ConflictException if the club would lose its last active manager
    */
@@ -186,20 +204,19 @@ export class UsersService {
     status: UserStatus,
   ): Promise<UserResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const clubId = caller.clubId;
-    const user = await this.findInClub(id, clubId);
+    const user = await this.findUser(id);
     if (user.status === status) return toUserResponse(user);
     this.assertChangeAllowed(caller.id, user, { status });
 
     await this.dataSource.transaction(async (manager) => {
-      await this.lockClubForManagerCheck(manager, clubId);
+      await this.lockActiveManagers(manager);
       // Muốn thay đổi role or status của 1 club manager đang active thì
       // phải đảm bảo còn ít nhất 1 club manager khác đang active
       if (isRemovingActiveManager(user, { status })) {
         // Đảm bảo trong hệ thống còn ít nhất 1 club manager khác đang active
-        await this.assertAnotherActiveManager(manager, clubId, user.id);
+        await this.assertAnotherActiveManager(manager, user.id);
       }
-      await this.users.updateFields(id, clubId, { status }, manager);
+      await manager.getRepository(UserEntity).update({ id }, { status });
       await this.keycloakUsers.setUserEnabled(
         user.keycloakId,
         status === UserStatus.ACTIVE,
@@ -207,7 +224,7 @@ export class UsersService {
     });
     // Nếu status thay đổi sang inactive hoặc locked thì revoke session của user
     if (status !== UserStatus.ACTIVE) await this.revokeSessions(user);
-    return toUserResponse(await this.findInClub(id, clubId));
+    return toUserResponse(await this.findUser(id));
   }
 
   /**
@@ -227,7 +244,7 @@ export class UsersService {
   }
 
   /**
-   * Ensure a user has no active horse ownership or stable assignment tied to their current role
+   * Ensure a user has no active horse ownership, stall assignment or barn tied to their current role
    * @param user The user whose role is changing
    * @returns A promise resolving once the check passes
    * @throws ConflictException if the user still holds responsibilities for their current role
@@ -235,7 +252,7 @@ export class UsersService {
   private async assertRoleReleasable(user: UserEntity): Promise<void> {
     if (
       user.role === UserRole.HORSE_OWNER &&
-      (await this.users.hasActiveOwnership(user.id))
+      (await this.hasActiveOwnership(user.id))
     ) {
       throw new ConflictException(
         'Người này đang sở hữu ngựa, cần chuyển quyền sở hữu trước khi đổi vai trò',
@@ -243,54 +260,45 @@ export class UsersService {
     }
     if (
       user.role === UserRole.GROOM &&
-      (await this.users.hasActiveStableAssignment(user.id))
+      (await this.hasActiveStallAssignment(user.id))
     ) {
       throw new ConflictException(
         'Người này đang phụ trách chuồng ngựa, cần phân công lại trước khi đổi vai trò',
       );
     }
+    if (
+      user.role === UserRole.HEAD_TRAINER &&
+      (await this.hasActiveBarn(user.id))
+    ) {
+      throw new ConflictException(
+        'Người này đang phụ trách khu chuồng, cần giao khu cho Head Trainer khác trước khi đổi vai trò',
+      );
+    }
   }
 
   /**
-   * Ensure the club keeps at least one other active club manager
+   * Ensure the system keeps at least one other active club manager
    * @param manager The entity manager to run the query with
-   * @param clubId The ID of the club
    * @param userId The ID of the user to exclude
    * @returns A promise resolving once the check passes
    * @throws ConflictException if no other active club manager exists
    */
   private async assertAnotherActiveManager(
     manager: EntityManager,
-    clubId: string,
     userId: string,
   ): Promise<void> {
-    const others = await this.users.countOtherActiveManagers(
-      clubId,
-      userId,
-      manager,
-    );
+    const others = await manager.getRepository(UserEntity).count({
+      where: {
+        id: Not(userId),
+        role: UserRole.CLUB_MANAGER,
+        status: UserStatus.ACTIVE,
+      },
+    });
     if (others === 0) {
       throw new ConflictException(
         'Câu lạc bộ phải còn ít nhất một Club Manager đang hoạt động',
       );
     }
-  }
-
-  /**
-   * Lock the club row so concurrent role or status changes cannot remove the last active manager
-   * @param manager The entity manager of the current transaction
-   * @param clubId The ID of the club
-   * @returns A promise resolving once the lock is acquired
-   */
-  private async lockClubForManagerCheck(
-    manager: EntityManager,
-    clubId: string,
-  ): Promise<void> {
-    await manager.getRepository(ClubEntity).findOne({
-      select: { id: true },
-      where: { id: clubId },
-      lock: { mode: 'pessimistic_write' },
-    });
   }
 
   /**
@@ -325,16 +333,41 @@ export class UsersService {
   }
 
   /**
-   * Find a user in a club
+   * Find a user by id
    * @param id The ID of the user
-   * @param clubId The ID of the club
    * @returns A promise resolving to the user
    * @throws NotFoundException if the user is not found
    */
-  private async findInClub(id: string, clubId: string): Promise<UserEntity> {
-    const user = await this.users.findById(id, clubId);
+  private async findUser(id: string): Promise<UserEntity> {
+    const user = await this.users.findOneBy({ id });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
     return user;
+  }
+
+  private async hasActiveOwnership(userId: string): Promise<boolean> {
+    return this.dataSource.manager
+      .getRepository(HorseOwnershipEntity)
+      .existsBy({ ownerId: userId, endDate: IsNull() });
+  }
+
+  private async hasActiveStallAssignment(userId: string): Promise<boolean> {
+    return this.dataSource.manager
+      .getRepository(StallAssignmentEntity)
+      .existsBy({ groomId: userId, endAt: IsNull() });
+  }
+
+  private async hasActiveBarn(userId: string): Promise<boolean> {
+    return this.dataSource.manager
+      .getRepository(BarnEntity)
+      .existsBy({ headTrainerId: userId });
+  }
+
+  private async lockActiveManagers(manager: EntityManager): Promise<void> {
+    await manager.getRepository(UserEntity).find({
+      select: { id: true },
+      where: { role: UserRole.CLUB_MANAGER, status: UserStatus.ACTIVE },
+      lock: { mode: 'pessimistic_write' },
+    });
   }
 
   /**

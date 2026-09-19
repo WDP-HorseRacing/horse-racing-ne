@@ -51,7 +51,7 @@ export class HorsesController {
   @ApiOperation({
     summary: 'List horses visible to the current user',
     description:
-      'Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stable assignment. Horse Owner: horses currently owned.',
+      'Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stall assignment. Horse Owner: horses currently owned.',
   })
   @ApiOkResponse({ type: PaginationResponseDto })
   list(

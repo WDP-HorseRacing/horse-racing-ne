@@ -18,11 +18,13 @@ import {
 import { Access, CurrentUser } from '../../common/decorators';
 import { PaginationResponseDto } from '../../common/dto/pagination-response.dto';
 import type { Actor } from '../../common/types/actor';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UpdateUserStatusDto } from './dto/update-user-status.dto';
-import { UserListQueryDto } from './dto/user-list-query.dto';
-import { UserResponseDto } from './dto/user.response.dto';
+import {
+  CreateUserDto,
+  UpdateUserDto,
+  UpdateUserStatusDto,
+  UserListQueryDto,
+  UserResponseDto,
+} from './dto/user.dto';
 import { UsersService } from './services/users.service';
 import { UserRole } from './user.enums';
 
