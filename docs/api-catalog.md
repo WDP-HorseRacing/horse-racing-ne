@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 131 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 136 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -24,14 +24,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/auth/oidc/{provider}` | Bat dau luong dang nhap qua identity provider |
 | GET | `/api/v1/auth/oidc/{provider}/callback` | Diem identity provider redirect ve |
 | POST | `/api/v1/auth/refresh` | Exchange refresh token |
-| POST | `/api/v1/auth/register` | Tu dang ky, cho CLUB_MANAGER duyet |
-
-## clubs
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/v1/clubs/me` | Get current club |
-| PATCH | `/api/v1/clubs/me` | Update current club settings |
 
 ## health
 
@@ -43,17 +35,20 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/horses` | List visible horses |
+| GET | `/api/v1/horses` | List horses visible to the current user |
 | POST | `/api/v1/horses` | Create horse profile |
 | GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
+| PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status |
+| PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
+| GET | `/api/v1/horses/{horseId}/measurements` | List horse measurement history |
+| POST | `/api/v1/horses/{horseId}/measurements` | Record a horse measurement |
 | GET | `/api/v1/horses/{horseId}/owners` | List horse ownership history |
-| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree |
-| PATCH | `/api/v1/horses/{horseId}/status` | Change horse health or lifecycle status |
-| DELETE | `/api/v1/horses/{id}` | Soft-delete horse profile |
-| GET | `/api/v1/horses/{id}` | Get horse profile |
-| PATCH | `/api/v1/horses/{id}` | Update horse profile |
-| PUT | `/api/v1/horses/{id}/owners` | Replace active ownership shares |
-| GET | `/api/v1/owners/me/horses` | List horses owned by current user |
+| PUT | `/api/v1/horses/{horseId}/owners` | Replace active ownership shares |
+| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree up to 4 generations |
+| DELETE | `/api/v1/horses/{id}` | Soft-delete a horse profile created by mistake |
+| GET | `/api/v1/horses/{id}` | Get horse profile detail |
+| PATCH | `/api/v1/horses/{id}` | Update horse profile and pedigree parents |
+| GET | `/api/v1/owners/me/horses` | List horses currently owned by the current user |
 
 ## media
 
@@ -142,6 +137,11 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | `/api/v1/barns` | List barns of the club with their head trainer |
+| POST | `/api/v1/barns` | Create barn |
+| DELETE | `/api/v1/barns/{id}` | Soft-delete barn |
+| GET | `/api/v1/barns/{id}` | Get barn details |
+| PATCH | `/api/v1/barns/{id}` | Rename barn or assign its head trainer |
 | PATCH | `/api/v1/checklists/{id}/complete` | Complete assigned checklist item |
 | POST | `/api/v1/feeding-plans/{id}/approve` | Approve feeding plan as Trainer or Vet |
 | GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |
@@ -153,7 +153,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/incidents` | Report stable incident |
 | GET | `/api/v1/incidents/{id}` | Get stable incident |
 | PATCH | `/api/v1/incidents/{id}/status` | Update incident resolution status |
-| POST | `/api/v1/stable-assignments/{id}/end` | End stable assignment |
+| POST | `/api/v1/stall-assignments/{id}/end` | End stall assignment |
 | GET | `/api/v1/stalls` | List club stalls |
 | POST | `/api/v1/stalls` | Create stall |
 | DELETE | `/api/v1/stalls/{id}` | Soft-delete stall |
@@ -175,6 +175,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/supplies/requests` | List supply requests |
 | POST | `/api/v1/supplies/requests` | Request supply replenishment |
 | GET | `/api/v1/supplies/requests/{id}` | Get supply request |
+| PATCH | `/api/v1/supplies/requests/{id}` | Update a pending supply request |
 | PATCH | `/api/v1/supplies/requests/{id}/status` | Approve, reject or fulfill supply request |
 
 ## training
@@ -184,19 +185,20 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{horseId}/training-plans` | List horse training plans |
 | POST | `/api/v1/horses/{horseId}/training-plans` | Create training plan |
 | GET | `/api/v1/sessions/{id}` | Get training session |
-| PATCH | `/api/v1/sessions/{id}` | Reschedule or reassign training session |
-| POST | `/api/v1/sessions/{id}/cancel` | Cancel training session |
-| POST | `/api/v1/sessions/{id}/complete` | Complete training session |
+| PATCH | `/api/v1/sessions/{id}` | Reschedule or reassign a scheduled session |
+| POST | `/api/v1/sessions/{id}/cancel` | Cancel training session with a reason |
+| POST | `/api/v1/sessions/{id}/complete` | Complete training session and record actual result |
 | GET | `/api/v1/sessions/{id}/evaluation` | Get session evaluation |
 | POST | `/api/v1/sessions/{id}/evaluation` | Evaluate completed session |
 | POST | `/api/v1/sessions/{id}/start` | Start training session |
 | GET | `/api/v1/sessions/{id}/time-trials` | List session time trials |
-| POST | `/api/v1/sessions/{id}/time-trials` | Record session time trial |
-| GET | `/api/v1/time-trials/{id}` | Get time trial result and media |
+| POST | `/api/v1/sessions/{id}/time-trials` | Record time trial during an active session |
+| GET | `/api/v1/time-trials/{id}` | Get time trial result and media reference |
 | GET | `/api/v1/training-plans/{id}` | Get training plan |
-| PATCH | `/api/v1/training-plans/{id}` | Update training plan |
+| PATCH | `/api/v1/training-plans/{id}` | Update a scheduled training plan |
 | POST | `/api/v1/training-plans/{id}/activate` | Activate training plan |
-| POST | `/api/v1/training-plans/{id}/cancel` | Cancel training plan |
+| POST | `/api/v1/training-plans/{id}/cancel` | Cancel training plan and scheduled sessions |
+| POST | `/api/v1/training-plans/{id}/complete` | Complete training plan |
 | GET | `/api/v1/training-plans/{id}/sessions` | List sessions in training plan |
 | POST | `/api/v1/training-plans/{id}/sessions` | Schedule training session |
 
@@ -208,7 +210,5 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/users` | Create club user |
 | GET | `/api/v1/users/{id}` | Get club user |
 | PATCH | `/api/v1/users/{id}` | Update club user |
-| PATCH | `/api/v1/users/{id}/approve` | Duyet ho so: gan CLB va role |
 | PATCH | `/api/v1/users/{id}/status` | Change user account status |
-| GET | `/api/v1/users/pending` | Danh sach ho so cho duyet cua CLB |
 

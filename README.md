@@ -1,6 +1,6 @@
 # Race-horse API
 
-NestJS modular monolith scaffold for the Racehorse Training and Management System. This repository provides the module boundaries and infrastructure described in `Racehorse_System_Design_NestJS.docx`; it intentionally has almost no business behavior yet.
+NestJS modular monolith for the Racehorse Training and Management System. The repository contains the domain modules, PostgreSQL migrations and implemented read/write slices for users, horses, medical history, racing history and performance.
 
 ## Stack and boundaries
 
@@ -12,7 +12,7 @@ NestJS modular monolith scaffold for the Racehorse Training and Management Syste
 - Global DTO validation, consistent HTTP error format, and correlation ID header
 - Modules: Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Notifications, Audit, Media, and Realtime
 
-The `HorsesModule` demonstrates the intended `entity → repository → service → DTO mapper` structure. It exports its service so another module can call a public facade instead of importing its repository. All current REST route contracts and request DTOs are registered across Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Media, Notifications, and Audit. These routes deliberately return HTTP `501 Not Implemented` until their authentication, authorization, persistence, and business services are added. The health route remains functional. Review the complete [endpoint catalog](docs/api-catalog.md) or [OpenAPI JSON](docs/openapi.contracts.json); regenerate both with `pnpm docs:api` without a database connection.
+The implemented modules follow the `entity → repository → service → DTO mapper` structure. Users and Training have persistence and business services; the remaining contract-only routes return HTTP `501 Not Implemented` until their workflows are added. Review the complete [endpoint catalog](docs/api-catalog.md), [OpenAPI JSON](docs/openapi.contracts.json), or the detailed [Flow 2 training guide](docs/flow2-training.md). Regenerate API documentation with `pnpm docs:api` without a database connection.
 
 | API group      | Prepared routes                                                         |
 | -------------- | ----------------------------------------------------------------------- |
@@ -24,7 +24,7 @@ The `HorsesModule` demonstrates the intended `entity → repository → service 
 | Operations     | Stalls, assignments, feeding, checklists, incidents, races and supplies |
 | Supporting     | Notifications, audit, media upload/download URL contracts and reports   |
 
-See `/docs` for exact paths and request schemas. These contracts do not imply that the corresponding workflows are implemented.
+See `/docs` for exact paths and request schemas. A listed contract does not imply implementation unless its module documentation says otherwise.
 
 For each new use case, place HTTP or socket handling in `controllers/`, orchestration and transactions in `services/`, persistence in `repositories/`, data models in `entities/`, request/response types in `dto/`, and rules in `policies/`. Publish internal events only after a transaction commits. Keep TypeORM entities out of API responses.
 
@@ -38,7 +38,7 @@ For each new use case, place HTTP or socket handling in `controllers/`, orchestr
 
 Check `GET http://localhost:3000/api/v1/health` for `{ "status": "ok" }` and open `http://localhost:3000/docs` for Swagger. Database configuration is required at startup. Redis connects lazily when a feature first uses it.
 
-MinIO's S3 API is available at `http://localhost:9100` and its management console at `http://localhost:9101`. Docker Compose creates the configured `S3_BUCKET` automatically. `ObjectStorageService` exposes presigned upload/download URLs, object metadata lookup, and deletion; the public Media API remains contract-only until authentication and media metadata persistence are implemented.
+MinIO's S3 API is available at `http://localhost:9000` and its management console at `http://localhost:9001`. Docker Compose creates the configured `S3_BUCKET` automatically. `ObjectStorageService` exposes presigned upload/download URLs, object metadata lookup, and deletion; the public Media API remains contract-only until its authentication and media metadata workflow is implemented.
 
 ## Commands
 
@@ -52,4 +52,6 @@ MinIO's S3 API is available at `http://localhost:9100` and its management consol
 | `pnpm db:generate src/migrations/Name` | Generate a migration from entity changes              |
 | `pnpm docs:api`                        | Regenerate the REST endpoint catalog from controllers |
 
-The initial migration creates only the minimal `horses` table as an example. The full draft of 28 entity tables is listed in [docs/entity-model.md](docs/entity-model.md); it has not been migrated yet and currently differs from that initial migration. The Socket.IO gateway currently rejects connections until JWT handshake authorization and room policies are added. The HTTP route contracts are visible in Swagger, but Auth, RBAC, notifications, audit workflows, media storage, and domain behavior are not implemented yet.
+The current schema is managed by the versioned migrations and documented in [docs/entity-model.md](docs/entity-model.md) and [docs/database-schema.html](docs/database-schema.html). The Socket.IO gateway currently rejects connections until JWT handshake authorization and room policies are added. The HTTP route contracts are visible in Swagger; consult [docs/flow1-overview.html](docs/flow1-overview.html) and [docs/flow1-checklist.html](docs/flow1-checklist.html) for the current Flow 1 scope and remaining work.
+
+For the recommended structure and implementation workflow for large domain modules, see [docs/module-development-guide.md](docs/module-development-guide.md).

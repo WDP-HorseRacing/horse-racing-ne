@@ -11,4 +11,3 @@ export type * from './types/claims';
 export * from './types/oidc';
 export * from './types/token';
 export * from './user.service';
-export * from './utils/derive-username';

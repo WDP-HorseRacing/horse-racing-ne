@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { UserRole } from '../enums/role.enum';
+import { UserRole } from '../../common/enums';
 import { ACCESS_KEY } from '../constants/auth.constants';
 
 /**

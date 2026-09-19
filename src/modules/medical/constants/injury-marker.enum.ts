@@ -1,3 +1,9 @@
+export interface InjuryPosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export enum InjuryBodyRegion {
   HEAD = 'HEAD',
   NECK = 'NECK',

@@ -1,54 +1,77 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
-import { KeycloakConfig } from './keycloak.config';
 import type {
   KeycloakAccessTokenClaims,
   KeycloakVerifiedToken,
 } from './types/claims';
 
+interface AuthConfig {
+  keycloakAuthServerUrl?: string;
+  keycloakRealm?: string;
+  keycloakClientId?: string;
+}
+
 @Injectable()
 export class KeycloakService {
   private readonly logger = new Logger(KeycloakService.name);
-  private readonly jwks: jwksClient.JwksClient;
+  private readonly authServerUrl?: string;
+  private readonly realm?: string;
+  private readonly audience?: string;
+  private readonly jwksClientInstance?: jwksClient.JwksClient;
 
-  constructor(private readonly keycloakConfig: KeycloakConfig) {
-    this.jwks = jwksClient({
-      jwksUri: this.keycloakConfig.jwksUri,
-      cache: true,
-      rateLimit: true,
-      jwksRequestsPerMinute: 10,
-    });
-    this.logger.log(
-      `JWKS client san sang cho realm ${this.keycloakConfig.realm}`,
-    );
+  constructor(private readonly configService: ConfigService) {
+    const auth = this.configService.get<AuthConfig>('auth');
+    this.authServerUrl =
+      auth?.keycloakAuthServerUrl ??
+      this.configService.get<string>('KEYCLOAK_AUTH_SERVER_URL');
+    this.realm =
+      auth?.keycloakRealm ?? this.configService.get<string>('KEYCLOAK_REALM');
+    this.audience =
+      auth?.keycloakClientId ??
+      this.configService.get<string>('KEYCLOAK_CLIENT_ID');
+
+    if (this.authServerUrl && this.realm) {
+      const jwksUri = `${this.authServerUrl}/realms/${this.realm}/protocol/openid-connect/certs`;
+      this.jwksClientInstance = jwksClient({
+        jwksUri,
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 10,
+      });
+      this.logger.log(
+        `Initialized Keycloak JWKS client for realm: ${this.realm}`,
+      );
+    }
   }
 
   /**
-   * Verify access token Keycloak.
+   * Xác thực access token từ Keycloak
    */
   verifyToken(token: string): Promise<KeycloakVerifiedToken> {
-    const audience = this.keycloakConfig.clientId;
-    const issuer = this.keycloakConfig.issuer;
+    // Fail closed: never trust jwt.decode() as authentication.
+    if (!this.jwksClientInstance || !this.audience)
+      throw new UnauthorizedException('Keycloak is not configured');
+
+    const jwksClientInstance = this.jwksClientInstance;
+    const audience = this.audience;
+    const issuer = `${this.authServerUrl}/realms/${this.realm}`;
 
     return new Promise((resolve, reject) => {
-      // get public key tu JWKS cua Keycloak, theo `kid` trong header cua token.
       const getKey: jwt.GetPublicKeyOrSecret = (header, callback) => {
         const keyId: unknown = header.kid;
         if (typeof keyId !== 'string' || !keyId) {
-          callback(new Error('Token header thieu kid'));
-          return;
+          return callback(new Error('Token header missing kid'));
         }
-        this.jwks.getSigningKey(keyId, (error, key) => {
-          if (error || !key) {
-            callback(
-              error instanceof Error
-                ? error
-                : new Error('Khong tim thay signing key'),
+        jwksClientInstance.getSigningKey(keyId, (err, key) => {
+          if (err || !key) {
+            return callback(
+              err instanceof Error ? err : new Error('Signing key not found'),
             );
-            return;
           }
-          callback(null, key.getPublicKey());
+          const signingKey = key.getPublicKey();
+          callback(null, signingKey);
         });
       };
 
@@ -57,30 +80,28 @@ export class KeycloakService {
         getKey,
         {
           algorithms: ['RS256'],
-          issuer, // Token nay duoc cap boi Keycloak cua hệ thống.
-          audience, // Token nay duoc cap CHO TA.
-          clockTolerance: 5, // Cho phep sai so 5 giay giua server va Keycloak.
+          issuer,
+          audience,
         },
-        (error, decoded) => {
-          if (error || !decoded || typeof decoded === 'string') {
+        (err, decoded) => {
+          // err exist or token expired
+          if (err || !decoded || typeof decoded === 'string') {
             this.logger.warn(
-              `Verify token that bai: ${
-                error instanceof Error ? error.message : 'token khong hop le'
-              }`,
+              `Keycloak token verification failed: ${err instanceof Error ? err.message : 'invalid token'}`,
             );
-            reject(
-              new UnauthorizedException('Token khong hop le hoac da het han'),
+            return reject(
+              new UnauthorizedException('Token verification failed'),
             );
-            return;
           }
 
           const claims = decoded as unknown as KeycloakAccessTokenClaims;
-          if (!claims.sub || !claims.exp || claims.typ !== 'Bearer') {
-            reject(
-              new UnauthorizedException('Can access token Keycloak con han'),
+          // missing subject, expired token, or type is not Bearer
+          if (!claims.sub || !claims.exp || claims.typ !== 'Bearer')
+            return reject(
+              new UnauthorizedException(
+                'A non-expired Keycloak access token is required',
+              ),
             );
-            return;
-          }
 
           resolve({
             ...claims,

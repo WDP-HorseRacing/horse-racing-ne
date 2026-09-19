@@ -9,6 +9,7 @@ import { Server, Socket, type DefaultEventsMap } from 'socket.io';
 import { DataSource } from 'typeorm';
 import { currentUser } from '../users/utils/current-user';
 import type { Actor } from '../../common/types/actor';
+import { UserRole } from '../../common/enums/role.enum';
 import { KeycloakService } from '../../common/infrastructure/keycloak/keycloak.service';
 
 /**
@@ -19,7 +20,6 @@ import { KeycloakService } from '../../common/infrastructure/keycloak/keycloak.s
 interface RealtimeSocketData {
   actor: Actor;
   userId: string;
-  clubId: string | null;
   expiry: ReturnType<typeof setTimeout>;
 }
 
@@ -64,25 +64,23 @@ export class RealtimeGateway
 
       // Cung mot ham verify voi HTTP guard: mot bo luat duy nhat.
       const token = await this.keycloak.verifyToken(raw);
+      const user = await currentUser(this.dataSource.manager, token.sub);
+      if (!user.role) {
+        throw new Error('Tai khoan chua duoc gan vai tro');
+      }
       const actor: Actor = {
         sub: token.sub,
         email: token.email,
         name: token.name,
-        roles: token.roles,
+        roles: token.roles.filter((role): role is UserRole =>
+          Object.values(UserRole).includes(role as UserRole),
+        ),
       };
-
-      // Cung ham currentUser() ma guard dung: mot cho duy nhat quyet dinh
-      // "tai khoan nay con duoc vao khong". Nguoi PENDING bi chan o day.
-      const user = await currentUser(this.dataSource.manager, actor);
 
       client.data.actor = actor;
       client.data.userId = user.id;
-      client.data.clubId = user.clubId;
 
       await client.join(`user:${user.id}`);
-      // Room theo club: multi-tenancy phai song ca o tang socket,
-      // dung bao gio broadcast ra ca namespace.
-      if (user.clubId) await client.join(`club:${user.clubId}`);
 
       // Socket song lau, access token thi khong. Khong co dong nay thi mot
       // ket noi mo luc 09:00 giu nguyen dac quyen den khi restart process,
@@ -112,9 +110,5 @@ export class RealtimeGateway
 
   emitToUser(userId: string, event: string, payload: unknown): void {
     this.server.to(`user:${userId}`).emit(event, payload);
-  }
-
-  emitToClub(clubId: string, event: string, payload: unknown): void {
-    this.server.to(`club:${clubId}`).emit(event, payload);
   }
 }

@@ -61,38 +61,6 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/auth/register": {
-      "post": {
-        "operationId": "AuthController_register",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Tu dang ky, cho CLUB_MANAGER duyet",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "AuthController_login",
@@ -325,6 +293,144 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}/lifecycle-status": {
+      "patch": {
+        "operationId": "HorseDetailsController_lifecycle",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHorseLifecycleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change horse lifecycle status",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/health-status": {
+      "patch": {
+        "operationId": "HorseDetailsController_health",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHorseHealthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change horse health status",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/pedigree": {
+      "get": {
+        "operationId": "HorseDetailsController_pedigree",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "depth",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 4,
+              "default": 2
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorsePedigreeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse pedigree up to 4 generations",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/owners": {
       "get": {
         "operationId": "HorseDetailsController_owners",
@@ -339,8 +445,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseOwnershipResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -351,13 +467,10 @@
         "summary": "List horse ownership history",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{horseId}/pedigree": {
-      "get": {
-        "operationId": "HorseDetailsController_pedigree",
+        ]
+      },
+      "put": {
+        "operationId": "HorseDetailsController_setOwners",
         "parameters": [
           {
             "name": "horseId",
@@ -368,9 +481,29 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHorseOwnersDto"
+              }
+            }
+          }
+        },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseOwnershipResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -378,11 +511,107 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse pedigree",
+        "summary": "Replace active ownership shares",
         "tags": [
           "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/measurements": {
+      "get": {
+        "operationId": "HorseDetailsController_measurements",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WEIGHT",
+                "HEIGHT",
+                "BODY_CONDITION",
+                "TEMPERATURE"
+              ]
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseMeasurementResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse measurement history",
+        "tags": [
+          "horses"
+        ]
+      },
+      "post": {
+        "operationId": "HorseDetailsController_addMeasurement",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHorseMeasurementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseMeasurementResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a horse measurement",
+        "tags": [
+          "horses"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/eligibility": {
@@ -399,8 +628,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseEligibilityResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -411,66 +647,117 @@
         "summary": "Get current training and racing eligibility",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{horseId}/status": {
-      "patch": {
-        "operationId": "HorseDetailsController_status",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateHorseStatusDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Change horse health or lifecycle status",
-        "tags": [
-          "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses": {
       "get": {
+        "description": "Club Manager, Head Trainer, Veterinarian: whole club. Groom: horses with an active stall assignment. Horse Owner: horses currently owned.",
         "operationId": "HorsesController_list",
         "parameters": [
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
             "name": "limit",
-            "required": true,
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Tìm theo tên hoặc microchip",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "healthStatus",
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "number"
+              "type": "string",
+              "enum": [
+                "ELIGIBLE",
+                "UNDER_OBSERVATION",
+                "INJURED",
+                "QUARANTINED"
+              ]
+            }
+          },
+          {
+            "name": "lifecycleStatus",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "RETIRED",
+                "TRANSFERRED"
+              ]
+            }
+          },
+          {
+            "name": "reference",
+            "required": false,
+            "in": "query",
+            "description": "true để xem ngựa tham chiếu (chỉ Club Manager, Head Trainer)",
+            "schema": {
+              "default": false,
+              "type": "boolean"
             }
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginationResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -478,11 +765,10 @@
             "bearer": []
           }
         ],
-        "summary": "List visible horses",
+        "summary": "List horses visible to the current user",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "HorsesController_create",
@@ -498,8 +784,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -510,8 +803,7 @@
         "summary": "Create horse profile",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses/{id}": {
@@ -528,8 +820,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseDetailResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -537,11 +836,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse profile",
+        "summary": "Get horse profile detail",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "patch": {
         "operationId": "HorsesController_update",
@@ -566,8 +864,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -575,13 +880,13 @@
             "bearer": []
           }
         ],
-        "summary": "Update horse profile",
+        "summary": "Update horse profile and pedigree parents",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "delete": {
+        "description": "Rejected when the horse is a pedigree parent or has ownership history.",
         "operationId": "HorsesController_remove",
         "parameters": [
           {
@@ -594,8 +899,8 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "204": {
+            "description": ""
           }
         },
         "security": [
@@ -603,51 +908,10 @@
             "bearer": []
           }
         ],
-        "summary": "Soft-delete horse profile",
+        "summary": "Soft-delete a horse profile created by mistake",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{id}/owners": {
-      "put": {
-        "operationId": "HorsesController_setOwners",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetHorseOwnersDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Replace active ownership shares",
-        "tags": [
-          "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/owners/me/horses": {
@@ -655,8 +919,18 @@
         "operationId": "HorsesController_myHorses",
         "parameters": [],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -664,11 +938,10 @@
             "bearer": []
           }
         ],
-        "summary": "List horses owned by current user",
+        "summary": "List horses currently owned by the current user",
         "tags": [
           "horses"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/media/upload-requests": {
@@ -1220,8 +1493,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1232,8 +1515,7 @@
         "summary": "List horse medical records",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "MedicalController_createRecord",
@@ -1368,8 +1650,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InjuryMarkerResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1380,8 +1672,7 @@
         "summary": "List horse injury timeline",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/training-locks/{id}/release": {
@@ -1827,8 +2118,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorsePerformanceResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1839,8 +2137,7 @@
         "summary": "Get horse performance summary",
         "tags": [
           "performance"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/races/{id}": {
@@ -2107,8 +2404,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseRaceResultResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2119,8 +2426,7 @@
         "summary": "Get horse race history",
         "tags": [
           "racing"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/races": {
@@ -2477,13 +2783,23 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/stalls": {
+    "/api/v1/barns": {
       "get": {
-        "operationId": "StableDetailsController_stalls",
+        "operationId": "BarnsController_list",
         "parameters": [],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BarnResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2491,28 +2807,34 @@
             "bearer": []
           }
         ],
-        "summary": "List club stalls",
+        "summary": "List barns of the club with their head trainer",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
-        "operationId": "StableDetailsController_createStall",
+        "operationId": "BarnsController_create",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateStallDto"
+                "$ref": "#/components/schemas/CreateBarnDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarnResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2520,16 +2842,15 @@
             "bearer": []
           }
         ],
-        "summary": "Create stall",
+        "summary": "Create barn",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/stalls/{id}": {
+    "/api/v1/barns/{id}": {
       "get": {
-        "operationId": "StableDetailsController_stall",
+        "operationId": "BarnsController_get",
         "parameters": [
           {
             "name": "id",
@@ -2541,8 +2862,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarnResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2550,14 +2878,14 @@
             "bearer": []
           }
         ],
-        "summary": "Get stall",
+        "summary": "Get barn details",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "patch": {
-        "operationId": "StableDetailsController_updateStall",
+        "description": "A head trainer makes decisions and reads sensitive data only for horses stabled in barns they lead.",
+        "operationId": "BarnsController_update",
         "parameters": [
           {
             "name": "id",
@@ -2573,14 +2901,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateStallDto"
+                "$ref": "#/components/schemas/UpdateBarnDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarnResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2588,14 +2923,13 @@
             "bearer": []
           }
         ],
-        "summary": "Update stall",
+        "summary": "Rename barn or assign its head trainer",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "delete": {
-        "operationId": "StableDetailsController_deleteStall",
+        "operationId": "BarnsController_remove",
         "parameters": [
           {
             "name": "id",
@@ -2607,8 +2941,8 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "204": {
+            "description": ""
           }
         },
         "security": [
@@ -2616,19 +2950,18 @@
             "bearer": []
           }
         ],
-        "summary": "Soft-delete stall",
+        "summary": "Soft-delete barn",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/stalls/{id}/assignments": {
+    "/api/v1/horses/{horseId}/checklists": {
       "get": {
-        "operationId": "StableDetailsController_assignments",
+        "operationId": "DailyChecklistsController_checklists",
         "parameters": [
           {
-            "name": "id",
+            "name": "horseId",
             "required": true,
             "in": "path",
             "schema": {
@@ -2646,17 +2979,17 @@
             "bearer": []
           }
         ],
-        "summary": "List stall assignment history",
+        "summary": "List horse daily checklists",
         "tags": [
           "stable"
         ],
         "x-implementation-status": "contract-only"
       },
       "post": {
-        "operationId": "StableDetailsController_assign",
+        "operationId": "DailyChecklistsController_createChecklist",
         "parameters": [
           {
-            "name": "id",
+            "name": "horseId",
             "required": true,
             "in": "path",
             "schema": {
@@ -2669,7 +3002,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateStableAssignmentDto"
+                "$ref": "#/components/schemas/CreateChecklistDto"
               }
             }
           }
@@ -2684,16 +3017,37 @@
             "bearer": []
           }
         ],
-        "summary": "Assign horse and groom to stall",
+        "summary": "Create assigned daily checklist",
         "tags": [
           "stable"
         ],
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/stable-assignments/{id}/end": {
-      "post": {
-        "operationId": "StableDetailsController_endAssignment",
+    "/api/v1/grooms/me/today": {
+      "get": {
+        "operationId": "DailyChecklistsController_today",
+        "parameters": [],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get today assigned groom checklist",
+        "tags": [
+          "stable"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/checklists/{id}/complete": {
+      "patch": {
+        "operationId": "DailyChecklistsController_complete",
         "parameters": [
           {
             "name": "id",
@@ -2714,7 +3068,7 @@
             "bearer": []
           }
         ],
-        "summary": "End stable assignment",
+        "summary": "Complete assigned checklist item",
         "tags": [
           "stable"
         ],
@@ -2723,7 +3077,7 @@
     },
     "/api/v1/horses/{horseId}/feeding-plans": {
       "get": {
-        "operationId": "StableDetailsController_feedingPlans",
+        "operationId": "FeedingPlansController_feedingPlans",
         "parameters": [
           {
             "name": "horseId",
@@ -2751,7 +3105,7 @@
         "x-implementation-status": "contract-only"
       },
       "post": {
-        "operationId": "StableDetailsController_createFeedingPlan",
+        "operationId": "FeedingPlansController_createFeedingPlan",
         "parameters": [
           {
             "name": "horseId",
@@ -2791,7 +3145,7 @@
     },
     "/api/v1/feeding-plans/{id}/approve": {
       "post": {
-        "operationId": "StableDetailsController_approveFeedingPlan",
+        "operationId": "FeedingPlansController_approveFeedingPlan",
         "parameters": [
           {
             "name": "id",
@@ -2819,77 +3173,9 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/horses/{horseId}/checklists": {
-      "get": {
-        "operationId": "StableDetailsController_checklists",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List horse daily checklists",
-        "tags": [
-          "stable"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "post": {
-        "operationId": "StableDetailsController_createChecklist",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateChecklistDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create assigned daily checklist",
-        "tags": [
-          "stable"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/incidents": {
       "get": {
-        "operationId": "StableDetailsController_incidents",
+        "operationId": "IncidentsController_incidents",
         "parameters": [],
         "responses": {
           "501": {
@@ -2908,7 +3194,7 @@
         "x-implementation-status": "contract-only"
       },
       "post": {
-        "operationId": "StableController_report",
+        "operationId": "IncidentsController_report",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2939,7 +3225,7 @@
     },
     "/api/v1/incidents/{id}": {
       "get": {
-        "operationId": "StableDetailsController_incident",
+        "operationId": "IncidentsController_incident",
         "parameters": [
           {
             "name": "id",
@@ -2969,7 +3255,7 @@
     },
     "/api/v1/incidents/{id}/status": {
       "patch": {
-        "operationId": "StableDetailsController_incidentStatus",
+        "operationId": "IncidentsController_incidentStatus",
         "parameters": [
           {
             "name": "id",
@@ -3007,13 +3293,64 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/grooms/me/today": {
+    "/api/v1/stalls": {
       "get": {
-        "operationId": "StableController_today",
-        "parameters": [],
+        "operationId": "StallsController_stalls",
+        "parameters": [
+          {
+            "name": "barnId",
+            "required": false,
+            "in": "query",
+            "description": "Lọc theo khu chuồng (Barn)",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Lọc theo trạng thái chuồng",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "AVAILABLE",
+                "OCCUPIED",
+                "MAINTENANCE",
+                "RESERVED"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "Lọc theo phân loại chuồng",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "STANDARD",
+                "ISOLATION",
+                "RECOVERY",
+                "FOALING"
+              ]
+            }
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StallResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3021,16 +3358,50 @@
             "bearer": []
           }
         ],
-        "summary": "Get today assigned groom checklist",
+        "summary": "List club stalls",
         "tags": [
           "stable"
+        ]
+      },
+      "post": {
+        "operationId": "StallsController_createStall",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStallDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StallResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "summary": "Create stall",
+        "tags": [
+          "stable"
+        ]
       }
     },
-    "/api/v1/checklists/{id}/complete": {
-      "patch": {
-        "operationId": "StableController_complete",
+    "/api/v1/stalls/{id}": {
+      "get": {
+        "operationId": "StallsController_stall",
         "parameters": [
           {
             "name": "id",
@@ -3042,8 +3413,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StallResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3051,11 +3429,200 @@
             "bearer": []
           }
         ],
-        "summary": "Complete assigned checklist item",
+        "summary": "Get stall",
         "tags": [
           "stable"
+        ]
+      },
+      "patch": {
+        "operationId": "StallsController_updateStall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStallDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StallResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update stall",
+        "tags": [
+          "stable"
+        ]
+      },
+      "delete": {
+        "operationId": "StallsController_deleteStall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soft-delete stall",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/stalls/{id}/assignments": {
+      "get": {
+        "operationId": "StallsController_assignments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StallAssignmentResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List stall assignment history",
+        "tags": [
+          "stable"
+        ]
+      },
+      "post": {
+        "operationId": "StallsController_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStallAssignmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StallAssignmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign horse and groom to stall",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/stall-assignments/{id}/end": {
+      "post": {
+        "operationId": "StallsController_endAssignment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StallAssignmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "End stall assignment",
+        "tags": [
+          "stable"
+        ]
       }
     },
     "/api/v1/supplies/items": {
@@ -3303,6 +3870,44 @@
           "supplies"
         ],
         "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "SuppliesController_editRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditSupplyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a pending supply request",
+        "tags": [
+          "supplies"
+        ],
+        "x-implementation-status": "contract-only"
       }
     },
     "/api/v1/supplies/requests/{id}/status": {
@@ -3323,7 +3928,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateSupplyRequestDto"
+                "$ref": "#/components/schemas/UpdateSupplyRequestStatusDto"
               }
             }
           }
@@ -3345,341 +3950,9 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/training-plans/{id}": {
-      "get": {
-        "operationId": "TrainingDetailsController_plan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "TrainingController_updatePlan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTrainingPlanDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/training-plans/{id}/activate": {
-      "post": {
-        "operationId": "TrainingDetailsController_activatePlan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Activate training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/training-plans/{id}/cancel": {
-      "post": {
-        "operationId": "TrainingDetailsController_cancelPlan",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Cancel training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/training-plans/{id}/sessions": {
-      "get": {
-        "operationId": "TrainingDetailsController_sessions",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List sessions in training plan",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "post": {
-        "operationId": "TrainingController_createSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTrainingSessionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Schedule training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/sessions/{id}": {
-      "get": {
-        "operationId": "TrainingDetailsController_session",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "TrainingDetailsController_updateSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTrainingSessionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Reschedule or reassign training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/sessions/{id}/evaluation": {
-      "get": {
-        "operationId": "TrainingDetailsController_evaluation",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get session evaluation",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "post": {
-        "operationId": "TrainingController_evaluateSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EvaluateSessionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Evaluate completed session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/sessions/{id}/time-trials": {
       "get": {
-        "operationId": "TrainingDetailsController_timeTrials",
+        "operationId": "TimeTrialsController_list",
         "parameters": [
           {
             "name": "id",
@@ -3691,8 +3964,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeTrialResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3703,11 +3986,10 @@
         "summary": "List session time trials",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
-        "operationId": "TrainingDetailsController_createTimeTrial",
+        "operationId": "TimeTrialsController_create",
         "parameters": [
           {
             "name": "id",
@@ -3729,8 +4011,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3738,16 +4027,15 @@
             "bearer": []
           }
         ],
-        "summary": "Record session time trial",
+        "summary": "Record time trial during an active session",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/time-trials/{id}": {
       "get": {
-        "operationId": "TrainingDetailsController_timeTrial",
+        "operationId": "TimeTrialsController_get",
         "parameters": [
           {
             "name": "id",
@@ -3759,8 +4047,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3768,16 +4063,95 @@
             "bearer": []
           }
         ],
-        "summary": "Get time trial result and media",
+        "summary": "Get time trial result and media reference",
         "tags": [
           "training"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}/evaluation": {
+      "post": {
+        "operationId": "EvaluationsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionEvaluationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Evaluate completed session",
+        "tags": [
+          "training"
+        ]
+      },
+      "get": {
+        "operationId": "EvaluationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionEvaluationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get session evaluation",
+        "tags": [
+          "training"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/training-plans": {
       "get": {
-        "operationId": "TrainingController_listPlans",
+        "operationId": "TrainingPlansController_list",
         "parameters": [
           {
             "name": "horseId",
@@ -3789,8 +4163,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3801,11 +4185,10 @@
         "summary": "List horse training plans",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
-        "operationId": "TrainingController_createPlan",
+        "operationId": "TrainingPlansController_create",
         "parameters": [
           {
             "name": "horseId",
@@ -3827,8 +4210,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3839,107 +4229,32 @@
         "summary": "Create training plan",
         "tags": [
           "training"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/sessions/{id}/start": {
-      "post": {
-        "operationId": "TrainingController_startSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Start training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/sessions/{id}/complete": {
-      "post": {
-        "operationId": "TrainingController_completeSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Complete training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/sessions/{id}/cancel": {
-      "post": {
-        "operationId": "TrainingController_cancelSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Cancel training session",
-        "tags": [
-          "training"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/clubs/me": {
+    "/api/v1/training-plans/{id}": {
       "get": {
-        "operationId": "ClubsController_me",
-        "parameters": [],
+        "operationId": "TrainingPlansController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3947,28 +4262,43 @@
             "bearer": []
           }
         ],
-        "summary": "Get current club",
+        "summary": "Get training plan",
         "tags": [
-          "clubs"
-        ],
-        "x-implementation-status": "contract-only"
+          "training"
+        ]
       },
       "patch": {
-        "operationId": "ClubsController_update",
-        "parameters": [],
+        "operationId": "TrainingPlansController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateClubDto"
+                "$ref": "#/components/schemas/UpdateTrainingPlanDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3976,17 +4306,143 @@
             "bearer": []
           }
         ],
-        "summary": "Update current club settings",
+        "summary": "Update a scheduled training plan",
         "tags": [
-          "clubs"
-        ],
-        "x-implementation-status": "contract-only"
+          "training"
+        ]
       }
     },
-    "/api/v1/users/pending": {
+    "/api/v1/training-plans/{id}/activate": {
+      "post": {
+        "operationId": "TrainingPlansController_activate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Activate training plan",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-plans/{id}/complete": {
+      "post": {
+        "operationId": "TrainingPlansController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete training plan",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-plans/{id}/cancel": {
+      "post": {
+        "operationId": "TrainingPlansController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelTrainingPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel training plan and scheduled sessions",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-plans/{id}/sessions": {
       "get": {
-        "operationId": "UsersController_listPending",
-        "parameters": [],
+        "operationId": "TrainingSessionsController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -3995,7 +4451,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/UserResponseDto"
+                    "$ref": "#/components/schemas/TrainingSessionResponseDto"
                   }
                 }
               }
@@ -4007,22 +4463,66 @@
             "bearer": []
           }
         ],
-        "summary": "Danh sach ho so cho duyet cua CLB",
+        "summary": "List sessions in training plan",
         "tags": [
-          "users"
+          "training"
+        ]
+      },
+      "post": {
+        "operationId": "TrainingSessionsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Schedule training session",
+        "tags": [
+          "training"
         ]
       }
     },
-    "/api/v1/users": {
+    "/api/v1/sessions/{id}": {
       "get": {
-        "operationId": "UsersController_list",
+        "operationId": "TrainingSessionsController_get",
         "parameters": [
           {
-            "name": "limit",
+            "name": "id",
             "required": true,
-            "in": "query",
+            "in": "path",
             "schema": {
-              "type": "number"
+              "type": "string"
             }
           }
         ],
@@ -4032,10 +4532,290 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserResponseDto"
-                  }
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get training session",
+        "tags": [
+          "training"
+        ]
+      },
+      "patch": {
+        "operationId": "TrainingSessionsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reschedule or reassign a scheduled session",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}/start": {
+      "post": {
+        "operationId": "TrainingSessionsController_start",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start training session",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}/complete": {
+      "post": {
+        "operationId": "TrainingSessionsController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete training session and record actual result",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}/cancel": {
+      "post": {
+        "operationId": "TrainingSessionsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelTrainingSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel training session with a reason",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "UsersController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "HEAD_TRAINER",
+                "VETERINARIAN",
+                "GROOM",
+                "HORSE_OWNER",
+                "CLUB_MANAGER"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "LOCKED",
+                "INACTIVE"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Tìm theo họ tên hoặc email",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginationResponseDto"
                 }
               }
             }
@@ -4167,52 +4947,6 @@
         ]
       }
     },
-    "/api/v1/users/{id}/approve": {
-      "patch": {
-        "operationId": "UsersController_approve",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApproveUserDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Duyet ho so: gan CLB va role",
-        "tags": [
-          "users"
-        ]
-      }
-    },
     "/api/v1/users/{id}/status": {
       "patch": {
         "operationId": "UsersController_status",
@@ -4277,80 +5011,6 @@
       }
     },
     "schemas": {
-      "RegisterDto": {
-        "type": "object",
-        "properties": {
-          "fullName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "password": {
-            "type": "string",
-            "minLength": 8,
-            "writeOnly": true
-          },
-          "clubId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "CLB muon xin vao. Bo trong thi vao hang doi chung."
-          }
-        },
-        "required": [
-          "fullName",
-          "email",
-          "password"
-        ]
-      },
-      "UserResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "clubId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "HEAD_TRAINER",
-              "VETERINARIAN",
-              "GROOM",
-              "HORSE_OWNER",
-              "CLUB_MANAGER"
-            ],
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "PENDING",
-              "ACTIVE",
-              "LOCKED",
-              "INACTIVE"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "fullName",
-          "email",
-          "status"
-        ]
-      },
       "LoginDto": {
         "type": "object",
         "properties": {
@@ -4411,12 +5071,6 @@
             "type": "string",
             "format": "uuid"
           },
-          "clubId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true,
-            "description": "NULL khi tai khoan cho duyet ma chua chon CLB"
-          },
           "role": {
             "type": "string",
             "enum": [
@@ -4431,12 +5085,10 @@
           "status": {
             "type": "string",
             "enum": [
-              "PENDING",
               "ACTIVE",
               "LOCKED",
               "INACTIVE"
-            ],
-            "description": "PENDING thi frontend dua ve man hinh \"cho duyet\""
+            ]
           },
           "email": {
             "type": "string",
@@ -4446,7 +5098,7 @@
             "type": "string"
           },
           "roles": {
-            "description": "Role theo goc nhin Keycloak",
+            "description": "Vai trò có hiệu lực, lấy từ dữ liệu tài khoản",
             "type": "array",
             "items": {
               "type": "string"
@@ -4477,9 +5129,85 @@
           "newPassword"
         ]
       },
-      "UpdateHorseStatusDto": {
+      "UpdateHorseLifecycleDto": {
         "type": "object",
         "properties": {
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          }
+        },
+        "required": [
+          "lifecycleStatus"
+        ]
+      },
+      "HorseResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ],
+            "nullable": true
+          },
+          "breed": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean"
+          },
           "healthStatus": {
             "type": "string",
             "enum": [
@@ -4497,64 +5225,158 @@
               "TRANSFERRED"
             ]
           }
-        }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference",
+          "healthStatus",
+          "lifecycleStatus"
+        ]
       },
-      "CreateHorseDto": {
+      "UpdateHorseHealthDto": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "microchipId": {
-            "type": "string"
-          },
-          "dateOfBirth": {
+          "healthStatus": {
             "type": "string",
-            "format": "date"
-          },
-          "sireId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "damId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "mediaId": {
-            "type": "string",
-            "format": "uuid"
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
           }
         },
         "required": [
-          "name"
+          "healthStatus"
         ]
       },
-      "UpdateHorseDto": {
+      "HorsePedigreeNodeResponseDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "name": {
             "type": "string"
           },
-          "microchipId": {
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ],
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean"
+          },
+          "generation": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "parentRole": {
+            "type": "string",
+            "enum": [
+              "SIRE",
+              "DAM"
+            ]
+          },
+          "childId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ngựa con của node này trong cây"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference",
+          "generation",
+          "parentRole",
+          "childId"
+        ]
+      },
+      "HorsePedigreeResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
             "type": "string"
           },
-          "dateOfBirth": {
+          "depth": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "ancestors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorsePedigreeNodeResponseDto"
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "depth",
+          "ancestors"
+        ]
+      },
+      "HorseOwnershipResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "string"
+          },
+          "startDate": {
             "type": "string",
             "format": "date"
           },
-          "sireId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "damId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "mediaId": {
-            "type": "string",
-            "format": "uuid"
+          "endDate": {
+            "type": "object",
+            "format": "date",
+            "nullable": true
           }
-        }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "ownerId",
+          "ownerName",
+          "percentage",
+          "startDate"
+        ]
       },
       "HorseOwnerShareDto": {
         "type": "object",
@@ -4565,7 +5387,7 @@
           },
           "percentage": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.01,
             "maximum": 100
           }
         },
@@ -4587,6 +5409,489 @@
         "required": [
           "owners"
         ]
+      },
+      "HorseMeasurementResponseDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "WEIGHT",
+              "HEIGHT",
+              "BODY_CONDITION",
+              "TEMPERATURE"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "example": "512.50"
+          },
+          "unit": {
+            "type": "string",
+            "example": "kg"
+          },
+          "measuredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measuredBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measuredByName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "unit",
+          "measuredAt",
+          "id",
+          "horseId",
+          "measuredBy",
+          "measuredByName"
+        ]
+      },
+      "CreateHorseMeasurementDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "WEIGHT",
+              "HEIGHT",
+              "BODY_CONDITION",
+              "TEMPERATURE"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "description": "Đơn vị cố định theo loại: WEIGHT kg (30–1500), HEIGHT cm (50–250), BODY_CONDITION điểm (1–9), TEMPERATURE °C (30–45)"
+          },
+          "measuredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Mặc định là thời điểm hiện tại"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      },
+      "HorseEligibilityResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trainingEligible": {
+            "type": "boolean"
+          },
+          "racingEligible": {
+            "type": "boolean"
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          },
+          "activeTrainingLock": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "REFERENCE_HORSE",
+                "LIFECYCLE_NOT_ACTIVE",
+                "HEALTH_UNDER_OBSERVATION",
+                "HEALTH_INJURED",
+                "HEALTH_QUARANTINED",
+                "ACTIVE_TRAINING_LOCK"
+              ]
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "trainingEligible",
+          "racingEligible",
+          "healthStatus",
+          "lifecycleStatus",
+          "activeTrainingLock",
+          "reasons"
+        ]
+      },
+      "PaginationMetaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Tổng số phần tử"
+          },
+          "page": {
+            "type": "number",
+            "description": "Trang hiện tại"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Số phần tử mỗi trang"
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "Tổng số trang"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "PaginationResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
+      "CreateHorseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ]
+          },
+          "breed": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean",
+            "default": false,
+            "description": "true cho ngựa giống bên ngoài, chỉ dùng làm tổ tiên trong phả hệ"
+          }
+        },
+        "required": [
+          "name",
+          "gender"
+        ]
+      },
+      "HorseParentSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isReference": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference"
+        ]
+      },
+      "HorseLatestMeasurementDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "WEIGHT",
+              "HEIGHT",
+              "BODY_CONDITION",
+              "TEMPERATURE"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "example": "512.50"
+          },
+          "unit": {
+            "type": "string",
+            "example": "kg"
+          },
+          "measuredAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "unit",
+          "measuredAt"
+        ]
+      },
+      "HorseDetailResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ],
+            "nullable": true
+          },
+          "breed": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isReference": {
+            "type": "boolean"
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          },
+          "sire": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseParentSummaryDto"
+              }
+            ]
+          },
+          "dam": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseParentSummaryDto"
+              }
+            ]
+          },
+          "latestMeasurements": {
+            "description": "Giá trị mới nhất của từng loại chỉ số",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseLatestMeasurementDto"
+            }
+          },
+          "activeTrainingLock": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "isReference",
+          "healthStatus",
+          "lifecycleStatus",
+          "latestMeasurements",
+          "activeTrainingLock"
+        ]
+      },
+      "UpdateHorseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ]
+          },
+          "breed": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
       },
       "RequestUploadDto": {
         "type": "object",
@@ -4708,6 +6013,98 @@
           }
         }
       },
+      "PrescriptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "medicine": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "object",
+            "format": "date",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "medicine",
+          "dosage",
+          "frequency",
+          "startDate"
+        ]
+      },
+      "MedicalRecordResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagnosis": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MODERATE",
+              "HIGH",
+              "CRITICAL"
+            ]
+          },
+          "resultingStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "vetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voidedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "prescriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrescriptionResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "examDate",
+          "diagnosis",
+          "severity",
+          "resultingStatus",
+          "vetId",
+          "prescriptions"
+        ]
+      },
       "CreateMedicalRecordDto": {
         "type": "object",
         "properties": {
@@ -4771,6 +6168,25 @@
           "endDate"
         ]
       },
+      "InjuryPositionDto": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ]
+      },
       "CreateInjuryDto": {
         "type": "object",
         "properties": {
@@ -4788,6 +6204,14 @@
               "LEFT_HIND_LEG",
               "RIGHT_HIND_LEG",
               "OTHER"
+            ]
+          },
+          "position": {
+            "description": "Point on the 3D horse model, in model coordinates",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
             ]
           },
           "injuryType": {
@@ -4811,6 +6235,77 @@
         "required": [
           "bodyRegion",
           "injuryType"
+        ]
+      },
+      "InjuryMarkerResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bodyRegion": {
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ]
+          },
+          "position": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
+            ]
+          },
+          "injuryType": {
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ]
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          },
+          "notes": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "medicalRecordId",
+          "bodyRegion",
+          "injuryType",
+          "recoveryStatus"
         ]
       },
       "CreateTrainingLockDto": {
@@ -4908,6 +6403,91 @@
           "limits"
         ]
       },
+      "PerformanceMetricPointDto": {
+        "type": "object",
+        "properties": {
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "heartRateBpm": {
+            "type": "number"
+          },
+          "speedMps": {
+            "type": "string"
+          },
+          "alertLevel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordedAt",
+          "heartRateBpm",
+          "speedMps",
+          "alertLevel"
+        ]
+      },
+      "PerformanceEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "createdAt",
+          "score"
+        ]
+      },
+      "HorsePerformanceResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionsTracked": {
+            "type": "number"
+          },
+          "latestMetric": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceMetricPointDto"
+              }
+            ]
+          },
+          "recentMetrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PerformanceMetricPointDto"
+            }
+          },
+          "latestEvaluation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceEvaluationDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "horseId",
+          "sessionsTracked",
+          "recentMetrics"
+        ]
+      },
       "UpdateRaceDto": {
         "type": "object",
         "properties": {
@@ -4923,6 +6503,61 @@
             "additionalProperties": true
           }
         }
+      },
+      "HorseRaceResultResponseDto": {
+        "type": "object",
+        "properties": {
+          "registrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "raceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "raceName": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "raceStatus": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "OPEN",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "registrationStatus": {
+            "type": "string",
+            "enum": [
+              "PROPOSED",
+              "OWNER_APPROVED",
+              "MANAGER_CONFIRMED",
+              "REJECTED"
+            ]
+          },
+          "placing": {
+            "type": "object",
+            "nullable": true
+          },
+          "timeSeconds": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "registrationId",
+          "raceId",
+          "raceName",
+          "scheduledAt",
+          "raceStatus",
+          "registrationStatus"
+        ]
       },
       "CreateRaceDto": {
         "type": "object",
@@ -4989,37 +6624,130 @@
           "timeSeconds"
         ]
       },
-      "CreateStallDto": {
+      "BarnResponseDto": {
         "type": "object",
         "properties": {
-          "code": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
             "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "capacity": {
+            "type": "number",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "MAINTENANCE",
+              "CLOSED"
+            ]
+          },
+          "headTrainerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "required": [
-          "code"
+          "id",
+          "name",
+          "status"
         ]
       },
-      "CreateStableAssignmentDto": {
+      "CreateBarnDto": {
         "type": "object",
         "properties": {
-          "horseId": {
+          "name": {
             "type": "string",
-            "format": "uuid"
+            "maxLength": 80
           },
-          "groomId": {
+          "description": {
             "type": "string",
-            "format": "uuid"
+            "description": "Mô tả khu chuồng"
           },
-          "startAt": {
+          "capacity": {
+            "type": "number",
+            "description": "Sức chứa tối đa (số ô chuồng)"
+          },
+          "status": {
             "type": "string",
-            "format": "date-time"
+            "enum": [
+              "ACTIVE",
+              "MAINTENANCE",
+              "CLOSED"
+            ],
+            "default": "ACTIVE"
           }
         },
         "required": [
-          "horseId",
+          "name"
+        ]
+      },
+      "UpdateBarnDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả khu chuồng"
+          },
+          "capacity": {
+            "type": "number",
+            "description": "Sức chứa tối đa (số ô chuồng)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "MAINTENANCE",
+              "CLOSED"
+            ],
+            "default": "ACTIVE"
+          },
+          "headTrainerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Head Trainer in charge; null clears the assignment"
+          }
+        }
+      },
+      "CreateChecklistDto": {
+        "type": "object",
+        "properties": {
+          "groomId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID groom được giao checklist"
+          },
+          "checklistDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày kiểm tra"
+          },
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Các hạng mục kiểm tra sức khỏe, vệ sinh và trạng thái hoàn thành"
+          }
+        },
+        "required": [
           "groomId",
-          "startAt"
+          "checklistDate",
+          "items"
         ]
       },
       "CreateFeedingPlanDto": {
@@ -5027,15 +6755,18 @@
         "properties": {
           "effectiveFrom": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Ngày bắt đầu áp dụng kế hoạch dinh dưỡng"
           },
           "effectiveTo": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Ngày kết thúc (nếu có)"
           },
           "ration": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": true,
+            "description": "Khẩu phần ăn (cám, cỏ, vitamin, khoáng chất...)"
           }
         },
         "required": [
@@ -5043,28 +6774,32 @@
           "ration"
         ]
       },
-      "CreateChecklistDto": {
+      "ReportIncidentDto": {
         "type": "object",
         "properties": {
-          "groomId": {
+          "horseId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "ID ngựa gặp sự cố"
           },
-          "checklistDate": {
+          "description": {
             "type": "string",
-            "format": "date"
+            "description": "Mô tả chi tiết sự cố"
           },
-          "items": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "boolean"
-            }
+          "urgent": {
+            "type": "boolean",
+            "default": false,
+            "description": "Mức độ khẩn cấp"
+          },
+          "mediaAssetId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Hình ảnh/video đính kèm (nếu có)"
           }
         },
         "required": [
-          "groomId",
-          "checklistDate",
-          "items"
+          "horseId",
+          "description"
         ]
       },
       "UpdateIncidentStatusDto": {
@@ -5076,35 +6811,273 @@
               "OPEN",
               "IN_REVIEW",
               "RESOLVED"
-            ]
+            ],
+            "description": "Trạng thái xử lý sự cố"
           }
         },
         "required": [
           "status"
         ]
       },
-      "ReportIncidentDto": {
+      "StallResponseDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "barnId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "ISOLATION",
+              "RECOVERY",
+              "FOALING"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "OCCUPIED",
+              "MAINTENANCE",
+              "RESERVED"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasCamera": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "barnId",
+          "code",
+          "type",
+          "status",
+          "hasCamera"
+        ]
+      },
+      "CreateStallDto": {
+        "type": "object",
+        "properties": {
+          "barnId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID khu chuồng (Barn)"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Mã số ô chuồng (duy nhất trong hệ thống)"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "ISOLATION",
+              "RECOVERY",
+              "FOALING"
+            ],
+            "default": "STANDARD",
+            "description": "Phân loại chuồng: STANDARD, ISOLATION, RECOVERY, FOALING"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "OCCUPIED",
+              "MAINTENANCE",
+              "RESERVED"
+            ],
+            "default": "AVAILABLE",
+            "description": "Trạng thái ô chuồng"
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả ô chuồng, ghi chú tiện nghi cơ sở vật chất"
+          },
+          "hasCamera": {
+            "type": "boolean",
+            "description": "Có trang bị camera giám sát 24/7 không",
+            "default": false
+          }
+        },
+        "required": [
+          "barnId",
+          "code"
+        ]
+      },
+      "UpdateStallDto": {
+        "type": "object",
+        "properties": {
+          "barnId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID khu chuồng (Barn)"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Mã số ô chuồng (duy nhất trong hệ thống)"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "ISOLATION",
+              "RECOVERY",
+              "FOALING"
+            ],
+            "default": "STANDARD",
+            "description": "Phân loại chuồng: STANDARD, ISOLATION, RECOVERY, FOALING"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "OCCUPIED",
+              "MAINTENANCE",
+              "RESERVED"
+            ],
+            "default": "AVAILABLE",
+            "description": "Trạng thái ô chuồng"
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả ô chuồng, ghi chú tiện nghi cơ sở vật chất"
+          },
+          "hasCamera": {
+            "type": "boolean",
+            "description": "Có trang bị camera giám sát 24/7 không",
+            "default": false
+          }
+        }
+      },
+      "AssignedHorseSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "AssignedGroomSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email"
+        ]
+      },
+      "StallAssignmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stallId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "horseId": {
             "type": "string",
             "format": "uuid"
           },
-          "description": {
-            "type": "string"
+          "horse": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignedHorseSummaryDto"
+              }
+            ]
           },
-          "urgent": {
-            "type": "boolean",
-            "default": false
-          },
-          "mediaAssetId": {
+          "groomId": {
             "type": "string",
             "format": "uuid"
+          },
+          "groom": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignedGroomSummaryDto"
+              }
+            ]
+          },
+          "startAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "stallId",
+          "horseId",
+          "groomId",
+          "startAt"
+        ]
+      },
+      "CreateStallAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID ngựa"
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID groom phụ trách"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Thời điểm bắt đầu xếp chuồng"
           }
         },
         "required": [
           "horseId",
-          "description"
+          "groomId",
+          "startAt"
         ]
       },
       "CreateSupplyItemDto": {
@@ -5112,6 +7085,14 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "FEED",
+              "MEDICINE",
+              "EQUIPMENT"
+            ]
           },
           "unit": {
             "type": "string"
@@ -5127,6 +7108,7 @@
         },
         "required": [
           "name",
+          "category",
           "unit",
           "quantityOnHand",
           "reorderThreshold"
@@ -5137,6 +7119,14 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "FEED",
+              "MEDICINE",
+              "EQUIPMENT"
+            ]
           },
           "unit": {
             "type": "string"
@@ -5160,7 +7150,7 @@
           },
           "quantity": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
           "note": {
             "type": "string"
@@ -5171,7 +7161,19 @@
           "quantity"
         ]
       },
-      "UpdateSupplyRequestDto": {
+      "EditSupplyRequestDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateSupplyRequestStatusDto": {
         "type": "object",
         "properties": {
           "status": {
@@ -5181,34 +7183,52 @@
               "REJECTED",
               "FULFILLED"
             ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Required when status is REJECTED"
           }
         },
         "required": [
           "status"
         ]
       },
-      "UpdateTrainingSessionDto": {
+      "TimeTrialResponseDto": {
         "type": "object",
         "properties": {
-          "scheduledAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "distanceKm": {
-            "type": "number",
-            "minimum": 0
-          },
-          "intensity": {
-            "type": "string"
-          },
-          "surface": {
-            "type": "string"
-          },
-          "groomId": {
+          "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "distanceMeters": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "string"
+          },
+          "videoAssetId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
           }
-        }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "distanceMeters",
+          "durationSeconds",
+          "createdAt"
+        ]
       },
       "CreateTimeTrialDto": {
         "type": "object",
@@ -5232,6 +7252,131 @@
         "required": [
           "distanceMeters",
           "durationSeconds"
+        ]
+      },
+      "EvaluateSessionDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "score"
+        ]
+      },
+      "SessionEvaluationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "evaluatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "score": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "evaluatorId",
+          "score",
+          "createdAt"
+        ]
+      },
+      "TrainingPlanResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phaseName": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "ACTIVE",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "activatedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelReason": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "createdBy",
+          "phaseName",
+          "goal",
+          "startDate",
+          "endDate",
+          "status",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "CreateTrainingPlanDto": {
@@ -5278,6 +7423,100 @@
           }
         }
       },
+      "CancelTrainingPlanDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Lý do hủy kế hoạch huấn luyện"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "TrainingSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "distanceKm": {
+            "type": "string"
+          },
+          "plannedDurationMinutes": {
+            "type": "object"
+          },
+          "intensity": {
+            "type": "string"
+          },
+          "surface": {
+            "type": "object"
+          },
+          "groomId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "startedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "actualDistanceKm": {
+            "type": "object"
+          },
+          "actualDurationSeconds": {
+            "type": "object"
+          },
+          "perceivedEffort": {
+            "type": "object"
+          },
+          "completionNotes": {
+            "type": "object"
+          },
+          "cancelledAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelledBy": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "cancelReason": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "planId",
+          "scheduledAt",
+          "distanceKm",
+          "intensity",
+          "status"
+        ]
+      },
       "CreateTrainingSessionDto": {
         "type": "object",
         "properties": {
@@ -5295,6 +7534,10 @@
           "surface": {
             "type": "string"
           },
+          "plannedDurationMinutes": {
+            "type": "number",
+            "minimum": 1
+          },
           "groomId": {
             "type": "string",
             "format": "uuid"
@@ -5306,29 +7549,107 @@
           "intensity"
         ]
       },
-      "EvaluateSessionDto": {
+      "UpdateTrainingSessionDto": {
         "type": "object",
         "properties": {
-          "score": {
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "distanceKm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "intensity": {
+            "type": "string"
+          },
+          "surface": {
+            "type": "string"
+          },
+          "plannedDurationMinutes": {
+            "type": "number",
+            "minimum": 1
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CompleteTrainingSessionDto": {
+        "type": "object",
+        "properties": {
+          "actualDistanceKm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "actualDurationSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "perceivedEffort": {
             "type": "number",
             "minimum": 1,
             "maximum": 10
           },
-          "comment": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "score"
-        ]
-      },
-      "UpdateClubDto": {
-        "type": "object",
-        "properties": {
-          "name": {
+          "notes": {
             "type": "string"
           }
         }
+      },
+      "CancelTrainingSessionDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Lý do hủy buổi tập"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "UserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ],
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "LOCKED",
+              "INACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "status"
+        ]
       },
       "CreateUserDto": {
         "type": "object",
@@ -5363,32 +7684,12 @@
           "password"
         ]
       },
-      "ApproveUserDto": {
-        "type": "object",
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": [
-              "HEAD_TRAINER",
-              "VETERINARIAN",
-              "GROOM",
-              "HORSE_OWNER",
-              "CLUB_MANAGER"
-            ],
-            "description": "Role cap cho nguoi duoc duyet"
-          }
-        },
-        "required": [
-          "role"
-        ]
-      },
       "UpdateUserStatusDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
             "enum": [
-              "PENDING",
               "ACTIVE",
               "LOCKED",
               "INACTIVE"
