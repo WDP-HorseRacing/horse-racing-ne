@@ -3,26 +3,31 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
-import { TrainingSessionStatus } from '../constants/training-session-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   EvaluateSessionDto,
   SessionEvaluationResponseDto,
 } from '../dto/training-session.dto';
 import { toEvaluationResponse } from '../mappers/training.mapper';
 import { TrainingAccessService } from '../shared/training-access.service';
-import { EvaluationsRepository } from './evaluations.repository';
 
 @Injectable()
 export class EvaluationsService {
   constructor(
-    private readonly evaluations: EvaluationsRepository,
+    @InjectRepository(PerformanceEvaluationEntity)
+    private readonly evaluations: Repository<PerformanceEvaluationEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Tạo đánh giá hiệu suất cho buổi tập sau khi hoàn thành (COMPLETED).
+   * Mỗi buổi tập chỉ được có tối đa một bản ghi đánh giá.
+   */
   async create(
     actor: Actor,
     sessionId: string,
@@ -55,6 +60,10 @@ export class EvaluationsService {
     return toEvaluationResponse(row);
   }
 
+  /**
+   * Lấy thông tin đánh giá hiệu suất của một buổi tập theo sessionId
+   * sau khi xác nhận quyền hạn và phạm vi chuồng phụ trách của trainer.
+   */
   async get(
     actor: Actor,
     sessionId: string,
@@ -67,7 +76,7 @@ export class EvaluationsService {
       caller.id,
       session.plan.horseId,
     );
-    const row = await this.evaluations.findBySession(sessionId);
+    const row = await this.evaluations.findOneBy({ sessionId });
     if (!row) throw new NotFoundException('Buổi tập chưa có đánh giá');
     return toEvaluationResponse(row);
   }

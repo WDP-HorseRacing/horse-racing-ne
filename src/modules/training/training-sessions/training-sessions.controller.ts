@@ -36,8 +36,11 @@ export class TrainingSessionsController {
   @Get('training-plans/:id/sessions')
   @ApiOperation({ summary: 'List sessions in training plan' })
   @ApiOkResponse({ type: [TrainingSessionResponseDto] })
-  list(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
-    return this.sessions.listSessions(actor, id);
+  list(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) planId: string,
+  ) {
+    return this.sessions.listSessionsByPlan(actor, planId);
   }
 
   //
@@ -47,18 +50,21 @@ export class TrainingSessionsController {
   @ApiCreatedResponse({ type: TrainingSessionResponseDto })
   create(
     @CurrentUser() actor: Actor,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) planId: string,
     @Body() body: CreateTrainingSessionDto,
   ) {
-    return this.sessions.createSession(actor, id, body);
+    return this.sessions.createSession(actor, planId, body);
   }
 
   //
   @Get('sessions/:id')
   @ApiOperation({ summary: 'Get training session' })
   @ApiOkResponse({ type: TrainingSessionResponseDto })
-  get(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
-    return this.sessions.getSessionById(actor, id);
+  get(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) sessionId: string,
+  ) {
+    return this.sessions.getSessionById(actor, sessionId);
   }
 
   //
