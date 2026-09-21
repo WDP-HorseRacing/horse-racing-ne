@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
@@ -34,8 +34,11 @@ export class HorseAccessService {
    * @returns Promise trả về user hiện tại
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    */
-  currentUser(actor: Actor): Promise<CurrentActorUser> {
-    return currentUserForActor(this.dataSource.manager, actor);
+  currentUser(
+    actor: Actor,
+    manager = this.dataSource.manager,
+  ): Promise<CurrentActorUser> {
+    return currentUserForActor(manager, actor);
   }
 
   /**
@@ -46,11 +49,28 @@ export class HorseAccessService {
    * @returns HorseEntity - Con ngựa tìm thấy
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
-  async findVisible(actor: Actor, horseId: string): Promise<HorseEntity> {
-    const caller = await this.currentUser(actor);
-    const horse = await this.findHorse(horseId);
-    await this.assertVisible(actor, caller.id, horse);
+  async findVisible(
+    actor: Actor,
+    horseId: string,
+    manager = this.dataSource.manager,
+  ): Promise<HorseEntity> {
+    const caller = await this.currentUser(actor, manager);
+    const horse = await this.findHorse(horseId, manager);
+    await this.assertVisible(actor, caller.id, horse, manager);
     return horse;
+  }
+
+  /** Resolve the caller, lock the horse, then recheck write visibility in the transaction. */
+  async lockVisibleHorse(
+    actor: Actor,
+    horseId: string,
+    manager: EntityManager,
+  ): Promise<{ caller: CurrentActorUser; horse: HorseEntity }> {
+    const caller = await this.currentUser(actor, manager);
+    const horse = await this.horses.lockHorse(manager, horseId);
+    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    await this.assertVisible(actor, caller.id, horse, manager);
+    return { caller, horse };
   }
 
   /**
@@ -77,8 +97,11 @@ export class HorseAccessService {
    * @returns A promise resolving to the horse
    * @throws NotFoundException if the horse is not found
    */
-  async findHorse(id: string): Promise<HorseEntity> {
-    const horse = await this.horses.findById(id);
+  async findHorse(
+    id: string,
+    manager = this.dataSource.manager,
+  ): Promise<HorseEntity> {
+    const horse = await this.horses.findById(id, manager);
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
     return horse;
   }
@@ -142,6 +165,7 @@ export class HorseAccessService {
     actor: Actor,
     callerId: string,
     horse: HorseEntity,
+    manager = this.dataSource.manager,
   ): Promise<void> {
     if (horse.isReference && !this.hasRole(actor, UserRole.CLUB_MANAGER)) {
       throw new NotFoundException('Không tìm thấy ngựa');
@@ -149,6 +173,7 @@ export class HorseAccessService {
     const visible = await this.horses.isVisible(
       horse.id,
       this.scopeOf(actor, callerId),
+      manager,
     );
     if (!visible) throw new NotFoundException('Không tìm thấy ngựa');
   }

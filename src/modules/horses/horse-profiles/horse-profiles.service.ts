@@ -5,7 +5,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager, QueryFailedError } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import {
+  DataSource,
+  EntityManager,
+  IsNull,
+  Not,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -13,21 +21,16 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
+import { BarnStatus } from '../../stable/constants/barn-status.enum';
 import { StallStatus } from '../../stable/constants/stall-status.enum';
+import { BarnEntity } from '../../stable/entities/barn.entity';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
+import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import { StallEntity } from '../../stable/entities/stall.entity';
 import {
   assertTrainerBarn,
   isHorseInTrainerBarn,
 } from '../../stable/utils/trainer-barn';
-import {
-  MICROCHIP_TAKEN_MESSAGE,
-  PEDIGREE_FIELDS,
-  PEDIGREE_DEFAULT_DEPTH,
-  PEDIGREE_MAX_DEPTH,
-  STALE_HORSE_MESSAGE,
-  STALL_OCCUPIED_MESSAGE,
-  UNIQUE_CONFLICT_MESSAGES,
-} from '../enums/horse.constants';
 import { HorseGender } from '../enums/horse-gender.enum';
 import {
   HorseHealthStatus,
@@ -57,22 +60,42 @@ import {
   UpdateHorseDto,
 } from '../dto/horse.dto';
 import { HorseEntity } from '../entities/horse.entity';
+import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
+import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import {
   toHorseDetailResponse,
   toHorseListItem,
-  toHorseResponse,
-} from '../mappers/horse.mapper';
+} from '../mappers/horse-profiles.mapper';
+import { toHorseResponse } from '../mappers/horse.mapper';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorseOwnersService } from '../shared/horse-owners.service';
 import { HorsesSharedRepository } from '../shared/horses-shared.repository';
+import type { HorsePersonRow } from '../types/horse.types';
 import { clubToday } from '../utils/club-date';
 import { HorseProfilesRepository } from './horse-profiles.repository';
 import { changedFields, pickFields } from '../utils/record-diff';
+import {
+  MICROCHIP_TAKEN_MESSAGE,
+  PEDIGREE_DEFAULT_DEPTH,
+  PEDIGREE_FIELDS,
+  PEDIGREE_MAX_DEPTH,
+  STALE_HORSE_MESSAGE,
+  STALL_OCCUPIED_MESSAGE,
+  UNIQUE_CONFLICT_MESSAGES,
+} from '../enums/horse.constants';
 
 @Injectable()
 export class HorseProfilesService {
   constructor(
     private readonly profiles: HorseProfilesRepository,
+    @InjectRepository(HorseEntity)
+    private readonly horseRecords: Repository<HorseEntity>,
+    @InjectRepository(HorseMeasurementEntity)
+    private readonly measurementRecords: Repository<HorseMeasurementEntity>,
+    @InjectRepository(HorseOwnershipEntity)
+    private readonly ownershipRecords: Repository<HorseOwnershipEntity>,
+    @InjectRepository(GroomAssignmentEntity)
+    private readonly groomAssignments: Repository<GroomAssignmentEntity>,
     private readonly horses: HorsesSharedRepository,
     private readonly access: HorseAccessService,
     private readonly owners: HorseOwnersService,
@@ -151,11 +174,15 @@ export class HorseProfilesService {
     const [stalls, groom, representativeOwner, latest, activeTrainingLock] =
       await Promise.all([
         this.profiles.currentStallsByHorseIds([id]),
-        this.profiles.currentGroom(id),
-        seesOwner
-          ? this.profiles.representativeOwner(id)
-          : Promise.resolve(null),
-        this.profiles.latestMeasurements(id),
+        this.currentGroom(id),
+        seesOwner ? this.representativeOwner(id) : Promise.resolve(null),
+        this.measurementRecords
+          .createQueryBuilder('m')
+          .distinctOn(['m.type'])
+          .where('m.horseId = :horseId', { horseId: id })
+          .orderBy('m.type', 'ASC')
+          .addOrderBy('m.measuredAt', 'DESC')
+          .getMany(),
         this.horses.hasActiveTrainingLock(id),
       ]);
     return toHorseDetailResponse(
@@ -224,12 +251,7 @@ export class HorseProfilesService {
           isReference,
         });
         if (stall) {
-          await this.profiles.assignStall(
-            manager,
-            stall,
-            created.id,
-            new Date(),
-          );
+          await this.assignStall(manager, stall, created.id, new Date());
         }
         if (body.owners) {
           await this.owners.insertOwnerships(
@@ -338,7 +360,7 @@ export class HorseProfilesService {
           'Ngựa đã phát sinh dữ liệu nghiệp vụ, hãy đổi trạng thái vòng đời thay vì xóa',
         );
       }
-      const usage = await this.profiles.parentUsage(id, manager);
+      const usage = await this.parentUsage(manager, id);
       if (usage.asSire || usage.asDam) {
         throw new ConflictException(
           'Ngựa đang là cha/mẹ trong phả hệ của ngựa khác, không thể xóa',
@@ -404,7 +426,7 @@ export class HorseProfilesService {
         }
         if (body.stallId) {
           const stall = await this.lockEmptyStall(manager, body.stallId);
-          await this.profiles.assignStall(manager, stall, id, new Date());
+          await this.assignStall(manager, stall, id, new Date());
         }
         if (body.owners) {
           await this.owners.insertOwnerships(
@@ -600,7 +622,12 @@ export class HorseProfilesService {
   ): Promise<void> {
     if (
       microchipId &&
-      (await this.profiles.microchipTaken(microchipId, excludeHorseId))
+      (await this.horseRecords.exists({
+        where: excludeHorseId
+          ? { microchipId, id: Not(excludeHorseId) }
+          : { microchipId },
+        withDeleted: true,
+      }))
     ) {
       throw new ConflictException(MICROCHIP_TAKEN_MESSAGE);
     }
@@ -618,18 +645,71 @@ export class HorseProfilesService {
     manager: EntityManager,
     stallId: string,
   ): Promise<StallEntity> {
-    const stall = await this.profiles.lockStall(manager, stallId);
+    const stall = await manager.getRepository(StallEntity).findOne({
+      where: { id: stallId },
+      lock: { mode: 'pessimistic_write' },
+    });
     if (!stall) throw new BadRequestException('Ô chuồng không tồn tại');
     if (stall.status !== StallStatus.AVAILABLE) {
       throw new ConflictException('Ô chuồng không ở trạng thái khả dụng');
     }
-    if (!(await this.profiles.barnIsActive(manager, stall.barnId))) {
+    const barnIsActive = await manager
+      .getRepository(BarnEntity)
+      .existsBy({ id: stall.barnId, status: BarnStatus.ACTIVE });
+    if (!barnIsActive) {
       throw new ConflictException('Khu chuồng không ở trạng thái hoạt động');
     }
-    if (await this.profiles.stallHasActiveAssignment(manager, stallId)) {
+    const hasActiveAssignment = await manager
+      .getRepository(StallAssignmentEntity)
+      .existsBy({ stallId, endAt: IsNull() });
+    if (hasActiveAssignment) {
       throw new ConflictException(STALL_OCCUPIED_MESSAGE);
     }
     return stall;
+  }
+
+  /**
+   * Ghi phân công chuồng và cập nhật trạng thái ô chuồng trong cùng transaction.
+   */
+  private async assignStall(
+    manager: EntityManager,
+    stall: StallEntity,
+    horseId: string,
+    startAt: Date,
+  ): Promise<void> {
+    await manager.save(StallAssignmentEntity, {
+      stallId: stall.id,
+      horseId,
+      startAt,
+      endAt: null,
+    });
+    await manager
+      .getRepository(StallEntity)
+      .update({ id: stall.id }, { status: StallStatus.OCCUPIED });
+  }
+
+  /** Lấy groom hiện được phân công cho ngựa, hoặc null nếu chưa có. */
+  private async currentGroom(horseId: string): Promise<HorsePersonRow | null> {
+    const assignment = await this.groomAssignments.findOne({
+      where: { horseId, endAt: IsNull() },
+      relations: { groom: true },
+    });
+    return assignment
+      ? { id: assignment.groom.id, fullName: assignment.groom.fullName }
+      : null;
+  }
+
+  /** Lấy chủ đại diện trong các dòng sở hữu đang mở. */
+  private async representativeOwner(
+    horseId: string,
+  ): Promise<HorsePersonRow | null> {
+    const ownership = await this.ownershipRecords.findOne({
+      where: { horseId, endAt: IsNull(), isRepresentative: true },
+      relations: { owner: true },
+    });
+    return ownership
+      ? { id: ownership.owner.id, fullName: ownership.owner.fullName }
+      : null;
   }
 
   /**
@@ -669,6 +749,19 @@ export class HorseProfilesService {
         throw new ConflictException('Quan hệ cha/mẹ tạo thành vòng lặp phả hệ');
       }
     }
+  }
+
+  /** Kiểm tra ngựa hiện được tham chiếu làm sire hoặc dam trong transaction. */
+  private async parentUsage(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<{ asSire: boolean; asDam: boolean }> {
+    const horses = manager.getRepository(HorseEntity);
+    const [asSire, asDam] = await Promise.all([
+      horses.existsBy({ sireId: horseId }),
+      horses.existsBy({ damId: horseId }),
+    ]);
+    return { asSire, asDam };
   }
 
   /**
@@ -731,9 +824,17 @@ export class HorseProfilesService {
       );
     }
     if (changes.dateOfBirth) {
+      const child = await manager.getRepository(HorseEntity).findOne({
+        select: { id: true, dateOfBirth: true },
+        where: [
+          { sireId: horse.id, dateOfBirth: Not(IsNull()) },
+          { damId: horse.id, dateOfBirth: Not(IsNull()) },
+        ],
+        order: { dateOfBirth: 'ASC' },
+      });
       const childError = childBirthDateError(
         changes.dateOfBirth,
-        await this.profiles.earliestChildBirthDate(horse.id, manager),
+        child?.dateOfBirth ?? null,
       );
       if (childError) throw new BadRequestException(childError);
     }
@@ -752,7 +853,7 @@ export class HorseProfilesService {
     horseId: string,
     gender: HorseGender,
   ): Promise<void> {
-    const usage = await this.profiles.parentUsage(horseId, manager);
+    const usage = await this.parentUsage(manager, horseId);
     if (usage.asSire && gender === HorseGender.FEMALE) {
       throw new ConflictException(
         'Ngựa đang là sire của ngựa khác, không thể đổi thành FEMALE',

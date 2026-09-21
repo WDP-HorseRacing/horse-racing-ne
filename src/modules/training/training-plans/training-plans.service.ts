@@ -164,8 +164,14 @@ export class TrainingPlansService {
   ): Promise<TrainingPlanResponseDto> {
     const caller = await this.access.currentUser(actor);
     const updatedPlan = await this.dataSource.transaction(async (manager) => {
-      // khóa training plan
+      const snapshot = await this.access.findPlan(manager, planId);
+      const horse = await this.access.lockedHorse(manager, snapshot.horseId);
       const curPlan = await this.access.lockedPlan(manager, planId);
+      if (curPlan.horseId !== horse.id) {
+        throw new ConflictException(
+          'Giáo án đã được chuyển sang ngựa khác, vui lòng thử lại',
+        );
+      }
       await this.access.assertTrainerBarn(
         manager,
         actor,
@@ -173,8 +179,6 @@ export class TrainingPlansService {
         curPlan.horseId,
       );
       assertPlanActivatable(curPlan.status); // kiểm tra: plan phải có status SCHEDULED
-      // khóa horse ứng với training plan
-      await this.access.lockedHorse(manager, curPlan.horseId);
       // kiểm tra: plan phải có ít nhất một session
       const sessionCount = await manager.countBy(TrainingSessionEntity, {
         planId: planId,

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../../audit/audit.module';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseEntity } from '../entities/horse.entity';
@@ -15,6 +16,7 @@ import { HorseProfilesService } from './horse-profiles.service';
       HorseEntity,
       HorseOwnershipEntity,
       HorseMeasurementEntity,
+      GroomAssignmentEntity,
     ]),
     HorsesSharedModule,
     AuditModule,

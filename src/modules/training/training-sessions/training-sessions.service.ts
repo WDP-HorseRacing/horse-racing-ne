@@ -187,10 +187,23 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const caller = await this.accessService.currentUser(actor);
     const session = await this.dataSource.transaction(async (manager) => {
+      const snapshot = await this.accessService.findSession(
+        manager,
+        sessionId,
+      );
+      const horse = await this.accessService.lockedHorse(
+        manager,
+        snapshot.plan.horseId,
+      );
       const current = await this.accessService.lockedSession(
         manager,
         sessionId,
       );
+      if (current.planId !== snapshot.planId) {
+        throw new ConflictException(
+          'Buổi tập đã được thay đổi, vui lòng thử lại',
+        );
+      }
       // kiểm tra phân quyền user
       await this.accessService.assertCanOperateSession(
         manager,
@@ -206,7 +219,11 @@ export class TrainingSessionsService {
       // kiểm tra giáo án phải là ACTIVE
       if (plan.status !== TrainingPlanStatus.ACTIVE)
         throw new ConflictException('Giáo án chưa ACTIVE');
-      const horse = await this.accessService.lockedHorse(manager, plan.horseId);
+      if (plan.horseId !== horse.id) {
+        throw new ConflictException(
+          'Giáo án đã được chuyển sang ngựa khác, vui lòng thử lại',
+        );
+      }
       // kiểm tra ngựa phải ở trạng thái ACTIVE và healthStatus là ELIGIBLE
       if (
         horse.lifecycleStatus !== HorseLifecycleStatus.ACTIVE ||

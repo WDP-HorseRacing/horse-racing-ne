@@ -63,8 +63,8 @@ export class HorseStatusesService {
     id: string,
     body: UpdateHorseLifecycleDto,
   ): Promise<HorseResponseDto> {
-    const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
       const horse = await this.horses.lockHorse(manager, id);
       if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
       this.access.assertOperational(horse);
@@ -151,21 +151,24 @@ export class HorseStatusesService {
     id: string,
     body: UpdateHorseHealthDto,
   ): Promise<HorseResponseDto> {
-    await this.access.currentUser(actor);
-    const horse = await this.access.findHorse(id);
-    this.access.assertOperational(horse);
-    this.access.assertNotTransferred(horse);
-    if (
-      body.healthStatus === HorseHealthStatus.ELIGIBLE &&
-      (await this.horses.hasActiveTrainingLock(id))
-    ) {
-      throw new ConflictException(
-        'Ngựa đang bị khóa huấn luyện, cần giải khóa trước khi chuyển sang ELIGIBLE',
-      );
-    }
-    await this.dataSource
-      .getRepository(HorseEntity)
-      .update({ id }, { healthStatus: body.healthStatus });
+    await this.dataSource.transaction(async (manager) => {
+      await this.access.currentUser(actor, manager);
+      const horse = await this.horses.lockHorse(manager, id);
+      if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+      this.access.assertOperational(horse);
+      this.access.assertNotTransferred(horse);
+      if (
+        body.healthStatus === HorseHealthStatus.ELIGIBLE &&
+        (await this.horses.hasActiveTrainingLock(id, manager))
+      ) {
+        throw new ConflictException(
+          'Ngựa đang bị khóa huấn luyện, cần giải khóa trước khi chuyển sang ELIGIBLE',
+        );
+      }
+      await manager
+        .getRepository(HorseEntity)
+        .update({ id }, { healthStatus: body.healthStatus });
+    });
     return toHorseResponse(await this.access.findHorse(id));
   }
 

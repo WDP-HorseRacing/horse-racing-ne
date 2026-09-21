@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
@@ -15,9 +17,9 @@ import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import {
   toCoOwnerResponse,
-  toHorseResponse,
   toOwnershipResponse,
-} from '../mappers/horse.mapper';
+} from '../mappers/horse-ownerships.mapper';
+import { toHorseResponse } from '../mappers/horse.mapper';
 import {
   futureTransferError,
   planOwnershipChange,
@@ -25,12 +27,14 @@ import {
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorseOwnersService } from '../shared/horse-owners.service';
-import { HorseOwnershipsRepository } from './horse-ownerships.repository';
 
 @Injectable()
 export class HorseOwnershipsService {
   constructor(
-    private readonly ownerships: HorseOwnershipsRepository,
+    @InjectRepository(HorseOwnershipEntity)
+    private readonly ownerships: Repository<HorseOwnershipEntity>,
+    @InjectRepository(HorseEntity)
+    private readonly horsesRepository: Repository<HorseEntity>,
     private readonly access: HorseAccessService,
     private readonly owners: HorseOwnersService,
     private readonly dataSource: DataSource,
@@ -53,7 +57,14 @@ export class HorseOwnershipsService {
   ): Promise<HorseOwnershipResponseDto[]> {
     const caller = await this.access.currentUser(actor);
     await this.access.findReadable(actor, horseId);
-    const ownerships = await this.ownerships.listOwnershipByHorse(horseId);
+    const ownerships = await this.ownerships.find({
+      where: { horseId },
+      relations: { owner: true },
+      order: {
+        endAt: { direction: 'DESC', nulls: 'FIRST' },
+        startAt: 'DESC',
+      },
+    });
     if (this.access.hasRole(actor, UserRole.CLUB_MANAGER)) {
       return ownerships.map((ownership) =>
         toOwnershipResponse(ownership, true),
@@ -107,14 +118,20 @@ export class HorseOwnershipsService {
     if (futureError) throw new BadRequestException(futureError);
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.getRepository(HorseEntity).findOne({
+      await this.access.currentUser(actor, manager);
+      const lockedHorse = await manager.getRepository(HorseEntity).findOne({
         where: { id: horseId },
         lock: { mode: 'pessimistic_write' },
       });
-      const openRows = await this.ownerships.lockOpenOwnerships(
-        manager,
-        horseId,
-      );
+      if (!lockedHorse) throw new NotFoundException('Không tìm thấy ngựa');
+      this.access.assertOperational(lockedHorse);
+      this.access.assertNotTransferred(lockedHorse);
+
+      const ownershipRepository = manager.getRepository(HorseOwnershipEntity);
+      const openRows = await ownershipRepository.find({
+        where: { horseId, endAt: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
       const staleError = staleTransferError(
         transferredAt,
         latestStartAt(openRows),
@@ -122,11 +139,12 @@ export class HorseOwnershipsService {
       if (staleError) throw new ConflictException(staleError);
 
       const plan = planOwnershipChange(openRows, body.owners);
-      await this.ownerships.closeOwnerships(
-        manager,
-        plan.closeIds,
-        transferredAt,
-      );
+      if (plan.closeIds.length > 0) {
+        await ownershipRepository.update(
+          { id: In(plan.closeIds), endAt: IsNull() },
+          { endAt: transferredAt },
+        );
+      }
       if (plan.inserts.length > 0) {
         await this.owners.insertOwnerships(
           manager,
@@ -147,7 +165,19 @@ export class HorseOwnershipsService {
    */
   async listMyHorses(actor: Actor): Promise<HorseResponseDto[]> {
     const caller = await this.access.currentUser(actor);
-    const horses = await this.ownerships.listOwnedBy(caller.id);
+    const horses = await this.horsesRepository
+      .createQueryBuilder('horse')
+      .where(
+        `EXISTS (
+          SELECT 1 FROM horse_ownerships ho
+          WHERE ho.horse_id = horse.id
+          AND ho.owner_id = :ownerId
+          AND ho.end_at IS NULL
+        )`,
+        { ownerId: caller.id },
+      )
+      .orderBy('horse.name', 'ASC')
+      .getMany();
     return horses.map(toHorseResponse);
   }
 }

@@ -9,10 +9,11 @@ import { StallStatus } from '../../stable/constants/stall-status.enum';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import { StallEntity } from '../../stable/entities/stall.entity';
-import { TrainingPlanStatus } from '../../training/constants/training-plan-status.enum';
-import { TrainingSessionStatus } from '../../training/constants/training-session-status.enum';
+
 import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
 import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
+import { TrainingSessionStatus } from '@modules/training/enums/training-session-status.enum';
+import { TrainingPlanStatus } from '@modules/training/enums/training-plan-status.enum';
 
 const OPEN_REGISTRATION_STATUSES = [
   RegistrationStatus.PROPOSED,

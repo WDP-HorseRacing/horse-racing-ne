@@ -1,41 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { BarnStatus } from '../../stable/constants/barn-status.enum';
-import { StallStatus } from '../../stable/constants/stall-status.enum';
-import { BarnEntity } from '../../stable/entities/barn.entity';
-import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
-import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
-import { StallEntity } from '../../stable/entities/stall.entity';
+
+import { HorseListSortBy } from '../enums/horse-list-sort.enum';
+import { HorseHealthStatus } from '../enums/horse-status.enum';
+import { HorseListQueryDto } from '../dto/horse.dto';
+import { HorseEntity } from '../entities/horse.entity';
+import { applyHorseScope } from '../utils/horse-scope';
+import type {
+  HorseCurrentStallRow,
+  HorseScope,
+  PedigreeAncestorRow,
+} from '../types/horse.types';
 import {
   HORSE_BUSINESS_TABLES,
   PEDIGREE_LOCK_KEY,
   VIETNAMESE_NAME_ORDER,
 } from '../enums/horse.constants';
-import { HorseListSortBy } from '../enums/horse-list-sort.enum';
-import { HorseHealthStatus } from '../enums/horse-status.enum';
-import { HorseListQueryDto } from '../dto/horse.dto';
-import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
-import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
-import { HorseEntity } from '../entities/horse.entity';
-import { applyHorseScope } from '../utils/horse-scope';
-import type {
-  HorseCurrentStallRow,
-  HorsePersonRow,
-  HorseScope,
-  PedigreeAncestorRow,
-} from '../types/horse.types';
 
 @Injectable()
 export class HorseProfilesRepository {
   constructor(
     @InjectRepository(HorseEntity)
     private readonly horses: Repository<HorseEntity>,
-    @InjectRepository(HorseOwnershipEntity)
-    private readonly ownerships: Repository<HorseOwnershipEntity>,
-    @InjectRepository(HorseMeasurementEntity)
-    private readonly measurements: Repository<HorseMeasurementEntity>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -53,16 +41,6 @@ export class HorseProfilesRepository {
     await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
       PEDIGREE_LOCK_KEY,
     ]);
-  }
-
-  /**
-   * Chọn repository ngựa theo transaction: có manager thì dùng của transaction, không thì dùng repository inject sẵn.
-   *
-   * @param manager EntityManager của transaction, bỏ trống khi chạy ngoài transaction
-   * @returns Repository của HorseEntity
-   */
-  private horseRepository(manager?: EntityManager): Repository<HorseEntity> {
-    return manager ? manager.getRepository(HorseEntity) : this.horses;
   }
 
   /**
@@ -130,135 +108,6 @@ export class HorseProfilesRepository {
   }
 
   /**
-   * Check whether a microchip ID is used by any horse, including soft-deleted and transferred horses
-   * @param microchipId The microchip ID to check
-   * @param excludeHorseId The ID of a horse to ignore, used when updating that horse
-   * @returns A promise resolving to true if another horse already uses the microchip ID
-   */
-  microchipTaken(
-    microchipId: string,
-    excludeHorseId?: string,
-  ): Promise<boolean> {
-    return this.horses.exists({
-      where: excludeHorseId
-        ? { microchipId, id: Not(excludeHorseId) }
-        : { microchipId },
-      withDeleted: true,
-    });
-  }
-
-  /**
-   * Find a live stall and lock its row until the transaction ends
-   * @param manager The transaction entity manager
-   * @param stallId The ID of the stall
-   * @returns A promise resolving to the locked stall, or null if not found
-   */
-  lockStall(
-    manager: EntityManager,
-    stallId: string,
-  ): Promise<StallEntity | null> {
-    return manager.getRepository(StallEntity).findOne({
-      where: { id: stallId },
-      lock: { mode: 'pessimistic_write' },
-    });
-  }
-
-  /**
-   * Check whether a barn is live and ACTIVE within a transaction
-   * @param manager The transaction entity manager
-   * @param barnId The ID of the barn
-   * @returns A promise resolving to true if the barn exists, is not deleted and is ACTIVE
-   */
-  barnIsActive(manager: EntityManager, barnId: string): Promise<boolean> {
-    return manager
-      .getRepository(BarnEntity)
-      .existsBy({ id: barnId, status: BarnStatus.ACTIVE });
-  }
-
-  /**
-   * Check whether a stall has an open assignment within a transaction
-   * @param manager The transaction entity manager
-   * @param stallId The ID of the stall
-   * @returns A promise resolving to true if a horse is currently in the stall
-   */
-  stallHasActiveAssignment(
-    manager: EntityManager,
-    stallId: string,
-  ): Promise<boolean> {
-    return manager
-      .getRepository(StallAssignmentEntity)
-      .existsBy({ stallId, endAt: IsNull() });
-  }
-
-  /**
-   * Open a stall assignment for a horse and mark the stall as occupied within a transaction
-   * @param manager The transaction entity manager
-   * @param stall The locked stall
-   * @param horseId The ID of the horse
-   * @param startAt The start time of the assignment
-   * @returns A promise that resolves once the assignment is saved
-   */
-  async assignStall(
-    manager: EntityManager,
-    stall: StallEntity,
-    horseId: string,
-    startAt: Date,
-  ): Promise<void> {
-    await manager.save(StallAssignmentEntity, {
-      stallId: stall.id,
-      horseId,
-      startAt,
-      endAt: null,
-    });
-    await manager
-      .getRepository(StallEntity)
-      .update({ id: stall.id }, { status: StallStatus.OCCUPIED });
-  }
-
-  /**
-   * Check whether a horse is referenced as a sire or dam by other horses
-   * @param horseId The ID of the horse
-   * @param manager The transaction entity manager, omitted outside a transaction
-   * @returns A promise resolving to the sire and dam usage flags
-   */
-  async parentUsage(
-    horseId: string,
-    manager?: EntityManager,
-  ): Promise<{ asSire: boolean; asDam: boolean }> {
-    const horses = this.horseRepository(manager);
-    const [asSire, asDam] = await Promise.all([
-      horses.existsBy({ sireId: horseId }),
-      horses.existsBy({ damId: horseId }),
-    ]);
-    return { asSire, asDam };
-  }
-
-  /**
-   * Lấy ngày sinh sớm nhất trong các ngựa con của một con ngựa (ngựa đó là sire hoặc dam).
-   *
-   * - Bỏ qua ngựa con chưa có ngày sinh và ngựa con đã xóa
-   * - Dùng findOne qua entity để cột date trả về chuỗi YYYY-MM-DD, không bị driver đổi thành Date
-   *
-   * @param horseId UUID của ngựa cha/mẹ
-   * @param manager EntityManager của transaction, bỏ trống khi chạy ngoài transaction
-   * @returns Promise trả về ngày sinh (YYYY-MM-DD) của con sinh sớm nhất, null nếu không có
-   */
-  async earliestChildBirthDate(
-    horseId: string,
-    manager?: EntityManager,
-  ): Promise<string | null> {
-    const child = await this.horseRepository(manager).findOne({
-      select: { id: true, dateOfBirth: true },
-      where: [
-        { sireId: horseId, dateOfBirth: Not(IsNull()) },
-        { damId: horseId, dateOfBirth: Not(IsNull()) },
-      ],
-      order: { dateOfBirth: 'ASC' },
-    });
-    return child?.dateOfBirth ?? null;
-  }
-
-  /**
    * Kiểm tra ngựa đã từng phát sinh dữ liệu nghiệp vụ chưa, để quyết định có được xóa hồ sơ không.
    *
    * - Tính cả dòng đã đóng, đã hủy hoặc đã xóa mềm, vì đều là lịch sử
@@ -280,40 +129,6 @@ export class HorseProfilesRepository {
       [horseId],
     );
     return rows[0]?.exists === true;
-  }
-
-  /**
-   * Lấy groom đang phụ trách con ngựa.
-   *
-   * @param horseId UUID của ngựa
-   * @returns Groom (id, họ tên), hoặc null nếu ngựa chưa được giao groom
-   */
-  async currentGroom(horseId: string): Promise<HorsePersonRow | null> {
-    const assignment = await this.dataSource
-      .getRepository(GroomAssignmentEntity)
-      .findOne({
-        where: { horseId, endAt: IsNull() },
-        relations: { groom: true },
-      });
-    return assignment
-      ? { id: assignment.groom.id, fullName: assignment.groom.fullName }
-      : null;
-  }
-
-  /**
-   * Lấy chủ đại diện trong số các chủ đang sở hữu con ngựa.
-   *
-   * @param horseId UUID của ngựa
-   * @returns Chủ đại diện (id, họ tên), hoặc null nếu ngựa chưa có chủ đại diện
-   */
-  async representativeOwner(horseId: string): Promise<HorsePersonRow | null> {
-    const ownership = await this.ownerships.findOne({
-      where: { horseId, endAt: IsNull(), isRepresentative: true },
-      relations: { owner: true },
-    });
-    return ownership
-      ? { id: ownership.owner.id, fullName: ownership.owner.fullName }
-      : null;
   }
 
   /**
@@ -353,21 +168,6 @@ export class HorseProfilesRepository {
       [horseIds, TrainingLockStatus.ACTIVE],
     );
     return new Set(rows.map((row) => row.horse_id));
-  }
-
-  /**
-   * Get the most recent measurement of each type for a horse
-   * @param horseId The ID of the horse
-   * @returns A promise resolving to one latest measurement per type
-   */
-  latestMeasurements(horseId: string): Promise<HorseMeasurementEntity[]> {
-    return this.measurements
-      .createQueryBuilder('m')
-      .distinctOn(['m.type'])
-      .where('m.horseId = :horseId', { horseId })
-      .orderBy('m.type', 'ASC')
-      .addOrderBy('m.measuredAt', 'DESC')
-      .getMany();
   }
 
   /**

@@ -199,7 +199,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
     description: 'true để xem ngựa tham chiếu (chỉ Club Manager)',
   })
   @IsOptional()
-  @Transform(({ value }) => value === true || value === 'true')
+  @Transform(({ value }) => parseQueryBoolean(value))
   @IsBoolean()
   reference: boolean = false;
 
@@ -208,7 +208,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
     description: 'true để chỉ xem hồ sơ đã xóa (chỉ Club Manager)',
   })
   @IsOptional()
-  @Transform(({ value }) => value === true || value === 'true')
+  @Transform(({ value }) => parseQueryBoolean(value))
   @IsBoolean()
   deleted: boolean = false;
 
@@ -231,6 +231,13 @@ export class HorseListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder: SortOrder = SortOrder.ASC;
+}
+
+/** Preserve invalid query values so class-validator can reject them. */
+function parseQueryBoolean(value: unknown): unknown {
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  return value;
 }
 
 export class UpdateHorseHealthDto {

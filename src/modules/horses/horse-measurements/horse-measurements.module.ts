@@ -4,7 +4,6 @@ import { AuditModule } from '../../audit/audit.module';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import { HorsesSharedModule } from '../shared/horses-shared.module';
 import { HorseMeasurementsController } from './horse-measurements.controller';
-import { HorseMeasurementsRepository } from './horse-measurements.repository';
 import { HorseMeasurementsService } from './horse-measurements.service';
 
 @Module({
@@ -14,6 +13,6 @@ import { HorseMeasurementsService } from './horse-measurements.service';
     AuditModule,
   ],
   controllers: [HorseMeasurementsController],
-  providers: [HorseMeasurementsRepository, HorseMeasurementsService],
+  providers: [HorseMeasurementsService],
 })
 export class HorseMeasurementsModule {}

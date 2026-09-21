@@ -4,7 +4,6 @@ import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorsesSharedModule } from '../shared/horses-shared.module';
 import { HorseOwnershipsController } from './horse-ownerships.controller';
-import { HorseOwnershipsRepository } from './horse-ownerships.repository';
 import { HorseOwnershipsService } from './horse-ownerships.service';
 
 @Module({
@@ -13,6 +12,6 @@ import { HorseOwnershipsService } from './horse-ownerships.service';
     HorsesSharedModule,
   ],
   controllers: [HorseOwnershipsController],
-  providers: [HorseOwnershipsRepository, HorseOwnershipsService],
+  providers: [HorseOwnershipsService],
 })
 export class HorseOwnershipsModule {}

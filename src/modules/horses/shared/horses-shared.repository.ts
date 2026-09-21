@@ -53,9 +53,13 @@ export class HorsesSharedRepository {
    * @param scope The visibility scope of the caller
    * @returns A promise resolving to true if the horse is visible
    */
-  async isVisible(horseId: string, scope: HorseScope): Promise<boolean> {
+  async isVisible(
+    horseId: string,
+    scope: HorseScope,
+    manager?: EntityManager,
+  ): Promise<boolean> {
     if (scope.kind === 'ALL') return true;
-    const qb = this.horses
+    const qb = (manager ? manager.getRepository(HorseEntity) : this.horses)
       .createQueryBuilder('horse')
       .where('horse.id = :horseId', { horseId });
     applyHorseScope(qb, scope);
@@ -67,8 +71,13 @@ export class HorsesSharedRepository {
    * @param horseId The ID of the horse
    * @returns A promise resolving to true if an active lock exists
    */
-  async hasActiveTrainingLock(horseId: string): Promise<boolean> {
-    const rows: Array<{ exists: boolean }> = await this.dataSource.query(
+  async hasActiveTrainingLock(
+    horseId: string,
+    manager?: EntityManager,
+  ): Promise<boolean> {
+    const rows: Array<{ exists: boolean }> = await (
+      manager ?? this.dataSource
+    ).query(
       `SELECT EXISTS (SELECT 1 FROM training_locks WHERE horse_id = $1 AND status = $2) AS exists`,
       [horseId, TrainingLockStatus.ACTIVE],
     );
@@ -82,8 +91,12 @@ export class HorsesSharedRepository {
    * @param groomId UUID của groom
    * @returns true nếu groom đang phụ trách con ngựa này
    */
-  isGroomAssigned(horseId: string, groomId: string): Promise<boolean> {
-    return this.dataSource
+  isGroomAssigned(
+    horseId: string,
+    groomId: string,
+    manager?: EntityManager,
+  ): Promise<boolean> {
+    return (manager ?? this.dataSource)
       .getRepository(GroomAssignmentEntity)
       .existsBy({ horseId, groomId, endAt: IsNull() });
   }

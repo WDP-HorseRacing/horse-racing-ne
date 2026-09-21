@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -13,11 +14,7 @@ import { AuditService } from '../../audit/services/audit.service';
 import type { Actor } from '../../../common/types/actor';
 import { isHorseInTrainerBarn } from '../../stable/utils/trainer-barn';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
-import {
-  HORSE_MEASUREMENT_ALERT_EVENT,
-  HORSE_MEASUREMENT_SPECS,
-  WEIGHT_DROP_WINDOW_DAYS,
-} from '../enums/horse.constants';
+
 import {
   CreatedHorseMeasurementResponseDto,
   CreateHorseMeasurementDto,
@@ -27,7 +24,7 @@ import {
 import {
   toCreatedMeasurementResponse,
   toMeasurementResponse,
-} from '../mappers/horse.mapper';
+} from '../mappers/horse-measurements.mapper';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import {
   measuredAtError,
@@ -38,12 +35,17 @@ import {
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import type { HorseMeasurementAlertEvent } from '../types/horse.types';
-import { HorseMeasurementsRepository } from './horse-measurements.repository';
+import {
+  HORSE_MEASUREMENT_ALERT_EVENT,
+  HORSE_MEASUREMENT_SPECS,
+  WEIGHT_DROP_WINDOW_DAYS,
+} from '../enums/horse.constants';
 
 @Injectable()
 export class HorseMeasurementsService {
   constructor(
-    private readonly measurements: HorseMeasurementsRepository,
+    @InjectRepository(HorseMeasurementEntity)
+    private readonly measurements: Repository<HorseMeasurementEntity>,
     private readonly horses: HorsesSharedRepository,
     private readonly access: HorseAccessService,
     private readonly dataSource: DataSource,
@@ -65,10 +67,12 @@ export class HorseMeasurementsService {
     query: HorseMeasurementListQueryDto,
   ): Promise<HorseMeasurementResponseDto[]> {
     await this.access.findReadable(actor, horseId);
-    const measurements = await this.measurements.listMeasurements(
-      horseId,
-      query.type,
-    );
+    const measurements = await this.measurements.find({
+      where: { horseId, ...(query.type ? { type: query.type } : {}) },
+      relations: { measurer: true },
+      order: { measuredAt: 'DESC' },
+      take: 200,
+    });
     return measurements.map(toMeasurementResponse);
   }
 
@@ -93,40 +97,65 @@ export class HorseMeasurementsService {
     horseId: string,
     body: CreateHorseMeasurementDto,
   ): Promise<CreatedHorseMeasurementResponseDto> {
-    const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findVisible(actor, horseId);
-    this.access.assertOperational(horse);
-    this.access.assertNotTransferred(horse);
-    await this.assertCanRecordType(actor, caller.id, horseId, body.type);
-
-    const valueError = measurementValueError(body.type, body.value);
-    if (valueError) throw new BadRequestException(valueError);
-
     const measuredAt = body.measuredAt ? new Date(body.measuredAt) : new Date();
-    const timeError = measuredAtError(measuredAt, new Date());
-    if (timeError) throw new BadRequestException(timeError);
 
-    const weightBaseline = await this.weightBaseline(
-      horseId,
-      body.type,
-      measuredAt,
+    const { callerId, measurement, alerts } = await this.dataSource.transaction(
+      async (manager) => {
+        const { caller, horse } = await this.access.lockVisibleHorse(
+          actor,
+          horseId,
+          manager,
+        );
+        this.access.assertOperational(horse);
+        this.access.assertNotTransferred(horse);
+        await this.assertCanRecordType(
+          actor,
+          caller.id,
+          horseId,
+          body.type,
+          manager,
+        );
+        const valueError = measurementValueError(body.type, body.value);
+        if (valueError) throw new BadRequestException(valueError);
+        const timeError = measuredAtError(measuredAt, new Date());
+        if (timeError) throw new BadRequestException(timeError);
+
+        const weightBaseline = await this.weightBaseline(
+          horseId,
+          body.type,
+          measuredAt,
+          manager,
+        );
+        const alerts = measurementAlerts(
+          body.type,
+          body.value,
+          weightBaseline,
+        );
+        const repository = manager.getRepository(HorseMeasurementEntity);
+        const saved = await repository.save(
+          repository.create({
+            horseId,
+            type: body.type,
+            value: body.value.toFixed(2),
+            measuredAt,
+            measuredBy: caller.id,
+          }),
+        );
+        const measurement = await repository.findOneOrFail({
+          where: { id: saved.id },
+          relations: { measurer: true },
+        });
+
+        return { callerId: caller.id, measurement, alerts };
+      },
     );
-    const alerts = measurementAlerts(body.type, body.value, weightBaseline);
-
-    const measurement = await this.measurements.addMeasurement({
-      horseId,
-      type: body.type,
-      value: body.value.toFixed(2),
-      measuredAt,
-      measuredBy: caller.id,
-    });
 
     for (const alert of alerts) {
       const event: HorseMeasurementAlertEvent = {
         ...alert,
         measurementId: measurement.id,
         horseId,
-        measuredBy: caller.id,
+        measuredBy: callerId,
         type: body.type,
         value: body.value,
         unit: HORSE_MEASUREMENT_SPECS[body.type].unit,
@@ -141,7 +170,7 @@ export class HorseMeasurementsService {
    * Xóa mềm một bản ghi đo (F1.7: bản ghi không được sửa, chỉ xóa rồi đo lại).
    *
    * - Chỉ người đã ghi bản đó được xóa, và vẫn phải còn quyền ghi loại chỉ số đó cho con ngựa
-   * - Khóa dòng bản ghi trong transaction để hai lần xóa cùng lúc không cùng qua kiểm tra
+   * - Khóa ngựa trước, kiểm tra lại quyền/trạng thái trong transaction rồi khóa dòng bản ghi
    * - Ghi audit_logs (DELETE, giá trị trước khi xóa) trong cùng transaction để giữ bằng chứng
    * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ, chỉ số mới nhất và mốc cảnh báo giảm cân
    *
@@ -159,12 +188,15 @@ export class HorseMeasurementsService {
     horseId: string,
     measurementId: string,
   ): Promise<void> {
-    const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findVisible(actor, horseId);
-    this.access.assertOperational(horse);
-    this.access.assertNotTransferred(horse);
-
     await this.dataSource.transaction(async (manager) => {
+      const { caller, horse } = await this.access.lockVisibleHorse(
+        actor,
+        horseId,
+        manager,
+      );
+      this.access.assertOperational(horse);
+      this.access.assertNotTransferred(horse);
+
       const measurement = await manager.findOne(HorseMeasurementEntity, {
         where: { id: measurementId, horseId },
         lock: { mode: 'pessimistic_write' },
@@ -182,6 +214,7 @@ export class HorseMeasurementsService {
         caller.id,
         horseId,
         measurement.type,
+        manager,
       );
       await manager.softDelete(HorseMeasurementEntity, { id: measurement.id });
       await this.audit.record(manager, {
@@ -213,12 +246,24 @@ export class HorseMeasurementsService {
     horseId: string,
     type: HorseMeasurementType,
     measuredAt: Date,
+    manager: EntityManager,
   ): Promise<number | null> {
     if (type !== HorseMeasurementType.WEIGHT) return null;
     const from = new Date(
       measuredAt.getTime() - WEIGHT_DROP_WINDOW_DAYS * 24 * 60 * 60 * 1000,
     );
-    return this.measurements.maxWeightBetween(horseId, from, measuredAt);
+    const row = await manager
+      .getRepository(HorseMeasurementEntity)
+      .createQueryBuilder('m')
+      .select('MAX(m.value)', 'max')
+      .where('m.horseId = :horseId', { horseId })
+      .andWhere('m.type = :type', { type: HorseMeasurementType.WEIGHT })
+      .andWhere('m.measuredAt >= :from AND m.measuredAt < :to', {
+        from,
+        to: measuredAt,
+      })
+      .getRawOne<{ max: string | null }>();
+    return row?.max == null ? null : Number(row.max);
   }
 
   /**
@@ -237,13 +282,14 @@ export class HorseMeasurementsService {
     callerId: string,
     horseId: string,
     type: HorseMeasurementType,
+    manager: EntityManager,
   ): Promise<void> {
     const [isInTrainerBarn, isAssignedGroom] = await Promise.all([
       this.access.hasRole(actor, UserRole.HEAD_TRAINER)
-        ? isHorseInTrainerBarn(this.dataSource.manager, horseId, callerId)
+        ? isHorseInTrainerBarn(manager, horseId, callerId)
         : Promise.resolve(false),
       this.access.hasRole(actor, UserRole.GROOM)
-        ? this.horses.isGroomAssigned(horseId, callerId)
+        ? this.horses.isGroomAssigned(horseId, callerId, manager)
         : Promise.resolve(false),
     ]);
     const allowed = recordableMeasurementTypes({
