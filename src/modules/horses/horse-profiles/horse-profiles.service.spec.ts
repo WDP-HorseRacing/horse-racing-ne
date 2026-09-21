@@ -11,14 +11,14 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { StallStatus } from '../../stable/constants/stall-status.enum';
-import { STALE_HORSE_MESSAGE } from '../constants/horse.constants';
-import { RaceAptitude } from '../constants/race-aptitude.enum';
-import { HorseGender } from '../constants/horse-gender.enum';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
+import { STALE_HORSE_MESSAGE } from '../enums/horse.constants';
+import { RaceAptitude } from '../enums/race-aptitude.enum';
+import { HorseGender } from '../enums/horse-gender.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
+} from '../enums/horse-status.enum';
 import { CreateHorseDto, HorseListQueryDto } from '../dto/horse.dto';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseProfilesRepository } from './horse-profiles.repository';

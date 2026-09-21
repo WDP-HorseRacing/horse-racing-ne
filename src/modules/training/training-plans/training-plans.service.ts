@@ -1,9 +1,10 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, In } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import { TrainingPlanStatus } from '../constants/training-plan-status.enum';
-import { TrainingSessionStatus } from '../constants/training-session-status.enum';
+import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   CancelTrainingPlanDto,
   CreateTrainingPlanDto,
@@ -26,12 +27,12 @@ import {
   dateOnly,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
-import { TrainingPlansRepository } from './training-plans.repository';
 
 @Injectable()
 export class TrainingPlansService {
   constructor(
-    private readonly planRepo: TrainingPlansRepository,
+    @InjectRepository(TrainingPlanEntity)
+    private readonly planRepo: Repository<TrainingPlanEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
     private readonly events: DomainEventPublisher,
@@ -51,9 +52,12 @@ export class TrainingPlansService {
   ): Promise<TrainingPlanResponseDto[]> {
     await this.access.readableHorseForActor(actor, horseId);
     const includeGoal = this.access.seesPlanGoal(actor);
-    return (await this.planRepo.listByHorse(horseId)).map((plan) =>
-      toTrainingPlanView(plan, includeGoal),
-    );
+    return (
+      await this.planRepo.find({
+        where: { horseId },
+        order: { startDate: 'DESC' },
+      })
+    ).map((plan) => toTrainingPlanView(plan, includeGoal));
   }
 
   /**
@@ -73,6 +77,9 @@ export class TrainingPlansService {
     return toTrainingPlanView(plan, this.access.seesPlanGoal(actor));
   }
 
+  /**
+   * Tạo giáo án huấn luyện mới (SCHEDULED) cho ngựa thuộc chuồng do trainer phụ trách.
+   */
   async createTrainingPlan(
     actor: Actor,
     horseId: string,
@@ -86,19 +93,22 @@ export class TrainingPlansService {
       user.id,
       horse.id,
     );
-    return toTrainingPlanResponse(
-      await this.planRepo.save({
-        horseId: horse.id,
-        createdBy: user.id,
-        phaseName: body.phaseName,
-        goal: body.goal,
-        startDate: dateOnly(body.startDate),
-        endDate: dateOnly(body.endDate),
-        status: TrainingPlanStatus.SCHEDULED,
-      }),
-    );
+    const plan = this.planRepo.create({
+      horseId: horse.id,
+      createdBy: user.id,
+      phaseName: body.phaseName,
+      goal: body.goal,
+      startDate: dateOnly(body.startDate),
+      endDate: dateOnly(body.endDate),
+      status: TrainingPlanStatus.SCHEDULED,
+    });
+    return toTrainingPlanResponse(await this.planRepo.save(plan));
   }
 
+  /**
+   * Cập nhật thông tin giáo án (chỉ khi SCHEDULED) và đảm bảo khoảng ngày mới
+   * bao phủ toàn bộ các buổi tập đã lên lịch.
+   */
   async updatePlan(
     actor: Actor,
     planId: string,
@@ -144,6 +154,10 @@ export class TrainingPlansService {
     return toTrainingPlanResponse(updated);
   }
 
+  /**
+   * Kích hoạt giáo án (chuyển sang ACTIVE). Yêu cầu giáo án đang SCHEDULED,
+   * có ít nhất một buổi tập và ngựa không có giáo án ACTIVE nào khác.
+   */
   async activatePlan(
     actor: Actor,
     planId: string,
@@ -189,6 +203,10 @@ export class TrainingPlansService {
     return toTrainingPlanResponse(updatedPlan);
   }
 
+  /**
+   * Hủy giáo án (CANCELLED) và tự động hủy dây chuyền (cascade cancel)
+   * tất cả các buổi tập con chưa hoàn thành thuộc giáo án này.
+   */
   async cancelPlan(
     actor: Actor,
     planId: string,
@@ -239,14 +257,18 @@ export class TrainingPlansService {
       return manager.save(current);
     });
     // publish event: training-plan-cancelled
-    this.events.publish('training.plan.cancelled', {
-      planId: plan.id,
-      horseId: plan.horseId,
-      reason: body.reason,
-    });
+    // this.events.publish('training.plan.cancelled', {
+    //   planId: plan.id,
+    //   horseId: plan.horseId,
+    //   reason: body.reason,
+    // });
     return toTrainingPlanResponse(plan);
   }
 
+  /**
+   * Hoàn thành giáo án (COMPLETED). Yêu cầu giáo án đang ACTIVE, không còn
+   * buổi tập IN_PROGRESS và phải có ít nhất một buổi tập COMPLETED.
+   */
   async completePlan(
     actor: Actor,
     planId: string,
@@ -267,13 +289,14 @@ export class TrainingPlansService {
       return manager.save(current);
     });
     // publish event
-    this.events.publish('training.plan.completed', {
-      planId: plan.id,
-      horseId: plan.horseId,
-    });
+    // this.events.publish('training.plan.completed', {
+    //   planId: plan.id,
+    //   horseId: plan.horseId,
+    // });
     return toTrainingPlanResponse(plan);
   }
 
+  /** Kiểm tra điều kiện hoàn thành: không có buổi tập IN_PROGRESS và có ít nhất một buổi tập COMPLETED. */
   private async assertCanComplete(
     manager: EntityManager,
     planId: string,

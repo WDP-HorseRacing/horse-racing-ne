@@ -37,7 +37,7 @@ import {
   HorseResponseDto,
   UpdateHorseDto,
 } from '../dto/horse.dto';
-import { ALL_ROLES } from '../constants/horse.constants';
+import { ALL_ROLES } from '../enums/horse.constants';
 import { HorseProfilesService } from './horse-profiles.service';
 @ApiTags('horses')
 @ApiBearerAuth()

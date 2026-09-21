@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { HorseLifecycleStatus } from '../constants/horse-status.enum';
+import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import {
   CreateHorseDto,
   DeleteHorseDto,

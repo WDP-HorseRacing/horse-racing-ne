@@ -8,7 +8,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
-import { HorseLifecycleStatus } from '../../horses/constants/horse-status.enum';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';

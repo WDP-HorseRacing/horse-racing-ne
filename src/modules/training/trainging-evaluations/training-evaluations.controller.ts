@@ -19,7 +19,7 @@ import {
   EvaluateSessionDto,
   SessionEvaluationResponseDto,
 } from '../dto/training-session.dto';
-import { EvaluationsService } from './evaluations.service';
+import { EvaluationsService } from './training-evaluations.service';
 import { UserRole } from '../../../common/enums';
 
 @ApiTags('training')

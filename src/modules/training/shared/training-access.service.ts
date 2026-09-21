@@ -310,18 +310,36 @@ export class TrainingAccessService {
     callerId: string,
     session: TrainingSessionEntity,
   ): Promise<void> {
-    if (actor.roles.includes(UserRole.CLUB_MANAGER)) return;
-    if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
-      const plan = await manager.findOneByOrFail(TrainingPlanEntity, {
-        id: session.planId,
-      });
-      await assertTrainerBarn(manager, actor, callerId, plan.horseId);
-      return;
-    }
-    if (!actor.roles.includes(UserRole.GROOM) || session.groomId !== callerId) {
-      throw new ForbiddenException(
-        'Bạn không được giao thực hiện buổi tập này',
-      );
+    const role = [
+      UserRole.CLUB_MANAGER,
+      UserRole.HEAD_TRAINER,
+      UserRole.GROOM,
+    ].find((r) => actor.roles.includes(r));
+
+    switch (role) {
+      case UserRole.CLUB_MANAGER:
+        return;
+
+      case UserRole.HEAD_TRAINER: {
+        const plan = await manager.findOneByOrFail(TrainingPlanEntity, {
+          id: session.planId,
+        });
+        await assertTrainerBarn(manager, actor, callerId, plan.horseId);
+        return;
+      }
+
+      case UserRole.GROOM:
+        if (session.groomId !== callerId) {
+          throw new ForbiddenException(
+            'Bạn không được giao thực hiện buổi tập này',
+          );
+        }
+        return;
+
+      default:
+        throw new ForbiddenException(
+          'Bạn không được giao thực hiện buổi tập này',
+        );
     }
   }
 }

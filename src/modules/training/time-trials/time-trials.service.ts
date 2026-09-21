@@ -3,10 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
-import { TrainingSessionStatus } from '../constants/training-session-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   CreateTimeTrialDto,
   TimeTrialResponseDto,
@@ -14,23 +15,30 @@ import {
 import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { toTimeTrialResponse } from '../mappers/training.mapper';
 import { TrainingAccessService } from '../shared/training-access.service';
-import { TimeTrialsRepository } from './time-trials.repository';
 
 @Injectable()
 export class TimeTrialsService {
   constructor(
-    private readonly timeTrialsRepo: TimeTrialsRepository,
+    @InjectRepository(TimeTrialEntity)
+    private readonly timeTrials: Repository<TimeTrialEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
   ) {}
 
+  /** Liệt kê time trial của session sau khi xác nhận actor được xem session. */
   async list(actor: Actor, sessionId: string): Promise<TimeTrialResponseDto[]> {
     await this.access.sessionForActor(actor, sessionId);
-    return (await this.timeTrialsRepo.listBySession(sessionId)).map(
-      toTimeTrialResponse,
-    );
+    const rows = await this.timeTrials.find({
+      where: { sessionId },
+      order: { createdAt: 'ASC' },
+    });
+    return rows.map(toTimeTrialResponse);
   }
 
+  /**
+   * Ghi time trial trong transaction; session phải đang IN_PROGRESS và video
+   * asset, nếu có, phải tồn tại.
+   */
   async create(
     actor: Actor,
     sessionId: string,
@@ -69,9 +77,13 @@ export class TimeTrialsService {
     return toTimeTrialResponse(row);
   }
 
-  async get(actor: Actor, id: string): Promise<TimeTrialResponseDto> {
+  /** Tải một time trial cùng session, plan và horse để trả response đầy đủ. */
+  async get(actor: Actor, trialId: string): Promise<TimeTrialResponseDto> {
     await this.access.currentUser(actor);
-    const row = await this.timeTrialsRepo.findById(id);
+    const row = await this.timeTrials.findOne({
+      where: { id: trialId },
+      relations: { session: { plan: { horse: true } } },
+    });
     if (!row) {
       throw new NotFoundException('Không tìm thấy kết quả time trial');
     }

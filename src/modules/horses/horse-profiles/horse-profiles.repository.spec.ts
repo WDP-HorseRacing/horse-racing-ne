@@ -1,8 +1,8 @@
 import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { SortOrder } from '../../../common/enums/sort-order.enum';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { HORSE_BUSINESS_TABLES } from '../constants/horse.constants';
-import { HorseListSortBy } from '../constants/horse-list-sort.enum';
+import { HORSE_BUSINESS_TABLES } from '../enums/horse.constants';
+import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorseListQueryDto } from '../dto/horse.dto';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';

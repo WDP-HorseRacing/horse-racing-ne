@@ -27,16 +27,16 @@ import {
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { SortOrder } from '../../../common/enums/sort-order.enum';
-import { HorseGender } from '../constants/horse-gender.enum';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
-import { HorseListSortBy } from '../constants/horse-list-sort.enum';
-import { HorseParentRole } from '../constants/horse-parent-role.enum';
+import { HorseGender } from '../enums/horse-gender.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
+import { HorseListSortBy } from '../enums/horse-list-sort.enum';
+import { HorseParentRole } from '../enums/horse-parent-role.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
-import { RaceAptitude } from '../constants/race-aptitude.enum';
-import { EligibilityReason } from '../constants/eligibility-reason.enum';
+} from '../enums/horse-status.enum';
+import { RaceAptitude } from '../enums/race-aptitude.enum';
+import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseLatestMeasurementDto } from './horse-measure.dto';
 
 export class CreateHorseDto {

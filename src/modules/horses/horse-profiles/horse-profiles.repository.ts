@@ -12,9 +12,9 @@ import {
   HORSE_BUSINESS_TABLES,
   PEDIGREE_LOCK_KEY,
   VIETNAMESE_NAME_ORDER,
-} from '../constants/horse.constants';
-import { HorseListSortBy } from '../constants/horse-list-sort.enum';
-import { HorseHealthStatus } from '../constants/horse-status.enum';
+} from '../enums/horse.constants';
+import { HorseListSortBy } from '../enums/horse-list-sort.enum';
+import { HorseHealthStatus } from '../enums/horse-status.enum';
 import { HorseListQueryDto } from '../dto/horse.dto';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';

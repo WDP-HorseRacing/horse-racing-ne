@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { TrainingPlanStatus } from '../constants/training-plan-status.enum';
+import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 
 /**
  * TrainingPlanEntity: kế hoạch huấn luyện dài hạn cho một con ngựa.

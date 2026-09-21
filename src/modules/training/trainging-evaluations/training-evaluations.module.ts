@@ -2,9 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
 import { TrainingSharedModule } from '../shared/training-shared.module';
-import { EvaluationsController } from './evaluations.controller';
-import { EvaluationsRepository } from './evaluations.repository';
-import { EvaluationsService } from './evaluations.service';
+import { EvaluationsController } from './training-evaluations.controller';
+import { EvaluationsService } from './training-evaluations.service';
 
 @Module({
   imports: [
@@ -12,7 +11,7 @@ import { EvaluationsService } from './evaluations.service';
     TrainingSharedModule,
   ],
   controllers: [EvaluationsController],
-  providers: [EvaluationsRepository, EvaluationsService],
+  providers: [EvaluationsService],
   exports: [EvaluationsService],
 })
 export class EvaluationsModule {}

@@ -1,9 +1,9 @@
-import { HorseGender } from '../constants/horse-gender.enum';
+import { HorseGender } from '../enums/horse-gender.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
-import { RaceAptitude } from '../constants/race-aptitude.enum';
+} from '../enums/horse-status.enum';
+import { RaceAptitude } from '../enums/race-aptitude.enum';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import type { HorseCurrentStallRow } from '../types/horse.types';

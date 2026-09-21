@@ -5,6 +5,23 @@ Tài liệu này mô tả cách tổ chức một module nghiệp vụ lớn the
 controller mỏng, business logic nằm trong service và các quy tắc quan trọng có
 thể kiểm thử độc lập.
 
+## Phạm vi áp dụng
+
+Đây là quy chuẩn bắt buộc cho domain nghiệp vụ có nhiều nhóm use case hoặc
+nhiều resource có vòng đời riêng. Các nhóm use case có thể phát triển, kiểm
+thử và phân quyền độc lập phải nằm trong feature module riêng; module domain
+chỉ lắp ráp chúng.
+
+Module nhỏ, module hạ tầng hoặc module chỉ có một use case gắn kết có thể giữ
+cấu trúc gọn. Không tạo feature/shared/policy folder rỗng chỉ để khớp cây thư
+mục mẫu. Khi một module gọn phát triển thành nhiều nhóm use case, cần chuyển nó
+sang cấu trúc trong guide này.
+
+Các quy tắc về ranh giới module, sở hữu entity/provider và composition root ở
+các mục dưới đây là yêu cầu bắt buộc khi module thuộc phạm vi áp dụng. Các gợi ý
+về repository, policy, transaction và event được áp dụng theo nghiệp vụ thực tế;
+không tạo abstraction nếu không đem lại ranh giới hoặc ý nghĩa rõ ràng.
+
 ## 1. Cấu trúc tổng quát
 
 Một module lớn nên được chia thành module cha, các feature module con và phần
@@ -13,7 +30,7 @@ dùng chung của domain:
 ```text
 src/modules/<domain>/
 ├── <domain>.module.ts             # Module cha, chỉ ghép các feature
-├── constants/                     # Enum/trạng thái chỉ thuộc domain
+├── enums/                         # Enum/trạng thái chỉ thuộc domain
 ├── dto/                           # Request DTO và response DTO
 │   └── index.ts
 ├── entities/                      # TypeORM entities của domain
@@ -26,7 +43,7 @@ src/modules/<domain>/
     ├── <feature>.module.ts
     ├── <feature>.controller.ts
     ├── <feature>.service.ts
-    └── <feature>.repository.ts
+    └── <feature>.repository.ts       # tùy chọn, chỉ khi có query đáng gom riêng
 ```
 
 Ví dụ thực tế:
@@ -79,7 +96,7 @@ Module con khai báo đúng entity, controller và provider mà nó sở hữu:
     TrainingSharedModule,
   ],
   controllers: [TrainingPlansController],
-  providers: [TrainingPlansRepository, TrainingPlansService],
+  providers: [TrainingPlansService],
   exports: [TrainingPlansService],
 })
 export class TrainingPlansModule {}
@@ -195,14 +212,16 @@ Checklist cho controller:
 
 ## 6. Service: orchestration và business workflow
 
-Service là nơi điều phối access check, policy, repository, transaction và event.
-Một method service nên tương ứng với một use case của API.
+Service là nơi điều phối access check, policy, truy vấn dữ liệu, transaction và
+event. CRUD và query TypeORM thông thường có thể dùng `Repository<Entity>` được
+inject trực tiếp; repository riêng chỉ cần khi query đáng gom thành abstraction
+có tên nghiệp vụ hoặc logic phức tạp. Một method service nên tương ứng với một
+use case của API.
 
 ```ts
 @Injectable()
 export class TrainingPlansService {
   constructor(
-    private readonly planRepo: TrainingPlansRepository,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
   ) {}
@@ -241,28 +260,33 @@ không được lock/rollback cùng transaction.
 
 ## 7. Repository và TypeORM
 
-Repository phù hợp khi query có tên nghiệp vụ, được dùng lặp lại hoặc cần gom
-query phức tạp:
+Repository riêng phù hợp khi query có tên nghiệp vụ, được dùng lặp lại hoặc
+cần gom query phức tạp. Ví dụ dưới đây lọc trạng thái, join race, chọn cột và
+sắp xếp kết quả trong cùng một truy vấn:
 
 ```ts
 @Injectable()
-export class TrainingPlansRepository {
+export class RacingRepository {
   constructor(
-    @InjectRepository(TrainingPlanEntity)
-    private readonly plans: Repository<TrainingPlanEntity>,
+    @InjectRepository(RaceRegistrationEntity)
+    private readonly registrations: Repository<RaceRegistrationEntity>,
   ) {}
 
-  listByHorse(horseId: string): Promise<TrainingPlanEntity[]> {
-    return this.plans.find({
-      where: { horseId },
-      order: { startDate: 'DESC' },
-    });
+  listResultsByHorse(horseId: string): Promise<RaceRegistrationEntity[]> {
+    return this.registrations
+      .createQueryBuilder('registration')
+      .innerJoinAndSelect('registration.race', 'race')
+      .where('registration.horseId = :horseId', { horseId })
+      .andWhere('registration.resultStatus IS NOT NULL')
+      .orderBy('race.scheduledAt', 'DESC')
+      .getMany();
   }
 }
 ```
 
 Không tạo repository chỉ để bọc một cách gọi TypeORM không có thêm ý nghĩa.
-Với CRUD đơn giản, inject trực tiếp:
+Với CRUD đơn giản hoặc các lệnh `find`/`findOne` có điều kiện và sắp xếp
+thông thường, inject trực tiếp vào service:
 
 ```ts
 constructor(
@@ -378,9 +402,13 @@ export class RacingModule {}
 - [ ] Row được lock trước khi kiểm tra invariant có race condition.
 - [ ] Event chỉ publish sau commit.
 - [ ] Repository chỉ chứa query có giá trị; CRUD đơn giản dùng
-  `@InjectRepository` trực tiếp.
+      `@InjectRepository` trực tiếp.
 - [ ] Có unit test cho policy và các nhánh conflict/forbidden/not found.
 - [ ] `pnpm build`, `pnpm test` và `pnpm docs:api` chạy thành công.
+
+Khi PR thay đổi một aggregate domain, chạy thêm `pnpm check:module-architecture`.
+Lệnh này kiểm tra composition root, đảm bảo module cha import các module con
+và không nhận controller, provider hay đăng ký entity trực tiếp.
 
 ## 12. Tài liệu tham khảo trong codebase
 
@@ -389,6 +417,21 @@ export class RacingModule {}
 - Policy thuần: `src/modules/training/policies/training.policy.ts`
 - Transaction và cascade update:
   `src/modules/training/training-plans/training-plans.service.ts`
-- Module con có repository: `src/modules/training/training-sessions/`
+- Query phức tạp gom trong repository:
+  `src/modules/racing/repositories/racing.repository.ts`
 - DTO và mapper: `src/modules/training/dto/`,
   `src/modules/training/mappers/`
+
+## 13. Phạm vi kiểm tra tự động
+
+`pnpm check:module-architecture` áp dụng các kiểm tra cấu trúc cho mọi domain
+đã có feature module con: module cha phải lắp đủ feature, feature phải đăng ký
+controller/service/repository của mình và không import trực tiếp feature sibling.
+Domain mới có ít nhất 20 file TypeScript không phải test mà chưa có feature
+module, hoặc có service vượt 1.000 dòng, sẽ bị kiểm tra báo lỗi cho đến khi
+được tách theo use case.
+
+`racing` là ngoại lệ chuyển đổi đã tồn tại: service hiện gom nhiều workflow
+vào một file lớn. Cần tách domain này theo từng use case trong đợt refactor
+riêng; ngoại lệ này được giữ trong script để không che giấu khoản chuyển đổi
+còn lại và không cho phép thêm ngoại lệ tương tự.

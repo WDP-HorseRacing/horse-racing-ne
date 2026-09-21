@@ -11,7 +11,7 @@ import {
   type CurrentActorUser,
   currentUserForActor,
 } from '../../users/utils/current-user';
-import { HorseLifecycleStatus } from '../constants/horse-status.enum';
+import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import { HorseEntity } from '../entities/horse.entity';
 import type { HorseScope } from '../types/horse.types';
 import { findReadableHorse } from '../utils/horse-access';

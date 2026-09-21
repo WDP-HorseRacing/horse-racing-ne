@@ -1,15 +1,15 @@
 import { UserRole } from '../../../common/enums/role.enum';
-import { EligibilityReason } from '../constants/eligibility-reason.enum';
-import { HorseGender } from '../constants/horse-gender.enum';
+import { EligibilityReason } from '../enums/eligibility-reason.enum';
+import { HorseGender } from '../enums/horse-gender.enum';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../constants/horse-measurement-alert.enum';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
+} from '../enums/horse-measurement-alert.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
+} from '../enums/horse-status.enum';
 import {
   CLOCK_SKEW_MS,
   FEVER_THRESHOLD_CELSIUS,
@@ -19,7 +19,7 @@ import {
   MEASUREMENT_BACKDATE_MAX_DAYS,
   MEASUREMENT_TYPES_BY_ROLE,
   WEIGHT_DROP_PERCENT,
-} from '../constants/horse.constants';
+} from '../enums/horse.constants';
 import type {
   ChildProfile,
   EligibilityInput,

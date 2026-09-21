@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { HORSE_MEASUREMENT_SPECS } from '../constants/horse.constants';
+import { HORSE_MEASUREMENT_SPECS } from '../enums/horse.constants';
 import type {
   CreatedHorseMeasurementResponseDto,
   HorseLatestMeasurementDto,

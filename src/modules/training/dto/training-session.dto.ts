@@ -11,7 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { TrainingSessionStatus } from '../constants/training-session-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 
 export class CreateTrainingSessionDto {
   @ApiProperty({ format: 'date-time' })

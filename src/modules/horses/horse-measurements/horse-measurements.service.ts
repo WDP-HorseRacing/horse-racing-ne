@@ -12,12 +12,12 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import type { Actor } from '../../../common/types/actor';
 import { isHorseInTrainerBarn } from '../../stable/utils/trainer-barn';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import {
   HORSE_MEASUREMENT_ALERT_EVENT,
   HORSE_MEASUREMENT_SPECS,
   WEIGHT_DROP_WINDOW_DAYS,
-} from '../constants/horse.constants';
+} from '../enums/horse.constants';
 import {
   CreatedHorseMeasurementResponseDto,
   CreateHorseMeasurementDto,

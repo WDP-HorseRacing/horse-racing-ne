@@ -27,12 +27,12 @@ import {
   STALE_HORSE_MESSAGE,
   STALL_OCCUPIED_MESSAGE,
   UNIQUE_CONFLICT_MESSAGES,
-} from '../constants/horse.constants';
-import { HorseGender } from '../constants/horse-gender.enum';
+} from '../enums/horse.constants';
+import { HorseGender } from '../enums/horse-gender.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
+} from '../enums/horse-status.enum';
 import {
   activationError,
   childBirthDateError,

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 
 @Injectable()

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { TrainingPlanStatus } from '../constants/training-plan-status.enum';
-import { TrainingSessionStatus } from '../constants/training-session-status.enum';
+import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 
 /**
  * Trích xuất phần ngày (YYYY-MM-DD) từ một chuỗi ngày tháng hoặc ISO Date String.

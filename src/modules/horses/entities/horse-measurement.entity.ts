@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import { HorseEntity } from './horse.entity';
 
 @Entity({ name: 'horse_measurements' })

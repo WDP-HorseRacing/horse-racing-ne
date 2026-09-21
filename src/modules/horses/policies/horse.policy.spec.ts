@@ -1,12 +1,12 @@
 import { UserRole } from '../../../common/enums/role.enum';
-import { EligibilityReason } from '../constants/eligibility-reason.enum';
-import { HorseGender } from '../constants/horse-gender.enum';
-import { HorseMeasurementAlert } from '../constants/horse-measurement-alert.enum';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
+import { EligibilityReason } from '../enums/eligibility-reason.enum';
+import { HorseGender } from '../enums/horse-gender.enum';
+import { HorseMeasurementAlert } from '../enums/horse-measurement-alert.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
+} from '../enums/horse-status.enum';
 import {
   activationError,
   canTransitionLifecycle,

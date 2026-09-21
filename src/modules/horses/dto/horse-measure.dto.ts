@@ -3,8 +3,8 @@ import { IsDateString, IsEnum, IsNumber, IsOptional } from 'class-validator';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../constants/horse-measurement-alert.enum';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
+} from '../enums/horse-measurement-alert.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 
 export class CreateHorseMeasurementDto {
   @ApiProperty({ enum: HorseMeasurementType })

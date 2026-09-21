@@ -11,7 +11,7 @@ import { AuditService } from '../../audit/services/audit.service';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
+} from '../enums/horse-status.enum';
 import {
   HorseResponseDto,
   UpdateHorseHealthDto,

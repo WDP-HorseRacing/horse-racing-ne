@@ -1,16 +1,16 @@
-import type { EligibilityReason } from '../constants/eligibility-reason.enum';
-import type { HorseGender } from '../constants/horse-gender.enum';
+import type { EligibilityReason } from '../enums/eligibility-reason.enum';
+import type { HorseGender } from '../enums/horse-gender.enum';
 import type {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../constants/horse-measurement-alert.enum';
-import type { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
-import type { HorseParentRole } from '../constants/horse-parent-role.enum';
+} from '../enums/horse-measurement-alert.enum';
+import type { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
+import type { HorseParentRole } from '../enums/horse-parent-role.enum';
 import type {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
-import type { RaceAptitude } from '../constants/race-aptitude.enum';
+} from '../enums/horse-status.enum';
+import type { RaceAptitude } from '../enums/race-aptitude.enum';
 import type { UserRole } from '../../../common/enums/role.enum';
 import type { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 

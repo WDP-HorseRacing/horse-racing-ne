@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { TrainingSessionStatus } from '../constants/training-session-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingPlanEntity } from './training-plan.entity';
 
 /**

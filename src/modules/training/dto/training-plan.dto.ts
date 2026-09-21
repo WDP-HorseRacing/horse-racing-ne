@@ -8,7 +8,7 @@ import {
   ValidationArguments,
   ValidationOptions,
 } from 'class-validator';
-import { TrainingPlanStatus } from '../constants/training-plan-status.enum';
+import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 
 export function IsAfterOrEqual(
   property: string,

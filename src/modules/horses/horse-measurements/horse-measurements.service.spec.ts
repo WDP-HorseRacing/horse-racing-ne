@@ -13,13 +13,13 @@ import type { Actor } from '../../../common/types/actor';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../constants/horse-measurement-alert.enum';
-import { HorseMeasurementType } from '../constants/horse-measurement-type.enum';
-import { HORSE_MEASUREMENT_ALERT_EVENT } from '../constants/horse.constants';
+} from '../enums/horse-measurement-alert.enum';
+import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
+import { HORSE_MEASUREMENT_ALERT_EVENT } from '../enums/horse.constants';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
+} from '../enums/horse-status.enum';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseAccessService } from '../shared/horse-access.service';
