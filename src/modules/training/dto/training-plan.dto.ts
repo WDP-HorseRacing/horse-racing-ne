@@ -92,9 +92,9 @@ export class TrainingPlanResponseDto {
   @Expose()
   phaseName!: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Không có key khi caller là Groom' })
   @Expose()
-  goal!: string;
+  goal?: string;
 
   @ApiProperty({ format: 'date' })
   @Expose()

@@ -3,11 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import {
-  HorseHealthStatus,
-  HorseLifecycleStatus,
-} from '../../horses/enums/horse-status.enum';
-import { TrainingLockStatus } from '../../medical/enums/training-lock.enum';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
@@ -29,6 +24,11 @@ import {
   assertSessionEditable,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
+import {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '@modules/horses/enums/horse-status.enum';
+import { TrainingLockStatus } from '@modules/medical/constants/training-lock.enum';
 
 @Injectable()
 export class TrainingSessionsService {
@@ -40,27 +40,43 @@ export class TrainingSessionsService {
     private readonly events: DomainEventPublisher,
   ) {}
 
-  /** Liệt kê các buổi tập trong giáo án (sắp xếp thời gian tăng dần) sau khi kiểm tra quyền truy cập giáo án. */
-  async listSessionsByPlan(
+  /**
+   * Lấy danh sách buổi tập của một giáo án, khi người gọi được xem con ngựa của giáo án đó.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param planId UUID của giáo án
+   * @returns Danh sách buổi tập của giáo án
+   * @throws NotFoundException Nếu không có giáo án, hoặc ngựa của giáo án nằm ngoài phạm vi của người gọi
+   */
+  async listSessions(
     actor: Actor,
     planId: string,
   ): Promise<TrainingSessionResponseDto[]> {
-    await this.accessService.planForActor(actor, planId);
-    const sessions = await this.sessionsRepo.find({
-      where: { planId },
-      order: { scheduledAt: 'ASC' },
-    });
-    return sessions.map(toTrainingSessionResponse);
+    const plan = await this.accessService.planForActor(actor, planId);
+    await this.accessService.readableHorseForActor(actor, plan.horseId);
+    return (
+      await this.sessionsRepo.find({
+        where: { planId },
+        order: { scheduledAt: 'ASC' },
+      })
+    ).map(toTrainingSessionResponse);
   }
 
-  /** Lấy thông tin chi tiết của buổi tập theo ID sau khi kiểm tra quyền truy cập. */
+  /**
+   * Lấy một buổi tập, khi người gọi được xem con ngựa của buổi tập đó.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @returns Buổi tập
+   * @throws NotFoundException Nếu không có buổi tập, hoặc ngựa của buổi tập nằm ngoài phạm vi của người gọi
+   */
   async getSessionById(
     actor: Actor,
     sessionId: string,
   ): Promise<TrainingSessionResponseDto> {
-    return toTrainingSessionResponse(
-      await this.accessService.sessionForActor(actor, sessionId),
-    );
+    const session = await this.accessService.sessionForActor(actor, sessionId);
+    await this.accessService.readableHorseForActor(actor, session.plan.horseId);
+    return toTrainingSessionResponse(session);
   }
 
   /**
@@ -171,10 +187,23 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const caller = await this.accessService.currentUser(actor);
     const session = await this.dataSource.transaction(async (manager) => {
+      const snapshot = await this.accessService.findSession(
+        manager,
+        sessionId,
+      );
+      const horse = await this.accessService.lockedHorse(
+        manager,
+        snapshot.plan.horseId,
+      );
       const current = await this.accessService.lockedSession(
         manager,
         sessionId,
       );
+      if (current.planId !== snapshot.planId) {
+        throw new ConflictException(
+          'Buổi tập đã được thay đổi, vui lòng thử lại',
+        );
+      }
       // kiểm tra phân quyền user
       await this.accessService.assertCanOperateSession(
         manager,
@@ -190,7 +219,11 @@ export class TrainingSessionsService {
       // kiểm tra giáo án phải là ACTIVE
       if (plan.status !== TrainingPlanStatus.ACTIVE)
         throw new ConflictException('Giáo án chưa ACTIVE');
-      const horse = await this.accessService.lockedHorse(manager, plan.horseId);
+      if (plan.horseId !== horse.id) {
+        throw new ConflictException(
+          'Giáo án đã được chuyển sang ngựa khác, vui lòng thử lại',
+        );
+      }
       // kiểm tra ngựa phải ở trạng thái ACTIVE và healthStatus là ELIGIBLE
       if (
         horse.lifecycleStatus !== HorseLifecycleStatus.ACTIVE ||

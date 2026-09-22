@@ -12,11 +12,8 @@ import {
   QueryFailedError,
   Repository,
 } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { BarnStatus } from '../constants/barn-status.enum';
 import { StallStatus } from '../constants/stall-status.enum';
@@ -242,7 +239,7 @@ export class StallsService {
 
     const assignments = await this.stallAssignmentRepository.find({
       where: { stallId },
-      relations: ['horse', 'groom'],
+      relations: ['horse'],
       order: { startAt: 'DESC' },
     });
     return assignments.map((assignment) =>
@@ -251,13 +248,13 @@ export class StallsService {
   }
 
   /**
-   * Assign a horse and groom to a stall
+   * Assign a horse to a stall
    * @param actor The actor resolved from the JWT
    * @param stallId The ID of the stall
    * @param body The assignment data
    * @returns A promise resolving to the created assignment
    * @throws NotFoundException if stall or horse not found
-   * @throws BadRequestException if stall is in maintenance or groom is invalid
+   * @throws BadRequestException if stall is not AVAILABLE, its barn is not ACTIVE, the horse is a reference horse, or the start time is invalid
    * @throws ConflictException if stall or horse is already actively assigned
    */
   async assign(
@@ -269,8 +266,15 @@ export class StallsService {
 
     const stall = await this.stallRepository.findOneBy({ id: stallId });
     if (!stall) throw new NotFoundException('Không tìm thấy ô chuồng');
-    if (stall.status === StallStatus.MAINTENANCE) {
-      throw new BadRequestException('Ô chuồng đang trong trạng thái bảo trì');
+    if (stall.status !== StallStatus.AVAILABLE) {
+      throw new BadRequestException('Ô chuồng không ở trạng thái khả dụng');
+    }
+    const isBarnActive = await this.dataSource.manager.existsBy(BarnEntity, {
+      id: stall.barnId,
+      status: BarnStatus.ACTIVE,
+    });
+    if (!isBarnActive) {
+      throw new BadRequestException('Khu chuồng không ở trạng thái hoạt động');
     }
 
     const isStallOccupied = await this.stallAssignmentRepository.exists({
@@ -288,6 +292,11 @@ export class StallsService {
     if (!horse) {
       throw new NotFoundException('Không tìm thấy thông tin ngựa');
     }
+    if (horse.isReference) {
+      throw new BadRequestException(
+        'Ngựa tham chiếu không thuộc đàn, không xếp chuồng được',
+      );
+    }
 
     const isHorseAssigned = await this.stallAssignmentRepository.exists({
       where: { horseId: body.horseId, endAt: IsNull() },
@@ -295,19 +304,6 @@ export class StallsService {
     if (isHorseAssigned) {
       throw new ConflictException(
         'Ngựa này hiện đang được xếp ở một ô chuồng khác',
-      );
-    }
-
-    const isValidGroom = await this.dataSource.manager.exists(UserEntity, {
-      where: {
-        id: body.groomId,
-        role: UserRole.GROOM,
-        status: UserStatus.ACTIVE,
-      },
-    });
-    if (!isValidGroom) {
-      throw new BadRequestException(
-        'Groom phụ trách không hợp lệ hoặc không ở trạng thái hoạt động',
       );
     }
 
@@ -320,7 +316,6 @@ export class StallsService {
       const assignment = manager.create(StallAssignmentEntity, {
         stallId,
         horseId: body.horseId,
-        groomId: body.groomId,
         startAt,
         endAt: null,
       });
@@ -330,10 +325,6 @@ export class StallsService {
       await manager.save(StallEntity, stall);
 
       saved.horse = horse;
-      const groom = await manager.findOne(UserEntity, {
-        where: { id: body.groomId },
-      });
-      if (groom) saved.groom = groom;
 
       return toStallAssignmentResponse(saved);
     });
@@ -355,7 +346,7 @@ export class StallsService {
 
     const assignment = await this.stallAssignmentRepository.findOne({
       where: { id: assignmentId },
-      relations: ['horse', 'groom'],
+      relations: ['horse'],
     });
     if (!assignment) {
       throw new NotFoundException('Không tìm thấy lượt phân công chuồng');

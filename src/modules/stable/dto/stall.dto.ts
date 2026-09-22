@@ -126,10 +126,6 @@ export class CreateStallAssignmentDto {
   @IsUUID()
   horseId!: string;
 
-  @ApiProperty({ format: 'uuid', description: 'ID groom phụ trách' })
-  @IsUUID()
-  groomId!: string;
-
   @ApiProperty({
     format: 'date-time',
     description: 'Thời điểm bắt đầu xếp chuồng',
@@ -179,15 +175,6 @@ export class StallAssignmentResponseDto {
   @Type(() => AssignedHorseSummaryDto)
   @ApiPropertyOptional({ type: AssignedHorseSummaryDto, nullable: true })
   horse?: AssignedHorseSummaryDto | null;
-
-  @Expose()
-  @ApiProperty({ format: 'uuid' })
-  groomId!: string;
-
-  @Expose()
-  @Type(() => AssignedGroomSummaryDto)
-  @ApiPropertyOptional({ type: AssignedGroomSummaryDto, nullable: true })
-  groom?: AssignedGroomSummaryDto | null;
 
   @Expose()
   @ApiProperty({ format: 'date-time' })

@@ -19,7 +19,7 @@ import {
   EvaluateSessionDto,
   SessionEvaluationResponseDto,
 } from '../dto/training-session.dto';
-import { EvaluationsService } from './evaluations.service';
+import { EvaluationsService } from './training-evaluations.service';
 import { UserRole } from '../../../common/enums';
 
 @ApiTags('training')
@@ -40,8 +40,17 @@ export class EvaluationsController {
     return this.evaluations.create(actor, id, body);
   }
 
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.HORSE_OWNER,
+  ])
   @Get('sessions/:id/evaluation')
-  @ApiOperation({ summary: 'Get session evaluation' })
+  @ApiOperation({
+    summary: 'Get session evaluation',
+    description: 'Groom không xem điểm đánh giá.',
+  })
   @ApiOkResponse({ type: SessionEvaluationResponseDto })
   get(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.evaluations.get(actor, id);

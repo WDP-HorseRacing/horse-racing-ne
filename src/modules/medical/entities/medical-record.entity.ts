@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseHealthStatus } from '../../horses/constants/horse-status.enum';
+import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { UserEntity } from '../../users/entities/user.entity';
 import { MedicalSeverity } from '../constants/medical-record.enum';
 

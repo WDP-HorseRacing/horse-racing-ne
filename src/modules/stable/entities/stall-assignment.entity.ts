@@ -1,11 +1,10 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { UserEntity } from '../../users/entities/user.entity';
 import { StallEntity } from './stall.entity';
 
 /**
- * StallAssignmentEntity: lịch sử phân công ngựa vào chuồng và groom phụ trách.
+ * StallAssignmentEntity: lịch sử xếp ngựa vào ô chuồng. Groom phụ trách nằm ở GroomAssignmentEntity.
  * Dùng để đảm bảo một ngựa chỉ đang ở một chuồng, và một chuồng chỉ có một ngựa
  * active trong cùng thời điểm.
  */
@@ -32,13 +31,6 @@ export class StallAssignmentEntity extends MutableRecordEntity {
   @ManyToOne(() => StallEntity, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'stall_id' })
   stall!: StallEntity;
-
-  @Column({ name: 'groom_id', type: 'uuid' })
-  groomId!: string;
-
-  @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'groom_id' })
-  groom!: UserEntity;
 
   @Column({ name: 'start_at', type: 'timestamptz' })
   startAt!: Date;

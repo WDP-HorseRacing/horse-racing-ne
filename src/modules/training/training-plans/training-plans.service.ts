@@ -13,12 +13,16 @@ import {
 } from '../dto/training-plan.dto';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
-import { toTrainingPlanResponse } from '../mappers/training.mapper';
+import {
+  toTrainingPlanResponse,
+  toTrainingPlanView,
+} from '../mappers/training.mapper';
 import {
   assertPlanActivatable,
   assertPlanCancellable,
   assertPlanCompletable,
   assertPlanEditable,
+  assertTrainableHorse,
   assertValidPlanDates,
   dateOnly,
 } from '../policies/training.policy';
@@ -28,31 +32,49 @@ import { TrainingAccessService } from '../shared/training-access.service';
 export class TrainingPlansService {
   constructor(
     @InjectRepository(TrainingPlanEntity)
-    private readonly plans: Repository<TrainingPlanEntity>,
+    private readonly planRepo: Repository<TrainingPlanEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
     private readonly events: DomainEventPublisher,
   ) {}
 
-  /** Liệt kê danh sách giáo án của ngựa (sắp xếp ngày bắt đầu giảm dần) sau khi kiểm tra quyền xem ngựa. */
+  /**
+   * Lấy danh sách giáo án của con ngựa mà người gọi được xem. Groom nhận giáo án không có goal.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns Danh sách giáo án của con ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
   async listPlansByHorse(
     actor: Actor,
     horseId: string,
   ): Promise<TrainingPlanResponseDto[]> {
-    await this.access.horseForActor(actor, horseId);
-    const plans = await this.plans.find({
-      where: { horseId },
-      order: { startDate: 'DESC' },
-    });
-    return plans.map(toTrainingPlanResponse);
+    await this.access.readableHorseForActor(actor, horseId);
+    const includeGoal = this.access.seesPlanGoal(actor);
+    return (
+      await this.planRepo.find({
+        where: { horseId },
+        order: { startDate: 'DESC' },
+      })
+    ).map((plan) => toTrainingPlanView(plan, includeGoal));
   }
 
-  /** Lấy thông tin chi tiết của giáo án theo ID sau khi kiểm tra quyền xem giáo án. */
+  /**
+   * Lấy một giáo án của con ngựa mà người gọi được xem. Groom nhận giáo án không có goal.
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của giáo án
+   * @returns Giáo án
+   * @throws NotFoundException Nếu không có giáo án, hoặc ngựa của giáo án nằm ngoài phạm vi của người gọi
+   */
   async getPlanById(
     actor: Actor,
     id: string,
   ): Promise<TrainingPlanResponseDto> {
-    return toTrainingPlanResponse(await this.access.planForActor(actor, id));
+    const plan = await this.access.planForActor(actor, id);
+    await this.access.readableHorseForActor(actor, plan.horseId);
+    return toTrainingPlanView(plan, this.access.seesPlanGoal(actor));
   }
 
   /**
@@ -64,13 +86,14 @@ export class TrainingPlansService {
     body: CreateTrainingPlanDto,
   ): Promise<TrainingPlanResponseDto> {
     const { user, horse } = await this.access.horseForActor(actor, horseId);
+    assertTrainableHorse(horse.isReference);
     await this.access.assertTrainerBarn(
       this.dataSource.manager,
       actor,
       user.id,
       horse.id,
     );
-    const plan = this.plans.create({
+    const plan = this.planRepo.create({
       horseId: horse.id,
       createdBy: user.id,
       phaseName: body.phaseName,
@@ -79,7 +102,7 @@ export class TrainingPlansService {
       endDate: dateOnly(body.endDate),
       status: TrainingPlanStatus.SCHEDULED,
     });
-    return toTrainingPlanResponse(await this.plans.save(plan));
+    return toTrainingPlanResponse(await this.planRepo.save(plan));
   }
 
   /**
@@ -141,8 +164,14 @@ export class TrainingPlansService {
   ): Promise<TrainingPlanResponseDto> {
     const caller = await this.access.currentUser(actor);
     const updatedPlan = await this.dataSource.transaction(async (manager) => {
-      // khóa training plan
+      const snapshot = await this.access.findPlan(manager, planId);
+      const horse = await this.access.lockedHorse(manager, snapshot.horseId);
       const curPlan = await this.access.lockedPlan(manager, planId);
+      if (curPlan.horseId !== horse.id) {
+        throw new ConflictException(
+          'Giáo án đã được chuyển sang ngựa khác, vui lòng thử lại',
+        );
+      }
       await this.access.assertTrainerBarn(
         manager,
         actor,
@@ -150,8 +179,6 @@ export class TrainingPlansService {
         curPlan.horseId,
       );
       assertPlanActivatable(curPlan.status); // kiểm tra: plan phải có status SCHEDULED
-      // khóa horse ứng với training plan
-      await this.access.lockedHorse(manager, curPlan.horseId);
       // kiểm tra: plan phải có ít nhất một session
       const sessionCount = await manager.countBy(TrainingSessionEntity, {
         planId: planId,

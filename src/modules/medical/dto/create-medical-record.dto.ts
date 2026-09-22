@@ -6,7 +6,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import { HorseHealthStatus } from '../../horses/constants/horse-status.enum';
+import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { MedicalSeverity } from '../constants/medical-record.enum';
 
 export class CreateMedicalRecordDto {

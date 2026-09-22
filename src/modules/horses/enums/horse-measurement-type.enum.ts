@@ -1,0 +1,6 @@
+export enum HorseMeasurementType {
+  WEIGHT = 'WEIGHT',
+  HEIGHT = 'HEIGHT',
+  BODY_CONDITION = 'BODY_CONDITION',
+  TEMPERATURE = 'TEMPERATURE',
+}

@@ -7,11 +7,15 @@ export class PrescriptionResponseDto {
   @ApiProperty()
   medicine!: string;
 
-  @ApiProperty()
-  dosage!: string;
+  @ApiPropertyOptional({
+    description: 'Không có key khi caller là Horse Owner',
+  })
+  dosage?: string;
 
-  @ApiProperty()
-  frequency!: string;
+  @ApiPropertyOptional({
+    description: 'Không có key khi caller là Horse Owner',
+  })
+  frequency?: string;
 
   @ApiProperty({ format: 'date' })
   startDate!: string;

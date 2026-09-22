@@ -21,6 +21,7 @@
     "db:migrate": "typeorm-ts-node-commonjs -d src/common/database/data-source.ts migration:run",
     "db:revert": "typeorm-ts-node-commonjs -d src/common/database/data-source.ts migration:revert",
     "db:generate": "typeorm-ts-node-commonjs -d src/common/database/data-source.ts migration:generate",
+    "db:seed": "node scripts/seed/run-seed.mjs",
     "docs:api": "node scripts/generate-api-catalog.cjs",
     "keycloak:setup": "node scripts/configure-keyclock.mjs",
     "keycloak:cleanup": "node scripts/cleanup-orphan-keycloak-users.mjs"

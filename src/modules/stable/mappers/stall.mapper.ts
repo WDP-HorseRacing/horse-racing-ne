@@ -15,7 +15,7 @@ export function toStallResponse(entity: StallEntity): StallResponseDto {
 }
 
 /**
- * Ánh xạ StallAssignmentEntity sang StallAssignmentResponseDto kèm thông tin ngựa và groom
+ * Ánh xạ StallAssignmentEntity sang StallAssignmentResponseDto kèm thông tin ngựa
  * @param entity StallAssignmentEntity cần chuyển đổi
  * @returns StallAssignmentResponseDto
  */

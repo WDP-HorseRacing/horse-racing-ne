@@ -1,12 +1,12 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
-import { HorseGender } from '../constants/horse-gender.enum';
+import { HorseGender } from '../enums/horse-gender.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '../constants/horse-status.enum';
-import { RaceAptitude } from '../constants/race-aptitude.enum';
+} from '../enums/horse-status.enum';
+import { RaceAptitude } from '../enums/race-aptitude.enum';
 
 @Entity({ name: 'horses' })
 @Index('horses_microchip_uq', ['microchipId'], {
@@ -79,4 +79,17 @@ export class HorseEntity extends SoftDeletableRecordEntity {
     default: HorseLifecycleStatus.ACTIVE,
   })
   lifecycleStatus!: HorseLifecycleStatus;
+
+  @Column({ name: 'lifecycle_reason', type: 'text', nullable: true })
+  lifecycleReason!: string | null;
+
+  @Column({
+    name: 'lifecycle_changed_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  lifecycleChangedAt!: Date | null;
+
+  @Column({ name: 'deleted_reason', type: 'text', nullable: true })
+  deletedReason!: string | null;
 }
