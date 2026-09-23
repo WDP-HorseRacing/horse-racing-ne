@@ -23,6 +23,7 @@
     "db:generate": "typeorm-ts-node-commonjs -d src/common/database/data-source.ts migration:generate",
     "db:seed": "node scripts/seed/run-seed.mjs",
     "docs:api": "node scripts/generate-api-catalog.cjs",
+    "check:module-architecture": "node scripts/check-module-architecture.mjs",
     "keycloak:setup": "node scripts/configure-keyclock.mjs",
     "keycloak:cleanup": "node scripts/cleanup-orphan-keycloak-users.mjs"
   },

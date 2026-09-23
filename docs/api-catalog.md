@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 143 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 144 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -37,21 +37,22 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | --- | --- | --- |
 | GET | `/api/v1/horses` | List horses visible to the current user |
 | POST | `/api/v1/horses` | Create horse profile |
-| POST | `/api/v1/horses/{horseId}/activate` | Activate a reference horse as a club horse |
+| DELETE | `/api/v1/horses/{horseId}` | Soft-delete a horse profile created by mistake |
+| GET | `/api/v1/horses/{horseId}` | Get horse profile detail |
+| PATCH | `/api/v1/horses/{horseId}` | Update horse profile, parents and owner |
+| PUT | `/api/v1/horses/{horseId}/barn` | Assign or change the barn of a horse |
 | GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
 | PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status |
 | PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
+| GET | `/api/v1/horses/{horseId}/lifecycle-status/preview` | Preview the consequences of a lifecycle change |
 | GET | `/api/v1/horses/{horseId}/measurements` | List horse measurement history |
-| POST | `/api/v1/horses/{horseId}/measurements` | Record a horse measurement |
-| DELETE | `/api/v1/horses/{horseId}/measurements/{measurementId}` | Soft-delete a horse measurement recorded by the caller |
-| GET | `/api/v1/horses/{horseId}/owners` | List horse ownership history |
-| PUT | `/api/v1/horses/{horseId}/owners` | Replace active ownership shares |
-| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree up to 4 generations |
+| POST | `/api/v1/horses/{horseId}/measurements` | Record one measuring session of a horse |
+| DELETE | `/api/v1/horses/{horseId}/measurements/{measurementId}` | Soft-delete a wrong horse measurement |
+| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree: parents and grandparents |
 | GET | `/api/v1/horses/{horseId}/permissions` | Get what the current user can do on this horse profile |
-| DELETE | `/api/v1/horses/{id}` | Soft-delete a horse profile created by mistake |
-| GET | `/api/v1/horses/{id}` | Get horse profile detail |
-| PATCH | `/api/v1/horses/{id}` | Update horse profile and pedigree parents |
-| GET | `/api/v1/owners/me/horses` | List horses currently owned by the current user |
+| GET | `/api/v1/horses/{horseId}/photo-url` | Get a time-limited download URL of the horse photo |
+| POST | `/api/v1/horses/{horseId}/restore` | Restore a soft-deleted horse profile |
+| GET | `/api/v1/owners/me/horses` | List horses owned by the current user |
 
 ## media
 
@@ -149,13 +150,14 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | PATCH | `/api/v1/checklists/{id}/complete` | Complete assigned checklist item |
 | POST | `/api/v1/feeding-plans/{id}/approve` | Approve feeding plan as Trainer or Vet |
 | GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |
+| GET | `/api/v1/grooms/workload` | List active grooms with the number of horses each one cares for |
 | GET | `/api/v1/horses/{horseId}/checklists` | List horse daily checklists |
 | POST | `/api/v1/horses/{horseId}/checklists` | Create assigned daily checklist |
 | GET | `/api/v1/horses/{horseId}/feeding-plans` | List horse feeding plans |
 | POST | `/api/v1/horses/{horseId}/feeding-plans` | Create feeding plan for approval |
-| DELETE | `/api/v1/horses/{id}/groom` | End the current groom assignment of a horse |
 | PUT | `/api/v1/horses/{id}/groom` | Assign or change the groom of a horse |
 | GET | `/api/v1/horses/{id}/grooms` | List the groom history of a horse |
+| PUT | `/api/v1/horses/{id}/stall` | Assign or move a horse to a stall in its barn |
 | GET | `/api/v1/incidents` | List stable incidents |
 | POST | `/api/v1/incidents` | Report stable incident |
 | GET | `/api/v1/incidents/{id}` | Get stable incident |
@@ -167,7 +169,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/stalls/{id}` | Get stall |
 | PATCH | `/api/v1/stalls/{id}` | Update stall |
 | GET | `/api/v1/stalls/{id}/assignments` | List stall assignment history |
-| POST | `/api/v1/stalls/{id}/assignments` | Assign horse to stall |
 
 ## supplies
 

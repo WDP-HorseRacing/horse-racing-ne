@@ -247,7 +247,9 @@
             "name": "code",
             "required": true,
             "in": "query",
+            "description": "Authorization code Keycloak trả về sau khi đăng nhập",
             "schema": {
+              "minLength": 1,
               "type": "string"
             }
           },
@@ -255,6 +257,26 @@
             "name": "state",
             "required": true,
             "in": "query",
+            "description": "Giá trị state đã gửi lúc bắt đầu luồng, dùng lấy lại PKCE",
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_state",
+            "required": false,
+            "in": "query",
+            "description": "Keycloak tự gắn vào redirect; khai báo để không bị chặn bởi forbidNonWhitelisted, không dùng",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "iss",
+            "required": false,
+            "in": "query",
+            "description": "Issuer (RFC 9207) Keycloak tự gắn vào redirect; khai báo để không bị chặn bởi forbidNonWhitelisted, không dùng",
             "schema": {
               "type": "string"
             }
@@ -293,9 +315,176 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}": {
+      "delete": {
+        "description": "Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 403.",
+        "operationId": "HorseDeletionsController_deleteHorse",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteHorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soft-delete a horse profile created by mistake",
+        "tags": [
+          "horses"
+        ]
+      },
+      "get": {
+        "description": "Tab thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập/được đua và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.",
+        "operationId": "HorseProfilesController_getHorse",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse profile detail",
+        "tags": [
+          "horses"
+        ]
+      },
+      "patch": {
+        "description": "Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409, cần GET lại. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 403 (phải khôi phục trước), Head Trainer nhận 404.",
+        "operationId": "HorseProfilesController_updateHorse",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update horse profile, parents and owner",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/restore": {
+      "post": {
+        "description": "Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Khu cũ không còn nhận được thì ngựa vào \"Chờ xếp khu\"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Hồ sơ chưa bị xóa trả 409.",
+        "operationId": "HorseDeletionsController_restoreHorse",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreHorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Restore a soft-deleted horse profile",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/measurements": {
       "get": {
-        "operationId": "HorseMeasurementsController_measurements",
+        "operationId": "HorseMeasurementsController_listMeasurements",
         "parameters": [
           {
             "name": "horseId",
@@ -346,7 +535,8 @@
         ]
       },
       "post": {
-        "operationId": "HorseMeasurementsController_addMeasurement",
+        "description": "Một hoặc nhiều loại chỉ số trong cùng lần đo. Veterinarian: mọi ngựa; Head Trainer: ngựa thuộc khu mình; Groom: ngựa được phân công. Có giá trị ngoài khoảng bình thường thì phải gửi confirmAbnormal = true, không thì trả 422.",
+        "operationId": "HorseMeasurementsController_addMeasurements",
         "parameters": [
           {
             "name": "horseId",
@@ -373,7 +563,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreatedHorseMeasurementResponseDto"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CreatedHorseMeasurementResponseDto"
+                  }
                 }
               }
             }
@@ -384,7 +577,7 @@
             "bearer": []
           }
         ],
-        "summary": "Record a horse measurement",
+        "summary": "Record one measuring session of a horse",
         "tags": [
           "horses"
         ]
@@ -392,6 +585,7 @@
     },
     "/api/v1/horses/{horseId}/measurements/{measurementId}": {
       "delete": {
+        "description": "Chỉ Veterinarian, bắt buộc nhập lý do. Bản ghi đến từ buổi khám (source MEDICAL_EXAM) trả 409.",
         "operationId": "HorseMeasurementsController_deleteMeasurement",
         "parameters": [
           {
@@ -411,6 +605,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteHorseMeasurementDto"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": ""
@@ -421,52 +625,16 @@
             "bearer": []
           }
         ],
-        "summary": "Soft-delete a horse measurement recorded by the caller",
+        "summary": "Soft-delete a wrong horse measurement",
         "tags": [
           "horses"
         ]
       }
     },
-    "/api/v1/horses/{horseId}/owners": {
-      "get": {
-        "operationId": "HorseOwnershipsController_owners",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/HorseOwnershipResponseDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List horse ownership history",
-        "tags": [
-          "horses"
-        ]
-      },
+    "/api/v1/horses/{horseId}/barn": {
       "put": {
-        "operationId": "HorseOwnershipsController_setOwners",
+        "description": "Chỉ Club Manager, bắt buộc lý do. Khu phải đang hoạt động, có Head Trainer và còn ô trống. Đổi khu thì ô cũ được trả về trống, ngựa vào \"Chờ xếp ô\" của khu mới, Groom giữ nguyên. Ngựa đã chuyển nhượng trả 409.",
+        "operationId": "HorsePlacementsController_assignBarn",
         "parameters": [
           {
             "name": "horseId",
@@ -482,7 +650,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetHorseOwnersDto"
+                "$ref": "#/components/schemas/AssignHorseBarnDto"
               }
             }
           }
@@ -493,10 +661,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/HorseOwnershipResponseDto"
-                  }
+                  "$ref": "#/components/schemas/HorseResponseDto"
                 }
               }
             }
@@ -507,37 +672,7 @@
             "bearer": []
           }
         ],
-        "summary": "Replace active ownership shares",
-        "tags": [
-          "horses"
-        ]
-      }
-    },
-    "/api/v1/owners/me/horses": {
-      "get": {
-        "operationId": "HorseOwnershipsController_myHorses",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/HorseResponseDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List horses currently owned by the current user",
+        "summary": "Assign or change the barn of a horse",
         "tags": [
           "horses"
         ]
@@ -545,8 +680,8 @@
     },
     "/api/v1/horses": {
       "get": {
-        "description": "Club Manager, Head Trainer, Veterinarian, Groom: whole club. Horse Owner: horses currently owned.",
-        "operationId": "HorseProfilesController_list",
+        "description": "Club Manager, Head Trainer, Veterinarian, Groom: toàn câu lạc bộ. Horse Owner: ngựa mình sở hữu. Mặc định bỏ hồ sơ đã xóa và xếp ngựa chấn thương/cách ly lên đầu. Chỉ Club Manager bật được includeDeleted.",
+        "operationId": "HorseProfilesController_listHorses",
         "parameters": [
           {
             "name": "page",
@@ -577,7 +712,7 @@
             "in": "query",
             "description": "NAME: theo tên. HEALTH_PRIORITY: chấn thương/cách ly trước, rồi cần theo dõi, cuối cùng đủ điều kiện; cùng nhóm thì theo tên",
             "schema": {
-              "default": "NAME",
+              "default": "HEALTH_PRIORITY",
               "type": "string",
               "enum": [
                 "NAME",
@@ -665,27 +800,52 @@
             "name": "barnId",
             "required": false,
             "in": "query",
-            "description": "Lọc ngựa đang ở trong khu chuồng này",
+            "description": "Lọc ngựa thuộc khu chuồng này",
             "schema": {
               "format": "uuid",
               "type": "string"
             }
           },
           {
-            "name": "reference",
+            "name": "placementStatus",
             "required": false,
             "in": "query",
-            "description": "true để xem ngựa tham chiếu (chỉ Club Manager)",
+            "description": "PENDING_BARN: \"Chờ xếp khu\". PENDING_STALL: \"Chờ xếp ô\". PLACED: đã có khu và ô. NOT_APPLICABLE: đã chuyển nhượng",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_BARN",
+                "PENDING_STALL",
+                "PLACED",
+                "NOT_APPLICABLE"
+              ]
+            }
+          },
+          {
+            "name": "myBarns",
+            "required": false,
+            "in": "query",
+            "description": "\"Khu của tôi\": chỉ ngựa thuộc các khu người gọi làm Head Trainer",
             "schema": {
               "default": false,
               "type": "boolean"
             }
           },
           {
-            "name": "deleted",
+            "name": "myHorses",
             "required": false,
             "in": "query",
-            "description": "true để chỉ xem hồ sơ đã xóa (chỉ Club Manager)",
+            "description": "\"Ngựa tôi phụ trách\": chỉ ngựa người gọi đang là Groom phụ trách",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeDeleted",
+            "required": false,
+            "in": "query",
+            "description": "true để hiện thêm hồ sơ đã xóa, kèm isDeleted = true (chỉ Club Manager)",
             "schema": {
               "default": false,
               "type": "boolean"
@@ -698,7 +858,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginationResponseDto"
+                  "$ref": "#/components/schemas/HorseListPageDto"
                 }
               }
             }
@@ -715,7 +875,8 @@
         ]
       },
       "post": {
-        "operationId": "HorseProfilesController_create",
+        "description": "Nhập luôn được ảnh, cha mẹ và chủ sở hữu, hoặc để trống bổ sung sau. Sức khỏe luôn ELIGIBLE, vòng đời luôn ACTIVE.",
+        "operationId": "HorseProfilesController_createHorse",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -750,27 +911,20 @@
         ]
       }
     },
-    "/api/v1/horses/{id}": {
+    "/api/v1/owners/me/horses": {
       "get": {
-        "description": "Phần đầu hồ sơ. Groom không nhận sireId/damId; Veterinarian và Groom không nhận representativeOwner. Chỉ Club Manager mở được ngựa tham chiếu và hồ sơ đã xóa. Quyền thao tác lấy ở GET /horses/{id}/permissions.",
-        "operationId": "HorseProfilesController_get",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "operationId": "HorseProfilesController_listMyHorses",
+        "parameters": [],
         "responses": {
           "200": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HorseDetailResponseDto"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseResponseDto"
+                  }
                 }
               }
             }
@@ -781,99 +935,16 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse profile detail",
-        "tags": [
-          "horses"
-        ]
-      },
-      "patch": {
-        "description": "Club Manager sửa toàn bộ. Head Trainer chỉ gửi được raceAptitude (kèm version) cho ngựa ở khu mình phụ trách, gửi field khác trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409, cần GET lại. Ngựa đã chuyển nhượng trả 409, hồ sơ đã xóa trả 404.",
-        "operationId": "HorseProfilesController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateHorseDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HorseResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update horse profile and pedigree parents",
-        "tags": [
-          "horses"
-        ]
-      },
-      "delete": {
-        "description": "A reason is required. Rejected when the horse is a pedigree parent or has any business data (medical, training, racing, ownership, stall, measurements...); change its lifecycle status instead.",
-        "operationId": "HorseProfilesController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeleteHorseDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Soft-delete a horse profile created by mistake",
+        "summary": "List horses owned by the current user",
         "tags": [
           "horses"
         ]
       }
     },
-    "/api/v1/horses/{horseId}/activate": {
-      "post": {
-        "description": "Dùng khi CLB mua lại ngựa tham chiếu. Chỉ đi một chiều: isReference=false, vòng đời ACTIVE, sức khỏe ELIGIBLE. Gửi kèm stallId, owners nếu muốn xếp chuồng, gán chủ luôn. Bắt buộc gửi version lấy từ GET; ngựa không phải tham chiếu hoặc version cũ trả 409.",
-        "operationId": "HorseProfilesController_activate",
+    "/api/v1/horses/{horseId}/photo-url": {
+      "get": {
+        "description": "Ai xem được hồ sơ ngựa thì lấy được link ảnh. Ngựa chưa có ảnh hoặc nằm ngoài phạm vi xem trả 404.",
+        "operationId": "HorseProfilesController_getPhotoUrl",
         "parameters": [
           {
             "name": "horseId",
@@ -884,23 +955,13 @@
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ActivateReferenceHorseDto"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HorseResponseDto"
+                  "$ref": "#/components/schemas/HorsePhotoUrlResponseDto"
                 }
               }
             }
@@ -911,7 +972,7 @@
             "bearer": []
           }
         ],
-        "summary": "Activate a reference horse as a club horse",
+        "summary": "Get a time-limited download URL of the horse photo",
         "tags": [
           "horses"
         ]
@@ -919,7 +980,8 @@
     },
     "/api/v1/horses/{horseId}/pedigree": {
       "get": {
-        "operationId": "HorseProfilesController_pedigree",
+        "description": "Chỉ gồm ngựa có hồ sơ tại câu lạc bộ. Horse Owner chỉ mở được tổ tiên mình sở hữu (canOpen).",
+        "operationId": "HorseProfilesController_getPedigree",
         "parameters": [
           {
             "name": "horseId",
@@ -927,16 +989,6 @@
             "in": "path",
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "name": "depth",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 4,
-              "default": 2
             }
           }
         ],
@@ -957,7 +1009,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse pedigree up to 4 generations",
+        "summary": "Get horse pedigree: parents and grandparents",
         "tags": [
           "horses"
         ]
@@ -966,7 +1018,7 @@
     "/api/v1/horses/{horseId}/permissions": {
       "get": {
         "description": "Chỉ để client ẩn/hiện nút và tab. Các API ghi vẫn tự kiểm tra quyền.",
-        "operationId": "HorseProfilesController_permissions",
+        "operationId": "HorseProfilesController_getPermissions",
         "parameters": [
           {
             "name": "horseId",
@@ -1002,7 +1054,7 @@
     },
     "/api/v1/horses/{horseId}/eligibility": {
       "get": {
-        "operationId": "HorseProfilesController_eligibility",
+        "operationId": "HorseProfilesController_getEligibility",
         "parameters": [
           {
             "name": "horseId",
@@ -1036,9 +1088,60 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}/lifecycle-status/preview": {
+      "get": {
+        "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (giáo án bị hủy, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại) để hiện bảng xác nhận.",
+        "operationId": "HorseStatusesController_previewLifecycle",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lifecycleStatus",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "RETIRED",
+                "TRANSFERRED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseLifecyclePreviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview the consequences of a lifecycle change",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/lifecycle-status": {
       "patch": {
-        "operationId": "HorseStatusesController_lifecycle",
+        "description": "Bắt buộc lý do. Giải nghệ: hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại: sức khỏe về UNDER_OBSERVATION. Nên gọi preview trước để xác nhận.",
+        "operationId": "HorseStatusesController_updateLifecycle",
         "parameters": [
           {
             "name": "horseId",
@@ -1084,7 +1187,7 @@
     },
     "/api/v1/horses/{horseId}/health-status": {
       "patch": {
-        "operationId": "HorseStatusesController_health",
+        "operationId": "HorseStatusesController_updateHealth",
         "parameters": [
           {
             "name": "horseId",
@@ -1130,6 +1233,7 @@
     },
     "/api/v1/media/upload-requests": {
       "post": {
+        "description": "Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only; other roles get 403.",
         "operationId": "MediaController_requestUpload",
         "parameters": [],
         "requestBody": {
@@ -1143,8 +1247,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadRequestResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1155,8 +1266,7 @@
         "summary": "Request time-limited private upload URL",
         "tags": [
           "media"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/media/{id}/complete": {
@@ -1173,8 +1283,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1185,12 +1302,12 @@
         "summary": "Confirm completed object upload",
         "tags": [
           "media"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/media/{id}": {
       "get": {
+        "description": "Chỉ người đã tải tệp lên; người khác nhận 404. Ảnh ngựa lấy link qua GET /horses/{horseId}/photo-url.",
         "operationId": "MediaController_media",
         "parameters": [
           {
@@ -1203,8 +1320,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1215,12 +1339,12 @@
         "summary": "Get media metadata",
         "tags": [
           "media"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/media/{id}/download-url": {
       "get": {
+        "description": "Chỉ người đã tải tệp lên; người khác nhận 404. Ảnh ngựa lấy link qua GET /horses/{horseId}/photo-url.",
         "operationId": "MediaController_downloadUrl",
         "parameters": [
           {
@@ -1233,8 +1357,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaDownloadUrlResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1245,8 +1376,7 @@
         "summary": "Request time-limited private download URL",
         "tags": [
           "media"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/medical-records/{id}": {
@@ -1665,7 +1795,7 @@
     },
     "/api/v1/horses/{horseId}/medical-records": {
       "get": {
-        "description": "Head Trainer: chỉ ngựa trong khu mình. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency.",
+        "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.",
         "operationId": "MedicalController_listRecords",
         "parameters": [
           {
@@ -1823,7 +1953,7 @@
     },
     "/api/v1/horses/{horseId}/injuries": {
       "get": {
-        "description": "Head Trainer: chỉ ngựa trong khu mình. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ.",
+        "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem.",
         "operationId": "MedicalController_listInjuries",
         "parameters": [
           {
@@ -3011,6 +3141,7 @@
     },
     "/api/v1/barns": {
       "get": {
+        "description": "Each barn carries its head trainer name, availableStallCount (free stalls minus horses of the barn still waiting for a stall, never negative; 0 means no more horse can be placed) and pendingStallHorseCount (horses of the barn, not deleted, not TRANSFERRED, without an open stall assignment).",
         "operationId": "BarnsController_list",
         "parameters": [],
         "responses": {
@@ -3021,7 +3152,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/BarnResponseDto"
+                    "$ref": "#/components/schemas/BarnListItemDto"
                   }
                 }
               }
@@ -3438,9 +3569,40 @@
         ]
       }
     },
+    "/api/v1/grooms/workload": {
+      "get": {
+        "description": "Counts open groom assignments of non-deleted horses across the whole club. Grooms with no horse are listed with 0.",
+        "operationId": "GroomAssignmentsController_workload",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroomWorkloadResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active grooms with the number of horses each one cares for",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
     "/api/v1/horses/{id}/groom": {
       "put": {
-        "description": "Closes the current groom assignment and opens a new one. Assigning the current groom again changes nothing. Head Trainer: only horses in their barn.",
+        "description": "Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Assigning the current groom again changes nothing.",
         "operationId": "GroomAssignmentsController_assign",
         "parameters": [
           {
@@ -3480,34 +3642,6 @@
           }
         ],
         "summary": "Assign or change the groom of a horse",
-        "tags": [
-          "stable"
-        ]
-      },
-      "delete": {
-        "description": "Head Trainer: only horses in their barn.",
-        "operationId": "GroomAssignmentsController_end",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "End the current groom assignment of a horse",
         "tags": [
           "stable"
         ]
@@ -3657,8 +3791,7 @@
               "enum": [
                 "AVAILABLE",
                 "OCCUPIED",
-                "MAINTENANCE",
-                "RESERVED"
+                "MAINTENANCE"
               ]
             }
           },
@@ -3883,9 +4016,12 @@
         "tags": [
           "stable"
         ]
-      },
-      "post": {
-        "operationId": "StallsController_assign",
+      }
+    },
+    "/api/v1/horses/{id}/stall": {
+      "put": {
+        "description": "Head Trainer of the horse barn only. The horse must already have a barn (set by the Club Manager); the stall must belong to that barn and be free. Moving closes the current stall assignment and frees the old stall in the same transaction. The groom is not changed.",
+        "operationId": "StallsController_moveHorseToStall",
         "parameters": [
           {
             "name": "id",
@@ -3901,13 +4037,13 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateStallAssignmentDto"
+                "$ref": "#/components/schemas/MoveHorseStallDto"
               }
             }
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -3923,7 +4059,7 @@
             "bearer": []
           }
         ],
-        "summary": "Assign horse to stall",
+        "summary": "Assign or move a horse to a stall in its barn",
         "tags": [
           "stable"
         ]
@@ -3931,6 +4067,7 @@
     },
     "/api/v1/stall-assignments/{id}/end": {
       "post": {
+        "description": "Head Trainer of the horse barn only (horses.barn_id), even when the caller also has another role. Ends the open assignment and frees the stall if it is OCCUPIED and has no other open assignment. 409 if the assignment is already ended.",
         "operationId": "StallsController_endAssignment",
         "parameters": [
           {
@@ -4492,6 +4629,7 @@
     },
     "/api/v1/horses/{horseId}/training-plans": {
       "get": {
+        "description": "Dữ liệu tab Huấn luyện của hồ sơ ngựa (F1.3). GROOM không xem tab này nên nhận 403.",
         "operationId": "TrainingPlansController_list",
         "parameters": [
           {
@@ -5146,6 +5284,7 @@
             "in": "query",
             "description": "Tìm theo họ tên hoặc email",
             "schema": {
+              "maxLength": 160,
               "type": "string"
             }
           }
@@ -5421,7 +5560,8 @@
               "HORSE_OWNER",
               "CLUB_MANAGER"
             ],
-            "nullable": true
+            "nullable": true,
+            "description": "Vai trò lưu trong tài khoản DB (users.role), chỉ để hiển thị; có thể lệch với token đến khi đăng nhập lại"
           },
           "status": {
             "type": "string",
@@ -5439,7 +5579,7 @@
             "type": "string"
           },
           "roles": {
-            "description": "Vai trò có hiệu lực, lấy từ dữ liệu tài khoản",
+            "description": "Vai trò có hiệu lực để phân quyền, lấy từ realm role trong access token hiện tại",
             "type": "array",
             "items": {
               "type": "string"
@@ -5468,6 +5608,141 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ]
+      },
+      "DeleteHorseDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do xóa hồ sơ tạo nhầm, bắt buộc"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "RestoreHorseDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do khôi phục hồ sơ đã xóa, bắt buộc"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "HorseResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ],
+            "nullable": true
+          },
+          "breed": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "microchipId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Chủ sở hữu duy nhất, null nếu chưa gán"
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          },
+          "lifecycleReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do của lần đổi vòng đời gần nhất"
+          },
+          "lifecycleChangedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Thời điểm đổi vòng đời gần nhất"
+          },
+          "version": {
+            "type": "number",
+            "description": "Gửi lại khi PATCH /horses/{id}"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "healthStatus",
+          "lifecycleStatus",
+          "version"
         ]
       },
       "HorseMeasurementResponseDto": {
@@ -5512,6 +5787,14 @@
           },
           "measuredByName": {
             "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "MEDICAL_EXAM"
+            ],
+            "description": "MANUAL: nhập tay ở hồ sơ ngựa. MEDICAL_EXAM: ghi từ buổi khám, không xóa được ở đây"
           }
         },
         "required": [
@@ -5523,10 +5806,11 @@
           "id",
           "horseId",
           "measuredBy",
-          "measuredByName"
+          "measuredByName",
+          "source"
         ]
       },
-      "CreateHorseMeasurementDto": {
+      "HorseMeasurementValueDto": {
         "type": "object",
         "properties": {
           "type": {
@@ -5541,16 +5825,36 @@
           "value": {
             "type": "number",
             "description": "Đơn vị cố định theo loại: WEIGHT kg (30–1500), HEIGHT cm (50–250), BODY_CONDITION điểm (1–9), TEMPERATURE °C (30–45)"
-          },
-          "measuredAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Mặc định là thời điểm hiện tại"
           }
         },
         "required": [
           "type",
           "value"
+        ]
+      },
+      "CreateHorseMeasurementDto": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "description": "Một hoặc nhiều loại chỉ số của cùng một lần đo, mỗi loại tối đa một giá trị",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseMeasurementValueDto"
+            }
+          },
+          "measuredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Mặc định là thời điểm hiện tại. Không ở tương lai, lùi tối đa 7 ngày"
+          },
+          "confirmAbnormal": {
+            "type": "boolean",
+            "default": false,
+            "description": "Bắt buộc true khi có giá trị ngoài khoảng bình thường; không gửi thì API trả 422 để giao diện hỏi xác nhận"
+          }
+        },
+        "required": [
+          "values"
         ]
       },
       "HorseMeasurementAlertDto": {
@@ -5631,6 +5935,14 @@
           "measuredByName": {
             "type": "string"
           },
+          "source": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "MEDICAL_EXAM"
+            ],
+            "description": "MANUAL: nhập tay ở hồ sơ ngựa. MEDICAL_EXAM: ghi từ buổi khám, không xóa được ở đây"
+          },
           "alerts": {
             "description": "Cảnh báo tự động sinh ra từ lần ghi này (sốt > 38.6 °C, cân nặng giảm > 5% trong 14 ngày); rỗng nếu không có",
             "type": "array",
@@ -5649,101 +5961,114 @@
           "horseId",
           "measuredBy",
           "measuredByName",
+          "source",
           "alerts"
         ]
       },
-      "HorseOwnershipResponseDto": {
+      "DeleteHorseMeasurementDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do xóa bản ghi đo sai, bắt buộc"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AssignHorseBarnDto": {
+        "type": "object",
+        "properties": {
+          "barnId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Khu chuồng mới. Phải đang hoạt động, có Head Trainer phụ trách và còn ô trống"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do xếp hoặc đổi khu, bắt buộc"
+          }
+        },
+        "required": [
+          "barnId",
+          "reason"
+        ]
+      },
+      "HorseBarnSummaryDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
-            "description": "Chỉ có ở dòng Club Manager xem và dòng của chính Horse Owner; dòng đồng sở hữu không có key"
+            "description": "Không có key khi người gọi là Horse Owner"
           },
-          "horseId": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "HorseStallSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
             "type": "string",
             "format": "uuid",
-            "description": "Chỉ có ở dòng Club Manager xem và dòng của chính Horse Owner; dòng đồng sở hữu không có key"
+            "description": "Không có key khi người gọi là Horse Owner"
           },
-          "ownerId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Chỉ có ở dòng Club Manager xem và dòng của chính Horse Owner; dòng đồng sở hữu không có key"
-          },
-          "ownerName": {
+          "code": {
             "type": "string"
-          },
-          "ownerEmail": {
-            "type": "string",
-            "description": "Club Manager thấy email mọi chủ; Horse Owner chỉ thấy email của chính mình, dòng khác không có key"
-          },
-          "percentage": {
-            "type": "string"
-          },
-          "startAt": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Thời điểm bắt đầu sở hữu (tính cả thời điểm này). Chỉ có ở dòng Club Manager xem và dòng của chính Horse Owner; dòng đồng sở hữu không có key"
-          },
-          "endAt": {
-            "type": "object",
-            "format": "date-time",
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "HorseLocationDto": {
+        "type": "object",
+        "properties": {
+          "barn": {
             "nullable": true,
-            "description": "Thời điểm kết thúc sở hữu (không tính thời điểm này, trùng startAt của dòng chủ mới); null là đang sở hữu. Chỉ có ở dòng Club Manager xem và dòng của chính Horse Owner; dòng đồng sở hữu không có key"
+            "description": "Khu chuồng Club Manager đã xếp, null nếu chưa xếp khu",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseBarnSummaryDto"
+              }
+            ]
           },
-          "isRepresentative": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "ownerName",
-          "percentage",
-          "isRepresentative"
-        ]
-      },
-      "HorseOwnerShareDto": {
-        "type": "object",
-        "properties": {
-          "ownerId": {
+          "stall": {
+            "nullable": true,
+            "description": "Ô chuồng Head Trainer đã xếp, null nếu chưa xếp ô",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseStallSummaryDto"
+              }
+            ]
+          },
+          "placementStatus": {
             "type": "string",
-            "format": "uuid"
-          },
-          "percentage": {
-            "type": "number",
-            "minimum": 0.01,
-            "maximum": 100
-          },
-          "isRepresentative": {
-            "type": "boolean",
-            "default": false,
-            "description": "true nếu là chủ đại diện. Không bắt buộc, mỗi ngựa tối đa một đại diện"
+            "enum": [
+              "PENDING_BARN",
+              "PENDING_STALL",
+              "PLACED",
+              "NOT_APPLICABLE"
+            ]
           }
         },
         "required": [
-          "ownerId",
-          "percentage"
+          "placementStatus"
         ]
       },
-      "SetHorseOwnersDto": {
-        "type": "object",
-        "properties": {
-          "owners": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HorseOwnerShareDto"
-            }
-          },
-          "transferredAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Thời điểm chuyển nhượng, không gửi thì lấy thời điểm hiện tại. Không được ở tương lai (400) và phải sau lần gán chủ gần nhất (409). Dòng chủ cũ kết thúc (endAt) và dòng chủ mới bắt đầu (startAt) đúng thời điểm này; chủ không đổi tỉ lệ và cờ đại diện thì giữ nguyên dòng"
-          }
-        },
-        "required": [
-          "owners"
-        ]
-      },
-      "HorseResponseDto": {
+      "HorseListItemDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -5803,8 +6128,11 @@
             "format": "uuid",
             "nullable": true
           },
-          "isReference": {
-            "type": "boolean"
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Chủ sở hữu duy nhất, null nếu chưa gán"
           },
           "healthStatus": {
             "type": "string",
@@ -5837,15 +6165,28 @@
           "version": {
             "type": "number",
             "description": "Gửi lại khi PATCH /horses/{id}"
+          },
+          "location": {
+            "$ref": "#/components/schemas/HorseLocationDto"
+          },
+          "canRegisterRace": {
+            "type": "boolean",
+            "description": "Tính lúc đọc: true khi hồ sơ chưa xóa, ngựa ACTIVE, sức khỏe ELIGIBLE và không có lệnh khóa huấn luyện"
+          },
+          "isDeleted": {
+            "type": "boolean",
+            "description": "true nếu hồ sơ đã xóa (chỉ Club Manager thấy được)"
           }
         },
         "required": [
           "id",
           "name",
-          "isReference",
           "healthStatus",
           "lifecycleStatus",
-          "version"
+          "version",
+          "location",
+          "canRegisterRace",
+          "isDeleted"
         ]
       },
       "PaginationMetaDto": {
@@ -5875,13 +6216,13 @@
           "totalPages"
         ]
       },
-      "PaginationResponseDto": {
+      "HorseListPageDto": {
         "type": "object",
         "properties": {
           "items": {
             "type": "array",
             "items": {
-              "type": "array"
+              "$ref": "#/components/schemas/HorseListItemDto"
             }
           },
           "meta": {
@@ -5918,15 +6259,6 @@
             "maxLength": 40,
             "nullable": true
           },
-          "raceAptitude": {
-            "type": "string",
-            "enum": [
-              "SPRINTER",
-              "MILER",
-              "STAYER"
-            ],
-            "nullable": true
-          },
           "microchipId": {
             "type": "string",
             "maxLength": 80,
@@ -5950,70 +6282,24 @@
           "mediaId": {
             "type": "string",
             "format": "uuid",
-            "nullable": true
+            "nullable": true,
+            "description": "Ảnh đại diện: media đã tải lên, định dạng JPEG/PNG/WebP, tối đa 10 MB"
           },
-          "isReference": {
-            "type": "boolean",
-            "default": false,
-            "description": "true cho ngựa giống bên ngoài, chỉ dùng làm tổ tiên trong phả hệ"
-          },
-          "stallId": {
+          "ownerId": {
             "type": "string",
             "format": "uuid",
-            "description": "Xếp luôn vào ô chuồng này. Ô phải AVAILABLE, thuộc khu chuồng ACTIVE và chưa có ngựa. Không dùng cho ngựa tham chiếu"
+            "nullable": true,
+            "description": "Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động. Để trống thì gán sau bằng PATCH"
           },
-          "owners": {
-            "description": "Gán luôn chủ sở hữu, tổng tỷ lệ phải bằng 100. Không dùng cho ngựa tham chiếu",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HorseOwnerShareDto"
-            }
+          "barnId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Xếp luôn vào khu chuồng này. Khu phải đang hoạt động, có Head Trainer phụ trách và còn ô trống. Để trống thì ngựa vào danh sách \"Chờ xếp khu\""
           }
         },
         "required": [
           "name",
           "gender"
-        ]
-      },
-      "HorseBarnSummaryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ]
-      },
-      "HorseStallSummaryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "code": {
-            "type": "string"
-          },
-          "barn": {
-            "description": "Khu chuồng chứa ô này",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/HorseBarnSummaryDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "code",
-          "barn"
         ]
       },
       "HorsePersonDto": {
@@ -6069,6 +6355,38 @@
           "isAbnormal"
         ]
       },
+      "HorseEligibilityDto": {
+        "type": "object",
+        "properties": {
+          "trainingEligible": {
+            "type": "boolean"
+          },
+          "racingEligible": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "type": "array",
+            "description": "Lý do không được tập/không được đua, rỗng nếu không bị chặn",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PROFILE_DELETED",
+                "LIFECYCLE_RETIRED",
+                "LIFECYCLE_TRANSFERRED",
+                "HEALTH_UNDER_OBSERVATION",
+                "HEALTH_INJURED",
+                "HEALTH_QUARANTINED",
+                "ACTIVE_TRAINING_LOCK"
+              ]
+            }
+          }
+        },
+        "required": [
+          "trainingEligible",
+          "racingEligible",
+          "reasons"
+        ]
+      },
       "HorseDetailResponseDto": {
         "type": "object",
         "properties": {
@@ -6119,8 +6437,21 @@
             "format": "uuid",
             "nullable": true
           },
-          "isReference": {
-            "type": "boolean"
+          "sireId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "damId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Chủ sở hữu duy nhất, null nếu chưa gán"
           },
           "healthStatus": {
             "type": "string",
@@ -6154,31 +6485,12 @@
             "type": "number",
             "description": "Gửi lại khi PATCH /horses/{id}"
           },
-          "sireId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true,
-            "description": "Không có key khi caller là Groom"
-          },
-          "damId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true,
-            "description": "Không có key khi caller là Groom"
-          },
-          "stall": {
-            "nullable": true,
-            "description": "Ô chuồng hiện tại kèm khu chuồng, null nếu chưa được xếp chuồng",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/HorseStallSummaryDto"
-              }
-            ]
+          "location": {
+            "$ref": "#/components/schemas/HorseLocationDto"
           },
           "groom": {
             "nullable": true,
-            "description": "Groom đang phụ trách, null nếu chưa giao",
+            "description": "Groom đang phụ trách, null nếu chưa phân công",
             "type": "object",
             "allOf": [
               {
@@ -6186,9 +6498,9 @@
               }
             ]
           },
-          "representativeOwner": {
+          "owner": {
             "nullable": true,
-            "description": "Chủ đại diện. Không có key khi caller là Veterinarian hoặc Groom; null khi ngựa chưa có chủ đại diện",
+            "description": "Chủ sở hữu, null nếu chưa gán",
             "type": "object",
             "allOf": [
               {
@@ -6205,17 +6517,38 @@
           },
           "activeTrainingLock": {
             "type": "boolean"
+          },
+          "eligibility": {
+            "$ref": "#/components/schemas/HorseEligibilityDto"
+          },
+          "isDeleted": {
+            "type": "boolean",
+            "description": "true nếu hồ sơ đã xóa (chỉ Club Manager mở được), khi đó chỉ đọc"
           }
         },
         "required": [
           "id",
           "name",
-          "isReference",
           "healthStatus",
           "lifecycleStatus",
           "version",
+          "location",
           "latestMeasurements",
-          "activeTrainingLock"
+          "activeTrainingLock",
+          "eligibility",
+          "isDeleted"
+        ]
+      },
+      "HorsePhotoUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Presigned GET URL có hạn dùng để tải ảnh đại diện của ngựa"
+          }
+        },
+        "required": [
+          "url"
         ]
       },
       "UpdateHorseDto": {
@@ -6229,15 +6562,6 @@
           "color": {
             "type": "string",
             "maxLength": 40,
-            "nullable": true
-          },
-          "raceAptitude": {
-            "type": "string",
-            "enum": [
-              "SPRINTER",
-              "MILER",
-              "STAYER"
-            ],
             "nullable": true
           },
           "microchipId": {
@@ -6263,7 +6587,24 @@
           "mediaId": {
             "type": "string",
             "format": "uuid",
-            "nullable": true
+            "nullable": true,
+            "description": "Ảnh đại diện: media đã tải lên, định dạng JPEG/PNG/WebP, tối đa 10 MB"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động. Để trống thì gán sau bằng PATCH"
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "nullable": true,
+            "description": "Chỉ Head Trainer phụ trách khu được sửa. Không nhập lúc tạo hồ sơ (BA chốt), Head Trainer bổ sung sau"
           },
           "version": {
             "type": "number",
@@ -6287,45 +6628,6 @@
           "version"
         ]
       },
-      "DeleteHorseDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500,
-            "description": "Lý do xóa hồ sơ tạo nhầm, bắt buộc"
-          }
-        },
-        "required": [
-          "reason"
-        ]
-      },
-      "ActivateReferenceHorseDto": {
-        "type": "object",
-        "properties": {
-          "version": {
-            "type": "number",
-            "minimum": 1,
-            "description": "version của hồ sơ lấy từ lần GET gần nhất. Người khác đã lưu trước thì trả 409, cần GET lại"
-          },
-          "stallId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Xếp luôn vào ô chuồng này. Ô phải AVAILABLE, thuộc khu chuồng ACTIVE và chưa có ngựa"
-          },
-          "owners": {
-            "description": "Gán luôn chủ sở hữu, tổng tỷ lệ phải bằng 100",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HorseOwnerShareDto"
-            }
-          }
-        },
-        "required": [
-          "version"
-        ]
-      },
       "HorsePedigreeNodeResponseDto": {
         "type": "object",
         "properties": {
@@ -6343,20 +6645,24 @@
               "FEMALE",
               "GELDING"
             ],
-            "nullable": true
+            "nullable": true,
+            "description": "Không có key khi canOpen = false"
           },
           "breed": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Không có key khi canOpen = false"
           },
           "color": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Không có key khi canOpen = false"
           },
           "dateOfBirth": {
             "type": "string",
             "format": "date",
-            "nullable": true
+            "nullable": true,
+            "description": "Không có key khi canOpen = false"
           },
           "raceAptitude": {
             "type": "string",
@@ -6365,15 +6671,17 @@
               "MILER",
               "STAYER"
             ],
-            "nullable": true
+            "nullable": true,
+            "description": "Không có key khi canOpen = false"
           },
-          "isReference": {
-            "type": "boolean"
+          "canOpen": {
+            "type": "boolean",
+            "description": "Người gọi mở được hồ sơ tổ tiên này không. Horse Owner chỉ mở được ngựa mình sở hữu, còn lại chỉ thấy tên"
           },
           "generation": {
             "type": "number",
             "minimum": 1,
-            "maximum": 4
+            "maximum": 2
           },
           "parentRole": {
             "type": "string",
@@ -6391,7 +6699,7 @@
         "required": [
           "id",
           "name",
-          "isReference",
+          "canOpen",
           "generation",
           "parentRole",
           "childId"
@@ -6409,8 +6717,9 @@
           },
           "depth": {
             "type": "number",
-            "minimum": 1,
-            "maximum": 4
+            "minimum": 2,
+            "maximum": 2,
+            "description": "Luôn 2 đời tổ tiên: cha mẹ và ông bà"
           },
           "ancestors": {
             "type": "array",
@@ -6433,21 +6742,33 @@
             "type": "string",
             "format": "uuid"
           },
-          "canEdit": {
+          "canEditProfile": {
             "type": "boolean",
-            "description": "Sửa hồ sơ ngựa"
+            "description": "Sửa thông tin hồ sơ (định danh, ảnh, cha mẹ, chủ sở hữu): Club Manager"
           },
           "canEditRaceAptitude": {
             "type": "boolean",
-            "description": "Sửa sở trường cự ly: Club Manager, hoặc Head Trainer khi ngựa ở khu mình phụ trách"
+            "description": "Sửa sở trường cự ly: Head Trainer phụ trách khu của ngựa"
+          },
+          "canAssignBarn": {
+            "type": "boolean",
+            "description": "Xếp hoặc đổi khu chuồng: Club Manager"
+          },
+          "canAssignStallAndGroom": {
+            "type": "boolean",
+            "description": "Xếp ô chuồng và phân công Groom: Head Trainer phụ trách khu, ngựa đã có khu"
           },
           "canChangeLifecycle": {
             "type": "boolean",
-            "description": "Đổi trạng thái vòng đời"
+            "description": "Đổi trạng thái vòng đời (kể cả kích hoạt lại ngựa đã chuyển nhượng)"
           },
-          "canManageOwners": {
+          "canDelete": {
             "type": "boolean",
-            "description": "Thay danh sách chủ sở hữu"
+            "description": "Hiện nút xóa hồ sơ. API vẫn chặn nếu ngựa đã có dữ liệu nghiệp vụ hoặc là cha/mẹ"
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Khôi phục hồ sơ đã xóa"
           },
           "canChangeHealth": {
             "type": "boolean",
@@ -6455,76 +6776,40 @@
           },
           "canRecordMeasurement": {
             "type": "boolean",
-            "description": "Ghi chỉ số cơ thể"
+            "description": "Ghi chỉ số cơ thể (được ghi thì ghi được cả bốn loại)"
           },
-          "recordableMeasurementTypes": {
-            "type": "array",
-            "description": "Các loại chỉ số được ghi: Head Trainer (khu mình) cân nặng + thể trạng, Groom (ngựa được giao) cân nặng + thân nhiệt, Veterinarian cả bốn; rỗng nếu không ghi được",
-            "items": {
-              "type": "string",
-              "enum": [
-                "WEIGHT",
-                "HEIGHT",
-                "BODY_CONDITION",
-                "TEMPERATURE"
-              ]
-            }
-          },
-          "canViewPedigree": {
+          "canDeleteMeasurement": {
             "type": "boolean",
-            "description": "Mở tab phả hệ"
+            "description": "Xóa bản ghi chỉ số sai: Veterinarian"
           },
-          "canViewOwners": {
+          "canViewMedicalTab": {
             "type": "boolean",
-            "description": "Mở tab chủ sở hữu"
+            "description": "Mở tab Bệnh án: mọi vai trò trừ Groom"
           },
-          "canViewMeasurementHistory": {
+          "canViewTrainingTab": {
             "type": "boolean",
-            "description": "Mở tab lịch sử và biểu đồ chỉ số"
+            "description": "Mở tab Huấn luyện: mọi vai trò trừ Groom"
           },
-          "canViewMedicalRecords": {
+          "canViewPerformanceTab": {
             "type": "boolean",
-            "description": "Mở tab hồ sơ y tế, gồm cả vết thương"
-          },
-          "canViewTrainingEvaluation": {
-            "type": "boolean",
-            "description": "Xem điểm đánh giá buổi tập"
-          },
-          "canViewPerformance": {
-            "type": "boolean",
-            "description": "Xem biểu đồ chỉ số tổng hợp theo buổi tập"
-          },
-          "canViewPerformanceDetail": {
-            "type": "boolean",
-            "description": "Xem số đo thô của các buổi tập"
-          },
-          "canOpenReferenceHorses": {
-            "type": "boolean",
-            "description": "Mở hồ sơ ngựa tham chiếu từ cây phả hệ"
-          },
-          "canActivateReference": {
-            "type": "boolean",
-            "description": "Kích hoạt ngựa tham chiếu thành ngựa của câu lạc bộ: chỉ Club Manager, chỉ với ngựa tham chiếu chưa xóa"
+            "description": "Mở tab Thành tích thi đấu: Club Manager, Head Trainer, Horse Owner"
           }
         },
         "required": [
           "horseId",
-          "canEdit",
+          "canEditProfile",
           "canEditRaceAptitude",
+          "canAssignBarn",
+          "canAssignStallAndGroom",
           "canChangeLifecycle",
-          "canManageOwners",
+          "canDelete",
+          "canRestore",
           "canChangeHealth",
           "canRecordMeasurement",
-          "recordableMeasurementTypes",
-          "canViewPedigree",
-          "canViewOwners",
-          "canViewMeasurementHistory",
-          "canViewMedicalRecords",
-          "canViewTrainingEvaluation",
-          "canViewPerformance",
-          "canViewPerformanceDetail",
-          "canOpenReferenceHorses",
-          "canActivateReference"
+          "canDeleteMeasurement",
+          "canViewMedicalTab",
+          "canViewTrainingTab",
+          "canViewPerformanceTab"
         ]
       },
       "HorseEligibilityResponseDto": {
@@ -6565,8 +6850,9 @@
             "items": {
               "type": "string",
               "enum": [
-                "REFERENCE_HORSE",
-                "LIFECYCLE_NOT_ACTIVE",
+                "PROFILE_DELETED",
+                "LIFECYCLE_RETIRED",
+                "LIFECYCLE_TRANSFERRED",
                 "HEALTH_UNDER_OBSERVATION",
                 "HEALTH_INJURED",
                 "HEALTH_QUARANTINED",
@@ -6583,6 +6869,102 @@
           "lifecycleStatus",
           "activeTrainingLock",
           "reasons"
+        ]
+      },
+      "HorseLifecyclePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED"
+            ]
+          },
+          "allowed": {
+            "type": "boolean",
+            "description": "false nếu không được chuyển giữa hai trạng thái"
+          },
+          "blockedReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do không được đổi, null nếu allowed = true"
+          },
+          "trainingPlansCancelled": {
+            "type": "number",
+            "description": "Số giáo án đang mở sẽ bị hủy"
+          },
+          "raceRegistrationsWithdrawn": {
+            "type": "number",
+            "description": "Số đăng ký thi đấu chưa diễn ra sẽ bị rút"
+          },
+          "stallReleased": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mã ô chuồng sẽ được trả về trống, null nếu không trả ô"
+          },
+          "groomEnded": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên Groom sẽ kết thúc phân công, null nếu không đổi"
+          },
+          "barnCleared": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên khu sẽ bị bỏ, null nếu giữ khu"
+          },
+          "trainingLockReleased": {
+            "type": "boolean",
+            "description": "true nếu lệnh khóa huấn luyện đang mở sẽ tự gỡ"
+          },
+          "healthResetTo": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ],
+            "nullable": true,
+            "description": "Sức khỏe sẽ được đặt về giá trị này, null nếu giữ nguyên"
+          },
+          "pendingBarnAfter": {
+            "type": "boolean",
+            "description": "true nếu sau khi đổi, ngựa vào danh sách Chờ xếp khu (kích hoạt lại ngựa đã chuyển nhượng)"
+          },
+          "ownerCleared": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên chủ sẽ bị bỏ trống vì tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true,
+            "description": "Câu tóm tắt để hiện ở bảng xác nhận, ví dụ \"Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải.\"; null nếu allowed = false"
+          }
+        },
+        "required": [
+          "horseId",
+          "from",
+          "to",
+          "allowed",
+          "trainingPlansCancelled",
+          "raceRegistrationsWithdrawn",
+          "trainingLockReleased",
+          "pendingBarnAfter"
         ]
       },
       "UpdateHorseLifecycleDto": {
@@ -6625,14 +7007,29 @@
           "healthStatus"
         ]
       },
+      "MediaPurpose": {
+        "type": "string",
+        "enum": [
+          "HORSE_PHOTO"
+        ]
+      },
       "RequestUploadDto": {
         "type": "object",
         "properties": {
+          "purpose": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaPurpose"
+              }
+            ]
+          },
           "fileName": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 255
           },
           "mimeType": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 120
           },
           "byteSize": {
             "type": "number",
@@ -6640,9 +7037,83 @@
           }
         },
         "required": [
+          "purpose",
           "fileName",
           "mimeType",
           "byteSize"
+        ]
+      },
+      "MediaUploadRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadUrl": {
+            "type": "string",
+            "description": "Presigned URL, client gửi PUT thân tệp lên đây"
+          },
+          "method": {
+            "type": "string",
+            "example": "PUT"
+          },
+          "headers": {
+            "type": "object",
+            "description": "Header bắt buộc phải gửi kèm khi PUT, phải khớp số liệu đã khai báo",
+            "example": {
+              "Content-Type": "image/jpeg",
+              "Content-Length": "102400"
+            }
+          }
+        },
+        "required": [
+          "assetId",
+          "uploadUrl",
+          "method",
+          "headers"
+        ]
+      },
+      "MediaAssetResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "byteSize": {
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "uploadedBy",
+          "mimeType",
+          "byteSize",
+          "createdAt"
+        ]
+      },
+      "MediaDownloadUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Presigned URL để GET tệp, có hạn dùng"
+          }
+        },
+        "required": [
+          "url"
         ]
       },
       "VoidMedicalRecordDto": {
@@ -7399,6 +7870,66 @@
           "timeSeconds"
         ]
       },
+      "BarnListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "capacity": {
+            "type": "number",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "MAINTENANCE",
+              "CLOSED"
+            ]
+          },
+          "headTrainerId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "headTrainerFullName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Họ tên Head Trainer phụ trách khu, null nếu khu chưa có"
+          },
+          "hasActiveHeadTrainer": {
+            "type": "boolean",
+            "description": "true nếu Head Trainer phụ trách khu còn tồn tại, đang ACTIVE và còn vai trò HEAD_TRAINER. Bằng false thì không xếp ngựa vào khu được (F1.6 mục 2), kể cả khi headTrainerFullName vẫn có tên (người đó đã bị khóa, ngưng hoạt động hoặc đổi vai trò)."
+          },
+          "availableStallCount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Số chỗ khu còn nhận ngựa mới = số ô trống (ô AVAILABLE, chưa xóa, không có phân công đang mở) trừ pendingStallHorseCount, không âm. Bằng 0 thì không xếp thêm ngựa vào khu được."
+          },
+          "pendingStallHorseCount": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Số ngựa chờ xếp ô: ngựa đã thuộc khu (chưa xóa, không TRANSFERRED) nhưng chưa có ô đang mở"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "hasActiveHeadTrainer",
+          "availableStallCount",
+          "pendingStallHorseCount"
+        ]
+      },
       "BarnResponseDto": {
         "type": "object",
         "properties": {
@@ -7610,6 +8141,27 @@
           "startAt"
         ]
       },
+      "GroomWorkloadResponseDto": {
+        "type": "object",
+        "properties": {
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "activeHorseCount": {
+            "type": "number",
+            "description": "Số ngựa (chưa xóa) groom đang phụ trách trên toàn câu lạc bộ"
+          }
+        },
+        "required": [
+          "groomId",
+          "fullName",
+          "activeHorseCount"
+        ]
+      },
       "AssignGroomDto": {
         "type": "object",
         "properties": {
@@ -7696,8 +8248,7 @@
             "enum": [
               "AVAILABLE",
               "OCCUPIED",
-              "MAINTENANCE",
-              "RESERVED"
+              "MAINTENANCE"
             ]
           },
           "description": {
@@ -7741,17 +8292,6 @@
             "default": "STANDARD",
             "description": "Phân loại chuồng: STANDARD, ISOLATION, RECOVERY, FOALING"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "AVAILABLE",
-              "OCCUPIED",
-              "MAINTENANCE",
-              "RESERVED"
-            ],
-            "default": "AVAILABLE",
-            "description": "Trạng thái ô chuồng"
-          },
           "description": {
             "type": "string",
             "description": "Mô tả ô chuồng, ghi chú tiện nghi cơ sở vật chất"
@@ -7791,17 +8331,6 @@
             "default": "STANDARD",
             "description": "Phân loại chuồng: STANDARD, ISOLATION, RECOVERY, FOALING"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "AVAILABLE",
-              "OCCUPIED",
-              "MAINTENANCE",
-              "RESERVED"
-            ],
-            "default": "AVAILABLE",
-            "description": "Trạng thái ô chuồng"
-          },
           "description": {
             "type": "string",
             "description": "Mô tả ô chuồng, ghi chú tiện nghi cơ sở vật chất"
@@ -7810,6 +8339,14 @@
             "type": "boolean",
             "description": "Có trang bị camera giám sát 24/7 không",
             "default": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "MAINTENANCE"
+            ],
+            "description": "Chỉ đổi giữa AVAILABLE và MAINTENANCE, và chỉ khi ô không có ngựa. OCCUPIED do xếp hoặc gỡ ngựa quyết"
           }
         }
       },
@@ -7870,23 +8407,17 @@
           "startAt"
         ]
       },
-      "CreateStallAssignmentDto": {
+      "MoveHorseStallDto": {
         "type": "object",
         "properties": {
-          "horseId": {
+          "stallId": {
             "type": "string",
             "format": "uuid",
-            "description": "ID ngựa"
-          },
-          "startAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Thời điểm bắt đầu xếp chuồng"
+            "description": "ID ô chuồng đích, phải thuộc khu chuồng của ngựa"
           }
         },
         "required": [
-          "horseId",
-          "startAt"
+          "stallId"
         ]
       },
       "CreateSupplyItemDto": {
@@ -8419,6 +8950,24 @@
           "reason"
         ]
       },
+      "PaginationResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
       "UserResponseDto": {
         "type": "object",
         "properties": {
@@ -8464,11 +9013,14 @@
         "type": "object",
         "properties": {
           "fullName": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
           },
           "email": {
             "type": "string",
-            "format": "email"
+            "format": "email",
+            "maxLength": 254
           },
           "role": {
             "type": "string",
@@ -8513,7 +9065,9 @@
         "type": "object",
         "properties": {
           "fullName": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
           },
           "role": {
             "type": "string",

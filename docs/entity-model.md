@@ -120,7 +120,7 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
   - `ISOLATION`: Ô chuồng cách ly y tế, kiểm dịch bệnh dịch lây nhiễm.
   - `RECOVERY`: Ô chuồng tịnh dưỡng chuyên biệt sau phẫu thuật / chấn thương.
   - `FOALING`: Ô chuồng đẻ rộng rãi, an toàn cho ngựa mang thai / ngựa con sơ sinh.
-- `status` (`StallStatus`, default `AVAILABLE`): `AVAILABLE`, `OCCUPIED`, `MAINTENANCE`, `RESERVED`.
+- `status` (`StallStatus`, default `AVAILABLE`): `AVAILABLE`, `OCCUPIED`, `MAINTENANCE`. `OCCUPIED`/`AVAILABLE` do xếp và gỡ ngựa quyết; người dùng chỉ đổi được `AVAILABLE` ↔ `MAINTENANCE` khi ô trống.
 - `description` (`text`, nullable): Mô tả đặc thù ô chuồng, tiện ích hoặc ghi chú cơ sở vật chất.
 - `has_camera` (`boolean`, default `false`): Ô chuồng có trang bị hệ thống camera giám sát 24/7.
 - Không được xóa ô đang có ngựa (`stall_assignments` mở).
@@ -135,7 +135,7 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
 
 ### Ngựa thuộc khu
 
-Ngựa thuộc khu của Head Trainer khi có `stall_assignments` active (`end_at IS NULL`) vào stall có `barn_id` trỏ tới khu có `head_trainer_id` là Head Trainer đó (`src/modules/stable/utils/trainer-barn.ts`). Ngựa chưa xếp chuồng không thuộc khu nào: Head Trainer chỉ xem thông tin công khai, Club Manager xếp chuồng trước khi Head Trainer thao tác.
+Ngựa thuộc khu của Head Trainer khi `horses.barn_id` trỏ tới khu (chưa xóa) có `head_trainer_id` là Head Trainer đó (`HorseAccessService.isHorseInTrainerBarn` trong `src/modules/horses/shared/horse-access.service.ts`). Ngựa chưa được Club Manager xếp khu thì không thuộc Head Trainer nào.
 
 ### Phân quyền Head Trainer theo khu
 
