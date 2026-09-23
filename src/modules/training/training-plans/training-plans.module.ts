@@ -12,6 +12,5 @@ import { TrainingPlansService } from './training-plans.service';
   ],
   controllers: [TrainingPlansController],
   providers: [TrainingPlansService],
-  exports: [TrainingPlansService],
 })
 export class TrainingPlansModule {}

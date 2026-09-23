@@ -1,11 +1,13 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../../../common/decorators';
 import { PendingApi } from '../../../common/openapi/pending-api';
+import type { Actor } from '../../../common/types/actor';
 import { ReportPeriodDto } from '../dto/report-period.dto';
 
 @ApiTags('reports')
@@ -15,14 +17,15 @@ import { ReportPeriodDto } from '../dto/report-period.dto';
 export class ReportsController extends PendingApi {
   @Get('dashboard')
   @ApiOperation({ summary: 'Get role-scoped dashboard summary' })
-  dashboard(@Query() _period: ReportPeriodDto) {
+  dashboard(@CurrentUser() _actor: Actor, @Query() _period: ReportPeriodDto) {
     return this.pending();
   }
 
   @Get('horses/:horseId/progress')
   @ApiOperation({ summary: 'Get horse training progress report' })
   progress(
-    @Param('horseId') _horseId: string,
+    @CurrentUser() _actor: Actor,
+    @Param('horseId', ParseUUIDPipe) _horseId: string,
     @Query() _period: ReportPeriodDto,
   ) {
     return this.pending();
@@ -31,7 +34,8 @@ export class ReportsController extends PendingApi {
   @Get('horses/:horseId/health')
   @ApiOperation({ summary: 'Get horse health history report' })
   health(
-    @Param('horseId') _horseId: string,
+    @CurrentUser() _actor: Actor,
+    @Param('horseId', ParseUUIDPipe) _horseId: string,
     @Query() _period: ReportPeriodDto,
   ) {
     return this.pending();
@@ -39,19 +43,22 @@ export class ReportsController extends PendingApi {
 
   @Get('club/training')
   @ApiOperation({ summary: 'Get club training activity report' })
-  clubTraining(@Query() _period: ReportPeriodDto) {
+  clubTraining(
+    @CurrentUser() _actor: Actor,
+    @Query() _period: ReportPeriodDto,
+  ) {
     return this.pending();
   }
 
   @Get('club/medical')
   @ApiOperation({ summary: 'Get club medical activity report' })
-  clubMedical(@Query() _period: ReportPeriodDto) {
+  clubMedical(@CurrentUser() _actor: Actor, @Query() _period: ReportPeriodDto) {
     return this.pending();
   }
 
   @Get('club/finance')
   @ApiOperation({ summary: 'Get later-phase manual finance summary' })
-  clubFinance(@Query() _period: ReportPeriodDto) {
+  clubFinance(@CurrentUser() _actor: Actor, @Query() _period: ReportPeriodDto) {
     return this.pending();
   }
 }

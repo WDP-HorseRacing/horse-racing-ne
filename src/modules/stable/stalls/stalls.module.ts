@@ -9,6 +9,5 @@ import { StallsService } from './stalls.service';
   imports: [TypeOrmModule.forFeature([StallEntity, StallAssignmentEntity])],
   controllers: [StallsController],
   providers: [StallsService],
-  exports: [StallsService],
 })
 export class StallsModule {}

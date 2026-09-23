@@ -8,6 +8,5 @@ import { BarnsService } from './barns.service';
   imports: [TypeOrmModule.forFeature([BarnEntity])],
   controllers: [BarnsController],
   providers: [BarnsService],
-  exports: [BarnsService],
 })
 export class BarnsModule {}

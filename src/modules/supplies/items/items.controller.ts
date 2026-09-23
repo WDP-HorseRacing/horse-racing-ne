@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -13,7 +14,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../../../common/decorators';
 import { PendingApi } from '../../../common/openapi/pending-api';
+import type { Actor } from '../../../common/types/actor';
 import {
   CreateSupplyItemDto,
   UpdateSupplyItemDto,
@@ -29,7 +32,7 @@ export class SupplyItemsController extends PendingApi {
     summary: 'List club supply inventory',
     operationId: 'SuppliesController_items',
   })
-  items() {
+  items(@CurrentUser() _actor: Actor) {
     return this.pending();
   }
 
@@ -38,7 +41,7 @@ export class SupplyItemsController extends PendingApi {
     summary: 'List items at or below reorder threshold',
     operationId: 'SuppliesController_lowStock',
   })
-  lowStock() {
+  lowStock(@CurrentUser() _actor: Actor) {
     return this.pending();
   }
 
@@ -47,7 +50,7 @@ export class SupplyItemsController extends PendingApi {
     summary: 'Create supply item',
     operationId: 'SuppliesController_createItem',
   })
-  createItem(@Body() _body: CreateSupplyItemDto) {
+  createItem(@CurrentUser() _actor: Actor, @Body() _body: CreateSupplyItemDto) {
     return this.pending();
   }
 
@@ -56,7 +59,7 @@ export class SupplyItemsController extends PendingApi {
     summary: 'Get supply item',
     operationId: 'SuppliesController_item',
   })
-  item(@Param('id') _id: string) {
+  item(@CurrentUser() _actor: Actor, @Param('id', ParseUUIDPipe) _id: string) {
     return this.pending();
   }
 
@@ -65,7 +68,11 @@ export class SupplyItemsController extends PendingApi {
     summary: 'Update supply quantity or threshold',
     operationId: 'SuppliesController_updateItem',
   })
-  updateItem(@Param('id') _id: string, @Body() _body: UpdateSupplyItemDto) {
+  updateItem(
+    @CurrentUser() _actor: Actor,
+    @Param('id', ParseUUIDPipe) _id: string,
+    @Body() _body: UpdateSupplyItemDto,
+  ) {
     return this.pending();
   }
 
@@ -74,7 +81,10 @@ export class SupplyItemsController extends PendingApi {
     summary: 'Soft-delete supply item',
     operationId: 'SuppliesController_deleteItem',
   })
-  deleteItem(@Param('id') _id: string) {
+  deleteItem(
+    @CurrentUser() _actor: Actor,
+    @Param('id', ParseUUIDPipe) _id: string,
+  ) {
     return this.pending();
   }
 }

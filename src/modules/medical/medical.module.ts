@@ -1,22 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { MedicalDetailsController } from './controllers/medical-details.controller';
-import { MedicalController } from './controllers/medical.controller';
-import { InjuryMarkerEntity } from './entities/injury-marker.entity';
-import { MedicalRecordEntity } from './entities/medical-record.entity';
-import { PrescriptionEntity } from './entities/prescription.entity';
-import { MedicalRepository } from './repositories/medical.repository';
-import { MedicalService } from './services/medical.service';
+import { CareSchedulesModule } from './care-schedules/care-schedules.module';
+import { InjuryCasesModule } from './injury-cases/injury-cases.module';
+import { MedicalRecordsModule } from './medical-records/medical-records.module';
+import { TrainingLocksModule } from './training-locks/training-locks.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      MedicalRecordEntity,
-      PrescriptionEntity,
-      InjuryMarkerEntity,
-    ]),
+    MedicalRecordsModule,
+    InjuryCasesModule,
+    TrainingLocksModule,
+    CareSchedulesModule,
   ],
-  providers: [MedicalRepository, MedicalService],
-  controllers: [MedicalController, MedicalDetailsController],
 })
 export class MedicalModule {}
