@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -10,14 +9,10 @@ import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
-import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
+import { HorseEntity } from '../../horses/entities/horse.entity';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { BarnEntity } from '../../stable/entities/barn.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
-import {
-  getSelfChangeError,
-  isRemovingActiveManager,
-  UserChange,
-} from '../domain/user.rules';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -26,9 +21,26 @@ import {
 } from '../dto/user.dto';
 import { UserEntity } from '../entities/user.entity';
 import { toUserResponse } from '../mappers/user.mapper';
+import {
+  assertNotSelfChange,
+  isRemovingActiveManager,
+} from '../policies/user.policy';
 import { UserRole, UserStatus } from '../user.enums';
 import { currentUserForActor } from '../utils/current-user';
 import { splitFullName } from '../utils/name';
+
+/**
+ * Thao tác bắt user phải bàn giao hết trách nhiệm trước, kèm cụm từ hiển thị trong message lỗi
+ */
+const RELEASE_ACTION_LABEL = {
+  ROLE_CHANGE: 'đổi vai trò',
+  DEACTIVATION: 'khóa tài khoản',
+} as const;
+
+/**
+ * Loại thao tác cần user bàn giao hết trách nhiệm trước khi thực hiện
+ */
+type ReleaseAction = keyof typeof RELEASE_ACTION_LABEL;
 
 @Injectable()
 export class UsersService {
@@ -155,36 +167,34 @@ export class UsersService {
     body: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const user = await this.findUser(id);
     const newRole = body.role;
-    const roleChanged = newRole !== undefined && newRole !== user.role;
 
-    if (roleChanged) {
-      // Không đổi role của chính mình
-      this.assertChangeAllowed(caller.id, user, { role: body.role });
-      // Đảm bảo user không còn trách nhiệm nào của role cũ
-      // Owner: không còn sở hữu ngựa nào
-      // Groom: không còn phụ trách chuồng ngựa nào
-      await this.assertRoleReleasable(user);
-    }
+    const previous = await this.dataSource.transaction(async (manager) => {
+      if (newRole !== undefined) await this.lockActiveManagers(manager);
+      const user = await this.lockUser(manager, id);
+      const roleChanged = newRole !== undefined && newRole !== user.role;
 
-    const changes: Partial<UserEntity> = {};
-    if (body.fullName !== undefined) changes.fullName = body.fullName.trim();
-    if (roleChanged) changes.role = body.role;
-    if (Object.keys(changes).length === 0) return toUserResponse(user);
+      if (roleChanged) {
+        assertNotSelfChange(caller.id, user, { role: newRole });
+        await this.assertResponsibilitiesReleased(manager, user, 'ROLE_CHANGE');
+      }
 
-    await this.dataSource.transaction(async (manager) => {
-      if (roleChanged) await this.lockActiveManagers(manager);
-      // Đảm bảo nếu đang đổi role của 1 club manager đang active thì còn ít nhất 1 club manager khác đang active
-      // Bỏ trong transaction để tránh race condition với các request khác đang đổi role/status của các club manager khác
-      if (isRemovingActiveManager(user, { role: body.role })) {
+      const changes: Partial<UserEntity> = {};
+      if (body.fullName !== undefined) changes.fullName = body.fullName.trim();
+      if (roleChanged) changes.role = newRole;
+      if (Object.keys(changes).length === 0) return user;
+
+      if (isRemovingActiveManager(user, { role: newRole })) {
         await this.assertAnotherActiveManager(manager, user.id);
       }
       await manager.getRepository(UserEntity).update({ id }, changes);
-      if (roleChanged && newRole) await this.syncKeycloakRole(user, newRole);
+      return user;
     });
 
-    if (roleChanged) await this.revokeSessions(user);
+    if (newRole !== undefined && newRole !== previous.role) {
+      await this.syncRoleAfterCommit(previous, newRole);
+      await this.revokeSessions(previous);
+    }
     return toUserResponse(await this.findUser(id));
   }
 
@@ -196,7 +206,7 @@ export class UsersService {
    * @returns A promise resolving to the updated user
    * @throws NotFoundException if the user is not found
    * @throws BadRequestException if the caller changes their own status
-   * @throws ConflictException if the club would lose its last active manager
+   * @throws ConflictException if the user still holds responsibilities or the club would lose its last active manager
    */
   async setStatus(
     actor: Actor,
@@ -204,74 +214,93 @@ export class UsersService {
     status: UserStatus,
   ): Promise<UserResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const user = await this.findUser(id);
-    if (user.status === status) return toUserResponse(user);
-    this.assertChangeAllowed(caller.id, user, { status });
 
-    await this.dataSource.transaction(async (manager) => {
+    const previous = await this.dataSource.transaction(async (manager) => {
       await this.lockActiveManagers(manager);
-      // Muốn thay đổi role or status của 1 club manager đang active thì
-      // phải đảm bảo còn ít nhất 1 club manager khác đang active
+      const user = await this.lockUser(manager, id);
+      if (user.status === status) return user;
+
+      assertNotSelfChange(caller.id, user, { status });
+      if (status !== UserStatus.ACTIVE) {
+        await this.assertResponsibilitiesReleased(
+          manager,
+          user,
+          'DEACTIVATION',
+        );
+      }
       if (isRemovingActiveManager(user, { status })) {
-        // Đảm bảo trong hệ thống còn ít nhất 1 club manager khác đang active
         await this.assertAnotherActiveManager(manager, user.id);
       }
       await manager.getRepository(UserEntity).update({ id }, { status });
-      await this.keycloakUsers.setUserEnabled(
-        user.keycloakId,
-        status === UserStatus.ACTIVE,
-      );
+      return user;
     });
-    // Nếu status thay đổi sang inactive hoặc locked thì revoke session của user
-    if (status !== UserStatus.ACTIVE) await this.revokeSessions(user);
+
+    if (previous.status === status) return toUserResponse(previous);
+    await this.syncStatusAfterCommit(previous, status);
+    if (status !== UserStatus.ACTIVE) await this.revokeSessions(previous);
     return toUserResponse(await this.findUser(id));
   }
 
   /**
-   * Ensure the caller is not making a forbidden change to their own account
-   * @param callerId The ID of the caller
-   * @param user The user being changed
-   * @param change The requested change
-   * @throws BadRequestException if the change is not allowed
+   * Khóa row user (SELECT ... FOR UPDATE) trong transaction đang chạy để kiểm tra invariant trên dữ liệu không bị request khác đổi giữa chừng
+   * @param manager EntityManager của transaction đang chạy
+   * @param id UUID của user cần khóa
+   * @returns A promise resolving to user đã được khóa
+   * @throws NotFoundException Nếu không có user với id này (hoặc đã bị xóa mềm)
    */
-  private assertChangeAllowed(
-    callerId: string,
-    user: UserEntity,
-    change: UserChange,
-  ): void {
-    const error = getSelfChangeError(callerId, user, change);
-    if (error) throw new BadRequestException(error);
+  private async lockUser(
+    manager: EntityManager,
+    id: string,
+  ): Promise<UserEntity> {
+    const user = await manager.getRepository(UserEntity).findOne({
+      where: { id },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    return user;
   }
 
   /**
-   * Ensure a user has no active horse ownership, groom assignment or barn tied to their current role
-   * @param user The user whose role is changing
-   * @returns A promise resolving once the check passes
-   * @throws ConflictException if the user still holds responsibilities for their current role
+   * Đảm bảo user không còn trách nhiệm nào gắn với vai trò hiện tại trước khi đổi vai trò hoặc khóa tài khoản
+   *
+   * - Horse Owner: không còn là chủ của ngựa nào đang ở câu lạc bộ
+   * - Groom: không còn phụ trách ngựa nào (groom assignment chưa kết thúc)
+   * - Head Trainer: không còn phụ trách khu chuồng nào
+   *
+   * @param manager EntityManager của transaction đang chạy, user đã được khóa bằng manager này
+   * @param user User sắp đổi vai trò hoặc sắp bị khóa
+   * @param action Thao tác đang làm, quyết định cụm "trước khi ..." trong message lỗi
+   * @returns A promise resolving khi kiểm tra đạt
+   * @throws ConflictException Nếu user còn trách nhiệm của vai trò hiện tại
    */
-  private async assertRoleReleasable(user: UserEntity): Promise<void> {
+  private async assertResponsibilitiesReleased(
+    manager: EntityManager,
+    user: UserEntity,
+    action: ReleaseAction,
+  ): Promise<void> {
+    const label = RELEASE_ACTION_LABEL[action];
     if (
       user.role === UserRole.HORSE_OWNER &&
-      (await this.hasActiveOwnership(user.id))
+      (await this.hasActiveOwnership(manager, user.id))
     ) {
       throw new ConflictException(
-        'Người này đang sở hữu ngựa, cần chuyển quyền sở hữu trước khi đổi vai trò',
+        `Người này đang là chủ của ngựa còn ở câu lạc bộ, cần đổi chủ trước khi ${label}`,
       );
     }
     if (
       user.role === UserRole.GROOM &&
-      (await this.hasActiveGroomAssignment(user.id))
+      (await this.hasActiveGroomAssignment(manager, user.id))
     ) {
       throw new ConflictException(
-        'Người này đang phụ trách ngựa, cần giao ngựa cho groom khác trước khi đổi vai trò',
+        `Người này đang phụ trách ngựa, cần giao ngựa cho groom khác trước khi ${label}`,
       );
     }
     if (
       user.role === UserRole.HEAD_TRAINER &&
-      (await this.hasActiveBarn(user.id))
+      (await this.hasActiveBarn(manager, user.id))
     ) {
       throw new ConflictException(
-        'Người này đang phụ trách khu chuồng, cần giao khu cho Head Trainer khác trước khi đổi vai trò',
+        `Người này đang phụ trách khu chuồng, cần giao khu cho Head Trainer khác trước khi ${label}`,
       );
     }
   }
@@ -302,10 +331,15 @@ export class UsersService {
   }
 
   /**
-   * Replace a user's realm role in Keycloak
-   * @param user The user whose role is changing
-   * @param role The new role
-   * @returns A promise resolving once the role is synced
+   * Thay vai trò realm của user trên Keycloak: gỡ vai trò cũ rồi gán vai trò mới
+   *
+   * - Gán vai trò mới lỗi sau khi đã gỡ vai trò cũ: gán lại vai trò cũ để user không bị mất hết quyền, rồi ném lại lỗi gốc
+   * - Gán lại vai trò cũ cũng lỗi: chỉ ghi log error (kèm keycloakId và vai trò cần gán lại) để xử lý tay, vẫn ném lỗi gốc
+   *
+   * @param user User đang giữ vai trò cũ
+   * @param role Vai trò mới
+   * @returns A promise resolving khi Keycloak đã nhận vai trò mới
+   * @throws Error Lỗi gốc từ Keycloak khi gỡ vai trò cũ hoặc gán vai trò mới
    */
   private async syncKeycloakRole(
     user: UserEntity,
@@ -314,7 +348,115 @@ export class UsersService {
     if (user.role) {
       await this.keycloakUsers.removeRealmRole(user.keycloakId, user.role);
     }
-    await this.keycloakUsers.assignRealmRole(user.keycloakId, role);
+    try {
+      await this.keycloakUsers.assignRealmRole(user.keycloakId, role);
+    } catch (error) {
+      if (user.role) {
+        await this.restoreKeycloakRole(user.keycloakId, user.role);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Gán lại vai trò cũ trên Keycloak khi đổi vai trò thất bại giữa chừng, lỗi thì chỉ ghi log
+   *
+   * @param keycloakId Id của user trên Keycloak
+   * @param role Vai trò cũ cần gán lại
+   * @returns A promise resolving khi đã gán lại hoặc đã ghi log lỗi
+   */
+  private async restoreKeycloakRole(
+    keycloakId: string,
+    role: UserRole,
+  ): Promise<void> {
+    try {
+      await this.keycloakUsers.assignRealmRole(keycloakId, role);
+    } catch (error) {
+      this.logger.error(
+        `Không gán lại được vai trò ${role} cho Keycloak user ${keycloakId} sau khi đổi vai trò lỗi, cần gán tay: ${String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Đồng bộ vai trò mới sang Keycloak sau khi DB đã commit; Keycloak lỗi thì hoàn tác vai trò trong DB rồi ném lại lỗi
+   *
+   * - Hoàn tác chạy trong transaction mới, xem revertCommittedChange
+   * - Keycloak đã gỡ vai trò cũ mà gán vai trò mới lỗi thì syncKeycloakRole gán lại vai trò cũ
+   *
+   * @param previous User đọc được trong transaction, còn giữ vai trò cũ
+   * @param role Vai trò mới đã ghi vào DB
+   * @returns A promise resolving khi Keycloak đã nhận vai trò mới
+   * @throws Error Lỗi gốc từ Keycloak, ném lại sau khi đã thử hoàn tác DB
+   */
+  private async syncRoleAfterCommit(
+    previous: UserEntity,
+    role: UserRole,
+  ): Promise<void> {
+    try {
+      await this.syncKeycloakRole(previous, role);
+    } catch (error) {
+      await this.revertCommittedChange(
+        previous.id,
+        { role },
+        { role: previous.role },
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Bật/tắt tài khoản Keycloak theo trạng thái mới sau khi DB đã commit; Keycloak lỗi thì hoàn tác trạng thái trong DB rồi ném lại lỗi
+   * @param previous User đọc được trong transaction, còn giữ trạng thái cũ
+   * @param status Trạng thái mới đã ghi vào DB
+   * @returns A promise resolving khi Keycloak đã nhận trạng thái mới
+   * @throws Error Lỗi gốc từ Keycloak, ném lại sau khi đã thử hoàn tác DB
+   */
+  private async syncStatusAfterCommit(
+    previous: UserEntity,
+    status: UserStatus,
+  ): Promise<void> {
+    try {
+      await this.keycloakUsers.setUserEnabled(
+        previous.keycloakId,
+        status === UserStatus.ACTIVE,
+      );
+    } catch (error) {
+      await this.revertCommittedChange(
+        previous.id,
+        { status },
+        { status: previous.status },
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Bù trừ một thay đổi vai trò/trạng thái đã commit khi Keycloak không đồng bộ được, lỗi thì chỉ log
+   *
+   * - Chạy trong transaction mới vì transaction ghi ban đầu đã commit
+   * - Chỉ ghi đè khi row vẫn còn đúng giá trị vừa ghi, để không đè lên thay đổi của request khác chen vào giữa
+   * - Lỗi khi hoàn tác không được ném ra, để caller ném lỗi gốc của Keycloak
+   *
+   * @param id UUID của user cần hoàn tác
+   * @param applied Giá trị đã commit (dùng làm điều kiện WHERE)
+   * @param original Giá trị trước khi đổi, sẽ được ghi lại
+   * @returns A promise resolving khi lần hoàn tác kết thúc (thành công hoặc đã log lỗi)
+   */
+  private async revertCommittedChange(
+    id: string,
+    applied: { role?: UserRole; status?: UserStatus },
+    original: Partial<Pick<UserEntity, 'role' | 'status'>>,
+  ): Promise<void> {
+    try {
+      await this.dataSource.transaction((manager) =>
+        manager.getRepository(UserEntity).update({ id, ...applied }, original),
+      );
+    } catch {
+      this.logger.error(
+        `Keycloak khong dong bo duoc va hoan tac DB cua user ${id} cung that bai: DB dang giu ${JSON.stringify(applied)}, can sua tay ve ${JSON.stringify(original)}.`,
+      );
+    }
   }
 
   /**
@@ -344,25 +486,52 @@ export class UsersService {
     return user;
   }
 
-  private async hasActiveOwnership(userId: string): Promise<boolean> {
-    return this.dataSource.manager
-      .getRepository(HorseOwnershipEntity)
-      .existsBy({ ownerId: userId, endAt: IsNull() });
+  /**
+   * Kiểm tra Horse Owner còn là chủ của con ngựa nào đang ở câu lạc bộ không (theo horses.owner_id).
+   *
+   * - Chỉ tính ngựa ACTIVE hoặc RETIRED. Ngựa TRANSFERRED không chặn đổi vai trò (BA chốt 2026-09-23): hồ sơ vẫn ghi người này là chủ cũ, nhưng khi không còn vai trò Horse Owner thì họ không xem được hồ sơ đó nữa.
+   * - Hồ sơ đã xóa mềm không tính.
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param userId UUID của Horse Owner
+   * @returns Promise trả về true nếu còn ít nhất một ngựa ACTIVE/RETIRED chưa xóa mềm có owner_id là userId
+   */
+  private async hasActiveOwnership(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<boolean> {
+    return manager.getRepository(HorseEntity).existsBy({
+      ownerId: userId,
+      lifecycleStatus: Not(HorseLifecycleStatus.TRANSFERRED),
+    });
   }
 
   /**
-   * Check whether a groom is currently caring for any horse
-   * @param userId The ID of the groom
-   * @returns A promise resolving to true if the groom has an open groom assignment
+   * Kiểm tra Groom còn đang phụ trách con ngựa nào không (groom assignment chưa có end_at)
+   * @param manager EntityManager của transaction đang chạy
+   * @param userId UUID của Groom
+   * @returns A promise resolving to true nếu còn ít nhất một groom assignment đang mở
    */
-  private async hasActiveGroomAssignment(userId: string): Promise<boolean> {
-    return this.dataSource.manager
+  private async hasActiveGroomAssignment(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<boolean> {
+    return manager
       .getRepository(GroomAssignmentEntity)
       .existsBy({ groomId: userId, endAt: IsNull() });
   }
 
-  private async hasActiveBarn(userId: string): Promise<boolean> {
-    return this.dataSource.manager
+  /**
+   * Kiểm tra Head Trainer còn phụ trách khu chuồng nào không (barns.head_trainer_id)
+   * @param manager EntityManager của transaction đang chạy
+   * @param userId UUID của Head Trainer
+   * @returns A promise resolving to true nếu còn ít nhất một khu chuồng do người này phụ trách
+   */
+  private async hasActiveBarn(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<boolean> {
+    return manager
       .getRepository(BarnEntity)
       .existsBy({ headTrainerId: userId });
   }

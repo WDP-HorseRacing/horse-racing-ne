@@ -24,6 +24,7 @@ import { AuthTokensResponseDto } from './dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from './dto/current-user.response.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { OidcCallbackQueryDto } from './dto/oidc-callback-query.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('auth')
@@ -101,9 +102,12 @@ export class AuthController {
   oidcCallback(
     @Param('provider', new ParseEnumPipe(KeycloakIdentityProvider))
     provider: KeycloakIdentityProvider,
-    @Query('code') code: string,
-    @Query('state') state: string,
+    @Query() query: OidcCallbackQueryDto,
   ): Promise<AuthTokensResponseDto> {
-    return this.authService.completeOidcLogin(provider, code, state);
+    return this.authService.completeOidcLogin(
+      provider,
+      query.code,
+      query.state,
+    );
   }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
   IsEmail,
   IsEnum,
@@ -12,13 +12,21 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { UserRole, UserStatus } from '../user.enums';
 
 export class CreateUserDto {
-  @ApiProperty()
+  @ApiProperty({ minLength: 1, maxLength: 160 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MinLength(1)
+  @MaxLength(160)
   fullName!: string;
 
-  @ApiProperty({ format: 'email' })
+  @ApiProperty({ format: 'email', maxLength: 254 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsEmail()
+  @MaxLength(254)
   email!: string;
 
   @ApiProperty({ enum: UserRole })
@@ -32,10 +40,14 @@ export class CreateUserDto {
 }
 
 export class UpdateUserDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ minLength: 1, maxLength: 160 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsOptional()
   @IsString()
   @MinLength(1)
+  @MaxLength(160)
   fullName?: string;
 
   @ApiPropertyOptional({ enum: UserRole })
@@ -61,7 +73,13 @@ export class UserListQueryDto extends PaginationQueryDto {
   @IsEnum(UserStatus)
   status?: UserStatus;
 
-  @ApiPropertyOptional({ description: 'Tìm theo họ tên hoặc email' })
+  @ApiPropertyOptional({
+    description: 'Tìm theo họ tên hoặc email',
+    maxLength: 160,
+  })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsOptional()
   @IsString()
   @MaxLength(160)
