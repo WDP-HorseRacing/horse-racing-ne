@@ -1,39 +1,77 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PendingApi } from '../../../common/openapi/pending-api';
-import { RequestUploadDto } from '../dto/request-upload.dto';
+import { CurrentUser } from '../../../common/decorators';
+import type { Actor } from '../../../common/types/actor';
+import {
+  MediaAssetResponseDto,
+  MediaDownloadUrlResponseDto,
+  MediaUploadRequestResponseDto,
+  RequestUploadDto,
+} from '../dto';
+import { MediaService } from '../services/media.service';
 
 @ApiTags('media')
 @ApiBearerAuth()
-@ApiResponse({ status: 501, description: 'Contract only' })
 @Controller('media')
-export class MediaController extends PendingApi {
+export class MediaController {
+  constructor(private readonly mediaService: MediaService) {}
+
   @Post('upload-requests')
-  @ApiOperation({ summary: 'Request time-limited private upload URL' })
-  requestUpload(@Body() _body: RequestUploadDto) {
-    return this.pending();
+  @ApiOperation({
+    summary: 'Request time-limited private upload URL',
+    description:
+      'Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only; other roles get 403.',
+  })
+  @ApiCreatedResponse({ type: MediaUploadRequestResponseDto })
+  requestUpload(@CurrentUser() actor: Actor, @Body() body: RequestUploadDto) {
+    return this.mediaService.requestUpload(actor, body);
   }
 
   @Post(':id/complete')
   @ApiOperation({ summary: 'Confirm completed object upload' })
-  complete(@Param('id') _id: string) {
-    return this.pending();
+  @ApiCreatedResponse({ type: MediaAssetResponseDto })
+  complete(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.mediaService.complete(actor, id);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get media metadata' })
-  media(@Param('id') _id: string) {
-    return this.pending();
+  @ApiOperation({
+    summary: 'Get media metadata',
+    description:
+      'Chỉ người đã tải tệp lên; người khác nhận 404. Ảnh ngựa lấy link qua GET /horses/{horseId}/photo-url.',
+  })
+  @ApiOkResponse({ type: MediaAssetResponseDto })
+  media(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.mediaService.getMetadata(actor, id);
   }
 
   @Get(':id/download-url')
-  @ApiOperation({ summary: 'Request time-limited private download URL' })
-  downloadUrl(@Param('id') _id: string) {
-    return this.pending();
+  @ApiOperation({
+    summary: 'Request time-limited private download URL',
+    description:
+      'Chỉ người đã tải tệp lên; người khác nhận 404. Ảnh ngựa lấy link qua GET /horses/{horseId}/photo-url.',
+  })
+  @ApiOkResponse({ type: MediaDownloadUrlResponseDto })
+  downloadUrl(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.mediaService.createDownloadUrl(actor, id);
   }
 }

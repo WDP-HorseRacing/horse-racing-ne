@@ -16,6 +16,7 @@ import { validateEnvironment } from './config/env.validation';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HorsesModule } from './modules/horses/horses.module';
+import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
 import { MedicalModule } from './modules/medical/medical.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -59,6 +60,7 @@ import { UsersModule } from './modules/users/users.module';
     SuppliesModule,
     ReportsModule,
     NotificationsModule,
+    HealthModule,
     AuditModule,
     MediaModule,
     RealtimeModule,

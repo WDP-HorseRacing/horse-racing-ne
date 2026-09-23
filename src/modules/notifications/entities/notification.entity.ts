@@ -1,6 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { NotificationPriority } from '../constants/notification-priority.enum';
 import { NotificationType } from '../constants/notification-type.enum';
 
 /**
@@ -32,8 +33,8 @@ export class NotificationEntity extends MutableRecordEntity {
   @Column({ type: 'text' })
   message!: string;
 
-  @Column({ type: 'varchar', length: 16, default: 'NORMAL' })
-  priority!: string;
+  @Column({ type: 'varchar', length: 16, default: NotificationPriority.NORMAL })
+  priority!: NotificationPriority;
 
   @Column({ name: 'read_at', type: 'timestamptz', nullable: true })
   readAt!: Date | null;
