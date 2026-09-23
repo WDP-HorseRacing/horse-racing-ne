@@ -1,23 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-
+import { DataSource, Repository } from 'typeorm';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
-import { HorseHealthStatus } from '../enums/horse-status.enum';
-import { HorseListQueryDto } from '../dto/horse.dto';
+import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
+import {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../enums/horse-status.enum';
+import { HorseListQueryDto } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
 import { applyHorseScope } from '../utils/horse-scope';
 import type {
-  HorseCurrentStallRow,
+  HorseLocationRow,
+  HorsePersonRow,
   HorseScope,
   PedigreeAncestorRow,
 } from '../types/horse.types';
-import {
-  HORSE_BUSINESS_TABLES,
-  PEDIGREE_LOCK_KEY,
-  VIETNAMESE_NAME_ORDER,
-} from '../enums/horse.constants';
+import { VIETNAMESE_NAME_ORDER } from '../constants/horse.constants';
 
 @Injectable()
 export class HorseProfilesRepository {
@@ -28,36 +27,24 @@ export class HorseProfilesRepository {
   ) {}
 
   /**
-   * Giữ khoá phả hệ tới hết transaction (Postgres advisory lock).
+   * Lấy một trang danh sách ngựa trong phạm vi người gọi, theo từ khóa và bộ lọc (F1.1).
    *
-   * - Mọi thao tác đổi quan hệ cha/mẹ, giới tính hoặc ngày sinh liên quan phả hệ phải gọi hàm này trước khi kiểm tra
-   * - Các thao tác đó chạy lần lượt nên luôn kiểm tra trên dữ liệu đã commit, kể cả vòng lặp phả hệ qua nhiều đời
-   * - Khoá tự nhả khi transaction commit hoặc rollback
+   * - Mặc định bỏ hồ sơ đã xóa; includeDeleted gộp thêm hồ sơ đã xóa (quyền do service kiểm)
+   * - myBarns: ngựa thuộc khu người gọi làm Head Trainer; myHorses: ngựa người gọi đang là Groom phụ trách
+   * - placementStatus tính từ vòng đời, horses.barn_id và dòng xếp ô đang mở
+   * - Sắp xếp mặc định: chấn thương/cách ly, rồi cần theo dõi, rồi còn lại; cùng nhóm theo tên tiếng Việt
    *
-   * @param manager EntityManager của transaction đang chạy
-   * @returns Promise hoàn tất khi đã giữ được khoá
-   */
-  async lockPedigree(manager: EntityManager): Promise<void> {
-    await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
-      PEDIGREE_LOCK_KEY,
-    ]);
-  }
-
-  /**
-   * List horses, limited to the caller's visibility scope
-   * @param scope The visibility scope of the caller
-   * @param query The filter, search and pagination parameters
-   * @returns A promise resolving to an array of horses and the total count
+   * @param scope Phạm vi xem của người gọi
+   * @param callerId UUID của người gọi, dùng cho myBarns và myHorses
+   * @param query Từ khóa, bộ lọc, sắp xếp và phân trang
+   * @returns Promise trả về các ngựa của trang hiện tại và tổng số dòng khớp
    */
   list(
     scope: HorseScope,
+    callerId: string,
     query: HorseListQueryDto,
   ): Promise<[HorseEntity[], number]> {
-    const qb = this.horses
-      .createQueryBuilder('horse')
-      .where('horse.isReference = :reference', {
-        reference: query.reference,
-      });
+    const qb = this.horses.createQueryBuilder('horse');
     applyHorseScope(qb, scope);
 
     if (query.search) {
@@ -85,13 +72,27 @@ export class HorseProfilesRepository {
       });
     }
     if (query.barnId) {
+      qb.andWhere('horse.barnId = :barnId', { barnId: query.barnId });
+    }
+    if (query.myBarns) {
       qb.andWhere(
-        'EXISTS (SELECT 1 FROM stall_assignments sa JOIN stalls s ON s.id = sa.stall_id AND s.deleted_at IS NULL WHERE sa.horse_id = horse.id AND sa.end_at IS NULL AND s.barn_id = :barnId)',
-        { barnId: query.barnId },
+        'horse.barn_id IN (SELECT b.id FROM barns b WHERE b.head_trainer_id = :callerId AND b.deleted_at IS NULL)',
+        { callerId },
       );
     }
-    if (query.deleted) {
-      qb.withDeleted().andWhere('horse.deletedAt IS NOT NULL');
+    if (query.myHorses) {
+      qb.andWhere(
+        'EXISTS (SELECT 1 FROM groom_assignments ga WHERE ga.horse_id = horse.id AND ga.groom_id = :callerId AND ga.end_at IS NULL)',
+        { callerId },
+      );
+    }
+    if (query.placementStatus) {
+      qb.andWhere(`(${PLACEMENT_STATUS_SQL}) = :placementStatus`, {
+        placementStatus: query.placementStatus,
+      });
+    }
+    if (query.includeDeleted) {
+      qb.withDeleted();
     }
     if (query.sortBy === HorseListSortBy.HEALTH_PRIORITY) {
       qb.addSelect(
@@ -108,101 +109,63 @@ export class HorseProfilesRepository {
   }
 
   /**
-   * Kiểm tra ngựa đã từng phát sinh dữ liệu nghiệp vụ chưa, để quyết định có được xóa hồ sơ không.
+   * Lấy khu (theo horses.barn_id) và ô đang mở của từng con ngựa, kể cả hồ sơ đã xóa.
    *
-   * - Tính cả dòng đã đóng, đã hủy hoặc đã xóa mềm, vì đều là lịch sử
-   * - Gồm: khám bệnh, lịch chăm sóc, khóa huấn luyện, giáo án, đăng ký thi đấu, sở hữu, xếp chuồng, phân công groom, khẩu phần, checklist, sự cố, chỉ số đo, ngưỡng hiệu suất
+   * - Khu hoặc ô đã bị xóa mềm thì coi như không có
+   * - Ngựa nào cũng có đúng một dòng, thiếu khu hoặc ô thì cột tương ứng là null
    *
-   * @param horseId UUID của ngựa
-   * @param manager EntityManager của transaction đang chạy
-   * @returns Promise trả về true nếu có ít nhất một dòng dữ liệu nghiệp vụ
+   * @param horseIds UUID các con ngựa
+   * @returns Promise trả về vị trí của từng con ngựa
    */
-  async hasBusinessData(
-    horseId: string,
-    manager: EntityManager,
-  ): Promise<boolean> {
-    const checks = HORSE_BUSINESS_TABLES.map(
-      (table) => `EXISTS (SELECT 1 FROM ${table} WHERE horse_id = $1)`,
-    ).join(' OR ');
-    const rows: Array<{ exists: boolean }> = await manager.query(
-      `SELECT (${checks}) AS exists`,
-      [horseId],
-    );
-    return rows[0]?.exists === true;
-  }
-
-  /**
-   * Find the current stall and barn of each horse that has an open stall assignment
-   * @param horseIds The IDs of the horses
-   * @returns A promise resolving to one row per horse with an open assignment in a live stall and barn
-   */
-  async currentStallsByHorseIds(
-    horseIds: string[],
-  ): Promise<HorseCurrentStallRow[]> {
+  async locationsByHorseIds(horseIds: string[]): Promise<HorseLocationRow[]> {
     if (horseIds.length === 0) return [];
-    const rows: HorseCurrentStallRow[] = await this.dataSource.query(
-      `SELECT sa.horse_id AS "horseId",
-              s.id AS "stallId",
-              s.code AS "stallCode",
+    const rows: HorseLocationRow[] = await this.dataSource.query(
+      `SELECT h.id AS "horseId",
               b.id AS "barnId",
-              b.name AS "barnName"
-         FROM stall_assignments sa
-         JOIN stalls s ON s.id = sa.stall_id AND s.deleted_at IS NULL
-         JOIN barns b ON b.id = s.barn_id AND b.deleted_at IS NULL
-        WHERE sa.horse_id = ANY($1)
-          AND sa.end_at IS NULL`,
+              b.name AS "barnName",
+              s.id AS "stallId",
+              s.code AS "stallCode"
+         FROM horses h
+         LEFT JOIN barns b ON b.id = h.barn_id AND b.deleted_at IS NULL
+         LEFT JOIN stall_assignments sa ON sa.horse_id = h.id AND sa.end_at IS NULL
+         LEFT JOIN stalls s ON s.id = sa.stall_id AND s.deleted_at IS NULL
+        WHERE h.id = ANY($1)`,
       [horseIds],
     );
     return rows;
   }
 
   /**
-   * Find which of the given horses have an active training lock
-   * @param horseIds The IDs of the horses
-   * @returns A promise resolving to the set of horse IDs with an active lock
+   * Lấy Groom đang phụ trách con ngựa (dòng phân công còn mở).
+   *
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về Groom, hoặc null nếu chưa phân công
    */
-  async activeTrainingLockHorseIds(horseIds: string[]): Promise<Set<string>> {
-    if (horseIds.length === 0) return new Set();
-    const rows: Array<{ horse_id: string }> = await this.dataSource.query(
-      `SELECT DISTINCT horse_id FROM training_locks WHERE horse_id = ANY($1) AND status = $2`,
-      [horseIds, TrainingLockStatus.ACTIVE],
+  async currentGroom(horseId: string): Promise<HorsePersonRow | null> {
+    const rows: HorsePersonRow[] = await this.dataSource.query(
+      `SELECT u.id, u.full_name AS "fullName"
+         FROM groom_assignments ga
+         JOIN users u ON u.id = ga.groom_id
+        WHERE ga.horse_id = $1 AND ga.end_at IS NULL
+        LIMIT 1`,
+      [horseId],
     );
-    return new Set(rows.map((row) => row.horse_id));
+    return rows[0] ?? null;
   }
 
   /**
-   * Check whether assigning a parent would create a cycle in the pedigree
-   * @param childHorseId The ID of the child horse
-   * @param parentHorseId The ID of the candidate parent horse
-   * @param manager The transaction entity manager, omitted outside a transaction
-   * @returns A promise resolving to true if the child is already an ancestor of the parent
+   * Lấy tên hiển thị của chủ sở hữu.
+   *
+   * @param ownerId UUID chủ sở hữu, null nếu ngựa chưa có chủ
+   * @returns Promise trả về chủ sở hữu, hoặc null nếu ngựa chưa có chủ
    */
-  async wouldCreateCycle(
-    childHorseId: string,
-    parentHorseId: string,
-    manager?: EntityManager,
-  ): Promise<boolean> {
-    const rows: Array<{ exists: boolean }> = await (
-      manager ?? this.dataSource
-    ).query(
-      `
-        WITH RECURSIVE ancestors(horse_id, path) AS (
-          SELECT $1::uuid, ARRAY[$1::uuid]
-          UNION ALL
-          SELECT parent_id, ancestors.path || parent_id
-          FROM horses child
-          JOIN ancestors ON ancestors.horse_id = child.id
-          CROSS JOIN LATERAL unnest(ARRAY[child.sire_id, child.dam_id]) AS parent_id
-          WHERE parent_id IS NOT NULL
-            AND NOT parent_id = ANY(ancestors.path)
-        )
-        SELECT EXISTS (
-          SELECT 1 FROM ancestors WHERE horse_id = $2::uuid
-        ) AS exists
-      `,
-      [parentHorseId, childHorseId],
+  async ownerOf(ownerId: string | null): Promise<HorsePersonRow | null> {
+    if (!ownerId) return null;
+    const rows: HorsePersonRow[] = await this.dataSource.query(
+      `SELECT id, full_name AS "fullName" FROM users WHERE id = $1`,
+      [ownerId],
     );
-    return rows[0]?.exists === true;
+    return rows[0] ?? null;
   }
 
   /**
@@ -226,7 +189,6 @@ export class HorseProfilesRepository {
           FROM horses child
           JOIN horses parent ON parent.id IN (child.sire_id, child.dam_id)
           WHERE child.id = $1::uuid
-            AND child.deleted_at IS NULL
             AND parent.deleted_at IS NULL
 
           UNION ALL
@@ -250,7 +212,7 @@ export class HorseProfilesRepository {
                ancestor.color,
                to_char(ancestor.date_of_birth, 'YYYY-MM-DD') AS "dateOfBirth",
                ancestor.race_aptitude AS "raceAptitude",
-               ancestor.is_reference AS "isReference",
+               ancestor.owner_id AS "ownerId",
                pedigree.generation,
                pedigree.parent_role AS "parentRole",
                pedigree.child_id AS "childId"
@@ -262,3 +224,14 @@ export class HorseProfilesRepository {
     );
   }
 }
+
+/**
+ * Biểu thức SQL tính HorsePlacementStatus của một dòng ngựa, gắn với alias `horse` của query builder.
+ * Cùng luật với placementStatusOf trong policies/horse.policy.ts; sửa một bên thì phải sửa bên kia.
+ */
+const PLACEMENT_STATUS_SQL = `CASE
+  WHEN horse.lifecycle_status = '${HorseLifecycleStatus.TRANSFERRED}' THEN '${HorsePlacementStatus.NOT_APPLICABLE}'
+  WHEN horse.barn_id IS NULL THEN '${HorsePlacementStatus.PENDING_BARN}'
+  WHEN NOT EXISTS (SELECT 1 FROM stall_assignments sa WHERE sa.horse_id = horse.id AND sa.end_at IS NULL) THEN '${HorsePlacementStatus.PENDING_STALL}'
+  ELSE '${HorsePlacementStatus.PLACED}'
+END`;

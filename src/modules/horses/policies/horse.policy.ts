@@ -1,3 +1,8 @@
+import {
+  BadRequestException,
+  ConflictException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseGender } from '../enums/horse-gender.enum';
@@ -5,21 +10,23 @@ import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
 } from '../enums/horse-measurement-alert.enum';
+import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
 } from '../enums/horse-status.enum';
+import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
 import {
   CLOCK_SKEW_MS,
   FEVER_THRESHOLD_CELSIUS,
   HEALTH_REASONS,
   HORSE_MEASUREMENT_SPECS,
   LIFECYCLE_TRANSITIONS,
+  LIFECYCLE_VERBS,
   MEASUREMENT_BACKDATE_MAX_DAYS,
-  MEASUREMENT_TYPES_BY_ROLE,
   WEIGHT_DROP_PERCENT,
-} from '../enums/horse.constants';
+} from '../constants/horse.constants';
 import type {
   ChildProfile,
   EligibilityInput,
@@ -27,55 +34,76 @@ import type {
   HorseMeasurementAlertResult,
   HorsePermissionInput,
   HorsePermissions,
+  LifecycleImpactRow,
   LifecycleSideEffects,
-  OpenOwnershipRow,
-  OwnerShareInput,
-  OwnershipChangePlan,
+  HorseScope,
   ParentCandidate,
+  ParentUsage,
 } from '../types/horse.types';
 
 /**
- * Check the sire and dam IDs against the child and each other
- * @param childId The ID of the child horse, undefined when creating a new horse
- * @param sireId The ID of the sire
- * @param damId The ID of the dam
- * @returns The error message if a parent is the child itself or the parents are the same, or null otherwise
+ * Kiểm tra con ngựa có nằm trong phạm vi xem của người gọi không
+ *
+ * - Phạm vi ALL: mọi con ngựa
+ * - Phạm vi OWNER (Horse Owner): chỉ ngựa có owner_id là người gọi
+ *
+ * @param horse Chủ sở hữu hiện tại của ngựa
+ * @param scope Phạm vi xem của người gọi (HorseAccessService.scopeOf)
+ * @returns true nếu người gọi được xem con ngựa
  */
-export function parentIdError(
-  childId: string | undefined,
-  sireId: string | null,
-  damId: string | null,
-): string | null {
-  if (childId && (sireId === childId || damId === childId)) {
-    return 'Ngựa không thể là cha/mẹ của chính nó';
-  }
-  if (sireId && damId && sireId === damId) {
-    return 'Sire và dam không được trùng nhau';
-  }
-  return null;
+export function isHorseInScope(
+  horse: { ownerId: string | null },
+  scope: HorseScope,
+): boolean {
+  return scope.kind === 'ALL' || horse.ownerId === scope.userId;
 }
 
 /**
- * Check the gender and date of birth of the sire and dam against the child
- * @param child The child horse profile
- * @param sire The sire, or null if not set
- * @param dam The dam, or null if not set
- * @returns The error message if the sire is not male or gelding, the dam is not female, or a parent is not born before the child, or null otherwise
+ * Chặn chọn cha/mẹ trùng nhau hoặc chọn chính con ngựa làm cha/mẹ của nó
+ *
+ * @param childId UUID của ngựa con, undefined khi đang tạo ngựa mới
+ * @param sireId UUID của cha, null nếu bỏ trống
+ * @param damId UUID của mẹ, null nếu bỏ trống
+ * @throws BadRequestException Nếu cha hoặc mẹ là chính ngựa con, hoặc cha trùng mẹ
  */
-export function parentProfileError(
+export function assertParentIds(
+  childId: string | undefined,
+  sireId: string | null,
+  damId: string | null,
+): void {
+  if (childId && (sireId === childId || damId === childId)) {
+    throw new BadRequestException('Ngựa không thể là cha/mẹ của chính nó');
+  }
+  if (sireId && damId && sireId === damId) {
+    throw new BadRequestException('Sire và dam không được trùng nhau');
+  }
+}
+
+/**
+ * Kiểm tra giới tính và ngày sinh của cha mẹ so với ngựa con
+ *
+ * - Cha phải là ngựa đực (MALE hoặc GELDING), mẹ phải là ngựa cái
+ * - Cha mẹ phải sinh trước ngựa con; thiếu ngày sinh ở một bên thì bỏ qua
+ *
+ * @param child Ngày sinh (và id nếu có) của ngựa con
+ * @param sire Hồ sơ cha, null nếu bỏ trống
+ * @param dam Hồ sơ mẹ, null nếu bỏ trống
+ * @throws BadRequestException Nếu cha không phải ngựa đực, mẹ không phải ngựa cái, hoặc cha/mẹ không sinh trước ngựa con
+ */
+export function assertParentProfiles(
   child: ChildProfile,
   sire: ParentCandidate | null,
   dam: ParentCandidate | null,
-): string | null {
+): void {
   if (
     sire &&
     sire.gender !== HorseGender.MALE &&
     sire.gender !== HorseGender.GELDING
   ) {
-    return 'Sire phải là ngựa đực';
+    throw new BadRequestException('Sire phải là ngựa đực');
   }
   if (dam && dam.gender !== HorseGender.FEMALE) {
-    return 'Dam phải là ngựa cái';
+    throw new BadRequestException('Dam phải là ngựa cái');
   }
   for (const parent of [sire, dam]) {
     if (
@@ -83,64 +111,99 @@ export function parentProfileError(
       child.dateOfBirth &&
       parent.dateOfBirth >= child.dateOfBirth
     ) {
-      return 'Cha/mẹ phải sinh trước ngựa con';
+      throw new BadRequestException('Cha/mẹ phải sinh trước ngựa con');
     }
   }
-  return null;
 }
 
 /**
- * Check that a date of birth is not in the future
- * @param dateOfBirth The date of birth as YYYY-MM-DD, or null if not set
- * @param today Today's date as YYYY-MM-DD
- * @returns The error message if the date of birth is after today, or null otherwise
+ * Chặn ngày sinh ở tương lai
+ *
+ * @param dateOfBirth Ngày sinh (YYYY-MM-DD), null hoặc undefined nếu không có
+ * @param today Ngày hôm nay theo giờ câu lạc bộ (YYYY-MM-DD)
+ * @throws BadRequestException Nếu ngày sinh sau hôm nay
  */
-export function dateOfBirthError(
+export function assertDateOfBirth(
   dateOfBirth: string | null | undefined,
   today: string,
-): string | null {
+): void {
   if (dateOfBirth && dateOfBirth > today) {
-    return 'Ngày sinh không được ở tương lai';
+    throw new BadRequestException('Ngày sinh không được ở tương lai');
   }
-  return null;
 }
 
 /**
- * Kiểm tra ngày sinh mới của một con ngựa đang làm cha/mẹ vẫn trước ngày sinh của các con.
+ * Kiểm tra ngày sinh mới của một con ngựa đang làm cha/mẹ vẫn trước ngày sinh của các con
  *
- * - Chỉ cần so với con sinh sớm nhất
+ * - Chỉ cần so với con sinh sớm nhất (nơi gọi tính cả con đã xóa hồ sơ, vì khôi phục con sau này sẽ trỏ lại cha/mẹ này)
  * - Thiếu ngày sinh ở một bên thì bỏ qua, giống luật cha/mẹ khi tạo ngựa
  *
  * @param dateOfBirth Ngày sinh mới của ngựa (YYYY-MM-DD), null nếu không có
  * @param earliestChildBirthDate Ngày sinh sớm nhất trong các ngựa con (YYYY-MM-DD), null nếu không có
- * @returns Thông báo lỗi nếu ngày sinh mới không trước con sớm nhất, ngược lại null
+ * @throws BadRequestException Nếu ngày sinh mới không trước con sinh sớm nhất
  */
-export function childBirthDateError(
+export function assertBornBeforeChildren(
   dateOfBirth: string | null,
   earliestChildBirthDate: string | null,
-): string | null {
+): void {
   if (
     dateOfBirth &&
     earliestChildBirthDate &&
     dateOfBirth >= earliestChildBirthDate
   ) {
-    return 'Cha/mẹ phải sinh trước ngựa con';
+    throw new BadRequestException('Cha/mẹ phải sinh trước ngựa con');
   }
-  return null;
 }
 
 /**
- * Kiểm tra con ngựa có kích hoạt được thành ngựa của câu lạc bộ không.
- * Chỉ ngựa tham chiếu mới kích hoạt được, và chỉ đi một chiều.
+ * Chặn đổi giới tính làm sai vai trò cha/mẹ của ngựa trong phả hệ ngựa khác
  *
- * @param isReference true nếu là ngựa tham chiếu
- * @returns Thông báo lỗi nếu ngựa đã thuộc câu lạc bộ, ngược lại null
+ * @param usage Ngựa đang là cha (asSire) hoặc mẹ (asDam) của ngựa khác, tính cả con đã xóa hồ sơ
+ * @param gender Giới tính mới
+ * @throws ConflictException Nếu ngựa đang là cha mà đổi thành FEMALE, hoặc đang là mẹ mà đổi khỏi FEMALE
  */
-export function activationError(isReference: boolean): string | null {
-  if (!isReference) {
-    return 'Ngựa đã thuộc câu lạc bộ, không cần kích hoạt';
+export function assertGenderKeepsPedigree(
+  usage: ParentUsage,
+  gender: HorseGender,
+): void {
+  if (usage.asSire && gender === HorseGender.FEMALE) {
+    throw new ConflictException(
+      'Ngựa đang là sire của ngựa khác, không thể đổi thành FEMALE',
+    );
   }
-  return null;
+  if (usage.asDam && gender !== HorseGender.FEMALE) {
+    throw new ConflictException(
+      'Ngựa đang là dam của ngựa khác, phải giữ giới tính FEMALE',
+    );
+  }
+}
+
+/**
+ * Chặn xóa hồ sơ ngựa đang là cha/mẹ trong phả hệ ngựa khác (F1.8)
+ *
+ * @param usage Ngựa đang là cha (asSire) hoặc mẹ (asDam) của ngựa khác, tính cả con đã xóa hồ sơ
+ * @throws ConflictException Nếu ngựa đang là cha hoặc mẹ của ngựa khác
+ */
+export function assertNotParent(usage: ParentUsage): void {
+  if (usage.asSire || usage.asDam) {
+    throw new ConflictException(
+      'Ngựa đang là cha/mẹ trong phả hệ của ngựa khác, không thể xóa',
+    );
+  }
+}
+
+/**
+ * Chặn xóa hồ sơ ngựa đã phát sinh dữ liệu nghiệp vụ (F1.8, E1)
+ *
+ * @param labels Nhãn các loại dữ liệu nghiệp vụ ngựa đang có, rỗng nếu chưa phát sinh gì
+ * @throws ConflictException Nếu có ít nhất một loại dữ liệu; message liệt kê các loại đang vướng
+ */
+export function assertNoBusinessData(labels: string[]): void {
+  if (labels.length > 0) {
+    throw new ConflictException(
+      `Ngựa đã phát sinh dữ liệu nghiệp vụ (${labels.join(', ')}), hãy đổi trạng thái vòng đời thay vì xóa`,
+    );
+  }
 }
 
 /**
@@ -157,28 +220,150 @@ export function canTransitionLifecycle(
 }
 
 /**
- * Xác định các việc dọn dẹp cần chạy khi ngựa chuyển sang vòng đời mới, dựa vào trạng thái đích.
+ * Tìm lý do không được đổi vòng đời theo bảng chuyển trạng thái (F1.8). Dùng cho màn xem trước, cần lý do mà không ném lỗi
  *
- * - RETIRED: hủy giáo án và rút đăng ký thi đấu, giữ ô chuồng và chế độ chăm sóc y tế
- * - TRANSFERRED: như RETIRED (trường hợp đi thẳng từ ACTIVE), thêm kết thúc chuồng/sở hữu/groom và tự gỡ khóa huấn luyện
- * - ACTIVE: không dọn gì, chuồng và chủ gán lại bằng API riêng
+ * @param from Trạng thái vòng đời hiện tại
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @returns Lý do chặn, hoặc null nếu được chuyển
+ */
+export function lifecycleTransitionError(
+  from: HorseLifecycleStatus,
+  to: HorseLifecycleStatus,
+): string | null {
+  return canTransitionLifecycle(from, to)
+    ? null
+    : `Không thể chuyển vòng đời từ ${from} sang ${to}`;
+}
+
+/**
+ * Chặn đổi vòng đời không có trong bảng chuyển trạng thái (F1.8)
  *
- * @param to Trạng thái vòng đời đích
- * @returns Các cờ việc cần làm
+ * @param from Trạng thái vòng đời hiện tại
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @throws ConflictException Nếu không được chuyển giữa hai trạng thái
+ */
+export function assertLifecycleTransition(
+  from: HorseLifecycleStatus,
+  to: HorseLifecycleStatus,
+): void {
+  const error = lifecycleTransitionError(from, to);
+  if (error) throw new ConflictException(error);
+}
+
+/**
+ * Xác định các việc cần chạy khi ngựa đổi vòng đời (F1.8), dựa vào trạng thái hiện tại và trạng thái đích.
+ *
+ * - Giải nghệ (ACTIVE sang RETIRED): hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
+ * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu
+ * - Kích hoạt lại (sang ACTIVE): đặt sức khỏe về UNDER_OBSERVATION; lớp học và đăng ký thi đấu đã hủy không tự khôi phục
+ * - Kích hoạt lại từ chuyển nhượng: ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
+ *
+ * @param from Trạng thái vòng đời hiện tại
+ * @param to Trạng thái vòng đời đích (đã qua canTransitionLifecycle)
+ * @returns Các cờ việc cần làm, mỗi cờ một việc
  */
 export function lifecycleSideEffects(
+  from: HorseLifecycleStatus,
   to: HorseLifecycleStatus,
 ): LifecycleSideEffects {
-  const leaving =
-    to === HorseLifecycleStatus.RETIRED ||
-    to === HorseLifecycleStatus.TRANSFERRED;
+  const retiringFromActive =
+    from === HorseLifecycleStatus.ACTIVE &&
+    (to === HorseLifecycleStatus.RETIRED ||
+      to === HorseLifecycleStatus.TRANSFERRED);
   const transferred = to === HorseLifecycleStatus.TRANSFERRED;
   return {
-    cancelTraining: leaving,
-    withdrawRegistrations: leaving,
-    closeStallOwnershipGroom: transferred,
+    cancelTraining: retiringFromActive,
+    withdrawRegistrations: retiringFromActive,
+    releaseStall: transferred,
+    endGroom: transferred,
+    clearBarn: transferred,
     releaseTrainingLock: transferred,
+    resetHealth: to === HorseLifecycleStatus.ACTIVE,
+    reactivateFromTransfer:
+      from === HorseLifecycleStatus.TRANSFERRED &&
+      to === HorseLifecycleStatus.ACTIVE,
   };
+}
+
+/**
+ * Tạo câu tóm tắt hệ quả khi đổi vòng đời, hiện ở bảng xác nhận (F1.8 mục 5; BA chốt 2026-09-23).
+ *
+ * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải."
+ * - Chỉ nhắc mục thật sự có dữ liệu; không có gì thì chỉ còn câu 2
+ *
+ * @param horseName Tên ngựa
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @param effects Các việc sẽ chạy (từ lifecycleSideEffects)
+ * @param impact Số liệu hiện tại của ngựa
+ * @returns Câu tóm tắt tiếng Việt
+ */
+export function lifecycleImpactSummary(
+  horseName: string,
+  to: HorseLifecycleStatus,
+  effects: LifecycleSideEffects,
+  impact: LifecycleImpactRow,
+): string {
+  const facts: string[] = [];
+  const actions: string[] = [];
+  if (effects.cancelTraining && impact.openTrainingPlans > 0) {
+    facts.push(`${impact.openTrainingPlans} giáo án huấn luyện đang mở`);
+    actions.push('hủy giáo án');
+  }
+  if (effects.withdrawRegistrations && impact.openRaceRegistrations > 0) {
+    facts.push(`${impact.openRaceRegistrations} đăng ký thi đấu chưa diễn ra`);
+    actions.push('rút khỏi giải');
+  }
+  if (effects.releaseStall && impact.stallCode) {
+    facts.push(`ô chuồng ${impact.stallCode}`);
+    actions.push('trả ô chuồng');
+  }
+  if (effects.endGroom && impact.groomName) {
+    facts.push(`Groom ${impact.groomName} phụ trách`);
+    actions.push('kết thúc phân công Groom');
+  }
+  if (effects.clearBarn && impact.barnName) {
+    actions.push(`bỏ khu ${impact.barnName}`);
+  }
+  if (effects.releaseTrainingLock && impact.hasActiveTrainingLock) {
+    facts.push('lệnh khóa huấn luyện');
+    actions.push('gỡ khóa huấn luyện');
+  }
+  if (effects.reactivateFromTransfer) {
+    actions.push(
+      'đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom)',
+    );
+    if (impact.invalidOwnerName) {
+      actions.push(
+        `bỏ trống chủ ${impact.invalidOwnerName} vì tài khoản không còn là chủ ngựa đang hoạt động`,
+      );
+    }
+  }
+  if (effects.resetHealth) {
+    actions.push('đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại');
+  }
+  const verb = LIFECYCLE_VERBS[to];
+  const consequence =
+    actions.length > 0
+      ? `Nếu ${verb} sẽ ${actions.join(', ')}.`
+      : `Nếu ${verb} sẽ không ảnh hưởng dữ liệu nào khác.`;
+  return facts.length > 0
+    ? `${horseName} đang có ${facts.join(', ')}. ${consequence}`
+    : consequence;
+}
+
+/**
+ * Liệt kê các field Club Manager gửi lên nhưng không có quyền sửa (F1.4).
+ *
+ * - Sở trường cự ly là đánh giá chuyên môn, chỉ Head Trainer phụ trách khu được sửa (BA chốt Q-5)
+ * - Field có giá trị undefined được coi là không gửi lên
+ *
+ * @param fields Các field hồ sơ ngựa người gọi gửi lên, không gồm version
+ * @returns Tên các field ngoài quyền, rỗng nếu hợp lệ
+ */
+export function managerForbiddenFields(fields: object): string[] {
+  return Object.entries(fields)
+    .filter(([key, value]) => value !== undefined && key === 'raceAptitude')
+    .map(([key]) => key);
 }
 
 /**
@@ -197,119 +382,28 @@ export function trainerForbiddenFields(fields: object): string[] {
 }
 
 /**
- * Validate the ownership shares of a horse
- * @param shares The owners with their ownership percentages and optional representative flag
- * @returns The error message if an owner is duplicated, more than one owner is the representative, a share is not positive, or the shares do not sum to 100, or null otherwise
- */
-export function ownerSharesError(
-  shares: Array<{
-    ownerId: string;
-    percentage: number;
-    isRepresentative?: boolean;
-  }>,
-): string | null {
-  const ids = shares.map((share) => share.ownerId);
-  if (new Set(ids).size !== ids.length) {
-    return 'Danh sách chủ sở hữu bị trùng';
-  }
-  if (shares.filter((share) => share.isRepresentative).length > 1) {
-    return 'Chỉ được chọn tối đa một chủ đại diện';
-  }
-  if (shares.some((share) => share.percentage <= 0)) {
-    return 'Tỷ lệ sở hữu phải lớn hơn 0';
-  }
-  const totalCents = shares.reduce(
-    (sum, share) => sum + Math.round(share.percentage * 100),
-    0,
-  );
-  if (totalCents !== 10000) {
-    return 'Tổng tỷ lệ sở hữu phải bằng 100';
-  }
-  return null;
-}
-
-/**
- * Kiểm tra thời điểm chuyển nhượng không nằm ở tương lai.
+ * Tính "được tập" và "được đua" của ngựa kèm mọi lý do chặn (mục III.4). Không lưu DB, tính lại mỗi lần hiển thị.
  *
- * @param transferredAt Thời điểm chuyển nhượng Club Manager gửi lên
- * @param now Thời điểm hiện tại
- * @returns Thông báo lỗi nếu thời điểm chuyển nhượng sau hiện tại, ngược lại null
- */
-export function futureTransferError(
-  transferredAt: Date,
-  now: Date,
-): string | null {
-  return transferredAt.getTime() > now.getTime()
-    ? 'Thời điểm chuyển nhượng không được ở tương lai'
-    : null;
-}
-
-/**
- * Kiểm tra thời điểm chuyển nhượng nằm sau lần gán chủ gần nhất, để các khoảng sở hữu không chồng lên nhau.
+ * - Được tập: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, không có lệnh khóa huấn luyện
+ * - Được đua: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE, không có lệnh khóa huấn luyện
+ * - Lý do vòng đời tách riêng Đã giải nghệ / Đã chuyển nhượng để giao diện hiện đúng câu
  *
- * @param transferredAt Thời điểm chuyển nhượng Club Manager gửi lên
- * @param latestOpenStartAt startAt lớn nhất trong các dòng sở hữu đang mở, null nếu ngựa chưa có chủ
- * @returns Thông báo lỗi nếu thời điểm chuyển nhượng không sau latestOpenStartAt, ngược lại null
- */
-export function staleTransferError(
-  transferredAt: Date,
-  latestOpenStartAt: Date | null,
-): string | null {
-  if (!latestOpenStartAt) return null;
-  return transferredAt.getTime() > latestOpenStartAt.getTime()
-    ? null
-    : 'Thời điểm chuyển nhượng phải sau lần gán chủ gần nhất';
-}
-
-/**
- * So sánh bộ chủ đang mở với bộ chủ mới để biết dòng nào đóng, dòng nào tạo mới.
- *
- * - Chủ giữ nguyên tỉ lệ và cờ đại diện: giữ dòng cũ.
- * - Chủ bị bỏ, hoặc đổi tỉ lệ/cờ đại diện: đóng dòng cũ.
- * - Chủ mới, hoặc chủ cũ đổi tỉ lệ/cờ đại diện: tạo dòng mới.
- *
- * @param openRows Các dòng sở hữu đang mở của ngựa
- * @param shares Bộ chủ mới, đã qua ownerSharesError
- * @returns Danh sách id dòng cần đóng và các phần sở hữu cần tạo mới
- */
-export function planOwnershipChange(
-  openRows: OpenOwnershipRow[],
-  shares: OwnerShareInput[],
-): OwnershipChangePlan {
-  const sameShare = (row: OpenOwnershipRow, share: OwnerShareInput) =>
-    row.ownerId === share.ownerId &&
-    Math.round(Number(row.percentage) * 100) ===
-      Math.round(share.percentage * 100) &&
-    row.isRepresentative === (share.isRepresentative ?? false);
-  return {
-    closeIds: openRows
-      .filter((row) => !shares.some((share) => sameShare(row, share)))
-      .map((row) => row.id),
-    inserts: shares.filter(
-      (share) => !openRows.some((row) => sameShare(row, share)),
-    ),
-  };
-}
-
-/**
- * Evaluate whether a horse can train and race; training allows UNDER_OBSERVATION health, racing requires ELIGIBLE health
- * @param input The horse state to evaluate
- * @returns The training and racing eligibility with all blocking reasons
+ * @param input Trạng thái hồ sơ, vòng đời, sức khỏe và cờ khóa huấn luyện của ngựa
+ * @returns Hai cờ được tập, được đua và danh sách lý do chặn (rỗng nếu không bị chặn gì)
  */
 export function evaluateEligibility(
   input: EligibilityInput,
 ): EligibilityResult {
-  if (input.isReference) {
-    return {
-      trainingEligible: false,
-      racingEligible: false,
-      reasons: [EligibilityReason.REFERENCE_HORSE],
-    };
-  }
-
   const reasons: EligibilityReason[] = [];
-  const active = input.lifecycleStatus === HorseLifecycleStatus.ACTIVE;
-  if (!active) reasons.push(EligibilityReason.LIFECYCLE_NOT_ACTIVE);
+  if (input.isDeleted) reasons.push(EligibilityReason.PROFILE_DELETED);
+  if (input.lifecycleStatus === HorseLifecycleStatus.RETIRED) {
+    reasons.push(EligibilityReason.LIFECYCLE_RETIRED);
+  }
+  if (input.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
+    reasons.push(EligibilityReason.LIFECYCLE_TRANSFERRED);
+  }
+  const active =
+    !input.isDeleted && input.lifecycleStatus === HorseLifecycleStatus.ACTIVE;
 
   const healthReason = HEALTH_REASONS[input.healthStatus];
   if (healthReason) reasons.push(healthReason);
@@ -323,9 +417,7 @@ export function evaluateEligibility(
     input.healthStatus === HorseHealthStatus.UNDER_OBSERVATION;
 
   return {
-    // train đc khi active và sức khỏe trainable(ELIGIBLE và UNDER_OBSERVATION) và không có training lock
     trainingEligible: active && trainableHealth && !input.hasActiveTrainingLock,
-    // race đc khi active và sức khỏe ELIGIBLE và không có training lock
     racingEligible:
       active &&
       input.healthStatus === HorseHealthStatus.ELIGIBLE &&
@@ -335,20 +427,38 @@ export function evaluateEligibility(
 }
 
 /**
- * Check a measurement value against the allowed range of its type
- * @param type The measurement type
- * @param value The measured value
- * @returns The error message if the value is out of range, or null otherwise
+ * Chặn giá trị đo nằm ngoài khoảng cho phép của loại chỉ số (F1.5)
+ *
+ * @param type Loại chỉ số
+ * @param value Giá trị đo
+ * @throws BadRequestException Nếu giá trị nhỏ hơn min hoặc lớn hơn max của loại chỉ số
  */
-export function measurementValueError(
+export function assertMeasurementValue(
   type: HorseMeasurementType,
   value: number,
-): string | null {
+): void {
   const spec = HORSE_MEASUREMENT_SPECS[type];
   if (value < spec.min || value > spec.max) {
-    return `${type} phải trong khoảng ${spec.min}–${spec.max} ${spec.unit}`;
+    throw new BadRequestException(
+      `${type} phải trong khoảng ${spec.min}–${spec.max} ${spec.unit}`,
+    );
   }
-  return null;
+}
+
+/**
+ * Chặn một lần đo ghi trùng loại chỉ số (F1.5, A1)
+ *
+ * @param types Các loại chỉ số trong lần đo
+ * @throws BadRequestException Nếu có loại bị gửi hơn một lần
+ */
+export function assertDistinctMeasurementTypes(
+  types: HorseMeasurementType[],
+): void {
+  if (new Set(types).size !== types.length) {
+    throw new BadRequestException(
+      'Mỗi loại chỉ số chỉ ghi một giá trị trong một lần đo',
+    );
+  }
 }
 
 /**
@@ -364,6 +474,43 @@ export function isAbnormalMeasurement(
 ): boolean {
   const spec = HORSE_MEASUREMENT_SPECS[type];
   return value < spec.normalMin || value > spec.normalMax;
+}
+
+/**
+ * Chặn xóa bản ghi đo đến từ buổi khám (F1.5 mục 4): bản ghi đó phải xử lý ở hồ sơ y tế
+ *
+ * @param source Nguồn của bản ghi đo
+ * @throws ConflictException Nếu bản ghi có nguồn MEDICAL_EXAM
+ */
+export function assertMeasurementDeletable(
+  source: HorseMeasurementSource,
+): void {
+  if (source === HorseMeasurementSource.MEDICAL_EXAM) {
+    throw new ConflictException(
+      'Bản ghi đến từ buổi khám, cần xử lý ở hồ sơ y tế',
+    );
+  }
+}
+
+/**
+ * Bắt người ghi xác nhận trước khi lưu giá trị ngoài khoảng bình thường (F1.5)
+ *
+ * @param values Các cặp loại/giá trị trong lần đo
+ * @param confirmed Người ghi đã gửi confirmAbnormal = true chưa
+ * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà chưa xác nhận; message liệt kê các loại bất thường
+ */
+export function assertAbnormalConfirmed(
+  values: Array<{ type: HorseMeasurementType; value: number }>,
+  confirmed: boolean,
+): void {
+  const abnormalTypes = values
+    .filter((item) => isAbnormalMeasurement(item.type, item.value))
+    .map((item) => item.type);
+  if (abnormalTypes.length > 0 && !confirmed) {
+    throw new UnprocessableEntityException(
+      `Giá trị ngoài khoảng bình thường (${abnormalTypes.join(', ')}). Gửi lại với confirmAbnormal = true để xác nhận lưu`,
+    );
+  }
 }
 
 /**
@@ -415,65 +562,83 @@ export function measurementAlerts(
 }
 
 /**
- * Liệt kê các loại chỉ số người gọi được ghi cho một con ngựa (F1.7).
- *
- * - Head Trainer chỉ tính khi ngựa nằm trong khu mình phụ trách
- * - Groom chỉ tính khi được giao chăm con ngựa này
- * - Veterinarian không giới hạn phạm vi
- * - Người có nhiều role: lấy hợp các loại của mọi role đủ điều kiện
- * - Không kiểm tra trạng thái ngựa (tham chiếu, chuyển nhượng); phần đó do nơi gọi lo
- *
- * @param input Role của người gọi và hai cờ phạm vi (trong khu, được giao)
- * @returns Các loại chỉ số được ghi, theo thứ tự khai báo của enum; rỗng nếu không ghi được gì
- */
-export function recordableMeasurementTypes(
-  input: Pick<
-    HorsePermissionInput,
-    'roles' | 'isInTrainerBarn' | 'isAssignedGroom'
-  >,
-): HorseMeasurementType[] {
-  const inScope: Partial<Record<UserRole, boolean>> = {
-    [UserRole.HEAD_TRAINER]: input.isInTrainerBarn,
-    [UserRole.VETERINARIAN]: true,
-    [UserRole.GROOM]: input.isAssignedGroom,
-  };
-  const allowed = new Set(
-    input.roles
-      .filter((role) => inScope[role])
-      .flatMap((role) => MEASUREMENT_TYPES_BY_ROLE[role] ?? []),
-  );
-  return Object.values(HorseMeasurementType).filter((type) =>
-    allowed.has(type),
-  );
-}
-
-/**
- * Kiểm tra thời điểm đo: không ở tương lai, không lùi quá MEASUREMENT_BACKDATE_MAX_DAYS ngày.
+ * Kiểm tra thời điểm đo: không ở tương lai, không lùi quá MEASUREMENT_BACKDATE_MAX_DAYS ngày
  *
  * - Cho lệch đồng hồ CLOCK_SKEW_MS giữa máy người dùng và server ở phía tương lai
  *
  * @param measuredAt Thời điểm đo người gọi gửi lên
  * @param now Thời điểm hiện tại của server
- * @returns Thông báo lỗi nếu thời điểm đo không hợp lệ, ngược lại null
+ * @throws BadRequestException Nếu thời điểm đo ở tương lai hoặc lùi quá số ngày cho phép
  */
-export function measuredAtError(measuredAt: Date, now: Date): string | null {
+export function assertMeasuredAt(measuredAt: Date, now: Date): void {
   if (measuredAt.getTime() > now.getTime() + CLOCK_SKEW_MS) {
-    return 'Thời điểm đo không được ở tương lai';
+    throw new BadRequestException('Thời điểm đo không được ở tương lai');
   }
   const earliest =
     now.getTime() - MEASUREMENT_BACKDATE_MAX_DAYS * 24 * 60 * 60 * 1000;
   if (measuredAt.getTime() < earliest) {
-    return `Chỉ được nhập lùi tối đa ${MEASUREMENT_BACKDATE_MAX_DAYS} ngày`;
+    throw new BadRequestException(
+      `Chỉ được nhập lùi tối đa ${MEASUREMENT_BACKDATE_MAX_DAYS} ngày`,
+    );
   }
-  return null;
+}
+
+/**
+ * Kiểm tra người gọi có được ghi chỉ số cơ thể cho con ngựa không (F1.5). Ai được ghi thì ghi được cả bốn loại.
+ *
+ * - Veterinarian: toàn câu lạc bộ
+ * - Head Trainer: chỉ ngựa thuộc khu mình phụ trách
+ * - Groom: chỉ ngựa được phân công
+ * - Club Manager, Horse Owner: chỉ xem
+ * - Người có nhiều role: chỉ cần một role đủ điều kiện
+ * - Không xét trạng thái ngựa (đã xóa, đã chuyển nhượng); phần đó do nơi gọi lo
+ *
+ * @param input Role của người gọi và hai cờ phạm vi (trong khu, được giao)
+ * @returns true nếu được ghi
+ */
+export function canRecordMeasurement(
+  input: Pick<
+    HorsePermissionInput,
+    'roles' | 'isInTrainerBarn' | 'isAssignedGroom'
+  >,
+): boolean {
+  return (
+    input.roles.includes(UserRole.VETERINARIAN) ||
+    (input.roles.includes(UserRole.HEAD_TRAINER) && input.isInTrainerBarn) ||
+    (input.roles.includes(UserRole.GROOM) && input.isAssignedGroom)
+  );
+}
+
+/**
+ * Tính tình trạng xếp chỗ của ngựa để hiện nhãn "Chờ xếp khu" / "Chờ xếp ô" (F1.1).
+ *
+ * - Bộ lọc danh sách tính cùng luật này bằng SQL (PLACEMENT_STATUS_SQL trong horse-profiles.repository.ts); sửa một bên thì phải sửa bên kia
+ *
+ * @param lifecycleStatus Vòng đời của ngựa
+ * @param barnId Khu của ngựa, null nếu chưa xếp
+ * @param stallId Ô đang mở của ngựa, null nếu chưa xếp
+ * @returns Tình trạng xếp chỗ; ngựa đã chuyển nhượng luôn là NOT_APPLICABLE
+ */
+export function placementStatusOf(
+  lifecycleStatus: HorseLifecycleStatus,
+  barnId: string | null,
+  stallId: string | null,
+): HorsePlacementStatus {
+  if (lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
+    return HorsePlacementStatus.NOT_APPLICABLE;
+  }
+  if (!barnId) return HorsePlacementStatus.PENDING_BARN;
+  if (!stallId) return HorsePlacementStatus.PENDING_STALL;
+  return HorsePlacementStatus.PLACED;
 }
 
 /**
  * Tính các cờ quyền của người gọi trên hồ sơ ngựa, khớp với kiểm tra của từng API ghi.
  *
- * - Hồ sơ đã xóa: mọi cờ thao tác đều tắt.
- * - Ngựa tham chiếu: chỉ còn Club Manager sửa được hồ sơ.
- * - Ngựa đã chuyển nhượng: chỉ còn đổi được vòng đời.
+ * - Hồ sơ đã xóa: chỉ còn Club Manager khôi phục được, mọi thao tác khác tắt (F1.3 mục 4).
+ * - Ngựa đã chuyển nhượng: hồ sơ chỉ đọc, chỉ còn Club Manager đổi được vòng đời để kích hoạt lại (F1.8).
+ * - Head Trainer chỉ thao tác ngựa thuộc khu mình; ngựa chưa có khu thì Head Trainer không thao tác được.
+ * - Tab Bệnh án, Huấn luyện: mọi vai trò trừ Groom. Tab Thành tích: Club Manager, Head Trainer, Horse Owner (F1.3).
  * - Người có nhiều role: chỉ cần một role được phép là cờ bật.
  *
  * @param input Role của người gọi và trạng thái của ngựa
@@ -485,48 +650,37 @@ export function evaluateHorsePermissions(
   const has = (...roles: UserRole[]) =>
     roles.some((role) => input.roles.includes(role));
   const live = !input.isDeleted;
-  const operational = live && !input.isReference;
   const writable =
-    operational && input.lifecycleStatus !== HorseLifecycleStatus.TRANSFERRED;
-  const viewsDetail = has(
-    UserRole.CLUB_MANAGER,
-    UserRole.HEAD_TRAINER,
-    UserRole.VETERINARIAN,
-    UserRole.HORSE_OWNER,
-  );
-
-  const editable =
     live && input.lifecycleStatus !== HorseLifecycleStatus.TRANSFERRED;
-  const measurementTypes = writable ? recordableMeasurementTypes(input) : [];
+  const trainerInBarn = has(UserRole.HEAD_TRAINER) && input.isInTrainerBarn;
 
   return {
-    canEdit: has(UserRole.CLUB_MANAGER) && editable,
-    canEditRaceAptitude:
-      editable &&
-      (has(UserRole.CLUB_MANAGER) ||
-        (has(UserRole.HEAD_TRAINER) && input.isInTrainerBarn)),
-    canChangeLifecycle: has(UserRole.CLUB_MANAGER) && operational,
-    canManageOwners: has(UserRole.CLUB_MANAGER) && writable,
+    canEditProfile: has(UserRole.CLUB_MANAGER) && writable,
+    canEditRaceAptitude: trainerInBarn && writable,
+    canAssignBarn: has(UserRole.CLUB_MANAGER) && writable,
+    canAssignStallAndGroom: trainerInBarn && input.hasBarn && writable,
+    canChangeLifecycle: has(UserRole.CLUB_MANAGER) && live,
+    canDelete: has(UserRole.CLUB_MANAGER) && writable,
+    canRestore: has(UserRole.CLUB_MANAGER) && input.isDeleted,
     canChangeHealth: has(UserRole.VETERINARIAN) && writable,
-    canRecordMeasurement: measurementTypes.length > 0,
-    recordableMeasurementTypes: measurementTypes,
-    canViewPedigree: viewsDetail,
-    canViewOwners: has(UserRole.CLUB_MANAGER, UserRole.HORSE_OWNER),
-    canViewMeasurementHistory: true,
-    canViewMedicalRecords:
-      has(UserRole.CLUB_MANAGER, UserRole.VETERINARIAN, UserRole.HORSE_OWNER) ||
-      (has(UserRole.HEAD_TRAINER) && input.isInTrainerBarn),
-    canViewTrainingEvaluation:
-      has(UserRole.CLUB_MANAGER, UserRole.VETERINARIAN, UserRole.HORSE_OWNER) ||
-      (has(UserRole.HEAD_TRAINER) && input.isInTrainerBarn),
-    canViewPerformance: viewsDetail,
-    canViewPerformanceDetail: has(
+    canRecordMeasurement: writable && canRecordMeasurement(input),
+    canDeleteMeasurement: has(UserRole.VETERINARIAN) && writable,
+    canViewMedicalTab: has(
       UserRole.CLUB_MANAGER,
       UserRole.HEAD_TRAINER,
       UserRole.VETERINARIAN,
+      UserRole.HORSE_OWNER,
     ),
-    canOpenReferenceHorses: has(UserRole.CLUB_MANAGER),
-    canActivateReference:
-      has(UserRole.CLUB_MANAGER) && live && input.isReference,
+    canViewTrainingTab: has(
+      UserRole.CLUB_MANAGER,
+      UserRole.HEAD_TRAINER,
+      UserRole.VETERINARIAN,
+      UserRole.HORSE_OWNER,
+    ),
+    canViewPerformanceTab: has(
+      UserRole.CLUB_MANAGER,
+      UserRole.HEAD_TRAINER,
+      UserRole.HORSE_OWNER,
+    ),
   };
 }

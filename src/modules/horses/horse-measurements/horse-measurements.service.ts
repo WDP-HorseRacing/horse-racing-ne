@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -12,34 +11,41 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import type { Actor } from '../../../common/types/actor';
-import { isHorseInTrainerBarn } from '../../stable/utils/trainer-barn';
+import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 
 import {
   CreatedHorseMeasurementResponseDto,
   CreateHorseMeasurementDto,
+  DeleteHorseMeasurementDto,
   HorseMeasurementListQueryDto,
   HorseMeasurementResponseDto,
-} from '../dto/horse-measure.dto';
+} from '../dto';
 import {
   toCreatedMeasurementResponse,
   toMeasurementResponse,
 } from '../mappers/horse-measurements.mapper';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import {
-  measuredAtError,
+  assertAbnormalConfirmed,
+  assertDistinctMeasurementTypes,
+  assertMeasuredAt,
+  assertMeasurementValue,
+  assertMeasurementDeletable,
+  canRecordMeasurement,
   measurementAlerts,
-  measurementValueError,
-  recordableMeasurementTypes,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsesSharedRepository } from '../shared/horses-shared.repository';
-import type { HorseMeasurementAlertEvent } from '../types/horse.types';
+import type {
+  HorseMeasurementAlertEvent,
+  HorseMeasurementAlertResult,
+} from '../types/horse.types';
 import {
   HORSE_MEASUREMENT_ALERT_EVENT,
   HORSE_MEASUREMENT_SPECS,
   WEIGHT_DROP_WINDOW_DAYS,
-} from '../enums/horse.constants';
+} from '../constants/horse.constants';
 
 @Injectable()
 export class HorseMeasurementsService {
@@ -77,116 +83,134 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Ghi một chỉ số cơ thể cho con ngựa (F1.7).
+   * Ghi một lần đo chỉ số cơ thể của con ngựa, gồm một hoặc nhiều loại chỉ số (F1.5).
    *
-   * - Mỗi role chỉ ghi được một số loại, trong phạm vi của mình (xem recordableMeasurementTypes)
-   * - Giá trị phải trong khoảng hợp lệ của loại; thời điểm đo không ở tương lai, lùi tối đa 7 ngày
-   * - Tự sinh cảnh báo (sốt, giảm cân trong 14 ngày), trả trong response và phát HORSE_MEASUREMENT_ALERT_EVENT sau khi lưu
+   * - Veterinarian ghi cho mọi ngựa; Head Trainer chỉ ngựa thuộc khu mình; Groom chỉ ngựa được phân công. Ai được ghi thì ghi được cả bốn loại
+   * - Không ghi cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
+   * - Giá trị phải trong khoảng hợp lệ; thời điểm đo không ở tương lai, lùi tối đa 7 ngày; mỗi loại chỉ một giá trị
+   * - Có giá trị ngoài khoảng bình thường mà chưa gửi confirmAbnormal = true thì trả 422 để giao diện hỏi xác nhận, chưa lưu gì
+   * - Bản ghi lưu với nguồn MANUAL; mỗi bản ghi một dòng nhật ký
+   * - Tự sinh cảnh báo (sốt, giảm cân trong 14 ngày), trả trong response và phát HORSE_MEASUREMENT_ALERT_EVENT sau khi commit
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @param body Loại, giá trị và thời điểm đo (mặc định là hiện tại)
-   * @returns Promise trả về bản ghi vừa tạo kèm các cảnh báo
-   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
-   * @throws ForbiddenException Nếu người gọi không được ghi loại chỉ số này cho con ngựa này
-   * @throws BadRequestException Nếu là ngựa tham chiếu, giá trị ngoài khoảng hợp lệ hoặc thời điểm đo không hợp lệ
+   * @param body Các cặp loại/giá trị, thời điểm đo (mặc định hiện tại) và cờ xác nhận giá trị bất thường
+   * @returns Promise trả về các bản ghi vừa tạo, mỗi bản kèm cảnh báo của nó
+   * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa nằm ngoài phạm vi của người gọi
+   * @throws ForbiddenException Nếu người gọi không được ghi chỉ số cho con ngựa này
+   * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ, trùng loại hoặc thời điểm đo không hợp lệ
+   * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà chưa xác nhận
    * @throws ConflictException Nếu ngựa đã chuyển nhượng
    */
-  async addMeasurement(
+  async addMeasurements(
     actor: Actor,
     horseId: string,
     body: CreateHorseMeasurementDto,
-  ): Promise<CreatedHorseMeasurementResponseDto> {
+  ): Promise<CreatedHorseMeasurementResponseDto[]> {
     const measuredAt = body.measuredAt ? new Date(body.measuredAt) : new Date();
 
-    const { callerId, measurement, alerts } = await this.dataSource.transaction(
+    const { callerId, created } = await this.dataSource.transaction(
       async (manager) => {
         const { caller, horse } = await this.access.lockVisibleHorse(
           actor,
           horseId,
           manager,
         );
-        this.access.assertOperational(horse);
         this.access.assertNotTransferred(horse);
-        await this.assertCanRecordType(
-          actor,
-          caller.id,
-          horseId,
-          body.type,
-          manager,
-        );
-        const valueError = measurementValueError(body.type, body.value);
-        if (valueError) throw new BadRequestException(valueError);
-        const timeError = measuredAtError(measuredAt, new Date());
-        if (timeError) throw new BadRequestException(timeError);
+        await this.assertCanRecord(actor, caller.id, horseId, manager);
+        this.assertValidValues(body, measuredAt);
 
-        const weightBaseline = await this.weightBaseline(
-          horseId,
-          body.type,
-          measuredAt,
-          manager,
-        );
-        const alerts = measurementAlerts(
-          body.type,
-          body.value,
-          weightBaseline,
-        );
         const repository = manager.getRepository(HorseMeasurementEntity);
-        const saved = await repository.save(
-          repository.create({
+        const created: Array<{
+          measurement: HorseMeasurementEntity;
+          alerts: HorseMeasurementAlertResult[];
+        }> = [];
+        for (const item of body.values) {
+          const weightBaseline = await this.weightBaseline(
             horseId,
-            type: body.type,
-            value: body.value.toFixed(2),
+            item.type,
             measuredAt,
-            measuredBy: caller.id,
-          }),
-        );
-        const measurement = await repository.findOneOrFail({
-          where: { id: saved.id },
-          relations: { measurer: true },
-        });
-
-        return { callerId: caller.id, measurement, alerts };
+            manager,
+          );
+          const saved = await repository.save(
+            repository.create({
+              horseId,
+              type: item.type,
+              value: item.value.toFixed(2),
+              measuredAt,
+              measuredBy: caller.id,
+              source: HorseMeasurementSource.MANUAL,
+              medicalRecordId: null,
+            }),
+          );
+          await this.audit.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.CREATE,
+            entityType: AuditEntityType.HORSE_MEASUREMENT,
+            entityId: saved.id,
+            before: null,
+            after: {
+              horseId,
+              type: item.type,
+              value: saved.value,
+              measuredAt,
+              source: HorseMeasurementSource.MANUAL,
+            },
+            feature: 'F1.5',
+          });
+          created.push({
+            measurement: await repository.findOneOrFail({
+              where: { id: saved.id },
+              relations: { measurer: true },
+            }),
+            alerts: measurementAlerts(item.type, item.value, weightBaseline),
+          });
+        }
+        return { callerId: caller.id, created };
       },
     );
 
-    for (const alert of alerts) {
-      const event: HorseMeasurementAlertEvent = {
-        ...alert,
-        measurementId: measurement.id,
-        horseId,
-        measuredBy: callerId,
-        type: body.type,
-        value: body.value,
-        unit: HORSE_MEASUREMENT_SPECS[body.type].unit,
-        measuredAt,
-      };
-      this.events.publish(HORSE_MEASUREMENT_ALERT_EVENT, event);
+    for (const { measurement, alerts } of created) {
+      for (const alert of alerts) {
+        const event: HorseMeasurementAlertEvent = {
+          ...alert,
+          measurementId: measurement.id,
+          horseId,
+          measuredBy: callerId,
+          type: measurement.type,
+          value: Number(measurement.value),
+          unit: HORSE_MEASUREMENT_SPECS[measurement.type].unit,
+          measuredAt,
+        };
+        this.events.publish(HORSE_MEASUREMENT_ALERT_EVENT, event);
+      }
     }
-    return toCreatedMeasurementResponse(measurement, alerts);
+    return created.map(({ measurement, alerts }) =>
+      toCreatedMeasurementResponse(measurement, alerts),
+    );
   }
 
   /**
-   * Xóa mềm một bản ghi đo (F1.7: bản ghi không được sửa, chỉ xóa rồi đo lại).
+   * Xóa mềm một bản ghi đo sai (F1.5 mục 4). Bản ghi không được sửa, ghi sai thì xóa rồi đo lại.
    *
-   * - Chỉ người đã ghi bản đó được xóa, và vẫn phải còn quyền ghi loại chỉ số đó cho con ngựa
-   * - Khóa ngựa trước, kiểm tra lại quyền/trạng thái trong transaction rồi khóa dòng bản ghi
-   * - Ghi audit_logs (DELETE, giá trị trước khi xóa) trong cùng transaction để giữ bằng chứng
+   * - Chỉ Veterinarian (kiểm ở controller), bắt buộc nhập lý do
+   * - Bản ghi có nguồn từ buổi khám (MEDICAL_EXAM) không xóa ở đây, phải xử lý bên hồ sơ y tế
+   * - Khóa ngựa rồi khóa dòng bản ghi trong transaction; lưu lý do, người xóa và ghi nhật ký kèm lý do
    * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ, chỉ số mới nhất và mốc cảnh báo giảm cân
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param measurementId UUID của bản ghi đo
+   * @param body Lý do xóa
    * @returns Promise hoàn tất khi đã xóa
    * @throws NotFoundException Nếu không có ngựa, ngựa ngoài phạm vi, hoặc không có bản ghi đo (chưa xóa) của ngựa này
-   * @throws ForbiddenException Nếu người gọi không phải người đã ghi, hoặc không còn quyền ghi loại chỉ số này
-   * @throws BadRequestException Nếu là ngựa tham chiếu
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng, hoặc bản ghi đến từ buổi khám
    */
   async deleteMeasurement(
     actor: Actor,
     horseId: string,
     measurementId: string,
+    body: DeleteHorseMeasurementDto,
   ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const { caller, horse } = await this.access.lockVisibleHorse(
@@ -194,7 +218,6 @@ export class HorseMeasurementsService {
         horseId,
         manager,
       );
-      this.access.assertOperational(horse);
       this.access.assertNotTransferred(horse);
 
       const measurement = await manager.findOne(HorseMeasurementEntity, {
@@ -204,17 +227,11 @@ export class HorseMeasurementsService {
       if (!measurement) {
         throw new NotFoundException('Không tìm thấy bản ghi đo');
       }
-      if (measurement.measuredBy !== caller.id) {
-        throw new ForbiddenException(
-          'Chỉ người đã ghi mới được xóa bản ghi đo này',
-        );
-      }
-      await this.assertCanRecordType(
-        actor,
-        caller.id,
-        horseId,
-        measurement.type,
-        manager,
+      assertMeasurementDeletable(measurement.source);
+      await manager.update(
+        HorseMeasurementEntity,
+        { id: measurement.id },
+        { deleteReason: body.reason, deletedBy: caller.id },
       );
       await manager.softDelete(HorseMeasurementEntity, { id: measurement.id });
       await this.audit.record(manager, {
@@ -230,6 +247,8 @@ export class HorseMeasurementsService {
           measuredBy: measurement.measuredBy,
         },
         after: null,
+        reason: body.reason,
+        feature: 'F1.5',
       });
     });
   }
@@ -267,40 +286,61 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Kiểm tra người gọi được ghi loại chỉ số này cho con ngựa.
+   * Kiểm tra người gọi được ghi chỉ số cho con ngựa (F1.5).
    *
    * - Chỉ query khu phụ trách khi người gọi là Head Trainer, chỉ query phân công khi là Groom
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param callerId UUID của người gọi
    * @param horseId UUID của ngựa
-   * @param type Loại chỉ số cần ghi
-   * @throws ForbiddenException Nếu loại chỉ số không nằm trong các loại người gọi được ghi cho con ngựa này
+   * @param manager EntityManager của transaction đang chạy
+   * @returns Promise hoàn tất khi kiểm tra xong
+   * @throws ForbiddenException Nếu người gọi không được ghi chỉ số cho con ngựa này
    */
-  private async assertCanRecordType(
+  private async assertCanRecord(
     actor: Actor,
     callerId: string,
     horseId: string,
-    type: HorseMeasurementType,
     manager: EntityManager,
   ): Promise<void> {
     const [isInTrainerBarn, isAssignedGroom] = await Promise.all([
       this.access.hasRole(actor, UserRole.HEAD_TRAINER)
-        ? isHorseInTrainerBarn(manager, horseId, callerId)
+        ? this.access.isHorseInTrainerBarn(manager, horseId, callerId)
         : Promise.resolve(false),
       this.access.hasRole(actor, UserRole.GROOM)
         ? this.horses.isGroomAssigned(horseId, callerId, manager)
         : Promise.resolve(false),
     ]);
-    const allowed = recordableMeasurementTypes({
-      roles: actor.roles,
-      isInTrainerBarn,
-      isAssignedGroom,
-    });
-    if (!allowed.includes(type)) {
+    if (
+      !canRecordMeasurement({
+        roles: actor.roles,
+        isInTrainerBarn,
+        isAssignedGroom,
+      })
+    ) {
       throw new ForbiddenException(
-        'Bạn không được ghi loại chỉ số này cho con ngựa này',
+        'Bạn không được ghi chỉ số cho con ngựa này',
       );
     }
+  }
+
+  /**
+   * Kiểm tra dữ liệu một lần đo trước khi lưu.
+   *
+   * @param body Các cặp loại/giá trị và cờ xác nhận giá trị bất thường
+   * @param measuredAt Thời điểm đo đã quy đổi
+   * @throws BadRequestException Nếu trùng loại, giá trị ngoài khoảng hợp lệ hoặc thời điểm đo không hợp lệ
+   * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà confirmAbnormal chưa bật
+   */
+  private assertValidValues(
+    body: CreateHorseMeasurementDto,
+    measuredAt: Date,
+  ): void {
+    assertDistinctMeasurementTypes(body.values.map((item) => item.type));
+    for (const item of body.values) {
+      assertMeasurementValue(item.type, item.value);
+    }
+    assertMeasuredAt(measuredAt, new Date());
+    assertAbnormalConfirmed(body.values, body.confirmAbnormal === true);
   }
 }

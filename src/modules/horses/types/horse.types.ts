@@ -33,21 +33,24 @@ export interface PedigreeAncestorRow {
   color: string | null;
   dateOfBirth: string | null;
   raceAptitude: RaceAptitude | null;
-  isReference: boolean;
+  ownerId: string | null;
   generation: number;
   parentRole: HorseParentRole;
   childId: string;
 }
 
 /**
- * The current stall of a horse with its barn
+ * Vị trí hiện tại của ngựa trong chuồng trại.
+ *
+ * - Khu lấy từ horses.barn_id (Club Manager xếp), null nếu chưa xếp khu.
+ * - Ô lấy từ dòng xếp ô đang mở, null nếu chưa xếp ô.
  */
-export interface HorseCurrentStallRow {
+export interface HorseLocationRow {
   horseId: string;
-  stallId: string;
-  stallCode: string;
-  barnId: string;
-  barnName: string;
+  barnId: string | null;
+  barnName: string | null;
+  stallId: string | null;
+  stallCode: string | null;
 }
 
 /**
@@ -100,12 +103,43 @@ export type HorseMeasurementAlertEvent = HorseMeasurementAlertResult & {
 };
 
 /**
+ * Payload của domain event HORSE_BARN_ASSIGNED_EVENT, phát sau khi transaction xếp khu đã commit.
+ *
+ * - eventId: sinh mới cho mỗi lần xếp khu, dùng để chống gửi trùng thông báo
+ */
+export interface HorseBarnAssignedEvent {
+  eventId: string;
+  horseId: string;
+  barnId: string;
+}
+
+/**
+ * Payload của domain event HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT, phát sau khi transaction chuyển nhượng đã commit.
+ *
+ * - eventId: sinh mới cho mỗi lần chuyển nhượng, dùng để chống gửi trùng thông báo
+ * - groomId: Groom vừa bị kết thúc phân công
+ */
+export interface HorseGroomReleasedEvent {
+  eventId: string;
+  horseId: string;
+  groomId: string;
+}
+
+/**
  * The horse fields needed to validate a sire or dam
  */
 export interface ParentCandidate {
   id: string;
   gender: HorseGender | null;
   dateOfBirth: string | null;
+}
+
+/**
+ * Con ngựa đang được tham chiếu làm cha (asSire) hoặc mẹ (asDam) của ngựa khác, tính cả con đã xóa hồ sơ.
+ */
+export interface ParentUsage {
+  asSire: boolean;
+  asDam: boolean;
 }
 
 /**
@@ -120,7 +154,7 @@ export interface ChildProfile {
  * The horse state needed to evaluate training and racing eligibility
  */
 export interface EligibilityInput {
-  isReference: boolean;
+  isDeleted: boolean;
   lifecycleStatus: HorseLifecycleStatus;
   healthStatus: HorseHealthStatus;
   hasActiveTrainingLock: boolean;
@@ -136,7 +170,7 @@ export interface EligibilityResult {
 }
 
 /**
- * Một người gắn với ngựa để hiển thị, ví dụ groom phụ trách hoặc chủ đại diện.
+ * Một người gắn với ngựa để hiển thị, ví dụ groom phụ trách hoặc chủ sở hữu.
  */
 export interface HorsePersonRow {
   id: string;
@@ -147,14 +181,15 @@ export interface HorsePersonRow {
  * Dữ liệu đầu vào để tính các cờ quyền của người gọi trên một hồ sơ ngựa.
  *
  * - roles: danh sách role lấy từ token.
- * - isReference, isDeleted, lifecycleStatus: trạng thái của ngựa.
+ * - isDeleted, lifecycleStatus: trạng thái của ngựa.
+ * - hasBarn: ngựa đã được Club Manager xếp khu chưa.
  * - isInTrainerBarn: ngựa có nằm trong khu Head Trainer đang phụ trách không.
  * - isAssignedGroom: người gọi có đang được giao chăm con ngựa này không.
  */
 export interface HorsePermissionInput {
   roles: UserRole[];
-  isReference: boolean;
   isDeleted: boolean;
+  hasBarn: boolean;
   lifecycleStatus: HorseLifecycleStatus;
   isInTrainerBarn: boolean;
   isAssignedGroom: boolean;
@@ -165,88 +200,65 @@ export interface HorsePermissionInput {
  * FE dùng để ẩn/hiện nút và tab; các API ghi vẫn tự kiểm tra quyền.
  */
 export interface HorsePermissions {
-  canEdit: boolean;
+  canEditProfile: boolean;
   canEditRaceAptitude: boolean;
+  canAssignBarn: boolean;
+  canAssignStallAndGroom: boolean;
   canChangeLifecycle: boolean;
-  canManageOwners: boolean;
+  canDelete: boolean;
+  canRestore: boolean;
   canChangeHealth: boolean;
   canRecordMeasurement: boolean;
-  recordableMeasurementTypes: HorseMeasurementType[];
-  canViewPedigree: boolean;
-  canViewOwners: boolean;
-  canViewMeasurementHistory: boolean;
-  canViewMedicalRecords: boolean;
-  canViewTrainingEvaluation: boolean;
-  canViewPerformance: boolean;
-  canViewPerformanceDetail: boolean;
-  canOpenReferenceHorses: boolean;
-  canActivateReference: boolean;
+  canDeleteMeasurement: boolean;
+  canViewMedicalTab: boolean;
+  canViewTrainingTab: boolean;
+  canViewPerformanceTab: boolean;
 }
 
 /**
  * Dữ liệu đã gom sẵn để dựng phần đầu (header) của hồ sơ ngựa.
  */
 export interface HorseDetailParts {
-  stall: HorseCurrentStallRow | null;
+  location: HorseLocationRow;
   groom: HorsePersonRow | null;
-  representativeOwner: HorsePersonRow | null;
+  owner: HorsePersonRow | null;
   latestMeasurements: HorseMeasurementEntity[];
   activeTrainingLock: boolean;
 }
 
 /**
- * Các field tùy chọn của header mà người gọi được xem.
+ * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa (F1.8). Mỗi cờ đúng một việc.
  *
- * - includeParents: có trả sireId, damId không (Groom không được xem phả hệ).
- * - includeRepresentativeOwner: có trả chủ đại diện không (Veterinarian, Groom không được xem).
- */
-export interface HorseDetailVisibility {
-  includeParents: boolean;
-  includeRepresentativeOwner: boolean;
-}
-
-/**
- * Một phần sở hữu Club Manager gửi lên khi gán hoặc đổi chủ.
- */
-export interface OwnerShareInput {
-  ownerId: string;
-  percentage: number;
-  isRepresentative?: boolean;
-}
-
-/**
- * Dòng sở hữu đang mở (endAt null) của một con ngựa, chỉ gồm các field cần để so sánh khi đổi chủ.
- */
-export interface OpenOwnershipRow {
-  id: string;
-  ownerId: string;
-  percentage: string;
-  isRepresentative: boolean;
-}
-
-/**
- * Kết quả so sánh bộ chủ đang mở với bộ chủ mới.
- *
- * - closeIds: các dòng đang mở cần đóng (chủ bị bỏ, hoặc đổi tỉ lệ/cờ đại diện).
- * - inserts: các phần sở hữu cần tạo dòng mới.
- * - Dòng nào khớp hoàn toàn (cùng chủ, cùng tỉ lệ, cùng cờ đại diện) thì giữ nguyên, không nằm ở hai danh sách trên.
- */
-export interface OwnershipChangePlan {
-  closeIds: string[];
-  inserts: OwnerShareInput[];
-}
-
-/**
- * Các việc dọn dẹp phải chạy cùng transaction khi đổi vòng đời ngựa. Mỗi cờ đúng một việc.
- *
- * - cancelTraining: hủy giáo án SCHEDULED/ACTIVE và buổi tập SCHEDULED của chúng.
- * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa kết thúc.
- * - closeStallOwnershipGroom: kết thúc xếp chuồng, quyền sở hữu và phân công groom đang mở.
- * - releaseTrainingLock: tự gỡ khóa huấn luyện đang ACTIVE.
+ * - cancelTraining: hủy giáo án SCHEDULED/ACTIVE và buổi tập SCHEDULED của chúng (tạm thay cho "rút khỏi lớp", chờ Flow 2).
+ * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra.
+ * - releaseStall: trả ô chuồng đang giữ về trống.
+ * - endGroom: kết thúc phân công groom đang mở.
+ * - clearBarn: bỏ khu chuồng (horses.barn_id = null).
+ * - releaseTrainingLock: tự gỡ lệnh khóa huấn luyện đang ACTIVE.
+ * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại.
+ * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
+ * - Chủ sở hữu không bao giờ bị đổi ở đây: chuyển nhượng vẫn giữ chủ để chủ cũ còn tra cứu.
  */
 export interface LifecycleSideEffects {
   cancelTraining: boolean;
   withdrawRegistrations: boolean;
-  closeStallOwnershipGroom: boolean;
+  releaseStall: boolean;
+  endGroom: boolean;
+  clearBarn: boolean;
   releaseTrainingLock: boolean;
+  resetHealth: boolean;
+  reactivateFromTransfer: boolean;
+}
+
+/**
+ * Những gì sẽ bị ảnh hưởng nếu đổi vòng đời, đếm trên dữ liệu hiện tại để Club Manager xác nhận trước (F1.8 mục 5).
+ */
+export interface LifecycleImpactRow {
+  openTrainingPlans: number;
+  openRaceRegistrations: number;
+  stallCode: string | null;
+  groomName: string | null;
+  barnName: string | null;
+  hasActiveTrainingLock: boolean;
+  invalidOwnerName: string | null;
 }

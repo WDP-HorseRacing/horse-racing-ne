@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { HorseResponseDto } from '../dto/horse.dto';
+import { HorseResponseDto } from '../dto';
 import type { HorseEntity } from '../entities/horse.entity';
 
 /**
@@ -23,7 +23,7 @@ export function toHorseResponse(entity: HorseEntity): HorseResponseDto {
  */
 export function requiredRelationName(
   user: { fullName: string } | null | undefined,
-  relation: 'owner' | 'measurer',
+  relation: 'measurer',
 ): string {
   if (!user) {
     throw new Error(

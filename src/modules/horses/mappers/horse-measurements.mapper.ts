@@ -2,9 +2,9 @@ import type {
   CreatedHorseMeasurementResponseDto,
   HorseLatestMeasurementDto,
   HorseMeasurementResponseDto,
-} from '../dto/horse-measure.dto';
+} from '../dto';
 import type { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
-import { HORSE_MEASUREMENT_SPECS } from '../enums/horse.constants';
+import { HORSE_MEASUREMENT_SPECS } from '../constants/horse.constants';
 import { isAbnormalMeasurement } from '../policies/horse.policy';
 import { requiredRelationName } from './horse.mapper';
 import type { HorseMeasurementAlertResult } from '../types/horse.types';
@@ -41,6 +41,7 @@ export function toMeasurementResponse(
     horseId: entity.horseId,
     measuredBy: entity.measuredBy,
     measuredByName: requiredRelationName(entity.measurer, 'measurer'),
+    source: entity.source,
     ...toLatestMeasurement(entity),
   };
 }

@@ -12,9 +12,8 @@ export function applyHorseScope(
   scope: HorseScope,
 ): void {
   if (scope.kind === 'OWNER') {
-    qb.andWhere(
-      'EXISTS (SELECT 1 FROM horse_ownerships ho WHERE ho.horse_id = horse.id AND ho.owner_id = :scopeUserId AND ho.end_at IS NULL)',
-      { scopeUserId: scope.userId },
-    );
+    qb.andWhere('horse.ownerId = :scopeUserId', {
+      scopeUserId: scope.userId,
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { CLUB_TIME_ZONE } from '../enums/horse.constants';
+import { CLUB_TIME_ZONE } from '../constants/horse.constants';
 
 /**
  * Get today's date in the club time zone
