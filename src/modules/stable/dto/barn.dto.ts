@@ -74,3 +74,36 @@ export class BarnResponseDto {
   @ApiPropertyOptional({ format: 'uuid', nullable: true, type: String })
   headTrainerId!: string | null;
 }
+
+export class BarnListItemDto extends BarnResponseDto {
+  @Expose()
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Họ tên Head Trainer phụ trách khu, null nếu khu chưa có',
+  })
+  headTrainerFullName!: string | null;
+
+  @Expose()
+  @ApiProperty({
+    description:
+      'true nếu Head Trainer phụ trách khu còn tồn tại, đang ACTIVE và còn vai trò HEAD_TRAINER. Bằng false thì không xếp ngựa vào khu được (F1.6 mục 2), kể cả khi headTrainerFullName vẫn có tên (người đó đã bị khóa, ngưng hoạt động hoặc đổi vai trò).',
+  })
+  hasActiveHeadTrainer!: boolean;
+
+  @Expose()
+  @ApiProperty({
+    minimum: 0,
+    description:
+      'Số chỗ khu còn nhận ngựa mới = số ô trống (ô AVAILABLE, chưa xóa, không có phân công đang mở) trừ pendingStallHorseCount, không âm. Bằng 0 thì không xếp thêm ngựa vào khu được.',
+  })
+  availableStallCount!: number;
+
+  @Expose()
+  @ApiProperty({
+    minimum: 0,
+    description:
+      'Số ngựa chờ xếp ô: ngựa đã thuộc khu (chưa xóa, không TRANSFERRED) nhưng chưa có ô đang mở',
+  })
+  pendingStallHorseCount!: number;
+}

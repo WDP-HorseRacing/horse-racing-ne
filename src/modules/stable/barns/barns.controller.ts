@@ -21,7 +21,12 @@ import {
 import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { BarnResponseDto, CreateBarnDto, UpdateBarnDto } from '../dto/barn.dto';
+import {
+  BarnListItemDto,
+  BarnResponseDto,
+  CreateBarnDto,
+  UpdateBarnDto,
+} from '../dto/barn.dto';
 import { BarnsService } from './barns.service';
 
 @ApiTags('stable')
@@ -37,9 +42,13 @@ export class BarnsController {
     UserRole.GROOM,
   ])
   @Get()
-  @ApiOperation({ summary: 'List barns of the club with their head trainer' })
-  @ApiOkResponse({ type: [BarnResponseDto] })
-  list(@CurrentUser() actor: Actor): Promise<BarnResponseDto[]> {
+  @ApiOperation({
+    summary: 'List barns of the club with their head trainer',
+    description:
+      'Each barn carries its head trainer name, availableStallCount (free stalls minus horses of the barn still waiting for a stall, never negative; 0 means no more horse can be placed) and pendingStallHorseCount (horses of the barn, not deleted, not TRANSFERRED, without an open stall assignment).',
+  })
+  @ApiOkResponse({ type: [BarnListItemDto] })
+  list(@CurrentUser() actor: Actor): Promise<BarnListItemDto[]> {
     return this.barnsService.list(actor);
   }
 

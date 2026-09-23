@@ -15,6 +15,5 @@ import { StallsModule } from './stalls/stalls.module';
     DailyChecklistsModule,
     IncidentsModule,
   ],
-  exports: [BarnsModule, StallsModule],
 })
 export class StableModule {}

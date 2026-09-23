@@ -1,12 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsUUID } from 'class-validator';
-import { AssignedGroomSummaryDto } from './stall.dto';
 
 export class AssignGroomDto {
   @ApiProperty({ format: 'uuid', description: 'ID groom phụ trách' })
   @IsUUID()
   groomId!: string;
+}
+
+export class AssignedGroomSummaryDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @Expose()
+  @ApiProperty()
+  fullName!: string;
+
+  @Expose()
+  @ApiProperty()
+  email!: string;
 }
 
 export class GroomAssignmentResponseDto {
@@ -34,4 +47,20 @@ export class GroomAssignmentResponseDto {
   @Expose()
   @ApiPropertyOptional({ format: 'date-time', nullable: true })
   endAt!: Date | null;
+}
+
+export class GroomWorkloadResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  groomId!: string;
+
+  @Expose()
+  @ApiProperty()
+  fullName!: string;
+
+  @Expose()
+  @ApiProperty({
+    description: 'Số ngựa (chưa xóa) groom đang phụ trách trên toàn câu lạc bộ',
+  })
+  activeHorseCount!: number;
 }
