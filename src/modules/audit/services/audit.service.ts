@@ -14,6 +14,10 @@ export interface AuditEntry {
   entityId: string;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
+  /** Lý do người dùng nhập cho thao tác (vd lý do xóa, khôi phục); bỏ trống thì lưu null */
+  reason?: string | null;
+  /** Mã chức năng theo spec (vd 'F1.4'), tối đa 16 ký tự; bỏ trống thì lưu null */
+  feature?: string | null;
 }
 
 @Injectable()
@@ -37,6 +41,8 @@ export class AuditService {
       beforeData: entry.before,
       afterData: entry.after,
       correlationId: null,
+      reason: entry.reason ?? null,
+      feature: entry.feature ?? null,
     });
   }
 }

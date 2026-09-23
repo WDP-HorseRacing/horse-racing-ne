@@ -39,4 +39,10 @@ export class AuditLogEntity extends BaseRecordEntity {
     nullable: true,
   })
   correlationId!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  reason!: string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  feature!: string | null;
 }

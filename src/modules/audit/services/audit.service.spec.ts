@@ -28,6 +28,56 @@ describe('AuditService.record', () => {
       beforeData: { name: 'Gió Bắc' },
       afterData: { name: 'Gió Nam' },
       correlationId: null,
+      reason: null,
+      feature: null,
     });
+  });
+
+  it('saves reason and feature when provided', async () => {
+    const save = jest.fn();
+    const manager = {
+      getRepository: jest.fn(() => ({ save })),
+    } as unknown as EntityManager;
+
+    await new AuditService().record(manager, {
+      actorId: 'user-1',
+      action: AuditAction.RESTORE,
+      entityType: AuditEntityType.HORSE_MEASUREMENT,
+      entityId: 'm1',
+      before: null,
+      after: { deletedAt: null },
+      reason: 'Nhập nhầm, khôi phục lại',
+      feature: 'F1.4',
+    });
+
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AuditAction.RESTORE,
+        reason: 'Nhập nhầm, khôi phục lại',
+        feature: 'F1.4',
+      }),
+    );
+  });
+
+  it('stores null when reason and feature are explicitly null', async () => {
+    const save = jest.fn();
+    const manager = {
+      getRepository: jest.fn(() => ({ save })),
+    } as unknown as EntityManager;
+
+    await new AuditService().record(manager, {
+      actorId: null,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.GROOM_ASSIGNMENT,
+      entityId: 'g1',
+      before: { id: 'g1' },
+      after: null,
+      reason: null,
+      feature: null,
+    });
+
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: null, feature: null }),
+    );
   });
 });
