@@ -27,8 +27,8 @@ import { TrainingAccessService } from '../shared/training-access.service';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
-} from '@modules/horses/enums/horse-status.enum';
-import { TrainingLockStatus } from '@modules/medical/constants/training-lock.enum';
+} from '../../horses/enums/horse-status.enum';
+import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
 
 @Injectable()
 export class TrainingSessionsService {

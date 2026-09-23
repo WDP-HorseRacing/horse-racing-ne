@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
+import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';

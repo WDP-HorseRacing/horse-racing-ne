@@ -7,8 +7,7 @@ import {
 import { DataSource, EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { findReadableHorse } from '../../horses/utils/horse-access';
-import { assertTrainerBarn } from '../../stable/utils/trainer-barn';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import { UserRole, UserStatus } from '../../users/user.enums';
 import {
@@ -20,7 +19,10 @@ import { TrainingSessionEntity } from '../entities/training-session.entity';
 
 @Injectable()
 export class TrainingAccessService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly horseAccess: HorseAccessService,
+  ) {}
 
   /**
    * Xác thực người gọi và lấy con ngựa mà người gọi được xem dữ liệu huấn luyện, cùng phạm vi với hồ sơ ngựa:
@@ -39,7 +41,12 @@ export class TrainingAccessService {
     manager: EntityManager = this.dataSource.manager,
   ): Promise<{ user: UserEntity; horse: HorseEntity }> {
     const caller = await this.currentUser(actor);
-    const horse = await findReadableHorse(manager, actor, caller.id, horseId);
+    const horse = await this.horseAccess.findReadableHorse(
+      manager,
+      actor,
+      caller.id,
+      horseId,
+    );
     return { user: caller, horse };
   }
 
@@ -288,7 +295,7 @@ export class TrainingAccessService {
     callerId: string,
     horseId: string,
   ): Promise<void> {
-    await assertTrainerBarn(manager, actor, callerId, horseId);
+    await this.horseAccess.assertTrainerBarn(manager, actor, callerId, horseId);
   }
 
   /**
@@ -324,7 +331,12 @@ export class TrainingAccessService {
         const plan = await manager.findOneByOrFail(TrainingPlanEntity, {
           id: session.planId,
         });
-        await assertTrainerBarn(manager, actor, callerId, plan.horseId);
+        await this.horseAccess.assertTrainerBarn(
+          manager,
+          actor,
+          callerId,
+          plan.horseId,
+        );
         return;
       }
 

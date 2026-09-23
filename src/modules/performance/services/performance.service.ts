@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { findReadableHorse } from '../../horses/utils/horse-access';
-import { currentUserForActor } from '../../users/utils/current-user';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { EvaluationsService } from '../../training/trainging-evaluations/training-evaluations.service';
 import {
   HorsePerformanceResponseDto,
   SessionPerformanceSummaryDto,
@@ -17,7 +16,8 @@ import { PerformanceRepository } from '../repositories/performance.repository';
 export class PerformanceService {
   constructor(
     private readonly performanceRepository: PerformanceRepository,
-    private readonly dataSource: DataSource,
+    private readonly horseAccess: HorseAccessService,
+    private readonly evaluations: EvaluationsService,
   ) {}
 
   /**
@@ -32,11 +32,9 @@ export class PerformanceService {
     actor: Actor,
     horseId: string,
   ): Promise<HorsePerformanceResponseDto> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
-    await findReadableHorse(this.dataSource.manager, actor, caller.id, horseId);
+    await this.horseAccess.findReadable(actor, horseId);
     const metrics = await this.performanceRepository.listMetrics(horseId);
-    const evaluations =
-      await this.performanceRepository.listEvaluations(horseId);
+    const evaluations = await this.evaluations.listLatestByHorse(horseId);
     return toHorsePerformanceResponse(horseId, metrics, evaluations);
   }
 
@@ -53,8 +51,7 @@ export class PerformanceService {
     actor: Actor,
     horseId: string,
   ): Promise<SessionPerformanceSummaryDto[]> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
-    await findReadableHorse(this.dataSource.manager, actor, caller.id, horseId);
+    await this.horseAccess.findReadable(actor, horseId);
     const rows = await this.performanceRepository.sessionSummaries(horseId);
     return rows.map(toSessionPerformanceSummary);
   }

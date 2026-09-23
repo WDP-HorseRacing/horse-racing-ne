@@ -1,4 +1,4 @@
-import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
+import { PerformanceEvaluationEntity } from '../../training/entities/performance-evaluation.entity';
 import { PerformanceMetricEntity } from '../entities/performance-metric.entity';
 import {
   toHorsePerformanceResponse,

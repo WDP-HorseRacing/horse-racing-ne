@@ -22,7 +22,6 @@ import {
   assertPlanCancellable,
   assertPlanCompletable,
   assertPlanEditable,
-  assertTrainableHorse,
   assertValidPlanDates,
   dateOnly,
 } from '../policies/training.policy';
@@ -86,7 +85,6 @@ export class TrainingPlansService {
     body: CreateTrainingPlanDto,
   ): Promise<TrainingPlanResponseDto> {
     const { user, horse } = await this.access.horseForActor(actor, horseId);
-    assertTrainableHorse(horse.isReference);
     await this.access.assertTrainerBarn(
       this.dataSource.manager,
       actor,

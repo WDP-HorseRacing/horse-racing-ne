@@ -38,8 +38,18 @@ export class TrainingPlansController {
    * @param horseId UUID của con ngựa cần xem danh sách giáo án
    * @returns Danh sách các giáo án huấn luyện (sắp xếp theo ngày bắt đầu giảm dần)
    */
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.HORSE_OWNER,
+  ])
   @Get('horses/:horseId/training-plans')
-  @ApiOperation({ summary: 'List horse training plans' })
+  @ApiOperation({
+    summary: 'List horse training plans',
+    description:
+      'Dữ liệu tab Huấn luyện của hồ sơ ngựa (F1.3). GROOM không xem tab này nên nhận 403.',
+  })
   @ApiOkResponse({ type: [TrainingPlanResponseDto] })
   list(
     @CurrentUser() actor: Actor,

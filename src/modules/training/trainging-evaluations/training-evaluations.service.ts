@@ -6,7 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
+import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   EvaluateSessionDto,
@@ -85,5 +85,23 @@ export class EvaluationsService {
     const row = await this.evaluations.findOneBy({ sessionId });
     if (!row) throw new NotFoundException('Buổi tập chưa có đánh giá');
     return toEvaluationResponse(row);
+  }
+
+  /**
+   * Lấy đánh giá mới nhất của một con ngựa, dành cho module performance đọc (bảng performance_evaluations thuộc training)
+   *
+   * - Không kiểm quyền: nơi gọi phải tự kiểm quyền xem con ngựa trước
+   * - Trả tối đa một bản ghi, kèm buổi tập và giáo án của nó
+   *
+   * @param horseId UUID của ngựa
+   * @returns A promise resolving to mảng rỗng hoặc một đánh giá mới nhất
+   */
+  listLatestByHorse(horseId: string): Promise<PerformanceEvaluationEntity[]> {
+    return this.evaluations.find({
+      where: { session: { plan: { horseId } } },
+      relations: { session: { plan: true } },
+      order: { createdAt: 'DESC' },
+      take: 1,
+    });
   }
 }

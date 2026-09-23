@@ -1,6 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
-import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
+import { TrainingSessionEntity } from './training-session.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
 /**

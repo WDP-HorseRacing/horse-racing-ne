@@ -40,7 +40,7 @@ export class TrainingSessionsController {
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) planId: string,
   ) {
-    return this.sessions.listSessionsByPlan(actor, planId);
+    return this.sessions.listSessions(actor, planId);
   }
 
   //

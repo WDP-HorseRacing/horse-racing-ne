@@ -44,7 +44,7 @@ export class MedicalController extends PendingApi {
   @ApiOperation({
     summary: 'List horse medical records',
     description:
-      'Head Trainer: chỉ ngựa trong khu mình. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency.',
+      'Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.',
   })
   @ApiOkResponse({ type: [MedicalRecordResponseDto] })
   listRecords(
@@ -85,7 +85,7 @@ export class MedicalController extends PendingApi {
   @ApiOperation({
     summary: 'List horse injury timeline',
     description:
-      'Head Trainer: chỉ ngựa trong khu mình. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ.',
+      'Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem.',
   })
   @Access([
     UserRole.CLUB_MANAGER,

@@ -4,7 +4,7 @@ import {
   PerformanceMetricPointDto,
   SessionPerformanceSummaryDto,
 } from '../dto/horse-performance.response.dto';
-import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
+import { PerformanceEvaluationEntity } from '../../training/entities/performance-evaluation.entity';
 import { PerformanceMetricEntity } from '../entities/performance-metric.entity';
 import type { SessionPerformanceRow } from '../types/performance.types';
 
