@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
 import { MedicalRecordsService } from './medical-records.service';
@@ -14,6 +15,7 @@ function actorWith(role: UserRole): Actor {
 describe('MedicalRecordsService.listRecords', () => {
   let records: { find: jest.Mock };
   let prescriptions: { find: jest.Mock };
+  let injuries: { find: jest.Mock };
   let horseAccess: { findReadable: jest.Mock };
   let service: MedicalRecordsService;
 
@@ -44,11 +46,13 @@ describe('MedicalRecordsService.listRecords', () => {
         },
       ]),
     };
+    injuries = { find: jest.fn().mockResolvedValue([]) };
     horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
     service = new MedicalRecordsService(
       horseAccess as unknown as HorseAccessService,
       records as unknown as Repository<MedicalRecordEntity>,
       prescriptions as unknown as Repository<PrescriptionEntity>,
+      injuries as unknown as Repository<InjuryMarkerEntity>,
     );
   });
 
@@ -98,8 +102,8 @@ describe('MedicalRecordsService.listRecords', () => {
     );
     expect(record).toMatchObject({
       diagnosis: 'Viêm gân chân trước trái',
-      severity: 'MODERATE',
     });
+    expect(record).not.toHaveProperty('severity');
     expect(record.prescriptions[0]).toMatchObject({
       medicine: 'Phenylbutazone',
       startDate: '2026-09-10',
@@ -115,5 +119,46 @@ describe('MedicalRecordsService.listRecords', () => {
       service.listRecords(actorWith(UserRole.HORSE_OWNER), 'h1'),
     ).rejects.toThrow(NotFoundException);
     expect(records.find).not.toHaveBeenCalled();
+  });
+
+  describe('getRecord', () => {
+    it('answers not found when the visit does not exist', async () => {
+      (records as { findOne?: jest.Mock }).findOne = jest
+        .fn()
+        .mockResolvedValue(null);
+      await expect(
+        service.getRecord(actorWith(UserRole.VETERINARIAN), 'r404'),
+      ).rejects.toThrow(NotFoundException);
+      expect(horseAccess.findReadable).not.toHaveBeenCalled();
+    });
+
+    it('answers not found when the horse of the visit is outside the caller scope', async () => {
+      (records as { findOne?: jest.Mock }).findOne = jest
+        .fn()
+        .mockResolvedValue({ id: 'r1', horseId: 'h9' });
+      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      await expect(
+        service.getRecord(actorWith(UserRole.HORSE_OWNER), 'r1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(prescriptions.find).not.toHaveBeenCalled();
+    });
+
+    it('returns the visit with its injuries', async () => {
+      (records as { findOne?: jest.Mock }).findOne = jest
+        .fn()
+        .mockResolvedValue({ id: 'r1', horseId: 'h1' });
+      injuries.find.mockResolvedValue([
+        { id: 'i1', medicalRecordId: 'r1', bodyRegion: 'LEFT_FRONT_LEG' },
+      ]);
+      const visit = await service.getRecord(
+        actorWith(UserRole.HEAD_TRAINER),
+        'r1',
+      );
+      expect(horseAccess.findReadable).toHaveBeenCalledWith(
+        expect.anything(),
+        'h1',
+      );
+      expect(visit.injuries).toHaveLength(1);
+    });
   });
 });

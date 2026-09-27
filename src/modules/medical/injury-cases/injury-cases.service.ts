@@ -1,40 +1,42 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { InjuryMarkerResponseDto } from '../dto/injury-marker.response.dto';
+import { InjuryTimelineItemDto } from '../dto/injury-marker.response.dto';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { toInjuryMarkerResponse } from '../mappers/medical.mapper';
+import { toInjuryTimelineItem } from '../mappers/medical.mapper';
 
 @Injectable()
 export class InjuryCasesService {
   constructor(
     private readonly horseAccess: HorseAccessService,
-    @InjectRepository(InjuryMarkerEntity)
-    private readonly injuries: Repository<InjuryMarkerEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
-   * Lấy danh sách vết thương của con ngựa.
+   * Diễn biến chấn thương của con ngựa theo thời điểm khám (F3.6 mục 2, F3.10 mục 5).
    *
    * - Horse Owner xem đầy đủ như Veterinarian, nhưng chỉ với ngựa đang sở hữu.
    * - Head Trainer xem toàn câu lạc bộ (F1.3). Groom không xem (chặn ở controller).
+   * - Bỏ chấn thương của buổi khám đã hủy; xếp theo thời điểm khám tăng dần, kèm bệnh án để FE gom theo (bệnh án, vùng, loại).
+   * - Bảng injury_markers do feature medical-records ghi; ở đây chỉ đọc qua DataSource.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns Danh sách vết thương
+   * @returns A promise resolving to diễn biến chấn thương
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async listInjuries(
     actor: Actor,
     horseId: string,
-  ): Promise<InjuryMarkerResponseDto[]> {
+  ): Promise<InjuryTimelineItemDto[]> {
     await this.horseAccess.findReadable(actor, horseId);
-    const injuries = await this.injuries.find({
-      where: { medicalRecord: { horseId } },
-      order: { createdAt: 'DESC' },
+    const injuries = await this.dataSource.manager.find(InjuryMarkerEntity, {
+      where: { medicalRecord: { horseId, voidedAt: IsNull() } },
+      relations: { medicalRecord: true },
+      order: { medicalRecord: { examDate: 'ASC' }, createdAt: 'ASC' },
     });
-    return injuries.map(toInjuryMarkerResponse);
+    return injuries.map(toInjuryTimelineItem);
   }
 }

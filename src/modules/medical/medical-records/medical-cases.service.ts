@@ -1,0 +1,439 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'node:crypto';
+import { DataSource, Repository } from 'typeorm';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditService } from '../../audit/services/audit.service';
+import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { ExamRequestStatus } from '../constants/exam-request.enum';
+import {
+  CaseLockDecision,
+  MedicalCaseStatus,
+} from '../constants/medical-case.enum';
+import {
+  MEDICAL_CASE_CLOSED_EVENT,
+  MEDICAL_CASE_COST_ADJUSTED_EVENT,
+  MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
+} from '../constants/medical-events.constants';
+import { TrainingLockStatus } from '../constants/training-lock.enum';
+import {
+  AdjustCaseCostDto,
+  CloseMedicalCaseDto,
+  MedicalCaseClosePreviewResponseDto,
+  MedicalCaseDetailResponseDto,
+  MedicalCaseListQueryDto,
+  MedicalCaseListResponseDto,
+  MedicalCaseResponseDto,
+  MedicalCostReportQueryDto,
+  MedicalCostReportResponseDto,
+} from '../dto';
+import { MedicalCaseEntity } from '../entities/medical-case.entity';
+import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
+import { MedicalRecordEntity } from '../entities/medical-record.entity';
+import { TrainingLockEntity } from '../entities/training-lock.entity';
+import {
+  costOf,
+  toCaseActiveLock,
+  toMedicalCaseResponse,
+} from '../mappers/medical.mapper';
+import {
+  assertCaseOpen,
+  assertCostAdjustable,
+  canSeeDosage,
+  canSeeMedicalCost,
+  resolveLockOnClose,
+} from '../policies/medical.policy';
+import { MedicalAccessService } from '../shared/medical-access.service';
+import type {
+  MedicalCaseClosedEvent,
+  MedicalCaseCostAdjustedEvent,
+  TrainingLockReleasedEvent,
+} from '../types/medical-events.types';
+import { MedicalCasesRepository } from './medical-cases.repository';
+import { MedicalRecordsService } from './medical-records.service';
+
+/**
+ * Kết luận ghi vào lệnh khóa khi bác sĩ chọn gỡ khóa lúc đóng bệnh án.
+ */
+const CLOSE_CASE_LOCK_RELEASE_CONCLUSION = 'Gỡ khi đóng bệnh án';
+
+@Injectable()
+export class MedicalCasesService {
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly horseAccess: HorseAccessService,
+    private readonly access: MedicalAccessService,
+    private readonly records: MedicalRecordsService,
+    private readonly casesRepository: MedicalCasesRepository,
+    @InjectRepository(MedicalCaseEntity)
+    private readonly cases: Repository<MedicalCaseEntity>,
+    private readonly audit: AuditService,
+    private readonly events: DomainEventPublisher,
+  ) {}
+
+  /**
+   * Lấy các bệnh án của con ngựa, mới nhất lên trên, kèm tổng chi phí các bệnh án đã đóng (F3.10, F1.3)
+   *
+   * - Head Trainer không có key chi phí; người khác chỉ thấy chi phí của bệnh án đã đóng
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @param query Lọc theo trạng thái bệnh án
+   * @returns A promise resolving to danh sách bệnh án và tổng chi phí
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
+  async listCases(
+    actor: Actor,
+    horseId: string,
+    query: MedicalCaseListQueryDto,
+  ): Promise<MedicalCaseListResponseDto> {
+    await this.horseAccess.findReadable(actor, horseId);
+    const cases = await this.cases.find({
+      where: { horseId, ...(query.status ? { status: query.status } : {}) },
+      order: { openedAt: 'DESC' },
+    });
+    const seesCost = canSeeMedicalCost(actor.roles);
+    const totalCost = cases.reduce(
+      (sum, medicalCase) => sum + (costOf(medicalCase) ?? 0),
+      0,
+    );
+    return {
+      items: cases.map((medicalCase) =>
+        toMedicalCaseResponse(medicalCase, seesCost),
+      ),
+      ...(seesCost ? { totalCost } : {}),
+    };
+  }
+
+  /**
+   * Lấy bệnh án kèm toàn bộ buổi khám, mới nhất lên trên (F3.10 A1)
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param caseId UUID của bệnh án
+   * @returns A promise resolving to bệnh án và các buổi khám
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
+  async getCase(
+    actor: Actor,
+    caseId: string,
+  ): Promise<MedicalCaseDetailResponseDto> {
+    const medicalCase = await this.findCase(caseId);
+    await this.horseAccess.findReadable(actor, medicalCase.horseId);
+    const visits = await this.dataSource.manager.find(MedicalRecordEntity, {
+      where: { caseId },
+      order: { examDate: 'DESC' },
+    });
+    return {
+      ...toMedicalCaseResponse(medicalCase, canSeeMedicalCost(actor.roles)),
+      visits: await this.records.toResponses(visits, canSeeDosage(actor.roles)),
+    };
+  }
+
+  /**
+   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ (F3.9 bước 2)
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param caseId UUID của bệnh án
+   * @returns A promise resolving to thông tin xem trước
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
+   * @throws ConflictException Nếu bệnh án đã đóng
+   */
+  async closePreview(
+    actor: Actor,
+    caseId: string,
+  ): Promise<MedicalCaseClosePreviewResponseDto> {
+    const medicalCase = await this.findCase(caseId);
+    const horse = await this.horseAccess.findReadable(
+      actor,
+      medicalCase.horseId,
+    );
+    assertCaseOpen(medicalCase.status);
+    const manager = this.dataSource.manager;
+    const [activeLock, pendingRequestCount] = await Promise.all([
+      manager.findOne(TrainingLockEntity, {
+        where: { caseId, status: TrainingLockStatus.ACTIVE },
+      }),
+      manager.count(MedicalExamRequestEntity, {
+        where: {
+          horseId: medicalCase.horseId,
+          status: ExamRequestStatus.PENDING,
+        },
+      }),
+    ]);
+    return {
+      activeLock: activeLock ? toCaseActiveLock(activeLock) : null,
+      healthStatus: horse.healthStatus,
+      healthWarning:
+        horse.healthStatus === HorseHealthStatus.INJURED ||
+        horse.healthStatus === HorseHealthStatus.QUARANTINED,
+      pendingRequestCount,
+    };
+  }
+
+  /**
+   * Đóng bệnh án, chốt kết luận cuối và chi phí (F3.9)
+   *
+   * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row bệnh án
+   * - Lệnh khóa gắn bệnh án còn hiệu lực: bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
+   * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng (giao diện cảnh báo qua closePreview)
+   * - Sau commit: báo chủ ngựa và Club Manager; gỡ khóa thì báo Head Trainer và Club Manager
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param caseId UUID của bệnh án
+   * @param body Kết luận cuối, chi phí và cách xử lý lệnh khóa
+   * @returns A promise resolving to bệnh án sau khi đóng
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
+   * @throws BadRequestException Nếu còn khóa mà không chọn cách xử lý, hoặc ngày dự kiến gỡ không hợp lệ
+   * @throws ConflictException Nếu bệnh án đã đóng, hoặc ngựa đã chuyển nhượng
+   */
+  async closeCase(
+    actor: Actor,
+    caseId: string,
+    body: CloseMedicalCaseDto,
+  ): Promise<MedicalCaseResponseDto> {
+    const { horseId } = await this.findCase(caseId);
+    const now = new Date();
+    const { closed, releasedLockId } = await this.dataSource.transaction(
+      async (manager) => {
+        const { caller } = await this.access.lockHorseForWrite(
+          manager,
+          actor,
+          horseId,
+        );
+        const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
+          where: { id: caseId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        assertCaseOpen(medicalCase.status);
+        const activeLock = await manager.findOne(TrainingLockEntity, {
+          where: { caseId, status: TrainingLockStatus.ACTIVE },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const lockExpectedEnd = body.lockExpectedEnd
+          ? new Date(body.lockExpectedEnd)
+          : undefined;
+        const decision = resolveLockOnClose(
+          activeLock !== null,
+          body.lockDecision,
+          lockExpectedEnd,
+          now,
+        );
+
+        const changes = {
+          status: MedicalCaseStatus.CLOSED,
+          closedAt: now,
+          closedBy: caller.id,
+          finalConclusion: body.finalConclusion,
+          totalCost: String(body.totalCost),
+        };
+        await manager.update(MedicalCaseEntity, { id: caseId }, changes);
+        if (activeLock && decision === CaseLockDecision.RELEASE) {
+          await manager.update(
+            TrainingLockEntity,
+            { id: activeLock.id },
+            {
+              status: TrainingLockStatus.RELEASED,
+              releasedBy: caller.id,
+              releasedAt: now,
+              releaseConclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+            },
+          );
+          await this.audit.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.UPDATE,
+            entityType: AuditEntityType.TRAINING_LOCK,
+            entityId: activeLock.id,
+            before: { status: activeLock.status },
+            after: { status: TrainingLockStatus.RELEASED, caseId },
+            reason: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+            feature: 'F3.9',
+          });
+        }
+        if (activeLock && decision === CaseLockDecision.KEEP) {
+          await manager.update(
+            TrainingLockEntity,
+            { id: activeLock.id },
+            { lockEnd: lockExpectedEnd },
+          );
+          await this.audit.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.UPDATE,
+            entityType: AuditEntityType.TRAINING_LOCK,
+            entityId: activeLock.id,
+            before: { lockEnd: activeLock.lockEnd },
+            after: { lockEnd: lockExpectedEnd, caseId },
+            feature: 'F3.9',
+          });
+        }
+        await this.audit.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.MEDICAL_CASE,
+          entityId: caseId,
+          before: { status: MedicalCaseStatus.OPEN },
+          after: {
+            status: MedicalCaseStatus.CLOSED,
+            finalConclusion: body.finalConclusion,
+            totalCost: body.totalCost,
+            lockDecision: decision,
+            ...(activeLock ? { trainingLockId: activeLock.id } : {}),
+          },
+          feature: 'F3.9',
+        });
+        return {
+          closed: { ...medicalCase, ...changes },
+          releasedLockId:
+            activeLock && decision === CaseLockDecision.RELEASE
+              ? activeLock.id
+              : null,
+        };
+      },
+    );
+
+    const closedEvent: MedicalCaseClosedEvent = {
+      eventId: randomUUID(),
+      horseId,
+      caseId,
+      totalCost: body.totalCost,
+    };
+    this.events.publish(MEDICAL_CASE_CLOSED_EVENT, closedEvent);
+    if (releasedLockId) {
+      const lockEvent: TrainingLockReleasedEvent = {
+        eventId: randomUUID(),
+        horseId,
+        lockId: releasedLockId,
+        conclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+      };
+      this.events.publish(MEDICAL_TRAINING_LOCK_RELEASED_EVENT, lockEvent);
+    }
+    return toMedicalCaseResponse(closed, true);
+  }
+
+  /**
+   * Điều chỉnh chi phí của bệnh án đã đóng, bắt buộc lý do (F3.9 mục 8)
+   *
+   * - Số mới trùng số cũ thì không ghi gì và không báo
+   * - Ghi nhật ký giá trị trước, sau và lý do; sau commit báo lại chủ ngựa và Club Manager
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param caseId UUID của bệnh án
+   * @param body Chi phí mới và lý do
+   * @returns A promise resolving to bệnh án sau khi điều chỉnh
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
+   * @throws ConflictException Nếu bệnh án chưa đóng, hoặc ngựa đã chuyển nhượng
+   */
+  async adjustCost(
+    actor: Actor,
+    caseId: string,
+    body: AdjustCaseCostDto,
+  ): Promise<MedicalCaseResponseDto> {
+    const { horseId } = await this.findCase(caseId);
+    const { updated, fromCost } = await this.dataSource.transaction(
+      async (manager) => {
+        const { caller } = await this.access.lockHorseForWrite(
+          manager,
+          actor,
+          horseId,
+        );
+        const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
+          where: { id: caseId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        assertCostAdjustable(medicalCase.status);
+        const previous = costOf(medicalCase) ?? 0;
+        if (previous === body.totalCost) {
+          return { updated: medicalCase, fromCost: null };
+        }
+        const totalCost = String(body.totalCost);
+        await manager.update(MedicalCaseEntity, { id: caseId }, { totalCost });
+        await this.audit.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.MEDICAL_CASE,
+          entityId: caseId,
+          before: { totalCost: previous },
+          after: { totalCost: body.totalCost },
+          reason: body.reason,
+          feature: 'F3.9',
+        });
+        return { updated: { ...medicalCase, totalCost }, fromCost: previous };
+      },
+    );
+    if (fromCost !== null) {
+      const event: MedicalCaseCostAdjustedEvent = {
+        eventId: randomUUID(),
+        horseId,
+        caseId,
+        fromCost,
+        toCost: body.totalCost,
+      };
+      this.events.publish(MEDICAL_CASE_COST_ADJUSTED_EVENT, event);
+    }
+    return toMedicalCaseResponse(updated, true);
+  }
+
+  /**
+   * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án, lọc theo khu hoặc chủ ngựa (F3.10 mục 4)
+   *
+   * @param actor Thông tin danh tính từ Access Token (chỉ Club Manager, kiểm ở controller)
+   * @param query Khoảng ngày và bộ lọc
+   * @returns A promise resolving to tổng chi phí, số bệnh án và từng con ngựa
+   * @throws BadRequestException Nếu ngày bắt đầu sau ngày kết thúc
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   */
+  async costReport(
+    actor: Actor,
+    query: MedicalCostReportQueryDto,
+  ): Promise<MedicalCostReportResponseDto> {
+    await this.horseAccess.currentUser(actor);
+    const { from, to } = query;
+    if (from > to) {
+      throw new BadRequestException('Ngày bắt đầu phải trước ngày kết thúc');
+    }
+    const rows = await this.casesRepository.costByHorse({
+      from,
+      to,
+      barnId: query.barnId,
+      ownerId: query.ownerId,
+    });
+    const items = rows.map((row) => ({
+      horseId: row.horseId,
+      horseName: row.horseName,
+      caseCount: row.caseCount,
+      totalCost: Number(row.totalCost),
+    }));
+    return {
+      from,
+      to,
+      caseCount: items.reduce((sum, item) => sum + item.caseCount, 0),
+      totalCost: items.reduce((sum, item) => sum + item.totalCost, 0),
+      items,
+    };
+  }
+
+  /**
+   * Tìm bệnh án theo id
+   *
+   * @param caseId UUID của bệnh án
+   * @returns A promise resolving to bệnh án
+   * @throws NotFoundException Nếu không có bệnh án
+   */
+  private async findCase(caseId: string): Promise<MedicalCaseEntity> {
+    const medicalCase = await this.cases.findOne({ where: { id: caseId } });
+    if (!medicalCase) throw new NotFoundException('Không tìm thấy bệnh án');
+    return medicalCase;
+  }
+}

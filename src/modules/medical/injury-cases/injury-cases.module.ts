@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { InjuryCaseDetailsController } from './injury-case-details.controller';
 import { InjuryCasesController } from './injury-cases.controller';
 import { InjuryCasesService } from './injury-cases.service';
 
+/**
+ * Owns the read-only injury timeline of a horse (F3.10). Injury markers are written by medical-records.
+ */
 @Module({
-  imports: [TypeOrmModule.forFeature([InjuryMarkerEntity]), HorsesSharedModule],
-  controllers: [InjuryCasesController, InjuryCaseDetailsController],
+  imports: [HorsesSharedModule],
+  controllers: [InjuryCasesController],
   providers: [InjuryCasesService],
 })
 export class InjuryCasesModule {}

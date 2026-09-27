@@ -3,6 +3,24 @@ import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { TrainingLockService } from './training-locks.service';
 
+/**
+ * Dựng service chỉ để gọi hàm hệ thống releaseActiveLockByHorse, không cần dependency nào.
+ *
+ * @returns TrainingLockService với dependency rỗng
+ */
+function systemService(): TrainingLockService {
+  const unused = {} as never;
+  return new TrainingLockService(
+    unused,
+    unused,
+    unused,
+    unused,
+    unused,
+    unused,
+    unused,
+  );
+}
+
 describe('TrainingLockService.releaseActiveLockByHorse', () => {
   const now = new Date('2026-09-23T08:00:00Z');
   let update: jest.Mock;
@@ -23,7 +41,7 @@ describe('TrainingLockService.releaseActiveLockByHorse', () => {
   it('releases the active lock through the given manager and returns true', async () => {
     update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
-    const released = await new TrainingLockService().releaseActiveLockByHorse(
+    const released = await systemService().releaseActiveLockByHorse(
       manager,
       'h1',
       'Gỡ do chuyển nhượng',
@@ -45,7 +63,7 @@ describe('TrainingLockService.releaseActiveLockByHorse', () => {
   it('returns false when the horse has no active lock', async () => {
     update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
 
-    const released = await new TrainingLockService().releaseActiveLockByHorse(
+    const released = await systemService().releaseActiveLockByHorse(
       manager,
       'h2',
       'Gỡ do chuyển nhượng',

@@ -28,3 +28,14 @@ export class InjuryMarkerResponseDto {
   @ApiPropertyOptional({ nullable: true })
   notes!: string | null;
 }
+
+/**
+ * Một dòng diễn biến chấn thương, kèm thời điểm khám và bệnh án của buổi khám (F3.6 mục 2).
+ */
+export class InjuryTimelineItemDto extends InjuryMarkerResponseDto {
+  @ApiProperty({ format: 'date-time' })
+  examDate!: Date;
+
+  @ApiProperty({ format: 'uuid', nullable: true })
+  caseId!: string | null;
+}

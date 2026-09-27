@@ -8,39 +8,44 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
-import { PendingApi } from '../../../common/openapi/pending-api';
 import type { Actor } from '../../../common/types/actor';
-import { CreateMedicalRecordDto } from '../dto/create-medical-record.dto';
-import { CreatePrescriptionDto } from '../dto/create-prescription.dto';
-import { MedicalRecordResponseDto } from '../dto/medical-record.response.dto';
+import {
+  CreateStandaloneVisitDto,
+  MedicalRecordResponseDto,
+  VoidMedicalRecordDto,
+} from '../dto';
 import { MedicalRecordsService } from './medical-records.service';
+import { MedicalVisitsService } from './medical-visits.service';
+
+const MEDICAL_READERS = [
+  UserRole.CLUB_MANAGER,
+  UserRole.HEAD_TRAINER,
+  UserRole.VETERINARIAN,
+  UserRole.HORSE_OWNER,
+];
 
 @ApiTags('medical')
 @ApiBearerAuth()
 @Controller()
-export class MedicalRecordsController extends PendingApi {
-  constructor(private readonly medicalRecords: MedicalRecordsService) {
-    super();
-  }
+export class MedicalRecordsController {
+  constructor(
+    private readonly medicalRecords: MedicalRecordsService,
+    private readonly visits: MedicalVisitsService,
+  ) {}
 
-  @Access([
-    UserRole.CLUB_MANAGER,
-    UserRole.HEAD_TRAINER,
-    UserRole.VETERINARIAN,
-    UserRole.HORSE_OWNER,
-  ])
+  @Access(MEDICAL_READERS)
   @Get('horses/:horseId/medical-records')
   @ApiOperation({
-    summary: 'List horse medical records',
+    summary: 'List horse medical visits',
     description:
-      'Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.',
+      'Mọi buổi khám trong và ngoài bệnh án, kể cả buổi đã hủy, mới nhất lên trên. Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.',
     operationId: 'MedicalController_listRecords',
   })
   @ApiOkResponse({ type: [MedicalRecordResponseDto] })
@@ -51,31 +56,51 @@ export class MedicalRecordsController extends PendingApi {
     return this.medicalRecords.listRecords(actor, horseId);
   }
 
-  @ApiResponse({ status: 501, description: 'Contract only' })
+  @Access([UserRole.VETERINARIAN])
   @Post('horses/:horseId/medical-records')
   @ApiOperation({
-    summary: 'Create append-only medical record',
+    summary: 'Record a medical visit outside a case (F3.3)',
+    description:
+      'Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay (F3.5). Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.',
     operationId: 'MedicalController_createRecord',
   })
+  @ApiCreatedResponse({ type: MedicalRecordResponseDto })
   createRecord(
-    @CurrentUser() _actor: Actor,
-    @Param('horseId', ParseUUIDPipe) _horseId: string,
-    @Body() _body: CreateMedicalRecordDto,
-  ) {
-    return this.pending();
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Body() body: CreateStandaloneVisitDto,
+  ): Promise<MedicalRecordResponseDto> {
+    return this.visits.createStandaloneVisit(actor, horseId, body);
   }
 
-  @ApiResponse({ status: 501, description: 'Contract only' })
-  @Post('medical-records/:id/prescriptions')
+  @Access(MEDICAL_READERS)
+  @Get('medical-records/:id')
   @ApiOperation({
-    summary: 'Add prescription to medical record',
-    operationId: 'MedicalController_addPrescription',
+    summary: 'Get a medical visit',
+    operationId: 'MedicalDetailsController_record',
   })
-  addPrescription(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: CreatePrescriptionDto,
-  ) {
-    return this.pending();
+  @ApiOkResponse({ type: MedicalRecordResponseDto })
+  record(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<MedicalRecordResponseDto> {
+    return this.medicalRecords.getRecord(actor, id);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Post('medical-records/:id/void')
+  @ApiOperation({
+    summary: 'Void a wrongly recorded medical visit (F3.6)',
+    description:
+      'Bắt buộc lý do. Số đo của buổi khám bị gỡ khỏi F1.5. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.',
+    operationId: 'MedicalDetailsController_voidRecord',
+  })
+  @ApiCreatedResponse({ type: MedicalRecordResponseDto })
+  voidRecord(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: VoidMedicalRecordDto,
+  ): Promise<MedicalRecordResponseDto> {
+    return this.visits.voidVisit(actor, id, body);
   }
 }

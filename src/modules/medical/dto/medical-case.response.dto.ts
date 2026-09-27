@@ -1,0 +1,135 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { MedicalRecordResponseDto } from './medical-record.response.dto';
+
+/**
+ * Một bệnh án (F3.5, F3.9). totalCost không có key với Head Trainer, và là null khi bệnh án chưa đóng.
+ */
+export class MedicalCaseResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiProperty({ enum: MedicalCaseStatus })
+  status!: MedicalCaseStatus;
+
+  @ApiProperty({ format: 'date-time' })
+  openedAt!: Date;
+
+  @ApiProperty({ format: 'uuid' })
+  openedBy!: string;
+
+  @ApiProperty()
+  initialDiagnosis!: string;
+
+  @ApiProperty({ format: 'date-time', nullable: true })
+  closedAt!: Date | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  finalConclusion!: string | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    required: false,
+    description: 'VND; không có key với Head Trainer (F3.10 mục 8)',
+  })
+  totalCost?: number | null;
+}
+
+/**
+ * Danh sách bệnh án của một con ngựa và tổng chi phí các bệnh án đã đóng.
+ */
+export class MedicalCaseListResponseDto {
+  @ApiProperty({ type: [MedicalCaseResponseDto] })
+  items!: MedicalCaseResponseDto[];
+
+  @ApiProperty({
+    type: Number,
+    required: false,
+    description:
+      'Tổng chi phí các bệnh án đã đóng; không có key với Head Trainer',
+  })
+  totalCost?: number;
+}
+
+/**
+ * Bệnh án kèm toàn bộ buổi khám, mới nhất lên trên (F3.10 A1).
+ */
+export class MedicalCaseDetailResponseDto extends MedicalCaseResponseDto {
+  @ApiProperty({ type: [MedicalRecordResponseDto] })
+  visits!: MedicalRecordResponseDto[];
+}
+
+/**
+ * Lệnh khóa huấn luyện đang hiệu lực gắn với bệnh án, hiện ở bảng đóng bệnh án.
+ */
+export class CaseActiveLockDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty()
+  reason!: string;
+
+  @ApiProperty({ format: 'date-time', nullable: true })
+  lockEnd!: Date | null;
+}
+
+/**
+ * Những gì bác sĩ cần xem trước khi đóng bệnh án (F3.9 bước 2).
+ */
+export class MedicalCaseClosePreviewResponseDto {
+  @ApiProperty({ type: CaseActiveLockDto, nullable: true })
+  activeLock!: CaseActiveLockDto | null;
+
+  @ApiProperty({ enum: HorseHealthStatus })
+  healthStatus!: HorseHealthStatus;
+
+  @ApiProperty({
+    description: 'True khi ngựa vẫn Chấn thương hoặc Cách ly (F3.9 mục 5)',
+  })
+  healthWarning!: boolean;
+
+  @ApiProperty({ description: 'Số yêu cầu khám còn đang chờ của con ngựa' })
+  pendingRequestCount!: number;
+}
+
+/**
+ * Một dòng của báo cáo chi phí: tổng chi phí của một con ngựa.
+ */
+export class MedicalCostReportRowDto {
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiProperty()
+  horseName!: string;
+
+  @ApiProperty()
+  caseCount!: number;
+
+  @ApiProperty()
+  totalCost!: number;
+}
+
+/**
+ * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án (F3.10 mục 4).
+ */
+export class MedicalCostReportResponseDto {
+  @ApiProperty({ format: 'date' })
+  from!: string;
+
+  @ApiProperty({ format: 'date' })
+  to!: string;
+
+  @ApiProperty()
+  caseCount!: number;
+
+  @ApiProperty()
+  totalCost!: number;
+
+  @ApiProperty({ type: [MedicalCostReportRowDto] })
+  items!: MedicalCostReportRowDto[];
+}

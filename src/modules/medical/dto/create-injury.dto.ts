@@ -7,7 +7,11 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { InjuryBodyRegion, InjuryType } from '../constants/injury-marker.enum';
+import {
+  InjuryBodyRegion,
+  InjuryType,
+  RecoveryStatus,
+} from '../constants/injury-marker.enum';
 
 export class InjuryPositionDto {
   @ApiProperty()
@@ -40,6 +44,13 @@ export class CreateInjuryDto {
   @ApiProperty({ enum: InjuryType })
   @IsEnum(InjuryType)
   injuryType!: InjuryType;
+
+  @ApiProperty({
+    enum: RecoveryStatus,
+    description: 'Mức hồi phục tại buổi khám này (F3.6 mục 2)',
+  })
+  @IsEnum(RecoveryStatus)
+  recoveryStatus!: RecoveryStatus;
 
   @ApiPropertyOptional()
   @IsOptional()

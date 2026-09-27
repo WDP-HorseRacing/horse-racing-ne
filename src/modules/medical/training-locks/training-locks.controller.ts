@@ -4,84 +4,98 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser } from '../../../common/decorators';
-import { PendingApi } from '../../../common/openapi/pending-api';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { CreateTrainingLockDto } from '../dto/create-training-lock.dto';
-import { ReleaseTrainingLockDto } from '../dto/release-training-lock.dto';
-import { UpdateTrainingLockDto } from '../dto/update-training-lock.dto';
+import {
+  CreateTrainingLockDto,
+  ReleaseTrainingLockDto,
+  TrainingLockResponseDto,
+} from '../dto';
+import { TrainingLockService } from './training-locks.service';
+
+const LOCK_READERS = [
+  UserRole.CLUB_MANAGER,
+  UserRole.HEAD_TRAINER,
+  UserRole.VETERINARIAN,
+  UserRole.HORSE_OWNER,
+];
 
 @ApiTags('medical')
 @ApiBearerAuth()
-@ApiResponse({ status: 501, description: 'Contract only' })
 @Controller()
-export class TrainingLocksController extends PendingApi {
+export class TrainingLocksController {
+  constructor(private readonly trainingLocks: TrainingLockService) {}
+
+  @Access([UserRole.VETERINARIAN])
   @Post('horses/:horseId/training-locks')
   @ApiOperation({
-    summary: 'Create veterinary training lock',
+    summary: 'Set a veterinary training lock (F3.8)',
+    description:
+      'Ngựa đã có khóa hiệu lực hoặc đã chuyển nhượng: 409. Ngày dự kiến gỡ ở quá khứ: 400. Ngựa đang có bệnh án mở thì khóa gắn vào bệnh án.',
     operationId: 'MedicalController_lock',
   })
+  @ApiCreatedResponse({ type: TrainingLockResponseDto })
   create(
-    @CurrentUser() _actor: Actor,
-    @Param('horseId', ParseUUIDPipe) _horseId: string,
-    @Body() _body: CreateTrainingLockDto,
-  ) {
-    return this.pending();
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Body() body: CreateTrainingLockDto,
+  ): Promise<TrainingLockResponseDto> {
+    return this.trainingLocks.setLock(actor, horseId, body);
   }
 
+  @Access([UserRole.VETERINARIAN])
   @Post('training-locks/:id/release')
   @ApiOperation({
-    summary: 'Release veterinary training lock',
+    summary: 'Release a training lock with a reason (F3.8)',
+    description: 'Lệnh khóa đã gỡ: 409.',
     operationId: 'MedicalController_release',
   })
+  @ApiCreatedResponse({ type: TrainingLockResponseDto })
   release(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: ReleaseTrainingLockDto,
-  ) {
-    return this.pending();
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ReleaseTrainingLockDto,
+  ): Promise<TrainingLockResponseDto> {
+    return this.trainingLocks.releaseLock(actor, id, body);
   }
 
+  @Access(LOCK_READERS)
   @Get('horses/:horseId/training-locks')
   @ApiOperation({
-    summary: 'List horse training lock history',
+    summary: 'List current and past training locks of a horse (F3.10)',
+    description:
+      'Groom không xem chi tiết khóa, chỉ thấy nhãn trong hồ sơ ngựa (F1.3).',
     operationId: 'MedicalDetailsController_locks',
   })
-  list(
-    @CurrentUser() _actor: Actor,
-    @Param('horseId', ParseUUIDPipe) _horseId: string,
-  ) {
-    return this.pending();
+  @ApiOkResponse({ type: [TrainingLockResponseDto] })
+  locks(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+  ): Promise<TrainingLockResponseDto[]> {
+    return this.trainingLocks.listByHorse(actor, horseId);
   }
 
+  @Access(LOCK_READERS)
   @Get('training-locks/:id')
   @ApiOperation({
-    summary: 'Get training lock details',
+    summary: 'Get a training lock',
     operationId: 'MedicalDetailsController_lock',
   })
-  get(@CurrentUser() _actor: Actor, @Param('id', ParseUUIDPipe) _id: string) {
-    return this.pending();
-  }
-
-  @Patch('training-locks/:id')
-  @ApiOperation({
-    summary: 'Update active veterinary training lock',
-    operationId: 'MedicalDetailsController_updateLock',
-  })
-  update(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: UpdateTrainingLockDto,
-  ) {
-    return this.pending();
+  @ApiOkResponse({ type: TrainingLockResponseDto })
+  lock(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<TrainingLockResponseDto> {
+    return this.trainingLocks.getLock(actor, id);
   }
 }

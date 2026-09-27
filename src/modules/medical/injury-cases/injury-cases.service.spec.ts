@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -26,13 +26,17 @@ describe('InjuryCasesService.listInjuries', () => {
           injuryType: 'Viêm gân',
           recoveryStatus: 'RECOVERING',
           notes: 'Chườm lạnh 2 lần/ngày',
+          medicalRecord: {
+            examDate: new Date('2026-09-20T08:00:00Z'),
+            caseId: 'case-1',
+          },
         },
       ]),
     };
     horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
     service = new InjuryCasesService(
       horseAccess as unknown as HorseAccessService,
-      injuries as unknown as Repository<InjuryMarkerEntity>,
+      { manager: injuries } as unknown as DataSource,
     );
   });
 
@@ -61,5 +65,21 @@ describe('InjuryCasesService.listInjuries', () => {
       'h1',
     );
     expect(injury).toMatchObject({ bodyRegion: 'Chân trước trái' });
+  });
+
+  it('excludes voided visits, orders by exam time and returns exam date and case', async () => {
+    const [injury] = await service.listInjuries(
+      actorWith(UserRole.VETERINARIAN),
+      'h1',
+    );
+    expect(injuries.find).toHaveBeenCalledWith(InjuryMarkerEntity, {
+      where: { medicalRecord: { horseId: 'h1', voidedAt: IsNull() } },
+      relations: { medicalRecord: true },
+      order: { medicalRecord: { examDate: 'ASC' }, createdAt: 'ASC' },
+    });
+    expect(injury).toMatchObject({
+      caseId: 'case-1',
+      examDate: new Date('2026-09-20T08:00:00Z'),
+    });
   });
 });
