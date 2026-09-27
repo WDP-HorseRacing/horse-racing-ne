@@ -12,6 +12,5 @@ import { EvaluationsService } from './training-evaluations.service';
   ],
   controllers: [EvaluationsController],
   providers: [EvaluationsService],
-  exports: [EvaluationsService],
 })
 export class EvaluationsModule {}

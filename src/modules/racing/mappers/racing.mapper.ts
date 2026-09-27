@@ -13,6 +13,12 @@ import { RaceRegistrationEntity } from '../entities/race-registration.entity';
 export function toHorseRaceResultResponse(
   registration: RaceRegistrationEntity,
 ): HorseRaceResultResponseDto {
+  if (!registration.race) {
+    throw new Error(
+      'Quan hệ race chưa được load khi ánh xạ lịch sử thi đấu của ngựa',
+    );
+  }
+
   return {
     registrationId: registration.id,
     raceId: registration.race.id,

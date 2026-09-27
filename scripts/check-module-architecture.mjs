@@ -21,7 +21,7 @@ import ts from 'typescript';
 const MODULES_DIR = path.resolve('src/modules');
 const MAX_FILES_WITHOUT_FEATURES = 20;
 const MAX_SERVICE_LINES = 1000;
-const LEGACY_EXCEPTIONS = new Set(['racing']);
+const LEGACY_EXCEPTIONS = new Set();
 const NON_FEATURE_DIRS = new Set([
   'shared',
   'constants',

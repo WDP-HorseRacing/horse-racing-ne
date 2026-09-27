@@ -1,11 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../../../common/decorators';
 import { PendingApi } from '../../../common/openapi/pending-api';
+import type { Actor } from '../../../common/types/actor';
 import {
   CreateSupplyRequestDto,
   EditSupplyRequestDto,
@@ -22,7 +32,7 @@ export class SupplyRequestsController extends PendingApi {
     summary: 'List supply requests',
     operationId: 'SuppliesController_requests',
   })
-  requests() {
+  requests(@CurrentUser() _actor: Actor) {
     return this.pending();
   }
 
@@ -31,7 +41,10 @@ export class SupplyRequestsController extends PendingApi {
     summary: 'Request supply replenishment',
     operationId: 'SuppliesController_createRequest',
   })
-  createRequest(@Body() _body: CreateSupplyRequestDto) {
+  createRequest(
+    @CurrentUser() _actor: Actor,
+    @Body() _body: CreateSupplyRequestDto,
+  ) {
     return this.pending();
   }
 
@@ -40,7 +53,10 @@ export class SupplyRequestsController extends PendingApi {
     summary: 'Get supply request',
     operationId: 'SuppliesController_request',
   })
-  request(@Param('id') _id: string) {
+  request(
+    @CurrentUser() _actor: Actor,
+    @Param('id', ParseUUIDPipe) _id: string,
+  ) {
     return this.pending();
   }
 
@@ -49,7 +65,11 @@ export class SupplyRequestsController extends PendingApi {
     summary: 'Update a pending supply request',
     operationId: 'SuppliesController_editRequest',
   })
-  editRequest(@Param('id') _id: string, @Body() _body: EditSupplyRequestDto) {
+  editRequest(
+    @CurrentUser() _actor: Actor,
+    @Param('id', ParseUUIDPipe) _id: string,
+    @Body() _body: EditSupplyRequestDto,
+  ) {
     return this.pending();
   }
 
@@ -59,7 +79,8 @@ export class SupplyRequestsController extends PendingApi {
     operationId: 'SuppliesController_updateRequest',
   })
   updateRequestStatus(
-    @Param('id') _id: string,
+    @CurrentUser() _actor: Actor,
+    @Param('id', ParseUUIDPipe) _id: string,
     @Body() _body: UpdateSupplyRequestStatusDto,
   ) {
     return this.pending();

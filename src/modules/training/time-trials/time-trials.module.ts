@@ -9,6 +9,5 @@ import { TimeTrialsService } from './time-trials.service';
   imports: [TypeOrmModule.forFeature([TimeTrialEntity]), TrainingSharedModule],
   controllers: [TimeTrialsController],
   providers: [TimeTrialsService],
-  exports: [TimeTrialsService],
 })
 export class TimeTrialsModule {}
