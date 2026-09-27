@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmOptions } from './common/database/typeorm.options';
 import { DomainEventsModule } from './common/infrastructure/events/domain-events.module';
@@ -44,6 +45,7 @@ import { UsersModule } from './modules/users/users.module';
         }),
     }),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     DomainEventsModule,
     RedisModule,
     AxiosModule,
