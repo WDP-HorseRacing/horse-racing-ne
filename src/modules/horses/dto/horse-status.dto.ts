@@ -6,11 +6,6 @@ import {
   HorseLifecycleStatus,
 } from '../enums/horse-status.enum';
 
-export class UpdateHorseHealthDto {
-  @ApiProperty({ enum: HorseHealthStatus })
-  @IsEnum(HorseHealthStatus)
-  healthStatus!: HorseHealthStatus;
-}
 export class UpdateHorseLifecycleDto {
   @ApiProperty({ enum: HorseLifecycleStatus })
   @IsEnum(HorseLifecycleStatus)
@@ -87,6 +82,18 @@ export class HorseLifecyclePreviewResponseDto {
     description: 'true nếu lệnh khóa huấn luyện đang mở sẽ tự gỡ',
   })
   trainingLockReleased!: boolean;
+
+  @ApiProperty({
+    description:
+      'Số yêu cầu khám đang chờ sẽ tự chuyển Đã bỏ qua (chuyển nhượng)',
+  })
+  examRequestsDismissed!: number;
+
+  @ApiProperty({
+    description:
+      'Số lịch hẹn khám định kỳ và lịch chăm sóc chưa làm sẽ bị hủy (chuyển nhượng)',
+  })
+  careSchedulesCancelled!: number;
 
   @ApiPropertyOptional({
     enum: HorseHealthStatus,

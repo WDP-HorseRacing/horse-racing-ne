@@ -205,7 +205,9 @@ export const PEDIGREE_LOCK_KEY = 'horses.pedigree';
  * - Chủ sở hữu giờ là một trường của hồ sơ (horses.owner_id), không còn là dữ liệu nghiệp vụ riêng.
  */
 export const HORSE_BUSINESS_TABLES: Readonly<Record<string, string>> = {
-  medical_records: 'bệnh án',
+  medical_records: 'buổi khám',
+  medical_cases: 'bệnh án',
+  medical_exam_requests: 'yêu cầu khám',
   care_schedules: 'lịch chăm sóc y tế',
   training_locks: 'lệnh khóa huấn luyện',
   horse_measurements: 'chỉ số cơ thể',

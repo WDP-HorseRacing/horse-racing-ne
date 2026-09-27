@@ -102,6 +102,24 @@ export class HorsesSharedRepository {
   }
 
   /**
+   * Lấy các con ngựa groom đang được giao chăm (dòng groom_assignments còn mở, bảng của module stable, chỉ đọc)
+   *
+   * @param groomId UUID của groom
+   * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
+   * @returns A promise resolving to danh sách UUID ngựa
+   */
+  async assignedHorseIds(
+    groomId: string,
+    manager?: EntityManager,
+  ): Promise<string[]> {
+    const rows = await (manager ?? this.dataSource.manager).find(
+      GroomAssignmentEntity,
+      { where: { groomId, endAt: IsNull() }, select: { horseId: true } },
+    );
+    return rows.map((row) => row.horseId);
+  }
+
+  /**
    * Kiểm tra groom có đang được giao chăm con ngựa không (dòng groom_assignments còn mở, bảng của module stable, chỉ đọc)
    *
    * @param horseId UUID của ngựa

@@ -10,6 +10,9 @@ import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { OPEN_CASE_BLOCKS_TRANSFER_MESSAGE } from '../../medical/constants/medical.constants';
+import { MedicalLifecycleService } from '../../medical/shared/medical-lifecycle.service';
+import { TrainingLockService } from '../../medical/training-locks/training-locks.service';
 import { RaceRegistrationsRepository } from '../../racing/race-registrations/race-registrations.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
@@ -57,6 +60,11 @@ describe('HorseStatusesService', () => {
   let stalls: { releaseStallByHorse: jest.Mock };
   let grooms: { endGroomByHorse: jest.Mock };
   let trainingLocks: { releaseActiveLockByHorse: jest.Mock };
+  let medicalLifecycle: {
+    settleForTransfer: jest.Mock;
+    transferBlockReason: jest.Mock;
+    transferImpact: jest.Mock;
+  };
   let racing: { withdrawOpenRegistrationsByHorse: jest.Mock };
   let events: { publish: jest.Mock };
   let service: HorseStatusesService;
@@ -69,6 +77,7 @@ describe('HorseStatusesService', () => {
     stalls.releaseStallByHorse,
     grooms.endGroomByHorse,
     trainingLocks.releaseActiveLockByHorse,
+    medicalLifecycle.settleForTransfer,
   ];
 
   const expectNoWrite = () => {
@@ -97,6 +106,8 @@ describe('HorseStatusesService', () => {
       barnName: 'Khu A',
       hasActiveTrainingLock: true,
       invalidOwnerName: null,
+      examRequestsToDismiss: 0,
+      careSchedulesToCancel: 0,
     };
     horseRepository = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
     manager = { getRepository: jest.fn(() => horseRepository) };
@@ -133,6 +144,19 @@ describe('HorseStatusesService', () => {
     trainingLocks = {
       releaseActiveLockByHorse: jest.fn().mockResolvedValue(true),
     };
+    medicalLifecycle = {
+      settleForTransfer: jest.fn().mockResolvedValue({
+        examRequestsDismissed: 0,
+        careSchedulesCancelled: 0,
+      }),
+      transferBlockReason: jest.fn().mockResolvedValue(null),
+      transferImpact: jest.fn(() =>
+        Promise.resolve({
+          examRequestsToDismiss: impact.examRequestsToDismiss,
+          careSchedulesToCancel: impact.careSchedulesToCancel,
+        }),
+      ),
+    };
     racing = {
       withdrawOpenRegistrationsByHorse: jest.fn().mockResolvedValue(3),
     };
@@ -144,7 +168,8 @@ describe('HorseStatusesService', () => {
       audit,
       stalls as unknown as StallsService,
       grooms as unknown as GroomAssignmentsService,
-      trainingLocks,
+      trainingLocks as unknown as TrainingLockService,
+      medicalLifecycle as unknown as MedicalLifecycleService,
       racing as unknown as RaceRegistrationsRepository,
       events as unknown as DomainEventPublisher,
     );
@@ -277,6 +302,8 @@ describe('HorseStatusesService', () => {
           groomId: null,
           trainingPlansCancelled: 2,
           trainingLockReleased: true,
+          examRequestsDismissed: 0,
+          careSchedulesCancelled: 0,
           raceRegistrationsWithdrawn: 3,
         },
         reason: 'Bán cho CLB khác',
@@ -303,6 +330,8 @@ describe('HorseStatusesService', () => {
             lifecycleReason: 'Bán',
             barnId: null,
             trainingLockReleased: false,
+            examRequestsDismissed: 0,
+            careSchedulesCancelled: 0,
           },
         }),
       );
@@ -402,6 +431,48 @@ describe('HorseStatusesService', () => {
       },
     );
 
+    it('blocks transferring a horse with an open medical case with 409 and writes nothing', async () => {
+      medicalLifecycle.settleForTransfer.mockRejectedValue(
+        new ConflictException(OPEN_CASE_BLOCKS_TRANSFER_MESSAGE),
+      );
+      await expect(change(HorseLifecycleStatus.TRANSFERRED)).rejects.toThrow(
+        new ConflictException(OPEN_CASE_BLOCKS_TRANSFER_MESSAGE),
+      );
+      expect(medicalLifecycle.settleForTransfer).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+      );
+      for (const mock of sideEffectMocks()) {
+        if (mock !== medicalLifecycle.settleForTransfer) {
+          expect(mock).not.toHaveBeenCalled();
+        }
+      }
+      expect(horseRepository.update).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('audits the medical follow-ups closed by the transfer', async () => {
+      medicalLifecycle.settleForTransfer.mockResolvedValue({
+        examRequestsDismissed: 2,
+        careSchedulesCancelled: 1,
+      });
+      await change(HorseLifecycleStatus.TRANSFERRED);
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          after: expect.objectContaining({
+            examRequestsDismissed: 2,
+            careSchedulesCancelled: 1,
+          }) as unknown,
+        }),
+      );
+    });
+
+    it('does not settle medical work when retiring', async () => {
+      await change(HorseLifecycleStatus.RETIRED);
+      expect(medicalLifecycle.settleForTransfer).not.toHaveBeenCalled();
+    });
+
     it('rejects an invalid transition with 409 and writes nothing', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
       await expect(change(HorseLifecycleStatus.RETIRED)).rejects.toThrow(
@@ -469,7 +540,8 @@ describe('HorseStatusesService', () => {
         audit,
         stalls as unknown as StallsService,
         grooms as unknown as GroomAssignmentsService,
-        trainingLocks,
+        trainingLocks as unknown as TrainingLockService,
+        medicalLifecycle as unknown as MedicalLifecycleService,
         racing as unknown as RaceRegistrationsRepository,
         events as unknown as DomainEventPublisher,
       );
@@ -505,33 +577,6 @@ describe('HorseStatusesService', () => {
         }),
       ).rejects.toThrow(new ForbiddenException(DELETED_MESSAGE));
       expect(statuses.lifecycleImpact).not.toHaveBeenCalled();
-    });
-
-    it('returns 404 to a VETERINARIAN changing the health status of a deleted profile', async () => {
-      horse.deletedAt = new Date('2026-09-01T00:00:00Z');
-      await expect(
-        service.updateHealth(
-          { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] },
-          HORSE_ID,
-          { healthStatus: HorseHealthStatus.UNDER_OBSERVATION },
-        ),
-      ).rejects.toThrow(NotFoundException);
-      expect(horseRepository.update).not.toHaveBeenCalled();
-    });
-
-    it('rejects a caller holding CLUB_MANAGER changing the health status of a deleted profile with 403', async () => {
-      horse.deletedAt = new Date('2026-09-01T00:00:00Z');
-      await expect(
-        service.updateHealth(
-          {
-            sub: 'kc-cm-vet',
-            roles: [UserRole.CLUB_MANAGER, UserRole.VETERINARIAN],
-          },
-          HORSE_ID,
-          { healthStatus: HorseHealthStatus.UNDER_OBSERVATION },
-        ),
-      ).rejects.toThrow(new ForbiddenException(DELETED_MESSAGE));
-      expect(horseRepository.update).not.toHaveBeenCalled();
     });
   });
 
@@ -572,6 +617,8 @@ describe('HorseStatusesService', () => {
         groomEnded: 'Groom A',
         barnCleared: 'Khu A',
         trainingLockReleased: true,
+        examRequestsDismissed: 0,
+        careSchedulesCancelled: 0,
         healthResetTo: null,
         pendingBarnAfter: false,
         ownerCleared: null,
@@ -626,6 +673,8 @@ describe('HorseStatusesService', () => {
         groomEnded: null,
         barnCleared: null,
         trainingLockReleased: false,
+        examRequestsDismissed: 0,
+        careSchedulesCancelled: 0,
         healthResetTo: HorseHealthStatus.UNDER_OBSERVATION,
         pendingBarnAfter: true,
         ownerCleared: null,
@@ -670,6 +719,44 @@ describe('HorseStatusesService', () => {
         }),
       );
       expectNothingWritten();
+    });
+
+    it('blocks a transfer while the horse has an open medical case', async () => {
+      medicalLifecycle.transferBlockReason.mockResolvedValue(
+        OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
+      );
+      await expect(preview(HorseLifecycleStatus.TRANSFERRED)).resolves.toEqual(
+        expect.objectContaining({
+          allowed: false,
+          blockedReason: OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
+          summary: null,
+        }),
+      );
+      expect(medicalLifecycle.transferBlockReason).toHaveBeenCalledWith(
+        HORSE_ID,
+        manager,
+      );
+      expectNothingWritten();
+    });
+
+    it('lists the medical work a transfer will close', async () => {
+      impact.examRequestsToDismiss = 2;
+      impact.careSchedulesToCancel = 1;
+      await expect(preview(HorseLifecycleStatus.TRANSFERRED)).resolves.toEqual(
+        expect.objectContaining({
+          examRequestsDismissed: 2,
+          careSchedulesCancelled: 1,
+        }),
+      );
+      expect(medicalLifecycle.transferImpact).toHaveBeenCalledWith(
+        HORSE_ID,
+        manager,
+      );
+    });
+
+    it('does not check medical cases when previewing a retirement', async () => {
+      await preview(HorseLifecycleStatus.RETIRED);
+      expect(medicalLifecycle.transferBlockReason).not.toHaveBeenCalled();
     });
 
     it('blocks choosing the current status', async () => {

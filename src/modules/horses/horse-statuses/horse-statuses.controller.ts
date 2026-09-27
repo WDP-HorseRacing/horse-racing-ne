@@ -20,7 +20,6 @@ import {
   HorseLifecyclePreviewResponseDto,
   HorseResponseDto,
   LifecyclePreviewQueryDto,
-  UpdateHorseHealthDto,
   UpdateHorseLifecycleDto,
 } from '../dto';
 import { HorseStatusesService } from './horse-statuses.service';
@@ -61,17 +60,5 @@ export class HorseStatusesController {
     @Body() body: UpdateHorseLifecycleDto,
   ): Promise<HorseResponseDto> {
     return this.statusesService.updateLifecycle(actor, horseId, body);
-  }
-
-  @Access([UserRole.VETERINARIAN])
-  @Patch('health-status')
-  @ApiOperation({ summary: 'Change horse health status' })
-  @ApiOkResponse({ type: HorseResponseDto })
-  updateHealth(
-    @CurrentUser() actor: Actor,
-    @Param('horseId', ParseUUIDPipe) horseId: string,
-    @Body() body: UpdateHorseHealthDto,
-  ): Promise<HorseResponseDto> {
-    return this.statusesService.updateHealth(actor, horseId, body);
   }
 }

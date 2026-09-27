@@ -254,7 +254,7 @@ export function assertLifecycleTransition(
  * Xác định các việc cần chạy khi ngựa đổi vòng đời (F1.8), dựa vào trạng thái hiện tại và trạng thái đích.
  *
  * - Giải nghệ (ACTIVE sang RETIRED): hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
- * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu
+ * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt phần y tế; giữ chủ sở hữu
  * - Kích hoạt lại (sang ACTIVE): đặt sức khỏe về UNDER_OBSERVATION; lớp học và đăng ký thi đấu đã hủy không tự khôi phục
  * - Kích hoạt lại từ chuyển nhượng: ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
  *
@@ -278,6 +278,7 @@ export function lifecycleSideEffects(
     endGroom: transferred,
     clearBarn: transferred,
     releaseTrainingLock: transferred,
+    settleMedicalWork: transferred,
     resetHealth: to === HorseLifecycleStatus.ACTIVE,
     reactivateFromTransfer:
       from === HorseLifecycleStatus.TRANSFERRED &&
@@ -327,6 +328,16 @@ export function lifecycleImpactSummary(
   if (effects.releaseTrainingLock && impact.hasActiveTrainingLock) {
     facts.push('lệnh khóa huấn luyện');
     actions.push('gỡ khóa huấn luyện');
+  }
+  if (effects.settleMedicalWork && impact.examRequestsToDismiss > 0) {
+    facts.push(`${impact.examRequestsToDismiss} yêu cầu khám đang chờ`);
+    actions.push('bỏ qua yêu cầu khám');
+  }
+  if (effects.settleMedicalWork && impact.careSchedulesToCancel > 0) {
+    facts.push(
+      `${impact.careSchedulesToCancel} lịch hẹn khám hoặc lịch chăm sóc chưa làm`,
+    );
+    actions.push('hủy các lịch đó');
   }
   if (effects.reactivateFromTransfer) {
     actions.push(

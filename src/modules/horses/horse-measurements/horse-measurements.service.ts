@@ -38,6 +38,7 @@ import {
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import type {
+  ExamMeasurementInput,
   HorseMeasurementAlertEvent,
   HorseMeasurementAlertResult,
 } from '../types/horse.types';
@@ -120,74 +121,122 @@ export class HorseMeasurementsService {
         await this.assertCanRecord(actor, caller.id, horseId, manager);
         this.assertValidValues(body, measuredAt);
 
-        const repository = manager.getRepository(HorseMeasurementEntity);
-        const created: Array<{
-          measurement: HorseMeasurementEntity;
-          alerts: HorseMeasurementAlertResult[];
-        }> = [];
-        for (const item of body.values) {
-          const weightBaseline = await this.weightBaseline(
-            horseId,
-            item.type,
-            measuredAt,
-            manager,
-          );
-          const saved = await repository.save(
-            repository.create({
-              horseId,
-              type: item.type,
-              value: item.value.toFixed(2),
-              measuredAt,
-              measuredBy: caller.id,
-              source: HorseMeasurementSource.MANUAL,
-              medicalRecordId: null,
-            }),
-          );
-          await this.audit.record(manager, {
-            actorId: caller.id,
-            action: AuditAction.CREATE,
-            entityType: AuditEntityType.HORSE_MEASUREMENT,
-            entityId: saved.id,
-            before: null,
-            after: {
-              horseId,
-              type: item.type,
-              value: saved.value,
-              measuredAt,
-              source: HorseMeasurementSource.MANUAL,
-            },
-            feature: 'F1.5',
-          });
-          created.push({
-            measurement: await repository.findOneOrFail({
-              where: { id: saved.id },
-              relations: { measurer: true },
-            }),
-            alerts: measurementAlerts(item.type, item.value, weightBaseline),
-          });
-        }
+        const created = await this.saveMeasurements(manager, {
+          horseId,
+          values: body.values,
+          measuredAt,
+          measuredBy: caller.id,
+          source: HorseMeasurementSource.MANUAL,
+          medicalRecordId: null,
+          feature: 'F1.5',
+        });
         return { callerId: caller.id, created };
       },
     );
 
-    for (const { measurement, alerts } of created) {
-      for (const alert of alerts) {
-        const event: HorseMeasurementAlertEvent = {
-          ...alert,
-          measurementId: measurement.id,
-          horseId,
-          measuredBy: callerId,
-          type: measurement.type,
-          value: Number(measurement.value),
-          unit: HORSE_MEASUREMENT_SPECS[measurement.type].unit,
-          measuredAt,
-        };
-        this.events.publish(HORSE_MEASUREMENT_ALERT_EVENT, event);
-      }
-    }
+    this.publishAlerts(
+      this.toAlertEvents(created, callerId, HorseMeasurementSource.MANUAL),
+    );
     return created.map(({ measurement, alerts }) =>
       toCreatedMeasurementResponse(measurement, alerts),
     );
+  }
+
+  /**
+   * Ghi số đo lấy trong một buổi khám của Flow 3 vào bảng chỉ số (Flow 3 mục III.5.1). Dùng cho module medical gọi trong transaction của họ.
+   *
+   * - Cùng luật giá trị, thời điểm đo và xác nhận giá trị bất thường như F1.5
+   * - Bản ghi lưu với nguồn MEDICAL_EXAM và medicalRecordId của buổi khám; mỗi bản ghi một dòng nhật ký
+   * - Không tự mở transaction, không publish event: trả về các cảnh báo để nơi gọi phát bằng publishAlerts sau khi commit
+   * - Nơi gọi đã khóa row ngựa và kiểm quyền ghi y tế
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param input Ngựa, buổi khám, người đo, thời điểm đo, các cặp loại/giá trị và cờ xác nhận
+   * @returns A promise resolving to các cảnh báo sinh ra, chưa phát
+   * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ, trùng loại hoặc thời điểm đo không hợp lệ
+   * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà chưa xác nhận
+   */
+  async recordExamMeasurements(
+    manager: EntityManager,
+    input: ExamMeasurementInput,
+  ): Promise<HorseMeasurementAlertEvent[]> {
+    if (input.values.length === 0) return [];
+    this.assertValidValues(input, input.measuredAt);
+    const created = await this.saveMeasurements(manager, {
+      horseId: input.horseId,
+      values: input.values,
+      measuredAt: input.measuredAt,
+      measuredBy: input.measuredBy,
+      source: HorseMeasurementSource.MEDICAL_EXAM,
+      medicalRecordId: input.medicalRecordId,
+      feature: input.feature,
+    });
+    return this.toAlertEvents(
+      created,
+      input.measuredBy,
+      HorseMeasurementSource.MEDICAL_EXAM,
+    );
+  }
+
+  /**
+   * Xóa mềm mọi số đo của một buổi khám vừa bị hủy (Flow 3 mục III.2.4). Dùng cho module medical gọi trong transaction của họ.
+   *
+   * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ và mốc cảnh báo giảm cân, giống xóa ở F1.5
+   * - Lưu lý do, người xóa; mỗi bản ghi một dòng nhật ký kèm lý do
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param input Buổi khám bị hủy, lý do hủy, người hủy và mã chức năng ghi nhật ký
+   * @returns A promise resolving to số bản ghi đo đã xóa mềm
+   */
+  async voidExamMeasurements(
+    manager: EntityManager,
+    input: {
+      medicalRecordId: string;
+      reason: string;
+      actorId: string;
+      feature: string;
+    },
+  ): Promise<number> {
+    const measurements = await manager.find(HorseMeasurementEntity, {
+      where: { medicalRecordId: input.medicalRecordId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    for (const measurement of measurements) {
+      await manager.update(
+        HorseMeasurementEntity,
+        { id: measurement.id },
+        { deleteReason: input.reason, deletedBy: input.actorId },
+      );
+      await manager.softDelete(HorseMeasurementEntity, { id: measurement.id });
+      await this.audit.record(manager, {
+        actorId: input.actorId,
+        action: AuditAction.DELETE,
+        entityType: AuditEntityType.HORSE_MEASUREMENT,
+        entityId: measurement.id,
+        before: {
+          horseId: measurement.horseId,
+          type: measurement.type,
+          value: measurement.value,
+          measuredAt: measurement.measuredAt,
+          medicalRecordId: measurement.medicalRecordId,
+        },
+        after: null,
+        reason: input.reason,
+        feature: input.feature,
+      });
+    }
+    return measurements.length;
+  }
+
+  /**
+   * Phát các cảnh báo chỉ số đã sinh ra, gọi sau khi transaction ghi số đo đã commit
+   *
+   * @param events Các cảnh báo cần phát
+   */
+  publishAlerts(events: HorseMeasurementAlertEvent[]): void {
+    for (const event of events) {
+      this.events.publish(HORSE_MEASUREMENT_ALERT_EVENT, event);
+    }
   }
 
   /**
@@ -251,6 +300,113 @@ export class HorseMeasurementsService {
         feature: 'F1.5',
       });
     });
+  }
+
+  /**
+   * Lưu các bản ghi đo của một lần đo, mỗi bản ghi một dòng nhật ký, kèm cảnh báo tính theo mốc cân nặng
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param input Ngựa, các cặp loại/giá trị, thời điểm đo, người đo, nguồn, buổi khám (nếu có) và mã chức năng ghi nhật ký
+   * @returns A promise resolving to các bản ghi vừa lưu (kèm người đo), mỗi bản kèm cảnh báo của nó
+   */
+  private async saveMeasurements(
+    manager: EntityManager,
+    input: {
+      horseId: string;
+      values: Array<{ type: HorseMeasurementType; value: number }>;
+      measuredAt: Date;
+      measuredBy: string;
+      source: HorseMeasurementSource;
+      medicalRecordId: string | null;
+      feature: string;
+    },
+  ): Promise<
+    Array<{
+      measurement: HorseMeasurementEntity;
+      alerts: HorseMeasurementAlertResult[];
+    }>
+  > {
+    const repository = manager.getRepository(HorseMeasurementEntity);
+    const created: Array<{
+      measurement: HorseMeasurementEntity;
+      alerts: HorseMeasurementAlertResult[];
+    }> = [];
+    for (const item of input.values) {
+      const weightBaseline = await this.weightBaseline(
+        input.horseId,
+        item.type,
+        input.measuredAt,
+        manager,
+      );
+      const saved = await repository.save(
+        repository.create({
+          horseId: input.horseId,
+          type: item.type,
+          value: item.value.toFixed(2),
+          measuredAt: input.measuredAt,
+          measuredBy: input.measuredBy,
+          source: input.source,
+          medicalRecordId: input.medicalRecordId,
+        }),
+      );
+      await this.audit.record(manager, {
+        actorId: input.measuredBy,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.HORSE_MEASUREMENT,
+        entityId: saved.id,
+        before: null,
+        after: {
+          horseId: input.horseId,
+          type: item.type,
+          value: saved.value,
+          measuredAt: input.measuredAt,
+          source: input.source,
+          ...(input.medicalRecordId
+            ? { medicalRecordId: input.medicalRecordId }
+            : {}),
+        },
+        feature: input.feature,
+      });
+      created.push({
+        measurement: await repository.findOneOrFail({
+          where: { id: saved.id },
+          relations: { measurer: true },
+        }),
+        alerts: measurementAlerts(item.type, item.value, weightBaseline),
+      });
+    }
+    return created;
+  }
+
+  /**
+   * Dựng payload HORSE_MEASUREMENT_ALERT_EVENT cho từng cảnh báo của các bản ghi vừa lưu
+   *
+   * @param created Các bản ghi vừa lưu, mỗi bản kèm cảnh báo
+   * @param measuredBy UUID người đo
+   * @param source Nguồn số đo (nhập tay hoặc buổi khám)
+   * @returns Danh sách payload, mỗi cảnh báo một payload
+   */
+  private toAlertEvents(
+    created: Array<{
+      measurement: HorseMeasurementEntity;
+      alerts: HorseMeasurementAlertResult[];
+    }>,
+    measuredBy: string,
+    source: HorseMeasurementSource,
+  ): HorseMeasurementAlertEvent[] {
+    return created.flatMap(({ measurement, alerts }) =>
+      alerts.map((alert) => ({
+        ...alert,
+        measurementId: measurement.id,
+        horseId: measurement.horseId,
+        measuredBy,
+        type: measurement.type,
+        value: Number(measurement.value),
+        unit: HORSE_MEASUREMENT_SPECS[measurement.type].unit,
+        measuredAt: measurement.measuredAt,
+        source,
+      })),
+    );
   }
 
   /**
@@ -333,7 +489,10 @@ export class HorseMeasurementsService {
    * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà confirmAbnormal chưa bật
    */
   private assertValidValues(
-    body: CreateHorseMeasurementDto,
+    body: {
+      values: Array<{ type: HorseMeasurementType; value: number }>;
+      confirmAbnormal?: boolean;
+    },
     measuredAt: Date,
   ): void {
     assertDistinctMeasurementTypes(body.values.map((item) => item.type));

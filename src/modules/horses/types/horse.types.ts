@@ -1,3 +1,4 @@
+import type { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import type { EligibilityReason } from '../enums/eligibility-reason.enum';
 import type { HorseGender } from '../enums/horse-gender.enum';
 import type {
@@ -100,7 +101,23 @@ export type HorseMeasurementAlertEvent = HorseMeasurementAlertResult & {
   value: number;
   unit: string;
   measuredAt: Date;
+  source: HorseMeasurementSource;
 };
+
+/**
+ * Số đo lấy trong một buổi khám của Flow 3, ghi vào bảng chỉ số của F1.5 với nguồn MEDICAL_EXAM (Flow 3 mục III.5).
+ *
+ * - feature: mã chức năng ghi vào nhật ký, ví dụ F3.3 hoặc F3.6
+ */
+export interface ExamMeasurementInput {
+  horseId: string;
+  medicalRecordId: string;
+  measuredBy: string;
+  measuredAt: Date;
+  values: Array<{ type: HorseMeasurementType; value: number }>;
+  confirmAbnormal: boolean;
+  feature: string;
+}
 
 /**
  * Payload của domain event HORSE_BARN_ASSIGNED_EVENT, phát sau khi transaction xếp khu đã commit.
@@ -235,6 +252,7 @@ export interface HorseDetailParts {
  * - endGroom: kết thúc phân công groom đang mở.
  * - clearBarn: bỏ khu chuồng (horses.barn_id = null).
  * - releaseTrainingLock: tự gỡ lệnh khóa huấn luyện đang ACTIVE.
+ * - settleMedicalWork: chốt phần y tế khi chuyển nhượng (Flow 3 mục III.8): chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
  * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại.
  * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
  * - Chủ sở hữu không bao giờ bị đổi ở đây: chuyển nhượng vẫn giữ chủ để chủ cũ còn tra cứu.
@@ -246,6 +264,7 @@ export interface LifecycleSideEffects {
   endGroom: boolean;
   clearBarn: boolean;
   releaseTrainingLock: boolean;
+  settleMedicalWork: boolean;
   resetHealth: boolean;
   reactivateFromTransfer: boolean;
 }
@@ -261,4 +280,6 @@ export interface LifecycleImpactRow {
   barnName: string | null;
   hasActiveTrainingLock: boolean;
   invalidOwnerName: string | null;
+  examRequestsToDismiss: number;
+  careSchedulesToCancel: number;
 }

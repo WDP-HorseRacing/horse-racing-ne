@@ -47,6 +47,12 @@ export function toLifecyclePreviewResponse(
     barnCleared: effects.clearBarn ? impact.barnName : null,
     trainingLockReleased:
       effects.releaseTrainingLock && impact.hasActiveTrainingLock,
+    examRequestsDismissed: effects.settleMedicalWork
+      ? impact.examRequestsToDismiss
+      : 0,
+    careSchedulesCancelled: effects.settleMedicalWork
+      ? impact.careSchedulesToCancel
+      : 0,
     healthResetTo: effects.resetHealth
       ? HorseHealthStatus.UNDER_OBSERVATION
       : null,

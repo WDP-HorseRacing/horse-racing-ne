@@ -42,6 +42,7 @@ describe('HorseMeasurementsService', () => {
     findOneOrFail: jest.Mock;
   };
   let manager: {
+    find: jest.Mock;
     findOne: jest.Mock;
     query: jest.Mock;
     update: jest.Mock;
@@ -103,6 +104,7 @@ describe('HorseMeasurementsService', () => {
       ),
     };
     manager = {
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn((entity: unknown) =>
         Promise.resolve(
           entity === UserEntity
@@ -262,6 +264,7 @@ describe('HorseMeasurementsService', () => {
           alert: HorseMeasurementAlert.FEVER,
           horseId: HORSE_ID,
           measurementId: 'm-new',
+          source: HorseMeasurementSource.MANUAL,
         }),
       );
       expect(result[0].alerts).toEqual([
@@ -416,6 +419,102 @@ describe('HorseMeasurementsService', () => {
           entityId: 'm1',
           after: null,
           reason: 'Nhập sai',
+        }),
+      );
+    });
+  });
+
+  describe('recordExamMeasurements', () => {
+    const examInput = (confirmAbnormal = true) => ({
+      horseId: HORSE_ID,
+      medicalRecordId: 'visit-1',
+      measuredBy: CALLER_ID,
+      measuredAt: new Date(),
+      values: [{ type: HorseMeasurementType.TEMPERATURE, value: 39 }],
+      confirmAbnormal,
+      feature: 'F3.3',
+    });
+
+    it('saves exam values as MEDICAL_EXAM with the visit id and returns alerts without publishing', async () => {
+      const alerts = await service.recordExamMeasurements(
+        manager as never,
+        examInput(),
+      );
+      expect(measurementRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: HorseMeasurementSource.MEDICAL_EXAM,
+          medicalRecordId: 'visit-1',
+        }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          feature: 'F3.3',
+          after: expect.objectContaining({
+            source: HorseMeasurementSource.MEDICAL_EXAM,
+            medicalRecordId: 'visit-1',
+          }) as unknown,
+        }),
+      );
+      expect(alerts).toEqual([
+        expect.objectContaining({
+          alert: HorseMeasurementAlert.FEVER,
+          source: HorseMeasurementSource.MEDICAL_EXAM,
+        }),
+      ]);
+      expect(events.publish).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unconfirmed abnormal exam value with 422 and saves nothing', async () => {
+      await expect(
+        service.recordExamMeasurements(manager as never, examInput(false)),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(measurementRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the visit has no measurement', async () => {
+      await expect(
+        service.recordExamMeasurements(manager as never, {
+          ...examInput(),
+          values: [],
+        }),
+      ).resolves.toEqual([]);
+      expect(measurementRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('voidExamMeasurements', () => {
+    it('soft-deletes every measurement of the voided visit with the reason and audits each', async () => {
+      manager.find.mockResolvedValue([
+        { ...storedMeasurement, id: 'm1', medicalRecordId: 'visit-1' },
+        { ...storedMeasurement, id: 'm2', medicalRecordId: 'visit-1' },
+      ]);
+
+      const count = await service.voidExamMeasurements(manager as never, {
+        medicalRecordId: 'visit-1',
+        reason: 'Gõ nhầm cân nặng',
+        actorId: CALLER_ID,
+        feature: 'F3.6',
+      });
+
+      expect(count).toBe(2);
+      expect(manager.find).toHaveBeenCalledWith(HorseMeasurementEntity, {
+        where: { medicalRecordId: 'visit-1' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(manager.update).toHaveBeenCalledWith(
+        HorseMeasurementEntity,
+        { id: 'm1' },
+        { deleteReason: 'Gõ nhầm cân nặng', deletedBy: CALLER_ID },
+      );
+      expect(manager.softDelete).toHaveBeenCalledTimes(2);
+      expect(audit.record).toHaveBeenCalledTimes(2);
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: AuditAction.DELETE,
+          reason: 'Gõ nhầm cân nặng',
+          feature: 'F3.6',
         }),
       );
     });
