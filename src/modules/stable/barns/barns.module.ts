@@ -14,5 +14,6 @@ import { BarnsService } from './barns.service';
   ],
   controllers: [BarnsController],
   providers: [BarnsService],
+  exports: [BarnsService],
 })
 export class BarnsModule {}
