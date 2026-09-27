@@ -46,3 +46,14 @@ export interface BarnContact {
   barnName: string;
   headTrainerId: string | null;
 }
+
+/**
+ * Người liên quan tới một con ngựa để nhận thông báo y tế (Flow 3 mục III.7).
+ *
+ * headTrainerId, ownerId là null khi không có người đang hoạt động để báo.
+ */
+export interface HorseMedicalContact {
+  horseName: string;
+  headTrainerId: string | null;
+  ownerId: string | null;
+}

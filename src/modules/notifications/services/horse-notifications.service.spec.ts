@@ -2,6 +2,7 @@ import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
 } from '../../horses/enums/horse-measurement-alert.enum';
+import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
 import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { NotificationPriority } from '../constants/notification-priority.enum';
@@ -12,7 +13,7 @@ import { NotificationsService } from './notifications.service';
 
 function setup() {
   const recipients = {
-    findActiveVeterinarianIds: jest.fn().mockResolvedValue(['vet-1', 'vet-2']),
+    findActiveUserIdsByRole: jest.fn().mockResolvedValue(['vet-1', 'vet-2']),
     findHorseBarnContact: jest.fn(),
     findBarnContact: jest.fn(),
     findHorseName: jest.fn(),
@@ -35,6 +36,7 @@ const feverEvent: HorseMeasurementAlertEvent = {
   value: 39.1,
   unit: '°C',
   measuredAt: new Date('2026-09-23T00:00:00Z'),
+  source: HorseMeasurementSource.MANUAL,
 };
 
 const weightDropEvent: HorseMeasurementAlertEvent = {
@@ -49,6 +51,7 @@ const weightDropEvent: HorseMeasurementAlertEvent = {
   value: 470,
   unit: 'kg',
   measuredAt: new Date('2026-09-23T00:00:00Z'),
+  source: HorseMeasurementSource.MANUAL,
 };
 
 describe('HorseNotificationsService.notifyMeasurementAlert', () => {

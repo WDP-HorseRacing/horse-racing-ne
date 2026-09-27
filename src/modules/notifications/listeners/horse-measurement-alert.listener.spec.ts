@@ -2,6 +2,7 @@ import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
 } from '../../horses/enums/horse-measurement-alert.enum';
+import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
 import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';
@@ -17,6 +18,7 @@ const event: HorseMeasurementAlertEvent = {
   value: 39.1,
   unit: '°C',
   measuredAt: new Date('2026-09-23T00:00:00Z'),
+  source: HorseMeasurementSource.MANUAL,
 };
 
 describe('HorseMeasurementAlertListener', () => {

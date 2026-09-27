@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { UserRole } from '../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
@@ -47,7 +48,9 @@ export class HorseNotificationsService {
       return [];
     }
 
-    const recipientIds = await this.recipients.findActiveVeterinarianIds();
+    const recipientIds = await this.recipients.findActiveUserIdsByRole(
+      UserRole.VETERINARIAN,
+    );
     if (horse.headTrainerId) {
       recipientIds.push(horse.headTrainerId);
     }
