@@ -20,7 +20,7 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | Horses        | `horses`, `horse_ownerships`, `horse_measurements`                                       |
 | Training      | `training_plans`, `training_sessions`, `time_trials`                                     |
 | Performance   | `performance_metrics`, `performance_thresholds`, `performance_evaluations`               |
-| Medical       | `medical_records`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
+| Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
 | Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents` |
 | Racing        | `races`, `race_registrations`                                                            |
 | Supplies      | `supply_items`, `supply_requests`                                                        |
@@ -48,7 +48,7 @@ API, quyền và state machine của nhóm bảng này mô tả chi tiết trong
   - RETIRED: hủy giáo án SCHEDULED/ACTIVE cùng buổi tập SCHEDULED, rút đăng ký thi đấu còn mở ở race PLANNED/OPEN (`WITHDRAWN`); giữ ô chuồng, lịch chăm sóc, khóa huấn luyện.
   - TRANSFERRED: như RETIRED, thêm đóng sở hữu, groom, xếp chuồng (ô về AVAILABLE) và tự gỡ khóa huấn luyện (`released_by = null`).
   - Ngựa đang có buổi tập IN_PROGRESS hoặc race IN_PROGRESS thì trả 409.
-- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `horse_ownerships`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`, `performance_thresholds`.
+- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `medical_cases`, `medical_exam_requests`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `horse_ownerships`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`, `performance_thresholds`.
 
 Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_id`/`dam_id`, giới hạn `depth` 1–4 (mặc định 2).
 
@@ -94,6 +94,11 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
 
 ## Medical & Supplies
 
+- `medical_cases` (bệnh án, Flow 3): `status` `OPEN`/`CLOSED`/`CANCELLED` (`CANCELLED`: hủy buổi mở bệnh án khi mở nhầm, không có chi phí); partial unique `medical_cases_open_horse_uq (horse_id) WHERE status = 'OPEN'` (mỗi ngựa tối đa một bệnh án mở); `total_cost` `bigint` VND, CHECK `>= 0`, chỉ có khi `CLOSED`.
+- `medical_records` là một **buổi khám**: `kind` `ROUTINE`/`REQUEST`/`FOLLOW_UP`, `conclusion` `NORMAL`/`ISSUE` (chỉ buổi ngoài bệnh án), `case_id` (null với buổi ngoài bệnh án kết luận `NORMAL`), `next_visit_at`, `care_instructions`. Không sửa/xóa; ghi sai thì set `voided_at` + `void_reason`. `diagnosis`, `severity` nullable.
+- `medical_exam_requests` (yêu cầu khám, Flow 3 F3.4): `status` `PENDING`/`EXAMINED`/`DISMISSED`, `source` `GROOM_INCIDENT`/`MEASUREMENT_ALERT`/`STAFF`/`VET`, `requested_by` null khi hệ thống tự sinh; partial unique `(horse_id, alert_type) WHERE status = 'PENDING' AND alert_type IS NOT NULL` chặn trùng yêu cầu tự động.
+- `training_locks.case_id`: bệnh án liên quan (nullable).
+- `care_schedules`: thêm type `ROUTINE_CHECKUP` (ngày hẹn khám định kỳ, partial unique một lịch `SCHEDULED` mỗi ngựa), `completed_by`, `cancel_reason`. `status` chỉ còn `SCHEDULED`/`COMPLETED`/`CANCELLED` (bỏ `IN_PROGRESS` không dùng; cột varchar nên không cần migration).
 - `injury_markers.position` (`jsonb`, nullable): tọa độ `{ x, y, z }` trên mô hình 3D của ngựa; `body_region` vẫn bắt buộc để lọc/tô theo vùng.
 - `supply_items.category`: `FEED` (thức ăn), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc.
 
@@ -142,11 +147,11 @@ Ngựa thuộc khu của Head Trainer khi `horses.barn_id` trỏ tới khu (chư
 | Nhóm                | Phạm vi                     | Nội dung                                                                                                                                                                                                           |
 | ------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | A. Công khai        | Mọi Head Trainer trong club | Hồ sơ ngựa, pedigree, nhãn sức khỏe, lifecycle, measurements, eligibility; tiến độ giáo án và lịch buổi tập; metrics, performance, workload, time trial; thành tích và lịch giải; sơ đồ khu/stall; báo cáo tiến độ |
-| B. Nhạy cảm         | Head Trainer của khu        | Đánh giá chuyên môn buổi tập; ngưỡng và cảnh báo thể lực; hồ sơ y tế, đơn thuốc, chấn thương, khóa huấn luyện; feeding plan, checklist, sự cố; đăng ký thi đấu; báo cáo sức khỏe ngựa                              |
+| B. Nhạy cảm         | Head Trainer của khu        | Đánh giá chuyên môn buổi tập; ngưỡng và cảnh báo thể lực; feeding plan, checklist, sự cố; đăng ký thi đấu                                                    |
 | C. Ghi / quyết định | Head Trainer của khu        | Tạo/sửa/kích hoạt/hoàn thành/hủy giáo án; tạo/sửa/start/complete/cancel buổi tập; time trial, metrics, đánh giá; measurement; ngưỡng; duyệt feeding plan; đăng ký giải; xử lý sự cố                                |
 | D. Không xem        | —                           | Chủ sở hữu và tỷ lệ sở hữu; tài chính, chi phí, doanh thu                                                                                                                                                          |
 
-Club Manager không bị giới hạn theo khu. Veterinarian toàn club. Vi phạm nhóm B/C trả `403`. Các module còn stub (Performance, Realtime, Racing, Stable, Reports) áp dụng bảng này khi implement.
+Club Manager không bị giới hạn theo khu. Veterinarian toàn club. Dữ liệu y tế (bệnh án, buổi khám, đơn thuốc, chấn thương, khóa huấn luyện) Head Trainer xem toàn club theo Flow 3; chỉ gửi yêu cầu khám bị giới hạn theo khu. Vi phạm nhóm B/C trả `403`. Các module còn stub (Performance, Realtime, Racing, Stable, Reports) áp dụng bảng này khi implement.
 
 ## Domain Constraints
 
@@ -158,7 +163,7 @@ Club Manager không bị giới hạn theo khu. Veterinarian toàn club. Vi ph�
 - Ngày sinh không ở tương lai (tạo và sửa).
 - Tạo ngựa có thể kèm `stallId` và `owners`, chạy trong 1 transaction. Ô phải còn (chưa xóa), `AVAILABLE`, thuộc khu `ACTIVE` và chưa có ngựa. Ngựa tham chiếu không được kèm ô/chủ. Luật ô trống này cũng áp cho `POST /stalls/:id/assignments`, nhưng mã lỗi đang lệch: tạo/activate ngựa trả `409`, còn `POST /stalls/:id/assignments` trả `400` khi ô không `AVAILABLE` hoặc khu không `ACTIVE`.
 - Lifecycle: `ACTIVE ↔ RETIRED`, `ACTIVE ↔ TRANSFERRED`, `RETIRED → TRANSFERRED`. Sang `TRANSFERRED`: đóng ownership, groom, phân công chuồng (ô `OCCUPIED` về `AVAILABLE`), hồ sơ chỉ đọc. Ngựa quay lại club: mở lại hồ sơ cũ bằng `TRANSFERRED → ACTIVE` (1 microchip = 1 hồ sơ), rồi gán chủ và xếp chuồng lại.
-- Không set `health_status = ELIGIBLE` khi có `training_locks` `ACTIVE`.
+- `health_status` và `training_locks` độc lập: được set `ELIGIBLE` khi đang có lock `ACTIVE` (Flow 3 mục III.4.3); lock vẫn chặn tập và đua.
 - Chỉ xóa mềm ngựa chưa có dòng nào trong các bảng nghiệp vụ (`HORSE_BUSINESS_TABLES`, danh sách ở mục `horses`) và không là parent của ngựa khác.
 - Eligibility: tập khi `ACTIVE`, health `ELIGIBLE`/`UNDER_OBSERVATION`, không lock; đua khi `ACTIVE`, health `ELIGIBLE`, không lock.
 - Phạm vi xem: danh sách ngựa (`GET /horses`) Club Manager, Head Trainer, Veterinarian, Groom toàn club; Horse Owner theo `horse_ownerships` active. Chi tiết ngựa và API con: Groom theo `groom_assignments` active. Head Trainer bị giới hạn thêm theo khu chuồng (xem mục Khu chuồng).

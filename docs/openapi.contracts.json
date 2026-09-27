@@ -1185,52 +1185,6 @@
         ]
       }
     },
-    "/api/v1/horses/{horseId}/health-status": {
-      "patch": {
-        "operationId": "HorseStatusesController_updateHealth",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateHorseHealthDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HorseResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Change horse health status",
-        "tags": [
-          "horses"
-        ]
-      }
-    },
     "/api/v1/media/upload-requests": {
       "post": {
         "description": "Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only; other roles get 403.",
@@ -1381,6 +1335,7 @@
     },
     "/api/v1/horses/{horseId}/care-schedules": {
       "get": {
+        "description": "Groom chỉ thấy lịch được giao cho mình.",
         "operationId": "MedicalDetailsController_careSchedules",
         "parameters": [
           {
@@ -1393,8 +1348,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CareScheduleResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1402,13 +1367,13 @@
             "bearer": []
           }
         ],
-        "summary": "List vaccination, deworming and farrier schedule",
+        "summary": "List vaccination, deworming and farrier schedules (F3.11)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
+        "description": "Ngày đến hạn ở quá khứ hoặc người được giao không phải VET/Groom đang hoạt động: 400. Ngựa đã chuyển nhượng: 409.",
         "operationId": "MedicalDetailsController_createCareSchedule",
         "parameters": [
           {
@@ -1431,8 +1396,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareScheduleResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1440,15 +1412,15 @@
             "bearer": []
           }
         ],
-        "summary": "Schedule veterinary care",
+        "summary": "Create a care schedule (F3.11)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/care-schedules/{id}": {
       "patch": {
+        "description": "Dời ngày bắt buộc reason. Lịch đã hoàn tất/đã hủy: 409.",
         "operationId": "MedicalDetailsController_updateCareSchedule",
         "parameters": [
           {
@@ -1471,8 +1443,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareScheduleResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1480,15 +1459,15 @@
             "bearer": []
           }
         ],
-        "summary": "Update veterinary care schedule",
+        "summary": "Reschedule or reassign a care schedule (F3.11)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/care-schedules/{id}/complete": {
       "post": {
+        "description": "Veterinarian, hoặc đúng Groom được giao mà vẫn phụ trách ngựa; người khác 403. Chỉ Veterinarian được nhập nextDueAt để tạo luôn lịch lần tới. Lịch đã hoàn tất/đã hủy: 409.",
         "operationId": "MedicalDetailsController_completeCareSchedule",
         "parameters": [
           {
@@ -1500,9 +1479,26 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteCareScheduleDto"
+              }
+            }
+          }
+        },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompleteCareScheduleResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1510,19 +1506,212 @@
             "bearer": []
           }
         ],
-        "summary": "Complete veterinary care item",
+        "summary": "Complete a care schedule (F3.11)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/injury-cases/{id}/timeline": {
+    "/api/v1/care-schedules/{id}/cancel": {
+      "post": {
+        "description": "Lịch đã hoàn tất/đã hủy: 409.",
+        "operationId": "CareSchedulesController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelCareScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareScheduleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel a care schedule with a reason (F3.11)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical/checkups": {
       "get": {
-        "operationId": "MedicalDetailsController_injuryTimeline",
+        "description": "Chu kỳ cố định 30 ngày. Quá hạn lên đầu rồi tới đến hạn. Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa.",
+        "operationId": "CheckupsController_list",
         "parameters": [
           {
-            "name": "id",
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OK",
+                "DUE_SOON",
+                "OVERDUE"
+              ]
+            }
+          },
+          {
+            "name": "barnId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CheckupItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Routine checkup schedule of the herd (F3.2)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/checkup-appointment": {
+      "put": {
+        "description": "Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Ngựa đã chuyển nhượng: 409.",
+        "operationId": "CheckupsController_setAppointment",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCheckupAppointmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckupAppointmentDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set or reschedule the routine checkup appointment (F3.2)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/exam-requests": {
+      "post": {
+        "description": "Veterinarian, Club Manager: mọi ngựa. Head Trainer: ngựa thuộc khu mình (ngoài khu 403). Groom: ngựa được phân công (không được phân công 403). Ngựa đã chuyển nhượng: 409.",
+        "operationId": "ExamRequestsController_create",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExamRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRequestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request a medical exam for a horse (F3.4)",
+        "tags": [
+          "medical"
+        ]
+      },
+      "get": {
+        "description": "Groom chỉ xem ngựa được phân công (403).",
+        "operationId": "ExamRequestsController_listByHorse",
+        "parameters": [
+          {
+            "name": "horseId",
             "required": true,
             "in": "path",
             "schema": {
@@ -1531,8 +1720,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExamRequestResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1540,16 +1739,113 @@
             "bearer": []
           }
         ],
-        "summary": "Get append-only injury recovery timeline",
+        "summary": "List exam requests of a horse (F3.4)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/injury-cases/{id}/recovery-events": {
-      "post": {
-        "operationId": "MedicalDetailsController_recordRecovery",
+    "/api/v1/exam-requests": {
+      "get": {
+        "description": "Mặc định chỉ yêu cầu Chờ xử lý, Khẩn lên trước rồi cũ nhất lên trước. Groom chỉ thấy ngựa được phân công.",
+        "operationId": "ExamRequestsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Mặc định PENDING",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "EXAMINED",
+                "DISMISSED"
+              ]
+            }
+          },
+          {
+            "name": "urgent",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRequestPageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exam request queue (F3.4)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/exam-requests/{id}": {
+      "patch": {
+        "description": "Bắt buộc lý do. Yêu cầu không còn chờ: 409.",
+        "operationId": "ExamRequestsController_updateUrgency",
         "parameters": [
           {
             "name": "id",
@@ -1565,14 +1861,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RecordRecoveryDto"
+                "$ref": "#/components/schemas/UpdateExamRequestUrgencyDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRequestResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1580,16 +1883,16 @@
             "bearer": []
           }
         ],
-        "summary": "Append injury recovery event",
+        "summary": "Change the urgency of a pending exam request (F3.4)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/medical-records/{id}/injuries": {
+    "/api/v1/exam-requests/{id}/dismiss": {
       "post": {
-        "operationId": "MedicalController_addInjury",
+        "description": "Yêu cầu không còn chờ: 409.",
+        "operationId": "ExamRequestsController_dismiss",
         "parameters": [
           {
             "name": "id",
@@ -1605,14 +1908,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateInjuryDto"
+                "$ref": "#/components/schemas/DismissExamRequestDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRequestResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1620,11 +1930,97 @@
             "bearer": []
           }
         ],
-        "summary": "Add injury marker to medical record",
+        "summary": "Dismiss an exam request with a reason (F3.4)",
         "tags": [
           "medical"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/health-status": {
+      "patch": {
+        "description": "Bắt buộc lý do. Trùng trạng thái cũ thì changed = false, không ghi nhật ký. Được đặt ELIGIBLE khi đang có lệnh khóa. Ngựa đã chuyển nhượng: 409.",
+        "operationId": "HorseStatusesController_updateHealth",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHealthStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatusChangeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change horse health status with a reason (F3.7)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/health-history": {
+      "get": {
+        "description": "Mới nhất lên trên. Groom không xem.",
+        "operationId": "HealthStatusesController_history",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HealthHistoryItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Horse health status history (F3.10)",
+        "tags": [
+          "medical"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/injuries": {
@@ -1649,7 +2045,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/InjuryMarkerResponseDto"
+                    "$ref": "#/components/schemas/InjuryTimelineItemDto"
                   }
                 }
               }
@@ -1667,12 +2063,114 @@
         ]
       }
     },
-    "/api/v1/medical-records/{id}": {
+    "/api/v1/medical/dashboard": {
       "get": {
-        "operationId": "MedicalDetailsController_record",
+        "description": "Bốn khối: sơ đồ đàn theo sức khỏe, lịch khám đến hạn/quá hạn, bệnh án đang mở, yêu cầu khám đang chờ. Groom và Horse Owner: 403.",
+        "operationId": "MedicalDashboardController_get",
         "parameters": [
           {
-            "name": "id",
+            "name": "barnId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "healthStatus",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ELIGIBLE",
+                "UNDER_OBSERVATION",
+                "INJURED",
+                "QUARANTINED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalDashboardResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Medical dashboard (F3.1)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/medical-cases": {
+      "get": {
+        "description": "Mới nhất lên trên. totalCost là tổng chi phí các bệnh án đã đóng. Head Trainer không có key chi phí; chi phí bệnh án chưa đóng là null.",
+        "operationId": "MedicalCasesController_listCases",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "CLOSED",
+                "CANCELLED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalCaseListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse medical cases (F3.10)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical-cases/{caseId}": {
+      "get": {
+        "operationId": "MedicalCasesController_getCase",
+        "parameters": [
+          {
+            "name": "caseId",
             "required": true,
             "in": "path",
             "schema": {
@@ -1681,8 +2179,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalCaseDetailResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1690,19 +2195,19 @@
             "bearer": []
           }
         ],
-        "summary": "Get medical record",
+        "summary": "Get a medical case with its visits (F3.10)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/medical-records/{id}/void": {
+    "/api/v1/medical-cases/{caseId}/visits": {
       "post": {
-        "operationId": "MedicalDetailsController_voidRecord",
+        "description": "Bệnh án đã đóng: 409. Thời điểm khám không sớm hơn ngày mở bệnh án.",
+        "operationId": "MedicalCasesController_addVisit",
         "parameters": [
           {
-            "name": "id",
+            "name": "caseId",
             "required": true,
             "in": "path",
             "schema": {
@@ -1715,14 +2220,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VoidMedicalRecordDto"
+                "$ref": "#/components/schemas/CreateFollowUpVisitDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1730,16 +2242,213 @@
             "bearer": []
           }
         ],
-        "summary": "Void medical record with reason",
+        "summary": "Record a follow-up visit in an open case (F3.6)",
         "tags": [
           "medical"
+        ]
+      }
+    },
+    "/api/v1/medical-cases/{caseId}/close-preview": {
+      "get": {
+        "operationId": "MedicalCasesController_closePreview",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalCaseClosePreviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview what must be handled before closing a case (F3.9)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical-cases/{caseId}/close": {
+      "post": {
+        "description": "Lệnh khóa gắn bệnh án còn hiệu lực thì bắt buộc lockDecision (RELEASE hoặc KEEP kèm lockExpectedEnd). Bệnh án đã đóng: 409.",
+        "operationId": "MedicalCasesController_close",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseMedicalCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Close a case with final conclusion and total cost (F3.9)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical-cases/{caseId}/cost": {
+      "patch": {
+        "description": "Bệnh án chưa đóng: 409.",
+        "operationId": "MedicalCasesController_adjustCost",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustCaseCostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adjust the cost of a closed case with a reason (F3.9)",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical/cost-report": {
+      "get": {
+        "description": "Lọc theo khu hoặc chủ ngựa hiện tại trên hồ sơ.",
+        "operationId": "MedicalCasesController_costReport",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Đến ngày (lịch câu lạc bộ), YYYY-MM-DD",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "barnId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": false,
+            "in": "query",
+            "description": "Chủ ngựa hiện tại trên hồ sơ",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalCostReportResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Medical cost report by closing date (F3.10)",
+        "tags": [
+          "medical"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/medical-records": {
       "get": {
-        "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.",
+        "description": "Mọi buổi khám trong và ngoài bệnh án, kể cả buổi đã hủy, mới nhất lên trên. Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.",
         "operationId": "MedicalController_listRecords",
         "parameters": [
           {
@@ -1771,12 +2480,13 @@
             "bearer": []
           }
         ],
-        "summary": "List horse medical records",
+        "summary": "List horse medical visits",
         "tags": [
           "medical"
         ]
       },
       "post": {
+        "description": "Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay (F3.5). Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.",
         "operationId": "MedicalController_createRecord",
         "parameters": [
           {
@@ -1793,14 +2503,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateMedicalRecordDto"
+                "$ref": "#/components/schemas/CreateStandaloneVisitDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1808,16 +2525,52 @@
             "bearer": []
           }
         ],
-        "summary": "Create append-only medical record",
+        "summary": "Record a medical visit outside a case (F3.3)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/medical-records/{id}/prescriptions": {
+    "/api/v1/medical-records/{id}": {
+      "get": {
+        "operationId": "MedicalDetailsController_record",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a medical visit",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical-records/{id}/void": {
       "post": {
-        "operationId": "MedicalController_addPrescription",
+        "description": "Bắt buộc lý do. Số đo của buổi khám bị gỡ khỏi F1.5. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.",
+        "operationId": "MedicalDetailsController_voidRecord",
         "parameters": [
           {
             "name": "id",
@@ -1833,14 +2586,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreatePrescriptionDto"
+                "$ref": "#/components/schemas/VoidMedicalRecordDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1848,15 +2608,15 @@
             "bearer": []
           }
         ],
-        "summary": "Add prescription to medical record",
+        "summary": "Void a wrongly recorded medical visit (F3.6)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/training-locks": {
       "post": {
+        "description": "Ngựa đã có khóa hiệu lực hoặc đã chuyển nhượng: 409. Ngày dự kiến gỡ ở quá khứ: 400. Ngựa đang có bệnh án mở thì khóa gắn vào bệnh án.",
         "operationId": "MedicalController_lock",
         "parameters": [
           {
@@ -1879,8 +2639,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingLockResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1888,13 +2655,13 @@
             "bearer": []
           }
         ],
-        "summary": "Create veterinary training lock",
+        "summary": "Set a veterinary training lock (F3.8)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "get": {
+        "description": "Groom không xem chi tiết khóa, chỉ thấy nhãn trong hồ sơ ngựa (F1.3).",
         "operationId": "MedicalDetailsController_locks",
         "parameters": [
           {
@@ -1907,8 +2674,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingLockResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1916,15 +2693,15 @@
             "bearer": []
           }
         ],
-        "summary": "List horse training lock history",
+        "summary": "List current and past training locks of a horse (F3.10)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/training-locks/{id}/release": {
       "post": {
+        "description": "Lệnh khóa đã gỡ: 409.",
         "operationId": "MedicalController_release",
         "parameters": [
           {
@@ -1947,8 +2724,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingLockResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1956,11 +2740,10 @@
             "bearer": []
           }
         ],
-        "summary": "Release veterinary training lock",
+        "summary": "Release a training lock with a reason (F3.8)",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/training-locks/{id}": {
@@ -1977,58 +2760,26 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get training lock details",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "MedicalDetailsController_updateLock",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTrainingLockDto"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingLockResponseDto"
+                }
               }
             }
           }
         },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
         "security": [
           {
             "bearer": []
           }
         ],
-        "summary": "Update active veterinary training lock",
+        "summary": "Get a training lock",
         "tags": [
           "medical"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/notifications": {
@@ -6930,6 +7681,14 @@
             "type": "boolean",
             "description": "true nếu lệnh khóa huấn luyện đang mở sẽ tự gỡ"
           },
+          "examRequestsDismissed": {
+            "type": "number",
+            "description": "Số yêu cầu khám đang chờ sẽ tự chuyển Đã bỏ qua (chuyển nhượng)"
+          },
+          "careSchedulesCancelled": {
+            "type": "number",
+            "description": "Số lịch hẹn khám định kỳ và lịch chăm sóc chưa làm sẽ bị hủy (chuyển nhượng)"
+          },
           "healthResetTo": {
             "type": "string",
             "enum": [
@@ -6964,6 +7723,8 @@
           "trainingPlansCancelled",
           "raceRegistrationsWithdrawn",
           "trainingLockReleased",
+          "examRequestsDismissed",
+          "careSchedulesCancelled",
           "pendingBarnAfter"
         ]
       },
@@ -6988,23 +7749,6 @@
         "required": [
           "lifecycleStatus",
           "reason"
-        ]
-      },
-      "UpdateHorseHealthDto": {
-        "type": "object",
-        "properties": {
-          "healthStatus": {
-            "type": "string",
-            "enum": [
-              "ELIGIBLE",
-              "UNDER_OBSERVATION",
-              "INJURED",
-              "QUARANTINED"
-            ]
-          }
-        },
-        "required": [
-          "healthStatus"
         ]
       },
       "MediaPurpose": {
@@ -7116,6 +7860,75 @@
           "url"
         ]
       },
+      "CareScheduleResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VACCINATION",
+              "DEWORMING",
+              "FARRIER",
+              "ROUTINE_CHECKUP"
+            ]
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "assignedTo": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedBy": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "type",
+          "dueAt",
+          "assignedTo",
+          "status",
+          "completedAt",
+          "completedBy",
+          "cancelReason",
+          "notes"
+        ]
+      },
       "CreateCareScheduleDto": {
         "type": "object",
         "properties": {
@@ -7129,14 +7942,17 @@
           },
           "dueAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Ngày đến hạn, không ở quá khứ"
           },
           "assignedTo": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Người được giao: Veterinarian hoặc Groom đang hoạt động"
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 2000
           }
         },
         "required": [
@@ -7147,49 +7963,456 @@
       "UpdateCareScheduleDto": {
         "type": "object",
         "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "VACCINATION",
-              "DEWORMING",
-              "FARRIER"
-            ]
-          },
           "dueAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Ngày đến hạn mới; dời ngày bắt buộc reason"
           },
           "assignedTo": {
-            "type": "string",
-            "format": "uuid"
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Gửi null để bỏ người được giao"
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 2000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
           }
         }
       },
-      "RecordRecoveryDto": {
+      "CompleteCareScheduleDto": {
         "type": "object",
         "properties": {
-          "medicalRecordId": {
+          "nextDueAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ngày đến hạn lần tới; có thì tạo lịch mới cùng loại. Chỉ Veterinarian được nhập"
+          }
+        }
+      },
+      "CompleteCareScheduleResponseDto": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "$ref": "#/components/schemas/CareScheduleResponseDto"
+          },
+          "next": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CareScheduleResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "completed",
+          "next"
+        ]
+      },
+      "CancelCareScheduleDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "CheckupAppointmentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
-          "status": {
+          "horseId": {
             "type": "string",
-            "enum": [
-              "ACUTE",
-              "RECOVERING",
-              "HEALED"
-            ]
+            "format": "uuid"
           },
-          "notes": {
+          "scheduledAt": {
+            "format": "date-time",
             "type": "string"
           }
         },
         "required": [
+          "id",
+          "horseId",
+          "scheduledAt"
+        ]
+      },
+      "CheckupItemDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "barnId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "lastVisitDate": {
+            "type": "object",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysLeft": {
+            "type": "number",
+            "description": "Số ngày còn lại tới hạn; âm là đã quá hạn"
+          },
+          "dueStatus": {
+            "type": "string",
+            "enum": [
+              "OK",
+              "DUE_SOON",
+              "OVERDUE"
+            ]
+          },
+          "appointment": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CheckupAppointmentDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "barnId",
+          "healthStatus",
+          "lastVisitDate",
+          "dueDate",
+          "daysLeft",
+          "dueStatus",
+          "appointment"
+        ]
+      },
+      "SetCheckupAppointmentDto": {
+        "type": "object",
+        "properties": {
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ngày giờ hẹn; không ở quá khứ, không muộn hơn hạn khám khi ngựa chưa quá hạn"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Bắt buộc khi dời ngày hẹn đã đặt"
+          }
+        },
+        "required": [
+          "scheduledAt"
+        ]
+      },
+      "CreateExamRequestDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Mô tả dấu hiệu"
+          },
+          "urgent": {
+            "type": "boolean",
+            "default": false,
+            "description": "Mức Khẩn"
+          }
+        },
+        "required": [
+          "description"
+        ]
+      },
+      "ExamRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "requestedBy": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "null khi hệ thống tự sinh từ cảnh báo chỉ số"
+          },
+          "requestedBySystem": {
+            "type": "boolean",
+            "description": "True khi hệ thống tự sinh yêu cầu"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "GROOM_INCIDENT",
+              "MEASUREMENT_ALERT",
+              "STAFF",
+              "VET"
+            ]
+          },
+          "urgent": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "EXAMINED",
+              "DISMISSED"
+            ]
+          },
+          "dismissReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "handledBy": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "handledBySystem": {
+            "type": "boolean",
+            "description": "True khi hệ thống tự xử lý (ví dụ bỏ qua do chuyển nhượng)"
+          },
+          "handledAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "medicalRecordId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "alertType": {
+            "type": "string",
+            "enum": [
+              "FEVER",
+              "WEIGHT_DROP"
+            ],
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "horseName",
+          "requestedBy",
+          "requestedBySystem",
+          "source",
+          "urgent",
+          "description",
+          "status",
+          "dismissReason",
+          "handledBy",
+          "handledBySystem",
+          "handledAt",
           "medicalRecordId",
-          "status"
+          "alertType",
+          "createdAt"
+        ]
+      },
+      "ExamRequestPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamRequestResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
+      "UpdateExamRequestUrgencyDto": {
+        "type": "object",
+        "properties": {
+          "urgent": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "urgent",
+          "reason"
+        ]
+      },
+      "DismissExamRequestDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "UpdateHealthStatusDto": {
+        "type": "object",
+        "properties": {
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "healthStatus",
+          "reason"
+        ]
+      },
+      "HealthStatusChangeResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "changed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "horseId",
+          "from",
+          "to",
+          "changed"
+        ]
+      },
+      "HealthHistoryItemDto": {
+        "type": "object",
+        "properties": {
+          "changedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ],
+            "nullable": true
+          },
+          "to": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "feature": {
+            "type": "string",
+            "nullable": true,
+            "description": "Chức năng gây ra thay đổi, ví dụ F3.3, F3.6, F3.7, F1.8"
+          },
+          "actorId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "null khi hệ thống tự đổi"
+          }
+        },
+        "required": [
+          "changedAt",
+          "from",
+          "to",
+          "reason",
+          "feature",
+          "actorId"
         ]
       },
       "InjuryPositionDto": {
@@ -7211,9 +8434,17 @@
           "z"
         ]
       },
-      "CreateInjuryDto": {
+      "InjuryTimelineItemDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "bodyRegion": {
             "type": "string",
             "enum": [
@@ -7231,7 +8462,8 @@
             ]
           },
           "position": {
-            "description": "Point on the 3D horse model, in model coordinates",
+            "nullable": true,
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/InjuryPositionDto"
@@ -7252,13 +8484,356 @@
               "OTHER"
             ]
           },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          },
           "notes": {
+            "type": "object",
+            "nullable": true
+          },
+          "examDate": {
+            "format": "date-time",
             "type": "string"
+          },
+          "caseId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "required": [
+          "id",
+          "medicalRecordId",
           "bodyRegion",
-          "injuryType"
+          "injuryType",
+          "recoveryStatus",
+          "examDate",
+          "caseId"
+        ]
+      },
+      "HerdCountsDto": {
+        "type": "object",
+        "properties": {
+          "QUARANTINED": {
+            "type": "number"
+          },
+          "INJURED": {
+            "type": "number"
+          },
+          "UNDER_OBSERVATION": {
+            "type": "number"
+          },
+          "ELIGIBLE": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "QUARANTINED",
+          "INJURED",
+          "UNDER_OBSERVATION",
+          "ELIGIBLE"
+        ]
+      },
+      "HerdHorseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "barnId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "stallId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Ô đang xếp; null là ngựa chưa có ô"
+          },
+          "stallCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "barnId",
+          "stallId",
+          "stallCode",
+          "healthStatus"
+        ]
+      },
+      "HerdBlockDto": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/HerdCountsDto"
+          },
+          "horses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HerdHorseDto"
+            }
+          }
+        },
+        "required": [
+          "counts",
+          "horses"
+        ]
+      },
+      "DashboardCareScheduleDto": {
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VACCINATION",
+              "DEWORMING",
+              "FARRIER",
+              "ROUTINE_CHECKUP"
+            ]
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "assignedTo": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "scheduleId",
+          "horseId",
+          "horseName",
+          "type",
+          "dueDate",
+          "assignedTo"
+        ]
+      },
+      "DashboardOpenCaseDto": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "initialDiagnosis": {
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastVisitAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nextVisitAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Ngày hẹn tái khám của buổi khám gần nhất"
+          }
+        },
+        "required": [
+          "caseId",
+          "horseId",
+          "horseName",
+          "initialDiagnosis",
+          "openedAt",
+          "lastVisitAt",
+          "nextVisitAt"
+        ]
+      },
+      "MedicalDashboardResponseDto": {
+        "type": "object",
+        "properties": {
+          "herd": {
+            "$ref": "#/components/schemas/HerdBlockDto"
+          },
+          "checkups": {
+            "description": "Các con quá hạn và đến hạn trong 3 ngày tới, quá hạn lên đầu",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckupItemDto"
+            }
+          },
+          "careSchedules": {
+            "description": "Lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong 3 ngày tới",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardCareScheduleDto"
+            }
+          },
+          "openCases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardOpenCaseDto"
+            }
+          },
+          "pendingRequests": {
+            "description": "Yêu cầu khám đang chờ, Khẩn lên trước",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamRequestResponseDto"
+            }
+          }
+        },
+        "required": [
+          "herd",
+          "checkups",
+          "careSchedules",
+          "openCases",
+          "pendingRequests"
+        ]
+      },
+      "MedicalCaseResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSED",
+              "CANCELLED"
+            ]
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initialDiagnosis": {
+            "type": "string"
+          },
+          "closedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finalConclusion": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalCost": {
+            "type": "number",
+            "nullable": true,
+            "description": "VND; không có key với Head Trainer (F3.10 mục 8)"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "status",
+          "openedAt",
+          "openedBy",
+          "initialDiagnosis",
+          "closedAt",
+          "finalConclusion"
+        ]
+      },
+      "MedicalCaseListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MedicalCaseResponseDto"
+            }
+          },
+          "totalCost": {
+            "type": "number",
+            "description": "Tổng chi phí các bệnh án đã đóng; không có key với Head Trainer"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "PrescriptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "medicine": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string",
+            "description": "Không có key khi caller là Horse Owner"
+          },
+          "frequency": {
+            "type": "string",
+            "description": "Không có key khi caller là Horse Owner"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "object",
+            "format": "date",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "medicine",
+          "startDate"
         ]
       },
       "InjuryMarkerResponseDto": {
@@ -7332,51 +8907,6 @@
           "recoveryStatus"
         ]
       },
-      "VoidMedicalRecordDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason"
-        ]
-      },
-      "PrescriptionResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "medicine": {
-            "type": "string"
-          },
-          "dosage": {
-            "type": "string",
-            "description": "Không có key khi caller là Horse Owner"
-          },
-          "frequency": {
-            "type": "string",
-            "description": "Không có key khi caller là Horse Owner"
-          },
-          "startDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "endDate": {
-            "type": "object",
-            "format": "date",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "medicine",
-          "startDate"
-        ]
-      },
       "MedicalRecordResponseDto": {
         "type": "object",
         "properties": {
@@ -7384,21 +8914,39 @@
             "type": "string",
             "format": "uuid"
           },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "REQUEST",
+              "FOLLOW_UP"
+            ]
+          },
+          "caseId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Bệnh án chứa buổi khám; null với buổi khám ngoài bệnh án kết luận NORMAL"
+          },
+          "conclusion": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "ISSUE"
+            ],
+            "nullable": true
+          },
           "examDate": {
             "format": "date-time",
             "type": "string"
           },
           "diagnosis": {
-            "type": "string"
-          },
-          "severity": {
             "type": "string",
-            "enum": [
-              "LOW",
-              "MODERATE",
-              "HIGH",
-              "CRITICAL"
-            ]
+            "nullable": true
           },
           "resultingStatus": {
             "type": "string",
@@ -7408,6 +8956,15 @@
               "INJURED",
               "QUARANTINED"
             ]
+          },
+          "careInstructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextVisitAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
           },
           "vetId": {
             "type": "string",
@@ -7418,43 +8975,313 @@
             "format": "date-time",
             "nullable": true
           },
+          "voidReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "replacesRecordId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
           "prescriptions": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PrescriptionResponseDto"
             }
+          },
+          "injuries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InjuryMarkerResponseDto"
+            }
           }
         },
         "required": [
           "id",
+          "horseId",
+          "kind",
+          "caseId",
+          "conclusion",
           "examDate",
           "diagnosis",
-          "severity",
           "resultingStatus",
+          "careInstructions",
+          "nextVisitAt",
           "vetId",
-          "prescriptions"
+          "voidReason",
+          "replacesRecordId",
+          "prescriptions",
+          "injuries"
         ]
       },
-      "CreateMedicalRecordDto": {
+      "MedicalCaseDetailResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSED",
+              "CANCELLED"
+            ]
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "initialDiagnosis": {
+            "type": "string"
+          },
+          "closedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finalConclusion": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalCost": {
+            "type": "number",
+            "nullable": true,
+            "description": "VND; không có key với Head Trainer (F3.10 mục 8)"
+          },
+          "visits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MedicalRecordResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "status",
+          "openedAt",
+          "openedBy",
+          "initialDiagnosis",
+          "closedAt",
+          "finalConclusion",
+          "visits"
+        ]
+      },
+      "CreatePrescriptionDto": {
+        "type": "object",
+        "properties": {
+          "medicine": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "dosage": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "frequency": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "YYYY-MM-DD"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "YYYY-MM-DD, không sớm hơn startDate"
+          }
+        },
+        "required": [
+          "medicine",
+          "dosage",
+          "frequency",
+          "startDate"
+        ]
+      },
+      "CreateInjuryDto": {
+        "type": "object",
+        "properties": {
+          "bodyRegion": {
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ]
+          },
+          "position": {
+            "description": "Point on the 3D horse model, in model coordinates",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
+            ]
+          },
+          "injuryType": {
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ]
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ],
+            "description": "Mức hồi phục tại buổi khám này (F3.6 mục 2)"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bodyRegion",
+          "injuryType",
+          "recoveryStatus"
+        ]
+      },
+      "CreateFollowUpVisitDto": {
         "type": "object",
         "properties": {
           "examDate": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Thời điểm khám; mặc định hiện tại. Không ở tương lai, lùi tối đa 7 ngày"
+          },
+          "requestIds": {
+            "description": "Các yêu cầu khám đang chờ của chính con ngựa được gắn vào buổi này",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           "diagnosis": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 4000,
+            "description": "Chẩn đoán, nhận xét, hướng điều trị (văn bản tự do)"
           },
-          "severity": {
+          "healthStatus": {
             "type": "string",
             "enum": [
-              "LOW",
-              "MODERATE",
-              "HIGH",
-              "CRITICAL"
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ],
+            "description": "Trạng thái sức khỏe sau khám; bỏ trống là giữ nguyên"
+          },
+          "healthReason": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Bắt buộc khi trạng thái sức khỏe thay đổi"
+          },
+          "careInstructions": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú chăm sóc, hạn chế vận động cho Head Trainer và Groom"
+          },
+          "nextVisitAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ngày hẹn tái khám; chỉ dùng khi buổi khám thuộc bệnh án, không ở quá khứ"
+          },
+          "measurements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseMeasurementValueDto"
+            }
+          },
+          "confirmAbnormal": {
+            "type": "boolean",
+            "description": "Xác nhận lưu số đo ngoài khoảng bình thường (F1.5 mục 2)"
+          },
+          "prescriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatePrescriptionDto"
+            }
+          },
+          "injuries": {
+            "description": "Chấn thương; chỉ dùng khi buổi khám thuộc bệnh án",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateInjuryDto"
+            }
+          },
+          "replacesRecordId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Buổi khám đã hủy mà buổi này ghi thay (F3.6 mục 8)"
+          }
+        }
+      },
+      "CaseActiveLockDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "lockEnd": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "lockEnd"
+        ]
+      },
+      "MedicalCaseClosePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "activeLock": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaseActiveLockDto"
+              }
             ]
           },
-          "resultingStatus": {
+          "healthStatus": {
             "type": "string",
             "enum": [
               "ELIGIBLE",
@@ -7462,81 +9289,349 @@
               "INJURED",
               "QUARANTINED"
             ]
+          },
+          "healthWarning": {
+            "type": "boolean",
+            "description": "True khi ngựa vẫn Chấn thương hoặc Cách ly (F3.9 mục 5)"
+          },
+          "pendingRequestCount": {
+            "type": "number",
+            "description": "Số yêu cầu khám còn đang chờ của con ngựa"
           }
         },
         "required": [
-          "examDate",
-          "diagnosis"
+          "activeLock",
+          "healthStatus",
+          "healthWarning",
+          "pendingRequestCount"
         ]
       },
-      "CreatePrescriptionDto": {
+      "CloseMedicalCaseDto": {
         "type": "object",
         "properties": {
-          "medicine": {
-            "type": "string"
-          },
-          "dosage": {
-            "type": "string"
-          },
-          "frequency": {
-            "type": "string"
-          },
-          "startDate": {
+          "finalConclusion": {
             "type": "string",
-            "format": "date"
+            "minLength": 1,
+            "maxLength": 4000
           },
-          "endDate": {
+          "totalCost": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000000000,
+            "description": "Tổng chi phí điều trị, số nguyên VND"
+          },
+          "lockDecision": {
             "type": "string",
-            "format": "date"
+            "enum": [
+              "RELEASE",
+              "KEEP"
+            ],
+            "description": "Bắt buộc khi lệnh khóa huấn luyện gắn với bệnh án còn hiệu lực"
+          },
+          "lockExpectedEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ngày dự kiến gỡ khóa; bắt buộc khi lockDecision là KEEP"
           }
         },
         "required": [
-          "medicine",
-          "dosage",
-          "frequency",
-          "startDate",
-          "endDate"
+          "finalConclusion",
+          "totalCost"
         ]
       },
-      "CreateTrainingLockDto": {
+      "AdjustCaseCostDto": {
+        "type": "object",
+        "properties": {
+          "totalCost": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000000000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "totalCost",
+          "reason"
+        ]
+      },
+      "MedicalCostReportRowDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "caseCount": {
+            "type": "number"
+          },
+          "totalCost": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "caseCount",
+          "totalCost"
+        ]
+      },
+      "MedicalCostReportResponseDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "caseCount": {
+            "type": "number"
+          },
+          "totalCost": {
+            "type": "number"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MedicalCostReportRowDto"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "caseCount",
+          "totalCost",
+          "items"
+        ]
+      },
+      "CreateStandaloneVisitDto": {
+        "type": "object",
+        "properties": {
+          "examDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Thời điểm khám; mặc định hiện tại. Không ở tương lai, lùi tối đa 7 ngày"
+          },
+          "requestIds": {
+            "description": "Các yêu cầu khám đang chờ của chính con ngựa được gắn vào buổi này",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "diagnosis": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "Chẩn đoán, nhận xét, hướng điều trị (văn bản tự do)"
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ],
+            "description": "Trạng thái sức khỏe sau khám; bỏ trống là giữ nguyên"
+          },
+          "healthReason": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Bắt buộc khi trạng thái sức khỏe thay đổi"
+          },
+          "careInstructions": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Ghi chú chăm sóc, hạn chế vận động cho Head Trainer và Groom"
+          },
+          "nextVisitAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ngày hẹn tái khám; chỉ dùng khi buổi khám thuộc bệnh án, không ở quá khứ"
+          },
+          "measurements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseMeasurementValueDto"
+            }
+          },
+          "confirmAbnormal": {
+            "type": "boolean",
+            "description": "Xác nhận lưu số đo ngoài khoảng bình thường (F1.5 mục 2)"
+          },
+          "prescriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatePrescriptionDto"
+            }
+          },
+          "injuries": {
+            "description": "Chấn thương; chỉ dùng khi buổi khám thuộc bệnh án",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateInjuryDto"
+            }
+          },
+          "replacesRecordId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Buổi khám đã hủy mà buổi này ghi thay (F3.6 mục 8)"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "REQUEST"
+            ],
+            "description": "ROUTINE khám định kỳ; REQUEST khám theo yêu cầu (bắt buộc gắn ít nhất một yêu cầu)"
+          },
+          "conclusion": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "ISSUE"
+            ]
+          },
+          "initialDiagnosis": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Chẩn đoán ban đầu của bệnh án; bắt buộc khi kết luận ISSUE"
+          }
+        },
+        "required": [
+          "kind",
+          "conclusion"
+        ]
+      },
+      "VoidMedicalRecordDto": {
         "type": "object",
         "properties": {
           "reason": {
-            "type": "string"
-          },
-          "lockEnd": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
           }
         },
         "required": [
           "reason"
         ]
       },
-      "ReleaseTrainingLockDto": {
-        "type": "object",
-        "properties": {
-          "conclusion": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "conclusion"
-        ]
-      },
-      "UpdateTrainingLockDto": {
+      "CreateTrainingLockDto": {
         "type": "object",
         "properties": {
           "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "lockEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Ngày dự kiến gỡ, chỉ để tham khảo; không ở quá khứ"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "TrainingLockResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "caseId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          },
+          "lockStart": {
+            "format": "date-time",
             "type": "string"
           },
           "lockEnd": {
             "type": "object",
             "format": "date-time",
             "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RELEASED"
+            ]
+          },
+          "lockedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "releasedBy": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "null khi hệ thống tự gỡ (xem releasedBySystem)"
+          },
+          "releasedBySystem": {
+            "type": "boolean",
+            "description": "True khi hệ thống tự gỡ, ví dụ do chuyển nhượng"
+          },
+          "releasedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "releaseConclusion": {
+            "type": "string",
+            "nullable": true
           }
-        }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "caseId",
+          "reason",
+          "lockStart",
+          "lockEnd",
+          "status",
+          "lockedBy",
+          "releasedBy",
+          "releasedBySystem",
+          "releasedAt",
+          "releaseConclusion"
+        ]
+      },
+      "ReleaseTrainingLockDto": {
+        "type": "object",
+        "properties": {
+          "conclusion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Lý do gỡ khóa"
+          }
+        },
+        "required": [
+          "conclusion"
+        ]
       },
       "IngestMetricDto": {
         "type": "object",

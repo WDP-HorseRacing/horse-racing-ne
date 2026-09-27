@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 144 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 156 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -42,7 +42,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | PATCH | `/api/v1/horses/{horseId}` | Update horse profile, parents and owner |
 | PUT | `/api/v1/horses/{horseId}/barn` | Assign or change the barn of a horse |
 | GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
-| PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status |
 | PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
 | GET | `/api/v1/horses/{horseId}/lifecycle-status/preview` | Preview the consequences of a lifecycle change |
 | GET | `/api/v1/horses/{horseId}/measurements` | List horse measurement history |
@@ -67,24 +66,37 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| PATCH | `/api/v1/care-schedules/{id}` | Update veterinary care schedule |
-| POST | `/api/v1/care-schedules/{id}/complete` | Complete veterinary care item |
-| GET | `/api/v1/horses/{horseId}/care-schedules` | List vaccination, deworming and farrier schedule |
-| POST | `/api/v1/horses/{horseId}/care-schedules` | Schedule veterinary care |
+| PATCH | `/api/v1/care-schedules/{id}` | Reschedule or reassign a care schedule (F3.11) |
+| POST | `/api/v1/care-schedules/{id}/cancel` | Cancel a care schedule with a reason (F3.11) |
+| POST | `/api/v1/care-schedules/{id}/complete` | Complete a care schedule (F3.11) |
+| GET | `/api/v1/exam-requests` | Exam request queue (F3.4) |
+| PATCH | `/api/v1/exam-requests/{id}` | Change the urgency of a pending exam request (F3.4) |
+| POST | `/api/v1/exam-requests/{id}/dismiss` | Dismiss an exam request with a reason (F3.4) |
+| GET | `/api/v1/horses/{horseId}/care-schedules` | List vaccination, deworming and farrier schedules (F3.11) |
+| POST | `/api/v1/horses/{horseId}/care-schedules` | Create a care schedule (F3.11) |
+| PUT | `/api/v1/horses/{horseId}/checkup-appointment` | Set or reschedule the routine checkup appointment (F3.2) |
+| GET | `/api/v1/horses/{horseId}/exam-requests` | List exam requests of a horse (F3.4) |
+| POST | `/api/v1/horses/{horseId}/exam-requests` | Request a medical exam for a horse (F3.4) |
+| GET | `/api/v1/horses/{horseId}/health-history` | Horse health status history (F3.10) |
+| PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status with a reason (F3.7) |
 | GET | `/api/v1/horses/{horseId}/injuries` | List horse injury timeline |
-| GET | `/api/v1/horses/{horseId}/medical-records` | List horse medical records |
-| POST | `/api/v1/horses/{horseId}/medical-records` | Create append-only medical record |
-| GET | `/api/v1/horses/{horseId}/training-locks` | List horse training lock history |
-| POST | `/api/v1/horses/{horseId}/training-locks` | Create veterinary training lock |
-| POST | `/api/v1/injury-cases/{id}/recovery-events` | Append injury recovery event |
-| GET | `/api/v1/injury-cases/{id}/timeline` | Get append-only injury recovery timeline |
-| GET | `/api/v1/medical-records/{id}` | Get medical record |
-| POST | `/api/v1/medical-records/{id}/injuries` | Add injury marker to medical record |
-| POST | `/api/v1/medical-records/{id}/prescriptions` | Add prescription to medical record |
-| POST | `/api/v1/medical-records/{id}/void` | Void medical record with reason |
-| GET | `/api/v1/training-locks/{id}` | Get training lock details |
-| PATCH | `/api/v1/training-locks/{id}` | Update active veterinary training lock |
-| POST | `/api/v1/training-locks/{id}/release` | Release veterinary training lock |
+| GET | `/api/v1/horses/{horseId}/medical-cases` | List horse medical cases (F3.10) |
+| GET | `/api/v1/horses/{horseId}/medical-records` | List horse medical visits |
+| POST | `/api/v1/horses/{horseId}/medical-records` | Record a medical visit outside a case (F3.3) |
+| GET | `/api/v1/horses/{horseId}/training-locks` | List current and past training locks of a horse (F3.10) |
+| POST | `/api/v1/horses/{horseId}/training-locks` | Set a veterinary training lock (F3.8) |
+| GET | `/api/v1/medical-cases/{caseId}` | Get a medical case with its visits (F3.10) |
+| POST | `/api/v1/medical-cases/{caseId}/close` | Close a case with final conclusion and total cost (F3.9) |
+| GET | `/api/v1/medical-cases/{caseId}/close-preview` | Preview what must be handled before closing a case (F3.9) |
+| PATCH | `/api/v1/medical-cases/{caseId}/cost` | Adjust the cost of a closed case with a reason (F3.9) |
+| POST | `/api/v1/medical-cases/{caseId}/visits` | Record a follow-up visit in an open case (F3.6) |
+| GET | `/api/v1/medical-records/{id}` | Get a medical visit |
+| POST | `/api/v1/medical-records/{id}/void` | Void a wrongly recorded medical visit (F3.6) |
+| GET | `/api/v1/medical/checkups` | Routine checkup schedule of the herd (F3.2) |
+| GET | `/api/v1/medical/cost-report` | Medical cost report by closing date (F3.10) |
+| GET | `/api/v1/medical/dashboard` | Medical dashboard (F3.1) |
+| GET | `/api/v1/training-locks/{id}` | Get a training lock |
+| POST | `/api/v1/training-locks/{id}/release` | Release a training lock with a reason (F3.8) |
 
 ## notifications
 

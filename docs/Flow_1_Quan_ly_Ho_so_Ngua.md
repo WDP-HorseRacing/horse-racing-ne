@@ -162,7 +162,7 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 1. Mọi thao tác Thêm, Sửa, Xóa trong Flow 1 đều ghi nhật ký: người thực hiện, thời điểm, chức năng, đối tượng, giá trị trước và sau, lý do (nếu chức năng yêu cầu nhập lý do).
 2. Dữ liệu ngoài quyền phải được loại bỏ trước khi gửi về máy người dùng. Trường bị ẩn thì không có trong dữ liệu trả về, không gửi đủ rồi ẩn ở giao diện.
 3. Truy cập ngoài phạm vi trả về 404. Mã 403 chỉ dùng khi người dùng xem được con ngựa nhưng không được thực hiện một thao tác cụ thể, hoặc vai trò không có quyền làm thao tác đó. Có quyền nhưng trạng thái dữ liệu không cho phép (ví dụ hồ sơ đã chuyển nhượng, khu hết chỗ, hai người cùng lưu) thì trả 409 kèm lý do. *(BA chốt 2026-09-23)*
-4. Đổi vòng đời ghi một dòng nhật ký cho con ngựa, kèm đủ các hệ quả đã xảy ra: ô chuồng được trả, GROOM bị kết thúc phân công, lệnh khóa huấn luyện được gỡ, số đăng ký thi đấu bị rút, số giáo án bị hủy, chủ bị bỏ trống. *(BA chốt 2026-09-23)*
+4. Đổi vòng đời ghi một dòng nhật ký cho con ngựa, kèm đủ các hệ quả đã xảy ra: ô chuồng được trả, GROOM bị kết thúc phân công, lệnh khóa huấn luyện được gỡ, số yêu cầu khám bị bỏ qua, lịch hẹn khám và lịch chăm sóc bị hủy, số đăng ký thi đấu bị rút, số giáo án bị hủy, chủ bị bỏ trống. *(BA chốt 2026-09-23)*
 
 ## Phụ lục: Thay đổi so với bản trước
 
@@ -318,7 +318,8 @@ Màn hình hồ sơ đầy đủ của một con ngựa. Tab đầu tiên là th
 | Mục thông tin | CM | HT | VET | GROOM | OWNER |
 |---|---|---|---|---|---|
 | 1. Thông tin hồ sơ: định danh, ảnh, số chip, sở trường cự ly, trạng thái sức khỏe và vòng đời, được tập / được đua, cây phả hệ, chủ sở hữu, khu và ô chuồng, GROOM phụ trách, chỉ số cơ thể và biểu đồ | Xem | Xem | Xem | Xem | Xem |
-| 2. Bệnh án: danh sách bệnh án, các buổi khám, tổng chi phí y tế (Flow 3) | Xem | Xem | Xem | Không | Xem |
+| 2. Bệnh án: danh sách bệnh án, các buổi khám (Flow 3) | Xem | Xem | Xem | Không | Xem |
+| 2b. Tổng chi phí y tế của các bệnh án đã đóng (Flow 3) | Xem | Không | Xem | Không | Xem |
 | 3. Huấn luyện: lớp đang học, lịch buổi tập, kết quả và nhận xét sau buổi tập (Flow 2) | Xem | Xem | Xem | Không | Xem |
 | 4. Thành tích thi đấu (Flow 5) | Xem | Xem | Không | Không | Xem |
 
@@ -572,6 +573,8 @@ Chuyển ngựa sang Đã giải nghệ hoặc Đã chuyển nhượng, kích ho
    - Làm hết phần của giải nghệ nếu ngựa đang ở trạng thái Đang hoạt động.
    - Trả ô chuồng về trống, bỏ khu chuồng, kết thúc phân công GROOM.
    - Lệnh khóa huấn luyện (nếu có) tự động gỡ, ghi rõ lý do "Gỡ do chuyển nhượng".
+   - Bị chặn (409) nếu con ngựa còn bệnh án đang mở; bác sĩ phải đóng bệnh án trước (Flow 3). *(chốt 2026-09-27)*
+   - Yêu cầu khám đang chờ tự chuyển "Đã bỏ qua" với lý do "Do chuyển nhượng"; lịch hẹn khám định kỳ và lịch chăm sóc chưa làm tự hủy (Flow 3). *(chốt 2026-09-27)*
    - Giữ nguyên chủ sở hữu trên hồ sơ để chủ cũ vẫn tra cứu được, hồ sơ chuyển sang chế độ chỉ đọc và có nhãn "Đã chuyển nhượng".
    - GROOM vừa bị kết thúc phân công nhận thông báo "Ngựa X đã chuyển nhượng, bạn không còn phụ trách".
 3. **Kích hoạt lại (RETIRED hoặc TRANSFERRED quay về ACTIVE):**
@@ -582,7 +585,7 @@ Chuyển ngựa sang Đã giải nghệ hoặc Đã chuyển nhượng, kích ho
    - Trạng thái sức khỏe được đặt về "Cần theo dõi" cho tới khi bác sĩ khám lại, vì dữ liệu sức khỏe trong thời gian ngựa ở ngoài câu lạc bộ không còn đáng tin.
 4. **Xóa hồ sơ (xóa mềm):**
    - Chỉ dành cho hồ sơ vừa tạo nhầm và chưa dùng vào việc gì.
-   - Bị chặn nếu con ngựa đã phát sinh bất kỳ dữ liệu nghiệp vụ nào: bệnh án, chỉ số cơ thể, xếp ô chuồng, phân công GROOM, lớp học, đăng ký thi đấu, khẩu phần ăn, checklist hằng ngày, báo cáo sự cố. Cũng bị chặn nếu con ngựa đang là cha hoặc mẹ của con khác.
+   - Bị chặn nếu con ngựa đã phát sinh bất kỳ dữ liệu nghiệp vụ nào: bệnh án, buổi khám, yêu cầu khám, chỉ số cơ thể, xếp ô chuồng, phân công GROOM, lớp học, đăng ký thi đấu, khẩu phần ăn, checklist hằng ngày, báo cáo sự cố. Cũng bị chặn nếu con ngựa đang là cha hoặc mẹ của con khác.
    - Hồ sơ bị ẩn khỏi mọi vai trò trừ CLUB MANAGER. Số chip định danh vẫn bị coi là đã sử dụng.
    - Dữ liệu lịch sử và nhật ký thao tác không bao giờ bị xóa theo.
    - CLUB MANAGER khôi phục được hồ sơ đã xóa, hồ sơ trở về đúng trạng thái trước khi xóa. Riêng khu chuồng: nếu khu cũ không còn nhận được ngựa (hết chỗ, ngừng hoạt động, không còn HEAD TRAINER phụ trách hoặc đã bị xóa) thì bỏ khu, ngựa vào danh sách "Chờ xếp khu". Riêng chủ sở hữu: nếu chủ cũ không còn là tài khoản HORSE OWNER đang hoạt động thì bỏ trống chủ, CLUB MANAGER chọn chủ mới sau. *(BA chốt 2026-09-23)*
@@ -646,13 +649,13 @@ Khi Flow 2 xong, làm các việc sau:
 
 - API đọc thông báo đang trả 501: `GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`. Không có thì người offline không xem lại được thông báo (thông báo vẫn lưu trong bảng `notifications`).
 - Chưa thử client socket thật nhận sự kiện `notification.created` (namespace `/events`, gửi token ở `auth.token`).
-- PATCH health-status (VET) đang nằm ở module horses; docs nói thuộc Flow 3.
+- ~~PATCH health-status (VET) đang nằm ở module horses; docs nói thuộc Flow 3.~~ Chuyển sang Flow 3 (lô 6), bắt buộc lý do và ghi nhật ký; bỏ chặn ELIGIBLE khi đang khóa (Flow 3 mục III.4.3).
 
 ### 3b. Phát hiện khi review nghiệp vụ (2026-09-23), thuộc flow khác
 
 - ~~Flow 2, CRUD ô/khu chuồng~~ Đã sửa 2026-09-23: ô có ngựa không đổi khu/status được; xóa ô chạy trong transaction có lock; khu còn ngựa không xóa, không đóng, không gỡ HT được; không hạ sức chứa dưới số ô; thêm/sửa/xóa khu và ô đều ghi nhật ký; đổi ô sang Bảo trì hoặc xóa ô không được làm khu thiếu chỗ cho ngựa chờ xếp ô.
 - **Flow 2, giáo án**: `training-plans.service` tạo giáo án cho ngựa RETIRED được, và không lock ngựa. Khi RETIRED → TRANSFERRED thì giáo án này không bị hủy.
-- **Flow 3**: chưa có chỗ ghi số đo từ buổi khám vào `horse_measurements` (`source = MEDICAL_EXAM`, `medical_record_id`). Khi làm phải gọi lại `measurementAlerts` và phát event `horse.measurement.alert` như nhánh nhập tay (F1.5 A3, mục 6).
+- ~~**Flow 3** (đang làm, lô 3–4): chưa có chỗ ghi số đo từ buổi khám vào `horse_measurements` (`source = MEDICAL_EXAM`, `medical_record_id`). Khi làm phải gọi lại `measurementAlerts` và phát event `horse.measurement.alert` như nhánh nhập tay (F1.5 A3, mục 6).~~ Đã làm: buổi khám ghi số đo qua `recordExamMeasurements`, phát cảnh báo sau commit (nguồn `MEDICAL_EXAM` không tự sinh yêu cầu khám).
 - **FE**: chưa có API xem trước cho "Xóa hồ sơ" (danh sách dữ liệu đang vướng chỉ biết khi bấm xóa và nhận 409) và cho "Đổi khu" (F1.6 A2 bảng hệ quả) — FE tự dựng từ chi tiết ngựa hoặc làm thêm API preview.
 - Mã lỗi: gửi trường không có trong DTO sửa hồ sơ trả 400 (validation), không phải 403 như F1.4 E5. Vẫn là "từ chối và báo lỗi"; chốt với FE nếu cần đúng 403.
 
