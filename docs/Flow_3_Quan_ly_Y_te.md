@@ -717,6 +717,19 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 
 ## Phụ lục 2: Câu hỏi mở
 
-1. **Flow 2 lệch Flow 1 về "Cần theo dõi"** và **khóa không chặn xếp lịch tập**: xem `docs/Flow_3_cau_hoi_lien_flow.md`, câu 1 và 2.
-2. **GROOM gửi yêu cầu khám khi Flow 4 chưa làm**: đã chốt cho phép, phạm vi ngựa được phân công, nguồn ghi là "Báo cáo sự cố của GROOM". Ảnh đính kèm để dành cho báo cáo sự cố của Flow 4.
-3. Các câu còn lại cần nhóm chốt nằm ở `docs/Flow_3_cau_hoi_lien_flow.md`.
+Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang tổng hợp nghiệp vụ gửi BA: https://claude.ai/artifact/TsCADNF5Kn51aF88q1Aouh. Bảng dưới ghi hướng hệ thống đang chạy; BA chọn khác thì sửa theo.
+
+| # | Câu hỏi | Liên quan | Hệ thống đang chạy |
+|---|---|---|---|
+| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Flow 2 chặn hết |
+| Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Chỉ chặn lúc bắt đầu buổi tập |
+| Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | GROOM gửi yêu cầu khám trực tiếp (ngựa được phân công) |
+| Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Chưa có chỗ xem; dữ liệu đã lưu trong buổi khám |
+| Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |
+| Q6 | Có cần màn "Việc được giao cho tôi" cho GROOM không? | FE | Chỉ xem lịch chăm sóc theo từng con ngựa |
+| Q7 | Tài liệu mô hình dữ liệu ghi quyền ghi số đo lệch spec F1.5 | Flow 1 | Hệ thống theo spec F1.5 (cả bốn loại) |
+| Q8 | Ngựa đã chuyển nhượng có được hủy buổi khám, điều chỉnh chi phí không? | Flow 1, F3.6, F3.9 | Đang chặn |
+| Q9 | Lọc bảng điều khiển theo trạng thái thì số đếm tính trên đâu? | F3.1 | Đếm theo bộ lọc |
+| Q10 | BA xác nhận các thay đổi ở Phụ lục 1 | Toàn Flow 3 | Đã áp dụng |
+
+Đã chốt: GROOM được gửi yêu cầu khám trong lúc Flow 4 chưa làm, phạm vi ngựa được phân công, nguồn ghi là "Báo cáo sự cố của GROOM". Ảnh đính kèm để dành cho báo cáo sự cố của Flow 4.
