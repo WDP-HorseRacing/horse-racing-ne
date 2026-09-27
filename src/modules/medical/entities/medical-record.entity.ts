@@ -1,15 +1,23 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { UserEntity } from '../../users/entities/user.entity';
 import { MedicalSeverity } from '../constants/medical-record.enum';
+import {
+  MedicalVisitConclusion,
+  MedicalVisitKind,
+} from '../constants/medical-visit.enum';
+import { MedicalCaseEntity } from './medical-case.entity';
 
 /**
- * MedicalRecordEntity: hồ sơ bệnh án / khám sức khỏe của ngựa.
- * Dùng để lưu chẩn đoán, mức độ nghiêm trọng và trạng thái sau khi khám.
+ * MedicalRecordEntity: một buổi khám của ngựa (Flow 3 mục III.1).
+ * Buổi khám ngoài bệnh án có caseId null (trừ buổi mở bệnh án); buổi tái khám luôn thuộc một bệnh án.
+ * Không sửa, không xóa; ghi sai thì hủy bằng voidedAt và voidReason.
  */
 @Entity({ name: 'medical_records' })
+@Index('medical_records_horse_exam_idx', ['horseId', 'examDate'])
+@Index('medical_records_case_idx', ['caseId'])
 export class MedicalRecordEntity extends BaseRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -28,14 +36,33 @@ export class MedicalRecordEntity extends BaseRecordEntity {
   @Column({ name: 'exam_date', type: 'timestamptz' })
   examDate!: Date;
 
-  @Column({ type: 'text' })
-  diagnosis!: string;
+  @Column({ type: 'text', nullable: true })
+  diagnosis!: string | null;
 
-  @Column({ type: 'varchar', length: 32 })
-  severity!: MedicalSeverity;
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  severity!: MedicalSeverity | null;
 
   @Column({ name: 'resulting_status', type: 'varchar', length: 32 })
   resultingStatus!: HorseHealthStatus;
+
+  @Column({ name: 'case_id', type: 'uuid', nullable: true })
+  caseId!: string | null;
+
+  @ManyToOne(() => MedicalCaseEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'case_id' })
+  medicalCase!: MedicalCaseEntity | null;
+
+  @Column({ type: 'varchar', length: 16 })
+  kind!: MedicalVisitKind;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  conclusion!: MedicalVisitConclusion | null;
+
+  @Column({ name: 'next_visit_at', type: 'timestamptz', nullable: true })
+  nextVisitAt!: Date | null;
+
+  @Column({ name: 'care_instructions', type: 'text', nullable: true })
+  careInstructions!: string | null;
 
   @Column({ name: 'voided_at', type: 'timestamptz', nullable: true })
   voidedAt!: Date | null;

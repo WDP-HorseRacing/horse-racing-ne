@@ -3,6 +3,7 @@ import { MutableRecordEntity } from '../../../common/database/base-record.entity
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
+import { MedicalCaseEntity } from './medical-case.entity';
 
 /**
  * TrainingLockEntity: khóa huấn luyện tạm thời của ngựa vì lý do y tế.
@@ -56,4 +57,11 @@ export class TrainingLockEntity extends MutableRecordEntity {
 
   @Column({ name: 'release_conclusion', type: 'text', nullable: true })
   releaseConclusion!: string | null;
+
+  @Column({ name: 'case_id', type: 'uuid', nullable: true })
+  caseId!: string | null;
+
+  @ManyToOne(() => MedicalCaseEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'case_id' })
+  medicalCase!: MedicalCaseEntity | null;
 }

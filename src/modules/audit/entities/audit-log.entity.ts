@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { AuditAction } from '../constants/audit-action.enum';
@@ -9,6 +9,7 @@ import { AuditEntityType } from '../constants/audit-entity-type.enum';
  * Dùng để ghi hành động, đối tượng bị thay đổi và dữ liệu trước/sau để truy vết.
  */
 @Entity({ name: 'audit_logs' })
+@Index('audit_logs_entity_idx', ['entityType', 'entityId', 'createdAt'])
 export class AuditLogEntity extends BaseRecordEntity {
   @Column({ name: 'actor_id', type: 'uuid', nullable: true })
   actorId!: string | null;
