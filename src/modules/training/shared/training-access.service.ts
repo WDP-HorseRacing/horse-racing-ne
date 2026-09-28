@@ -149,11 +149,7 @@ export class TrainingAccessService {
             'session',
             'session.id = participant.session_id',
           )
-          .innerJoin(
-            TrainingPlanEntity,
-            'plan',
-            'plan.id = session.plan_id',
-          )
+          .innerJoin(TrainingPlanEntity, 'plan', 'plan.id = session.plan_id')
           .where('plan.class_id = :classId', {
             classId: trainingClass.id,
           })
@@ -173,9 +169,7 @@ export class TrainingAccessService {
   ): Promise<TrainingClassEntity> {
     const caller = await this.currentUser(actor, manager);
     const trainingClass = await this.findTrainingClass(manager, classId);
-    if (
-      !(await this.canReadClass(actor, caller.id, trainingClass, manager))
-    ) {
+    if (!(await this.canReadClass(actor, caller.id, trainingClass, manager))) {
       throw new NotFoundException('Không tìm thấy training class');
     }
     return trainingClass;
@@ -226,12 +220,7 @@ export class TrainingAccessService {
     const plan = await this.findPlan(manager, planId);
     const caller = await this.currentUser(actor, manager);
     if (
-      !(await this.canReadClass(
-        actor,
-        caller.id,
-        plan.trainingClass,
-        manager,
-      ))
+      !(await this.canReadClass(actor, caller.id, plan.trainingClass, manager))
     ) {
       throw new NotFoundException('Không tìm thấy giáo án');
     }
@@ -350,12 +339,10 @@ export class TrainingAccessService {
       });
     }
     if (actor.roles.includes(UserRole.GROOM)) {
-      return manager
-        .getRepository(SessionParticipantEntity)
-        .existsBy({
-          horseEnrollmentId: enrollment.id,
-          assignedGroomId: callerId,
-        });
+      return manager.getRepository(SessionParticipantEntity).existsBy({
+        horseEnrollmentId: enrollment.id,
+        assignedGroomId: callerId,
+      });
     }
     return false;
   }
@@ -368,12 +355,7 @@ export class TrainingAccessService {
     const participant = await this.findParticipant(manager, participantId);
     const caller = await this.currentUser(actor, manager);
     if (
-      !(await this.canReadParticipant(
-        actor,
-        caller.id,
-        participant,
-        manager,
-      ))
+      !(await this.canReadParticipant(actor, caller.id, participant, manager))
     ) {
       throw new NotFoundException('Không tìm thấy participant');
     }
@@ -502,7 +484,9 @@ export class TrainingAccessService {
     }
     if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
       if (participant.session.plan.trainingClass.headTrainerId !== callerId) {
-        throw new ForbiddenException('Participant thuộc class của head trainer khác');
+        throw new ForbiddenException(
+          'Participant thuộc class của head trainer khác',
+        );
       }
       await this.assertTrainerBarn(
         manager,

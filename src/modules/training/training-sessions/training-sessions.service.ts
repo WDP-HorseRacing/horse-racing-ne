@@ -126,7 +126,9 @@ export class TrainingSessionsService {
         plan.status !== TrainingPlanStatus.SCHEDULED &&
         plan.status !== TrainingPlanStatus.ACTIVE
       ) {
-        throw new ConflictException('Không thể sửa session của plan đã kết thúc');
+        throw new ConflictException(
+          'Không thể sửa session của plan đã kết thúc',
+        );
       }
       if (plan.trainingClass.status !== TrainingClassStatus.ACTIVE) {
         throw new ConflictException('Class phải ACTIVE để sửa session');
