@@ -1,5 +1,6 @@
 require('reflect-metadata');
 require('ts-node/register');
+require('tsconfig-paths/register');
 
 const { readdirSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');

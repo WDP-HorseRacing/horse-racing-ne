@@ -1,27 +1,26 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
-import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
+import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 
 /**
- * PerformanceMetricEntity: số liệu hiệu suất thu thập trong một buổi tập.
- * Dùng để lưu nhịp tim, tốc độ và mức cảnh báo theo thời gian thực.
+ * PerformanceMetricEntity: số liệu hiệu suất của một Horse trong một participant.
  */
 @Entity({ name: 'performance_metrics' })
 @Index(
   'performance_metrics_source_uq',
-  ['sessionId', 'recordedAt', 'sourceId'],
+  ['sessionParticipantId', 'recordedAt', 'sourceId'],
   { unique: true },
 )
 export class PerformanceMetricEntity extends BaseRecordEntity {
-  @Column({ name: 'session_id', type: 'uuid' })
-  sessionId!: string;
+  @Column({ name: 'session_participant_id', type: 'uuid' })
+  sessionParticipantId!: string;
 
-  @ManyToOne(() => TrainingSessionEntity, {
+  @ManyToOne(() => SessionParticipantEntity, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'session_id' })
-  session!: TrainingSessionEntity;
+  @JoinColumn({ name: 'session_participant_id' })
+  sessionParticipant!: SessionParticipantEntity;
 
   @Column({ name: 'recorded_at', type: 'timestamptz' })
   recordedAt!: Date;

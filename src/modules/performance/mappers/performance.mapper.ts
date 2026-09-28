@@ -77,7 +77,9 @@ export function toHorsePerformanceResponse(
   const recentMetrics = metrics.map(toMetricPoint);
   return {
     horseId,
-    sessionsTracked: new Set(metrics.map((metric) => metric.sessionId)).size,
+    sessionsTracked: new Set(
+      metrics.map((metric) => metric.sessionParticipantId ?? (metric as any).sessionId),
+    ).size,
     latestMetric: recentMetrics[0] ?? null,
     recentMetrics,
     latestEvaluation: evaluations[0]

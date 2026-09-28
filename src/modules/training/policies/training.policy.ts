@@ -1,96 +1,95 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 
-/**
- * Trích xuất phần ngày (YYYY-MM-DD) từ một chuỗi ngày tháng hoặc ISO Date String.
- *
- * @param value Chuỗi ngày (ví dụ: '2026-09-16' hoặc '2026-09-16T15:30:00.000Z')
- * @returns string Chuỗi ngày định dạng YYYY-MM-DD (10 ký tự đầu)
- */
+export function assertClassActivatable(status: TrainingClassStatus): void {
+  if (status !== TrainingClassStatus.DRAFT) {
+    throw new ConflictException('Chỉ class DRAFT mới được kích hoạt');
+  }
+}
+
+export function assertClassCompletable(status: TrainingClassStatus): void {
+  if (status !== TrainingClassStatus.ACTIVE) {
+    throw new ConflictException('Chỉ class ACTIVE mới được hoàn thành');
+  }
+}
+
+export function assertClassCancellable(status: TrainingClassStatus): void {
+  if (
+    status === TrainingClassStatus.COMPLETED ||
+    status === TrainingClassStatus.CANCELLED
+  ) {
+    throw new ConflictException('Class đã ở trạng thái kết thúc');
+  }
+}
+
+export function assertClassEditable(status: TrainingClassStatus): void {
+  if (
+    status === TrainingClassStatus.COMPLETED ||
+    status === TrainingClassStatus.CANCELLED
+  ) {
+    throw new ConflictException('Class đã ở trạng thái kết thúc');
+  }
+}
+
 export function dateOnly(value: string): string {
   return value.slice(0, 10);
 }
 
-/**
- * Kiểm tra tính hợp lệ của thời gian kế hoạch huấn luyện.
- * Đảm bảo ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.
- *
- * @param start Ngày bắt đầu (startDate)
- * @param end Ngày kết thúc (endDate)
- * @throws BadRequestException Nếu startDate > endDate
- */
-export function assertValidPlanDates(start: string, end: string): void {
+export function assertValidDateRange(start: string, end: string): void {
   if (dateOnly(start) > dateOnly(end)) {
     throw new BadRequestException('startDate phải nhỏ hơn hoặc bằng endDate');
   }
 }
 
-/**
- * Kiểm tra ngày lên lịch của một buổi tập có nằm trong khung thời gian của giáo án hay không.
- *
- * @param scheduledAt Thời gian dự kiến diễn ra buổi tập
- * @param startDate Ngày bắt đầu của giáo án
- * @param endDate Ngày kết thúc của giáo án
- * @throws BadRequestException Nếu ngày của buổi tập nằm trước startDate hoặc sau endDate
- */
-export function assertSessionDateInPlan(
-  scheduledAt: string,
+export function assertSessionWindowInPlan(
+  scheduledStartAt: string | Date,
+  scheduledEndAt: string | Date,
   startDate: string,
   endDate: string,
 ): void {
-  const day = dateOnly(scheduledAt);
-  if (day < startDate || day > endDate) {
+  const start = new Date(scheduledStartAt).getTime();
+  const end = new Date(scheduledEndAt).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
+    throw new BadRequestException(
+      'scheduledEndAt phải lớn hơn scheduledStartAt',
+    );
+  }
+  const startDay = dateOnly(new Date(start).toISOString());
+  const endDay = dateOnly(new Date(end).toISOString());
+  if (startDay < dateOnly(startDate) || endDay > dateOnly(endDate)) {
     throw new BadRequestException('Buổi tập phải nằm trong thời gian giáo án');
   }
 }
 
-/**
- * Kiểm tra điều kiện trạng thái để được phép chỉnh sửa kế hoạch huấn luyện.
- * Chỉ cho phép cập nhật khi giáo án chưa bắt đầu (vẫn đang SCHEDULED).
- *
- * @param status Trạng thái hiện tại của giáo án
- * @throws ConflictException Nếu giáo án không ở trạng thái SCHEDULED
- */
+export function assertTrainableHorse(isReference: boolean): void {
+  if (isReference) {
+    throw new BadRequestException(
+      'Ngựa tham chiếu không thuộc đàn, không lập giáo án được',
+    );
+  }
+}
+
 export function assertPlanEditable(status: TrainingPlanStatus): void {
   if (status !== TrainingPlanStatus.SCHEDULED) {
     throw new ConflictException('Chỉ được sửa giáo án đang SCHEDULED');
   }
 }
 
-/**
- * Kiểm tra điều kiện trạng thái để kích hoạt kế hoạch huấn luyện sang ACTIVE.
- * Chỉ giáo án ở trạng thái SCHEDULED mới được phép kích hoạt.
- *
- * @param status Trạng thái hiện tại của giáo án
- * @throws ConflictException Nếu giáo án không ở trạng thái SCHEDULED
- */
 export function assertPlanActivatable(status: TrainingPlanStatus): void {
   if (status !== TrainingPlanStatus.SCHEDULED) {
     throw new ConflictException('Chỉ giáo án SCHEDULED mới được kích hoạt');
   }
 }
 
-/**
- * Kiểm tra điều kiện trạng thái để hoàn thành kế hoạch huấn luyện.
- * Chỉ giáo án đang hoạt động (ACTIVE) mới được phép đánh dấu hoàn thành.
- *
- * @param status Trạng thái hiện tại của giáo án
- * @throws ConflictException Nếu giáo án không ở trạng thái ACTIVE
- */
 export function assertPlanCompletable(status: TrainingPlanStatus): void {
   if (status !== TrainingPlanStatus.ACTIVE) {
     throw new ConflictException('Chỉ giáo án ACTIVE mới được hoàn thành');
   }
 }
 
-/**
- * Kiểm tra điều kiện trạng thái để hủy kế hoạch huấn luyện.
- * Không cho phép hủy một giáo án đã kết thúc (đã hoàn thành hoặc đã bị hủy trước đó).
- *
- * @param status Trạng thái hiện tại của giáo án
- * @throws ConflictException Nếu giáo án đã là COMPLETED hoặc CANCELLED
- */
 export function assertPlanCancellable(status: TrainingPlanStatus): void {
   if (
     status === TrainingPlanStatus.COMPLETED ||
@@ -100,57 +99,72 @@ export function assertPlanCancellable(status: TrainingPlanStatus): void {
   }
 }
 
-/**
- * Kiểm tra điều kiện trạng thái để được phép chỉnh sửa buổi tập.
- * Chỉ cho phép sửa khi buổi tập chưa diễn ra (vẫn đang SCHEDULED).
- *
- * @param status Trạng thái hiện tại của buổi tập
- * @throws ConflictException Nếu buổi tập không ở trạng thái SCHEDULED
- */
 export function assertSessionEditable(status: TrainingSessionStatus): void {
-  if (status !== TrainingSessionStatus.SCHEDULED) {
-    throw new ConflictException('Chỉ được sửa buổi tập đang SCHEDULED');
+  if (status !== TrainingSessionStatus.DRAFT) {
+    throw new ConflictException('Chỉ được sửa buổi tập đang DRAFT');
   }
 }
 
-/**
- * Kiểm tra điều kiện trạng thái để bắt đầu buổi tập (chuyển sang IN_PROGRESS).
- * Chỉ buổi tập đang SCHEDULED mới được bắt đầu.
- *
- * @param status Trạng thái hiện tại của buổi tập
- * @throws ConflictException Nếu buổi tập không ở trạng thái SCHEDULED
- */
-export function assertSessionAbleToStart(status: TrainingSessionStatus): void {
-  if (status !== TrainingSessionStatus.SCHEDULED) {
-    throw new ConflictException('Chỉ buổi tập SCHEDULED mới được bắt đầu');
+export function assertSessionPublishable(status: TrainingSessionStatus): void {
+  if (status !== TrainingSessionStatus.DRAFT) {
+    throw new ConflictException('Chỉ buổi tập DRAFT mới được publish');
   }
 }
 
-/**
- * Kiểm tra điều kiện trạng thái để hoàn thành buổi tập.
- * Buổi tập bắt buộc phải đang diễn ra (IN_PROGRESS) mới được phép hoàn thành và ghi nhận kết quả.
- *
- * @param status Trạng thái hiện tại của buổi tập
- * @throws ConflictException Nếu buổi tập không ở trạng thái IN_PROGRESS
- */
-export function assertSessionCompletable(status: TrainingSessionStatus): void {
-  if (status !== TrainingSessionStatus.IN_PROGRESS) {
-    throw new ConflictException('Chỉ buổi tập IN_PROGRESS mới được hoàn thành');
-  }
-}
-
-/**
- * Kiểm tra điều kiện trạng thái để hủy buổi tập.
- * Không cho phép hủy một buổi tập đã kết thúc (đã hoàn thành hoặc đã bị hủy).
- *
- * @param status Trạng thái hiện tại của buổi tập
- * @throws ConflictException Nếu buổi tập đã là COMPLETED hoặc CANCELLED
- */
 export function assertSessionCancellable(status: TrainingSessionStatus): void {
   if (
     status === TrainingSessionStatus.COMPLETED ||
     status === TrainingSessionStatus.CANCELLED
   ) {
     throw new ConflictException('Buổi tập đã ở trạng thái kết thúc');
+  }
+}
+
+export function assertSessionOperational(status: TrainingSessionStatus): void {
+  if (
+    status !== TrainingSessionStatus.SCHEDULED &&
+    status !== TrainingSessionStatus.IN_PROGRESS
+  ) {
+    throw new ConflictException('Session không ở trạng thái thực thi');
+  }
+}
+
+export function assertParticipantCheckIn(
+  status: SessionParticipantStatus,
+): void {
+  if (status !== SessionParticipantStatus.PLANNED) {
+    throw new ConflictException('Chỉ participant PLANNED mới được check-in');
+  }
+}
+
+export function assertParticipantAbsent(
+  status: SessionParticipantStatus,
+): void {
+  if (status !== SessionParticipantStatus.PLANNED) {
+    throw new ConflictException(
+      'Chỉ participant PLANNED mới được đánh dấu vắng',
+    );
+  }
+}
+
+export function assertParticipantReady(status: SessionParticipantStatus): void {
+  if (status !== SessionParticipantStatus.PRESENT) {
+    throw new ConflictException('Participant phải PRESENT trước khi READY');
+  }
+}
+
+export function assertParticipantStart(status: SessionParticipantStatus): void {
+  if (status !== SessionParticipantStatus.READY) {
+    throw new ConflictException('Participant phải READY trước khi bắt đầu');
+  }
+}
+
+export function assertParticipantComplete(
+  status: SessionParticipantStatus,
+): void {
+  if (status !== SessionParticipantStatus.ONGOING) {
+    throw new ConflictException(
+      'Participant phải ONGOING trước khi hoàn thành',
+    );
   }
 }

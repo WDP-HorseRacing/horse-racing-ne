@@ -1,28 +1,30 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
+import { DataSource, In, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
-import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   CancelTrainingPlanDto,
   CreateTrainingPlanDto,
   TrainingPlanResponseDto,
   UpdateTrainingPlanDto,
 } from '../dto/training-plan.dto';
+import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../enums/training-class-status.enum';
+import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import {
   toTrainingPlanResponse,
   toTrainingPlanView,
-} from '../mappers/training.mapper';
+} from '../mappers/training-plan.mapper';
 import {
   assertPlanActivatable,
   assertPlanCancellable,
   assertPlanCompletable,
   assertPlanEditable,
-  assertValidPlanDates,
+  assertValidDateRange,
   dateOnly,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
@@ -31,216 +33,249 @@ import { TrainingAccessService } from '../shared/training-access.service';
 export class TrainingPlansService {
   constructor(
     @InjectRepository(TrainingPlanEntity)
-    private readonly planRepo: Repository<TrainingPlanEntity>,
+    private readonly plans: Repository<TrainingPlanEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
-    private readonly events: DomainEventPublisher,
   ) {}
 
-  /**
-   * Lấy danh sách giáo án của con ngựa mà người gọi được xem. Groom nhận giáo án không có goal.
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param horseId UUID của ngựa
-   * @returns Danh sách giáo án của con ngựa
-   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
-   */
-  async listPlansByHorse(
+  async listPlansByClass(
     actor: Actor,
-    horseId: string,
+    classId: string,
   ): Promise<TrainingPlanResponseDto[]> {
-    await this.access.readableHorseForActor(actor, horseId);
-    const includeGoal = this.access.seesPlanGoal(actor);
-    return (
-      await this.planRepo.find({
-        where: { horseId },
-        order: { startDate: 'DESC' },
-      })
-    ).map((plan) => toTrainingPlanView(plan, includeGoal));
+    await this.access.assertCanReadClass(actor, classId);
+    const rows = await this.plans.find({
+      where: { classId },
+      order: { startDate: 'DESC', createdAt: 'DESC' },
+    });
+    return rows.map((row) =>
+      toTrainingPlanView(row, this.access.seesPlanGoal(actor)),
+    );
   }
 
-  /**
-   * Lấy một giáo án của con ngựa mà người gọi được xem. Groom nhận giáo án không có goal.
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param id UUID của giáo án
-   * @returns Giáo án
-   * @throws NotFoundException Nếu không có giáo án, hoặc ngựa của giáo án nằm ngoài phạm vi của người gọi
-   */
+  async createTrainingPlan(
+    actor: Actor,
+    classId: string,
+    body: CreateTrainingPlanDto,
+  ): Promise<TrainingPlanResponseDto> {
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const trainingClass = await this.access.lockedTrainingClass(
+        manager,
+        classId,
+      );
+      this.access.assertCanManageClass(
+        actor,
+        caller.id,
+        trainingClass.headTrainerId,
+      );
+      if (body.classId && body.classId !== classId) {
+        throw new ConflictException('classId trong body không khớp route');
+      }
+      if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
+        throw new ConflictException('Chỉ class ACTIVE mới tạo plan');
+      }
+      const startDate = dateOnly(body.startDate);
+      const endDate = dateOnly(body.endDate);
+      assertValidDateRange(startDate, endDate);
+      if (
+        startDate < trainingClass.startDate ||
+        endDate > trainingClass.endDate
+      ) {
+        throw new ConflictException('Plan phải nằm trong thời gian class');
+      }
+      return manager.save(
+        manager.create(TrainingPlanEntity, {
+          classId,
+          name: body.name,
+          createdBy: caller.id,
+          phaseName: body.phaseName,
+          goal: body.goal,
+          startDate,
+          endDate,
+          status: TrainingPlanStatus.SCHEDULED,
+        }),
+      );
+    });
+    return toTrainingPlanResponse(saved);
+  }
+
   async getPlanById(
     actor: Actor,
     id: string,
   ): Promise<TrainingPlanResponseDto> {
     const plan = await this.access.planForActor(actor, id);
-    await this.access.readableHorseForActor(actor, plan.horseId);
     return toTrainingPlanView(plan, this.access.seesPlanGoal(actor));
   }
 
-  /**
-   * Tạo giáo án huấn luyện mới (SCHEDULED) cho ngựa thuộc chuồng do trainer phụ trách.
-   */
-  async createTrainingPlan(
-    actor: Actor,
-    horseId: string,
-    body: CreateTrainingPlanDto,
-  ): Promise<TrainingPlanResponseDto> {
-    const { user, horse } = await this.access.horseForActor(actor, horseId);
-    await this.access.assertTrainerBarn(
-      this.dataSource.manager,
-      actor,
-      user.id,
-      horse.id,
-    );
-    const plan = this.planRepo.create({
-      horseId: horse.id,
-      createdBy: user.id,
-      phaseName: body.phaseName,
-      goal: body.goal,
-      startDate: dateOnly(body.startDate),
-      endDate: dateOnly(body.endDate),
-      status: TrainingPlanStatus.SCHEDULED,
-    });
-    return toTrainingPlanResponse(await this.planRepo.save(plan));
-  }
-
-  /**
-   * Cập nhật thông tin giáo án (chỉ khi SCHEDULED) và đảm bảo khoảng ngày mới
-   * bao phủ toàn bộ các buổi tập đã lên lịch.
-   */
   async updatePlan(
     actor: Actor,
     planId: string,
-    updateDto: UpdateTrainingPlanDto,
+    body: UpdateTrainingPlanDto,
   ): Promise<TrainingPlanResponseDto> {
-    const caller = await this.access.currentUser(actor);
-    const updated = await this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
       const plan = await this.access.lockedPlan(manager, planId);
-      await this.access.assertTrainerBarn(
-        manager,
+      this.access.assertCanManageClass(
         actor,
         caller.id,
-        plan.horseId,
+        plan.trainingClass.headTrainerId,
       );
-      assertPlanEditable(plan.status); // kiểm tra: plan phải có status SCHEDULED
-      const startDate = updateDto.startDate
-        ? dateOnly(updateDto.startDate)
+      assertPlanEditable(plan.status);
+      if (body.classId && body.classId !== plan.classId) {
+        throw new ConflictException('Không được đổi class của plan');
+      }
+      const startDate = body.startDate
+        ? dateOnly(body.startDate)
         : plan.startDate;
-      const endDate = updateDto.endDate
-        ? dateOnly(updateDto.endDate)
-        : plan.endDate;
-      assertValidPlanDates(startDate, endDate); // kiểm tra lại: endDate > startDate
-      // đảm bảo không có session nào nằm ngoài (startDate và endDate) mới
+      const endDate = body.endDate ? dateOnly(body.endDate) : plan.endDate;
+      assertValidDateRange(startDate, endDate);
+      if (
+        startDate < plan.trainingClass.startDate ||
+        endDate > plan.trainingClass.endDate
+      ) {
+        throw new ConflictException('Plan phải nằm trong thời gian class');
+      }
       const outside = await manager
-        .createQueryBuilder(TrainingSessionEntity, 'session')
-        .where('session.plan_id = :planId', { planId: planId })
+        .getRepository(TrainingSessionEntity)
+        .createQueryBuilder('session')
+        .where('session.plan_id = :planId', { planId })
         .andWhere(
-          '(session.scheduled_at::date < :startDate OR session.scheduled_at::date > :endDate)',
+          '(session.scheduled_start_at::date < :startDate OR session.scheduled_end_at::date > :endDate)',
           { startDate, endDate },
         )
         .getCount();
-      if (outside) {
-        throw new ConflictException(
-          'Khoảng ngày mới không bao phủ tất cả buổi tập đã lên lịch',
-        );
-      }
-      plan.phaseName = updateDto.phaseName ?? plan.phaseName;
-      plan.goal = updateDto.goal ?? plan.goal;
-      plan.startDate = startDate;
-      plan.endDate = endDate;
+      if (outside)
+        throw new ConflictException('Khoảng ngày mới không bao phủ session');
+      Object.assign(plan, {
+        name: body.name ?? plan.name,
+        phaseName: body.phaseName ?? plan.phaseName,
+        goal: body.goal ?? plan.goal,
+        startDate,
+        endDate,
+      });
       return manager.save(plan);
     });
-    return toTrainingPlanResponse(updated);
+    return toTrainingPlanResponse(saved);
   }
 
-  /**
-   * Kích hoạt giáo án (chuyển sang ACTIVE). Yêu cầu giáo án đang SCHEDULED,
-   * có ít nhất một buổi tập và ngựa không có giáo án ACTIVE nào khác.
-   */
   async activatePlan(
     actor: Actor,
     planId: string,
   ): Promise<TrainingPlanResponseDto> {
-    const caller = await this.access.currentUser(actor);
-    const updatedPlan = await this.dataSource.transaction(async (manager) => {
-      const snapshot = await this.access.findPlan(manager, planId);
-      const horse = await this.access.lockedHorse(manager, snapshot.horseId);
-      const curPlan = await this.access.lockedPlan(manager, planId);
-      if (curPlan.horseId !== horse.id) {
-        throw new ConflictException(
-          'Giáo án đã được chuyển sang ngựa khác, vui lòng thử lại',
-        );
-      }
-      await this.access.assertTrainerBarn(
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const plan = await this.access.lockedPlan(manager, planId);
+      const trainingClass = await this.access.lockedTrainingClass(
         manager,
+        plan.classId,
+      );
+      this.access.assertCanManageClass(
         actor,
         caller.id,
-        curPlan.horseId,
+        trainingClass.headTrainerId,
       );
-      assertPlanActivatable(curPlan.status); // kiểm tra: plan phải có status SCHEDULED
-      // kiểm tra: plan phải có ít nhất một session
-      const sessionCount = await manager.countBy(TrainingSessionEntity, {
-        planId: planId,
-      });
-      if (sessionCount === 0) {
-        throw new ConflictException('Giáo án phải có ít nhất một buổi tập');
+      assertPlanActivatable(plan.status);
+      if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
+        throw new ConflictException('Class phải ACTIVE trước khi kích hoạt plan');
       }
-      // kiểm tra: horse không được có giáo án ACTIVE nào khác
-      const planCount = await manager.countBy(TrainingPlanEntity, {
-        horseId: curPlan.horseId,
+      const sessionCount = await manager.countBy(TrainingSessionEntity, {
+        planId,
+      });
+      if (!sessionCount)
+        throw new ConflictException('Plan phải có ít nhất một session');
+      const activeCount = await manager.countBy(TrainingPlanEntity, {
+        classId: plan.classId,
         status: TrainingPlanStatus.ACTIVE,
       });
-      if (planCount > 0) {
-        throw new ConflictException('Ngựa đang có một giáo án ACTIVE khác');
-      }
-
-      curPlan.status = TrainingPlanStatus.ACTIVE;
-      curPlan.activatedAt = new Date();
-      return manager.save(curPlan);
+      if (activeCount)
+        throw new ConflictException('Class đang có một plan ACTIVE khác');
+      plan.status = TrainingPlanStatus.ACTIVE;
+      plan.activatedAt = new Date();
+      return manager.save(plan);
     });
-    // publish event: training-plan to activated
-    this.events.publish('training.plan.activated', {
-      planId: updatedPlan.id,
-      horseId: updatedPlan.horseId,
-    });
-    return toTrainingPlanResponse(updatedPlan);
+    return toTrainingPlanResponse(saved);
   }
 
-  /**
-   * Hủy giáo án (CANCELLED) và tự động hủy dây chuyền (cascade cancel)
-   * tất cả các buổi tập con chưa hoàn thành thuộc giáo án này.
-   */
+  async completePlan(
+    actor: Actor,
+    planId: string,
+  ): Promise<TrainingPlanResponseDto> {
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const plan = await this.access.lockedPlan(manager, planId);
+      this.access.assertCanManageClass(
+        actor,
+        caller.id,
+        plan.trainingClass.headTrainerId,
+      );
+      assertPlanCompletable(plan.status);
+      const sessions = await manager.find(TrainingSessionEntity, {
+        where: { planId },
+      });
+      if (!sessions.length) throw new ConflictException('Plan chưa có session');
+      if (
+        sessions.some(
+          (session) =>
+            session.status === TrainingSessionStatus.DRAFT ||
+            session.status === TrainingSessionStatus.SCHEDULED,
+        )
+      ) {
+        throw new ConflictException('Plan vẫn còn session chưa kết thúc');
+      }
+      const openParticipants = await manager.countBy(SessionParticipantEntity, {
+        session: { planId },
+        status: In([
+          SessionParticipantStatus.PLANNED,
+          SessionParticipantStatus.PRESENT,
+          SessionParticipantStatus.READY,
+          SessionParticipantStatus.ONGOING,
+        ]),
+      });
+      if (openParticipants)
+        throw new ConflictException('Plan vẫn còn participant chưa kết thúc');
+      if (
+        sessions.some(
+          (session) => session.status === TrainingSessionStatus.IN_PROGRESS,
+        )
+      ) {
+        throw new ConflictException('Plan vẫn còn session IN_PROGRESS');
+      }
+      plan.status = TrainingPlanStatus.COMPLETED;
+      plan.completedAt = new Date();
+      return manager.save(plan);
+    });
+    return toTrainingPlanResponse(saved);
+  }
+
   async cancelPlan(
     actor: Actor,
     planId: string,
     body: CancelTrainingPlanDto,
   ): Promise<TrainingPlanResponseDto> {
-    const caller = await this.access.currentUser(actor);
-    const now = new Date();
-    const plan = await this.dataSource.transaction(async (manager) => {
-      // lock training-plan
-      const current = await this.access.lockedPlan(manager, planId);
-      await this.access.assertTrainerBarn(
-        manager,
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const plan = await this.access.lockedPlan(manager, planId);
+      this.access.assertCanManageClass(
         actor,
         caller.id,
-        current.horseId,
+        plan.trainingClass.headTrainerId,
       );
-      assertPlanCancellable(current.status);
-      const running = await manager.countBy(TrainingSessionEntity, {
-        planId: planId,
-        status: TrainingSessionStatus.IN_PROGRESS,
+      assertPlanCancellable(plan.status);
+      const ongoing = await manager.countBy(SessionParticipantEntity, {
+        session: { planId },
+        status: SessionParticipantStatus.ONGOING,
       });
-      if (running > 0) {
+      if (ongoing)
         throw new ConflictException(
-          'Phải kết thúc hoặc hủy buổi tập đang chạy trước',
+          'Phải kết thúc participant đang ONGOING trước',
         );
-      }
-      // 1. Hủy dây chuyền (Cascade Cancel): Tự động hủy tất cả các buổi tập con chưa hoàn thành thuộc giáo án này
+      const now = new Date();
       await manager.update(
         TrainingSessionEntity,
         {
-          planId: planId,
+          planId,
           status: In([
+            TrainingSessionStatus.DRAFT,
             TrainingSessionStatus.SCHEDULED,
             TrainingSessionStatus.IN_PROGRESS,
           ]),
@@ -249,77 +284,33 @@ export class TrainingPlansService {
           status: TrainingSessionStatus.CANCELLED,
           cancelledAt: now,
           cancelledBy: caller.id,
-          cancelReason: `Giáo án bị hủy: ${body.reason}`,
+          cancelReason: `Plan bị hủy: ${body.reason}`,
         },
       );
-      // 2. Cập nhật trạng thái hủy (CANCELLED) cho chính bản thân giáo án cha
-      current.status = TrainingPlanStatus.CANCELLED;
-      current.cancelledAt = now;
-      current.cancelReason = body.reason;
-      return manager.save(current);
+      await manager
+        .createQueryBuilder()
+        .update(SessionParticipantEntity)
+        .set({
+          status: SessionParticipantStatus.CANCELLED,
+          cancelReason: body.reason,
+        })
+        .where(
+          'session_id IN (SELECT id FROM training_sessions WHERE plan_id = :planId)',
+          { planId },
+        )
+        .andWhere('status IN (:...statuses)', {
+          statuses: [
+            SessionParticipantStatus.PLANNED,
+            SessionParticipantStatus.PRESENT,
+            SessionParticipantStatus.READY,
+          ],
+        })
+        .execute();
+      plan.status = TrainingPlanStatus.CANCELLED;
+      plan.cancelledAt = now;
+      plan.cancelReason = body.reason;
+      return manager.save(plan);
     });
-    // publish event: training-plan-cancelled
-    // this.events.publish('training.plan.cancelled', {
-    //   planId: plan.id,
-    //   horseId: plan.horseId,
-    //   reason: body.reason,
-    // });
-    return toTrainingPlanResponse(plan);
-  }
-
-  /**
-   * Hoàn thành giáo án (COMPLETED). Yêu cầu giáo án đang ACTIVE, không còn
-   * buổi tập IN_PROGRESS và phải có ít nhất một buổi tập COMPLETED.
-   */
-  async completePlan(
-    actor: Actor,
-    planId: string,
-  ): Promise<TrainingPlanResponseDto> {
-    const caller = await this.access.currentUser(actor);
-    const plan = await this.dataSource.transaction(async (manager) => {
-      const current = await this.access.lockedPlan(manager, planId);
-      await this.access.assertTrainerBarn(
-        manager,
-        actor,
-        caller.id,
-        current.horseId,
-      );
-      assertPlanCompletable(current.status); // kiểm tra: status của Plan phải là ACTIVE
-      await this.assertCanComplete(manager, planId); // kiểm tra: Plan phải có ít nhất một buổi tập và không có buổi tập IN_PROGRESS nào
-      current.status = TrainingPlanStatus.COMPLETED;
-      current.completedAt = new Date();
-      return manager.save(current);
-    });
-    // publish event
-    // this.events.publish('training.plan.completed', {
-    //   planId: plan.id,
-    //   horseId: plan.horseId,
-    // });
-    return toTrainingPlanResponse(plan);
-  }
-
-  /** Kiểm tra điều kiện hoàn thành: không có buổi tập IN_PROGRESS và có ít nhất một buổi tập COMPLETED. */
-  private async assertCanComplete(
-    manager: EntityManager,
-    planId: string,
-  ): Promise<void> {
-    const sessions = await manager.find(TrainingSessionEntity, {
-      where: { planId },
-      select: { status: true },
-    });
-    // kiểm tra: giáo án vẫn còn buổi tập IN_PROGRESS
-    const hasOpen = sessions.some(
-      (s) => s.status === TrainingSessionStatus.IN_PROGRESS,
-    );
-    if (hasOpen) {
-      throw new ConflictException('Giáo án vẫn còn buổi tập chưa kết thúc');
-    }
-    // kiểm tra: giáo án cần ít nhất một buổi tập COMPLETED
-    const hasCompleted = sessions.some(
-      (s) => s.status === TrainingSessionStatus.COMPLETED,
-    );
-    if (!hasCompleted) {
-      throw new ConflictException('Giáo án cần ít nhất một buổi tập COMPLETED');
-    }
+    return toTrainingPlanResponse(saved);
   }
 }

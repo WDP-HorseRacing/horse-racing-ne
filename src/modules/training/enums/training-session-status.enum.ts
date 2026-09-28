@@ -1,4 +1,5 @@
 export enum TrainingSessionStatus {
+  DRAFT = 'DRAFT',
   SCHEDULED = 'SCHEDULED',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',

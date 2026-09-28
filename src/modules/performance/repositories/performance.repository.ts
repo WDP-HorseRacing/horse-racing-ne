@@ -22,12 +22,13 @@ export class PerformanceRepository {
   ) {}
 
   listMetrics(horseId: string): Promise<PerformanceMetricEntity[]> {
-    return this.metrics.find({
-      where: { session: { plan: { horseId } } },
-      relations: { session: { plan: true } },
-      order: { recordedAt: 'DESC' },
-      take: 100,
-    });
+    return this.metrics
+      .createQueryBuilder('metric')
+      .innerJoinAndSelect('metric.sessionParticipant', 'participant')
+      .where('participant.horse_id = :horseId', { horseId })
+      .orderBy('metric.recorded_at', 'DESC')
+      .take(100)
+      .getMany();
   }
 
   /**
@@ -43,18 +44,18 @@ export class PerformanceRepository {
   sessionSummaries(horseId: string): Promise<SessionPerformanceRow[]> {
     return this.metrics.query(
       `SELECT s.id AS "sessionId",
-              s.scheduled_at AS "scheduledAt",
+              s.scheduled_start_at AS "scheduledAt",
               ROUND(AVG(m.heart_rate_bpm))::int AS "avgHeartRateBpm",
               MAX(m.heart_rate_bpm)::int AS "maxHeartRateBpm",
               ROUND(AVG(m.speed_mps), 3)::text AS "avgSpeedMps",
               MAX(m.speed_mps)::text AS "maxSpeedMps",
               (COUNT(*) FILTER (WHERE m.alert_level <> $2))::int AS "alertCount"
          FROM performance_metrics m
-         JOIN training_sessions s ON s.id = m.session_id
-         JOIN training_plans p ON p.id = s.plan_id
-        WHERE p.horse_id = $1
-        GROUP BY s.id, s.scheduled_at
-        ORDER BY s.scheduled_at DESC
+         JOIN session_participants sp ON sp.id = m.session_participant_id
+         JOIN training_sessions s ON s.id = sp.session_id
+        WHERE sp.horse_id = $1
+        GROUP BY s.id, s.scheduled_start_at
+        ORDER BY s.scheduled_start_at DESC
         LIMIT $3`,
       [horseId, NORMAL_ALERT_LEVEL, PERFORMANCE_SESSION_LIMIT],
     );

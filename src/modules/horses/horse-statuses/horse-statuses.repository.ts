@@ -6,6 +6,7 @@ import {
 } from '../../racing/constants/racing.constants';
 
 import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
+import { HorseEnrollmentEntity } from '../../training/entities/horse-enrollment.entity';
 import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
 import { TrainingSessionStatus } from '../../training/enums/training-session-status.enum';
 import { TrainingPlanStatus } from '../../training/enums/training-plan-status.enum';
@@ -33,13 +34,21 @@ export class HorseStatusesRepository {
     reason: string,
     now: Date,
   ): Promise<number> {
-    const plans = await manager.getRepository(TrainingPlanEntity).find({
-      select: { id: true },
-      where: {
-        horseId,
-        status: In([TrainingPlanStatus.SCHEDULED, TrainingPlanStatus.ACTIVE]),
-      },
-    });
+    const plans = await manager
+      .getRepository(TrainingPlanEntity)
+      .createQueryBuilder('plan')
+      .innerJoin(
+        HorseEnrollmentEntity,
+        'enrollment',
+        'enrollment.class_id = plan.class_id AND enrollment.horse_id = :horseId',
+        { horseId },
+      )
+      .where('plan.status IN (:...statuses)', {
+        statuses: [TrainingPlanStatus.SCHEDULED, TrainingPlanStatus.ACTIVE],
+      })
+      .select('plan.id', 'id')
+      .distinct(true)
+      .getRawMany<{ id: string }>();
     if (plans.length === 0) return 0;
     const planIds = plans.map((plan) => plan.id);
     await manager.getRepository(TrainingSessionEntity).update(
@@ -80,8 +89,9 @@ export class HorseStatusesRepository {
     const rows: Array<Omit<LifecycleImpactRow, 'hasActiveTrainingLock'>> =
       await manager.query(
         `SELECT
-         (SELECT count(*)::int FROM training_plans p
-           WHERE p.horse_id = $1 AND p.status = ANY($2)) AS "openTrainingPlans",
+         (SELECT count(DISTINCT p.id)::int FROM training_plans p
+           JOIN horse_enrollments he ON he.class_id = p.class_id
+           WHERE he.horse_id = $1 AND p.status = ANY($2)) AS "openTrainingPlans",
          (SELECT count(*)::int FROM race_registrations rr
            JOIN races r ON r.id = rr.race_id
            WHERE rr.horse_id = $1 AND rr.status = ANY($3) AND r.status = ANY($4)) AS "openRaceRegistrations",

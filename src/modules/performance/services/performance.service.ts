@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { EvaluationsService } from '../../training/trainging-evaluations/training-evaluations.service';
+import { PerformanceEvaluationEntity } from '../../training/entities/performance-evaluation.entity';
 import {
   HorsePerformanceResponseDto,
   SessionPerformanceSummaryDto,
@@ -12,12 +12,16 @@ import {
 } from '../mappers/performance.mapper';
 import { PerformanceRepository } from '../repositories/performance.repository';
 
+type EvaluationReader = {
+  listLatestByHorse(horseId: string): Promise<PerformanceEvaluationEntity[]>;
+};
+
 @Injectable()
 export class PerformanceService {
   constructor(
     private readonly performanceRepository: PerformanceRepository,
     private readonly horseAccess: HorseAccessService,
-    private readonly evaluations: EvaluationsService,
+    @Optional() private readonly evaluations?: EvaluationReader,
   ) {}
 
   /**
@@ -34,7 +38,9 @@ export class PerformanceService {
   ): Promise<HorsePerformanceResponseDto> {
     await this.horseAccess.findReadable(actor, horseId);
     const metrics = await this.performanceRepository.listMetrics(horseId);
-    const evaluations = await this.evaluations.listLatestByHorse(horseId);
+    const evaluations = this.evaluations
+      ? await this.evaluations.listLatestByHorse(horseId)
+      : [];
     return toHorsePerformanceResponse(horseId, metrics, evaluations);
   }
 
