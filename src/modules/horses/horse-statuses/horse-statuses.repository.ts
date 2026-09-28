@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager, In, IsNull } from 'typeorm';
+import { EntityManager, IsNull } from 'typeorm';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { RaceStatus } from '../../racing/constants/race-status.enum';
@@ -10,10 +10,8 @@ import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.en
 import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import { StallEntity } from '../../stable/entities/stall.entity';
 
-import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
-import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
-import { TrainingSessionStatus } from '@modules/training/enums/training-session-status.enum';
-import { TrainingPlanStatus } from '@modules/training/enums/training-plan-status.enum';
+import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 
 const OPEN_REGISTRATION_STATUSES = [
   RegistrationStatus.PROPOSED,
@@ -23,6 +21,7 @@ const OPEN_REGISTRATION_STATUSES = [
 
 @Injectable()
 export class HorseStatusesRepository {
+  constructor(private readonly training: TrainingOperationsFacade) {}
   /**
    * Kiểm tra ngựa có đang dở hoạt động không thể hủy ngang không.
    *
@@ -40,9 +39,8 @@ export class HorseStatusesRepository {
     const rows: Array<{ exists: boolean }> = await manager.query(
       `SELECT (
          EXISTS (
-           SELECT 1 FROM training_sessions s
-           JOIN training_plans p ON p.id = s.plan_id
-           WHERE p.horse_id = $1 AND s.status = $2
+           SELECT 1 FROM session_participants sp
+           WHERE sp.horse_id = $1 AND sp.status = $2
          )
          OR EXISTS (
            SELECT 1 FROM race_registrations rr
@@ -52,7 +50,7 @@ export class HorseStatusesRepository {
        ) AS exists`,
       [
         horseId,
-        TrainingSessionStatus.IN_PROGRESS,
+        SessionParticipantStatus.ONGOING,
         RaceStatus.IN_PROGRESS,
         OPEN_REGISTRATION_STATUSES,
       ],
@@ -61,10 +59,10 @@ export class HorseStatusesRepository {
   }
 
   /**
-   * Hủy mọi giáo án SCHEDULED/ACTIVE của ngựa, kèm các buổi tập SCHEDULED của chúng.
+   * Hủy các future participant còn mở của ngựa.
    *
-   * - Buổi tập bị hủy ghi người hủy, thời điểm và lý do
-   * - Giáo án đã COMPLETED/CANCELLED giữ nguyên làm lịch sử
+   * Không hủy TrainingPlan/TrainingSession dùng chung cho các Horse khác trong
+   * cùng Class; lịch sử participant của các buổi cũ vẫn giữ nguyên.
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -73,38 +71,18 @@ export class HorseStatusesRepository {
    * @param now Thời điểm hủy
    * @returns Promise hoàn tất khi đã hủy
    */
-  async cancelOpenTrainingPlans(
+  async cancelFutureTrainingParticipations(
     manager: EntityManager,
     horseId: string,
     actorId: string,
     reason: string,
     now: Date,
   ): Promise<void> {
-    const plans = await manager.getRepository(TrainingPlanEntity).find({
-      select: { id: true },
-      where: {
-        horseId,
-        status: In([TrainingPlanStatus.SCHEDULED, TrainingPlanStatus.ACTIVE]),
-      },
-    });
-    if (plans.length === 0) return;
-    const planIds = plans.map((plan) => plan.id);
-    await manager.getRepository(TrainingSessionEntity).update(
-      { planId: In(planIds), status: TrainingSessionStatus.SCHEDULED },
-      {
-        status: TrainingSessionStatus.CANCELLED,
-        cancelledAt: now,
-        cancelledBy: actorId,
-        cancelReason: reason,
-      },
-    );
-    await manager.getRepository(TrainingPlanEntity).update(
-      { id: In(planIds) },
-      {
-        status: TrainingPlanStatus.CANCELLED,
-        cancelledAt: now,
-        cancelReason: reason,
-      },
+    await this.training.cancelFutureParticipationsByLifecycle(
+      manager,
+      horseId,
+      `${reason} (actor: ${actorId})`,
+      now,
     );
   }
 

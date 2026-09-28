@@ -22,9 +22,9 @@ import { IngestMetricDto } from '../dto/ingest-metric.dto';
 @ApiResponse({ status: 501, description: 'Contract only' })
 @Controller()
 export class PerformanceMetricsController extends PendingApi {
-  @Post('sessions/:id/metrics')
+  @Post('session-participants/:id/metrics')
   @ApiOperation({
-    summary: 'Ingest session metric',
+    summary: 'Ingest participant metric',
     operationId: 'PerformanceController_ingest',
   })
   ingest(
@@ -35,9 +35,9 @@ export class PerformanceMetricsController extends PendingApi {
     return this.pending();
   }
 
-  @Get('sessions/:id/metrics')
+  @Get('session-participants/:id/metrics')
   @ApiOperation({
-    summary: 'List session metrics',
+    summary: 'List participant metrics',
     operationId: 'PerformanceController_list',
   })
   list(@CurrentUser() _actor: Actor, @Param('id', ParseUUIDPipe) _id: string) {

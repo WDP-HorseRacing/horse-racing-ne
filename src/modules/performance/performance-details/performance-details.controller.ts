@@ -24,8 +24,8 @@ import { UpsertThresholdDto } from '../dto/upsert-threshold.dto';
 @ApiResponse({ status: 501, description: 'Contract only' })
 @Controller()
 export class PerformanceDetailsController extends PendingApi {
-  @Post('sessions/:id/metrics/batch')
-  @ApiOperation({ summary: 'Ingest metric batch for active session' })
+  @Post('session-participants/:id/metrics/batch')
+  @ApiOperation({ summary: 'Ingest metric batch for active participant' })
   ingestBatch(
     @CurrentUser() _actor: Actor,
     @Param('id', ParseUUIDPipe) _id: string,
@@ -34,7 +34,7 @@ export class PerformanceDetailsController extends PendingApi {
     return this.pending();
   }
 
-  @Get('sessions/:id/performance-summary')
+  @Get('session-participants/:id/performance-summary')
   @ApiOperation({ summary: 'Get session metric and alert summary' })
   sessionSummary(
     @CurrentUser() _actor: Actor,

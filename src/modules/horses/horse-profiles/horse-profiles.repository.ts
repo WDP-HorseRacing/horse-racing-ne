@@ -111,7 +111,7 @@ export class HorseProfilesRepository {
    * Kiểm tra ngựa đã từng phát sinh dữ liệu nghiệp vụ chưa, để quyết định có được xóa hồ sơ không.
    *
    * - Tính cả dòng đã đóng, đã hủy hoặc đã xóa mềm, vì đều là lịch sử
-   * - Gồm: khám bệnh, lịch chăm sóc, khóa huấn luyện, giáo án, đăng ký thi đấu, sở hữu, xếp chuồng, phân công groom, khẩu phần, checklist, sự cố, chỉ số đo, ngưỡng hiệu suất
+   * - Gồm: khám bệnh, lịch chăm sóc, khóa huấn luyện, enrollment/participant huấn luyện, đăng ký thi đấu, sở hữu, xếp chuồng, phân công groom, khẩu phần, checklist, sự cố, chỉ số đo, ngưỡng hiệu suất
    *
    * @param horseId UUID của ngựa
    * @param manager EntityManager của transaction đang chạy

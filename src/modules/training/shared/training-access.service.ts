@@ -4,17 +4,24 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, IsNull } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { findReadableHorse } from '../../horses/utils/horse-access';
-import { assertTrainerBarn } from '../../stable/utils/trainer-barn';
+import {
+  assertTrainerBarn,
+  isHorseInTrainerBarn,
+} from '../../stable/utils/trainer-barn';
 import { UserEntity } from '../../users/entities/user.entity';
 import { UserRole, UserStatus } from '../../users/user.enums';
 import {
-  type CurrentActorUser,
+  CurrentActorUser,
   currentUserForActor,
 } from '../../users/utils/current-user';
+import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
+import { SessionParticipantEntity } from '../entities/session-participant.entity';
+import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 
@@ -22,126 +29,50 @@ import { TrainingSessionEntity } from '../entities/training-session.entity';
 export class TrainingAccessService {
   constructor(private readonly dataSource: DataSource) {}
 
-  /**
-   * Xác thực người gọi và lấy con ngựa mà người gọi được xem dữ liệu huấn luyện, cùng phạm vi với hồ sơ ngựa:
-   * - Kiểm tra user tồn tại và đang ACTIVE
-   * - Kiểm tra ngựa tồn tại và nằm trong phạm vi của người gọi
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param horseId UUID của ngựa
-   * @param manager EntityManager tùy chọn (mặc định dataSource.manager)
-   * @returns Người gọi và ngựa
-   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
-   */
-  async readableHorseForActor(
+  async currentUser(
     actor: Actor,
-    horseId: string,
     manager: EntityManager = this.dataSource.manager,
-  ): Promise<{ user: UserEntity; horse: HorseEntity }> {
-    const caller = await this.currentUser(actor);
-    const horse = await findReadableHorse(manager, actor, caller.id, horseId);
-    return { user: caller, horse };
-  }
-
-  /**
-   * Kiểm tra người gọi có được xem mục tiêu (goal) của giáo án không. Groom chỉ xem tên giai đoạn.
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @returns true nếu người gọi có role khác Groom được đọc giáo án
-   */
-  seesPlanGoal(actor: Actor): boolean {
-    return [
-      UserRole.CLUB_MANAGER,
-      UserRole.HEAD_TRAINER,
-      UserRole.VETERINARIAN,
-      UserRole.HORSE_OWNER,
-    ].some((role) => actor.roles.includes(role));
-  }
-
-  /**
-   * Lấy thông tin User hiện tại từ token Actor.
-   *
-   * @param actor Thông tin danh tính lấy từ Access Token của request
-   * @returns UserEntity - Thực thể người dùng hiện tại
-   * @throws ForbiddenException Nếu tài khoản không hoạt động.
-   */
-  async currentUser(actor: Actor): Promise<CurrentActorUser> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
+  ): Promise<CurrentActorUser> {
+    const caller = await currentUserForActor(manager, actor);
     if (!caller || caller.status !== UserStatus.ACTIVE) {
       throw new ForbiddenException('Tài khoản không hoạt động.');
     }
     return caller;
   }
 
-  /**
-   * Xác thực quyền thao tác với ngựa của Actor:
-   * - Kiểm tra user tồn tại và đang ACTIVE
-   * - Kiểm tra ngựa tồn tại
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param horseId UUID của ngựa
-   * @param manager EntityManager tùy chọn (mặc định dataSource.manager)
-   * @returns Người gọi và ngựa
-   * @throws NotFoundException Nếu không tìm thấy ngựa
-   */
+  async readableHorseForActor(
+    actor: Actor,
+    horseId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<{ user: UserEntity; horse: HorseEntity }> {
+    const user = await this.currentUser(actor, manager);
+    const horse = await findReadableHorse(manager, actor, user.id, horseId);
+    return { user, horse };
+  }
+
   async horseForActor(
     actor: Actor,
     horseId: string,
     manager: EntityManager = this.dataSource.manager,
-  ): Promise<{
-    user: UserEntity;
-    horse: HorseEntity;
-  }> {
-    const caller = await this.currentUser(actor);
-    const horse = await this.findHorse(manager, horseId);
-    return {
-      user: caller,
-      horse: horse,
-    };
+  ): Promise<{ user: UserEntity; horse: HorseEntity }> {
+    const user = await this.currentUser(actor, manager);
+    return { user, horse: await this.findHorse(manager, horseId) };
   }
 
-  /**
-   * Lấy thông tin kế hoạch huấn luyện sau khi xác thực người gọi đang ACTIVE.
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param planId UUID của giáo án
-   * @param manager EntityManager tùy chọn (mặc định dataSource.manager)
-   * @returns TrainingPlanEntity
-   */
-  async planForActor(
-    actor: Actor,
-    planId: string,
-    manager: EntityManager = this.dataSource.manager,
-  ): Promise<TrainingPlanEntity> {
-    await this.currentUser(actor);
-    return this.findPlan(manager, planId);
+  seesPlanGoal(actor: Actor): boolean {
+    return (
+      !actor.roles.includes(UserRole.GROOM) ||
+      actor.roles.some((role) =>
+        [
+          UserRole.CLUB_MANAGER,
+          UserRole.HEAD_TRAINER,
+          UserRole.VETERINARIAN,
+          UserRole.HORSE_OWNER,
+        ].includes(role),
+      )
+    );
   }
 
-  /**
-   * Lấy thông tin buổi tập sau khi xác thực người gọi đang ACTIVE.
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param sessionId UUID của buổi tập
-   * @param manager EntityManager tùy chọn (mặc định dataSource.manager)
-   * @returns TrainingSessionEntity
-   */
-  async sessionForActor(
-    actor: Actor,
-    sessionId: string,
-    manager: EntityManager = this.dataSource.manager,
-  ): Promise<TrainingSessionEntity> {
-    await this.currentUser(actor);
-    return this.findSession(manager, sessionId);
-  }
-
-  /**
-   * Tìm kiếm ngựa theo ID. Thao tác đọc bình thường, không áp dụng khóa dữ liệu.
-   *
-   * @param manager EntityManager quản lý query hiện tại
-   * @param horseId UUID của ngựa
-   * @returns HorseEntity - Thực thể ngựa tìm thấy
-   * @throws NotFoundException Nếu không tìm thấy ngựa
-   */
   async findHorse(
     manager: EntityManager,
     horseId: string,
@@ -151,15 +82,6 @@ export class TrainingAccessService {
     return horse;
   }
 
-  /**
-   * Khóa bi quan (Pessimistic Write Lock - SELECT ... FOR UPDATE) ngựa.
-   * Sử dụng bên trong transaction khi cần cập nhật dữ liệu liên quan đến ngựa để tránh Race Condition.
-   *
-   * @param manager EntityManager đang nằm trong transaction
-   * @param horseId UUID của con ngựa
-   * @returns HorseEntity - Thực thể con ngựa đang bị khóa cho transaction hiện tại
-   * @throws NotFoundException Nếu không tìm thấy ngựa
-   */
   async lockedHorse(
     manager: EntityManager,
     horseId: string,
@@ -172,116 +94,371 @@ export class TrainingAccessService {
     return horse;
   }
 
-  /**
-   * Lấy thông tin kế hoạch huấn luyện (TrainingPlan) kèm quan hệ với ngựa.
-   *
-   * @param manager EntityManager quản lý query
-   * @param id UUID của giáo án huấn luyện
-   * @returns TrainingPlanEntity - Thực thể giáo án kèm thông tin con ngựa
-   * @throws NotFoundException Nếu không tìm thấy giáo án
-   */
+  async findTrainingClass(
+    manager: EntityManager,
+    id: string,
+  ): Promise<TrainingClassEntity> {
+    const row = await manager.findOne(TrainingClassEntity, {
+      where: { id },
+      relations: { headTrainer: true },
+    });
+    if (!row) throw new NotFoundException('Không tìm thấy training class');
+    return row;
+  }
+
+  async canReadClass(
+    actor: Actor,
+    callerId: string,
+    trainingClass: TrainingClassEntity,
+    manager: EntityManager,
+  ): Promise<boolean> {
+    if (
+      actor.roles.includes(UserRole.CLUB_MANAGER) ||
+      actor.roles.includes(UserRole.VETERINARIAN)
+    ) {
+      return true;
+    }
+    if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
+      if (trainingClass.headTrainerId === callerId) return true;
+    }
+    if (actor.roles.includes(UserRole.HORSE_OWNER)) {
+      return (
+        (await manager
+          .getRepository(HorseEnrollmentEntity)
+          .createQueryBuilder('enrollment')
+          .innerJoin(
+            HorseOwnershipEntity,
+            'ownership',
+            'ownership.horse_id = enrollment.horse_id',
+          )
+          .where('enrollment.class_id = :classId', {
+            classId: trainingClass.id,
+          })
+          .andWhere('ownership.owner_id = :callerId', { callerId })
+          .andWhere('ownership.end_at IS NULL')
+          .getCount()) > 0
+      );
+    }
+    if (actor.roles.includes(UserRole.GROOM)) {
+      return (
+        (await manager
+          .getRepository(SessionParticipantEntity)
+          .createQueryBuilder('participant')
+          .innerJoin(
+            TrainingSessionEntity,
+            'session',
+            'session.id = participant.session_id',
+          )
+          .innerJoin(
+            TrainingPlanEntity,
+            'plan',
+            'plan.id = session.plan_id',
+          )
+          .where('plan.class_id = :classId', {
+            classId: trainingClass.id,
+          })
+          .andWhere('participant.assigned_groom_id = :callerId', {
+            callerId,
+          })
+          .getCount()) > 0
+      );
+    }
+    return false;
+  }
+
+  async assertCanReadClass(
+    actor: Actor,
+    classId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<TrainingClassEntity> {
+    const caller = await this.currentUser(actor, manager);
+    const trainingClass = await this.findTrainingClass(manager, classId);
+    if (
+      !(await this.canReadClass(actor, caller.id, trainingClass, manager))
+    ) {
+      throw new NotFoundException('Không tìm thấy training class');
+    }
+    return trainingClass;
+  }
+
+  async lockedTrainingClass(
+    manager: EntityManager,
+    id: string,
+  ): Promise<TrainingClassEntity> {
+    const row = await manager.findOne(TrainingClassEntity, {
+      where: { id },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!row) throw new NotFoundException('Không tìm thấy training class');
+    return row;
+  }
+
   async findPlan(
     manager: EntityManager,
     id: string,
   ): Promise<TrainingPlanEntity> {
     const plan = await manager.findOne(TrainingPlanEntity, {
       where: { id },
-      relations: { horse: true },
+      relations: { trainingClass: true },
     });
     if (!plan) throw new NotFoundException('Không tìm thấy giáo án');
     return plan;
   }
 
-  /**
-   * Khóa bi quan (Pessimistic Write Lock) kế hoạch huấn luyện trong transaction.
-   * Dùng trước khi sửa, kích hoạt (activate), hoàn thành (complete) hoặc hủy (cancel) giáo án.
-   *
-   * @param manager EntityManager đang nằm trong transaction
-   * @param id UUID của giáo án huấn luyện
-   * @returns TrainingPlanEntity - Thực thể giáo án đang bị khóa trong transaction
-   * @throws NotFoundException Nếu không tìm thấy giáo án
-   */
   async lockedPlan(
     manager: EntityManager,
     id: string,
   ): Promise<TrainingPlanEntity> {
     const plan = await manager.findOne(TrainingPlanEntity, {
       where: { id },
+      relations: { trainingClass: true },
       lock: { mode: 'pessimistic_write' },
     });
     if (!plan) throw new NotFoundException('Không tìm thấy plan');
     return plan;
   }
 
-  /**
-   * Lấy thông tin buổi tập (TrainingSession) qua quan hệ lồng nhau plan -> horse.
-   *
-   * @param manager EntityManager quản lý query
-   * @param sessionId UUID của buổi tập
-   * @returns TrainingSessionEntity - Thực thể buổi tập kèm plan và horse
-   * @throws NotFoundException Nếu không tìm thấy buổi tập
-   */
+  async planForActor(
+    actor: Actor,
+    planId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<TrainingPlanEntity> {
+    const plan = await this.findPlan(manager, planId);
+    const caller = await this.currentUser(actor, manager);
+    if (
+      !(await this.canReadClass(
+        actor,
+        caller.id,
+        plan.trainingClass,
+        manager,
+      ))
+    ) {
+      throw new NotFoundException('Không tìm thấy giáo án');
+    }
+    return plan;
+  }
+
   async findSession(
     manager: EntityManager,
     sessionId: string,
   ): Promise<TrainingSessionEntity> {
     const session = await manager.findOne(TrainingSessionEntity, {
       where: { id: sessionId },
-      relations: { plan: { horse: true } },
+      relations: { plan: { trainingClass: true } },
     });
     if (!session) throw new NotFoundException('Không tìm thấy buổi tập');
     return session;
   }
 
-  /**
-   * Khóa bi quan (Pessimistic Write Lock) buổi tập trong transaction.
-   * Dùng khi bắt đầu (start), hoàn thành (complete), đánh giá hoặc hủy buổi tập.
-   *
-   * @param manager EntityManager đang nằm trong transaction
-   * @param id UUID của buổi tập
-   * @returns TrainingSessionEntity - Thực thể buổi tập đang bị khóa trong transaction
-   * @throws NotFoundException Nếu không tìm thấy buổi tập
-   */
   async lockedSession(
     manager: EntityManager,
-    id: string,
+    sessionId: string,
   ): Promise<TrainingSessionEntity> {
     const session = await manager.findOne(TrainingSessionEntity, {
-      where: { id },
+      where: { id: sessionId },
       lock: { mode: 'pessimistic_write' },
     });
     if (!session) throw new NotFoundException('Không tìm thấy buổi tập');
     return session;
   }
 
-  /**
-   * Xác thực xem nhân sự phụ trách (groomId) có tồn tại và có đúng vai trò GROOM hay không.
-   * Dùng khi phân công người chăm sóc/huấn luyện cho buổi tập.
-   *
-   * @param manager EntityManager quản lý query
-   * @param groomId UUID của người phụ trách cần kiểm tra
-   * @returns void
-   * @throws BadRequestException Nếu người dùng không tồn tại hoặc không phải là GROOM
-   */
-  async assertGroom(manager: EntityManager, groomId: string): Promise<void> {
-    const user = await manager.findOneBy(UserEntity, {
-      id: groomId,
-      role: UserRole.GROOM,
-    });
-    if (!user) throw new BadRequestException('Groom không hợp lệ');
+  async sessionForActor(
+    actor: Actor,
+    sessionId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<TrainingSessionEntity> {
+    const session = await this.findSession(manager, sessionId);
+    const caller = await this.currentUser(actor, manager);
+    if (
+      !(await this.canReadClass(
+        actor,
+        caller.id,
+        session.plan.trainingClass,
+        manager,
+      ))
+    ) {
+      throw new NotFoundException('Không tìm thấy buổi tập');
+    }
+    return session;
   }
 
-  /**
-   * Kiểm tra Head Trainer chỉ ra quyết định hoặc xem thông tin nhạy cảm của ngựa thuộc khu mình phụ trách.
-   * Các role khác (CLUB_MANAGER, GROOM, ...) không bị chặn bởi hàm này.
-   *
-   * @param manager EntityManager quản lý query
-   * @param actor Danh tính và danh sách roles của người gọi từ token
-   * @param callerId UUID của người dùng hiện tại
-   * @param horseId UUID của ngựa
-   * @returns void
-   * @throws ForbiddenException Nếu người gọi là Head Trainer và ngựa không thuộc khu của họ
-   */
+  async findParticipant(
+    manager: EntityManager,
+    participantId: string,
+  ): Promise<SessionParticipantEntity> {
+    const participant = await manager.findOne(SessionParticipantEntity, {
+      where: { id: participantId },
+      relations: {
+        session: { plan: { trainingClass: true } },
+        horse: true,
+        horseEnrollment: true,
+      },
+    });
+    if (!participant) throw new NotFoundException('Không tìm thấy participant');
+    return participant;
+  }
+
+  async lockedParticipant(
+    manager: EntityManager,
+    participantId: string,
+  ): Promise<SessionParticipantEntity> {
+    const participant = await manager.findOne(SessionParticipantEntity, {
+      where: { id: participantId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!participant) throw new NotFoundException('Không tìm thấy participant');
+    return participant;
+  }
+
+  async findEnrollment(
+    manager: EntityManager,
+    enrollmentId: string,
+  ): Promise<HorseEnrollmentEntity> {
+    const row = await manager.findOne(HorseEnrollmentEntity, {
+      where: { id: enrollmentId },
+      relations: { trainingClass: true, horse: true },
+    });
+    if (!row) throw new NotFoundException('Không tìm thấy horse enrollment');
+    return row;
+  }
+
+  async canReadEnrollment(
+    actor: Actor,
+    callerId: string,
+    enrollment: HorseEnrollmentEntity,
+    manager: EntityManager,
+  ): Promise<boolean> {
+    if (
+      actor.roles.includes(UserRole.CLUB_MANAGER) ||
+      actor.roles.includes(UserRole.VETERINARIAN)
+    ) {
+      return true;
+    }
+    if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
+      if (
+        enrollment.trainingClass?.headTrainerId === callerId &&
+        (await isHorseInTrainerBarn(manager, enrollment.horseId, callerId))
+      ) {
+        return true;
+      }
+    }
+    if (actor.roles.includes(UserRole.HORSE_OWNER)) {
+      return manager.existsBy(HorseOwnershipEntity, {
+        horseId: enrollment.horseId,
+        ownerId: callerId,
+        endAt: IsNull(),
+      });
+    }
+    if (actor.roles.includes(UserRole.GROOM)) {
+      return manager
+        .getRepository(SessionParticipantEntity)
+        .existsBy({
+          horseEnrollmentId: enrollment.id,
+          assignedGroomId: callerId,
+        });
+    }
+    return false;
+  }
+
+  async assertCanReadParticipant(
+    actor: Actor,
+    participantId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<SessionParticipantEntity> {
+    const participant = await this.findParticipant(manager, participantId);
+    const caller = await this.currentUser(actor, manager);
+    if (
+      !(await this.canReadParticipant(
+        actor,
+        caller.id,
+        participant,
+        manager,
+      ))
+    ) {
+      throw new NotFoundException('Không tìm thấy participant');
+    }
+    return participant;
+  }
+
+  async canReadParticipant(
+    actor: Actor,
+    callerId: string,
+    participant: SessionParticipantEntity,
+    manager: EntityManager,
+  ): Promise<boolean> {
+    if (
+      actor.roles.includes(UserRole.CLUB_MANAGER) ||
+      actor.roles.includes(UserRole.VETERINARIAN)
+    ) {
+      return true;
+    }
+    if (actor.roles.includes(UserRole.GROOM)) {
+      if (participant.assignedGroomId === callerId) return true;
+    }
+    if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
+      if (
+        participant.session.plan.trainingClass.headTrainerId === callerId &&
+        (await isHorseInTrainerBarn(manager, participant.horseId, callerId))
+      ) {
+        return true;
+      }
+    }
+    if (actor.roles.includes(UserRole.HORSE_OWNER)) {
+      return manager.existsBy(HorseOwnershipEntity, {
+        horseId: participant.horseId,
+        ownerId: callerId,
+        endAt: IsNull(),
+      });
+    }
+    return false;
+  }
+
+  async assertCanReadSession(
+    actor: Actor,
+    sessionId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<TrainingSessionEntity> {
+    const session = await this.findSession(manager, sessionId);
+    const caller = await this.currentUser(actor, manager);
+    if (
+      !(await this.canReadClass(
+        actor,
+        caller.id,
+        session.plan.trainingClass,
+        manager,
+      ))
+    ) {
+      throw new NotFoundException('Không tìm thấy buổi tập');
+    }
+    return session;
+  }
+
+  async assertGroom(
+    manager: EntityManager,
+    groomId: string,
+  ): Promise<UserEntity> {
+    const groom = await manager.findOne(UserEntity, {
+      where: { id: groomId, role: UserRole.GROOM, status: UserStatus.ACTIVE },
+    });
+    if (!groom) throw new BadRequestException('Groom không hợp lệ');
+    return groom;
+  }
+
+  async assertHeadTrainer(
+    manager: EntityManager,
+    headTrainerId: string,
+  ): Promise<UserEntity> {
+    const trainer = await manager.findOne(UserEntity, {
+      where: {
+        id: headTrainerId,
+        role: UserRole.HEAD_TRAINER,
+        status: UserStatus.ACTIVE,
+      },
+    });
+    if (!trainer) throw new BadRequestException('Head trainer không hợp lệ');
+    return trainer;
+  }
+
   async assertTrainerBarn(
     manager: EntityManager,
     actor: Actor,
@@ -291,55 +468,80 @@ export class TrainingAccessService {
     await assertTrainerBarn(manager, actor, callerId, horseId);
   }
 
-  /**
-   * Kiểm tra quyền thực hiện thao tác trên buổi tập (Start / Complete / Cancel / Time trial):
-   * - CLUB_MANAGER: có toàn quyền thao tác trên mọi buổi tập trong CLB.
-   * - HEAD_TRAINER: chỉ thao tác trên buổi tập của ngựa thuộc khu mình phụ trách.
-   * - GROOM: chỉ được thao tác nếu chính họ là người được phân công phụ trách buổi tập này (groomId).
-   *
-   * @param manager EntityManager quản lý query
-   * @param actor Danh tính và danh sách roles của người gọi từ token
-   * @param callerId UUID của người dùng hiện tại
-   * @param session Thực thể buổi tập đang được thao tác
-   * @returns void
-   * @throws ForbiddenException Nếu Head Trainer không phụ trách khu của ngựa, hoặc Groom không được giao buổi tập này
-   */
+  assertCanManageClass(
+    actor: Actor,
+    callerId: string,
+    headTrainerId: string | null,
+  ): void {
+    if (actor.roles.includes(UserRole.CLUB_MANAGER)) return;
+    if (!actor.roles.includes(UserRole.HEAD_TRAINER)) {
+      throw new ForbiddenException('Không có quyền quản lý training class');
+    }
+    if (!headTrainerId) {
+      throw new ForbiddenException(
+        'Class phải được phân công cho head trainer trước khi thao tác',
+      );
+    }
+    if (headTrainerId !== callerId) {
+      throw new ForbiddenException('Class thuộc head trainer khác');
+    }
+  }
+
+  async assertCanOperateParticipant(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    participant: SessionParticipantEntity,
+  ): Promise<void> {
+    if (actor.roles.includes(UserRole.CLUB_MANAGER)) return;
+    if (actor.roles.includes(UserRole.GROOM)) {
+      if (participant.assignedGroomId !== callerId) {
+        throw new ForbiddenException('Bạn không được assign participant này');
+      }
+      return;
+    }
+    if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
+      if (participant.session.plan.trainingClass.headTrainerId !== callerId) {
+        throw new ForbiddenException('Participant thuộc class của head trainer khác');
+      }
+      await this.assertTrainerBarn(
+        manager,
+        actor,
+        callerId,
+        participant.horseId,
+      );
+      return;
+    }
+    throw new ForbiddenException('Bạn không được thao tác participant này');
+  }
+
   async assertCanOperateSession(
     manager: EntityManager,
     actor: Actor,
     callerId: string,
     session: TrainingSessionEntity,
   ): Promise<void> {
-    const role = [
-      UserRole.CLUB_MANAGER,
-      UserRole.HEAD_TRAINER,
-      UserRole.GROOM,
-    ].find((r) => actor.roles.includes(r));
-
-    switch (role) {
-      case UserRole.CLUB_MANAGER:
-        return;
-
-      case UserRole.HEAD_TRAINER: {
-        const plan = await manager.findOneByOrFail(TrainingPlanEntity, {
-          id: session.planId,
-        });
-        await assertTrainerBarn(manager, actor, callerId, plan.horseId);
-        return;
+    if (actor.roles.includes(UserRole.CLUB_MANAGER)) return;
+    const participants = await manager.find(SessionParticipantEntity, {
+      where: { sessionId: session.id },
+    });
+    if (actor.roles.includes(UserRole.GROOM)) {
+      if (!participants.some((item) => item.assignedGroomId === callerId)) {
+        throw new ForbiddenException('Bạn không được assign participant nào');
       }
-
-      case UserRole.GROOM:
-        if (session.groomId !== callerId) {
-          throw new ForbiddenException(
-            'Bạn không được giao thực hiện buổi tập này',
-          );
-        }
-        return;
-
-      default:
-        throw new ForbiddenException(
-          'Bạn không được giao thực hiện buổi tập này',
-        );
+      return;
     }
+    if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
+      for (const participant of participants) {
+        await this.assertTrainerBarn(
+          manager,
+          actor,
+          callerId,
+          participant.horseId,
+        );
+      }
+      return;
+    }
+    throw new ForbiddenException('Bạn không được thao tác buổi tập này');
   }
 }

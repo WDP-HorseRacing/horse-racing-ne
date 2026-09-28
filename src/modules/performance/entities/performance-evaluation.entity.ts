@@ -1,24 +1,25 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
-import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
+import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
 /**
- * PerformanceEvaluationEntity: đánh giá kết quả một buổi tập của trainer hoặc giám khảo.
- * Dùng để lưu điểm số và nhận xét chuyên môn.
+ * PerformanceEvaluationEntity: đánh giá một Horse sau khi participant COMPLETED.
  */
 @Entity({ name: 'performance_evaluations' })
-@Index('performance_evaluations_session_uq', ['sessionId'], { unique: true })
+@Index('performance_evaluations_participant_uq', ['sessionParticipantId'], {
+  unique: true,
+})
 export class PerformanceEvaluationEntity extends MutableRecordEntity {
-  @Column({ name: 'session_id', type: 'uuid' })
-  sessionId!: string;
+  @Column({ name: 'session_participant_id', type: 'uuid' })
+  sessionParticipantId!: string;
 
-  @ManyToOne(() => TrainingSessionEntity, {
+  @ManyToOne(() => SessionParticipantEntity, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'session_id' })
-  session!: TrainingSessionEntity;
+  @JoinColumn({ name: 'session_participant_id' })
+  sessionParticipant!: SessionParticipantEntity;
 
   @Column({ name: 'evaluator_id', type: 'uuid' })
   evaluatorId!: string;

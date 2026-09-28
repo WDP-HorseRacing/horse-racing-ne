@@ -90,7 +90,7 @@ export class HorseStatusesService {
       const now = new Date();
       const note = this.lifecycleNote(body);
       if (effects.cancelTraining) {
-        await this.statuses.cancelOpenTrainingPlans(
+        await this.statuses.cancelFutureTrainingParticipations(
           manager,
           id,
           caller.id,

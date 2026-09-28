@@ -2,6 +2,7 @@
  * Một dòng kết quả của câu query tổng hợp chỉ số theo từng buổi tập.
  */
 export interface SessionPerformanceRow {
+  sessionParticipantId?: string;
   sessionId: string;
   scheduledAt: Date;
   avgHeartRateBpm: number;

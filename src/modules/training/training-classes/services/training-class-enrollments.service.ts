@@ -1,0 +1,281 @@
+import { ConflictException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import type { Actor } from '../../../../common/types/actor';
+import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
+import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { evaluateEligibility } from '../../../horses/policies/horse.policy';
+import {
+  CreateHorseEnrollmentDto,
+  HorseEnrollmentResponseDto,
+  LeaveHorseEnrollmentDto,
+} from '../../dto/horse-enrollment.dto';
+import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
+import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../../enums/training-class-status.enum';
+import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
+import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
+import { SessionParticipantEntity } from '../../entities/session-participant.entity';
+import { TrainingPlanEntity } from '../../entities/training-plan.entity';
+import { TrainingSessionEntity } from '../../entities/training-session.entity';
+import { toHorseEnrollmentResponse } from '../../mappers/horse-enrollment.mapper';
+import { TrainingAccessService } from '../../shared/training-access.service';
+import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
+
+@Injectable()
+export class TrainingClassEnrollmentsService {
+  constructor(
+    @InjectRepository(HorseEnrollmentEntity)
+    private readonly enrollments: Repository<HorseEnrollmentEntity>,
+    private readonly access: TrainingAccessService,
+    private readonly operations: TrainingOperationsFacade,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async list(
+    actor: Actor,
+    classId: string,
+  ): Promise<HorseEnrollmentResponseDto[]> {
+    const caller = await this.access.currentUser(actor);
+    await this.access.assertCanReadClass(actor, classId);
+    const rows = await this.enrollments.find({
+      where: { classId },
+      relations: { trainingClass: true },
+      order: { enrolledAt: 'ASC' },
+    });
+    const visible = await Promise.all(
+      rows.map(async (row) =>
+        (await this.access.canReadEnrollment(
+          actor,
+          caller.id,
+          row,
+          this.dataSource.manager,
+        ))
+          ? row
+          : null,
+      ),
+    );
+    return visible.filter((row): row is HorseEnrollmentEntity => !!row).map(
+      toHorseEnrollmentResponse,
+    );
+  }
+
+  async create(
+    actor: Actor,
+    classId: string,
+    body: CreateHorseEnrollmentDto,
+  ): Promise<HorseEnrollmentResponseDto> {
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const trainingClass = await this.access.lockedTrainingClass(
+        manager,
+        classId,
+      );
+      this.access.assertCanManageClass(
+        actor,
+        caller.id,
+        trainingClass.headTrainerId,
+      );
+      if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
+        throw new ConflictException('Chỉ class ACTIVE mới nhận thêm horse');
+      }
+      if (trainingClass.maxHorses) {
+        const activeCount = await manager.count(HorseEnrollmentEntity, {
+          where: {
+            classId,
+            status: HorseEnrollmentStatus.ACTIVE,
+          },
+        });
+        if (activeCount >= trainingClass.maxHorses) {
+          throw new ConflictException(
+            `Lớp học đã đạt sĩ số tối đa (${trainingClass.maxHorses} ngựa)`,
+          );
+        }
+      }
+      const horse = await this.access.lockedHorse(manager, body.horseId);
+      if (horse.isReference)
+        throw new ConflictException('Ngựa tham chiếu không thể enroll');
+      await this.access.assertTrainerBarn(manager, actor, caller.id, horse.id);
+      const enrolledAt = body.enrolledAt
+        ? new Date(body.enrolledAt)
+        : new Date();
+      if (
+        enrolledAt < new Date(`${trainingClass.startDate}T00:00:00.000Z`) ||
+        enrolledAt > new Date(`${trainingClass.endDate}T23:59:59.999Z`)
+      ) {
+        throw new ConflictException(
+          'enrolledAt phải nằm trong thời gian class',
+        );
+      }
+      const existingPeriods = await manager.find(HorseEnrollmentEntity, {
+        where: {
+          classId,
+          horseId: body.horseId,
+          status: Not(HorseEnrollmentStatus.CANCELLED),
+        },
+      });
+      if (
+        existingPeriods.some(
+          (period) => !period.leftAt || enrolledAt < period.leftAt,
+        )
+      ) {
+        throw new ConflictException('Khoảng enrollment của Horse bị chồng lấn');
+      }
+      const row = await manager.save(
+        manager.create(HorseEnrollmentEntity, {
+          classId,
+          horseId: horse.id,
+          enrolledAt,
+          leftAt: null,
+          status: HorseEnrollmentStatus.ACTIVE,
+        }),
+      );
+      await this.addToFuturePublishedSessions(manager, row, horse);
+      return row;
+    });
+    return toHorseEnrollmentResponse(saved);
+  }
+
+  async leave(
+    actor: Actor,
+    enrollmentId: string,
+    body: LeaveHorseEnrollmentDto,
+  ): Promise<HorseEnrollmentResponseDto> {
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const row = await manager.findOne(HorseEnrollmentEntity, {
+        where: { id: enrollmentId },
+        relations: { trainingClass: true },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!row) throw new ConflictException('Không tìm thấy horse enrollment');
+      this.access.assertCanManageClass(
+        actor,
+        caller.id,
+        row.trainingClass.headTrainerId,
+      );
+      if (row.status !== HorseEnrollmentStatus.ACTIVE) {
+        throw new ConflictException('Enrollment đã rời class');
+      }
+      const leftAt = body.leftAt ? new Date(body.leftAt) : new Date();
+      if (leftAt < row.enrolledAt) {
+        throw new ConflictException('leftAt không hợp lệ');
+      }
+      if (leftAt > new Date(`${row.trainingClass.endDate}T23:59:59.999Z`)) {
+        throw new ConflictException('leftAt phải nằm trong thời gian class');
+      }
+      row.leftAt = leftAt;
+      row.status = HorseEnrollmentStatus.LEFT;
+      const updated = await manager.save(row);
+      const participants = await manager
+        .getRepository(SessionParticipantEntity)
+        .createQueryBuilder('participant')
+        .innerJoin(
+          TrainingSessionEntity,
+          'session',
+          'session.id = participant.session_id',
+        )
+        .where('participant.horse_enrollment_id = :enrollmentId', {
+          enrollmentId,
+        })
+        .andWhere('participant.status IN (:...statuses)', {
+          statuses: [
+            SessionParticipantStatus.PLANNED,
+            SessionParticipantStatus.PRESENT,
+            SessionParticipantStatus.READY,
+          ],
+        })
+        .andWhere('session.scheduled_start_at >= :leftAt', { leftAt })
+        .getMany();
+      for (const participant of participants) {
+        participant.status = SessionParticipantStatus.CANCELLED;
+        participant.cancelReason = body.reason ?? 'Horse đã rời class';
+      }
+      if (participants.length)
+        await manager.save(SessionParticipantEntity, participants);
+      for (const sessionId of new Set(
+        participants.map((item) => item.sessionId),
+      )) {
+        await this.operations.refreshSessionStatus(manager, sessionId);
+      }
+      return updated;
+    });
+    return toHorseEnrollmentResponse(saved);
+  }
+
+  private async addToFuturePublishedSessions(
+    manager: EntityManager,
+    enrollment: HorseEnrollmentEntity,
+    horse: HorseEntity,
+  ): Promise<void> {
+    const now = new Date();
+    const sessions = await manager
+      .getRepository(TrainingSessionEntity)
+      .createQueryBuilder('session')
+      .innerJoin(TrainingPlanEntity, 'plan', 'plan.id = session.plan_id')
+      .where('plan.class_id = :classId', {
+        classId: enrollment.classId,
+      })
+      .andWhere('session.status = :status', {
+        status: TrainingSessionStatus.SCHEDULED,
+      })
+      .andWhere('session.scheduled_start_at >= :enrolledAt', {
+        enrolledAt: enrollment.enrolledAt,
+      })
+      .andWhere('session.scheduled_start_at > :now', { now })
+      .orderBy('session.scheduled_start_at', 'ASC')
+      .getMany();
+    for (const session of sessions) {
+      const exists = await manager.findOneBy(SessionParticipantEntity, {
+        sessionId: session.id,
+        horseId: horse.id,
+      });
+      if (exists) continue;
+      const lock = await manager.findOneBy(TrainingLockEntity, {
+        horseId: horse.id,
+        status: TrainingLockStatus.ACTIVE,
+      });
+      const eligibility = evaluateEligibility({
+        isReference: horse.isReference,
+        lifecycleStatus: horse.lifecycleStatus,
+        healthStatus: horse.healthStatus,
+        hasActiveTrainingLock: !!lock,
+      });
+      const groom = await this.findGroomAt(
+        manager,
+        horse.id,
+        session.scheduledStartAt,
+      );
+      await manager.save(
+        manager.create(SessionParticipantEntity, {
+          sessionId: session.id,
+          horseId: horse.id,
+          horseEnrollmentId: enrollment.id,
+          assignedGroomId: groom?.groomId ?? null,
+          status: eligibility.trainingEligible
+            ? SessionParticipantStatus.PLANNED
+            : lock
+              ? SessionParticipantStatus.CANCELLED_BY_LOCK
+              : SessionParticipantStatus.INELIGIBLE,
+          ineligibilityReason:
+            eligibility.reasons.join(',').slice(0, 64) || null,
+        }),
+      );
+    }
+  }
+
+  private findGroomAt(manager: EntityManager, horseId: string, at: Date) {
+    return manager
+      .getRepository(GroomAssignmentEntity)
+      .createQueryBuilder('assignment')
+      .where('assignment.horse_id = :horseId', { horseId })
+      .andWhere('assignment.start_at <= :at', { at })
+      .andWhere('(assignment.end_at IS NULL OR :at < assignment.end_at)', {
+        at,
+      })
+      .orderBy('assignment.start_at', 'DESC')
+      .getOne();
+  }
+}

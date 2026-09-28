@@ -19,10 +19,10 @@ const featureDomains = {
     'incidents',
   ],
   training: [
+    'training-classes',
     'training-plans',
     'training-sessions',
     'time-trials',
-    'trainging-evaluations',
   ],
   medical: [
     'medical-records',
@@ -32,6 +32,7 @@ const featureDomains = {
   ],
   performance: [
     'performance-summaries',
+    'evaluations',
     'performance-metrics',
     'performance-details',
   ],
