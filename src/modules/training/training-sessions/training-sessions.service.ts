@@ -187,10 +187,7 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const caller = await this.accessService.currentUser(actor);
     const session = await this.dataSource.transaction(async (manager) => {
-      const snapshot = await this.accessService.findSession(
-        manager,
-        sessionId,
-      );
+      const snapshot = await this.accessService.findSession(manager, sessionId);
       const horse = await this.accessService.lockedHorse(
         manager,
         snapshot.plan.horseId,
