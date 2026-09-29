@@ -1,9 +1,33 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager, In } from 'typeorm';
+import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
+
+/**
+ * Tham số khi hệ thống tự rút một con ngựa khỏi lớp.
+ */
+export interface WithdrawHorseOptions {
+  /** Lý do ghi vào từng lượt tham gia bị hủy */
+  reason: string;
+  /** Thời điểm rút; buổi bắt đầu từ thời điểm này trở đi bị hủy lượt */
+  at: Date;
+  /** Chỉ rút khỏi lớp do Head Trainer này phụ trách (dùng khi đổi khu); bỏ trống là rút khỏi mọi lớp */
+  headTrainerId?: string;
+}
+
+/**
+ * Kết quả rút ngựa khỏi lớp, để nơi gọi ghi nhật ký và câu tóm tắt.
+ */
+export interface WithdrawHorseResult {
+  /** UUID các lớp con ngựa vừa bị rút */
+  classIds: string[];
+  /** Số lượt tham gia buổi tập đã hủy */
+  participantsCancelled: number;
+}
 
 const OPEN_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.PLANNED,
@@ -97,6 +121,114 @@ export class TrainingOperationsFacade {
       reason,
       now,
     );
+  }
+
+  /**
+   * Rút một con ngựa khỏi các lớp đang học, dành cho module khác gọi trong transaction của họ (giải nghệ, chuyển nhượng, đổi khu).
+   *
+   * - Chỉ xét enrollment ACTIVE; có `headTrainerId` thì chỉ rút khỏi lớp do Head Trainer đó phụ trách
+   * - Enrollment đã bắt đầu (enrolledAt <= at) chuyển LEFT, ghi leftAt = at; enrollment chưa bắt đầu chuyển CANCELLED
+   * - Lượt tham gia các buổi từ `at` trở đi bị hủy như khi Head Trainer bấm rời lớp; buổi đã học và lượt ONGOING giữ nguyên
+   * - Không kiểm quyền: đây là hệ quả hệ thống tự chạy, nơi gọi đã kiểm quyền thao tác gốc
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param options Lý do, thời điểm rút và Head Trainer cần lọc (nếu có)
+   * @returns A promise resolving to các lớp đã rút và số lượt tham gia đã hủy, để nơi gọi ghi nhật ký
+   */
+  async withdrawHorseFromClasses(
+    manager: EntityManager,
+    horseId: string,
+    options: WithdrawHorseOptions,
+  ): Promise<WithdrawHorseResult> {
+    const query = manager
+      .getRepository(HorseEnrollmentEntity)
+      .createQueryBuilder('enrollment')
+      .innerJoin('enrollment.trainingClass', 'class')
+      .where('enrollment.horse_id = :horseId', { horseId })
+      .andWhere('enrollment.status = :status', {
+        status: HorseEnrollmentStatus.ACTIVE,
+      });
+    if (options.headTrainerId) {
+      query.andWhere('class.head_trainer_id = :headTrainerId', {
+        headTrainerId: options.headTrainerId,
+      });
+    }
+    const enrollments = await query
+      .setLock('pessimistic_write', undefined, ['enrollment'])
+      .getMany();
+    if (enrollments.length === 0) {
+      return { classIds: [], participantsCancelled: 0 };
+    }
+
+    for (const enrollment of enrollments) {
+      if (enrollment.enrolledAt > options.at) {
+        enrollment.status = HorseEnrollmentStatus.CANCELLED;
+      } else {
+        enrollment.status = HorseEnrollmentStatus.LEFT;
+        enrollment.leftAt = options.at;
+      }
+    }
+    await manager.save(HorseEnrollmentEntity, enrollments);
+    const participantsCancelled = await this.cancelParticipantsFromEnrollments(
+      manager,
+      enrollments.map((enrollment) => enrollment.id),
+      options.at,
+      options.reason,
+    );
+    return {
+      classIds: enrollments.map((enrollment) => enrollment.classId),
+      participantsCancelled,
+    };
+  }
+
+  /**
+   * Hủy các lượt tham gia chưa diễn ra của những enrollment vừa rời lớp. Dùng chung cho Head Trainer bấm rời lớp và hệ thống tự rút.
+   *
+   * - Chỉ hủy lượt PLANNED/PRESENT/READY của buổi có giờ bắt đầu từ `from` trở đi
+   * - Lượt ONGOING, lượt đã kết thúc và buổi trước `from` giữ nguyên làm lịch sử
+   * - Buổi không còn lượt nào mở thì cập nhật lại trạng thái buổi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param enrollmentIds UUID các enrollment vừa rời lớp
+   * @param from Thời điểm rời lớp; buổi bắt đầu từ thời điểm này trở đi bị hủy lượt
+   * @param reason Lý do hủy ghi vào từng lượt
+   * @returns A promise resolving to số lượt tham gia đã hủy
+   */
+  async cancelParticipantsFromEnrollments(
+    manager: EntityManager,
+    enrollmentIds: string[],
+    from: Date,
+    reason: string,
+  ): Promise<number> {
+    if (enrollmentIds.length === 0) return 0;
+    const participants = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .innerJoin(
+        TrainingSessionEntity,
+        'session',
+        'session.id = participant.session_id',
+      )
+      .where('participant.horse_enrollment_id IN (:...enrollmentIds)', {
+        enrollmentIds,
+      })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: OPEN_PARTICIPANT_STATUSES,
+      })
+      .andWhere('session.scheduled_start_at >= :from', { from })
+      .getMany();
+    for (const participant of participants) {
+      participant.status = SessionParticipantStatus.CANCELLED;
+      participant.cancelReason = reason;
+    }
+    if (participants.length) {
+      await manager.save(SessionParticipantEntity, participants);
+    }
+    for (const sessionId of new Set(participants.map((row) => row.sessionId))) {
+      await this.refreshSessionStatus(manager, sessionId);
+    }
+    return participants.length;
   }
 
   private async cancelFutureParticipations(

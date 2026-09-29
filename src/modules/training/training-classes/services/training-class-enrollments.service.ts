@@ -167,37 +167,12 @@ export class TrainingClassEnrollmentsService {
       row.leftAt = leftAt;
       row.status = HorseEnrollmentStatus.LEFT;
       const updated = await manager.save(row);
-      const participants = await manager
-        .getRepository(SessionParticipantEntity)
-        .createQueryBuilder('participant')
-        .innerJoin(
-          TrainingSessionEntity,
-          'session',
-          'session.id = participant.session_id',
-        )
-        .where('participant.horse_enrollment_id = :enrollmentId', {
-          enrollmentId,
-        })
-        .andWhere('participant.status IN (:...statuses)', {
-          statuses: [
-            SessionParticipantStatus.PLANNED,
-            SessionParticipantStatus.PRESENT,
-            SessionParticipantStatus.READY,
-          ],
-        })
-        .andWhere('session.scheduled_start_at >= :leftAt', { leftAt })
-        .getMany();
-      for (const participant of participants) {
-        participant.status = SessionParticipantStatus.CANCELLED;
-        participant.cancelReason = body.reason ?? 'Horse đã rời class';
-      }
-      if (participants.length)
-        await manager.save(SessionParticipantEntity, participants);
-      for (const sessionId of new Set(
-        participants.map((item) => item.sessionId),
-      )) {
-        await this.operations.refreshSessionStatus(manager, sessionId);
-      }
+      await this.operations.cancelParticipantsFromEnrollments(
+        manager,
+        [enrollmentId],
+        leftAt,
+        body.reason ?? 'Horse đã rời class',
+      );
       return updated;
     });
     return toHorseEnrollmentResponse(saved);
