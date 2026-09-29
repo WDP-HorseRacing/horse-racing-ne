@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { evaluateEligibility } from '../../horses/policies/horse.policy';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
@@ -8,13 +8,17 @@ import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
 import {
   AssignParticipantGroomDto,
   MarkParticipantAbsentDto,
+  SessionParticipantListItemDto,
   SessionParticipantResponseDto,
 } from '../dto/session-participant.dto';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { toSessionParticipantResponse } from '../mappers/session-participant.mapper';
+import {
+  toSessionParticipantListItem,
+  toSessionParticipantResponse,
+} from '../mappers/session-participant.mapper';
 import {
   assertParticipantAbsent,
   assertParticipantCheckIn,
@@ -36,10 +40,17 @@ export class SessionParticipantsService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Liệt kê các lượt tham gia của buổi tập mà người gọi được xem, mỗi lượt kèm cờ ngựa đang bị khóa huấn luyện
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @returns A promise resolving to các lượt tham gia theo thứ tự tạo
+   */
   async list(
     actor: Actor,
     sessionId: string,
-  ): Promise<SessionParticipantResponseDto[]> {
+  ): Promise<SessionParticipantListItemDto[]> {
     await this.access.assertCanReadSession(actor, sessionId);
     const caller = await this.access.currentUser(actor);
     const rows = await this.participants.find({
@@ -59,9 +70,30 @@ export class SessionParticipantsService {
           : null,
       ),
     );
-    return visible.filter((row): row is SessionParticipantEntity => !!row).map(
-      toSessionParticipantResponse,
+    const shown = visible.filter(
+      (row): row is SessionParticipantEntity => !!row,
     );
+    const lockedHorseIds = await this.lockedHorseIds(
+      shown.map((row) => row.horseId),
+    );
+    return shown.map((row) =>
+      toSessionParticipantListItem(row, lockedHorseIds),
+    );
+  }
+
+  /**
+   * Lọc ra các ngựa đang có lệnh khóa huấn luyện hiệu lực, một câu truy vấn cho cả danh sách
+   *
+   * @param horseIds UUID các ngựa cần kiểm
+   * @returns A promise resolving to tập UUID các ngựa đang bị khóa
+   */
+  private async lockedHorseIds(horseIds: string[]): Promise<Set<string>> {
+    if (horseIds.length === 0) return new Set();
+    const locks = await this.dataSource.manager.find(TrainingLockEntity, {
+      select: { horseId: true },
+      where: { horseId: In(horseIds), status: TrainingLockStatus.ACTIVE },
+    });
+    return new Set(locks.map((lock) => lock.horseId));
   }
 
   async assignGroom(

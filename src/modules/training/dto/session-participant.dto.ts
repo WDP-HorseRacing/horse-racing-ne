@@ -81,3 +81,12 @@ export class SessionParticipantResponseDto {
   @Expose()
   updatedAt!: Date;
 }
+
+export class SessionParticipantListItemDto extends SessionParticipantResponseDto {
+  @ApiProperty({
+    description:
+      'Ngựa đang có lệnh khóa huấn luyện hiệu lực, tính tại lúc đọc. Lượt còn mở sẽ bị chặn khi bắt đầu buổi',
+  })
+  @Expose()
+  trainingLocked!: boolean;
+}

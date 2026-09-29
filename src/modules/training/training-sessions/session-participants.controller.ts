@@ -14,6 +14,7 @@ import { UserRole } from '../../users/user.enums';
 import {
   AssignParticipantGroomDto,
   MarkParticipantAbsentDto,
+  SessionParticipantListItemDto,
   SessionParticipantResponseDto,
 } from '../dto/session-participant.dto';
 import { SessionParticipantsService } from './session-participants.service';
@@ -25,7 +26,7 @@ export class SessionParticipantsController {
   constructor(private readonly participants: SessionParticipantsService) {}
 
   @Get('training-sessions/:sessionId/participants')
-  @ApiOkResponse({ type: [SessionParticipantResponseDto] })
+  @ApiOkResponse({ type: [SessionParticipantListItemDto] })
   list(
     @CurrentUser() actor: Actor,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
