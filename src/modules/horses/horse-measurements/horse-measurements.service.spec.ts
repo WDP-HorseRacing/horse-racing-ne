@@ -249,6 +249,7 @@ describe('HorseMeasurementsService', () => {
         type: HorseMeasurementType.TEMPERATURE,
         value: '39.00',
         measuredAt: anyDate,
+        isAbnormal: true,
         measuredBy: CALLER_ID,
         source: HorseMeasurementSource.MANUAL,
         medicalRecordId: null,
@@ -265,6 +266,8 @@ describe('HorseMeasurementsService', () => {
           value: '39.00',
           measuredAt: anyDate,
           source: HorseMeasurementSource.MANUAL,
+          isAbnormal: true,
+          abnormalConfirmed: true,
         },
         feature: 'F1.5',
       });
@@ -279,6 +282,17 @@ describe('HorseMeasurementsService', () => {
       expect(result[0].alerts).toEqual([
         expect.objectContaining({ alert: HorseMeasurementAlert.FEVER }),
       ]);
+    });
+
+    it('stores a value inside the normal range as not abnormal', async () => {
+      await service.addMeasurements(
+        actorWith(UserRole.VETERINARIAN),
+        HORSE_ID,
+        values([[HorseMeasurementType.TEMPERATURE, 37.8]]),
+      );
+      expect(measurementRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ isAbnormal: false }),
+      );
     });
 
     it('rejects a TRANSFERRED horse with 409', async () => {

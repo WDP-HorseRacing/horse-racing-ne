@@ -103,7 +103,7 @@ export class HorseLatestMeasurementDto {
 
   @ApiProperty({
     description:
-      'Ngoài khoảng bình thường: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C',
+      'Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)',
   })
   isAbnormal!: boolean;
 }

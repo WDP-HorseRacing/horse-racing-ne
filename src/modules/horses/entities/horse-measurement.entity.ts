@@ -36,6 +36,9 @@ export class HorseMeasurementEntity extends BaseRecordEntity {
   @Column({ name: 'measured_at', type: 'timestamptz' })
   measuredAt!: Date;
 
+  @Column({ name: 'is_abnormal', type: 'boolean', default: false })
+  isAbnormal!: boolean;
+
   @Column({ name: 'measured_by', type: 'uuid' })
   measuredBy!: string;
 

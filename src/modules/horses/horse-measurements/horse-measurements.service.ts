@@ -28,6 +28,7 @@ import {
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import {
   assertAbnormalConfirmed,
+  isAbnormalMeasurement,
   assertDistinctMeasurementTypes,
   assertMeasuredAt,
   assertMeasurementValue,
@@ -132,12 +133,14 @@ export class HorseMeasurementsService {
             measuredAt,
             manager,
           );
+          const isAbnormal = isAbnormalMeasurement(item.type, item.value);
           const saved = await repository.save(
             repository.create({
               horseId,
               type: item.type,
               value: item.value.toFixed(2),
               measuredAt,
+              isAbnormal,
               measuredBy: caller.id,
               source: HorseMeasurementSource.MANUAL,
               medicalRecordId: null,
@@ -155,6 +158,8 @@ export class HorseMeasurementsService {
               value: saved.value,
               measuredAt,
               source: HorseMeasurementSource.MANUAL,
+              isAbnormal,
+              abnormalConfirmed: body.confirmAbnormal === true,
             },
             feature: 'F1.5',
           });
