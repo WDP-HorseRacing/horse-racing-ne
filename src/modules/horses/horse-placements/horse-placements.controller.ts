@@ -8,7 +8,12 @@ import {
 import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { AssignHorseBarnDto, HorseResponseDto } from '../dto';
+import {
+  AssignHorseBarnDto,
+  HorsePlacementResponseDto,
+  HorseResponseDto,
+  PlaceHorseDto,
+} from '../dto';
 import { HorsePlacementsService } from './horse-placements.service';
 
 @ApiTags('horses')
@@ -31,5 +36,21 @@ export class HorsePlacementsController {
     @Body() body: AssignHorseBarnDto,
   ): Promise<HorseResponseDto> {
     return this.placements.assignBarn(actor, horseId, body);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
+  @Put('placement')
+  @ApiOperation({
+    summary: 'Place a horse in a stall and assign its groom in one step',
+    description:
+      'Head Trainer phụ trách khu của ngựa. Xếp ô và giao Groom trong cùng một transaction: một phần lỗi thì không lưu gì. Luật từng phần như PUT /horses/:id/stall và PUT /horses/:id/groom.',
+  })
+  @ApiOkResponse({ type: HorsePlacementResponseDto })
+  placeHorse(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Body() body: PlaceHorseDto,
+  ): Promise<HorsePlacementResponseDto> {
+    return this.placements.placeHorse(actor, horseId, body);
   }
 }

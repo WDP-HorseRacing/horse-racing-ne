@@ -11,6 +11,8 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { BarnsService } from '../../stable/barns/barns.service';
+import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../stable/constants/stable-events.constants';
+import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -38,7 +40,11 @@ describe('HorsePlacementsService', () => {
     findById: jest.Mock;
   };
   let barns: { lockAssignableBarn: jest.Mock };
-  let stalls: { releaseStallByHorse: jest.Mock };
+  let stalls: {
+    releaseStallByHorse: jest.Mock;
+    moveHorseToStallInTransaction: jest.Mock;
+  };
+  let grooms: { assignInTransaction: jest.Mock };
   let training: { withdrawHorseFromClasses: jest.Mock };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
@@ -104,7 +110,18 @@ describe('HorsePlacementsService', () => {
         track('lockAssignableBarn', { id: 'b2', headTrainerId: 'ht-2' }),
       ),
     };
+    grooms = {
+      assignInTransaction: jest.fn(
+        track('assignInTransaction', {
+          response: { id: 'ga-1', groomId: 'g-1' },
+          notice: { eventId: 'ga-1', horseId: HORSE_ID },
+        }),
+      ),
+    };
     stalls = {
+      moveHorseToStallInTransaction: jest.fn(
+        track('moveHorseToStallInTransaction', { id: 'sa-1', stallId: 's1' }),
+      ),
       releaseStallByHorse: jest.fn(
         track('releaseStallByHorse', { stallId: 's1', stallCode: 'A-01' }),
       ),
@@ -133,6 +150,7 @@ describe('HorsePlacementsService', () => {
       typedDataSource,
       audit,
       training as unknown as TrainingOperationsFacade,
+      grooms as unknown as GroomAssignmentsService,
     );
   });
 
@@ -261,5 +279,59 @@ describe('HorsePlacementsService', () => {
         after: { barnId: 'b2', stallCode: null },
       }),
     );
+  });
+
+  describe('placeHorse', () => {
+    const htActor = (): Actor => ({
+      sub: 'kc-ht',
+      roles: [UserRole.HEAD_TRAINER],
+    });
+    const place = () =>
+      service.placeHorse(htActor(), HORSE_ID, {
+        stallId: 's1',
+        groomId: 'g-1',
+      });
+
+    it('places the stall and the groom in one transaction and notifies after the commit', async () => {
+      const result = await place();
+
+      expect(stalls.moveHorseToStallInTransaction).toHaveBeenCalledWith(
+        manager,
+        CALLER_ID,
+        HORSE_ID,
+        's1',
+      );
+      expect(grooms.assignInTransaction).toHaveBeenCalledWith(
+        manager,
+        CALLER_ID,
+        HORSE_ID,
+        'g-1',
+      );
+      expect(calls).toEqual([
+        'transaction:start',
+        'moveHorseToStallInTransaction',
+        'assignInTransaction',
+        'transaction:commit',
+        'publish',
+      ]);
+      expect(events.publish).toHaveBeenCalledWith(
+        GROOM_ASSIGNMENT_CHANGED_EVENT,
+        { eventId: 'ga-1', horseId: HORSE_ID },
+      );
+      expect(result).toEqual({
+        stallAssignment: { id: 'sa-1', stallId: 's1' },
+        groomAssignment: { id: 'ga-1', groomId: 'g-1' },
+      });
+    });
+
+    it('fails as a whole and notifies nobody when the groom part fails', async () => {
+      grooms.assignInTransaction.mockRejectedValue(
+        new ConflictException('Groom phụ trách không ở trạng thái hoạt động'),
+      );
+
+      await expect(place()).rejects.toThrow(ConflictException);
+      expect(calls).not.toContain('transaction:commit');
+      expect(events.publish).not.toHaveBeenCalled();
+    });
   });
 });

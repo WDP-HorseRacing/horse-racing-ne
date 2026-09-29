@@ -7,9 +7,16 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { BarnsService } from '../../stable/barns/barns.service';
+import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../stable/constants/stable-events.constants';
+import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
-import { AssignHorseBarnDto, HorseResponseDto } from '../dto';
+import {
+  AssignHorseBarnDto,
+  HorsePlacementResponseDto,
+  HorseResponseDto,
+  PlaceHorseDto,
+} from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
 import { toHorseResponse } from '../mappers/horse.mapper';
 import { HORSE_BARN_ASSIGNED_EVENT } from '../constants/horse.constants';
@@ -29,6 +36,7 @@ export class HorsePlacementsService {
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly training: TrainingOperationsFacade,
+    private readonly grooms: GroomAssignmentsService,
   ) {}
 
   /**
@@ -107,5 +115,48 @@ export class HorsePlacementsService {
       this.events.publish(HORSE_BARN_ASSIGNED_EVENT, event);
     }
     return toHorseResponse(await this.access.findHorse(horseId));
+  }
+
+  /**
+   * Xếp ô và giao groom cho ngựa trong một lần gửi, thành công cả hai hoặc không lưu gì
+   *
+   * - Luật xếp ô như StallsService.moveHorseToStall, luật giao groom như GroomAssignmentsService.assign
+   * - Chạy cả hai trong cùng một transaction; sau khi commit mới phát GROOM_ASSIGNMENT_CHANGED_EVENT
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @param body Ô chuồng và groom được giao
+   * @returns A promise resolving to phân công ô và phân công groom đang mở của ngựa
+   * @throws BadRequestException Nếu ô không thuộc khu của ngựa, hoặc groom không có hoặc không phải Groom
+   * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô
+   * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phụ trách khu của ngựa
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, ô không còn trống, groom không còn hoạt động hoặc có thao tác khác chạy cùng lúc
+   */
+  async placeHorse(
+    actor: Actor,
+    horseId: string,
+    body: PlaceHorseDto,
+  ): Promise<HorsePlacementResponseDto> {
+    const caller = await this.access.currentUser(actor);
+    const { stallAssignment, groom } = await this.dataSource.transaction(
+      async (manager) => ({
+        stallAssignment: await this.stalls.moveHorseToStallInTransaction(
+          manager,
+          caller.id,
+          horseId,
+          body.stallId,
+        ),
+        groom: await this.grooms.assignInTransaction(
+          manager,
+          caller.id,
+          horseId,
+          body.groomId,
+        ),
+      }),
+    );
+    if (groom.notice) {
+      this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, groom.notice);
+    }
+    return { stallAssignment, groomAssignment: groom.response };
   }
 }
