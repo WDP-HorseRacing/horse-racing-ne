@@ -13,6 +13,7 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { RacingRepository } from '../../racing/repositories/racing.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import {
@@ -28,6 +29,7 @@ import { HorseStatusesService } from './horse-statuses.service';
 type HorseRow = Partial<HorseEntity> & { id: string };
 
 const anyString: unknown = expect.any(String);
+const anyDate: unknown = expect.any(Date);
 const HORSE_ID = 'h1';
 const CALLER_ID = 'cm-1';
 
@@ -38,9 +40,9 @@ describe('HorseStatusesService', () => {
   let manager: { getRepository: jest.Mock };
   let dataSource: { manager: typeof manager; transaction: jest.Mock };
   let statuses: {
-    cancelOpenTrainingPlans: jest.Mock;
     lifecycleImpact: jest.Mock;
   };
+  let training: { withdrawHorseFromClasses: jest.Mock };
   let horses: {
     hasActiveTrainingLock: jest.Mock;
     lockActiveHorseOwner: jest.Mock;
@@ -64,7 +66,7 @@ describe('HorseStatusesService', () => {
   const actor: Actor = { sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] };
 
   const sideEffectMocks = () => [
-    statuses.cancelOpenTrainingPlans,
+    training.withdrawHorseFromClasses,
     racing.withdrawOpenRegistrationsByHorse,
     stalls.releaseStallByHorse,
     grooms.endGroomByHorse,
@@ -90,7 +92,7 @@ describe('HorseStatusesService', () => {
       healthStatus: HorseHealthStatus.ELIGIBLE,
     };
     impact = {
-      openTrainingPlans: 2,
+      activeClasses: 2,
       openRaceRegistrations: 3,
       stallCode: 'A-01',
       groomName: 'Groom A',
@@ -107,8 +109,13 @@ describe('HorseStatusesService', () => {
       ),
     };
     statuses = {
-      cancelOpenTrainingPlans: jest.fn().mockResolvedValue(2),
       lifecycleImpact: jest.fn(() => Promise.resolve(impact)),
+    };
+    training = {
+      withdrawHorseFromClasses: jest.fn().mockResolvedValue({
+        classIds: ['c1', 'c2'],
+        participantsCancelled: 5,
+      }),
     };
     horses = {
       hasActiveTrainingLock: jest.fn().mockResolvedValue(false),
@@ -147,6 +154,7 @@ describe('HorseStatusesService', () => {
       trainingLocks,
       racing as unknown as RacingRepository,
       events as unknown as DomainEventPublisher,
+      training as unknown as TrainingOperationsFacade,
     );
   });
 
@@ -178,12 +186,10 @@ describe('HorseStatusesService', () => {
 
     it('runs every transfer effect from ACTIVE with the transaction manager', async () => {
       await change(HorseLifecycleStatus.TRANSFERRED, 'Bán cho CLB khác');
-      expect(statuses.cancelOpenTrainingPlans).toHaveBeenCalledWith(
+      expect(training.withdrawHorseFromClasses).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
-        CALLER_ID,
-        'Ngựa chuyển nhượng: Bán cho CLB khác',
-        expect.any(Date),
+        { reason: 'Ngựa chuyển nhượng: Bán cho CLB khác', at: anyDate },
       );
       expect(racing.withdrawOpenRegistrationsByHorse).toHaveBeenCalledWith(
         manager,
@@ -275,7 +281,7 @@ describe('HorseStatusesService', () => {
           barnId: null,
           stallCode: null,
           groomId: null,
-          trainingPlansCancelled: 2,
+          classesWithdrawn: 2,
           trainingLockReleased: true,
           raceRegistrationsWithdrawn: 3,
         },
@@ -321,7 +327,7 @@ describe('HorseStatusesService', () => {
           after: {
             lifecycleStatus: HorseLifecycleStatus.RETIRED,
             lifecycleReason: 'Chấn thương',
-            trainingPlansCancelled: 2,
+            classesWithdrawn: 2,
             raceRegistrationsWithdrawn: 2,
           },
         }),
@@ -331,7 +337,7 @@ describe('HorseStatusesService', () => {
     it('transfers a RETIRED horse without cancelling training or withdrawing registrations', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
       await change(HorseLifecycleStatus.TRANSFERRED);
-      expect(statuses.cancelOpenTrainingPlans).not.toHaveBeenCalled();
+      expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
       expect(racing.withdrawOpenRegistrationsByHorse).not.toHaveBeenCalled();
       expect(stalls.releaseStallByHorse).toHaveBeenCalledWith(
         manager,
@@ -347,12 +353,10 @@ describe('HorseStatusesService', () => {
 
     it('retires an ACTIVE horse keeping barn, stall, groom and training lock', async () => {
       await change(HorseLifecycleStatus.RETIRED, 'Chấn thương dài hạn');
-      expect(statuses.cancelOpenTrainingPlans).toHaveBeenCalledWith(
+      expect(training.withdrawHorseFromClasses).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
-        CALLER_ID,
-        'Ngựa giải nghệ: Chấn thương dài hạn',
-        expect.any(Date),
+        { reason: 'Ngựa giải nghệ: Chấn thương dài hạn', at: anyDate },
       );
       expect(racing.withdrawOpenRegistrationsByHorse).toHaveBeenCalledWith(
         manager,
@@ -414,7 +418,7 @@ describe('HorseStatusesService', () => {
       'allows %s even while the horse is training or racing (BA 2026-09-23)',
       async (to) => {
         await change(to);
-        expect(statuses.cancelOpenTrainingPlans).toHaveBeenCalled();
+        expect(training.withdrawHorseFromClasses).toHaveBeenCalled();
         expect(racing.withdrawOpenRegistrationsByHorse).toHaveBeenCalledWith(
           manager,
           HORSE_ID,
@@ -472,6 +476,7 @@ describe('HorseStatusesService', () => {
         trainingLocks,
         racing as unknown as RacingRepository,
         events as unknown as DomainEventPublisher,
+        training as unknown as TrainingOperationsFacade,
       );
     });
 
@@ -566,7 +571,7 @@ describe('HorseStatusesService', () => {
         to: HorseLifecycleStatus.TRANSFERRED,
         allowed: true,
         blockedReason: null,
-        trainingPlansCancelled: 2,
+        classesWithdrawn: 2,
         raceRegistrationsWithdrawn: 3,
         stallReleased: 'A-01',
         groomEnded: 'Groom A',
@@ -576,18 +581,18 @@ describe('HorseStatusesService', () => {
         pendingBarnAfter: false,
         ownerCleared: null,
         summary:
-          'Winx đang có 2 giáo án huấn luyện đang mở, 3 đăng ký thi đấu chưa diễn ra, ô chuồng A-01, Groom Groom A phụ trách, lệnh khóa huấn luyện. Nếu chuyển nhượng sẽ hủy giáo án, rút khỏi giải, trả ô chuồng, kết thúc phân công Groom, bỏ khu Khu A, gỡ khóa huấn luyện.',
+          'Winx đang có 2 lớp đang học, 3 đăng ký thi đấu chưa diễn ra, ô chuồng A-01, Groom Groom A phụ trách, lệnh khóa huấn luyện. Nếu chuyển nhượng sẽ rút khỏi lớp, rút khỏi giải, trả ô chuồng, kết thúc phân công Groom, bỏ khu Khu A, gỡ khóa huấn luyện.',
       });
       expectNothingWritten();
     });
 
     it('summarises a retirement like the BA example', async () => {
-      impact.openTrainingPlans = 2;
+      impact.activeClasses = 2;
       impact.openRaceRegistrations = 1;
       await expect(preview(HorseLifecycleStatus.RETIRED)).resolves.toEqual(
         expect.objectContaining({
           summary:
-            'Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải.',
+            'Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.',
         }),
       );
     });
@@ -603,7 +608,7 @@ describe('HorseStatusesService', () => {
       await expect(preview(HorseLifecycleStatus.TRANSFERRED)).resolves.toEqual(
         expect.objectContaining({
           allowed: true,
-          trainingPlansCancelled: 0,
+          classesWithdrawn: 0,
           raceRegistrationsWithdrawn: 0,
           stallReleased: 'A-01',
           barnCleared: 'Khu A',
@@ -620,7 +625,7 @@ describe('HorseStatusesService', () => {
         to: HorseLifecycleStatus.ACTIVE,
         allowed: true,
         blockedReason: null,
-        trainingPlansCancelled: 0,
+        classesWithdrawn: 0,
         raceRegistrationsWithdrawn: 0,
         stallReleased: null,
         groomEnded: null,

@@ -229,7 +229,7 @@ export interface HorseDetailParts {
 /**
  * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa (F1.8). Mỗi cờ đúng một việc.
  *
- * - cancelTraining: hủy giáo án SCHEDULED/ACTIVE và buổi tập SCHEDULED của chúng (tạm thay cho "rút khỏi lớp", chờ Flow 2).
+ * - withdrawFromClasses: rút ngựa khỏi mọi lớp đang học (training); buổi chưa diễn ra bị hủy, buổi đã học giữ nguyên.
  * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra.
  * - releaseStall: trả ô chuồng đang giữ về trống.
  * - endGroom: kết thúc phân công groom đang mở.
@@ -240,7 +240,7 @@ export interface HorseDetailParts {
  * - Chủ sở hữu không bao giờ bị đổi ở đây: chuyển nhượng vẫn giữ chủ để chủ cũ còn tra cứu.
  */
 export interface LifecycleSideEffects {
-  cancelTraining: boolean;
+  withdrawFromClasses: boolean;
   withdrawRegistrations: boolean;
   releaseStall: boolean;
   endGroom: boolean;
@@ -254,7 +254,7 @@ export interface LifecycleSideEffects {
  * Những gì sẽ bị ảnh hưởng nếu đổi vòng đời, đếm trên dữ liệu hiện tại để Club Manager xác nhận trước (F1.8 mục 5).
  */
 export interface LifecycleImpactRow {
-  openTrainingPlans: number;
+  activeClasses: number;
   openRaceRegistrations: number;
   stallCode: string | null;
   groomName: string | null;

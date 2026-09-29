@@ -253,7 +253,7 @@ export function assertLifecycleTransition(
 /**
  * Xác định các việc cần chạy khi ngựa đổi vòng đời (F1.8), dựa vào trạng thái hiện tại và trạng thái đích.
  *
- * - Giải nghệ (ACTIVE sang RETIRED): hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
+ * - Giải nghệ (ACTIVE sang RETIRED): rút khỏi lớp đang học, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
  * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu
  * - Kích hoạt lại (sang ACTIVE): đặt sức khỏe về UNDER_OBSERVATION; lớp học và đăng ký thi đấu đã hủy không tự khôi phục
  * - Kích hoạt lại từ chuyển nhượng: ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
@@ -272,7 +272,7 @@ export function lifecycleSideEffects(
       to === HorseLifecycleStatus.TRANSFERRED);
   const transferred = to === HorseLifecycleStatus.TRANSFERRED;
   return {
-    cancelTraining: retiringFromActive,
+    withdrawFromClasses: retiringFromActive,
     withdrawRegistrations: retiringFromActive,
     releaseStall: transferred,
     endGroom: transferred,
@@ -288,7 +288,7 @@ export function lifecycleSideEffects(
 /**
  * Tạo câu tóm tắt hệ quả khi đổi vòng đời, hiện ở bảng xác nhận (F1.8 mục 5; BA chốt 2026-09-23).
  *
- * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải."
+ * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."
  * - Chỉ nhắc mục thật sự có dữ liệu; không có gì thì chỉ còn câu 2
  *
  * @param horseName Tên ngựa
@@ -305,9 +305,9 @@ export function lifecycleImpactSummary(
 ): string {
   const facts: string[] = [];
   const actions: string[] = [];
-  if (effects.cancelTraining && impact.openTrainingPlans > 0) {
-    facts.push(`${impact.openTrainingPlans} giáo án huấn luyện đang mở`);
-    actions.push('hủy giáo án');
+  if (effects.withdrawFromClasses && impact.activeClasses > 0) {
+    facts.push(`${impact.activeClasses} lớp đang học`);
+    actions.push('rút khỏi lớp');
   }
   if (effects.withdrawRegistrations && impact.openRaceRegistrations > 0) {
     facts.push(`${impact.openRaceRegistrations} đăng ký thi đấu chưa diễn ra`);

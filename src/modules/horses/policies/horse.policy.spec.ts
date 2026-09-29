@@ -354,7 +354,7 @@ describe('horse.policy', () => {
 
   describe('lifecycleSideEffects', () => {
     const none = {
-      cancelTraining: false,
+      withdrawFromClasses: false,
       withdrawRegistrations: false,
       releaseStall: false,
       endGroom: false,
@@ -378,7 +378,7 @@ describe('horse.policy', () => {
         ),
       ).toEqual({
         ...none,
-        cancelTraining: true,
+        withdrawFromClasses: true,
         withdrawRegistrations: true,
       });
     });
@@ -392,7 +392,7 @@ describe('horse.policy', () => {
       ).toEqual({
         ...none,
         ...transferEffects,
-        cancelTraining: true,
+        withdrawFromClasses: true,
         withdrawRegistrations: true,
       });
     });
@@ -676,7 +676,7 @@ describe('horse.policy', () => {
 
   describe('lifecycleImpactSummary', () => {
     const impact = {
-      openTrainingPlans: 2,
+      activeClasses: 2,
       openRaceRegistrations: 1,
       stallCode: 'A-01',
       groomName: 'Lan',
@@ -697,7 +697,7 @@ describe('horse.policy', () => {
           impact,
         ),
       ).toBe(
-        'Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải.',
+        'Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.',
       );
     });
 
