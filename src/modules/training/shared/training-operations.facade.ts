@@ -35,6 +35,14 @@ const OPEN_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.READY,
 ];
 
+const HAPPENED_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.COMPLETED,
+  SessionParticipantStatus.ABSENT,
+  SessionParticipantStatus.SKIPPED,
+];
+
+const NO_PARTICIPANT_LEFT_REASON = 'Không còn ngựa tham gia';
+
 const NON_TERMINAL_PARTICIPANT_STATUSES = [
   ...OPEN_PARTICIPANT_STATUSES,
   SessionParticipantStatus.ONGOING,
@@ -297,6 +305,19 @@ export class TrainingOperationsFacade {
     return rows.length;
   }
 
+  /**
+   * Đóng buổi tập khi không còn lượt nào đang mở.
+   *
+   * - Chỉ xét buổi SCHEDULED hoặc IN_PROGRESS; buổi đã đóng giữ nguyên
+   * - Còn lượt mở (PLANNED/PRESENT/READY/ONGOING): không đổi gì
+   * - Hết lượt mở và có ít nhất một lượt đã thực sự diễn ra (COMPLETED, ABSENT, SKIPPED): COMPLETED
+   * - Hết lượt mở mà mọi lượt đều bị hủy hoặc không đủ điều kiện: CANCELLED, ghi thời điểm và lý do "Không còn ngựa tham gia" (vd rút hết ngựa khỏi buổi tương lai)
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param sessionId UUID của buổi tập
+   * @returns A promise resolving to buổi tập sau khi cập nhật
+   * @throws NotFoundException Nếu không có buổi tập
+   */
   async refreshSessionStatus(
     manager: EntityManager,
     sessionId: string,
@@ -316,10 +337,19 @@ export class TrainingOperationsFacade {
       sessionId,
       status: In(NON_TERMINAL_PARTICIPANT_STATUSES),
     });
-    if (open === 0) {
+    if (open > 0) return session;
+    const happened = await manager.countBy(SessionParticipantEntity, {
+      sessionId,
+      status: In(HAPPENED_PARTICIPANT_STATUSES),
+    });
+    if (happened > 0) {
       session.status = TrainingSessionStatus.COMPLETED;
-      await manager.save(session);
+    } else {
+      session.status = TrainingSessionStatus.CANCELLED;
+      session.cancelledAt = new Date();
+      session.cancelReason = NO_PARTICIPANT_LEFT_REASON;
     }
+    await manager.save(session);
     return session;
   }
 }

@@ -1,6 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingOperationsFacade } from './training-operations.facade';
@@ -317,5 +318,79 @@ describe('TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock', ()
       'session.scheduled_start_at >= :now',
       { now: AT },
     );
+  });
+});
+
+describe('TrainingOperationsFacade.refreshSessionStatus', () => {
+  const facade = new TrainingOperationsFacade();
+
+  function sessionManager(
+    status: TrainingSessionStatus,
+    openCount: number,
+    happenedCount: number,
+  ) {
+    const session: Record<string, unknown> = {
+      id: 's1',
+      status,
+      cancelledAt: null,
+      cancelReason: null,
+    };
+    const countBy = jest
+      .fn()
+      .mockResolvedValueOnce(openCount)
+      .mockResolvedValueOnce(happenedCount);
+    const save = jest.fn((row: unknown) => Promise.resolve(row));
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(session),
+      countBy,
+      save,
+    } as unknown as EntityManager;
+    return { session, manager, save };
+  }
+
+  it('keeps a session with open participants unchanged', async () => {
+    const { session, manager, save } = sessionManager(
+      TrainingSessionStatus.SCHEDULED,
+      1,
+      0,
+    );
+    await facade.refreshSessionStatus(manager, 's1');
+    expect(session.status).toBe(TrainingSessionStatus.SCHEDULED);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('completes a session where at least one participant actually took part', async () => {
+    const { session, manager } = sessionManager(
+      TrainingSessionStatus.IN_PROGRESS,
+      0,
+      1,
+    );
+    await facade.refreshSessionStatus(manager, 's1');
+    expect(session.status).toBe(TrainingSessionStatus.COMPLETED);
+    expect(session.cancelReason).toBeNull();
+  });
+
+  it('cancels a session whose participants were all cancelled, with a reason', async () => {
+    const { session, manager, save } = sessionManager(
+      TrainingSessionStatus.SCHEDULED,
+      0,
+      0,
+    );
+    await facade.refreshSessionStatus(manager, 's1');
+    expect(session.status).toBe(TrainingSessionStatus.CANCELLED);
+    expect(session.cancelReason).toBe('Không còn ngựa tham gia');
+    expect(session.cancelledAt).toBeInstanceOf(Date);
+    expect(save).toHaveBeenCalledWith(session);
+  });
+
+  it('leaves an already closed session alone', async () => {
+    const { session, manager, save } = sessionManager(
+      TrainingSessionStatus.COMPLETED,
+      0,
+      0,
+    );
+    await facade.refreshSessionStatus(manager, 's1');
+    expect(session.status).toBe(TrainingSessionStatus.COMPLETED);
+    expect(save).not.toHaveBeenCalled();
   });
 });
