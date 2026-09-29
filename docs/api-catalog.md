@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 160 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 162 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -106,10 +106,12 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{id}/thresholds` | List current and historical threshold profiles |
 | PUT | `/api/v1/horses/{id}/thresholds` | Create new version of horse threshold profile |
 | GET | `/api/v1/horses/{id}/workload` | Get configured training workload summary |
-| GET | `/api/v1/sessions/{id}/metrics` | List session metrics |
-| POST | `/api/v1/sessions/{id}/metrics` | Ingest session metric |
-| POST | `/api/v1/sessions/{id}/metrics/batch` | Ingest metric batch for active session |
-| GET | `/api/v1/sessions/{id}/performance-summary` | Get session metric and alert summary |
+| GET | `/api/v1/session-participants/{id}/evaluation` |  |
+| POST | `/api/v1/session-participants/{id}/evaluation` |  |
+| GET | `/api/v1/session-participants/{id}/metrics` | List participant metrics |
+| POST | `/api/v1/session-participants/{id}/metrics` | Ingest participant metric |
+| POST | `/api/v1/session-participants/{id}/metrics/batch` | Ingest metric batch for active participant |
+| GET | `/api/v1/session-participants/{id}/performance-summary` | Get session metric and alert summary |
 
 ## racing
 

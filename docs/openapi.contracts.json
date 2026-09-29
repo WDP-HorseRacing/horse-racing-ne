@@ -1379,282 +1379,6 @@
         ]
       }
     },
-    "/api/v1/medical-records/{id}": {
-      "get": {
-        "operationId": "MedicalDetailsController_record",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get medical record",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/medical-records/{id}/void": {
-      "post": {
-        "operationId": "MedicalDetailsController_voidRecord",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoidMedicalRecordDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Void medical record with reason",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/injury-cases/{id}/timeline": {
-      "get": {
-        "operationId": "MedicalDetailsController_injuryTimeline",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get append-only injury recovery timeline",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/injury-cases/{id}/recovery-events": {
-      "post": {
-        "operationId": "MedicalDetailsController_recordRecovery",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordRecoveryDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Append injury recovery event",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{horseId}/training-locks": {
-      "get": {
-        "operationId": "MedicalDetailsController_locks",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List horse training lock history",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "post": {
-        "operationId": "MedicalController_lock",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTrainingLockDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create veterinary training lock",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/training-locks/{id}": {
-      "get": {
-        "operationId": "MedicalDetailsController_lock",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get training lock details",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "MedicalDetailsController_updateLock",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTrainingLockDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update active veterinary training lock",
-        "tags": [
-          "medical"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/horses/{horseId}/care-schedules": {
       "get": {
         "operationId": "MedicalDetailsController_careSchedules",
@@ -1793,6 +1517,226 @@
         "x-implementation-status": "contract-only"
       }
     },
+    "/api/v1/injury-cases/{id}/timeline": {
+      "get": {
+        "operationId": "MedicalDetailsController_injuryTimeline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get append-only injury recovery timeline",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/injury-cases/{id}/recovery-events": {
+      "post": {
+        "operationId": "MedicalDetailsController_recordRecovery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordRecoveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Append injury recovery event",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/medical-records/{id}/injuries": {
+      "post": {
+        "operationId": "MedicalController_addInjury",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInjuryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add injury marker to medical record",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/horses/{horseId}/injuries": {
+      "get": {
+        "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem.",
+        "operationId": "MedicalController_listInjuries",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InjuryMarkerResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horse injury timeline",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical-records/{id}": {
+      "get": {
+        "operationId": "MedicalDetailsController_record",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get medical record",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/medical-records/{id}/void": {
+      "post": {
+        "operationId": "MedicalDetailsController_voidRecord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidMedicalRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Void medical record with reason",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
     "/api/v1/horses/{horseId}/medical-records": {
       "get": {
         "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.",
@@ -1911,12 +1855,12 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/medical-records/{id}/injuries": {
+    "/api/v1/horses/{horseId}/training-locks": {
       "post": {
-        "operationId": "MedicalController_addInjury",
+        "operationId": "MedicalController_lock",
         "parameters": [
           {
-            "name": "id",
+            "name": "horseId",
             "required": true,
             "in": "path",
             "schema": {
@@ -1929,7 +1873,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateInjuryDto"
+                "$ref": "#/components/schemas/CreateTrainingLockDto"
               }
             }
           }
@@ -1944,17 +1888,14 @@
             "bearer": []
           }
         ],
-        "summary": "Add injury marker to medical record",
+        "summary": "Create veterinary training lock",
         "tags": [
           "medical"
         ],
         "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{horseId}/injuries": {
+      },
       "get": {
-        "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem.",
-        "operationId": "MedicalController_listInjuries",
+        "operationId": "MedicalDetailsController_locks",
         "parameters": [
           {
             "name": "horseId",
@@ -1966,18 +1907,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/InjuryMarkerResponseDto"
-                  }
-                }
-              }
-            }
+          "501": {
+            "description": "Contract only"
           }
         },
         "security": [
@@ -1985,10 +1916,11 @@
             "bearer": []
           }
         ],
-        "summary": "List horse injury timeline",
+        "summary": "List horse training lock history",
         "tags": [
           "medical"
-        ]
+        ],
+        "x-implementation-status": "contract-only"
       }
     },
     "/api/v1/training-locks/{id}/release": {
@@ -2025,6 +1957,74 @@
           }
         ],
         "summary": "Release veterinary training lock",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/training-locks/{id}": {
+      "get": {
+        "operationId": "MedicalDetailsController_lock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get training lock details",
+        "tags": [
+          "medical"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "MedicalDetailsController_updateLock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingLockDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update active veterinary training lock",
         "tags": [
           "medical"
         ],
@@ -2154,7 +2154,85 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/sessions/{id}/metrics/batch": {
+    "/api/v1/session-participants/{id}/evaluation": {
+      "post": {
+        "operationId": "PerformanceEvaluationsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePerformanceEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceEvaluationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "performance"
+        ]
+      },
+      "get": {
+        "operationId": "PerformanceEvaluationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceEvaluationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "performance"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/metrics/batch": {
       "post": {
         "operationId": "PerformanceDetailsController_ingestBatch",
         "parameters": [
@@ -2187,14 +2265,14 @@
             "bearer": []
           }
         ],
-        "summary": "Ingest metric batch for active session",
+        "summary": "Ingest metric batch for active participant",
         "tags": [
           "performance"
         ],
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/sessions/{id}/performance-summary": {
+    "/api/v1/session-participants/{id}/performance-summary": {
       "get": {
         "operationId": "PerformanceDetailsController_sessionSummary",
         "parameters": [
@@ -2352,7 +2430,7 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/sessions/{id}/metrics": {
+    "/api/v1/session-participants/{id}/metrics": {
       "post": {
         "operationId": "PerformanceController_ingest",
         "parameters": [
@@ -2385,7 +2463,7 @@
             "bearer": []
           }
         ],
-        "summary": "Ingest session metric",
+        "summary": "Ingest participant metric",
         "tags": [
           "performance"
         ],
@@ -2413,7 +2491,7 @@
             "bearer": []
           }
         ],
-        "summary": "List session metrics",
+        "summary": "List participant metrics",
         "tags": [
           "performance"
         ],
@@ -2496,103 +2574,7 @@
         ]
       }
     },
-    "/api/v1/races/{id}": {
-      "get": {
-        "operationId": "RacingDetailsController_race",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get race and conditions",
-        "tags": [
-          "racing"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "patch": {
-        "operationId": "RacingDetailsController_updateRace",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateRaceDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update race before registration closes",
-        "tags": [
-          "racing"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/races/{id}/registrations": {
-      "get": {
-        "operationId": "RacingDetailsController_registrations",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List race registrations",
-        "tags": [
-          "racing"
-        ],
-        "x-implementation-status": "contract-only"
-      },
       "post": {
         "operationId": "RacingController_register",
         "parameters": [
@@ -2630,22 +2612,12 @@
           "racing"
         ],
         "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/races/{id}/registrations/{registrationId}": {
+      },
       "get": {
-        "operationId": "RacingDetailsController_registration",
+        "operationId": "RacingDetailsController_registrations",
         "parameters": [
           {
             "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "registrationId",
             "required": true,
             "in": "path",
             "schema": {
@@ -2663,12 +2635,14 @@
             "bearer": []
           }
         ],
-        "summary": "Get race registration and approvals",
+        "summary": "List race registrations",
         "tags": [
           "racing"
         ],
         "x-implementation-status": "contract-only"
-      },
+      }
+    },
+    "/api/v1/races/{id}/registrations/{registrationId}": {
       "patch": {
         "operationId": "RacingController_updateRegistration",
         "parameters": [
@@ -2710,6 +2684,42 @@
           }
         ],
         "summary": "Approve or reject race registration",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "get": {
+        "operationId": "RacingDetailsController_registration",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "registrationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get race registration and approvals",
         "tags": [
           "racing"
         ],
@@ -2785,6 +2795,54 @@
         ]
       }
     },
+    "/api/v1/races/{id}/registrations/{registrationId}/result": {
+      "patch": {
+        "operationId": "RacingController_recordResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "registrationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record race result for registration",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
     "/api/v1/races": {
       "get": {
         "operationId": "RacingController_list",
@@ -2835,9 +2893,9 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/races/{id}/registrations/{registrationId}/result": {
-      "patch": {
-        "operationId": "RacingController_recordResult",
+    "/api/v1/races/{id}": {
+      "get": {
+        "operationId": "RacingDetailsController_race",
         "parameters": [
           {
             "name": "id",
@@ -2846,9 +2904,29 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
           {
-            "name": "registrationId",
+            "bearer": []
+          }
+        ],
+        "summary": "Get race and conditions",
+        "tags": [
+          "racing"
+        ],
+        "x-implementation-status": "contract-only"
+      },
+      "patch": {
+        "operationId": "RacingDetailsController_updateRace",
+        "parameters": [
+          {
+            "name": "id",
             "required": true,
             "in": "path",
             "schema": {
@@ -2861,7 +2939,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RecordResultDto"
+                "$ref": "#/components/schemas/UpdateRaceDto"
               }
             }
           }
@@ -2876,7 +2954,7 @@
             "bearer": []
           }
         ],
-        "summary": "Record race result for registration",
+        "summary": "Update race before registration closes",
         "tags": [
           "racing"
         ],
@@ -7753,54 +7831,6 @@
           "url"
         ]
       },
-      "VoidMedicalRecordDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason"
-        ]
-      },
-      "RecordRecoveryDto": {
-        "type": "object",
-        "properties": {
-          "medicalRecordId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "ACUTE",
-              "RECOVERING",
-              "HEALED"
-            ]
-          },
-          "notes": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "medicalRecordId",
-          "status"
-        ]
-      },
-      "UpdateTrainingLockDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string"
-          },
-          "lockEnd": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
-          }
-        }
-      },
       "CreateCareScheduleDto": {
         "type": "object",
         "properties": {
@@ -7852,6 +7882,181 @@
             "type": "string"
           }
         }
+      },
+      "RecordRecoveryDto": {
+        "type": "object",
+        "properties": {
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medicalRecordId",
+          "status"
+        ]
+      },
+      "InjuryPositionDto": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ]
+      },
+      "CreateInjuryDto": {
+        "type": "object",
+        "properties": {
+          "bodyRegion": {
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ]
+          },
+          "position": {
+            "description": "Point on the 3D horse model, in model coordinates",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
+            ]
+          },
+          "injuryType": {
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bodyRegion",
+          "injuryType"
+        ]
+      },
+      "InjuryMarkerResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bodyRegion": {
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ]
+          },
+          "position": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
+            ]
+          },
+          "injuryType": {
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ]
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          },
+          "notes": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "medicalRecordId",
+          "bodyRegion",
+          "injuryType",
+          "recoveryStatus"
+        ]
+      },
+      "VoidMedicalRecordDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "PrescriptionResponseDto": {
         "type": "object",
@@ -8008,146 +8213,6 @@
           "endDate"
         ]
       },
-      "InjuryPositionDto": {
-        "type": "object",
-        "properties": {
-          "x": {
-            "type": "number"
-          },
-          "y": {
-            "type": "number"
-          },
-          "z": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "x",
-          "y",
-          "z"
-        ]
-      },
-      "CreateInjuryDto": {
-        "type": "object",
-        "properties": {
-          "bodyRegion": {
-            "type": "string",
-            "enum": [
-              "HEAD",
-              "NECK",
-              "BACK",
-              "CHEST",
-              "ABDOMEN",
-              "PELVIS",
-              "LEFT_FRONT_LEG",
-              "RIGHT_FRONT_LEG",
-              "LEFT_HIND_LEG",
-              "RIGHT_HIND_LEG",
-              "OTHER"
-            ]
-          },
-          "position": {
-            "description": "Point on the 3D horse model, in model coordinates",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/InjuryPositionDto"
-              }
-            ]
-          },
-          "injuryType": {
-            "type": "string",
-            "enum": [
-              "FRACTURE",
-              "SPRAIN",
-              "STRAIN",
-              "WOUND",
-              "LACERATION",
-              "INFLAMMATION",
-              "CONTUSION",
-              "INFECTION",
-              "OTHER"
-            ]
-          },
-          "notes": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "bodyRegion",
-          "injuryType"
-        ]
-      },
-      "InjuryMarkerResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "medicalRecordId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "bodyRegion": {
-            "type": "string",
-            "enum": [
-              "HEAD",
-              "NECK",
-              "BACK",
-              "CHEST",
-              "ABDOMEN",
-              "PELVIS",
-              "LEFT_FRONT_LEG",
-              "RIGHT_FRONT_LEG",
-              "LEFT_HIND_LEG",
-              "RIGHT_HIND_LEG",
-              "OTHER"
-            ]
-          },
-          "position": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/InjuryPositionDto"
-              }
-            ]
-          },
-          "injuryType": {
-            "type": "string",
-            "enum": [
-              "FRACTURE",
-              "SPRAIN",
-              "STRAIN",
-              "WOUND",
-              "LACERATION",
-              "INFLAMMATION",
-              "CONTUSION",
-              "INFECTION",
-              "OTHER"
-            ]
-          },
-          "recoveryStatus": {
-            "type": "string",
-            "enum": [
-              "ACUTE",
-              "RECOVERING",
-              "HEALED"
-            ]
-          },
-          "notes": {
-            "type": "object",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "medicalRecordId",
-          "bodyRegion",
-          "injuryType",
-          "recoveryStatus"
-        ]
-      },
       "CreateTrainingLockDto": {
         "type": "object",
         "properties": {
@@ -8173,6 +8238,74 @@
         },
         "required": [
           "conclusion"
+        ]
+      },
+      "UpdateTrainingLockDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "lockEnd": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "CreatePerformanceEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "score"
+        ]
+      },
+      "PerformanceEvaluationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionParticipantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "evaluatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "score": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionParticipantId",
+          "evaluatorId",
+          "score",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "IngestMetricDto": {
@@ -8370,21 +8503,33 @@
           "recentMetrics"
         ]
       },
-      "UpdateRaceDto": {
+      "CreateRegistrationDto": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "scheduledAt": {
+          "horseId": {
             "type": "string",
-            "format": "date-time"
-          },
-          "conditions": {
-            "type": "object",
-            "additionalProperties": true
+            "format": "uuid"
           }
-        }
+        },
+        "required": [
+          "horseId"
+        ]
+      },
+      "UpdateRegistrationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "OWNER_APPROVED",
+              "MANAGER_CONFIRMED",
+              "REJECTED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
       },
       "HorseRaceResultResponseDto": {
         "type": "object",
@@ -8442,6 +8587,23 @@
           "registrationStatus"
         ]
       },
+      "RecordResultDto": {
+        "type": "object",
+        "properties": {
+          "placing": {
+            "type": "number",
+            "minimum": 1
+          },
+          "timeSeconds": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "placing",
+          "timeSeconds"
+        ]
+      },
       "CreateRaceDto": {
         "type": "object",
         "properties": {
@@ -8462,50 +8624,21 @@
           "scheduledAt"
         ]
       },
-      "CreateRegistrationDto": {
+      "UpdateRaceDto": {
         "type": "object",
         "properties": {
-          "horseId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "horseId"
-        ]
-      },
-      "UpdateRegistrationDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "OWNER_APPROVED",
-              "MANAGER_CONFIRMED",
-              "REJECTED"
-            ]
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
-      "RecordResultDto": {
-        "type": "object",
-        "properties": {
-          "placing": {
-            "type": "number",
-            "minimum": 1
+          "name": {
+            "type": "string"
           },
-          "timeSeconds": {
-            "type": "number",
-            "minimum": 0
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "conditions": {
+            "type": "object",
+            "additionalProperties": true
           }
-        },
-        "required": [
-          "placing",
-          "timeSeconds"
-        ]
+        }
       },
       "BarnListItemDto": {
         "type": "object",
