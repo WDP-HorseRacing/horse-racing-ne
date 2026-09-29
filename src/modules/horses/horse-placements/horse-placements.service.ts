@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -13,6 +13,8 @@ import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import {
   AssignHorseBarnDto,
+  BarnPreviewQueryDto,
+  HorseBarnPreviewResponseDto,
   HorsePlacementResponseDto,
   HorseResponseDto,
   PlaceHorseDto,
@@ -20,8 +22,14 @@ import {
 import { HorseEntity } from '../entities/horse.entity';
 import { toHorseResponse } from '../mappers/horse.mapper';
 import { HORSE_BARN_ASSIGNED_EVENT } from '../constants/horse.constants';
+import { toBarnPreviewResponse } from '../mappers/horse-placements.mapper';
+import {
+  barnChangeBlockedReason,
+  barnChangeSummary,
+} from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import type { HorseBarnAssignedEvent } from '../types/horse.types';
+import { HorsePlacementsRepository } from './horse-placements.repository';
 
 /**
  * Xếp và đổi khu chuồng cho ngựa (F1.6). Việc xếp ô và phân công Groom (F1.7) thuộc module stable.
@@ -37,6 +45,7 @@ export class HorsePlacementsService {
     private readonly auditService: AuditService,
     private readonly training: TrainingOperationsFacade,
     private readonly grooms: GroomAssignmentsService,
+    private readonly placements: HorsePlacementsRepository,
   ) {}
 
   /**
@@ -115,6 +124,54 @@ export class HorsePlacementsService {
       this.events.publish(HORSE_BARN_ASSIGNED_EVENT, event);
     }
     return toHorseResponse(await this.access.findHorse(horseId));
+  }
+
+  /**
+   * Xem trước hệ quả của việc đổi khu để Club Manager xác nhận trước khi lưu. Không ghi gì
+   *
+   * - Dùng cùng luật rút lớp như assignBarn: mọi lớp không do Head Trainer khu mới phụ trách
+   * - Ngựa đã chuyển nhượng hoặc đang ở đúng khu này thì trả allowed = false kèm lý do
+   * - Không kiểm sức chứa, trạng thái khu; các điều kiện đó kiểm lúc đổi thật
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @param query Khu muốn chuyển sang
+   * @returns A promise resolving to cờ đổi được, lý do chặn, từng hệ quả và câu tóm tắt
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã xóa
+   * @throws NotFoundException Nếu không có ngựa hoặc không có khu
+   */
+  async previewBarnChange(
+    actor: Actor,
+    horseId: string,
+    query: BarnPreviewQueryDto,
+  ): Promise<HorseBarnPreviewResponseDto> {
+    await this.access.currentUser(actor);
+    const horse = await this.access.findWritableHorse(actor, horseId);
+    const target = await this.placements.findBarn(query.barnId);
+    if (!target) throw new NotFoundException('Không tìm thấy khu chuồng');
+    const blockedReason = barnChangeBlockedReason(
+      horse.lifecycleStatus,
+      horse.barnId,
+      target.id,
+    );
+    const impact = await this.placements.barnChangeImpact(
+      horseId,
+      target.headTrainerId,
+    );
+    return toBarnPreviewResponse(
+      horseId,
+      target,
+      blockedReason,
+      impact,
+      blockedReason === null
+        ? barnChangeSummary(
+            horse.name,
+            target.name,
+            target.headTrainerName,
+            impact,
+          )
+        : null,
+    );
   }
 
   /**

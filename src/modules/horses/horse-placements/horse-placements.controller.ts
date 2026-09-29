@@ -1,4 +1,12 @@
-import { Body, Controller, Param, ParseUUIDPipe, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Put,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -10,6 +18,8 @@ import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
   AssignHorseBarnDto,
+  BarnPreviewQueryDto,
+  HorseBarnPreviewResponseDto,
   HorsePlacementResponseDto,
   HorseResponseDto,
   PlaceHorseDto,
@@ -21,6 +31,22 @@ import { HorsePlacementsService } from './horse-placements.service';
 @Controller('horses/:horseId')
 export class HorsePlacementsController {
   constructor(private readonly placements: HorsePlacementsService) {}
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Get('barn-preview')
+  @ApiOperation({
+    summary: 'Preview the consequences of changing the barn of a horse',
+    description:
+      'Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt để hiện bảng xác nhận.',
+  })
+  @ApiOkResponse({ type: HorseBarnPreviewResponseDto })
+  previewBarnChange(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Query() query: BarnPreviewQueryDto,
+  ): Promise<HorseBarnPreviewResponseDto> {
+    return this.placements.previewBarnChange(actor, horseId, query);
+  }
 
   @Access([UserRole.CLUB_MANAGER])
   @Put('barn')

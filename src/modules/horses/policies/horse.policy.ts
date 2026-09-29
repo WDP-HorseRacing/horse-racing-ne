@@ -39,6 +39,7 @@ import type {
   HorseScope,
   ParentCandidate,
   ParentUsage,
+  BarnChangeImpactRow,
 } from '../types/horse.types';
 
 /**
@@ -705,4 +706,58 @@ export function assertTimeRange(from?: Date, to?: Date): void {
   if (from && to && from > to) {
     throw new BadRequestException('from phải trước hoặc bằng to');
   }
+}
+
+/**
+ * Lý do không đổi được khu khi xem trước
+ *
+ * @param lifecycleStatus Trạng thái vòng đời hiện tại của ngựa
+ * @param currentBarnId Khu hiện tại, null nếu chưa có
+ * @param targetBarnId Khu muốn chuyển sang
+ * @returns Lý do chặn, null nếu đổi được
+ */
+export function barnChangeBlockedReason(
+  lifecycleStatus: HorseLifecycleStatus,
+  currentBarnId: string | null,
+  targetBarnId: string,
+): string | null {
+  if (lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
+    return 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc';
+  }
+  if (currentBarnId === targetBarnId) return 'Ngựa đang ở khu này';
+  return null;
+}
+
+/**
+ * Tạo câu tóm tắt hệ quả khi đổi khu, hiện ở bảng xác nhận
+ *
+ * - Chỉ nhắc mục thật sự có dữ liệu; Groom luôn được giữ nguyên
+ * - Ví dụ: "Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 2 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa."
+ *
+ * @param horseName Tên ngựa
+ * @param barnName Tên khu đích
+ * @param headTrainerName Tên Head Trainer khu đích, null nếu chưa có
+ * @param impact Ô, Groom và số lớp sẽ bị ảnh hưởng
+ * @returns Câu tóm tắt tiếng Việt
+ */
+export function barnChangeSummary(
+  horseName: string,
+  barnName: string,
+  headTrainerName: string | null,
+  impact: BarnChangeImpactRow,
+): string {
+  const actions: string[] = [];
+  if (impact.stallCode) actions.push(`trả ô ${impact.stallCode}`);
+  if (impact.classesToWithdraw > 0) {
+    actions.push(`rút khỏi ${impact.classesToWithdraw} lớp`);
+  }
+  const head = `Nếu chuyển ${horseName} sang ${barnName}`;
+  const effect = actions.length > 0 ? ` sẽ ${actions.join(', ')}` : '';
+  const groom = impact.groomName
+    ? `; Groom ${impact.groomName} giữ nguyên`
+    : '';
+  const trainer = headTrainerName
+    ? `; ngựa vào Chờ xếp ô của Head Trainer ${headTrainerName}`
+    : '; ngựa vào Chờ xếp ô của khu mới';
+  return `${head}${effect}${groom}${trainer}.`;
 }

@@ -36,6 +36,8 @@ import {
   assertNotParent,
   assertParentIds,
   assertParentProfiles,
+  barnChangeBlockedReason,
+  barnChangeSummary,
   canRecordMeasurement,
   evaluateEligibility,
   evaluateHorsePermissions,
@@ -875,6 +877,36 @@ describe('horse.policy', () => {
       expect(measurementAlerts(HorseMeasurementType.WEIGHT, 300, null)).toEqual(
         [],
       );
+    });
+  });
+
+  describe('barnChangeBlockedReason', () => {
+    it('allows a move to another barn', () => {
+      expect(
+        barnChangeBlockedReason(HorseLifecycleStatus.ACTIVE, 'b1', 'b2'),
+      ).toBeNull();
+    });
+
+    it('blocks a TRANSFERRED horse and a move to the same barn', () => {
+      expect(
+        barnChangeBlockedReason(HorseLifecycleStatus.TRANSFERRED, 'b1', 'b2'),
+      ).toBe('Ngựa đã chuyển nhượng, hồ sơ chỉ đọc');
+      expect(
+        barnChangeBlockedReason(HorseLifecycleStatus.ACTIVE, 'b1', 'b1'),
+      ).toBe('Ngựa đang ở khu này');
+    });
+  });
+
+  describe('barnChangeSummary', () => {
+    it('mentions only the consequences that exist', () => {
+      expect(
+        barnChangeSummary('Winx', 'Khu C', null, {
+          fromBarnName: null,
+          stallCode: null,
+          groomName: null,
+          classesToWithdraw: 0,
+        }),
+      ).toBe('Nếu chuyển Winx sang Khu C; ngựa vào Chờ xếp ô của khu mới.');
     });
   });
 });

@@ -21,6 +21,7 @@ import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HORSE_BARN_ASSIGNED_EVENT } from '../constants/horse.constants';
 import { HorsesSharedRepository } from '../shared/horses-shared.repository';
+import { HorsePlacementsRepository } from './horse-placements.repository';
 import { HorsePlacementsService } from './horse-placements.service';
 
 type HorseRow = Partial<HorseEntity> & { id: string };
@@ -38,6 +39,7 @@ describe('HorsePlacementsService', () => {
   let horses: {
     lockHorseWithDeleted: jest.Mock;
     findById: jest.Mock;
+    findByIdWithDeleted: jest.Mock;
   };
   let barns: { lockAssignableBarn: jest.Mock };
   let stalls: {
@@ -48,6 +50,7 @@ describe('HorsePlacementsService', () => {
   let training: { withdrawHorseFromClasses: jest.Mock };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
+  let placements: { findBarn: jest.Mock; barnChangeImpact: jest.Mock };
   let service: HorsePlacementsService;
 
   const actor = (): Actor => ({ sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] });
@@ -104,6 +107,7 @@ describe('HorsePlacementsService', () => {
     horses = {
       lockHorseWithDeleted: jest.fn(() => Promise.resolve(horse)),
       findById: jest.fn(() => Promise.resolve(horse.deletedAt ? null : horse)),
+      findByIdWithDeleted: jest.fn(() => Promise.resolve(horse)),
     };
     barns = {
       lockAssignableBarn: jest.fn(
@@ -140,6 +144,24 @@ describe('HorsePlacementsService', () => {
       ),
     };
     audit = { record: jest.fn(track('audit')) };
+    placements = {
+      findBarn: jest.fn(() =>
+        Promise.resolve({
+          id: 'b2',
+          name: 'Khu C',
+          headTrainerId: 'ht-2',
+          headTrainerName: 'Hoa',
+        }),
+      ),
+      barnChangeImpact: jest.fn(() =>
+        Promise.resolve({
+          fromBarnName: 'Khu A',
+          stallCode: 'A-01',
+          groomName: 'Lan',
+          classesToWithdraw: 2,
+        }),
+      ),
+    };
     const typedDataSource = dataSource as unknown as DataSource;
     const sharedRepository = horses as unknown as HorsesSharedRepository;
     service = new HorsePlacementsService(
@@ -151,6 +173,7 @@ describe('HorsePlacementsService', () => {
       audit,
       training as unknown as TrainingOperationsFacade,
       grooms as unknown as GroomAssignmentsService,
+      placements as unknown as HorsePlacementsRepository,
     );
   });
 
@@ -332,6 +355,83 @@ describe('HorsePlacementsService', () => {
       await expect(place()).rejects.toThrow(ConflictException);
       expect(calls).not.toContain('transaction:commit');
       expect(events.publish).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('previewBarnChange', () => {
+    const preview = (barnId = 'b2') =>
+      service.previewBarnChange(actor(), HORSE_ID, { barnId });
+
+    beforeEach(() => {
+      horse.name = 'Winx';
+    });
+
+    it('lists every consequence and a summary without writing anything', async () => {
+      const result = await preview();
+
+      expect(placements.barnChangeImpact).toHaveBeenCalledWith(
+        HORSE_ID,
+        'ht-2',
+      );
+      expect(result).toEqual({
+        horseId: HORSE_ID,
+        allowed: true,
+        blockedReason: null,
+        fromBarnName: 'Khu A',
+        toBarnName: 'Khu C',
+        newHeadTrainerName: 'Hoa',
+        stallReleased: 'A-01',
+        classesWithdrawn: 2,
+        groomKept: 'Lan',
+        summary:
+          'Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 2 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa.',
+      });
+      expect(calls).not.toContain('transaction:start');
+      expectNoWrite();
+    });
+
+    it('returns allowed = false with the reason when the horse is already in that barn', async () => {
+      placements.findBarn.mockResolvedValue({
+        id: 'b1',
+        name: 'Khu A',
+        headTrainerId: 'ht-1',
+        headTrainerName: 'Nam',
+      });
+
+      const result = await preview('b1');
+
+      expect(result).toMatchObject({
+        allowed: false,
+        blockedReason: 'Ngựa đang ở khu này',
+        stallReleased: null,
+        classesWithdrawn: 0,
+        summary: null,
+      });
+    });
+
+    it('returns allowed = false for a TRANSFERRED horse', async () => {
+      horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
+
+      const result = await preview();
+
+      expect(result).toMatchObject({
+        allowed: false,
+        blockedReason: 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc',
+      });
+    });
+
+    it('returns 404 when the barn is missing', async () => {
+      placements.findBarn.mockResolvedValue(null);
+
+      await expect(preview('b9')).rejects.toThrow(NotFoundException);
+      expect(placements.barnChangeImpact).not.toHaveBeenCalled();
+    });
+
+    it('returns 403 on a deleted profile and reads no barn', async () => {
+      horse.deletedAt = new Date('2026-09-01T00:00:00Z');
+
+      await expect(preview()).rejects.toThrow(ForbiddenException);
+      expect(placements.findBarn).not.toHaveBeenCalled();
     });
   });
 });

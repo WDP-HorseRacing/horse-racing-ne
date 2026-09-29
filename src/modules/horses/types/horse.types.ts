@@ -267,3 +267,27 @@ export interface LifecycleImpactRow {
   hasActiveTrainingLock: boolean;
   invalidOwnerName: string | null;
 }
+
+/**
+ * Khu chuồng đích khi xem trước việc đổi khu.
+ */
+export interface BarnPreviewTarget {
+  id: string;
+  name: string;
+  headTrainerId: string | null;
+  headTrainerName: string | null;
+}
+
+/**
+ * Những gì sẽ bị ảnh hưởng khi đổi khu, đếm trên dữ liệu hiện tại.
+ */
+export interface BarnChangeImpactRow {
+  /** Tên khu hiện tại, null nếu ngựa chưa có khu */
+  fromBarnName: string | null;
+  /** Mã ô đang giữ, null nếu chưa có ô */
+  stallCode: string | null;
+  /** Tên Groom đang phụ trách, null nếu chưa có */
+  groomName: string | null;
+  /** Số lớp đang học không do Head Trainer khu mới phụ trách */
+  classesToWithdraw: number;
+}

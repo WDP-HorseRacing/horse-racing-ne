@@ -6,6 +6,7 @@ import { StallsModule } from '../../stable/stalls/stalls.module';
 import { TrainingSharedModule } from '../../training/shared/training-shared.module';
 import { HorsesSharedModule } from '../shared/horses-shared.module';
 import { HorsePlacementsController } from './horse-placements.controller';
+import { HorsePlacementsRepository } from './horse-placements.repository';
 import { HorsePlacementsService } from './horse-placements.service';
 
 @Module({
@@ -18,6 +19,6 @@ import { HorsePlacementsService } from './horse-placements.service';
     TrainingSharedModule,
   ],
   controllers: [HorsePlacementsController],
-  providers: [HorsePlacementsService],
+  providers: [HorsePlacementsRepository, HorsePlacementsService],
 })
 export class HorsePlacementsModule {}
