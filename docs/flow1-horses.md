@@ -884,7 +884,7 @@ Migration của flow:
 
 Các điểm dưới đây mô tả đúng code hiện tại nhưng chưa nhất quán hoặc chưa hoàn thiện, cần quyết định trước khi sửa:
 
-1. **Phần còn lại sau khi có mô hình lớp học** (chi tiết ở `docs/Flow_1_Quan_ly_Ho_so_Ngua.md` (Phụ lục 2) mục 1b): nhận xét sau buổi tập (F1.3) chưa có dữ liệu, giao Groom lần đầu có điền lượt tập trống không, khóa huấn luyện chưa hủy buổi tập.
+1. **Phần còn lại sau khi có mô hình lớp học** (chi tiết ở `docs/Flow_1_Quan_ly_Ho_so_Ngua.md` (Phụ lục 2) mục 1b): tab Huấn luyện chưa gộp đánh giá buổi tập, giao Groom lần đầu có điền lượt tập trống không, khóa huấn luyện chưa hủy buổi tập.
 2. **`PATCH /health-status`** không kiểm tra `version` và không ghi audit. Theo đặc tả, đổi health thuộc Flow 3.
 3. **Mã lỗi khu không hoạt động bị lệch**: `lockAssignableBarn` (tạo ngựa, xếp khu) trả `409`, còn `PUT /horses/:id/stall` và `POST /stalls` trả `400` cho cùng điều kiện.
 4. **409 khi hai người cùng sửa hồ sơ** chưa trả kèm dữ liệu mới nhất (F1.4 mục 7), vì filter lỗi chung chỉ trả `code/message/details`.

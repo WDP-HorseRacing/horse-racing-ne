@@ -641,10 +641,10 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 ### 1b. Còn lại sau khi có mô hình lớp học
 
 - ~~Tab Huấn luyện ở hồ sơ ngựa (F1.3)~~ Đã làm 2026-09-29, thay cho `GET /horses/:id/training-plans` Flow 2 đã bỏ: `GET /horses/:horseId/training/classes` (lớp đang học và đã rời) và `GET /horses/:horseId/training/sessions` (lịch buổi có phân trang, lọc `classId`, `when=upcoming|history`, kèm kết quả time trial). CM, HT, VET, OWNER xem; GROOM 403; ngoài phạm vi 404.
-- **Nhận xét sau buổi tập (F1.3)**: chưa có dữ liệu vì Flow 2 bỏ chức năng đánh giá. Tab chỉ trả kết quả time trial (ghi chú của người bấm giờ giữ tên `notes`, không coi là nhận xét). Khi Flow 2 làm lại đánh giá thì thêm field riêng.
+- **Nhận xét sau buổi tập (F1.3)**: đã có dữ liệu. Flow 2 có chức năng đánh giá theo từng lượt tập (`POST/GET /session-participants/:id/evaluation`, module performance); merge ngày 2026-09-28 làm rơi mất, đã gộp lại 2026-09-29. Tab Huấn luyện (`/training/sessions`) chưa trả đánh giá, FE gọi API trên theo từng lượt hoặc cần quyết định gộp vào tab.
 - **Giao Groom lần đầu**: lượt tập của ngựa chưa có Groom đang để trống người dắt; giao Groom lần đầu hiện không tự điền vào các lượt này. Cần quyết định có điền không (lưu ý HT có thể cố ý để trống một lượt).
 - **Khóa huấn luyện chưa hủy buổi tập**: `TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock` chưa có nơi gọi. Nối vào khi làm Flow 3 (medical).
-- **Đánh giá buổi tập**: Flow 2 bỏ chức năng ghi đánh giá; tab hiệu suất luôn trả đánh giá rỗng. Đã hỏi Flow 2.
+- ~~Đánh giá buổi tập bị bỏ~~ Sai, đính chính 2026-09-29: chức năng vẫn có ở nhánh Flow 2, chỉ bị merge làm rơi; đã gộp lại, tab hiệu suất đọc lại được đánh giá mới nhất.
 - **Lỗi schema của Flow 2** (đã hỏi Flow 2): trên DB migrate mới, lưu giáo án, buổi tập, time trial, chỉ số hiệu suất đều lỗi vì các cột cũ còn `NOT NULL` mà entity mới không ghi (ví dụ `training_plans.legacy_horse_id`).
 
 ### 2. Cần quyết định
