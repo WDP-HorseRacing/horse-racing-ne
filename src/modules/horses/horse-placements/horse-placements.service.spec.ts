@@ -11,7 +11,6 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { BarnsService } from '../../stable/barns/barns.service';
-import { BarnEntity } from '../../stable/entities/barn.entity';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -41,7 +40,6 @@ describe('HorsePlacementsService', () => {
   let barns: { lockAssignableBarn: jest.Mock };
   let stalls: { releaseStallByHorse: jest.Mock };
   let training: { withdrawHorseFromClasses: jest.Mock };
-  let oldBarnHeadTrainerId: string | null;
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
   let service: HorsePlacementsService;
@@ -69,7 +67,6 @@ describe('HorsePlacementsService', () => {
       lifecycleStatus: HorseLifecycleStatus.ACTIVE,
     };
     calls = [];
-    oldBarnHeadTrainerId = 'ht-1';
     horseRepository = {
       update: jest.fn(track('update', { affected: 1 })),
     };
@@ -82,9 +79,7 @@ describe('HorsePlacementsService', () => {
                 status: UserStatus.ACTIVE,
                 role: UserRole.CLUB_MANAGER,
               }
-            : entity === BarnEntity
-              ? { id: 'b1', headTrainerId: oldBarnHeadTrainerId }
-              : null,
+            : null,
         ),
       ),
       getRepository: jest.fn(() => horseRepository),
@@ -241,30 +236,30 @@ describe('HorsePlacementsService', () => {
     expectNoWrite();
   });
 
-  it('withdraws the horse from the old head trainer classes when the head trainer changes', async () => {
+  it('withdraws the horse from every class not led by the new barn head trainer', async () => {
     await assign('b2');
     expect(training.withdrawHorseFromClasses).toHaveBeenCalledWith(
       manager,
       HORSE_ID,
-      { reason: 'Đổi khu: Cân bằng khu', at: anyDate, headTrainerId: 'ht-1' },
+      {
+        reason: 'Đổi khu: Cân bằng khu',
+        at: anyDate,
+        exceptHeadTrainerId: 'ht-2',
+      },
     );
   });
 
-  it('keeps the classes when both barns share the head trainer', async () => {
-    oldBarnHeadTrainerId = 'ht-2';
+  it('adds no classesWithdrawn to the audit when no class was left', async () => {
+    training.withdrawHorseFromClasses.mockResolvedValue({
+      classIds: [],
+      participantsCancelled: 0,
+    });
     await assign('b2');
-    expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(
       manager,
       expect.objectContaining({
         after: { barnId: 'b2', stallCode: null },
       }),
     );
-  });
-
-  it('withdraws nothing when the horse had no barn yet', async () => {
-    horse.barnId = null;
-    await assign('b2');
-    expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
   });
 });

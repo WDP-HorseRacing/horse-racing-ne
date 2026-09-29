@@ -111,23 +111,23 @@ describe('TrainingOperationsFacade.withdrawHorseFromClasses', () => {
     });
 
     expect(enrollmentQb.andWhere).not.toHaveBeenCalledWith(
-      'class.head_trainer_id = :headTrainerId',
+      '(class.head_trainer_id IS NULL OR class.head_trainer_id <> :exceptHeadTrainerId)',
       expect.anything(),
     );
   });
 
-  it('withdraws only from classes of the given head trainer', async () => {
+  it('keeps the classes of the given head trainer and withdraws from the others', async () => {
     const { manager, enrollmentQb } = buildManager([], []);
 
     await facade.withdrawHorseFromClasses(manager, 'h1', {
       reason: 'Đổi khu',
       at: AT,
-      headTrainerId: 'ht-old',
+      exceptHeadTrainerId: 'ht-new',
     });
 
     expect(enrollmentQb.andWhere).toHaveBeenCalledWith(
-      'class.head_trainer_id = :headTrainerId',
-      { headTrainerId: 'ht-old' },
+      '(class.head_trainer_id IS NULL OR class.head_trainer_id <> :exceptHeadTrainerId)',
+      { exceptHeadTrainerId: 'ht-new' },
     );
   });
 

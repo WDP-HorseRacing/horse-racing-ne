@@ -15,8 +15,8 @@ export interface WithdrawHorseOptions {
   reason: string;
   /** Thời điểm rút; buổi bắt đầu từ thời điểm này trở đi bị hủy lượt */
   at: Date;
-  /** Chỉ rút khỏi lớp do Head Trainer này phụ trách; bỏ trống là rút khỏi mọi lớp */
-  headTrainerId?: string;
+  /** Giữ lại lớp do Head Trainer này phụ trách; bỏ trống là rút khỏi mọi lớp */
+  exceptHeadTrainerId?: string;
 }
 
 /**
@@ -119,14 +119,14 @@ export class TrainingOperationsFacade {
   /**
    * Rút một con ngựa khỏi các lớp đang học, chạy trong transaction của nơi gọi.
    *
-   * - Chỉ xét enrollment ACTIVE; có `headTrainerId` thì chỉ rút khỏi lớp do Head Trainer đó phụ trách
+   * - Chỉ xét enrollment ACTIVE; có `exceptHeadTrainerId` thì giữ lại lớp do Head Trainer đó phụ trách
    * - Enrollment đã bắt đầu (enrolledAt <= at) chuyển LEFT, ghi leftAt = at; enrollment chưa bắt đầu chuyển CANCELLED
    * - Hủy lượt tham gia các buổi từ `at` trở đi (cancelParticipantsFromEnrollments); buổi đã học và lượt ONGOING giữ nguyên
    * - Không kiểm quyền, nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
-   * @param options Lý do, thời điểm rút và Head Trainer cần lọc (nếu có)
+   * @param options Lý do, thời điểm rút và Head Trainer được giữ lớp (nếu có)
    * @returns A promise resolving to các lớp đã rút và số lượt tham gia đã hủy
    */
   async withdrawHorseFromClasses(
@@ -142,10 +142,11 @@ export class TrainingOperationsFacade {
       .andWhere('enrollment.status = :status', {
         status: HorseEnrollmentStatus.ACTIVE,
       });
-    if (options.headTrainerId) {
-      query.andWhere('class.head_trainer_id = :headTrainerId', {
-        headTrainerId: options.headTrainerId,
-      });
+    if (options.exceptHeadTrainerId) {
+      query.andWhere(
+        '(class.head_trainer_id IS NULL OR class.head_trainer_id <> :exceptHeadTrainerId)',
+        { exceptHeadTrainerId: options.exceptHeadTrainerId },
+      );
     }
     const enrollments = await query
       .setLock('pessimistic_write', undefined, ['enrollment'])

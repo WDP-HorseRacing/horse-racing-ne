@@ -352,26 +352,6 @@ export function lifecycleImpactSummary(
 }
 
 /**
- * Chọn Head Trainer có lớp mà ngựa phải rời khi đổi khu.
- *
- * - Khác Head Trainer: trả Head Trainer khu cũ
- * - Cùng Head Trainer, ngựa chưa có khu, hoặc khu cũ không có Head Trainer: trả null
- *
- * @param oldHeadTrainerId Head Trainer phụ trách khu cũ, null nếu không có
- * @param newHeadTrainerId Head Trainer phụ trách khu mới
- * @returns UUID Head Trainer cần rút ngựa khỏi lớp của họ, null nếu không phải rút
- */
-export function headTrainerToLeaveOnBarnChange(
-  oldHeadTrainerId: string | null,
-  newHeadTrainerId: string | null,
-): string | null {
-  if (oldHeadTrainerId === null || oldHeadTrainerId === newHeadTrainerId) {
-    return null;
-  }
-  return oldHeadTrainerId;
-}
-
-/**
  * Liệt kê các field Club Manager gửi lên nhưng không có quyền sửa (F1.4).
  *
  * - Sở trường cự ly là đánh giá chuyên môn, chỉ Head Trainer phụ trách khu được sửa (BA chốt Q-5)
