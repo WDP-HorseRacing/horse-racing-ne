@@ -108,21 +108,6 @@ export class TrainingOperationsFacade {
     );
   }
 
-  async cancelFutureParticipationsByLifecycle(
-    manager: EntityManager,
-    horseId: string,
-    reason: string,
-    now = new Date(),
-  ): Promise<number> {
-    return this.cancelFutureParticipations(
-      manager,
-      horseId,
-      SessionParticipantStatus.CANCELLED,
-      reason,
-      now,
-    );
-  }
-
   /**
    * Rút một con ngựa khỏi các lớp đang học, dành cho module khác gọi trong transaction của họ (giải nghệ, chuyển nhượng, đổi khu).
    *

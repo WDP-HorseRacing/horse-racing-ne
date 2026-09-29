@@ -175,7 +175,7 @@ export class HorseTrainingSessionQueryDto {
   @ApiPropertyOptional({
     enum: HorseTrainingSessionWhen,
     description:
-      'upcoming: buổi chưa bắt đầu, gần nhất trước; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả, mới nhất trước',
+      'upcoming: buổi chưa bắt đầu, gần nhất trước, không gồm lượt đã hủy; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả (kể cả lượt đã hủy), mới nhất trước',
   })
   @IsOptional()
   @IsEnum(HorseTrainingSessionWhen)

@@ -2,12 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { HorseTrainingSessionWhen } from '../enums/horse-training-session-when.enum';
+import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import type {
   HorseTrainingClassRow,
   HorseTrainingSessionFilter,
   HorseTrainingSessionRow,
   HorseTrainingTrialRow,
 } from '../types/horse-training.types';
+
+const HIDDEN_UPCOMING_STATUSES = [
+  SessionParticipantStatus.CANCELLED,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+];
 
 const SESSION_FROM = `
   FROM session_participants sp
@@ -51,7 +57,7 @@ export class HorseTrainingRepository {
   /**
    * Đọc một trang lượt tập của ngựa kèm tổng số lượt khớp bộ lọc
    *
-   * - upcoming: buổi bắt đầu từ `now` trở đi, gần nhất trước
+   * - upcoming: buổi bắt đầu từ `now` trở đi, gần nhất trước; bỏ lượt đã hủy (CANCELLED, CANCELLED_BY_LOCK) vì buổi chưa diễn ra phải biến mất khỏi lịch khi ngựa bị rút (F1.6 mục 4, F1.8 mục 1)
    * - history: buổi bắt đầu trước `now`, mới nhất trước
    * - Bỏ trống `when`: mọi buổi, mới nhất trước
    *
@@ -76,6 +82,10 @@ export class HorseTrainingRepository {
           ? `s.scheduled_start_at >= $${params.length}`
           : `s.scheduled_start_at < $${params.length}`,
       );
+    }
+    if (filter.when === HorseTrainingSessionWhen.UPCOMING) {
+      params.push(HIDDEN_UPCOMING_STATUSES);
+      where.push(`sp.status <> ALL($${params.length})`);
     }
     const whereSql = `WHERE ${where.join(' AND ')}`;
     const order =
