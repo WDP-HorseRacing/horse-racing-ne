@@ -7,11 +7,14 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { BarnsService } from '../../stable/barns/barns.service';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { StallsService } from '../../stable/stalls/stalls.service';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { AssignHorseBarnDto, HorseResponseDto } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
 import { toHorseResponse } from '../mappers/horse.mapper';
 import { HORSE_BARN_ASSIGNED_EVENT } from '../constants/horse.constants';
+import { headTrainerToLeaveOnBarnChange } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import type { HorseBarnAssignedEvent } from '../types/horse.types';
 
@@ -27,6 +30,7 @@ export class HorsePlacementsService {
     private readonly events: DomainEventPublisher,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly training: TrainingOperationsFacade,
   ) {}
 
   /**
@@ -37,7 +41,7 @@ export class HorsePlacementsService {
    * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom vì Groom gắn với con ngựa
    * - Chọn đúng khu đang ở thì không đổi gì
    * - Bắt buộc lý do; ghi nhật ký; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT để module notifications báo Head Trainer khu mới
-   * - Rút ngựa khỏi lớp của Head Trainer khu cũ đang chờ Flow 2 làm mô hình lớp học
+   * - Đổi sang khu của Head Trainer khác: rút ngựa khỏi các lớp của Head Trainer khu cũ (training; buổi chưa diễn ra bị hủy, buổi đã học giữ nguyên), nhật ký ghi thêm số lớp bị rút (classesWithdrawn). Cùng Head Trainer thì giữ lớp
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -61,8 +65,25 @@ export class HorsePlacementsService {
       );
       this.access.assertNotTransferred(horse);
       if (horse.barnId === body.barnId) return false;
-      await this.barns.lockAssignableBarn(manager, body.barnId);
+      const newBarn = await this.barns.lockAssignableBarn(manager, body.barnId);
+      const oldBarn = horse.barnId
+        ? await manager.findOne(BarnEntity, {
+            where: { id: horse.barnId },
+            withDeleted: true,
+          })
+        : null;
+      const leaveHeadTrainerId = headTrainerToLeaveOnBarnChange(
+        oldBarn?.headTrainerId ?? null,
+        newBarn.headTrainerId,
+      );
       const released = await this.stalls.releaseStallByHorse(manager, horseId);
+      const withdrawn = leaveHeadTrainerId
+        ? await this.training.withdrawHorseFromClasses(manager, horseId, {
+            reason: `Đổi khu: ${body.reason}`,
+            at: new Date(),
+            headTrainerId: leaveHeadTrainerId,
+          })
+        : null;
       await manager
         .getRepository(HorseEntity)
         .update({ id: horseId }, { barnId: body.barnId });
@@ -75,7 +96,11 @@ export class HorsePlacementsService {
           barnId: horse.barnId,
           stallCode: released?.stallCode ?? null,
         },
-        after: { barnId: body.barnId, stallCode: null },
+        after: {
+          barnId: body.barnId,
+          stallCode: null,
+          ...(withdrawn ? { classesWithdrawn: withdrawn.classIds.length } : {}),
+        },
         reason: body.reason,
         feature: 'F1.6',
       });

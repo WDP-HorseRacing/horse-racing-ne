@@ -11,7 +11,9 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { BarnsService } from '../../stable/barns/barns.service';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { StallsService } from '../../stable/stalls/stalls.service';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseLifecycleStatus } from '../enums/horse-status.enum';
@@ -24,6 +26,7 @@ type HorseRow = Partial<HorseEntity> & { id: string };
 
 const HORSE_ID = 'h1';
 const anyString: unknown = expect.any(String);
+const anyDate: unknown = expect.any(Date);
 const CALLER_ID = 'cm-1';
 
 describe('HorsePlacementsService', () => {
@@ -37,6 +40,8 @@ describe('HorsePlacementsService', () => {
   };
   let barns: { lockAssignableBarn: jest.Mock };
   let stalls: { releaseStallByHorse: jest.Mock };
+  let training: { withdrawHorseFromClasses: jest.Mock };
+  let oldBarnHeadTrainerId: string | null;
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
   let service: HorsePlacementsService;
@@ -51,6 +56,7 @@ describe('HorsePlacementsService', () => {
 
   const expectNoWrite = () => {
     expect(stalls.releaseStallByHorse).not.toHaveBeenCalled();
+    expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
     expect(horseRepository.update).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
     expect(events.publish).not.toHaveBeenCalled();
@@ -63,6 +69,7 @@ describe('HorsePlacementsService', () => {
       lifecycleStatus: HorseLifecycleStatus.ACTIVE,
     };
     calls = [];
+    oldBarnHeadTrainerId = 'ht-1';
     horseRepository = {
       update: jest.fn(track('update', { affected: 1 })),
     };
@@ -75,7 +82,9 @@ describe('HorsePlacementsService', () => {
                 status: UserStatus.ACTIVE,
                 role: UserRole.CLUB_MANAGER,
               }
-            : null,
+            : entity === BarnEntity
+              ? { id: 'b1', headTrainerId: oldBarnHeadTrainerId }
+              : null,
         ),
       ),
       getRepository: jest.fn(() => horseRepository),
@@ -96,7 +105,9 @@ describe('HorsePlacementsService', () => {
       findById: jest.fn(() => Promise.resolve(horse.deletedAt ? null : horse)),
     };
     barns = {
-      lockAssignableBarn: jest.fn(track('lockAssignableBarn', { id: 'b2' })),
+      lockAssignableBarn: jest.fn(
+        track('lockAssignableBarn', { id: 'b2', headTrainerId: 'ht-2' }),
+      ),
     };
     stalls = {
       releaseStallByHorse: jest.fn(
@@ -108,6 +119,14 @@ describe('HorsePlacementsService', () => {
         calls.push('publish');
       }),
     };
+    training = {
+      withdrawHorseFromClasses: jest.fn(
+        track('withdrawHorseFromClasses', {
+          classIds: ['c1'],
+          participantsCancelled: 2,
+        }),
+      ),
+    };
     audit = { record: jest.fn(track('audit')) };
     const typedDataSource = dataSource as unknown as DataSource;
     const sharedRepository = horses as unknown as HorsesSharedRepository;
@@ -118,6 +137,7 @@ describe('HorsePlacementsService', () => {
       events as unknown as DomainEventPublisher,
       typedDataSource,
       audit,
+      training as unknown as TrainingOperationsFacade,
     );
   });
 
@@ -166,7 +186,7 @@ describe('HorsePlacementsService', () => {
       entityType: AuditEntityType.HORSE,
       entityId: HORSE_ID,
       before: { barnId: 'b1', stallCode: 'A-01' },
-      after: { barnId: 'b2', stallCode: null },
+      after: { barnId: 'b2', stallCode: null, classesWithdrawn: 1 },
       reason: 'Cân bằng khu',
       feature: 'F1.6',
     });
@@ -179,6 +199,7 @@ describe('HorsePlacementsService', () => {
       'transaction:start',
       'lockAssignableBarn',
       'releaseStallByHorse',
+      'withdrawHorseFromClasses',
       'update',
       'audit',
       'transaction:commit',
@@ -218,5 +239,32 @@ describe('HorsePlacementsService', () => {
       new ConflictException('Khu đã hết ô trống'),
     );
     expectNoWrite();
+  });
+
+  it('withdraws the horse from the old head trainer classes when the head trainer changes', async () => {
+    await assign('b2');
+    expect(training.withdrawHorseFromClasses).toHaveBeenCalledWith(
+      manager,
+      HORSE_ID,
+      { reason: 'Đổi khu: Cân bằng khu', at: anyDate, headTrainerId: 'ht-1' },
+    );
+  });
+
+  it('keeps the classes when both barns share the head trainer', async () => {
+    oldBarnHeadTrainerId = 'ht-2';
+    await assign('b2');
+    expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      manager,
+      expect.objectContaining({
+        after: { barnId: 'b2', stallCode: null },
+      }),
+    );
+  });
+
+  it('withdraws nothing when the horse had no barn yet', async () => {
+    horse.barnId = null;
+    await assign('b2');
+    expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
   });
 });

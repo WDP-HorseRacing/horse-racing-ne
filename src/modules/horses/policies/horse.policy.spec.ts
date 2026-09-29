@@ -39,6 +39,7 @@ import {
   canRecordMeasurement,
   evaluateEligibility,
   evaluateHorsePermissions,
+  headTrainerToLeaveOnBarnChange,
   isHorseInScope,
   lifecycleImpactSummary,
   lifecycleSideEffects,
@@ -838,6 +839,20 @@ describe('horse.policy', () => {
       expect(measurementAlerts(HorseMeasurementType.WEIGHT, 300, null)).toEqual(
         [],
       );
+    });
+  });
+
+  describe('headTrainerToLeaveOnBarnChange', () => {
+    it('leaves the classes of the old head trainer when the head trainer changes', () => {
+      expect(headTrainerToLeaveOnBarnChange('ht-old', 'ht-new')).toBe('ht-old');
+    });
+
+    it('keeps the classes when both barns share the head trainer', () => {
+      expect(headTrainerToLeaveOnBarnChange('ht-1', 'ht-1')).toBeNull();
+    });
+
+    it('leaves nothing when the horse had no barn or the old barn had no head trainer', () => {
+      expect(headTrainerToLeaveOnBarnChange(null, 'ht-new')).toBeNull();
     });
   });
 });

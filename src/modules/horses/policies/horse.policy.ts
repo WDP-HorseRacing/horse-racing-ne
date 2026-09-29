@@ -352,6 +352,27 @@ export function lifecycleImpactSummary(
 }
 
 /**
+ * Chọn Head Trainer mà ngựa phải rời lớp khi đổi khu (F1.6 mục 4; user chốt 2026-09-29).
+ *
+ * - Ngựa rời các lớp của Head Trainer khu cũ, vì Head Trainer đó không còn phụ trách con ngựa
+ * - Khu mới cùng Head Trainer với khu cũ thì giữ lớp, tránh rút ra rồi đăng ký lại vô ích
+ * - Ngựa chưa có khu, hoặc khu cũ không có Head Trainer, thì không có lớp nào để rút
+ *
+ * @param oldHeadTrainerId Head Trainer phụ trách khu cũ, null nếu ngựa chưa có khu hoặc khu cũ không có Head Trainer
+ * @param newHeadTrainerId Head Trainer phụ trách khu mới (khu đã qua lockAssignableBarn nên luôn có)
+ * @returns UUID Head Trainer cần rút ngựa khỏi lớp của họ, null nếu không phải rút
+ */
+export function headTrainerToLeaveOnBarnChange(
+  oldHeadTrainerId: string | null,
+  newHeadTrainerId: string | null,
+): string | null {
+  if (oldHeadTrainerId === null || oldHeadTrainerId === newHeadTrainerId) {
+    return null;
+  }
+  return oldHeadTrainerId;
+}
+
+/**
  * Liệt kê các field Club Manager gửi lên nhưng không có quyền sửa (F1.4).
  *
  * - Sở trường cự ly là đánh giá chuyên môn, chỉ Head Trainer phụ trách khu được sửa (BA chốt Q-5)
