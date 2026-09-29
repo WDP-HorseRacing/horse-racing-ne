@@ -693,3 +693,16 @@ export function evaluateHorsePermissions(
     ),
   };
 }
+
+/**
+ * Chặn khoảng thời gian lọc bị ngược
+ *
+ * @param from Thời điểm bắt đầu, bỏ trống nếu không lọc
+ * @param to Thời điểm kết thúc, bỏ trống nếu không lọc
+ * @throws BadRequestException Nếu from sau to
+ */
+export function assertTimeRange(from?: Date, to?: Date): void {
+  if (from && to && from > to) {
+    throw new BadRequestException('from phải trước hoặc bằng to');
+  }
+}

@@ -7,10 +7,13 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -19,6 +22,7 @@ import {
   HorseMeasurementAlertSeverity,
 } from '../enums/horse-measurement-alert.enum';
 import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
+import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 
 export class HorseMeasurementValueDto {
@@ -86,6 +90,46 @@ export class HorseMeasurementListQueryDto {
   @IsOptional()
   @IsEnum(HorseMeasurementType)
   type?: HorseMeasurementType;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    description: 'Chỉ lấy bản ghi đo từ thời điểm này',
+  })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    description: 'Chỉ lấy bản ghi đo tới thời điểm này',
+  })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+
+  @ApiPropertyOptional({
+    default: 1,
+    minimum: 1,
+    description: 'Trang hiện tại',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page: number = 1;
+
+  @ApiPropertyOptional({
+    default: 20,
+    minimum: 1,
+    maximum: 500,
+    description: 'Số bản ghi mỗi trang',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  limit: number = 20;
 }
 
 export class HorseLatestMeasurementDto {
@@ -160,4 +204,12 @@ export class CreatedHorseMeasurementResponseDto extends HorseMeasurementResponse
       'Cảnh báo tự động sinh ra từ lần ghi này (sốt > 38.6 °C, cân nặng giảm > 5% trong 14 ngày); rỗng nếu không có',
   })
   alerts!: HorseMeasurementAlertDto[];
+}
+
+export class HorseMeasurementPageDto {
+  @ApiProperty({ type: [HorseMeasurementResponseDto] })
+  items!: HorseMeasurementResponseDto[];
+
+  @ApiProperty({ type: PaginationMetaDto })
+  meta!: PaginationMetaDto;
 }

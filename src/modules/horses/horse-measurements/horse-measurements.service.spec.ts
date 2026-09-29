@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { Between, DataSource, MoreThanOrEqual, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -13,6 +13,7 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { UserEntity } from '../../users/entities/user.entity';
+import { HorseMeasurementListQueryDto } from '../dto';
 import type { CreateHorseMeasurementDto } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
@@ -445,5 +446,98 @@ describe('HorseMeasurementsService', () => {
         }),
       );
     });
+  });
+});
+
+describe('HorseMeasurementsService.listMeasurements', () => {
+  const owner: Actor = { sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] };
+  let repository: { findAndCount: jest.Mock };
+  let access: { findReadable: jest.Mock };
+  let service: HorseMeasurementsService;
+
+  const query = (patch: Partial<HorseMeasurementListQueryDto> = {}) =>
+    Object.assign(new HorseMeasurementListQueryDto(), patch);
+
+  beforeEach(() => {
+    repository = { findAndCount: jest.fn().mockResolvedValue([[], 45]) };
+    access = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    service = new HorseMeasurementsService(
+      repository as unknown as Repository<HorseMeasurementEntity>,
+      {} as HorsesSharedRepository,
+      access as unknown as HorseAccessService,
+      {} as DataSource,
+      {} as DomainEventPublisher,
+      { record: jest.fn() },
+    );
+  });
+
+  it('filters by type and time range and pages newest first', async () => {
+    const page = await service.listMeasurements(
+      owner,
+      'h1',
+      query({
+        type: HorseMeasurementType.WEIGHT,
+        from: '2026-06-01T00:00:00.000Z',
+        to: '2026-09-29T00:00:00.000Z',
+        page: 2,
+        limit: 20,
+      }),
+    );
+
+    expect(repository.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          horseId: 'h1',
+          type: HorseMeasurementType.WEIGHT,
+          measuredAt: Between(
+            new Date('2026-06-01T00:00:00.000Z'),
+            new Date('2026-09-29T00:00:00.000Z'),
+          ),
+        },
+        order: { measuredAt: 'DESC' },
+        skip: 20,
+        take: 20,
+      }),
+    );
+    expect(page.meta).toEqual({ total: 45, page: 2, limit: 20, totalPages: 3 });
+  });
+
+  it('uses an open-ended range when only from is given', async () => {
+    await service.listMeasurements(
+      owner,
+      'h1',
+      query({ from: '2026-06-01T00:00:00.000Z' }),
+    );
+
+    expect(repository.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          horseId: 'h1',
+          measuredAt: MoreThanOrEqual(new Date('2026-06-01T00:00:00.000Z')),
+        },
+      }),
+    );
+  });
+
+  it('rejects from after to with 400 before reading anything', async () => {
+    await expect(
+      service.listMeasurements(
+        owner,
+        'h1',
+        query({
+          from: '2026-09-29T00:00:00.000Z',
+          to: '2026-06-01T00:00:00.000Z',
+        }),
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(repository.findAndCount).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for a horse outside the caller scope', async () => {
+    access.findReadable.mockRejectedValue(new NotFoundException());
+    await expect(
+      service.listMeasurements(owner, 'h1', query()),
+    ).rejects.toThrow(NotFoundException);
+    expect(repository.findAndCount).not.toHaveBeenCalled();
   });
 });
