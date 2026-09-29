@@ -217,6 +217,43 @@ describe('HorseDeletionsService', () => {
     });
   });
 
+  describe('previewRemove', () => {
+    it('allows deleting a horse without data, parent role or transfer', async () => {
+      await expect(service.previewRemove(actor(), HORSE_ID)).resolves.toEqual({
+        horseId: HORSE_ID,
+        allowed: true,
+        transferred: false,
+        businessData: [],
+        isParent: false,
+      });
+      expect(horseRepository.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('lists every reason that blocks the deletion', async () => {
+      horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
+      deletions.businessDataLabels.mockResolvedValue([
+        'chỉ số cơ thể',
+        'lớp học',
+      ]);
+      children = [{ id: 'foal', sireId: HORSE_ID, deletedAt: null }];
+
+      await expect(service.previewRemove(actor(), HORSE_ID)).resolves.toEqual({
+        horseId: HORSE_ID,
+        allowed: false,
+        transferred: true,
+        businessData: ['chỉ số cơ thể', 'lớp học'],
+        isParent: true,
+      });
+    });
+
+    it('rejects previewing a deleted profile with 403 like the deletion itself', async () => {
+      horse.deletedAt = new Date('2026-09-01T00:00:00Z');
+      await expect(service.previewRemove(actor(), HORSE_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
   describe('restore', () => {
     const reason = { reason: 'Xóa nhầm' };
     const restore = () => service.restore(actor(), HORSE_ID, reason);

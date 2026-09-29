@@ -9,8 +9,14 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { BarnsService } from '../../stable/barns/barns.service';
-import { DeleteHorseDto, HorseResponseDto, RestoreHorseDto } from '../dto';
+import {
+  DeleteHorseDto,
+  HorseDeletionPreviewResponseDto,
+  HorseResponseDto,
+  RestoreHorseDto,
+} from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
+import { toDeletionPreviewResponse } from '../mappers/horse-deletions.mapper';
 import { toHorseResponse } from '../mappers/horse.mapper';
 import {
   assertNoBusinessData,
@@ -80,6 +86,31 @@ export class HorseDeletionsService {
         feature: 'F1.8',
       });
     });
+  }
+
+  /**
+   * Xem trước việc xóa hồ sơ ngựa: xóa được không và đang vướng gì. Không ghi gì
+   *
+   * - Dùng cùng các luật chặn như remove: đã chuyển nhượng, đã có dữ liệu nghiệp vụ, đang là cha/mẹ
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của ngựa
+   * @returns A promise resolving to cờ xóa được và từng lý do chặn
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã bị xóa
+   * @throws NotFoundException Nếu không có ngựa
+   */
+  async previewRemove(
+    actor: Actor,
+    id: string,
+  ): Promise<HorseDeletionPreviewResponseDto> {
+    await this.access.currentUser(actor);
+    const horse = await this.access.findWritableHorse(actor, id);
+    const manager = this.dataSource.manager;
+    const [businessData, parentUsage] = await Promise.all([
+      this.deletions.businessDataLabels(id, manager),
+      this.pedigree.parentUsage(manager, id),
+    ]);
+    return toDeletionPreviewResponse(horse, businessData, parentUsage);
   }
 
   /**
