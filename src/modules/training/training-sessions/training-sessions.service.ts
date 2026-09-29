@@ -28,6 +28,7 @@ import {
   assertSessionEditable,
   assertSessionPublishable,
   assertSessionWindowInPlan,
+  initialParticipantEligibility,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 
@@ -259,13 +260,7 @@ export class TrainingSessionsService {
             horseId: horse.id,
             horseEnrollmentId: enrollment.id,
             assignedGroomId: groom?.groomId ?? null,
-            status: eligibility.trainingEligible
-              ? SessionParticipantStatus.PLANNED
-              : activeLock
-                ? SessionParticipantStatus.CANCELLED_BY_LOCK
-                : SessionParticipantStatus.INELIGIBLE,
-            ineligibilityReason:
-              eligibility.reasons.join(',').slice(0, 64) || null,
+            ...initialParticipantEligibility(eligibility, !!activeLock),
           }),
         );
       }

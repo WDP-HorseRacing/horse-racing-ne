@@ -13,7 +13,6 @@ import {
   LeaveHorseEnrollmentDto,
 } from '../../dto/horse-enrollment.dto';
 import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
-import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
 import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
@@ -22,6 +21,7 @@ import { TrainingPlanEntity } from '../../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import { toHorseEnrollmentResponse } from '../../mappers/horse-enrollment.mapper';
 import { TrainingAccessService } from '../../shared/training-access.service';
+import { initialParticipantEligibility } from '../../policies/training.policy';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
 
 @Injectable()
@@ -227,13 +227,7 @@ export class TrainingClassEnrollmentsService {
           horseId: horse.id,
           horseEnrollmentId: enrollment.id,
           assignedGroomId: groom?.groomId ?? null,
-          status: eligibility.trainingEligible
-            ? SessionParticipantStatus.PLANNED
-            : lock
-              ? SessionParticipantStatus.CANCELLED_BY_LOCK
-              : SessionParticipantStatus.INELIGIBLE,
-          ineligibilityReason:
-            eligibility.reasons.join(',').slice(0, 64) || null,
+          ...initialParticipantEligibility(eligibility, !!lock),
         }),
       );
     }

@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import type { EligibilityResult } from '../../horses/types/horse.types';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
@@ -167,4 +168,37 @@ export function assertParticipantComplete(
       'Participant phải ONGOING trước khi hoàn thành',
     );
   }
+}
+
+/**
+ * Chọn trạng thái ban đầu và lý do không đủ điều kiện cho một lượt tập mới tạo.
+ *
+ * - Được tập: PLANNED, không có lý do (kể cả khi ngựa đang UNDER_OBSERVATION, vì trạng thái này chỉ chặn đua)
+ * - Không được tập vì đang bị khóa huấn luyện: CANCELLED_BY_LOCK; các trường hợp khác: INELIGIBLE
+ * - Lý do lấy từ trainingReasons, nối bằng dấu phẩy và cắt còn 64 ký tự cho vừa cột
+ *
+ * @param eligibility Kết quả evaluateEligibility của con ngựa
+ * @param hasActiveTrainingLock true nếu ngựa đang có lệnh khóa huấn luyện ACTIVE
+ * @returns Trạng thái và lý do để gán vào lượt tập
+ */
+export function initialParticipantEligibility(
+  eligibility: EligibilityResult,
+  hasActiveTrainingLock: boolean,
+): {
+  status: SessionParticipantStatus;
+  ineligibilityReason: string | null;
+} {
+  if (eligibility.trainingEligible) {
+    return {
+      status: SessionParticipantStatus.PLANNED,
+      ineligibilityReason: null,
+    };
+  }
+  return {
+    status: hasActiveTrainingLock
+      ? SessionParticipantStatus.CANCELLED_BY_LOCK
+      : SessionParticipantStatus.INELIGIBLE,
+    ineligibilityReason:
+      eligibility.trainingReasons.join(',').slice(0, 64) || null,
+  };
 }

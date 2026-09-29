@@ -202,7 +202,7 @@ export class SessionParticipantsService {
         participant.status = activeLock
           ? SessionParticipantStatus.CANCELLED_BY_LOCK
           : SessionParticipantStatus.INELIGIBLE;
-        participant.ineligibilityReason = eligibility.reasons
+        participant.ineligibilityReason = eligibility.trainingReasons
           .join(',')
           .slice(0, 64);
         await manager.save(participant);
