@@ -232,7 +232,7 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
 describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
   const facade = new TrainingOperationsFacade();
 
-  it('only targets open future participants of the horse still assigned to the old groom', async () => {
+  it('targets open future participants of the horse assigned to the old groom or to nobody', async () => {
     const { manager, participantQb } = buildManager([], []);
 
     await facade.moveFutureParticipantsToGroom(
@@ -248,7 +248,7 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
       { horseId: 'h1' },
     );
     expect(participantQb.andWhere).toHaveBeenCalledWith(
-      'participant.assigned_groom_id = :fromGroomId',
+      '(participant.assigned_groom_id = :fromGroomId OR participant.assigned_groom_id IS NULL)',
       { fromGroomId: 'g-old' },
     );
     expect(participantQb.andWhere).toHaveBeenCalledWith(
@@ -269,6 +269,23 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
       'pessimistic_write',
       undefined,
       ['participant'],
+    );
+  });
+
+  it('only fills participants nobody leads when the horse had no groom yet', async () => {
+    const { manager, participantQb } = buildManager([], []);
+
+    await facade.moveFutureParticipantsToGroom(
+      manager,
+      'h1',
+      null,
+      'g-new',
+      AT,
+    );
+
+    expect(participantQb.andWhere).toHaveBeenCalledWith(
+      'participant.assigned_groom_id IS NULL',
+      { fromGroomId: null },
     );
   });
 

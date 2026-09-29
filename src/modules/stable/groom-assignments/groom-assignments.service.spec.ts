@@ -256,13 +256,19 @@ describe('GroomAssignmentsService', () => {
             horseId: 'h1',
             groomId: 'g-new',
             movedChecklistIds: [],
-            movedParticipantIds: [],
+            movedParticipantIds: ['p1', 'p2'],
           },
           feature: 'F1.7',
         }),
       );
       expect(result).toMatchObject({ groomId: 'g-new' });
-      expect(training.moveFutureParticipantsToGroom).not.toHaveBeenCalled();
+      expect(training.moveFutureParticipantsToGroom).toHaveBeenCalledWith(
+        manager,
+        'h1',
+        null,
+        'g-new',
+        anyDate,
+      );
     });
 
     it('publishes the groom change after the transaction commits', async () => {

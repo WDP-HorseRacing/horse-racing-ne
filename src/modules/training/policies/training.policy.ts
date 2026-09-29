@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import type { EligibilityResult } from '../../horses/types/horse.types';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
@@ -173,9 +174,9 @@ export function assertParticipantComplete(
 /**
  * Chọn trạng thái ban đầu và lý do không đủ điều kiện cho một lượt tập mới tạo.
  *
- * - Được tập: PLANNED, không có lý do (kể cả khi ngựa đang UNDER_OBSERVATION, vì trạng thái này chỉ chặn đua)
- * - Không được tập vì đang bị khóa huấn luyện: CANCELLED_BY_LOCK; các trường hợp khác: INELIGIBLE
- * - Lý do lấy từ trainingReasons, nối bằng dấu phẩy và cắt còn 64 ký tự cho vừa cột
+ * - Được tập: PLANNED, lý do null
+ * - Đang bị khóa huấn luyện: CANCELLED_BY_LOCK; không được tập vì lý do khác: INELIGIBLE
+ * - Lý do là trainingReasons nối bằng dấu phẩy, tối đa 64 ký tự
  *
  * @param eligibility Kết quả evaluateEligibility của con ngựa
  * @param hasActiveTrainingLock true nếu ngựa đang có lệnh khóa huấn luyện ACTIVE
@@ -201,4 +202,21 @@ export function initialParticipantEligibility(
     ineligibilityReason:
       eligibility.trainingReasons.join(',').slice(0, 64) || null,
   };
+}
+
+/**
+ * Chặn ghi danh ngựa không ở trạng thái ACTIVE vào lớp.
+ *
+ * @param lifecycleStatus Trạng thái vòng đời hiện tại của ngựa
+ * @throws ConflictException Nếu ngựa không ở trạng thái ACTIVE
+ */
+export function assertHorseEnrollable(
+  lifecycleStatus: HorseLifecycleStatus,
+): void {
+  if (lifecycleStatus === HorseLifecycleStatus.RETIRED) {
+    throw new ConflictException('Ngựa đã giải nghệ, không học lớp');
+  }
+  if (lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
+    throw new ConflictException('Ngựa đã chuyển nhượng, không học lớp');
+  }
 }

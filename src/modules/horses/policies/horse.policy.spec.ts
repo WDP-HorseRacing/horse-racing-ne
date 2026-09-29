@@ -435,13 +435,13 @@ describe('horse.policy', () => {
       });
     });
 
-    it('transfers a RETIRED horse without cancelling training or withdrawing registrations', () => {
+    it('transfers a RETIRED horse withdrawing its classes but not its registrations', () => {
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.RETIRED,
           HorseLifecycleStatus.TRANSFERRED,
         ),
-      ).toEqual({ ...none, ...transferEffects });
+      ).toEqual({ ...none, ...transferEffects, withdrawFromClasses: true });
     });
 
     it('only resets health when reactivating from RETIRED', () => {

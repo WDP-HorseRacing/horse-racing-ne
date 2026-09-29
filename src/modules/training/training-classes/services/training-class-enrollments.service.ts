@@ -21,7 +21,10 @@ import { TrainingPlanEntity } from '../../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import { toHorseEnrollmentResponse } from '../../mappers/horse-enrollment.mapper';
 import { TrainingAccessService } from '../../shared/training-access.service';
-import { initialParticipantEligibility } from '../../policies/training.policy';
+import {
+  assertHorseEnrollable,
+  initialParticipantEligibility,
+} from '../../policies/training.policy';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
 
 @Injectable()
@@ -96,6 +99,7 @@ export class TrainingClassEnrollmentsService {
       }
       const horse = await this.access.lockedHorse(manager, body.horseId);
       await this.access.assertTrainerBarn(manager, actor, caller.id, horse.id);
+      assertHorseEnrollable(horse.lifecycleStatus);
       const enrolledAt = body.enrolledAt
         ? new Date(body.enrolledAt)
         : new Date();

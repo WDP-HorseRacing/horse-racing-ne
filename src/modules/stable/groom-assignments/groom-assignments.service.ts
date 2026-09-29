@@ -85,7 +85,7 @@ export class GroomAssignmentsService {
    * - Lock row user của groom trong transaction rồi mới kiểm groom còn là GROOM đang ACTIVE.
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
-   * - Đổi groom: chuyển các lượt tham gia buổi tập tương lai đang giao cho groom cũ sang groom mới qua TrainingOperationsFacade (training tự ghi bảng của mình); lượt Head Trainer đã giao tay cho người khác giữ nguyên. Nhật ký ghi thêm movedParticipantIds.
+   * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); nhật ký ghi thêm movedParticipantIds.
    * - Sau khi commit: phát GROOM_ASSIGNMENT_CHANGED_EVENT để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách (F1.7).
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -130,7 +130,6 @@ export class GroomAssignmentsService {
         }
         const now = new Date();
         let movedChecklistIds: string[] = [];
-        let movedParticipantIds: string[] = [];
         if (current) {
           await manager.update(
             GroomAssignmentEntity,
@@ -145,15 +144,15 @@ export class GroomAssignmentsService {
               groom.id,
               clubToday(),
             );
-          movedParticipantIds =
-            await this.training.moveFutureParticipantsToGroom(
-              manager,
-              horseId,
-              current.groomId,
-              groom.id,
-              now,
-            );
         }
+        const movedParticipantIds =
+          await this.training.moveFutureParticipantsToGroom(
+            manager,
+            horseId,
+            current?.groomId ?? null,
+            groom.id,
+            now,
+          );
         const saved = await manager.save(
           manager.create(GroomAssignmentEntity, {
             horseId,

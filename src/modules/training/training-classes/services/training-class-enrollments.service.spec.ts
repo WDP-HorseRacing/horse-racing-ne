@@ -2,7 +2,9 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
 import { UserRole } from '../../../../common/enums/role.enum';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
 import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
+import { TrainingClassStatus } from '../../enums/training-class-status.enum';
 import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
 import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
@@ -49,6 +51,19 @@ function setup(
   const access = {
     currentUser: jest.fn().mockResolvedValue({ id: 'ht' }),
     assertCanManageClass: jest.fn(),
+    lockedTrainingClass: jest.fn().mockResolvedValue({
+      id: 'c1',
+      status: TrainingClassStatus.ACTIVE,
+      maxHorses: 0,
+      headTrainerId: 'ht',
+      startDate: '2026-01-01',
+      endDate: '2027-12-31',
+    }),
+    lockedHorse: jest.fn().mockResolvedValue({
+      id: 'h1',
+      lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+    }),
+    assertTrainerBarn: jest.fn(),
   };
   const operations = new TrainingOperationsFacade();
   const refresh = jest
@@ -161,4 +176,19 @@ describe('TrainingClassEnrollmentsService.leave', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(save).not.toHaveBeenCalled();
   });
+});
+
+describe('TrainingClassEnrollmentsService.create', () => {
+  it.each([HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.TRANSFERRED])(
+    'refuses to enroll a %s horse with 409 and saves nothing',
+    async (lifecycleStatus) => {
+      const { service, access, save } = setup(buildEnrollment(), []);
+      access.lockedHorse.mockResolvedValue({ id: 'h1', lifecycleStatus });
+
+      await expect(
+        service.create(actor, 'c1', { horseId: 'h1' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(save).not.toHaveBeenCalled();
+    },
+  );
 });

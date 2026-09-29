@@ -15,12 +15,12 @@ export interface WithdrawHorseOptions {
   reason: string;
   /** Thời điểm rút; buổi bắt đầu từ thời điểm này trở đi bị hủy lượt */
   at: Date;
-  /** Chỉ rút khỏi lớp do Head Trainer này phụ trách (dùng khi đổi khu); bỏ trống là rút khỏi mọi lớp */
+  /** Chỉ rút khỏi lớp do Head Trainer này phụ trách; bỏ trống là rút khỏi mọi lớp */
   headTrainerId?: string;
 }
 
 /**
- * Kết quả rút ngựa khỏi lớp, để nơi gọi ghi nhật ký và câu tóm tắt.
+ * Kết quả rút ngựa khỏi lớp.
  */
 export interface WithdrawHorseResult {
   /** UUID các lớp con ngựa vừa bị rút */
@@ -117,17 +117,17 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Rút một con ngựa khỏi các lớp đang học, dành cho module khác gọi trong transaction của họ (giải nghệ, chuyển nhượng, đổi khu).
+   * Rút một con ngựa khỏi các lớp đang học, chạy trong transaction của nơi gọi.
    *
    * - Chỉ xét enrollment ACTIVE; có `headTrainerId` thì chỉ rút khỏi lớp do Head Trainer đó phụ trách
    * - Enrollment đã bắt đầu (enrolledAt <= at) chuyển LEFT, ghi leftAt = at; enrollment chưa bắt đầu chuyển CANCELLED
-   * - Lượt tham gia các buổi từ `at` trở đi bị hủy như khi Head Trainer bấm rời lớp; buổi đã học và lượt ONGOING giữ nguyên
-   * - Không kiểm quyền: đây là hệ quả hệ thống tự chạy, nơi gọi đã kiểm quyền thao tác gốc
+   * - Hủy lượt tham gia các buổi từ `at` trở đi (cancelParticipantsFromEnrollments); buổi đã học và lượt ONGOING giữ nguyên
+   * - Không kiểm quyền, nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param options Lý do, thời điểm rút và Head Trainer cần lọc (nếu có)
-   * @returns A promise resolving to các lớp đã rút và số lượt tham gia đã hủy, để nơi gọi ghi nhật ký
+   * @returns A promise resolving to các lớp đã rút và số lượt tham gia đã hủy
    */
   async withdrawHorseFromClasses(
     manager: EntityManager,
@@ -176,10 +176,10 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Hủy các lượt tham gia chưa diễn ra của những enrollment vừa rời lớp. Dùng chung cho Head Trainer bấm rời lớp và hệ thống tự rút.
+   * Hủy các lượt tham gia chưa diễn ra của những enrollment vừa rời lớp.
    *
    * - Chỉ hủy lượt PLANNED/PRESENT/READY của buổi có giờ bắt đầu từ `from` trở đi
-   * - Lượt ONGOING, lượt đã kết thúc và buổi trước `from` giữ nguyên làm lịch sử
+   * - Lượt ONGOING, lượt đã kết thúc và buổi trước `from` giữ nguyên
    * - Buổi không còn lượt nào mở thì cập nhật lại trạng thái buổi
    *
    * @param manager EntityManager của transaction đang chạy
@@ -225,23 +225,24 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Chuyển các lượt tham gia buổi tập tương lai của một con ngựa từ groom cũ sang groom mới, dành cho module stable gọi khi đổi groom (F1.7 mục 6).
+   * Chuyển các lượt tham gia buổi tập tương lai của một con ngựa sang groom mới, chạy trong transaction của nơi gọi.
    *
-   * - Chỉ chuyển lượt đang giao cho groom cũ; lượt Head Trainer đã giao tay cho người khác giữ nguyên (user chốt 2026-09-29)
+   * - Chuyển lượt đang giao cho groom cũ và lượt chưa ai dắt; lượt giao cho người khác giữ nguyên
+   * - `fromGroomId` null: chỉ điền các lượt chưa ai dắt
    * - Chỉ lượt PLANNED/PRESENT/READY của buổi bắt đầu từ `from` trở đi; lượt ONGOING và lượt đã kết thúc giữ tên người đã làm
-   * - Không kiểm quyền: nơi gọi đã kiểm quyền đổi groom
+   * - Không kiểm quyền, nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
-   * @param fromGroomId UUID groom cũ
+   * @param fromGroomId UUID groom cũ, null nếu ngựa chưa có Groom
    * @param toGroomId UUID groom mới
    * @param from Thời điểm đổi groom; buổi bắt đầu từ thời điểm này trở đi được chuyển
-   * @returns A promise resolving to UUID các lượt tham gia đã chuyển, để nơi gọi ghi nhật ký
+   * @returns A promise resolving to UUID các lượt tham gia đã chuyển
    */
   async moveFutureParticipantsToGroom(
     manager: EntityManager,
     horseId: string,
-    fromGroomId: string,
+    fromGroomId: string | null,
     toGroomId: string,
     from: Date,
   ): Promise<string[]> {
@@ -254,9 +255,12 @@ export class TrainingOperationsFacade {
         'session.id = participant.session_id',
       )
       .where('participant.horse_id = :horseId', { horseId })
-      .andWhere('participant.assigned_groom_id = :fromGroomId', {
-        fromGroomId,
-      })
+      .andWhere(
+        fromGroomId
+          ? '(participant.assigned_groom_id = :fromGroomId OR participant.assigned_groom_id IS NULL)'
+          : 'participant.assigned_groom_id IS NULL',
+        { fromGroomId },
+      )
       .andWhere('participant.status IN (:...statuses)', {
         statuses: OPEN_PARTICIPANT_STATUSES,
       })
@@ -310,8 +314,8 @@ export class TrainingOperationsFacade {
    *
    * - Chỉ xét buổi SCHEDULED hoặc IN_PROGRESS; buổi đã đóng giữ nguyên
    * - Còn lượt mở (PLANNED/PRESENT/READY/ONGOING): không đổi gì
-   * - Hết lượt mở và có ít nhất một lượt đã thực sự diễn ra (COMPLETED, ABSENT, SKIPPED): COMPLETED
-   * - Hết lượt mở mà mọi lượt đều bị hủy hoặc không đủ điều kiện: CANCELLED, ghi thời điểm và lý do "Không còn ngựa tham gia" (vd rút hết ngựa khỏi buổi tương lai)
+   * - Hết lượt mở và có lượt COMPLETED, ABSENT hoặc SKIPPED: COMPLETED
+   * - Hết lượt mở và mọi lượt đều bị hủy hoặc không đủ điều kiện: CANCELLED, ghi thời điểm và lý do "Không còn ngựa tham gia"
    *
    * @param manager EntityManager của transaction đang chạy
    * @param sessionId UUID của buổi tập

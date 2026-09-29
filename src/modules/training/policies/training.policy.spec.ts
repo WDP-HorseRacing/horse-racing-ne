@@ -13,6 +13,7 @@ import {
   assertSessionOperational,
   assertSessionWindowInPlan,
   assertTrainableHorse,
+  assertHorseEnrollable,
   initialParticipantEligibility,
 } from './training.policy';
 
@@ -124,5 +125,22 @@ describe('initialParticipantEligibility', () => {
       status: SessionParticipantStatus.INELIGIBLE,
       ineligibilityReason: 'HEALTH_INJURED',
     });
+  });
+});
+
+describe('assertHorseEnrollable', () => {
+  it('accepts an ACTIVE horse', () => {
+    expect(() =>
+      assertHorseEnrollable(HorseLifecycleStatus.ACTIVE),
+    ).not.toThrow();
+  });
+
+  it.each([
+    [HorseLifecycleStatus.RETIRED, 'Ngựa đã giải nghệ, không học lớp'],
+    [HorseLifecycleStatus.TRANSFERRED, 'Ngựa đã chuyển nhượng, không học lớp'],
+  ])('rejects a %s horse with 409', (status, message) => {
+    expect(() => assertHorseEnrollable(status)).toThrow(
+      new ConflictException(message),
+    );
   });
 });

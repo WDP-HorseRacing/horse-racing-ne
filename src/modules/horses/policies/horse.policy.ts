@@ -254,7 +254,7 @@ export function assertLifecycleTransition(
  * Xác định các việc cần chạy khi ngựa đổi vòng đời (F1.8), dựa vào trạng thái hiện tại và trạng thái đích.
  *
  * - Giải nghệ (ACTIVE sang RETIRED): rút khỏi lớp đang học, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
- * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu
+ * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; rút khỏi lớp (cả khi đi từ RETIRED); trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu
  * - Kích hoạt lại (sang ACTIVE): đặt sức khỏe về UNDER_OBSERVATION; lớp học và đăng ký thi đấu đã hủy không tự khôi phục
  * - Kích hoạt lại từ chuyển nhượng: ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
  *
@@ -272,7 +272,7 @@ export function lifecycleSideEffects(
       to === HorseLifecycleStatus.TRANSFERRED);
   const transferred = to === HorseLifecycleStatus.TRANSFERRED;
   return {
-    withdrawFromClasses: retiringFromActive,
+    withdrawFromClasses: retiringFromActive || transferred,
     withdrawRegistrations: retiringFromActive,
     releaseStall: transferred,
     endGroom: transferred,
@@ -352,14 +352,13 @@ export function lifecycleImpactSummary(
 }
 
 /**
- * Chọn Head Trainer mà ngựa phải rời lớp khi đổi khu (F1.6 mục 4; user chốt 2026-09-29).
+ * Chọn Head Trainer có lớp mà ngựa phải rời khi đổi khu.
  *
- * - Ngựa rời các lớp của Head Trainer khu cũ, vì Head Trainer đó không còn phụ trách con ngựa
- * - Khu mới cùng Head Trainer với khu cũ thì giữ lớp, tránh rút ra rồi đăng ký lại vô ích
- * - Ngựa chưa có khu, hoặc khu cũ không có Head Trainer, thì không có lớp nào để rút
+ * - Khác Head Trainer: trả Head Trainer khu cũ
+ * - Cùng Head Trainer, ngựa chưa có khu, hoặc khu cũ không có Head Trainer: trả null
  *
- * @param oldHeadTrainerId Head Trainer phụ trách khu cũ, null nếu ngựa chưa có khu hoặc khu cũ không có Head Trainer
- * @param newHeadTrainerId Head Trainer phụ trách khu mới (khu đã qua lockAssignableBarn nên luôn có)
+ * @param oldHeadTrainerId Head Trainer phụ trách khu cũ, null nếu không có
+ * @param newHeadTrainerId Head Trainer phụ trách khu mới
  * @returns UUID Head Trainer cần rút ngựa khỏi lớp của họ, null nếu không phải rút
  */
 export function headTrainerToLeaveOnBarnChange(
@@ -408,8 +407,9 @@ export function trainerForbiddenFields(fields: object): string[] {
  * - Được tập: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, không có lệnh khóa huấn luyện
  * - Được đua: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE, không có lệnh khóa huấn luyện
  * - Lý do vòng đời tách riêng Đã giải nghệ / Đã chuyển nhượng để giao diện hiện đúng câu
- * - Lý do tách theo từng cờ (F1.3 mục 2): trainingReasons rỗng khi và chỉ khi được tập, racingReasons rỗng khi và chỉ khi được đua. UNDER_OBSERVATION chỉ chặn đua
- * - reasons giữ lại cho FE cũ, bằng racingReasons (mọi lý do)
+ * - trainingReasons: lý do không được tập, rỗng khi được tập
+ * - racingReasons: lý do không được đua, rỗng khi được đua
+ * - reasons: mọi lý do, bằng racingReasons
  *
  * @param input Trạng thái hồ sơ, vòng đời, sức khỏe và cờ khóa huấn luyện của ngựa
  * @returns Hai cờ được tập, được đua và lý do chặn của từng cờ (rỗng nếu không bị chặn gì)

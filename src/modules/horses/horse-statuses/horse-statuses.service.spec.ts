@@ -307,6 +307,7 @@ describe('HorseStatusesService', () => {
             lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
             lifecycleReason: 'Bán',
             barnId: null,
+            classesWithdrawn: 2,
             trainingLockReleased: false,
           },
         }),
@@ -333,10 +334,14 @@ describe('HorseStatusesService', () => {
       );
     });
 
-    it('transfers a RETIRED horse without cancelling training or withdrawing registrations', async () => {
+    it('transfers a RETIRED horse withdrawing its classes but not its registrations', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
       await change(HorseLifecycleStatus.TRANSFERRED);
-      expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
+      expect(training.withdrawHorseFromClasses).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+        { reason: 'Ngựa chuyển nhượng: Bán', at: anyDate },
+      );
       expect(racing.withdrawOpenRegistrationsByHorse).not.toHaveBeenCalled();
       expect(stalls.releaseStallByHorse).toHaveBeenCalledWith(
         manager,
@@ -641,12 +646,12 @@ describe('HorseStatusesService', () => {
       );
     });
 
-    it('reports no training or registration effect for a RETIRED horse being transferred', async () => {
+    it('reports the class withdrawal but no registration effect for a RETIRED horse being transferred', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
       await expect(preview(HorseLifecycleStatus.TRANSFERRED)).resolves.toEqual(
         expect.objectContaining({
           allowed: true,
-          classesWithdrawn: 0,
+          classesWithdrawn: 2,
           raceRegistrationsWithdrawn: 0,
           stallReleased: 'A-01',
           barnCleared: 'Khu A',
