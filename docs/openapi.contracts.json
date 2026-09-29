@@ -4595,7 +4595,7 @@
             "name": "when",
             "required": false,
             "in": "query",
-            "description": "upcoming: buổi chưa bắt đầu, gần nhất trước; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả, mới nhất trước",
+            "description": "upcoming: buổi chưa bắt đầu, gần nhất trước, không gồm lượt đã hủy; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả (kể cả lượt đã hủy), mới nhất trước",
             "schema": {
               "type": "string",
               "enum": [
@@ -7079,9 +7079,41 @@
           "racingEligible": {
             "type": "boolean"
           },
+          "trainingReasons": {
+            "type": "array",
+            "description": "Lý do không được tập, rỗng khi trainingEligible = true",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PROFILE_DELETED",
+                "LIFECYCLE_RETIRED",
+                "LIFECYCLE_TRANSFERRED",
+                "HEALTH_UNDER_OBSERVATION",
+                "HEALTH_INJURED",
+                "HEALTH_QUARANTINED",
+                "ACTIVE_TRAINING_LOCK"
+              ]
+            }
+          },
+          "racingReasons": {
+            "type": "array",
+            "description": "Lý do không được đua, rỗng khi racingEligible = true",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PROFILE_DELETED",
+                "LIFECYCLE_RETIRED",
+                "LIFECYCLE_TRANSFERRED",
+                "HEALTH_UNDER_OBSERVATION",
+                "HEALTH_INJURED",
+                "HEALTH_QUARANTINED",
+                "ACTIVE_TRAINING_LOCK"
+              ]
+            }
+          },
           "reasons": {
             "type": "array",
-            "description": "Lý do không được tập/không được đua, rỗng nếu không bị chặn",
+            "description": "Mọi lý do (bằng racingReasons), giữ cho FE cũ",
             "items": {
               "type": "string",
               "enum": [
@@ -7099,6 +7131,8 @@
         "required": [
           "trainingEligible",
           "racingEligible",
+          "trainingReasons",
+          "racingReasons",
           "reasons"
         ]
       },
@@ -7560,8 +7594,41 @@
           "activeTrainingLock": {
             "type": "boolean"
           },
+          "trainingReasons": {
+            "type": "array",
+            "description": "Lý do không được tập, rỗng khi trainingEligible = true",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PROFILE_DELETED",
+                "LIFECYCLE_RETIRED",
+                "LIFECYCLE_TRANSFERRED",
+                "HEALTH_UNDER_OBSERVATION",
+                "HEALTH_INJURED",
+                "HEALTH_QUARANTINED",
+                "ACTIVE_TRAINING_LOCK"
+              ]
+            }
+          },
+          "racingReasons": {
+            "type": "array",
+            "description": "Lý do không được đua, rỗng khi racingEligible = true",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PROFILE_DELETED",
+                "LIFECYCLE_RETIRED",
+                "LIFECYCLE_TRANSFERRED",
+                "HEALTH_UNDER_OBSERVATION",
+                "HEALTH_INJURED",
+                "HEALTH_QUARANTINED",
+                "ACTIVE_TRAINING_LOCK"
+              ]
+            }
+          },
           "reasons": {
             "type": "array",
+            "description": "Mọi lý do (bằng racingReasons), giữ cho FE cũ",
             "items": {
               "type": "string",
               "enum": [
@@ -7583,6 +7650,8 @@
           "healthStatus",
           "lifecycleStatus",
           "activeTrainingLock",
+          "trainingReasons",
+          "racingReasons",
           "reasons"
         ]
       },
