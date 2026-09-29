@@ -4427,6 +4427,129 @@
         "x-implementation-status": "contract-only"
       }
     },
+    "/api/v1/horses/{horseId}/training/classes": {
+      "get": {
+        "description": "Tab Huấn luyện của hồ sơ ngựa (F1.3): lớp đang học trước, rồi lớp đã rời. GROOM nhận 403.",
+        "operationId": "HorseTrainingController_listClasses",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseTrainingClassResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List classes of a horse",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/training/sessions": {
+      "get": {
+        "description": "Tab Huấn luyện của hồ sơ ngựa (F1.3): lịch buổi tập của ngựa kèm kết quả time trial, có phân trang. GROOM nhận 403.",
+        "operationId": "HorseTrainingController_listSessions",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số buổi mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "classId",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ lấy buổi của một lớp",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "when",
+            "required": false,
+            "in": "query",
+            "description": "upcoming: buổi chưa bắt đầu, gần nhất trước; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả, mới nhất trước",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "history"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseTrainingSessionPageDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List training sessions of a horse",
+        "tags": [
+          "training"
+        ]
+      }
+    },
     "/api/v1/training-sessions/{id}/time-trial": {
       "get": {
         "operationId": "TimeTrialsController_getBySession",
@@ -9045,6 +9168,231 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "HorseTrainingClassResponseDto": {
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "classStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "headTrainerName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên Head Trainer phụ trách lớp, null nếu lớp chưa có"
+          },
+          "enrollmentStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "LEFT",
+              "CANCELLED"
+            ],
+            "description": "ACTIVE là lớp đang học; LEFT/CANCELLED là lớp đã rời"
+          },
+          "enrolledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "leftAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "enrollmentId",
+          "classId",
+          "code",
+          "name",
+          "classStatus",
+          "enrollmentStatus",
+          "enrolledAt"
+        ]
+      },
+      "HorseTrainingTrialResultDto": {
+        "type": "object",
+        "properties": {
+          "attemptNo": {
+            "type": "number"
+          },
+          "elapsedMs": {
+            "type": "string",
+            "description": "Thời gian chạy, mili giây (chuỗi số)"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ghi chú của người bấm giờ cho lần chạy này"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attemptNo",
+          "elapsedMs",
+          "recordedAt"
+        ]
+      },
+      "HorseTrainingSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "className": {
+            "type": "string"
+          },
+          "planName": {
+            "type": "string"
+          },
+          "phaseName": {
+            "type": "string",
+            "description": "Giai đoạn của giáo án"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ]
+          },
+          "scheduledStartAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scheduledEndAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "surface": {
+            "type": "string",
+            "nullable": true
+          },
+          "sessionStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ],
+            "description": "Trạng thái của cả buổi tập"
+          },
+          "participantStatus": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "PRESENT",
+              "READY",
+              "ONGOING",
+              "COMPLETED",
+              "ABSENT",
+              "SKIPPED",
+              "INELIGIBLE",
+              "CANCELLED_BY_LOCK",
+              "CANCELLED"
+            ],
+            "description": "Trạng thái của con ngựa trong buổi tập"
+          },
+          "groomName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên Groom dắt ngựa buổi này, null nếu chưa giao"
+          },
+          "absenceReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do lượt tập của ngựa bị hủy (vd rời lớp, giải nghệ)"
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "trialResults": {
+            "description": "Kết quả time trial của ngựa trong buổi, rỗng nếu không có",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseTrainingTrialResultDto"
+            }
+          }
+        },
+        "required": [
+          "participantId",
+          "sessionId",
+          "classId",
+          "className",
+          "planName",
+          "phaseName",
+          "name",
+          "sessionType",
+          "scheduledStartAt",
+          "scheduledEndAt",
+          "sessionStatus",
+          "participantStatus",
+          "trialResults"
+        ]
+      },
+      "HorseTrainingSessionPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseTrainingSessionResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
         ]
       },
       "TimeTrialResponseDto": {
