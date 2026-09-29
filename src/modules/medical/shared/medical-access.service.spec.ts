@@ -1,9 +1,17 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { DataSource, EntityManager } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
+import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { DELETED_HORSE_READ_ONLY_MESSAGE } from '../../horses/constants/horse.constants';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
+import { UserEntity } from '../../users/entities/user.entity';
 import { MedicalAccessService } from './medical-access.service';
 
 const vet: Actor = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
@@ -59,5 +67,56 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
       NotFoundException,
     );
     expect(horseAccess.assertNotTransferred).not.toHaveBeenCalled();
+  });
+});
+
+describe('MedicalAccessService.lockHorseForWrite on a deleted profile', () => {
+  let lockHorseWithDeleted: jest.Mock;
+  let service: MedicalAccessService;
+  const deletedManager = {
+    findOne: jest.fn((entity: unknown) =>
+      Promise.resolve(
+        entity === UserEntity
+          ? {
+              id: 'u-1',
+              status: UserStatus.ACTIVE,
+              role: UserRole.VETERINARIAN,
+            }
+          : null,
+      ),
+    ),
+  } as unknown as EntityManager;
+
+  beforeEach(() => {
+    lockHorseWithDeleted = jest.fn().mockResolvedValue({
+      id: 'h1',
+      lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+      deletedAt: new Date('2026-09-01T00:00:00Z'),
+    });
+    service = new MedicalAccessService(
+      new HorseAccessService(
+        { manager: deletedManager } as unknown as DataSource,
+        { lockHorseWithDeleted } as unknown as HorsesSharedRepository,
+      ),
+    );
+  });
+
+  it('answers not found to a VETERINARIAN', async () => {
+    await expect(
+      service.lockHorseForWrite(deletedManager, vet, 'h1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('answers forbidden to a caller holding CLUB_MANAGER', async () => {
+    await expect(
+      service.lockHorseForWrite(
+        deletedManager,
+        {
+          sub: 'kc-cm-vet',
+          roles: [UserRole.CLUB_MANAGER, UserRole.VETERINARIAN],
+        },
+        'h1',
+      ),
+    ).rejects.toThrow(new ForbiddenException(DELETED_HORSE_READ_ONLY_MESSAGE));
   });
 });

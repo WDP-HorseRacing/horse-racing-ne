@@ -492,6 +492,23 @@ describe('HorseMeasurementsService', () => {
       expect(events.publish).not.toHaveBeenCalled();
     });
 
+    it('stores the abnormal flag of an exam value and audits the confirmation', async () => {
+      await service.recordExamMeasurements(manager as never, examInput());
+
+      expect(measurementRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ isAbnormal: true }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          after: expect.objectContaining({
+            isAbnormal: true,
+            abnormalConfirmed: true,
+          }) as unknown,
+        }),
+      );
+    });
+
     it('rejects an unconfirmed abnormal exam value with 422 and saves nothing', async () => {
       await expect(
         service.recordExamMeasurements(manager as never, examInput(false)),
