@@ -49,7 +49,10 @@ describe('MedicalCasesService', () => {
   let cases: { find: jest.Mock; findOne: jest.Mock };
   let horseAccess: { findReadable: jest.Mock; currentUser: jest.Mock };
   let access: { lockHorseForWrite: jest.Mock };
-  let casesRepository: { costByHorse: jest.Mock };
+  let casesRepository: {
+    costByHorse: jest.Mock;
+    closedCostOfHorse: jest.Mock;
+  };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
   let service: MedicalCasesService;
@@ -103,7 +106,10 @@ describe('MedicalCasesService', () => {
         horse: { id: 'h1' },
       }),
     };
-    casesRepository = { costByHorse: jest.fn().mockResolvedValue([]) };
+    casesRepository = {
+      costByHorse: jest.fn().mockResolvedValue([]),
+      closedCostOfHorse: jest.fn().mockResolvedValue(1500000),
+    };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };
     service = new MedicalCasesService(
@@ -131,6 +137,21 @@ describe('MedicalCasesService', () => {
       for (const item of result.items) {
         expect(item).not.toHaveProperty('totalCost');
       }
+      expect(casesRepository.closedCostOfHorse).not.toHaveBeenCalled();
+    });
+
+    it('sums every closed case of the horse even when the list is filtered', async () => {
+      cases.find.mockResolvedValue([openCase]);
+
+      const result = await service.listCases(
+        actorWith(UserRole.CLUB_MANAGER),
+        'h1',
+        { status: MedicalCaseStatus.OPEN },
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(result.totalCost).toBe(1500000);
+      expect(casesRepository.closedCostOfHorse).toHaveBeenCalledWith('h1');
     });
 
     it('shows an owner the cost of closed cases only and sums them', async () => {

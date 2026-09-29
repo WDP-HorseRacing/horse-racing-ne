@@ -83,6 +83,7 @@ export class MedicalCasesService {
    * Lấy các bệnh án của con ngựa, mới nhất lên trên, kèm tổng chi phí các bệnh án đã đóng (F3.10, F1.3)
    *
    * - Head Trainer không có key chi phí; người khác chỉ thấy chi phí của bệnh án đã đóng
+   * - totalCost tính trên mọi bệnh án đã đóng của ngựa, không theo bộ lọc trạng thái
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -102,15 +103,13 @@ export class MedicalCasesService {
       order: { openedAt: 'DESC' },
     });
     const seesCost = canSeeMedicalCost(actor.roles);
-    const totalCost = cases.reduce(
-      (sum, medicalCase) => sum + (costOf(medicalCase) ?? 0),
-      0,
+    const items = cases.map((medicalCase) =>
+      toMedicalCaseResponse(medicalCase, seesCost),
     );
+    if (!seesCost) return { items };
     return {
-      items: cases.map((medicalCase) =>
-        toMedicalCaseResponse(medicalCase, seesCost),
-      ),
-      ...(seesCost ? { totalCost } : {}),
+      items,
+      totalCost: await this.casesRepository.closedCostOfHorse(horseId),
     };
   }
 

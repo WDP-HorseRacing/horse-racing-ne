@@ -62,4 +62,20 @@ export class MedicalCasesRepository {
       params,
     );
   }
+
+  /**
+   * Cộng chi phí mọi bệnh án đã đóng của một con ngựa
+   *
+   * @param horseId UUID của ngựa
+   * @returns A promise resolving to tổng chi phí (VND), 0 nếu chưa có bệnh án đã đóng
+   */
+  async closedCostOfHorse(horseId: string): Promise<number> {
+    const rows: Array<{ totalCost: string }> = await this.dataSource.query(
+      `SELECT COALESCE(SUM(total_cost), 0)::text AS "totalCost"
+         FROM medical_cases
+        WHERE horse_id = $1 AND status = $2`,
+      [horseId, MedicalCaseStatus.CLOSED],
+    );
+    return Number(rows[0].totalCost);
+  }
 }
