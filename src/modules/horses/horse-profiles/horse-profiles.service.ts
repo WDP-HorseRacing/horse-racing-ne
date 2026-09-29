@@ -317,9 +317,9 @@ export class HorseProfilesService {
   ): Promise<HorseResponseDto> {
     const caller = await this.access.currentUser(actor);
     const horse = await this.access.findWritableHorse(actor, id);
-    this.access.assertNotTransferred(horse);
     const { version, ...fields } = body;
     await this.assertEditableFields(actor, caller.id, horse.id, fields);
+    this.access.assertNotTransferred(horse);
     this.assertCurrentVersion(horse, version);
     assertDateOfBirth(fields.dateOfBirth, clubToday());
     if (fields.microchipId !== undefined) {

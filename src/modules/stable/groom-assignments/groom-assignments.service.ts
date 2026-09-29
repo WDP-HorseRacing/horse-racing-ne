@@ -92,9 +92,9 @@ export class GroomAssignmentsService {
    * @param horseId UUID của ngựa
    * @param body Groom được giao
    * @returns Promise chứa phân công groom đang mở của ngựa sau thao tác
-   * @throws BadRequestException Nếu groom không phải Groom đang hoạt động hoặc khu của ngựa không hoạt động
+   * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, groom mới đã có checklist trùng ngày, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, hoặc có thao tác khác chạy cùng lúc
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    */
   async assign(
@@ -110,7 +110,6 @@ export class GroomAssignmentsService {
           where: { id: body.groomId },
           lock: { mode: 'pessimistic_write' },
         });
-        assertAssignableGroom(groom);
         const horse = await this.access.lockOperableHorse(
           manager,
           caller.id,
@@ -118,6 +117,7 @@ export class GroomAssignmentsService {
           'GROOM',
         );
         await this.access.lockActiveBarn(manager, horse.barnId);
+        assertAssignableGroom(groom);
         const current = await manager.findOne(GroomAssignmentEntity, {
           where: { horseId, endAt: IsNull() },
           lock: { mode: 'pessimistic_write' },

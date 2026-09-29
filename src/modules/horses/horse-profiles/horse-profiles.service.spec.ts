@@ -414,6 +414,18 @@ describe('HorseProfilesService', () => {
       expect(audit.record).not.toHaveBeenCalled();
     });
 
+    it('answers 403 before 409 to a HEAD_TRAINER outside the barn on a TRANSFERRED horse (III.6.3)', async () => {
+      horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
+      barnRows = [];
+      await expect(
+        service.update(
+          actorWith(UserRole.HEAD_TRAINER),
+          HORSE_ID,
+          body({ raceAptitude: RaceAptitude.MILER }),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('rejects a TRANSFERRED horse with 409', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
       await expect(

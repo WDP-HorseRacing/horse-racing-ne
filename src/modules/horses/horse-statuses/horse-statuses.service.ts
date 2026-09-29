@@ -246,6 +246,8 @@ export class HorseStatusesService {
    * @returns A promise resolving to the updated horse
    * @throws NotFoundException if the horse is not found
    * @throws ConflictException if the horse is transferred or marked ELIGIBLE while under an active training lock
+   *
+   * Ghi nhật ký trạng thái sức khỏe trước và sau (III.6.1), feature F3 vì đổi sức khỏe thuộc Flow 3; gửi đúng trạng thái hiện tại thì không ghi gì
    */
   async updateHealth(
     actor: Actor,
@@ -253,9 +255,10 @@ export class HorseStatusesService {
     body: UpdateHorseHealthDto,
   ): Promise<HorseResponseDto> {
     await this.dataSource.transaction(async (manager) => {
-      await this.access.currentUser(actor, manager);
+      const caller = await this.access.currentUser(actor, manager);
       const horse = await this.access.lockWritableHorse(manager, actor, id);
       this.access.assertNotTransferred(horse);
+      if (horse.healthStatus === body.healthStatus) return;
       if (
         body.healthStatus === HorseHealthStatus.ELIGIBLE &&
         (await this.horses.hasActiveTrainingLock(id, manager))
@@ -267,6 +270,15 @@ export class HorseStatusesService {
       await manager
         .getRepository(HorseEntity)
         .update({ id }, { healthStatus: body.healthStatus });
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.HORSE,
+        entityId: id,
+        before: { healthStatus: horse.healthStatus },
+        after: { healthStatus: body.healthStatus },
+        feature: 'F3',
+      });
     });
     return toHorseResponse(await this.access.findHorse(id));
   }

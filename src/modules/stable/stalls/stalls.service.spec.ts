@@ -222,7 +222,7 @@ describe('StallsService', () => {
     it('rejects a horse whose barn is not active and locks the barn first', async () => {
       rows.set(BarnEntity, { id: 'b1', status: BarnStatus.MAINTENANCE });
       await expect(move()).rejects.toThrow(
-        new BadRequestException('Khu chuồng không ở trạng thái hoạt động'),
+        new ConflictException('Khu chuồng không ở trạng thái hoạt động'),
       );
       expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
         where: { id: 'b1' },
@@ -558,7 +558,7 @@ describe('StallsService', () => {
           status: BarnStatus.CLOSED,
           capacity: 10,
         });
-        await expect(create()).rejects.toThrow(BadRequestException);
+        await expect(create()).rejects.toThrow(ConflictException);
       });
 
       it('locks the barn before counting its stalls', async () => {

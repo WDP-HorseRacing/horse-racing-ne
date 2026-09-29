@@ -435,6 +435,45 @@ describe('HorseStatusesService', () => {
     });
   });
 
+  describe('updateHealth', () => {
+    const vet: Actor = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
+    const setHealth = (healthStatus: HorseHealthStatus) =>
+      service.updateHealth(vet, HORSE_ID, { healthStatus });
+
+    it('records the health change in the audit log (III.6.1)', async () => {
+      await setHealth(HorseHealthStatus.INJURED);
+      expect(horseRepository.update).toHaveBeenCalledWith(
+        { id: HORSE_ID },
+        { healthStatus: HorseHealthStatus.INJURED },
+      );
+      expect(audit.record).toHaveBeenCalledWith(manager, {
+        actorId: CALLER_ID,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.HORSE,
+        entityId: HORSE_ID,
+        before: { healthStatus: HorseHealthStatus.ELIGIBLE },
+        after: { healthStatus: HorseHealthStatus.INJURED },
+        feature: 'F3',
+      });
+    });
+
+    it('writes nothing when the health status does not change', async () => {
+      await setHealth(HorseHealthStatus.ELIGIBLE);
+      expect(horseRepository.update).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('refuses ELIGIBLE under an active training lock with 409 and writes nothing', async () => {
+      horse.healthStatus = HorseHealthStatus.INJURED;
+      horses.hasActiveTrainingLock.mockResolvedValue(true);
+      await expect(setHealth(HorseHealthStatus.ELIGIBLE)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(horseRepository.update).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+  });
+
   describe('with the shared HorseAccessService', () => {
     const DELETED_MESSAGE =
       'Hồ sơ đã xóa, chỉ xem được. Khôi phục hồ sơ trước khi thao tác';

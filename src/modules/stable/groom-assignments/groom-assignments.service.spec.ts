@@ -145,14 +145,31 @@ describe('GroomAssignmentsService', () => {
     it.each([
       ['an inactive groom', { status: UserStatus.INACTIVE }],
       ['a locked groom', { status: UserStatus.LOCKED }],
-      ['a user who is not a groom', { role: UserRole.VETERINARIAN }],
-    ])('rejects %s', async (_label, patch) => {
+    ])('rejects %s with 409 (III.6.3)', async (_label, patch) => {
       groomRow = { ...newGroom, ...patch };
       await expect(assign()).rejects.toThrow(
-        new BadRequestException(
-          'Groom phụ trách không hợp lệ hoặc không ở trạng thái hoạt động',
-        ),
+        new ConflictException('Groom phụ trách không ở trạng thái hoạt động'),
       );
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects a user who is not a groom with 400', async () => {
+      groomRow = { ...newGroom, role: UserRole.VETERINARIAN };
+      await expect(assign()).rejects.toThrow(
+        new BadRequestException('Groom phụ trách không hợp lệ'),
+      );
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('checks the horse scope before the groom, so an outside head trainer gets 403', async () => {
+      groomRow = null;
+      rows.set(HorseEntity, {
+        id: 'h1',
+        barnId: 'b-other',
+        lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+      });
+      manager.query.mockResolvedValue([]);
+      await expect(assign()).rejects.toThrow(ForbiddenException);
       expect(manager.save).not.toHaveBeenCalled();
     });
 
@@ -172,7 +189,7 @@ describe('GroomAssignmentsService', () => {
       async (status) => {
         rows.set(BarnEntity, { id: 'b1', status });
         await expect(assign()).rejects.toThrow(
-          new BadRequestException('Khu chuồng không ở trạng thái hoạt động'),
+          new ConflictException('Khu chuồng không ở trạng thái hoạt động'),
         );
         expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
           where: { id: 'b1' },

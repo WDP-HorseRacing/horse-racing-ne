@@ -137,8 +137,7 @@ export class StallsService {
    * @param body Thông tin ô chuồng
    * @returns A promise resolving to ô chuồng vừa tạo
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
-   * @throws BadRequestException Nếu khu không ở trạng thái hoạt động
-   * @throws ConflictException Nếu khu đã đủ sức chứa hoặc mã ô đã tồn tại
+   * @throws ConflictException Nếu khu không ở trạng thái hoạt động, khu đã đủ sức chứa hoặc mã ô đã tồn tại
    */
   async create(actor: Actor, body: CreateStallDto): Promise<StallResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
@@ -194,8 +193,7 @@ export class StallsService {
    * @param body Các field cần đổi
    * @returns A promise resolving to ô chuồng sau khi sửa
    * @throws NotFoundException Nếu không có ô, không có khu của ô hoặc không có khu đích
-   * @throws BadRequestException Nếu khu đích không ở trạng thái hoạt động
-   * @throws ConflictException Nếu mã ô đã tồn tại, khu đích đã đủ sức chứa, ô đang có ngựa mà đổi khu hoặc đổi trạng thái, trạng thái hiện tại không đổi tay được, ô vừa bị chuyển khu, hoặc chuyển ô trống sang MAINTENANCE hay sang khu khác làm khu hiện tại thiếu ô cho ngựa chờ xếp ô
+   * @throws ConflictException Nếu khu đích không ở trạng thái hoạt động, mã ô đã tồn tại, khu đích đã đủ sức chứa, ô đang có ngựa mà đổi khu hoặc đổi trạng thái, trạng thái hiện tại không đổi tay được, ô vừa bị chuyển khu, hoặc chuyển ô trống sang MAINTENANCE hay sang khu khác làm khu hiện tại thiếu ô cho ngựa chờ xếp ô
    */
   async update(
     actor: Actor,
@@ -373,7 +371,8 @@ export class StallsService {
    * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô chuồng
    * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, hoặc ô đích không còn trống (khu hết ô trống thì báo đề nghị Club Manager đổi khu)
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
-   * @throws BadRequestException Nếu ô đích không thuộc khu của ngựa hoặc khu không hoạt động
+   * @throws BadRequestException Nếu ô đích không thuộc khu của ngựa
+   * @throws ConflictException Nếu khu không hoạt động
    */
   async moveHorseToStall(
     actor: Actor,

@@ -144,9 +144,7 @@ describe('stable.policy', () => {
       'rejects a %s barn with the given label',
       (status) => {
         expect(() => assertBarnActive({ status }, 'Khu chuồng đích')).toThrow(
-          new BadRequestException(
-            'Khu chuồng đích không ở trạng thái hoạt động',
-          ),
+          new ConflictException('Khu chuồng đích không ở trạng thái hoạt động'),
         );
       },
     );
@@ -315,15 +313,20 @@ describe('stable.policy', () => {
     it.each([
       ['no user', null],
       [
-        'an inactive groom',
-        { role: UserRole.GROOM, status: UserStatus.INACTIVE },
-      ],
-      [
         'another role',
         { role: UserRole.VETERINARIAN, status: UserStatus.ACTIVE },
       ],
-    ])('rejects %s', (_label, user) => {
+    ])('rejects %s as bad input (400)', (_label, user) => {
       expect(() => assertAssignableGroom(user)).toThrow(BadRequestException);
+    });
+
+    it('rejects an inactive groom as a data state conflict (409)', () => {
+      expect(() =>
+        assertAssignableGroom({
+          role: UserRole.GROOM,
+          status: UserStatus.INACTIVE,
+        }),
+      ).toThrow(ConflictException);
     });
   });
 

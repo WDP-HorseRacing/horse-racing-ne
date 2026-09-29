@@ -159,6 +159,18 @@ describe('HorseMeasurementsService', () => {
       expect(measurementRepository.save).not.toHaveBeenCalled();
     });
 
+    it('answers 403 before 409 to an unassigned GROOM on a TRANSFERRED horse (III.6.3)', async () => {
+      horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
+      await expect(
+        service.addMeasurements(
+          actorWith(UserRole.GROOM),
+          HORSE_ID,
+          values([[HorseMeasurementType.TEMPERATURE, 37.8]]),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(measurementRepository.save).not.toHaveBeenCalled();
+    });
+
     it('lets an assigned GROOM record a measurement', async () => {
       horses.isGroomAssigned.mockResolvedValue(true);
       await service.addMeasurements(

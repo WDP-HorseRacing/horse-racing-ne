@@ -116,8 +116,8 @@ export class HorseMeasurementsService {
           horseId,
           manager,
         );
-        this.access.assertNotTransferred(horse);
         await this.assertCanRecord(actor, caller.id, horseId, manager);
+        this.access.assertNotTransferred(horse);
         this.assertValidValues(body, measuredAt);
 
         const repository = manager.getRepository(HorseMeasurementEntity);

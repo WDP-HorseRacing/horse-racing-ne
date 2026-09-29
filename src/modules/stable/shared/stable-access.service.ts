@@ -110,7 +110,7 @@ export class StableAccessService {
    * @param label Cách gọi khu trong câu báo lỗi (vd "Khu chuồng", "Khu chuồng đích")
    * @returns A promise resolving to khu chuồng đã lock, chắc chắn đang ACTIVE
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
-   * @throws BadRequestException Nếu khu không ở trạng thái ACTIVE
+   * @throws ConflictException Nếu khu không ở trạng thái ACTIVE
    */
   async lockActiveBarn(
     manager: EntityManager,
