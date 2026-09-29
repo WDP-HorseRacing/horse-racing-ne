@@ -2,10 +2,14 @@ import { ForbiddenException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../../common/enums/role.enum';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { TrainingAccessService } from './training-access.service';
 
 describe('training access service', () => {
-  const service = new TrainingAccessService({} as DataSource);
+  const service = new TrainingAccessService(
+    {} as DataSource,
+    {} as HorseAccessService,
+  );
 
   it('allows a club manager to manage any class', () => {
     const actor: Actor = { sub: 'manager', roles: [UserRole.CLUB_MANAGER] };
