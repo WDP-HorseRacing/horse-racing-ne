@@ -5,3 +5,4 @@ export * from './training-session.mapper';
 export * from './session-participant.mapper';
 export * from './time-trial.mapper';
 export * from './trial-result.mapper';
+export * from './horse-training.mapper';
