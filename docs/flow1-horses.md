@@ -168,7 +168,7 @@ Ngựa đang có buổi tập hoặc cuộc đua `IN_PROGRESS` vẫn giải ngh�
 
 | Tác động                                                                                               | `ACTIVE` → `RETIRED` | `ACTIVE` → `TRANSFERRED` | `RETIRED` → `TRANSFERRED` | → `ACTIVE` |
 | ------------------------------------------------------------------------------------------------------ | -------------------- | ------------------------ | ------------------------- | ---------- |
-| Rút khỏi mọi lớp đang học (`withdrawHorseFromClasses`, xem dưới bảng)                                   | Có                   | Có                       | Không                     | Không      |
+| Rút khỏi mọi lớp đang học (`withdrawHorseFromClasses`, xem dưới bảng)                                   | Có                   | Có                       | Có                        | Không      |
 | Đăng ký `PROPOSED`/`OWNER_APPROVED`/`MANAGER_CONFIRMED` trong race `PLANNED`/`OPEN` → `WITHDRAWN`      | Có                   | Có                       | Không                     | Không      |
 | Đóng dòng xếp ô đang mở, trả ô `OCCUPIED` về `AVAILABLE`                                               | Không                | Có                       | Có                        | Không      |
 | Đóng Groom assignment đang mở                                                                          | Không                | Có                       | Có                        | Không      |
@@ -754,7 +754,7 @@ Rule:
 - Groom: không có hoặc không phải vai trò `GROOM` trả `400 Groom phụ trách không hợp lệ`; là Groom nhưng không còn `ACTIVE` trả `409 Groom phụ trách không ở trạng thái hoạt động`.
 - Trùng Groom hiện tại thì trả dòng đang có, không ghi, không thông báo.
 - Khác: đóng dòng cũ, mở dòng mới (giờ server), chuyển checklist chưa hoàn thành từ hôm nay (giờ câu lạc bộ) trở đi của Groom cũ sang Groom mới. Groom mới đã có checklist cùng ngày cho ngựa này thì trả `409 Groom mới đã có checklist của ngựa này vào ngày <ngày>, không chuyển được checklist chưa hoàn thành của groom cũ`.
-- Cùng transaction, chuyển lượt tập tương lai sang Groom mới (`TrainingOperationsFacade.moveFutureParticipantsToGroom`): chỉ lượt đang giao cho Groom cũ, trạng thái `PLANNED`/`PRESENT`/`READY`, buổi bắt đầu từ lúc đổi trở đi. Lượt HT đã giao tay cho người khác, lượt `ONGOING` và lượt đã học giữ nguyên (quyết định 2026-09-29). Giao Groom lần đầu không điền vào các lượt đang để trống.
+- Cùng transaction, chuyển lượt tập tương lai sang Groom mới (`TrainingOperationsFacade.moveFutureParticipantsToGroom`): lượt đang giao cho Groom cũ hoặc chưa ai dắt, trạng thái `PLANNED`/`PRESENT`/`READY`, buổi bắt đầu từ lúc đổi trở đi. Lượt chưa ai dắt cũng được điền Groom mới, kể cả lần giao đầu tiên. Lượt HT đã giao tay cho người khác, lượt `ONGOING` và lượt đã học giữ nguyên (quyết định 2026-09-29).
 - Ghi audit `CREATE` entity `GROOM_ASSIGNMENT` (feature `F1.7`), kèm Groom cũ, `movedChecklistIds` và `movedParticipantIds`.
 - Sau commit: phát event `stable.groom-assignment.changed`, module notifications báo Groom mới và Groom cũ (mục 14).
 - Hai request đồng thời vi phạm unique index: `409 Ngựa vừa được giao groom khác, vui lòng tải lại`.
@@ -885,7 +885,7 @@ Migration của flow:
 
 Các điểm dưới đây mô tả đúng code hiện tại nhưng chưa nhất quán hoặc chưa hoàn thiện, cần quyết định trước khi sửa:
 
-1. **Phần còn lại sau khi có mô hình lớp học** (chi tiết ở `docs/Flow_1_Quan_ly_Ho_so_Ngua.md` (Phụ lục 2) mục 1b): tab Huấn luyện chưa gộp đánh giá buổi tập, giao Groom lần đầu có điền lượt tập trống không, khóa huấn luyện chưa hủy buổi tập.
+1. **Phần còn lại sau khi có mô hình lớp học** (chi tiết ở `docs/Flow_1_Quan_ly_Ho_so_Ngua.md` (Phụ lục 2) mục 1b): tab Huấn luyện chưa gộp đánh giá buổi tập, khóa huấn luyện chưa hủy buổi tập.
 2. **`PATCH /health-status`** không kiểm tra `version` (đã ghi audit từ 2026-09-29). Theo đặc tả, đổi health thuộc Flow 3.
 3. ~~Mã lỗi khu không hoạt động bị lệch~~ Đã sửa 2026-09-29: mọi chỗ kiểm khu không hoạt động đều trả `409`.
 4. **409 khi hai người cùng sửa hồ sơ** chưa trả kèm dữ liệu mới nhất (F1.4 mục 7), vì filter lỗi chung chỉ trả `code/message/details`.
