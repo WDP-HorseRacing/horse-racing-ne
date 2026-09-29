@@ -24,7 +24,10 @@ export class ReportIncidentDto {
   @IsBoolean()
   urgent?: boolean;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'Hình ảnh/video đính kèm (nếu có)' })
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Hình ảnh/video đính kèm (nếu có)',
+  })
   @IsOptional()
   @IsUUID()
   mediaAssetId?: string;

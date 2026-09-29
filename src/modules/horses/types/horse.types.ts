@@ -183,6 +183,11 @@ export interface EligibilityInput {
 export interface EligibilityResult {
   trainingEligible: boolean;
   racingEligible: boolean;
+  /** Lý do không được tập, rỗng khi được tập */
+  trainingReasons: EligibilityReason[];
+  /** Lý do không được đua, rỗng khi được đua */
+  racingReasons: EligibilityReason[];
+  /** Mọi lý do, bằng racingReasons */
   reasons: EligibilityReason[];
 }
 
@@ -246,7 +251,7 @@ export interface HorseDetailParts {
 /**
  * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa (F1.8). Mỗi cờ đúng một việc.
  *
- * - cancelTraining: hủy giáo án SCHEDULED/ACTIVE và buổi tập SCHEDULED của chúng (tạm thay cho "rút khỏi lớp", chờ Flow 2).
+ * - withdrawFromClasses: rút ngựa khỏi mọi lớp đang học (training).
  * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra.
  * - releaseStall: trả ô chuồng đang giữ về trống.
  * - endGroom: kết thúc phân công groom đang mở.
@@ -258,7 +263,7 @@ export interface HorseDetailParts {
  * - Chủ sở hữu không bao giờ bị đổi ở đây: chuyển nhượng vẫn giữ chủ để chủ cũ còn tra cứu.
  */
 export interface LifecycleSideEffects {
-  cancelTraining: boolean;
+  withdrawFromClasses: boolean;
   withdrawRegistrations: boolean;
   releaseStall: boolean;
   endGroom: boolean;
@@ -273,7 +278,7 @@ export interface LifecycleSideEffects {
  * Những gì sẽ bị ảnh hưởng nếu đổi vòng đời, đếm trên dữ liệu hiện tại để Club Manager xác nhận trước (F1.8 mục 5).
  */
 export interface LifecycleImpactRow {
-  openTrainingPlans: number;
+  activeClasses: number;
   openRaceRegistrations: number;
   stallCode: string | null;
   groomName: string | null;
@@ -282,4 +287,28 @@ export interface LifecycleImpactRow {
   invalidOwnerName: string | null;
   examRequestsToDismiss: number;
   careSchedulesToCancel: number;
+}
+
+/**
+ * Khu chuồng đích khi xem trước việc đổi khu.
+ */
+export interface BarnPreviewTarget {
+  id: string;
+  name: string;
+  headTrainerId: string | null;
+  headTrainerName: string | null;
+}
+
+/**
+ * Những gì sẽ bị ảnh hưởng khi đổi khu, đếm trên dữ liệu hiện tại.
+ */
+export interface BarnChangeImpactRow {
+  /** Tên khu hiện tại, null nếu ngựa chưa có khu */
+  fromBarnName: string | null;
+  /** Mã ô đang giữ, null nếu chưa có ô */
+  stallCode: string | null;
+  /** Tên Groom đang phụ trách, null nếu chưa có */
+  groomName: string | null;
+  /** Số lớp đang học không do Head Trainer khu mới phụ trách */
+  classesToWithdraw: number;
 }

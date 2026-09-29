@@ -1,21 +1,30 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
-import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
+import { TrainingClassEntity } from './training-class.entity';
 
 /**
- * TrainingPlanEntity: kế hoạch huấn luyện dài hạn cho một con ngựa.
- * Dùng để mô tả giai đoạn huấn luyện, mục tiêu và khoảng thời gian hiệu lực.
+ * TrainingPlanEntity: kế hoạch huấn luyện chung cho một TrainingClass.
  */
 @Entity({ name: 'training_plans' })
+@Index('training_plans_active_class_uq', ['classId'], {
+  unique: true,
+  where: `status = '${TrainingPlanStatus.ACTIVE}'`,
+})
 export class TrainingPlanEntity extends MutableRecordEntity {
-  @Column({ name: 'horse_id', type: 'uuid' })
-  horseId!: string;
+  @Column({ name: 'class_id', type: 'uuid' })
+  classId!: string;
 
-  @ManyToOne(() => HorseEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'horse_id' })
-  horse!: HorseEntity;
+  @ManyToOne(() => TrainingClassEntity, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'class_id' })
+  trainingClass!: TrainingClassEntity;
+
+  @Column({ type: 'varchar', length: 160 })
+  name!: string;
 
   @Column({ name: 'created_by', type: 'uuid' })
   createdBy!: string;

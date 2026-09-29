@@ -13,7 +13,8 @@ export class CreateChecklistDto {
   @ApiProperty({
     type: 'object',
     additionalProperties: { type: 'boolean' },
-    description: 'Các hạng mục kiểm tra sức khỏe, vệ sinh và trạng thái hoàn thành',
+    description:
+      'Các hạng mục kiểm tra sức khỏe, vệ sinh và trạng thái hoàn thành',
   })
   @IsObject()
   items!: Record<string, boolean>;

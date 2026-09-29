@@ -4,7 +4,7 @@ import {
   PerformanceMetricPointDto,
   SessionPerformanceSummaryDto,
 } from '../dto/horse-performance.response.dto';
-import { PerformanceEvaluationEntity } from '../../training/entities/performance-evaluation.entity';
+import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import { PerformanceMetricEntity } from '../entities/performance-metric.entity';
 import type { SessionPerformanceRow } from '../types/performance.types';
 
@@ -77,7 +77,9 @@ export function toHorsePerformanceResponse(
   const recentMetrics = metrics.map(toMetricPoint);
   return {
     horseId,
-    sessionsTracked: new Set(metrics.map((metric) => metric.sessionId)).size,
+    sessionsTracked: new Set(
+      metrics.map((metric) => metric.sessionParticipantId ?? (metric as any).sessionId),
+    ).size,
     latestMetric: recentMetrics[0] ?? null,
     recentMetrics,
     latestEvaluation: evaluations[0]

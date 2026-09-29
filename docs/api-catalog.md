@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 156 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 177 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -41,6 +41,8 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{horseId}` | Get horse profile detail |
 | PATCH | `/api/v1/horses/{horseId}` | Update horse profile, parents and owner |
 | PUT | `/api/v1/horses/{horseId}/barn` | Assign or change the barn of a horse |
+| GET | `/api/v1/horses/{horseId}/barn-preview` | Preview the consequences of changing the barn of a horse |
+| GET | `/api/v1/horses/{horseId}/deletion-preview` | Preview whether a horse profile can be deleted |
 | GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
 | PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
 | GET | `/api/v1/horses/{horseId}/lifecycle-status/preview` | Preview the consequences of a lifecycle change |
@@ -50,6 +52,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree: parents and grandparents |
 | GET | `/api/v1/horses/{horseId}/permissions` | Get what the current user can do on this horse profile |
 | GET | `/api/v1/horses/{horseId}/photo-url` | Get a time-limited download URL of the horse photo |
+| PUT | `/api/v1/horses/{horseId}/placement` | Place a horse in a stall and assign its groom in one step |
 | POST | `/api/v1/horses/{horseId}/restore` | Restore a soft-deleted horse profile |
 | GET | `/api/v1/owners/me/horses` | List horses owned by the current user |
 
@@ -118,10 +121,12 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{id}/thresholds` | List current and historical threshold profiles |
 | PUT | `/api/v1/horses/{id}/thresholds` | Create new version of horse threshold profile |
 | GET | `/api/v1/horses/{id}/workload` | Get configured training workload summary |
-| GET | `/api/v1/sessions/{id}/metrics` | List session metrics |
-| POST | `/api/v1/sessions/{id}/metrics` | Ingest session metric |
-| POST | `/api/v1/sessions/{id}/metrics/batch` | Ingest metric batch for active session |
-| GET | `/api/v1/sessions/{id}/performance-summary` | Get session metric and alert summary |
+| GET | `/api/v1/session-participants/{id}/evaluation` |  |
+| POST | `/api/v1/session-participants/{id}/evaluation` |  |
+| GET | `/api/v1/session-participants/{id}/metrics` | List participant metrics |
+| POST | `/api/v1/session-participants/{id}/metrics` | Ingest participant metric |
+| POST | `/api/v1/session-participants/{id}/metrics/batch` | Ingest metric batch for active participant |
+| GET | `/api/v1/session-participants/{id}/performance-summary` | Get session metric and alert summary |
 
 ## racing
 
@@ -202,25 +207,41 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/horses/{horseId}/training-plans` | List horse training plans |
-| POST | `/api/v1/horses/{horseId}/training-plans` | Create training plan |
-| GET | `/api/v1/sessions/{id}` | Get training session |
-| PATCH | `/api/v1/sessions/{id}` | Reschedule or reassign a scheduled session |
-| POST | `/api/v1/sessions/{id}/cancel` | Cancel training session with a reason |
-| POST | `/api/v1/sessions/{id}/complete` | Complete training session and record actual result |
-| GET | `/api/v1/sessions/{id}/evaluation` | Get session evaluation |
-| POST | `/api/v1/sessions/{id}/evaluation` | Evaluate completed session |
-| POST | `/api/v1/sessions/{id}/start` | Start training session |
-| GET | `/api/v1/sessions/{id}/time-trials` | List session time trials |
-| POST | `/api/v1/sessions/{id}/time-trials` | Record time trial during an active session |
-| GET | `/api/v1/time-trials/{id}` | Get time trial result and media reference |
-| GET | `/api/v1/training-plans/{id}` | Get training plan |
-| PATCH | `/api/v1/training-plans/{id}` | Update a scheduled training plan |
-| POST | `/api/v1/training-plans/{id}/activate` | Activate training plan |
-| POST | `/api/v1/training-plans/{id}/cancel` | Cancel training plan and scheduled sessions |
-| POST | `/api/v1/training-plans/{id}/complete` | Complete training plan |
-| GET | `/api/v1/training-plans/{id}/sessions` | List sessions in training plan |
-| POST | `/api/v1/training-plans/{id}/sessions` | Schedule training session |
+| GET | `/api/v1/classes` |  |
+| POST | `/api/v1/classes` |  |
+| GET | `/api/v1/classes/{classId}` |  |
+| PATCH | `/api/v1/classes/{classId}` |  |
+| GET | `/api/v1/classes/{classId}/enrollments` |  |
+| POST | `/api/v1/classes/{classId}/enrollments` |  |
+| PATCH | `/api/v1/classes/{classId}/status` |  |
+| PATCH | `/api/v1/enrollments/{id}/leave` |  |
+| GET | `/api/v1/horses/{horseId}/training/classes` | List classes of a horse |
+| GET | `/api/v1/horses/{horseId}/training/sessions` | List training sessions of a horse |
+| POST | `/api/v1/session-participants/{id}/absent` |  |
+| POST | `/api/v1/session-participants/{id}/check-in` |  |
+| POST | `/api/v1/session-participants/{id}/complete` |  |
+| PATCH | `/api/v1/session-participants/{id}/groom` |  |
+| POST | `/api/v1/session-participants/{id}/ready` |  |
+| POST | `/api/v1/session-participants/{id}/start` |  |
+| GET | `/api/v1/session-participants/{id}/trial-results` |  |
+| POST | `/api/v1/session-participants/{id}/trial-results` |  |
+| GET | `/api/v1/time-trials/{id}` |  |
+| GET | `/api/v1/training-classes/{classId}/plans` |  |
+| POST | `/api/v1/training-classes/{classId}/plans` |  |
+| GET | `/api/v1/training-plans/{id}` |  |
+| PATCH | `/api/v1/training-plans/{id}` |  |
+| POST | `/api/v1/training-plans/{id}/activate` |  |
+| POST | `/api/v1/training-plans/{id}/cancel` |  |
+| POST | `/api/v1/training-plans/{id}/complete` |  |
+| GET | `/api/v1/training-plans/{id}/sessions` |  |
+| POST | `/api/v1/training-plans/{id}/sessions` |  |
+| GET | `/api/v1/training-sessions/{id}/time-trial` |  |
+| POST | `/api/v1/training-sessions/{id}/time-trial` |  |
+| GET | `/api/v1/training-sessions/{sessionId}` |  |
+| PATCH | `/api/v1/training-sessions/{sessionId}` |  |
+| POST | `/api/v1/training-sessions/{sessionId}/cancel` |  |
+| GET | `/api/v1/training-sessions/{sessionId}/participants` |  |
+| POST | `/api/v1/training-sessions/{sessionId}/publish` |  |
 
 ## users
 

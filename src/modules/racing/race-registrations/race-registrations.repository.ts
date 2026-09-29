@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import {
   OPEN_REGISTRATION_STATUSES,
   UPCOMING_RACE_STATUSES,
@@ -8,13 +7,11 @@ import {
 import { RegistrationStatus } from '../constants/registration-status.enum';
 import { RaceRegistrationEntity } from '../entities/race-registration.entity';
 
+/**
+ * Các thao tác ghi trên đăng ký thi đấu mà module khác được gọi trong transaction của họ.
+ */
 @Injectable()
 export class RaceRegistrationsRepository {
-  constructor(
-    @InjectRepository(RaceRegistrationEntity)
-    private readonly registrations: Repository<RaceRegistrationEntity>,
-  ) {}
-
   /**
    * Hủy các đăng ký thi đấu chưa diễn ra của ngựa bằng cách chuyển sang WITHDRAWN (F1.8, giải nghệ)
    *

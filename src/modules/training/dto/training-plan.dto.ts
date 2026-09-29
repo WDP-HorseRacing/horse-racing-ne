@@ -2,7 +2,9 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import {
   IsDateString,
+  IsOptional,
   IsString,
+  IsUUID,
   MinLength,
   registerDecorator,
   ValidationArguments,
@@ -23,20 +25,17 @@ export function IsAfterOrEqual(
       options: validationOptions,
       validator: {
         validate(value: unknown, args: ValidationArguments) {
-          const constraints = args.constraints as string[];
-          const relatedPropertyName = constraints[0];
-          if (!relatedPropertyName) return true;
-          const relatedObject = args.object as Record<string, unknown>;
-          const relatedValue = relatedObject[relatedPropertyName];
+          const relatedPropertyName = args.constraints[0] as string;
+          const relatedValue = (args.object as Record<string, unknown>)[
+            relatedPropertyName
+          ];
           if (typeof value !== 'string' || typeof relatedValue !== 'string') {
             return true;
           }
           return value.slice(0, 10) >= relatedValue.slice(0, 10);
         },
         defaultMessage(args: ValidationArguments) {
-          const constraints = args.constraints as string[];
-          const relatedPropertyName = constraints[0] ?? 'ngày bắt đầu';
-          return `${args.property} phải lớn hơn hoặc bằng ${relatedPropertyName}`;
+          return `${args.property} phải lớn hơn hoặc bằng ${args.constraints[0]}`;
         },
       },
     });
@@ -44,6 +43,16 @@ export function IsAfterOrEqual(
 }
 
 export class CreateTrainingPlanDto {
+  @ApiPropertyOptional({ format: 'uuid', description: 'Được lấy từ route nếu bỏ trống' })
+  @IsOptional()
+  @IsUUID()
+  classId?: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
   @ApiProperty()
   @IsString()
   @MinLength(1)
@@ -82,7 +91,11 @@ export class TrainingPlanResponseDto {
 
   @ApiProperty({ format: 'uuid' })
   @Expose()
-  horseId!: string;
+  classId!: string;
+
+  @ApiProperty()
+  @Expose()
+  name!: string;
 
   @ApiProperty({ format: 'uuid' })
   @Expose()

@@ -121,7 +121,11 @@ export class SupplyRequestsService {
         body.status === SupplyRequestStatus.APPROVED ||
         body.status === SupplyRequestStatus.REJECTED
       ) {
-        this.assertRole(caller.role, UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER);
+        this.assertRole(
+          caller.role,
+          UserRole.CLUB_MANAGER,
+          UserRole.HEAD_TRAINER,
+        );
         request.reviewedBy = caller.id;
         request.reviewedAt = new Date();
         request.rejectionReason =
@@ -155,7 +159,8 @@ export class SupplyRequestsService {
       where: { id },
       relations: REQUEST_RELATIONS,
     });
-    if (!request) throw new NotFoundException('Không tìm thấy yêu cầu cấp vật tư');
+    if (!request)
+      throw new NotFoundException('Không tìm thấy yêu cầu cấp vật tư');
     return request;
   }
 
@@ -167,7 +172,8 @@ export class SupplyRequestsService {
       where: { id },
       lock: { mode: 'pessimistic_write' },
     });
-    if (!request) throw new NotFoundException('Không tìm thấy yêu cầu cấp vật tư');
+    if (!request)
+      throw new NotFoundException('Không tìm thấy yêu cầu cấp vật tư');
     return request;
   }
 

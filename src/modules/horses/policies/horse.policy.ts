@@ -39,6 +39,7 @@ import type {
   HorseScope,
   ParentCandidate,
   ParentUsage,
+  BarnChangeImpactRow,
 } from '../types/horse.types';
 
 /**
@@ -253,8 +254,8 @@ export function assertLifecycleTransition(
 /**
  * Xác định các việc cần chạy khi ngựa đổi vòng đời (F1.8), dựa vào trạng thái hiện tại và trạng thái đích.
  *
- * - Giải nghệ (ACTIVE sang RETIRED): hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
- * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt phần y tế; giữ chủ sở hữu
+ * - Giải nghệ (ACTIVE sang RETIRED): rút khỏi lớp đang học, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
+ * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; rút khỏi lớp (cả khi đi từ RETIRED); trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt phần y tế; giữ chủ sở hữu
  * - Kích hoạt lại (sang ACTIVE): đặt sức khỏe về UNDER_OBSERVATION; lớp học và đăng ký thi đấu đã hủy không tự khôi phục
  * - Kích hoạt lại từ chuyển nhượng: ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
  *
@@ -272,7 +273,7 @@ export function lifecycleSideEffects(
       to === HorseLifecycleStatus.TRANSFERRED);
   const transferred = to === HorseLifecycleStatus.TRANSFERRED;
   return {
-    cancelTraining: retiringFromActive,
+    withdrawFromClasses: retiringFromActive || transferred,
     withdrawRegistrations: retiringFromActive,
     releaseStall: transferred,
     endGroom: transferred,
@@ -289,7 +290,7 @@ export function lifecycleSideEffects(
 /**
  * Tạo câu tóm tắt hệ quả khi đổi vòng đời, hiện ở bảng xác nhận (F1.8 mục 5; BA chốt 2026-09-23).
  *
- * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải."
+ * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."
  * - Chỉ nhắc mục thật sự có dữ liệu; không có gì thì chỉ còn câu 2
  *
  * @param horseName Tên ngựa
@@ -306,9 +307,9 @@ export function lifecycleImpactSummary(
 ): string {
   const facts: string[] = [];
   const actions: string[] = [];
-  if (effects.cancelTraining && impact.openTrainingPlans > 0) {
-    facts.push(`${impact.openTrainingPlans} giáo án huấn luyện đang mở`);
-    actions.push('hủy giáo án');
+  if (effects.withdrawFromClasses && impact.activeClasses > 0) {
+    facts.push(`${impact.activeClasses} lớp đang học`);
+    actions.push('rút khỏi lớp');
   }
   if (effects.withdrawRegistrations && impact.openRaceRegistrations > 0) {
     facts.push(`${impact.openRaceRegistrations} đăng ký thi đấu chưa diễn ra`);
@@ -398,9 +399,12 @@ export function trainerForbiddenFields(fields: object): string[] {
  * - Được tập: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, không có lệnh khóa huấn luyện
  * - Được đua: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE, không có lệnh khóa huấn luyện
  * - Lý do vòng đời tách riêng Đã giải nghệ / Đã chuyển nhượng để giao diện hiện đúng câu
+ * - trainingReasons: lý do không được tập, rỗng khi được tập
+ * - racingReasons: lý do không được đua, rỗng khi được đua
+ * - reasons: mọi lý do, bằng racingReasons
  *
  * @param input Trạng thái hồ sơ, vòng đời, sức khỏe và cờ khóa huấn luyện của ngựa
- * @returns Hai cờ được tập, được đua và danh sách lý do chặn (rỗng nếu không bị chặn gì)
+ * @returns Hai cờ được tập, được đua và lý do chặn của từng cờ (rỗng nếu không bị chặn gì)
  */
 export function evaluateEligibility(
   input: EligibilityInput,
@@ -427,12 +431,18 @@ export function evaluateEligibility(
     input.healthStatus === HorseHealthStatus.ELIGIBLE ||
     input.healthStatus === HorseHealthStatus.UNDER_OBSERVATION;
 
+  const trainingReasons = reasons.filter(
+    (reason) => reason !== EligibilityReason.HEALTH_UNDER_OBSERVATION,
+  );
+
   return {
     trainingEligible: active && trainableHealth && !input.hasActiveTrainingLock,
     racingEligible:
       active &&
       input.healthStatus === HorseHealthStatus.ELIGIBLE &&
       !input.hasActiveTrainingLock,
+    trainingReasons,
+    racingReasons: reasons,
     reasons,
   };
 }
@@ -694,4 +704,71 @@ export function evaluateHorsePermissions(
       UserRole.HORSE_OWNER,
     ),
   };
+}
+
+/**
+ * Chặn khoảng thời gian lọc bị ngược
+ *
+ * @param from Thời điểm bắt đầu, bỏ trống nếu không lọc
+ * @param to Thời điểm kết thúc, bỏ trống nếu không lọc
+ * @throws BadRequestException Nếu from sau to
+ */
+export function assertTimeRange(from?: Date, to?: Date): void {
+  if (from && to && from > to) {
+    throw new BadRequestException('from phải trước hoặc bằng to');
+  }
+}
+
+/**
+ * Lý do không đổi được khu khi xem trước
+ *
+ * @param lifecycleStatus Trạng thái vòng đời hiện tại của ngựa
+ * @param currentBarnId Khu hiện tại, null nếu chưa có
+ * @param targetBarnId Khu muốn chuyển sang
+ * @returns Lý do chặn, null nếu đổi được
+ */
+export function barnChangeBlockedReason(
+  lifecycleStatus: HorseLifecycleStatus,
+  currentBarnId: string | null,
+  targetBarnId: string,
+): string | null {
+  if (lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
+    return 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc';
+  }
+  if (currentBarnId === targetBarnId) return 'Ngựa đang ở khu này';
+  return null;
+}
+
+/**
+ * Tạo câu tóm tắt hệ quả khi đổi khu, hiện ở bảng xác nhận
+ *
+ * - Chỉ nhắc mục thật sự có dữ liệu; Groom luôn được giữ nguyên
+ * - Ví dụ: "Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 2 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa."
+ *
+ * @param horseName Tên ngựa
+ * @param barnName Tên khu đích
+ * @param headTrainerName Tên Head Trainer khu đích, null nếu chưa có
+ * @param impact Ô, Groom và số lớp sẽ bị ảnh hưởng
+ * @returns Câu tóm tắt tiếng Việt
+ */
+export function barnChangeSummary(
+  horseName: string,
+  barnName: string,
+  headTrainerName: string | null,
+  impact: BarnChangeImpactRow,
+): string {
+  const actions: string[] = [];
+  if (impact.stallCode) actions.push(`trả ô ${impact.stallCode}`);
+  if (impact.classesToWithdraw > 0) {
+    actions.push(`rút khỏi ${impact.classesToWithdraw} lớp`);
+  }
+  const head = `Nếu chuyển ${horseName} sang ${barnName}`;
+  const effect = actions.length > 0 ? ` sẽ ${actions.join(', ')}` : '';
+  const groom = impact.groomName
+    ? `; Groom ${impact.groomName} giữ nguyên`
+    : '';
+  const trainer = headTrainerName
+    ? `; ngựa vào Chờ xếp ô của Head Trainer ${headTrainerName}`
+    : '; ngựa vào Chờ xếp ô của khu mới';
+  return `${head}${effect}${groom}${trainer}.`;
 }

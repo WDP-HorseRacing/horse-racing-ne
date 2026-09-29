@@ -8,6 +8,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { clubToday } from '../../horses/utils/club-date';
 import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
@@ -46,6 +47,7 @@ export class GroomAssignmentsService {
     private readonly access: StableAccessService,
     private readonly horseAccess: HorseAccessService,
     private readonly dailyChecklists: DailyChecklistsService,
+    private readonly training: TrainingOperationsFacade,
   ) {}
 
   /**
@@ -83,16 +85,16 @@ export class GroomAssignmentsService {
    * - Lock row user của groom trong transaction rồi mới kiểm groom còn là GROOM đang ACTIVE.
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
-   * - Không đụng tới buổi tập (training_sessions), phần đó thuộc module training.
+   * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); nhật ký ghi thêm movedParticipantIds.
    * - Sau khi commit: phát GROOM_ASSIGNMENT_CHANGED_EVENT để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách (F1.7).
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Groom được giao
    * @returns Promise chứa phân công groom đang mở của ngựa sau thao tác
-   * @throws BadRequestException Nếu groom không phải Groom đang hoạt động hoặc khu của ngựa không hoạt động
+   * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, groom mới đã có checklist trùng ngày, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, hoặc có thao tác khác chạy cùng lúc
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    */
   async assign(
@@ -101,83 +103,122 @@ export class GroomAssignmentsService {
     body: AssignGroomDto,
   ): Promise<GroomAssignmentResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-
-    const { response, notice } = await this.saveUnique(() =>
-      this.dataSource.transaction(async (manager) => {
-        const groom = await manager.findOne(UserEntity, {
-          where: { id: body.groomId },
-          lock: { mode: 'pessimistic_write' },
-        });
-        assertAssignableGroom(groom);
-        const horse = await this.access.lockOperableHorse(
-          manager,
-          caller.id,
-          horseId,
-          'GROOM',
-        );
-        await this.access.lockActiveBarn(manager, horse.barnId);
-        const current = await manager.findOne(GroomAssignmentEntity, {
-          where: { horseId, endAt: IsNull() },
-          lock: { mode: 'pessimistic_write' },
-        });
-        if (current?.groomId === groom.id) {
-          return {
-            response: toGroomAssignmentResponse({ ...current, groom }),
-            notice: null,
-          };
-        }
-        const now = new Date();
-        let movedChecklistIds: string[] = [];
-        if (current) {
-          await manager.update(
-            GroomAssignmentEntity,
-            { id: current.id },
-            { endAt: now },
-          );
-          movedChecklistIds =
-            await this.dailyChecklists.moveOpenChecklistsToGroom(
-              manager,
-              horseId,
-              current.groomId,
-              groom.id,
-              clubToday(),
-            );
-        }
-        const saved = await manager.save(
-          manager.create(GroomAssignmentEntity, {
-            horseId,
-            groomId: groom.id,
-            startAt: now,
-            endAt: null,
-          }),
-        );
-        await this.auditService.record(manager, {
-          actorId: caller.id,
-          action: AuditAction.CREATE,
-          entityType: AuditEntityType.GROOM_ASSIGNMENT,
-          entityId: saved.id,
-          before: {
-            horseId,
-            groomId: current?.groomId ?? null,
-            endedAssignmentId: current?.id ?? null,
-          },
-          after: { horseId, groomId: groom.id, movedChecklistIds },
-          feature: 'F1.7',
-        });
-        const changed: GroomAssignmentChangedEvent = {
-          eventId: saved.id,
-          horseId,
-          newGroomId: groom.id,
-          previousGroomId: current?.groomId ?? null,
-        };
-        return {
-          response: toGroomAssignmentResponse({ ...saved, groom }),
-          notice: changed,
-        };
-      }),
+    const { response, notice } = await this.dataSource.transaction((manager) =>
+      this.assignInTransaction(manager, caller.id, horseId, body.groomId),
     );
     if (notice) this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, notice);
     return response;
+  }
+
+  /**
+   * Giao hoặc đổi groom cho ngựa, chạy trong transaction của nơi gọi (luật như assign)
+   *
+   * - Không phát event; nơi gọi phát GROOM_ASSIGNMENT_CHANGED_EVENT với notice trả về sau khi commit
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @param groomId UUID của groom được giao
+   * @returns Promise chứa phân công groom đang mở và event cần phát (null nếu không đổi gì)
+   * @throws BadRequestException Nếu groom không có hoặc không phải Groom
+   * @throws NotFoundException Nếu không có ngựa hoặc không có khu
+   * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, hoặc có thao tác khác chạy cùng lúc
+   */
+  async assignInTransaction(
+    manager: EntityManager,
+    callerId: string,
+    horseId: string,
+    groomId: string,
+  ): Promise<{
+    response: GroomAssignmentResponseDto;
+    notice: GroomAssignmentChangedEvent | null;
+  }> {
+    return this.saveUnique(async () => {
+      const groom = await manager.findOne(UserEntity, {
+        where: { id: groomId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const horse = await this.access.lockOperableHorse(
+        manager,
+        callerId,
+        horseId,
+        'GROOM',
+      );
+      await this.access.lockActiveBarn(manager, horse.barnId);
+      assertAssignableGroom(groom);
+      const current = await manager.findOne(GroomAssignmentEntity, {
+        where: { horseId, endAt: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (current?.groomId === groom.id) {
+        return {
+          response: toGroomAssignmentResponse({ ...current, groom }),
+          notice: null,
+        };
+      }
+      const now = new Date();
+      let movedChecklistIds: string[] = [];
+      if (current) {
+        await manager.update(
+          GroomAssignmentEntity,
+          { id: current.id },
+          { endAt: now },
+        );
+        movedChecklistIds =
+          await this.dailyChecklists.moveOpenChecklistsToGroom(
+            manager,
+            horseId,
+            current.groomId,
+            groom.id,
+            clubToday(),
+          );
+      }
+      const movedParticipantIds =
+        await this.training.moveFutureParticipantsToGroom(
+          manager,
+          horseId,
+          current?.groomId ?? null,
+          groom.id,
+          now,
+        );
+      const saved = await manager.save(
+        manager.create(GroomAssignmentEntity, {
+          horseId,
+          groomId: groom.id,
+          startAt: now,
+          endAt: null,
+        }),
+      );
+      await this.auditService.record(manager, {
+        actorId: callerId,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.GROOM_ASSIGNMENT,
+        entityId: saved.id,
+        before: {
+          horseId,
+          groomId: current?.groomId ?? null,
+          endedAssignmentId: current?.id ?? null,
+        },
+        after: {
+          horseId,
+          groomId: groom.id,
+          movedChecklistIds,
+          movedParticipantIds,
+        },
+        feature: 'F1.7',
+      });
+      const changed: GroomAssignmentChangedEvent = {
+        eventId: saved.id,
+        horseId,
+        newGroomId: groom.id,
+        previousGroomId: current?.groomId ?? null,
+      };
+      return {
+        response: toGroomAssignmentResponse({ ...saved, groom }),
+        notice: changed,
+      };
+    });
   }
 
   /**

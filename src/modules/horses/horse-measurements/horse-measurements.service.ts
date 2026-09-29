@@ -4,7 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  Between,
+  DataSource,
+  EntityManager,
+  FindOperator,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
+import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -28,10 +37,12 @@ import {
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import {
   assertAbnormalConfirmed,
+  isAbnormalMeasurement,
   assertDistinctMeasurementTypes,
   assertMeasuredAt,
   assertMeasurementValue,
   assertMeasurementDeletable,
+  assertTimeRange,
   canRecordMeasurement,
   measurementAlerts,
 } from '../policies/horse.policy';
@@ -61,26 +72,56 @@ export class HorseMeasurementsService {
   ) {}
 
   /**
-   * List the measurements of a horse visible to the caller
+   * List the measurements of a horse visible to the caller, newest first
+   *
+   * - Lọc theo loại chỉ số và khoảng thời gian đo (from, to), phân trang theo page, limit
+   *
    * @param actor The actor resolved from the JWT
    * @param horseId The ID of the horse
-   * @param query The query parameters
-   * @returns A promise resolving to the measurements of the horse
+   * @param query The type, time range and page to read
+   * @returns A promise resolving to a page of measurements of the horse
+   * @throws BadRequestException if from is after to
    * @throws NotFoundException if the horse is not found or not visible to the caller
    */
   async listMeasurements(
     actor: Actor,
     horseId: string,
     query: HorseMeasurementListQueryDto,
-  ): Promise<HorseMeasurementResponseDto[]> {
+  ): Promise<PaginationResponseDto<HorseMeasurementResponseDto>> {
+    const from = query.from ? new Date(query.from) : undefined;
+    const to = query.to ? new Date(query.to) : undefined;
+    assertTimeRange(from, to);
     await this.access.findReadable(actor, horseId);
-    const measurements = await this.measurements.find({
-      where: { horseId, ...(query.type ? { type: query.type } : {}) },
+    const [measurements, total] = await this.measurements.findAndCount({
+      where: {
+        horseId,
+        ...(query.type ? { type: query.type } : {}),
+        ...(from || to ? { measuredAt: this.measuredAtRange(from, to) } : {}),
+      },
       relations: { measurer: true },
       order: { measuredAt: 'DESC' },
-      take: 200,
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
     });
-    return measurements.map(toMeasurementResponse);
+    return new PaginationResponseDto(
+      measurements.map(toMeasurementResponse),
+      total,
+      query.page,
+      query.limit,
+    );
+  }
+
+  /**
+   * Dựng điều kiện lọc thời điểm đo theo from, to
+   *
+   * @param from Thời điểm bắt đầu, bỏ trống nếu không chặn đầu
+   * @param to Thời điểm kết thúc, bỏ trống nếu không chặn cuối
+   * @returns Điều kiện TypeORM cho cột measuredAt
+   */
+  private measuredAtRange(from?: Date, to?: Date): FindOperator<Date> {
+    if (from && to) return Between(from, to);
+    if (from) return MoreThanOrEqual(from);
+    return LessThanOrEqual(to as Date);
   }
 
   /**
@@ -117,8 +158,8 @@ export class HorseMeasurementsService {
           horseId,
           manager,
         );
-        this.access.assertNotTransferred(horse);
         await this.assertCanRecord(actor, caller.id, horseId, manager);
+        this.access.assertNotTransferred(horse);
         this.assertValidValues(body, measuredAt);
 
         const created = await this.saveMeasurements(manager, {
@@ -128,6 +169,7 @@ export class HorseMeasurementsService {
           measuredBy: caller.id,
           source: HorseMeasurementSource.MANUAL,
           medicalRecordId: null,
+          abnormalConfirmed: body.confirmAbnormal === true,
           feature: 'F1.5',
         });
         return { callerId: caller.id, created };
@@ -169,6 +211,7 @@ export class HorseMeasurementsService {
       measuredBy: input.measuredBy,
       source: HorseMeasurementSource.MEDICAL_EXAM,
       medicalRecordId: input.medicalRecordId,
+      abnormalConfirmed: input.confirmAbnormal,
       feature: input.feature,
     });
     return this.toAlertEvents(
@@ -305,8 +348,10 @@ export class HorseMeasurementsService {
   /**
    * Lưu các bản ghi đo của một lần đo, mỗi bản ghi một dòng nhật ký, kèm cảnh báo tính theo mốc cân nặng
    *
+   * - Cờ bất thường tính lúc lưu và lưu cùng bản ghi; nhật ký ghi cả cờ bất thường và việc người đo đã xác nhận
+   *
    * @param manager EntityManager của transaction đang chạy
-   * @param input Ngựa, các cặp loại/giá trị, thời điểm đo, người đo, nguồn, buổi khám (nếu có) và mã chức năng ghi nhật ký
+   * @param input Ngựa, các cặp loại/giá trị, thời điểm đo, người đo, nguồn, buổi khám (nếu có), cờ đã xác nhận giá trị bất thường và mã chức năng ghi nhật ký
    * @returns A promise resolving to các bản ghi vừa lưu (kèm người đo), mỗi bản kèm cảnh báo của nó
    */
   private async saveMeasurements(
@@ -318,6 +363,7 @@ export class HorseMeasurementsService {
       measuredBy: string;
       source: HorseMeasurementSource;
       medicalRecordId: string | null;
+      abnormalConfirmed: boolean;
       feature: string;
     },
   ): Promise<
@@ -338,12 +384,14 @@ export class HorseMeasurementsService {
         input.measuredAt,
         manager,
       );
+      const isAbnormal = isAbnormalMeasurement(item.type, item.value);
       const saved = await repository.save(
         repository.create({
           horseId: input.horseId,
           type: item.type,
           value: item.value.toFixed(2),
           measuredAt: input.measuredAt,
+          isAbnormal,
           measuredBy: input.measuredBy,
           source: input.source,
           medicalRecordId: input.medicalRecordId,
@@ -361,6 +409,8 @@ export class HorseMeasurementsService {
           value: saved.value,
           measuredAt: input.measuredAt,
           source: input.source,
+          isAbnormal,
+          abnormalConfirmed: input.abnormalConfirmed,
           ...(input.medicalRecordId
             ? { medicalRecordId: input.medicalRecordId }
             : {}),

@@ -56,6 +56,7 @@ function setup({
       Promise.resolve(entity === UserEntity ? user : null),
     ),
     findOneBy: jest.fn(() => Promise.resolve(asset)),
+    findBy: jest.fn(() => Promise.resolve(asset ? [asset] : [])),
     create: jest.fn((_entity: unknown, data: object) =>
       Object.assign(new MediaAssetEntity(), data),
     ),
@@ -414,5 +415,25 @@ describe('MediaService.assertAttachableHorsePhoto', () => {
     await expect(
       service.assertAttachableHorsePhoto(CALLER_ID, ASSET_ID),
     ).rejects.toThrow(ConflictException);
+  });
+});
+
+describe('MediaService.signDownloadUrls', () => {
+  it('reads all assets in one query and signs each found one', async () => {
+    const { service, manager, storage } = setup();
+
+    const urls = await service.signDownloadUrls([ASSET_ID, 'missing-id']);
+
+    expect(manager.findBy).toHaveBeenCalledTimes(1);
+    expect(storage.createDownloadUrl).toHaveBeenCalledWith(PHOTO_KEY);
+    expect(urls.get(ASSET_ID)).toBe('https://s3/get');
+    expect(urls.has('missing-id')).toBe(false);
+  });
+
+  it('returns an empty map without querying when no id is given', async () => {
+    const { service, manager } = setup();
+
+    await expect(service.signDownloadUrls([])).resolves.toEqual(new Map());
+    expect(manager.findBy).not.toHaveBeenCalled();
   });
 });

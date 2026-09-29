@@ -30,3 +30,24 @@ export class RestoreHorseDto {
   @MaxLength(500)
   reason!: string;
 }
+
+export class HorseDeletionPreviewResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiProperty({ description: 'true nếu xóa được ngay' })
+  allowed!: boolean;
+
+  @ApiProperty({ description: 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc' })
+  transferred!: boolean;
+
+  @ApiProperty({
+    type: [String],
+    description:
+      'Các loại dữ liệu nghiệp vụ ngựa đã phát sinh (vd "chỉ số cơ thể", "lớp học"), rỗng nếu chưa có',
+  })
+  businessData!: string[];
+
+  @ApiProperty({ description: 'Ngựa đang là cha hoặc mẹ của ngựa khác' })
+  isParent!: boolean;
+}

@@ -36,9 +36,7 @@ export function toLifecyclePreviewResponse(
     to,
     allowed: blockedReason === null,
     blockedReason,
-    trainingPlansCancelled: effects.cancelTraining
-      ? impact.openTrainingPlans
-      : 0,
+    classesWithdrawn: effects.withdrawFromClasses ? impact.activeClasses : 0,
     raceRegistrationsWithdrawn: effects.withdrawRegistrations
       ? impact.openRaceRegistrations
       : 0,

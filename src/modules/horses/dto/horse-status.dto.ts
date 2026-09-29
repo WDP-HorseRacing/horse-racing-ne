@@ -51,8 +51,8 @@ export class HorseLifecyclePreviewResponseDto {
   })
   blockedReason!: string | null;
 
-  @ApiProperty({ description: 'Số giáo án đang mở sẽ bị hủy' })
-  trainingPlansCancelled!: number;
+  @ApiProperty({ description: 'Số lớp đang học mà ngựa sẽ bị rút khỏi' })
+  classesWithdrawn!: number;
 
   @ApiProperty({ description: 'Số đăng ký thi đấu chưa diễn ra sẽ bị rút' })
   raceRegistrationsWithdrawn!: number;
@@ -120,7 +120,7 @@ export class HorseLifecyclePreviewResponseDto {
     nullable: true,
     type: String,
     description:
-      'Câu tóm tắt để hiện ở bảng xác nhận, ví dụ "Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải."; null nếu allowed = false',
+      'Câu tóm tắt để hiện ở bảng xác nhận, ví dụ "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."; null nếu allowed = false',
   })
   summary!: string | null;
 }

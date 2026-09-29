@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { EvaluationsService } from '../../training/trainging-evaluations/training-evaluations.service';
 import {
   HorsePerformanceResponseDto,
   SessionPerformanceSummaryDto,
@@ -12,12 +11,14 @@ import {
 } from '../mappers/performance.mapper';
 import { PerformanceSummariesRepository } from './performance-summaries.repository';
 
+/**
+ * Tổng hợp chỉ số hiệu suất của con ngựa (tab hiệu suất). Chỉ đọc.
+ */
 @Injectable()
 export class PerformanceSummariesService {
   constructor(
     private readonly performanceRepository: PerformanceSummariesRepository,
     private readonly horseAccess: HorseAccessService,
-    private readonly evaluations: EvaluationsService,
   ) {}
 
   /**
@@ -34,7 +35,8 @@ export class PerformanceSummariesService {
   ): Promise<HorsePerformanceResponseDto> {
     await this.horseAccess.findReadable(actor, horseId);
     const metrics = await this.performanceRepository.listMetrics(horseId);
-    const evaluations = await this.evaluations.listLatestByHorse(horseId);
+    const evaluations =
+      await this.performanceRepository.listEvaluations(horseId);
     return toHorsePerformanceResponse(horseId, metrics, evaluations);
   }
 

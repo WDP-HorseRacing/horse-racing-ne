@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In } from 'typeorm';
 import { ObjectStorageService } from '../../../common/infrastructure/storage/object-storage.service';
 import type { Actor } from '../../../common/types/actor';
 import { currentUserForActor } from '../../users/utils/current-user';
@@ -153,6 +153,26 @@ export class MediaService {
   async signDownloadUrl(assetId: string): Promise<string> {
     const asset = await this.findAsset(this.dataSource.manager, assetId);
     return this.storage.createDownloadUrl(asset.objectKey);
+  }
+
+  /**
+   * Cấp presigned GET URL cho nhiều tệp cùng lúc, không kiểm quyền xem
+   *
+   * - Đọc DB một lần cho cả danh sách; tệp không tồn tại thì bỏ qua
+   *
+   * @param assetIds UUID các bản ghi media_assets
+   * @returns A promise resolving to map từ UUID tệp sang URL tải tệp
+   */
+  async signDownloadUrls(assetIds: string[]): Promise<Map<string, string>> {
+    const urls = new Map<string, string>();
+    if (assetIds.length === 0) return urls;
+    const assets = await this.dataSource.manager.findBy(MediaAssetEntity, {
+      id: In(assetIds),
+    });
+    for (const asset of assets) {
+      urls.set(asset.id, await this.storage.createDownloadUrl(asset.objectKey));
+    }
+    return urls;
   }
 
   /**

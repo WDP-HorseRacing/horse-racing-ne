@@ -1,5 +1,5 @@
 import { HorseRaceResultResponseDto } from '../dto/horse-race-result.response.dto';
-import { RaceRegistrationEntity } from '../entities/race-registration.entity';
+import type { RaceRegistrationEntity } from '../entities/race-registration.entity';
 
 /**
  * Chuyển một đăng ký thi đấu (kèm cuộc đua) sang dòng kết quả thi đấu của con ngựa
@@ -9,6 +9,7 @@ import { RaceRegistrationEntity } from '../entities/race-registration.entity';
  *
  * @param registration Đăng ký thi đấu đã tải kèm cuộc đua
  * @returns HorseRaceResultResponseDto - Một dòng kết quả thi đấu của con ngựa
+ * @throws Error Nếu nơi gọi quên tải quan hệ `race`
  */
 export function toHorseRaceResultResponse(
   registration: RaceRegistrationEntity,

@@ -2,7 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { EvaluationsService } from '../../training/trainging-evaluations/training-evaluations.service';
 import { PerformanceSummariesRepository } from './performance-summaries.repository';
 import { PerformanceSummariesService } from './performance-summaries.service';
 
@@ -11,7 +10,6 @@ const owner: Actor = { sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] };
 describe('PerformanceSummariesService', () => {
   let repository: Record<string, jest.Mock>;
   let horseAccess: { findReadable: jest.Mock };
-  let evaluations: { listLatestByHorse: jest.Mock };
   let service: PerformanceSummariesService;
 
   beforeEach(() => {
@@ -29,12 +27,11 @@ describe('PerformanceSummariesService', () => {
         },
       ]),
       listMetrics: jest.fn().mockResolvedValue([]),
+      listEvaluations: jest.fn().mockResolvedValue([]),
     };
-    evaluations = { listLatestByHorse: jest.fn().mockResolvedValue([]) };
     service = new PerformanceSummariesService(
       repository as unknown as PerformanceSummariesRepository,
       horseAccess as unknown as HorseAccessService,
-      evaluations as unknown as EvaluationsService,
     );
   });
 
@@ -48,7 +45,7 @@ describe('PerformanceSummariesService', () => {
     await service.getHorseSummary(owner, 'h1');
     expect(horseAccess.findReadable).toHaveBeenCalledWith(owner, 'h1');
     expect(repository.listMetrics).toHaveBeenCalledWith('h1');
-    expect(evaluations.listLatestByHorse).toHaveBeenCalledWith('h1');
+    expect(repository.listEvaluations).toHaveBeenCalledWith('h1');
   });
 
   it('answers not found for the per-session summary of a horse outside the caller scope', async () => {

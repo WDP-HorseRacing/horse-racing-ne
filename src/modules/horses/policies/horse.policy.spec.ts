@@ -36,6 +36,8 @@ import {
   assertNotParent,
   assertParentIds,
   assertParentProfiles,
+  barnChangeBlockedReason,
+  barnChangeSummary,
   canRecordMeasurement,
   evaluateEligibility,
   evaluateHorsePermissions,
@@ -64,6 +66,8 @@ describe('horse.policy', () => {
       expect(evaluateEligibility(eligible)).toEqual({
         trainingEligible: true,
         racingEligible: true,
+        trainingReasons: [],
+        racingReasons: [],
         reasons: [],
       });
     });
@@ -72,6 +76,8 @@ describe('horse.policy', () => {
       expect(evaluateEligibility({ ...eligible, isDeleted: true })).toEqual({
         trainingEligible: false,
         racingEligible: false,
+        trainingReasons: [EligibilityReason.PROFILE_DELETED],
+        racingReasons: [EligibilityReason.PROFILE_DELETED],
         reasons: [EligibilityReason.PROFILE_DELETED],
       });
     });
@@ -85,6 +91,8 @@ describe('horse.policy', () => {
       ).toEqual({
         trainingEligible: false,
         racingEligible: false,
+        trainingReasons: [EligibilityReason.LIFECYCLE_RETIRED],
+        racingReasons: [EligibilityReason.LIFECYCLE_RETIRED],
         reasons: [EligibilityReason.LIFECYCLE_RETIRED],
       });
     });
@@ -98,6 +106,8 @@ describe('horse.policy', () => {
       ).toEqual({
         trainingEligible: false,
         racingEligible: false,
+        trainingReasons: [EligibilityReason.LIFECYCLE_TRANSFERRED],
+        racingReasons: [EligibilityReason.LIFECYCLE_TRANSFERRED],
         reasons: [EligibilityReason.LIFECYCLE_TRANSFERRED],
       });
     });
@@ -111,6 +121,8 @@ describe('horse.policy', () => {
       ).toEqual({
         trainingEligible: true,
         racingEligible: false,
+        trainingReasons: [],
+        racingReasons: [EligibilityReason.HEALTH_UNDER_OBSERVATION],
         reasons: [EligibilityReason.HEALTH_UNDER_OBSERVATION],
       });
     });
@@ -122,6 +134,8 @@ describe('horse.policy', () => {
       expect(evaluateEligibility({ ...eligible, healthStatus })).toEqual({
         trainingEligible: false,
         racingEligible: false,
+        trainingReasons: [reason],
+        racingReasons: [reason],
         reasons: [reason],
       });
     });
@@ -132,8 +146,33 @@ describe('horse.policy', () => {
       ).toEqual({
         trainingEligible: false,
         racingEligible: false,
+        trainingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
+        racingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
         reasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
       });
+    });
+
+    it('gives each flag its own reasons: empty exactly when the flag is true (F1.3 mục 2)', () => {
+      for (const healthStatus of Object.values(HorseHealthStatus)) {
+        for (const lifecycleStatus of Object.values(HorseLifecycleStatus)) {
+          for (const isDeleted of [false, true]) {
+            for (const hasActiveTrainingLock of [false, true]) {
+              const result = evaluateEligibility({
+                isDeleted,
+                lifecycleStatus,
+                healthStatus,
+                hasActiveTrainingLock,
+              });
+              expect(result.trainingReasons.length === 0).toBe(
+                result.trainingEligible,
+              );
+              expect(result.racingReasons.length === 0).toBe(
+                result.racingEligible,
+              );
+            }
+          }
+        }
+      }
     });
 
     it('lists every blocking reason at once', () => {
@@ -354,7 +393,7 @@ describe('horse.policy', () => {
 
   describe('lifecycleSideEffects', () => {
     const none = {
-      cancelTraining: false,
+      withdrawFromClasses: false,
       withdrawRegistrations: false,
       releaseStall: false,
       endGroom: false,
@@ -380,7 +419,7 @@ describe('horse.policy', () => {
         ),
       ).toEqual({
         ...none,
-        cancelTraining: true,
+        withdrawFromClasses: true,
         withdrawRegistrations: true,
       });
     });
@@ -394,18 +433,18 @@ describe('horse.policy', () => {
       ).toEqual({
         ...none,
         ...transferEffects,
-        cancelTraining: true,
+        withdrawFromClasses: true,
         withdrawRegistrations: true,
       });
     });
 
-    it('transfers a RETIRED horse without cancelling training or withdrawing registrations', () => {
+    it('transfers a RETIRED horse withdrawing its classes but not its registrations', () => {
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.RETIRED,
           HorseLifecycleStatus.TRANSFERRED,
         ),
-      ).toEqual({ ...none, ...transferEffects });
+      ).toEqual({ ...none, ...transferEffects, withdrawFromClasses: true });
     });
 
     it('only resets health when reactivating from RETIRED', () => {
@@ -678,7 +717,7 @@ describe('horse.policy', () => {
 
   describe('lifecycleImpactSummary', () => {
     const impact = {
-      openTrainingPlans: 2,
+      activeClasses: 2,
       openRaceRegistrations: 1,
       stallCode: 'A-01',
       groomName: 'Lan',
@@ -701,7 +740,7 @@ describe('horse.policy', () => {
           impact,
         ),
       ).toBe(
-        'Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải.',
+        'Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.',
       );
     });
 
@@ -719,6 +758,7 @@ describe('horse.policy', () => {
             stallCode: null,
             groomName: null,
             barnName: null,
+            activeClasses: 0,
             hasActiveTrainingLock: false,
             examRequestsToDismiss: 2,
             careSchedulesToCancel: 1,
@@ -866,6 +906,36 @@ describe('horse.policy', () => {
       expect(measurementAlerts(HorseMeasurementType.WEIGHT, 300, null)).toEqual(
         [],
       );
+    });
+  });
+
+  describe('barnChangeBlockedReason', () => {
+    it('allows a move to another barn', () => {
+      expect(
+        barnChangeBlockedReason(HorseLifecycleStatus.ACTIVE, 'b1', 'b2'),
+      ).toBeNull();
+    });
+
+    it('blocks a TRANSFERRED horse and a move to the same barn', () => {
+      expect(
+        barnChangeBlockedReason(HorseLifecycleStatus.TRANSFERRED, 'b1', 'b2'),
+      ).toBe('Ngựa đã chuyển nhượng, hồ sơ chỉ đọc');
+      expect(
+        barnChangeBlockedReason(HorseLifecycleStatus.ACTIVE, 'b1', 'b1'),
+      ).toBe('Ngựa đang ở khu này');
+    });
+  });
+
+  describe('barnChangeSummary', () => {
+    it('mentions only the consequences that exist', () => {
+      expect(
+        barnChangeSummary('Winx', 'Khu C', null, {
+          fromBarnName: null,
+          stallCode: null,
+          groomName: null,
+          classesToWithdraw: 0,
+        }),
+      ).toBe('Nếu chuyển Winx sang Khu C; ngựa vào Chờ xếp ô của khu mới.');
     });
   });
 });

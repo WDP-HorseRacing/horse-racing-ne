@@ -11,6 +11,7 @@ import { TrainingLockService } from '../../medical/training-locks/training-locks
 import { RaceRegistrationsRepository } from '../../racing/race-registrations/race-registrations.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
@@ -53,19 +54,20 @@ export class HorseStatusesService {
     private readonly medicalLifecycle: MedicalLifecycleService,
     private readonly racing: RaceRegistrationsRepository,
     private readonly events: DomainEventPublisher,
+    private readonly training: TrainingOperationsFacade,
   ) {}
 
   /**
    * Đổi vòng đời ngựa và xử lý toàn bộ hệ quả trong cùng một transaction (F1.8).
    *
    * - Khóa row ngựa trước rồi mới kiểm tra, tránh hai request đổi cùng lúc
-   * - Giải nghệ: hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
+   * - Giải nghệ: rút khỏi lớp đang học (training), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
    * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical, Flow 3 mục III.8); sau khi commit phát HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT để báo Groom vừa bị kết thúc phân công (BA chốt 2026-09-23); làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); bỏ khu; giữ chủ sở hữu
    * - Kích hoạt lại: sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại; từ chuyển nhượng thì ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ (khóa chia sẻ row tài khoản chủ khi kiểm)
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
    * - Ngựa đang tập hoặc đang đua vẫn đổi được (BA chốt 2026-09-23); giao diện hiện câu tóm tắt từ previewLifecycle để xác nhận trước
    * - Bắt buộc lý do; ghi nhật ký kèm lý do. Gửi đúng trạng thái hiện tại thì không đổi gì
-   * - Nhật ký ghi thêm hệ quả thực sự xảy ra (mục III.6.1): số giáo án bị hủy (trainingPlansCancelled), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, raceRegistrationsWithdrawn, chủ bị bỏ trống (ownerId); hệ quả không chạy thì không có key
+   * - Nhật ký ghi thêm hệ quả thực sự xảy ra (mục III.6.1): số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, raceRegistrationsWithdrawn, chủ bị bỏ trống (ownerId); hệ quả không chạy thì không có key
    * - Hồ sơ đã xóa: Club Manager nhận 403, phải khôi phục trước (qua HorseAccessService.lockWritableHorse)
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -101,15 +103,13 @@ export class HorseStatusesService {
             await this.medicalLifecycle.settleForTransfer(manager, id),
           );
         }
-        if (effects.cancelTraining) {
-          effectAfter.trainingPlansCancelled =
-            await this.statuses.cancelOpenTrainingPlans(
-              manager,
-              id,
-              caller.id,
-              this.lifecycleNote(body),
-              now,
-            );
+        if (effects.withdrawFromClasses) {
+          const withdrawn = await this.training.withdrawHorseFromClasses(
+            manager,
+            id,
+            { reason: this.lifecycleNote(body), at: now },
+          );
+          effectAfter.classesWithdrawn = withdrawn.classIds.length;
         }
         const clearOwner =
           effects.reactivateFromTransfer &&

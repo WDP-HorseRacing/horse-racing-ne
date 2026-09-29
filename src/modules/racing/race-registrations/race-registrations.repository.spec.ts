@@ -1,4 +1,4 @@
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { RaceStatus } from '../constants/race-status.enum';
 import { RegistrationStatus } from '../constants/registration-status.enum';
 import { RaceRegistrationEntity } from '../entities/race-registration.entity';
@@ -20,11 +20,7 @@ function buildManager(affected: number | undefined) {
 }
 
 describe('RaceRegistrationsRepository.withdrawOpenRegistrationsByHorse', () => {
-  const injectedCreateQueryBuilder = jest.fn();
-  const injected = {
-    createQueryBuilder: injectedCreateQueryBuilder,
-  } as unknown as Repository<RaceRegistrationEntity>;
-  const repository = new RaceRegistrationsRepository(injected);
+  const repository = new RaceRegistrationsRepository();
 
   it('updates open registrations of upcoming races to WITHDRAWN through the given manager', async () => {
     const { qb, manager, createQueryBuilder } = buildManager(2);
@@ -36,7 +32,6 @@ describe('RaceRegistrationsRepository.withdrawOpenRegistrationsByHorse', () => {
 
     expect(count).toBe(2);
     expect(createQueryBuilder).toHaveBeenCalledTimes(1);
-    expect(injectedCreateQueryBuilder).not.toHaveBeenCalled();
     expect(qb.update).toHaveBeenCalledWith(RaceRegistrationEntity);
     expect(qb.set).toHaveBeenCalledWith({
       status: RegistrationStatus.WITHDRAWN,

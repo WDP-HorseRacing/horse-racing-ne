@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
-import { EvaluationsModule } from '../../training/trainging-evaluations/training-evaluations.module';
+import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import { PerformanceMetricEntity } from '../entities/performance-metric.entity';
 import { PerformanceSummariesController } from './performance-summaries.controller';
 import { PerformanceSummariesRepository } from './performance-summaries.repository';
@@ -12,9 +12,11 @@ import { PerformanceSummariesService } from './performance-summaries.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PerformanceMetricEntity]),
+    TypeOrmModule.forFeature([
+      PerformanceMetricEntity,
+      PerformanceEvaluationEntity,
+    ]),
     HorsesSharedModule,
-    EvaluationsModule,
   ],
   controllers: [PerformanceSummariesController],
   providers: [PerformanceSummariesRepository, PerformanceSummariesService],

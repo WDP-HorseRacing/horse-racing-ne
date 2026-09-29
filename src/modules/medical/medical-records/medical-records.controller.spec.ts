@@ -1,5 +1,6 @@
 import { ACCESS_KEY } from '../../../common/constants/auth.constants';
 import { UserRole } from '../../../common/enums/role.enum';
+import { InjuryCasesController } from '../injury-cases/injury-cases.controller';
 import { MedicalCasesController } from './medical-cases.controller';
 import { MedicalRecordsController } from './medical-records.controller';
 
@@ -31,6 +32,7 @@ describe('medical records and cases controllers access', () => {
     ['get visit', MedicalRecordsController, 'record'],
     ['list cases', MedicalCasesController, 'listCases'],
     ['get case', MedicalCasesController, 'getCase'],
+    ['list injuries', InjuryCasesController, 'listInjuries'],
   ])('lets every reader except GROOM %s', (_label, controller, method) => {
     expect(rolesOf(controller, method)).toEqual(READERS);
     expect(rolesOf(controller, method)).not.toContain(UserRole.GROOM);

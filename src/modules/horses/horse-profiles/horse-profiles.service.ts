@@ -115,9 +115,13 @@ export class HorseProfilesService {
     const scope = this.access.scopeOf(actor, caller.id);
     const [rows, total] = await this.profiles.list(scope, caller.id, query);
     const horseIds = rows.map((horse) => horse.id);
-    const [locations, lockedHorseIds] = await Promise.all([
+    const mediaIds = rows
+      .map((horse) => horse.mediaId)
+      .filter((mediaId): mediaId is string => mediaId !== null);
+    const [locations, lockedHorseIds, photoUrls] = await Promise.all([
       this.profiles.locationsByHorseIds(horseIds),
       this.horses.activeTrainingLockHorseIds(horseIds),
+      this.media.signDownloadUrls(mediaIds),
     ]);
     const locationByHorseId = new Map(
       locations.map((row) => [row.horseId, row]),
@@ -129,6 +133,7 @@ export class HorseProfilesService {
           locationByHorseId.get(horse.id) ?? emptyLocation(horse.id),
           lockedHorseIds.has(horse.id),
           scope.kind === 'OWNER',
+          horse.mediaId ? (photoUrls.get(horse.mediaId) ?? null) : null,
         ),
       ),
       total,
@@ -317,9 +322,9 @@ export class HorseProfilesService {
   ): Promise<HorseResponseDto> {
     const caller = await this.access.currentUser(actor);
     const horse = await this.access.findWritableHorse(actor, id);
-    this.access.assertNotTransferred(horse);
     const { version, ...fields } = body;
     await this.assertEditableFields(actor, caller.id, horse.id, fields);
+    this.access.assertNotTransferred(horse);
     this.assertCurrentVersion(horse, version);
     assertDateOfBirth(fields.dateOfBirth, clubToday());
     if (fields.microchipId !== undefined) {

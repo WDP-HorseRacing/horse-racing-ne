@@ -260,6 +260,14 @@ export class HorseListItemDto extends HorseResponseDto {
   @ApiProperty({ type: HorseLocationDto })
   location!: HorseLocationDto;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description:
+      'Link tải ảnh đại diện có hạn dùng, chỉ để hiển thị; null nếu ngựa chưa có ảnh',
+  })
+  photoUrl!: string | null;
+
   @ApiProperty({
     description:
       'Tính lúc đọc: true khi hồ sơ chưa xóa, ngựa ACTIVE, sức khỏe ELIGIBLE và không có lệnh khóa huấn luyện',

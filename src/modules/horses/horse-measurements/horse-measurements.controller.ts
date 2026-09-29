@@ -19,6 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
+import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
@@ -26,6 +27,7 @@ import {
   CreateHorseMeasurementDto,
   DeleteHorseMeasurementDto,
   HorseMeasurementListQueryDto,
+  HorseMeasurementPageDto,
   HorseMeasurementResponseDto,
 } from '../dto';
 import { HorseMeasurementsService } from './horse-measurements.service';
@@ -45,12 +47,12 @@ export class HorseMeasurementsController {
   ])
   @Get('measurements')
   @ApiOperation({ summary: 'List horse measurement history' })
-  @ApiOkResponse({ type: [HorseMeasurementResponseDto] })
+  @ApiOkResponse({ type: HorseMeasurementPageDto })
   listMeasurements(
     @CurrentUser() actor: Actor,
     @Param('horseId', ParseUUIDPipe) horseId: string,
     @Query() query: HorseMeasurementListQueryDto,
-  ): Promise<HorseMeasurementResponseDto[]> {
+  ): Promise<PaginationResponseDto<HorseMeasurementResponseDto>> {
     return this.measurementsService.listMeasurements(actor, horseId, query);
   }
 

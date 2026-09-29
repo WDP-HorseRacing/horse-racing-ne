@@ -30,6 +30,7 @@ import type {
  * @param location Khu và ô hiện tại của ngựa
  * @param hasActiveTrainingLock Ngựa có đang bị khóa huấn luyện không
  * @param hideLocationIds true khi người gọi là Horse Owner: chỉ trả tên khu và mã ô, không trả id
+ * @param photoUrl Link tải ảnh đại diện đã ký, null nếu ngựa chưa có ảnh
  * @returns Một dòng danh sách ngựa
  */
 export function toHorseListItem(
@@ -37,11 +38,13 @@ export function toHorseListItem(
   location: HorseLocationRow,
   hasActiveTrainingLock: boolean,
   hideLocationIds: boolean,
+  photoUrl: string | null,
 ): HorseListItemDto {
   const isDeleted = horse.deletedAt !== null;
   return {
     ...toHorseResponse(horse),
     location: toLocation(horse, location, hideLocationIds),
+    photoUrl,
     canRegisterRace: evaluateEligibility({
       isDeleted,
       lifecycleStatus: horse.lifecycleStatus,

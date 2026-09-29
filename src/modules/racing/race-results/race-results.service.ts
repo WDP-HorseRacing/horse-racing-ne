@@ -7,6 +7,9 @@ import { HorseRaceResultResponseDto } from '../dto/horse-race-result.response.dt
 import { RaceRegistrationEntity } from '../entities/race-registration.entity';
 import { toHorseRaceResultResponse } from '../mappers/racing.mapper';
 
+/**
+ * Đọc kết quả thi đấu. Ghi kết quả vẫn là API hợp đồng (501).
+ */
 @Injectable()
 export class RaceResultsService {
   constructor(

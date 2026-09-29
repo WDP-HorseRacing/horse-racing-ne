@@ -5,12 +5,11 @@ import type {
 } from '../dto';
 import type { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import { HORSE_MEASUREMENT_SPECS } from '../constants/horse.constants';
-import { isAbnormalMeasurement } from '../policies/horse.policy';
 import { requiredRelationName } from './horse.mapper';
 import type { HorseMeasurementAlertResult } from '../types/horse.types';
 
 /**
- * Map the latest horse measurement fields, including its unit and abnormal flag.
+ * Map the latest horse measurement fields, including its unit and the abnormal flag stored at record time.
  *
  * @param entity The horse measurement entity
  * @returns The latest measurement response fields
@@ -23,7 +22,7 @@ export function toLatestMeasurement(
     value: entity.value,
     unit: HORSE_MEASUREMENT_SPECS[entity.type].unit,
     measuredAt: entity.measuredAt,
-    isAbnormal: isAbnormalMeasurement(entity.type, Number(entity.value)),
+    isAbnormal: entity.isAbnormal,
   };
 }
 

@@ -62,6 +62,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /.vscode
 skills-lock.json
 CLAUDE.md
+/docs/cau-hoi-flow2.md
 
 # Postman (sinh bang pnpm postman:gen)
 /postman

@@ -10,10 +10,7 @@ import { RaceResultsService } from './race-results.service';
  * use case.
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([RaceRegistrationEntity]),
-    HorsesSharedModule,
-  ],
+  imports: [TypeOrmModule.forFeature([RaceRegistrationEntity]), HorsesSharedModule],
   controllers: [RaceResultsController],
   providers: [RaceResultsService],
 })

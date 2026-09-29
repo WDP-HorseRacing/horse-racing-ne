@@ -149,14 +149,14 @@ export function assertHorseNotTransferred(
  *
  * @param barn Khu chuồng cần kiểm
  * @param label Cách gọi khu trong câu báo lỗi (vd "Khu chuồng", "Khu chuồng đích")
- * @throws BadRequestException Nếu khu không ở trạng thái ACTIVE
+ * @throws ConflictException Nếu khu không ở trạng thái ACTIVE
  */
 export function assertBarnActive(
   barn: Pick<BarnEntity, 'status'>,
   label = 'Khu chuồng',
 ): void {
   if (barn.status !== BarnStatus.ACTIVE) {
-    throw new BadRequestException(`${label} không ở trạng thái hoạt động`);
+    throw new ConflictException(`${label} không ở trạng thái hoạt động`);
   }
 }
 
@@ -243,19 +243,17 @@ export function assertFreeStallRemovable(capacity: BarnStallCapacity): void {
  * Chặn giao việc cho user không phải Groom đang hoạt động
  *
  * @param user User được chọn làm groom (đã lock), null nếu không có hoặc đã xóa
- * @throws BadRequestException Nếu user không có, không phải GROOM hoặc không ACTIVE
+ * @throws BadRequestException Nếu user không có hoặc không phải GROOM
+ * @throws ConflictException Nếu là Groom nhưng không còn ACTIVE
  */
 export function assertAssignableGroom<
   T extends Pick<UserEntity, 'role' | 'status'>,
 >(user: T | null): asserts user is T {
-  if (
-    user === null ||
-    user.role !== UserRole.GROOM ||
-    user.status !== UserStatus.ACTIVE
-  ) {
-    throw new BadRequestException(
-      'Groom phụ trách không hợp lệ hoặc không ở trạng thái hoạt động',
-    );
+  if (user === null || user.role !== UserRole.GROOM) {
+    throw new BadRequestException('Groom phụ trách không hợp lệ');
+  }
+  if (user.status !== UserStatus.ACTIVE) {
+    throw new ConflictException('Groom phụ trách không ở trạng thái hoạt động');
   }
 }
 

@@ -121,9 +121,9 @@ Bảng chuyển (`LIFECYCLE_TRANSITIONS`):
 
 - Ngựa mới tạo luôn là `ACTIVE` và `ELIGIBLE`; client không chọn được hai giá trị này.
 - Mọi lần đổi phải có `reason`. Hệ thống lưu `lifecycleReason` và `lifecycleChangedAt`.
-- Kích hoạt lại (sang `ACTIVE` từ `RETIRED` hoặc `TRANSFERRED`) đặt `healthStatus = UNDER_OBSERVATION` cho tới khi bác sĩ khám lại. Giáo án, đăng ký đua đã hủy không tự khôi phục.
+- Kích hoạt lại (sang `ACTIVE` từ `RETIRED` hoặc `TRANSFERRED`) đặt `healthStatus = UNDER_OBSERVATION` cho tới khi bác sĩ khám lại. Lớp học đã rút và đăng ký đua đã hủy không tự khôi phục.
 - Kích hoạt lại từ `TRANSFERRED`: ngựa vào "Chờ xếp khu". Chủ cũ không còn là `HORSE_OWNER` đang `ACTIVE` thì bỏ trống chủ (khóa chia sẻ row tài khoản khi kiểm), nhật ký ghi `ownerId` trước/sau (quyết định 2026-09-23).
-- Nhật ký đổi vòng đời ghi thêm `trainingPlansCancelled` (số giáo án bị hủy) khi có hủy giáo án.
+- Nhật ký đổi vòng đời ghi thêm `classesWithdrawn` (số lớp bị rút) khi có rút lớp.
 - Ngựa `TRANSFERRED` chỉ được xem. Sửa hồ sơ, đổi health, xếp khu, xếp ô, giao Groom, ghi hoặc xóa chỉ số và xóa hồ sơ đều trả `409`. Chỉ còn CM đổi lifecycle để kích hoạt lại.
 - Ngựa kích hoạt lại từ `TRANSFERRED` không có khu (đã bị bỏ lúc chuyển nhượng), nên vào danh sách "Chờ xếp khu".
 
@@ -168,7 +168,7 @@ Ngựa đang có buổi tập hoặc cuộc đua `IN_PROGRESS` vẫn giải ngh�
 
 | Tác động                                                                                               | `ACTIVE` → `RETIRED` | `ACTIVE` → `TRANSFERRED` | `RETIRED` → `TRANSFERRED` | → `ACTIVE` |
 | ------------------------------------------------------------------------------------------------------ | -------------------- | ------------------------ | ------------------------- | ---------- |
-| Hủy giáo án `SCHEDULED`/`ACTIVE` và buổi tập `SCHEDULED` của giáo án (ghi `cancelledAt`/`By`/`Reason`) | Có                   | Có                       | Không                     | Không      |
+| Rút khỏi mọi lớp đang học (`withdrawHorseFromClasses`, xem dưới bảng)                                   | Có                   | Có                       | Có                        | Không      |
 | Đăng ký `PROPOSED`/`OWNER_APPROVED`/`MANAGER_CONFIRMED` trong race `PLANNED`/`OPEN` → `WITHDRAWN`      | Có                   | Có                       | Không                     | Không      |
 | Đóng dòng xếp ô đang mở, trả ô `OCCUPIED` về `AVAILABLE`                                               | Không                | Có                       | Có                        | Không      |
 | Đóng Groom assignment đang mở                                                                          | Không                | Có                       | Có                        | Không      |
@@ -176,19 +176,19 @@ Ngựa đang có buổi tập hoặc cuộc đua `IN_PROGRESS` vẫn giải ngh�
 | Gỡ `TrainingLock` đang `ACTIVE` (`releasedBy = null`, `releaseConclusion = "Gỡ do chuyển nhượng"`)     | Không                | Có                       | Có                        | Không      |
 | Đặt `healthStatus = UNDER_OBSERVATION`                                                                 | Không                | Không                    | Không                     | Có         |
 
-- Lý do hủy giáo án và buổi tập là ghi chú hệ thống `Ngựa giải nghệ: <reason>` hoặc `Ngựa chuyển nhượng: <reason>`.
+- Rút lớp do module training làm (`TrainingOperationsFacade.withdrawHorseFromClasses`), chạy chung transaction: enrollment `ACTIVE` → `LEFT` với `leftAt` = lúc đổi (enrollment chưa tới ngày vào lớp → `CANCELLED`); lượt tập `PLANNED`/`PRESENT`/`READY` của buổi bắt đầu từ lúc đổi trở đi → `CANCELLED`; lượt đã học và lượt `ONGOING` giữ nguyên (F1.8 mục 7). Buổi không còn lượt mở được cập nhật trạng thái.
+- Lý do hủy lượt tập là ghi chú hệ thống `Ngựa giải nghệ: <reason>` hoặc `Ngựa chuyển nhượng: <reason>`.
 - Chủ sở hữu luôn được giữ, để chủ cũ vẫn tra cứu được ngựa đã chuyển nhượng.
 - Ngựa `RETIRED` giữ khu, ô, Groom và lịch chăm sóc y tế.
-- **Tạm dừng chờ Flow 2:** đặc tả yêu cầu "rút ngựa khỏi lớp" (buổi chưa diễn ra biến mất, buổi đã học giữ nguyên). Hệ thống chưa có mô hình lớp học nhiều ngựa, nên hiện vẫn hủy cả giáo án đang mở qua `HorseStatusesRepository.cancelOpenTrainingPlans` (module horses tự ghi bảng training). Xem `docs/Flow_1_Quan_ly_Ho_so_Ngua.md` (Phụ lục 2: Việc còn nợ khi triển khai) mục 1.
 
 ## 5. Eligibility
 
-`GET /horses/:horseId/eligibility` trả hai cờ, trạng thái hiện tại và danh sách lý do. Cả hai cờ tính lại mỗi lần đọc (`evaluateEligibility`), không lưu DB:
+`GET /horses/:horseId/eligibility` trả hai cờ, trạng thái hiện tại và lý do chặn của từng cờ. Cả hai cờ tính lại mỗi lần đọc (`evaluateEligibility`), không lưu DB:
 
 - `trainingEligible`: hồ sơ chưa xóa, lifecycle `ACTIVE`, health `ELIGIBLE` hoặc `UNDER_OBSERVATION`, và không có training lock `ACTIVE`.
 - `racingEligible`: hồ sơ chưa xóa, lifecycle `ACTIVE`, health `ELIGIBLE`, và không có training lock `ACTIVE`.
 
-Giá trị của `reasons` (có thể nhiều lý do cùng lúc):
+Lý do tách theo cờ (F1.3 mục 2, thay đổi 2026-09-29): `trainingReasons` rỗng khi và chỉ khi được tập, `racingReasons` rỗng khi và chỉ khi được đua. `reasons` cũ giữ cho FE hiện tại, bằng `racingReasons`. Các giá trị (có thể nhiều lý do cùng lúc):
 
 | Lý do                      | Khi nào                                                  |
 | -------------------------- | -------------------------------------------------------- |
@@ -200,7 +200,7 @@ Giá trị của `reasons` (có thể nhiều lý do cùng lúc):
 | `HEALTH_QUARANTINED`       | Health `QUARANTINED`                                     |
 | `ACTIVE_TRAINING_LOCK`     | Có `TrainingLock` đang `ACTIVE`                          |
 
-Danh sách ngựa dùng cùng logic để tính `canRegisterRace` (bằng `racingEligible`). Chi tiết hồ sơ trả nguyên khối `eligibility { trainingEligible, racingEligible, reasons }`.
+Danh sách ngựa dùng cùng logic để tính `canRegisterRace` (bằng `racingEligible`). Chi tiết hồ sơ trả nguyên khối `eligibility { trainingEligible, racingEligible, trainingReasons, racingReasons, reasons }`.
 
 ## 6. API hồ sơ ngựa
 
@@ -229,7 +229,7 @@ Query:
 
 `HEALTH_PRIORITY` + `ASC` đưa `INJURED`/`QUARANTINED` lên đầu, rồi `UNDER_OBSERVATION`, rồi các ngựa còn lại; cùng nhóm thì luôn sắp theo tên A→Z. Các query boolean chỉ nhận `true`/`false`, giá trị khác trả `400`.
 
-Mỗi phần tử gồm hồ sơ (`HorseResponseDto`), `location { barn { id, name } | null, stall { id, code } | null, placementStatus }`, `canRegisterRace` và `isDeleted`. Với OWNER, `barn` và `stall` không có key `id`, chỉ có tên khu và mã ô.
+Mỗi phần tử gồm hồ sơ (`HorseResponseDto`, có `mediaId`), `photoUrl` (link tải ảnh ký sẵn có hạn, `null` nếu chưa có ảnh; ký một lần cho cả trang, chỉ để hiển thị, không lưu lâu dài), `location { barn { id, name } | null, stall { id, code } | null, placementStatus }`, `canRegisterRace` và `isDeleted`. Với OWNER, `barn` và `stall` không có key `id`, chỉ có tên khu và mã ô.
 
 Lỗi đáng chú ý: `403 Không có quyền xem hồ sơ đã xóa` khi role khác CM dùng `includeDeleted=true`.
 
@@ -326,6 +326,27 @@ Rule:
 
 Kết quả: `200` cùng `HorseResponseDto` (có `version` mới).
 
+### `GET /horses/:horseId/deletion-preview`
+
+Xem trước việc xóa hồ sơ để hiện lý do chặn trước khi CM bấm xóa. Không ghi gì.
+
+Quyền: `CLUB_MANAGER`. Ngựa không tồn tại trả `404`; hồ sơ đã xóa trả `403` (giống lúc xóa thật).
+
+Response:
+
+```json
+{
+  "horseId": "00000000-0000-0000-0000-000000000001",
+  "allowed": false,
+  "transferred": false,
+  "businessData": ["xếp ô chuồng", "phân công groom", "lớp học"],
+  "isParent": false
+}
+```
+
+- Cùng luật chặn với `DELETE`: đã chuyển nhượng, đã có dữ liệu nghiệp vụ, đang là cha/mẹ. `allowed = true` khi không vướng gì.
+- `businessData` là nhãn tiếng Việt của từng loại dữ liệu, giống danh sách trong lỗi `409` của `DELETE`.
+
 ### `DELETE /horses/:id`
 
 Xóa mềm hồ sơ tạo nhầm.
@@ -346,7 +367,7 @@ Rule:
 
 - Chạy trong transaction, lấy khóa phả hệ rồi khóa row ngựa.
 - Ngựa không tồn tại hoặc đã xóa: `404`. Ngựa `TRANSFERRED`: `409`.
-- Ngựa không được có dòng nào (kể cả dòng đã đóng, đã hủy hoặc đã xóa mềm) trong 12 bảng `HORSE_BUSINESS_TABLES`: bệnh án, lịch chăm sóc y tế, lệnh khóa huấn luyện, chỉ số cơ thể, xếp ô chuồng, phân công groom, giáo án huấn luyện, đăng ký thi đấu, khẩu phần ăn, checklist hằng ngày, báo cáo sự cố, ngưỡng hiệu suất. Vi phạm trả `409 Ngựa đã phát sinh dữ liệu nghiệp vụ (<các nhãn>), hãy đổi trạng thái vòng đời thay vì xóa`.
+- Ngựa không được có dòng nào (kể cả dòng đã đóng, đã hủy hoặc đã xóa mềm) trong 12 bảng `HORSE_BUSINESS_TABLES`: bệnh án, lịch chăm sóc y tế, lệnh khóa huấn luyện, chỉ số cơ thể, xếp ô chuồng, phân công groom, lớp học (`horse_enrollments`), đăng ký thi đấu, khẩu phần ăn, checklist hằng ngày, báo cáo sự cố, ngưỡng hiệu suất. Vi phạm trả `409 Ngựa đã phát sinh dữ liệu nghiệp vụ (<các nhãn>), hãy đổi trạng thái vòng đời thay vì xóa`.
 - Ngựa không được đang là sire hoặc dam của ngựa khác (`409 Ngựa đang là cha/mẹ trong phả hệ của ngựa khác, không thể xóa`).
 - Lưu `deletedReason`, xóa mềm, ghi audit `DELETE` kèm `reason` (feature `F1.8`). Microchip vẫn bị coi là đã dùng.
 
@@ -391,14 +412,14 @@ Trả các cờ cho UI (`evaluateHorsePermissions`):
 | `canRestore`                                   | CM, hồ sơ đã xóa                                                            |
 | `canChangeHealth`, `canDeleteMeasurement`      | VET, hồ sơ chưa xóa, ngựa chưa `TRANSFERRED`                                |
 | `canRecordMeasurement`                         | Hồ sơ chưa xóa, chưa `TRANSFERRED`, và VET / HT thuộc khu / GROOM được giao |
-| `canViewMedicalTab`, `canViewTrainingTab`      | CM, HT, VET, OWNER. API `GET /horses/:id/training-plans` cũng chặn GROOM (403) |
+| `canViewMedicalTab`, `canViewTrainingTab`      | CM, HT, VET, OWNER. API tab Huấn luyện `GET /horses/:id/training/classes` và `/training/sessions` cũng chặn GROOM (403) |
 | `canViewPerformanceTab`                        | CM, HT, OWNER                                                               |
 
 `canDelete` chỉ để hiện nút; API xóa vẫn chặn nếu ngựa đã có dữ liệu nghiệp vụ hoặc là cha/mẹ.
 
 ### `GET /horses/:horseId/eligibility`
 
-Xem mục 5. Response: `horseId`, `trainingEligible`, `racingEligible`, `healthStatus`, `lifecycleStatus`, `activeTrainingLock`, `reasons`.
+Xem mục 5. Response: `horseId`, `trainingEligible`, `racingEligible`, `healthStatus`, `lifecycleStatus`, `activeTrainingLock`, `trainingReasons`, `racingReasons`, `reasons`.
 
 ## 7. API trạng thái
 
@@ -419,7 +440,7 @@ Response:
   "to": "RETIRED",
   "allowed": true,
   "blockedReason": null,
-  "trainingPlansCancelled": 2,
+  "classesWithdrawn": 2,
   "raceRegistrationsWithdrawn": 1,
   "stallReleased": null,
   "groomEnded": null,
@@ -428,7 +449,7 @@ Response:
   "healthResetTo": null,
   "pendingBarnAfter": false,
   "ownerCleared": null,
-  "summary": "Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải."
+  "summary": "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."
 }
 ```
 
@@ -475,7 +496,7 @@ Body:
 }
 ```
 
-Chạy trong transaction và khóa row ngựa.
+Chạy trong transaction và khóa row ngựa. Gửi đúng trạng thái hiện tại thì không ghi gì. Có đổi thì ghi audit `UPDATE` entity `HORSE` với `healthStatus` trước/sau, feature `F3` (III.6.1, thêm 2026-09-29).
 
 Lỗi đáng chú ý:
 
@@ -513,6 +534,33 @@ Quyền: CM, HT, VET, GROOM.
 
 Mỗi phần tử gồm `id`, `name`, `description`, `capacity`, `status`, `headTrainerId`, `headTrainerFullName` (tên người đang được gán, kể cả khi tài khoản đã bị khóa), `hasActiveHeadTrainer` (HT còn ACTIVE, tức khu xếp ngựa được), `availableStallCount` (số chỗ còn nhận theo công thức trên; `0` nghĩa là không xếp thêm ngựa được) và `pendingStallHorseCount`.
 
+### `GET /horses/:horseId/barn-preview?barnId=...`
+
+Xem trước hệ quả đổi khu để hiện bảng xác nhận (F1.6 A2). Không ghi gì.
+
+Quyền: `CLUB_MANAGER`. Ngựa hoặc khu không tồn tại trả `404`; hồ sơ đã xóa trả `403`.
+
+Response:
+
+```json
+{
+  "horseId": "00000000-0000-0000-0000-000000000001",
+  "allowed": true,
+  "blockedReason": null,
+  "fromBarnName": "Khu A",
+  "toBarnName": "Khu C",
+  "newHeadTrainerName": "Hoa",
+  "stallReleased": "A-01",
+  "classesWithdrawn": 1,
+  "groomKept": "Lan",
+  "summary": "Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 1 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa."
+}
+```
+
+- `classesWithdrawn` đếm theo cùng luật với `PUT .../barn`: mọi lớp đang học không do Head Trainer khu mới phụ trách.
+- `allowed = false` khi ngựa đã chuyển nhượng hoặc đang ở đúng khu này; khi đó `stallReleased = null`, `classesWithdrawn = 0`, `summary = null`.
+- Không kiểm sức chứa và trạng thái khu; các lỗi đó trả lúc gọi `PUT .../barn`.
+
 ### `PUT /horses/:horseId/barn`
 
 Xếp hoặc đổi khu cho ngựa (F1.6).
@@ -540,9 +588,9 @@ Rule:
   - Khu chưa có HT: `409 Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được`.
   - Hết chỗ: `409 Khu chuồng đã hết ô trống, vui lòng chọn khu khác`, hoặc khi có ngựa đang chờ: `409 Khu chuồng đã hết chỗ: <n> ô trống nhưng đã có <m> ngựa chờ xếp ô, vui lòng chọn khu khác`.
 - Đổi khu: đóng dòng xếp ô đang mở và trả ô cũ về trống (`releaseStallByHorse`), cập nhật `barnId`; ngựa vào "Chờ xếp ô" của khu mới. Groom giữ nguyên.
-- Ghi audit `UPDATE` entity `HORSE` (feature `F1.6`) với `before { barnId, stallCode }`, `after { barnId, stallCode: null }` và `reason`.
+- Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách (`withdrawHorseFromClasses` với `exceptHeadTrainerId`, cùng luật như đổi vòng đời ở mục 4, lý do `Đổi khu: <reason>`). Lớp của Head Trainer khu mới giữ nguyên; lớp của Head Trainer cũ đã bàn giao khu cũng bị rút.
+- Ghi audit `UPDATE` entity `HORSE` (feature `F1.6`) với `before { barnId, stallCode }`, `after { barnId, stallCode: null }` (thêm `classesWithdrawn` khi có rút lớp) và `reason`.
 - Sau commit: báo Head Trainer khu mới (mục 14).
-- **Tạm dừng chờ Flow 2:** chưa rút ngựa khỏi lớp của Head Trainer khu cũ; giáo án cũ vẫn chạy.
 
 Kết quả: `200` cùng `HorseResponseDto`.
 
@@ -557,15 +605,21 @@ Các loại chỉ số (`HORSE_MEASUREMENT_SPECS`):
 | `BODY_CONDITION` | `score`   | 1–9           | 4–6                |
 | `TEMPERATURE`    | `celsius` | 30–45         | 37.2–38.3          |
 
-Giá trị ngoài khoảng hợp lệ bị từ chối. Giá trị ngoài khoảng bình thường vẫn lưu được nhưng phải xác nhận (`confirmAbnormal`), và luôn được đánh dấu `isAbnormal = true` khi đọc. Bản ghi đo không có API sửa; ghi sai thì VET xóa rồi đo lại.
+Giá trị ngoài khoảng hợp lệ bị từ chối. Giá trị ngoài khoảng bình thường vẫn lưu được nhưng phải xác nhận (`confirmAbnormal`). Cờ `isAbnormal` được lưu vào cột `is_abnormal` lúc ghi theo khoảng bình thường tại thời điểm đó, đổi khoảng về sau không làm đổi bản ghi cũ; nhật ký ghi thêm `isAbnormal`, `abnormalConfirmed`. Bản ghi đo không có API sửa; ghi sai thì VET xóa rồi đo lại.
 
-### `GET /horses/:horseId/measurements?type=WEIGHT`
+### `GET /horses/:horseId/measurements?type=WEIGHT&from=...&to=...&page=1&limit=20`
 
-Liệt kê chỉ số chưa xóa, `measuredAt` mới nhất trước, tối đa 200 dòng, không phân trang. `type` không bắt buộc.
+Liệt kê chỉ số chưa xóa, `measuredAt` mới nhất trước, có phân trang. Trả `{ items, meta }` giống danh sách ngựa.
+
+| Tham số        | Ý nghĩa                                                          |
+| -------------- | ---------------------------------------------------------------- |
+| `type`         | Lọc theo loại chỉ số, không bắt buộc                             |
+| `from`, `to`   | Khoảng thời điểm đo (ISO date-time, tính cả hai đầu), không bắt buộc; `from` sau `to` trả `400` |
+| `page`, `limit`| Mặc định `1` và `20`, `limit` tối đa `500` (vẽ biểu đồ dùng `from`/`to` và `limit` lớn) |
 
 Quyền: mọi role, theo phạm vi ở mục 2 (CM xem được cả ngựa đã xóa).
 
-Mỗi dòng: `id`, `horseId`, `type`, `value` (chuỗi 2 chữ số thập phân), `unit`, `measuredAt`, `isAbnormal`, `measuredBy`, `measuredByName`, `source`.
+Mỗi dòng trong `items`: `id`, `horseId`, `type`, `value` (chuỗi 2 chữ số thập phân), `unit`, `measuredAt`, `isAbnormal` (giá trị đã lưu lúc ghi), `measuredBy`, `measuredByName`, `source`.
 
 ### `POST /horses/:horseId/measurements`
 
@@ -654,7 +708,7 @@ Body:
 
 Rule:
 
-- Khu phải tồn tại (`404 Không tìm thấy khu chuồng`) và đang `ACTIVE` (`400 Khu chuồng không ở trạng thái hoạt động`).
+- Khu phải tồn tại (`404 Không tìm thấy khu chuồng`) và đang `ACTIVE` (`409 Khu chuồng không ở trạng thái hoạt động`; trước 2026-09-29 là 400).
 - Nếu khu có `capacity`, số ô chưa xóa phải còn chỗ (`409 Khu chuồng đã đạt sức chứa tối đa (<n> ô chuồng)`).
 - `code` (đã trim) không trùng ô chưa xóa (`409 Mã ô chuồng đã tồn tại`).
 
@@ -706,13 +760,13 @@ Rule (theo đúng thứ tự kiểm tra):
 2. Ngựa chưa có khu: `409 Ngựa chưa được xếp khu chuồng, vui lòng liên hệ Club Manager để xếp khu trước`.
 3. Người gọi không phụ trách khu của ngựa: `403 Ngựa không thuộc khu bạn phụ trách`.
 4. Ngựa `TRANSFERRED`: `409 Ngựa đã chuyển nhượng, không xếp ô chuồng được`. Ngựa `RETIRED` vẫn xếp được.
-5. Khu không `ACTIVE`: `400 Khu chuồng không ở trạng thái hoạt động`.
+5. Khu không `ACTIVE`: `409 Khu chuồng không ở trạng thái hoạt động` (trước 2026-09-29 là 400).
 6. Khóa dòng xếp ô đang mở của ngựa. Chọn lại đúng ô đang ở thì trả dòng hiện tại, không ghi.
 7. Khóa row ô đích. Không có: `404 Không tìm thấy ô chuồng`. Ô không thuộc khu của ngựa: `400 Ô chuồng không thuộc khu chuồng của ngựa`. Ô không `AVAILABLE` hoặc đã có ngựa: nếu khu không còn ô trống nào thì `409 Khu đã hết ô trống, đề nghị Club Manager đổi khu cho ngựa` (F1.7 E4), còn không thì `409 Ô vừa bị chiếm, vui lòng tải lại sơ đồ ô trống`.
 8. Đóng dòng cũ (nếu có) và trả ô cũ về `AVAILABLE`, mở dòng mới với `startAt` là giờ server, chuyển ô đích sang `OCCUPIED`.
 9. Ghi audit entity `STALL_ASSIGNMENT` (feature `F1.7`): `UPDATE` cho dòng cũ bị đóng, `CREATE` cho dòng mới (kèm `stallCode`, `previousStallId`).
 
-Không đụng tới Groom, giáo án hay lịch tập. Hai request đồng thời vi phạm unique index trả `409 Ô vừa bị chiếm, vui lòng tải lại sơ đồ ô trống` hoặc `409 Ngựa vừa được xếp vào ô khác, vui lòng tải lại`.
+Không đụng tới Groom, lớp học hay lịch tập. Hai request đồng thời vi phạm unique index trả `409 Ô vừa bị chiếm, vui lòng tải lại sơ đồ ô trống` hoặc `409 Ngựa vừa được xếp vào ô khác, vui lòng tải lại`.
 
 Kết quả: `200` cùng dòng xếp ô đang mở `{ id, stallId, horseId, horse, startAt, endAt }`.
 
@@ -748,17 +802,41 @@ Body:
 
 Rule:
 
-- Trong transaction, khóa row user rồi kiểm `groomId` là user role `GROOM` đang `ACTIVE` (`400 Groom phụ trách không hợp lệ hoặc không ở trạng thái hoạt động`).
+- Trong transaction, khóa row user của Groom trước (giữ thứ tự khóa), nhưng chỉ kiểm Groom sau khi đã kiểm ngựa và khu, để người ngoài phạm vi nhận 403/404 trước (thay đổi 2026-09-29).
 - Khóa row ngựa. Kiểm tra theo thứ tự: không có hoặc đã xóa (`404`), chưa có khu (`409 Ngựa chưa được xếp khu chuồng, vui lòng liên hệ Club Manager để xếp khu trước`), không phụ trách khu (`403 Ngựa không thuộc khu bạn phụ trách`), `TRANSFERRED` (`409 Ngựa đã chuyển nhượng, không giao groom được`). Ngựa `RETIRED` vẫn giao được.
-- Khu của ngựa phải đang `ACTIVE`, giống luật xếp ô (`400 Khu chuồng không ở trạng thái hoạt động`; quyết định 2026-09-23).
+- Khu của ngựa phải đang `ACTIVE`, giống luật xếp ô (`409 Khu chuồng không ở trạng thái hoạt động`; quyết định 2026-09-23, đổi 400 → 409 ngày 2026-09-29).
+- Groom: không có hoặc không phải vai trò `GROOM` trả `400 Groom phụ trách không hợp lệ`; là Groom nhưng không còn `ACTIVE` trả `409 Groom phụ trách không ở trạng thái hoạt động`.
 - Trùng Groom hiện tại thì trả dòng đang có, không ghi, không thông báo.
 - Khác: đóng dòng cũ, mở dòng mới (giờ server), chuyển checklist chưa hoàn thành từ hôm nay (giờ câu lạc bộ) trở đi của Groom cũ sang Groom mới. Groom mới đã có checklist cùng ngày cho ngựa này thì trả `409 Groom mới đã có checklist của ngựa này vào ngày <ngày>, không chuyển được checklist chưa hoàn thành của groom cũ`.
-- Ghi audit `CREATE` entity `GROOM_ASSIGNMENT` (feature `F1.7`), kèm Groom cũ và `movedChecklistIds`.
+- Cùng transaction, chuyển lượt tập tương lai sang Groom mới (`TrainingOperationsFacade.moveFutureParticipantsToGroom`): lượt đang giao cho Groom cũ hoặc chưa ai dắt, trạng thái `PLANNED`/`PRESENT`/`READY`, buổi bắt đầu từ lúc đổi trở đi. Lượt chưa ai dắt cũng được điền Groom mới, kể cả lần giao đầu tiên. Lượt HT đã giao tay cho người khác, lượt `ONGOING` và lượt đã học giữ nguyên (quyết định 2026-09-29).
+- Ghi audit `CREATE` entity `GROOM_ASSIGNMENT` (feature `F1.7`), kèm Groom cũ, `movedChecklistIds` và `movedParticipantIds`.
 - Sau commit: phát event `stable.groom-assignment.changed`, module notifications báo Groom mới và Groom cũ (mục 14).
 - Hai request đồng thời vi phạm unique index: `409 Ngựa vừa được giao groom khác, vui lòng tải lại`.
-- **Tạm dừng chờ Flow 2:** chưa chuyển các đầu việc buổi tập tương lai sang Groom mới; chỉ chuyển checklist hằng ngày.
 
 Kết quả: `200` cùng dòng phân công đang mở.
+
+### `PUT /horses/:id/placement`
+
+Xếp ô và giao Groom trong một lần gửi (luồng chính F1.7).
+
+Quyền: `HEAD_TRAINER` phụ trách khu của ngựa.
+
+Body:
+
+```json
+{
+  "stallId": "00000000-0000-0000-0000-000000000011",
+  "groomId": "00000000-0000-0000-0000-000000000020"
+}
+```
+
+Rule:
+
+- Chạy xếp ô (luật như `PUT /horses/:id/stall`) rồi giao Groom (luật như `PUT /horses/:id/groom`) trong **cùng một transaction**; phần nào lỗi thì không lưu gì.
+- Hai API lẻ vẫn giữ cho các luồng chỉ đổi một thứ (A1 chuyển ô, A2 đổi Groom, cách ly, sau đổi khu, kích hoạt lại).
+- Sau commit: phát event `stable.groom-assignment.changed` như API giao Groom.
+
+Kết quả: `200` cùng `{ stallAssignment, groomAssignment }`.
 
 Không có API gỡ Groom mà không giao ai (bỏ ngày 2026-09-23 theo F1.7: chỉ giao và đổi Groom, ngựa luôn có Groom phụ trách). Groom chỉ tự kết thúc khi ngựa chuyển nhượng.
 
@@ -884,11 +962,11 @@ Migration của flow:
 
 Các điểm dưới đây mô tả đúng code hiện tại nhưng chưa nhất quán hoặc chưa hoàn thiện, cần quyết định trước khi sửa:
 
-1. **Phần chờ Flow 2** (chi tiết ở `docs/Flow_1_Quan_ly_Ho_so_Ngua.md` (Phụ lục 2: Việc còn nợ khi triển khai) mục 1): rút ngựa khỏi lớp khi đổi khu, giải nghệ, chuyển nhượng; chuyển buổi tập tương lai sang Groom mới; câu `summary` nói "lớp" thay cho "giáo án". Hiện module horses vẫn tự hủy giáo án qua `cancelOpenTrainingPlans` (ghi thẳng bảng training).
-2. **`PATCH /health-status`** không kiểm tra `version` và không ghi audit. Theo đặc tả, đổi health thuộc Flow 3.
-3. **Mã lỗi khu không hoạt động bị lệch**: `lockAssignableBarn` (tạo ngựa, xếp khu) trả `409`, còn `PUT /horses/:id/stall` và `POST /stalls` trả `400` cho cùng điều kiện.
+1. **Phần còn lại sau khi có mô hình lớp học** (chi tiết ở `docs/Flow_1_Quan_ly_Ho_so_Ngua.md` (Phụ lục 2) mục 1b): tab Huấn luyện chưa gộp đánh giá buổi tập, khóa huấn luyện chưa hủy buổi tập.
+2. **`PATCH /health-status`** không kiểm tra `version` (đã ghi audit từ 2026-09-29). Theo đặc tả, đổi health thuộc Flow 3.
+3. ~~Mã lỗi khu không hoạt động bị lệch~~ Đã sửa 2026-09-29: mọi chỗ kiểm khu không hoạt động đều trả `409`.
 4. **409 khi hai người cùng sửa hồ sơ** chưa trả kèm dữ liệu mới nhất (F1.4 mục 7), vì filter lỗi chung chỉ trả `code/message/details`.
-5. **Bảng xác nhận hệ quả** (F1.8 mục 5) mới có cho đổi lifecycle; xóa và khôi phục hồ sơ chưa có API xem trước.
+5. **Bảng xác nhận hệ quả** (F1.8 mục 5) có cho đổi lifecycle, xóa hồ sơ (`/deletion-preview`) và đổi khu (`/barn-preview`); khôi phục hồ sơ chưa có API xem trước.
 6. **Nguồn `MEDICAL_EXAM`**: chưa có module nào ghi chỉ số từ buổi khám vào `horse_measurements`; nhánh chặn xóa bản ghi `MEDICAL_EXAM` hiện chưa có dữ liệu thật.
 7. **`AuditEntityType.HORSE_OWNERSHIP`** vẫn còn trong enum dù bảng `horse_ownerships` đã bị bỏ.
 8. **`pnpm check:module-architecture` còn đỏ ở 2 chỗ (ghi nợ theo quyết định 2026-09-23):**

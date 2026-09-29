@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -18,7 +19,12 @@ import {
 import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { DeleteHorseDto, HorseResponseDto, RestoreHorseDto } from '../dto';
+import {
+  DeleteHorseDto,
+  HorseDeletionPreviewResponseDto,
+  HorseResponseDto,
+  RestoreHorseDto,
+} from '../dto';
 import { HorseDeletionsService } from './horse-deletions.service';
 
 @ApiTags('horses')
@@ -26,6 +32,21 @@ import { HorseDeletionsService } from './horse-deletions.service';
 @Controller('horses/:horseId')
 export class HorseDeletionsController {
   constructor(private readonly deletionsService: HorseDeletionsService) {}
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Get('deletion-preview')
+  @ApiOperation({
+    summary: 'Preview whether a horse profile can be deleted',
+    description:
+      'Không ghi gì. Trả về xóa được không và từng lý do chặn: đã chuyển nhượng, các loại dữ liệu nghiệp vụ đã phát sinh, đang là cha/mẹ của ngựa khác.',
+  })
+  @ApiOkResponse({ type: HorseDeletionPreviewResponseDto })
+  previewRemove(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+  ): Promise<HorseDeletionPreviewResponseDto> {
+    return this.deletionsService.previewRemove(actor, horseId);
+  }
 
   @Access([UserRole.CLUB_MANAGER])
   @Delete()
