@@ -315,6 +315,43 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}/deletion-preview": {
+      "get": {
+        "description": "Không ghi gì. Trả về xóa được không và từng lý do chặn: đã chuyển nhượng, các loại dữ liệu nghiệp vụ đã phát sinh, đang là cha/mẹ của ngựa khác.",
+        "operationId": "HorseDeletionsController_previewRemove",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseDeletionPreviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview whether a horse profile can be deleted",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}": {
       "delete": {
         "description": "Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 403.",
@@ -666,6 +703,53 @@
           }
         ],
         "summary": "Soft-delete a wrong horse measurement",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/barn-preview": {
+      "get": {
+        "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt để hiện bảng xác nhận.",
+        "operationId": "HorsePlacementsController_previewBarnChange",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "barnId",
+            "required": true,
+            "in": "query",
+            "description": "Khu muốn chuyển sang",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseBarnPreviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview the consequences of changing the barn of a horse",
         "tags": [
           "horses"
         ]
@@ -6412,6 +6496,41 @@
           "newPassword"
         ]
       },
+      "HorseDeletionPreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "allowed": {
+            "type": "boolean",
+            "description": "true nếu xóa được ngay"
+          },
+          "transferred": {
+            "type": "boolean",
+            "description": "Ngựa đã chuyển nhượng, hồ sơ chỉ đọc"
+          },
+          "businessData": {
+            "description": "Các loại dữ liệu nghiệp vụ ngựa đã phát sinh (vd \"chỉ số cơ thể\", \"lớp học\"), rỗng nếu chưa có",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isParent": {
+            "type": "boolean",
+            "description": "Ngựa đang là cha hoặc mẹ của ngựa khác"
+          }
+        },
+        "required": [
+          "horseId",
+          "allowed",
+          "transferred",
+          "businessData",
+          "isParent"
+        ]
+      },
       "DeleteHorseDto": {
         "type": "object",
         "properties": {
@@ -6824,6 +6943,60 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "HorseBarnPreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "allowed": {
+            "type": "boolean",
+            "description": "false nếu không đổi được"
+          },
+          "blockedReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do không đổi được, null nếu allowed = true"
+          },
+          "fromBarnName": {
+            "type": "string",
+            "nullable": true
+          },
+          "toBarnName": {
+            "type": "string"
+          },
+          "newHeadTrainerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "stallReleased": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mã ô sẽ được trả về trống, null nếu ngựa chưa có ô"
+          },
+          "classesWithdrawn": {
+            "type": "number",
+            "description": "Số lớp ngựa sẽ bị rút"
+          },
+          "groomKept": {
+            "type": "string",
+            "nullable": true,
+            "description": "Groom giữ nguyên sau khi đổi khu, null nếu chưa có Groom"
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true,
+            "description": "Câu tóm tắt cho bảng xác nhận, null nếu allowed = false"
+          }
+        },
+        "required": [
+          "horseId",
+          "allowed",
+          "toBarnName",
+          "classesWithdrawn"
         ]
       },
       "AssignHorseBarnDto": {

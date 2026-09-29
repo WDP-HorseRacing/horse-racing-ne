@@ -326,6 +326,27 @@ Rule:
 
 Kết quả: `200` cùng `HorseResponseDto` (có `version` mới).
 
+### `GET /horses/:horseId/deletion-preview`
+
+Xem trước việc xóa hồ sơ để hiện lý do chặn trước khi CM bấm xóa. Không ghi gì.
+
+Quyền: `CLUB_MANAGER`. Ngựa không tồn tại trả `404`; hồ sơ đã xóa trả `403` (giống lúc xóa thật).
+
+Response:
+
+```json
+{
+  "horseId": "00000000-0000-0000-0000-000000000001",
+  "allowed": false,
+  "transferred": false,
+  "businessData": ["xếp ô chuồng", "phân công groom", "lớp học"],
+  "isParent": false
+}
+```
+
+- Cùng luật chặn với `DELETE`: đã chuyển nhượng, đã có dữ liệu nghiệp vụ, đang là cha/mẹ. `allowed = true` khi không vướng gì.
+- `businessData` là nhãn tiếng Việt của từng loại dữ liệu, giống danh sách trong lỗi `409` của `DELETE`.
+
 ### `DELETE /horses/:id`
 
 Xóa mềm hồ sơ tạo nhầm.
@@ -512,6 +533,33 @@ Danh sách khu, sắp theo tên.
 Quyền: CM, HT, VET, GROOM.
 
 Mỗi phần tử gồm `id`, `name`, `description`, `capacity`, `status`, `headTrainerId`, `headTrainerFullName` (tên người đang được gán, kể cả khi tài khoản đã bị khóa), `hasActiveHeadTrainer` (HT còn ACTIVE, tức khu xếp ngựa được), `availableStallCount` (số chỗ còn nhận theo công thức trên; `0` nghĩa là không xếp thêm ngựa được) và `pendingStallHorseCount`.
+
+### `GET /horses/:horseId/barn-preview?barnId=...`
+
+Xem trước hệ quả đổi khu để hiện bảng xác nhận (F1.6 A2). Không ghi gì.
+
+Quyền: `CLUB_MANAGER`. Ngựa hoặc khu không tồn tại trả `404`; hồ sơ đã xóa trả `403`.
+
+Response:
+
+```json
+{
+  "horseId": "00000000-0000-0000-0000-000000000001",
+  "allowed": true,
+  "blockedReason": null,
+  "fromBarnName": "Khu A",
+  "toBarnName": "Khu C",
+  "newHeadTrainerName": "Hoa",
+  "stallReleased": "A-01",
+  "classesWithdrawn": 1,
+  "groomKept": "Lan",
+  "summary": "Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 1 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa."
+}
+```
+
+- `classesWithdrawn` đếm theo cùng luật với `PUT .../barn`: mọi lớp đang học không do Head Trainer khu mới phụ trách.
+- `allowed = false` khi ngựa đã chuyển nhượng hoặc đang ở đúng khu này; khi đó `stallReleased = null`, `classesWithdrawn = 0`, `summary = null`.
+- Không kiểm sức chứa và trạng thái khu; các lỗi đó trả lúc gọi `PUT .../barn`.
 
 ### `PUT /horses/:horseId/barn`
 
@@ -918,7 +966,7 @@ Các điểm dưới đây mô tả đúng code hiện tại nhưng chưa nhất
 2. **`PATCH /health-status`** không kiểm tra `version` (đã ghi audit từ 2026-09-29). Theo đặc tả, đổi health thuộc Flow 3.
 3. ~~Mã lỗi khu không hoạt động bị lệch~~ Đã sửa 2026-09-29: mọi chỗ kiểm khu không hoạt động đều trả `409`.
 4. **409 khi hai người cùng sửa hồ sơ** chưa trả kèm dữ liệu mới nhất (F1.4 mục 7), vì filter lỗi chung chỉ trả `code/message/details`.
-5. **Bảng xác nhận hệ quả** (F1.8 mục 5) mới có cho đổi lifecycle; xóa và khôi phục hồ sơ chưa có API xem trước.
+5. **Bảng xác nhận hệ quả** (F1.8 mục 5) có cho đổi lifecycle, xóa hồ sơ (`/deletion-preview`) và đổi khu (`/barn-preview`); khôi phục hồ sơ chưa có API xem trước.
 6. **Nguồn `MEDICAL_EXAM`**: chưa có module nào ghi chỉ số từ buổi khám vào `horse_measurements`; nhánh chặn xóa bản ghi `MEDICAL_EXAM` hiện chưa có dữ liệu thật.
 7. **`AuditEntityType.HORSE_OWNERSHIP`** vẫn còn trong enum dù bảng `horse_ownerships` đã bị bỏ.
 8. **`pnpm check:module-architecture` còn đỏ ở 2 chỗ (ghi nợ theo quyết định 2026-09-23):**
