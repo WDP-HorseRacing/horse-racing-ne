@@ -408,9 +408,11 @@ export function trainerForbiddenFields(fields: object): string[] {
  * - Được tập: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, không có lệnh khóa huấn luyện
  * - Được đua: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE, không có lệnh khóa huấn luyện
  * - Lý do vòng đời tách riêng Đã giải nghệ / Đã chuyển nhượng để giao diện hiện đúng câu
+ * - Lý do tách theo từng cờ (F1.3 mục 2): trainingReasons rỗng khi và chỉ khi được tập, racingReasons rỗng khi và chỉ khi được đua. UNDER_OBSERVATION chỉ chặn đua
+ * - reasons giữ lại cho FE cũ, bằng racingReasons (mọi lý do)
  *
  * @param input Trạng thái hồ sơ, vòng đời, sức khỏe và cờ khóa huấn luyện của ngựa
- * @returns Hai cờ được tập, được đua và danh sách lý do chặn (rỗng nếu không bị chặn gì)
+ * @returns Hai cờ được tập, được đua và lý do chặn của từng cờ (rỗng nếu không bị chặn gì)
  */
 export function evaluateEligibility(
   input: EligibilityInput,
@@ -437,12 +439,18 @@ export function evaluateEligibility(
     input.healthStatus === HorseHealthStatus.ELIGIBLE ||
     input.healthStatus === HorseHealthStatus.UNDER_OBSERVATION;
 
+  const trainingReasons = reasons.filter(
+    (reason) => reason !== EligibilityReason.HEALTH_UNDER_OBSERVATION,
+  );
+
   return {
     trainingEligible: active && trainableHealth && !input.hasActiveTrainingLock,
     racingEligible:
       active &&
       input.healthStatus === HorseHealthStatus.ELIGIBLE &&
       !input.hasActiveTrainingLock,
+    trainingReasons,
+    racingReasons: reasons,
     reasons,
   };
 }

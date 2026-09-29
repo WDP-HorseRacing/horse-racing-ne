@@ -166,6 +166,11 @@ export interface EligibilityInput {
 export interface EligibilityResult {
   trainingEligible: boolean;
   racingEligible: boolean;
+  /** Lý do không được tập, rỗng khi được tập */
+  trainingReasons: EligibilityReason[];
+  /** Lý do không được đua, rỗng khi được đua */
+  racingReasons: EligibilityReason[];
+  /** Mọi lý do (bằng racingReasons), giữ cho FE cũ */
   reasons: EligibilityReason[];
 }
 

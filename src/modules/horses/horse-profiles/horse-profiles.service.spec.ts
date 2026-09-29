@@ -821,6 +821,8 @@ describe('HorseProfilesService', () => {
         activeTrainingLock: true,
         trainingEligible: false,
         racingEligible: false,
+        trainingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
+        racingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
         reasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
       });
     });
