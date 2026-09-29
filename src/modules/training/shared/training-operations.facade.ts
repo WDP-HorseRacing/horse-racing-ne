@@ -231,6 +231,54 @@ export class TrainingOperationsFacade {
     return participants.length;
   }
 
+  /**
+   * Chuyển các lượt tham gia buổi tập tương lai của một con ngựa từ groom cũ sang groom mới, dành cho module stable gọi khi đổi groom (F1.7 mục 6).
+   *
+   * - Chỉ chuyển lượt đang giao cho groom cũ; lượt Head Trainer đã giao tay cho người khác giữ nguyên (user chốt 2026-09-29)
+   * - Chỉ lượt PLANNED/PRESENT/READY của buổi bắt đầu từ `from` trở đi; lượt ONGOING và lượt đã kết thúc giữ tên người đã làm
+   * - Không kiểm quyền: nơi gọi đã kiểm quyền đổi groom
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param fromGroomId UUID groom cũ
+   * @param toGroomId UUID groom mới
+   * @param from Thời điểm đổi groom; buổi bắt đầu từ thời điểm này trở đi được chuyển
+   * @returns A promise resolving to UUID các lượt tham gia đã chuyển, để nơi gọi ghi nhật ký
+   */
+  async moveFutureParticipantsToGroom(
+    manager: EntityManager,
+    horseId: string,
+    fromGroomId: string,
+    toGroomId: string,
+    from: Date,
+  ): Promise<string[]> {
+    const participants = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .innerJoin(
+        TrainingSessionEntity,
+        'session',
+        'session.id = participant.session_id',
+      )
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere('participant.assigned_groom_id = :fromGroomId', {
+        fromGroomId,
+      })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: OPEN_PARTICIPANT_STATUSES,
+      })
+      .andWhere('session.scheduled_start_at >= :from', { from })
+      .setLock('pessimistic_write', undefined, ['participant'])
+      .getMany();
+    for (const participant of participants) {
+      participant.assignedGroomId = toGroomId;
+    }
+    if (participants.length) {
+      await manager.save(SessionParticipantEntity, participants);
+    }
+    return participants.map((participant) => participant.id);
+  }
+
   private async cancelFutureParticipations(
     manager: EntityManager,
     horseId: string,

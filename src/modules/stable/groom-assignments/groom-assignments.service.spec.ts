@@ -23,6 +23,7 @@ import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../constants/stable-events.constants';
 import { StableAccessService } from '../shared/stable-access.service';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { GroomAssignmentsService } from './groom-assignments.service';
 
 type Row = Record<string, unknown> | null;
@@ -58,6 +59,7 @@ describe('GroomAssignmentsService', () => {
   };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
+  let training: { moveFutureParticipantsToGroom: jest.Mock };
   let transaction: jest.Mock;
   let service: GroomAssignmentsService;
 
@@ -109,6 +111,9 @@ describe('GroomAssignmentsService', () => {
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };
+    training = {
+      moveFutureParticipantsToGroom: jest.fn().mockResolvedValue(['p1', 'p2']),
+    };
     transaction = jest.fn((work: (m: typeof manager) => Promise<unknown>) =>
       work(manager),
     );
@@ -124,6 +129,7 @@ describe('GroomAssignmentsService', () => {
       new StableAccessService(horseAccess),
       horseAccess,
       new DailyChecklistsService(),
+      training as unknown as TrainingOperationsFacade,
     );
   });
 
@@ -229,11 +235,17 @@ describe('GroomAssignmentsService', () => {
           entityType: AuditEntityType.GROOM_ASSIGNMENT,
           entityId: 'ga-new',
           before: { horseId: 'h1', groomId: null, endedAssignmentId: null },
-          after: { horseId: 'h1', groomId: 'g-new', movedChecklistIds: [] },
+          after: {
+            horseId: 'h1',
+            groomId: 'g-new',
+            movedChecklistIds: [],
+            movedParticipantIds: [],
+          },
           feature: 'F1.7',
         }),
       );
       expect(result).toMatchObject({ groomId: 'g-new' });
+      expect(training.moveFutureParticipantsToGroom).not.toHaveBeenCalled();
     });
 
     it('publishes the groom change after the transaction commits', async () => {
@@ -263,6 +275,7 @@ describe('GroomAssignmentsService', () => {
       expect(manager.save).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
       expect(events.publish).not.toHaveBeenCalled();
+      expect(training.moveFutureParticipantsToGroom).not.toHaveBeenCalled();
     });
 
     describe('when the horse already has another groom', () => {
@@ -321,6 +334,32 @@ describe('GroomAssignmentsService', () => {
             feature: 'F1.7',
           }),
         );
+      });
+
+      it('moves the future training participants of the old groom to the new groom in the same transaction', async () => {
+        await assign();
+        expect(training.moveFutureParticipantsToGroom).toHaveBeenCalledWith(
+          manager,
+          'h1',
+          'g-old',
+          'g-new',
+          anyDate,
+        );
+        expect(audit.record).toHaveBeenCalledWith(
+          manager,
+          expect.objectContaining({
+            after: expect.objectContaining({
+              movedParticipantIds: ['p1', 'p2'],
+            }) as unknown,
+          }),
+        );
+      });
+
+      it('moves no participant when the new groom already has a clashing checklist', async () => {
+        openChecklists = [{ id: 'c1', checklistDate: '2026-09-23' }];
+        clashingChecklists = [{ id: 'c9', checklistDate: '2026-09-23' }];
+        await expect(assign()).rejects.toThrow(/2026-09-23/);
+        expect(training.moveFutureParticipantsToGroom).not.toHaveBeenCalled();
       });
 
       it('publishes the change with both the new and the old groom', async () => {

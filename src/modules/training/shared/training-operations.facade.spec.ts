@@ -227,3 +227,76 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
     );
   });
 });
+
+describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
+  const facade = new TrainingOperationsFacade();
+
+  it('only targets open future participants of the horse still assigned to the old groom', async () => {
+    const { manager, participantQb } = buildManager([], []);
+
+    await facade.moveFutureParticipantsToGroom(
+      manager,
+      'h1',
+      'g-old',
+      'g-new',
+      AT,
+    );
+
+    expect(participantQb.where).toHaveBeenCalledWith(
+      'participant.horse_id = :horseId',
+      { horseId: 'h1' },
+    );
+    expect(participantQb.andWhere).toHaveBeenCalledWith(
+      'participant.assigned_groom_id = :fromGroomId',
+      { fromGroomId: 'g-old' },
+    );
+    expect(participantQb.andWhere).toHaveBeenCalledWith(
+      'participant.status IN (:...statuses)',
+      {
+        statuses: [
+          SessionParticipantStatus.PLANNED,
+          SessionParticipantStatus.PRESENT,
+          SessionParticipantStatus.READY,
+        ],
+      },
+    );
+    expect(participantQb.andWhere).toHaveBeenCalledWith(
+      'session.scheduled_start_at >= :from',
+      { from: AT },
+    );
+    expect(participantQb.setLock).toHaveBeenCalledWith(
+      'pessimistic_write',
+      undefined,
+      ['participant'],
+    );
+  });
+
+  it('reassigns the found participants to the new groom and returns their ids', async () => {
+    const rows = [
+      { id: 'p1', assignedGroomId: 'g-old' },
+      { id: 'p2', assignedGroomId: 'g-old' },
+    ];
+    const { manager, save } = buildManager([], rows);
+
+    const moved = await facade.moveFutureParticipantsToGroom(
+      manager,
+      'h1',
+      'g-old',
+      'g-new',
+      AT,
+    );
+
+    expect(moved).toEqual(['p1', 'p2']);
+    for (const row of rows) expect(row.assignedGroomId).toBe('g-new');
+    expect(save).toHaveBeenCalledWith(SessionParticipantEntity, rows);
+  });
+
+  it('saves nothing when no participant matches', async () => {
+    const { manager, save } = buildManager([], []);
+
+    await expect(
+      facade.moveFutureParticipantsToGroom(manager, 'h1', 'g-old', 'g-new', AT),
+    ).resolves.toEqual([]);
+    expect(save).not.toHaveBeenCalled();
+  });
+});

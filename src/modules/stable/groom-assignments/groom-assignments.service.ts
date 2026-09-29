@@ -8,6 +8,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { clubToday } from '../../horses/utils/club-date';
 import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
@@ -46,6 +47,7 @@ export class GroomAssignmentsService {
     private readonly access: StableAccessService,
     private readonly horseAccess: HorseAccessService,
     private readonly dailyChecklists: DailyChecklistsService,
+    private readonly training: TrainingOperationsFacade,
   ) {}
 
   /**
@@ -83,7 +85,7 @@ export class GroomAssignmentsService {
    * - Lock row user của groom trong transaction rồi mới kiểm groom còn là GROOM đang ACTIVE.
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
-   * - Không đụng tới buổi tập (training_sessions), phần đó thuộc module training.
+   * - Đổi groom: chuyển các lượt tham gia buổi tập tương lai đang giao cho groom cũ sang groom mới qua TrainingOperationsFacade (training tự ghi bảng của mình); lượt Head Trainer đã giao tay cho người khác giữ nguyên. Nhật ký ghi thêm movedParticipantIds.
    * - Sau khi commit: phát GROOM_ASSIGNMENT_CHANGED_EVENT để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách (F1.7).
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -128,6 +130,7 @@ export class GroomAssignmentsService {
         }
         const now = new Date();
         let movedChecklistIds: string[] = [];
+        let movedParticipantIds: string[] = [];
         if (current) {
           await manager.update(
             GroomAssignmentEntity,
@@ -141,6 +144,14 @@ export class GroomAssignmentsService {
               current.groomId,
               groom.id,
               clubToday(),
+            );
+          movedParticipantIds =
+            await this.training.moveFutureParticipantsToGroom(
+              manager,
+              horseId,
+              current.groomId,
+              groom.id,
+              now,
             );
         }
         const saved = await manager.save(
@@ -161,7 +172,12 @@ export class GroomAssignmentsService {
             groomId: current?.groomId ?? null,
             endedAssignmentId: current?.id ?? null,
           },
-          after: { horseId, groomId: groom.id, movedChecklistIds },
+          after: {
+            horseId,
+            groomId: groom.id,
+            movedChecklistIds,
+            movedParticipantIds,
+          },
           feature: 'F1.7',
         });
         const changed: GroomAssignmentChangedEvent = {
