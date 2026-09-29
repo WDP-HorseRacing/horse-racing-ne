@@ -507,6 +507,49 @@
                 "TEMPERATURE"
               ]
             }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ lấy bản ghi đo từ thời điểm này",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ lấy bản ghi đo tới thời điểm này",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số bản ghi mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "default": 20,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -515,10 +558,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/HorseMeasurementResponseDto"
-                  }
+                  "$ref": "#/components/schemas/HorseMeasurementPageDto"
                 }
               }
             }
@@ -673,6 +713,53 @@
           }
         ],
         "summary": "Assign or change the barn of a horse",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/placement": {
+      "put": {
+        "description": "Head Trainer phụ trách khu của ngựa. Xếp ô và giao Groom trong cùng một transaction: một phần lỗi thì không lưu gì. Luật từng phần như PUT /horses/:id/stall và PUT /horses/:id/groom.",
+        "operationId": "HorsePlacementsController_placeHorse",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceHorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorsePlacementResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Place a horse in a stall and assign its groom in one step",
         "tags": [
           "horses"
         ]
@@ -6486,7 +6573,7 @@
           },
           "isAbnormal": {
             "type": "boolean",
-            "description": "Ngoài khoảng bình thường: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C"
+            "description": "Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
           },
           "id": {
             "type": "string",
@@ -6523,6 +6610,51 @@
           "measuredBy",
           "measuredByName",
           "source"
+        ]
+      },
+      "PaginationMetaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Tổng số phần tử"
+          },
+          "page": {
+            "type": "number",
+            "description": "Trang hiện tại"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Số phần tử mỗi trang"
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "Tổng số trang"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "HorseMeasurementPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseMeasurementResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
         ]
       },
       "HorseMeasurementValueDto": {
@@ -6633,7 +6765,7 @@
           },
           "isAbnormal": {
             "type": "boolean",
-            "description": "Ngoài khoảng bình thường: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C"
+            "description": "Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
           },
           "id": {
             "type": "string",
@@ -6712,6 +6844,158 @@
         "required": [
           "barnId",
           "reason"
+        ]
+      },
+      "PlaceHorseDto": {
+        "type": "object",
+        "properties": {
+          "stallId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ô chuồng đích, phải thuộc khu của ngựa và đang trống"
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Groom phụ trách, phải là tài khoản GROOM đang hoạt động"
+          }
+        },
+        "required": [
+          "stallId",
+          "groomId"
+        ]
+      },
+      "AssignedHorseSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "StallAssignmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stallId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horse": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignedHorseSummaryDto"
+              }
+            ]
+          },
+          "startAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "stallId",
+          "horseId",
+          "startAt"
+        ]
+      },
+      "AssignedGroomSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email"
+        ]
+      },
+      "GroomAssignmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groom": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignedGroomSummaryDto"
+              }
+            ]
+          },
+          "startAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "groomId",
+          "startAt"
+        ]
+      },
+      "HorsePlacementResponseDto": {
+        "type": "object",
+        "properties": {
+          "stallAssignment": {
+            "$ref": "#/components/schemas/StallAssignmentResponseDto"
+          },
+          "groomAssignment": {
+            "$ref": "#/components/schemas/GroomAssignmentResponseDto"
+          }
+        },
+        "required": [
+          "stallAssignment",
+          "groomAssignment"
         ]
       },
       "HorseBarnSummaryDto": {
@@ -6884,6 +7168,11 @@
           "location": {
             "$ref": "#/components/schemas/HorseLocationDto"
           },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Link tải ảnh đại diện có hạn dùng, chỉ để hiển thị; null nếu ngựa chưa có ảnh"
+          },
           "canRegisterRace": {
             "type": "boolean",
             "description": "Tính lúc đọc: true khi hồ sơ chưa xóa, ngựa ACTIVE, sức khỏe ELIGIBLE và không có lệnh khóa huấn luyện"
@@ -6902,33 +7191,6 @@
           "location",
           "canRegisterRace",
           "isDeleted"
-        ]
-      },
-      "PaginationMetaDto": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "number",
-            "description": "Tổng số phần tử"
-          },
-          "page": {
-            "type": "number",
-            "description": "Trang hiện tại"
-          },
-          "limit": {
-            "type": "number",
-            "description": "Số phần tử mỗi trang"
-          },
-          "totalPages": {
-            "type": "number",
-            "description": "Tổng số trang"
-          }
-        },
-        "required": [
-          "total",
-          "page",
-          "limit",
-          "totalPages"
         ]
       },
       "HorseListPageDto": {
@@ -7059,7 +7321,7 @@
           },
           "isAbnormal": {
             "type": "boolean",
-            "description": "Ngoài khoảng bình thường: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C"
+            "description": "Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
           }
         },
         "required": [
@@ -7113,7 +7375,7 @@
           },
           "reasons": {
             "type": "array",
-            "description": "Mọi lý do (bằng racingReasons), giữ cho FE cũ",
+            "description": "Mọi lý do, bằng racingReasons",
             "items": {
               "type": "string",
               "enum": [
@@ -7628,7 +7890,7 @@
           },
           "reasons": {
             "type": "array",
-            "description": "Mọi lý do (bằng racingReasons), giữ cho FE cũ",
+            "description": "Mọi lý do, bằng racingReasons",
             "items": {
               "type": "string",
               "enum": [
@@ -8919,67 +9181,6 @@
           "ration"
         ]
       },
-      "AssignedGroomSummaryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "fullName",
-          "email"
-        ]
-      },
-      "GroomAssignmentResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "horseId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "groomId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "groom": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AssignedGroomSummaryDto"
-              }
-            ]
-          },
-          "startAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "endAt": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "horseId",
-          "groomId",
-          "startAt"
-        ]
-      },
       "GroomWorkloadResponseDto": {
         "type": "object",
         "properties": {
@@ -9188,63 +9389,6 @@
             "description": "Chỉ đổi giữa AVAILABLE và MAINTENANCE, và chỉ khi ô không có ngựa. OCCUPIED do xếp hoặc gỡ ngựa quyết"
           }
         }
-      },
-      "AssignedHorseSummaryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ]
-      },
-      "StallAssignmentResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "stallId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "horseId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "horse": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AssignedHorseSummaryDto"
-              }
-            ]
-          },
-          "startAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "endAt": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "stallId",
-          "horseId",
-          "startAt"
-        ]
       },
       "MoveHorseStallDto": {
         "type": "object",
@@ -9458,6 +9602,32 @@
           "recordedAt"
         ]
       },
+      "HorseTrainingEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "description": "Điểm đánh giá"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "evaluatorName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên người đánh giá"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "score",
+          "createdAt"
+        ]
+      },
       "HorseTrainingSessionResponseDto": {
         "type": "object",
         "properties": {
@@ -9548,7 +9718,7 @@
           "cancelReason": {
             "type": "string",
             "nullable": true,
-            "description": "Lý do lượt tập của ngựa bị hủy (vd rời lớp, giải nghệ)"
+            "description": "Lý do lượt tập của ngựa bị hủy"
           },
           "completedAt": {
             "type": "string",
@@ -9561,6 +9731,16 @@
             "items": {
               "$ref": "#/components/schemas/HorseTrainingTrialResultDto"
             }
+          },
+          "evaluation": {
+            "nullable": true,
+            "description": "Đánh giá sau buổi tập, null nếu chưa có",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseTrainingEvaluationDto"
+              }
+            ]
           }
         },
         "required": [
