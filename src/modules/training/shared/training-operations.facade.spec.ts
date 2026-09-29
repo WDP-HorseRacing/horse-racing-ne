@@ -300,3 +300,22 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
     expect(save).not.toHaveBeenCalled();
   });
 });
+
+describe('TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock', () => {
+  it('uses the same >= cut-off as leaving a class, so a session starting at the lock time is cancelled', async () => {
+    const facade = new TrainingOperationsFacade();
+    const { manager, participantQb } = buildManager([], []);
+
+    await facade.cancelFutureParticipationsByTrainingLock(
+      manager,
+      'h1',
+      'Khóa huấn luyện',
+      AT,
+    );
+
+    expect(participantQb.andWhere).toHaveBeenCalledWith(
+      'session.scheduled_start_at >= :now',
+      { now: AT },
+    );
+  });
+});

@@ -283,7 +283,7 @@ export class TrainingOperationsFacade {
       .andWhere('participant.status IN (:...statuses)', {
         statuses: OPEN_PARTICIPANT_STATUSES,
       })
-      .andWhere('session.scheduled_start_at > :now', { now })
+      .andWhere('session.scheduled_start_at >= :now', { now })
       .getMany();
 
     for (const row of rows) {
