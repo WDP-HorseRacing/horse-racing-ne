@@ -229,7 +229,7 @@ Query:
 
 `HEALTH_PRIORITY` + `ASC` đưa `INJURED`/`QUARANTINED` lên đầu, rồi `UNDER_OBSERVATION`, rồi các ngựa còn lại; cùng nhóm thì luôn sắp theo tên A→Z. Các query boolean chỉ nhận `true`/`false`, giá trị khác trả `400`.
 
-Mỗi phần tử gồm hồ sơ (`HorseResponseDto`), `location { barn { id, name } | null, stall { id, code } | null, placementStatus }`, `canRegisterRace` và `isDeleted`. Với OWNER, `barn` và `stall` không có key `id`, chỉ có tên khu và mã ô.
+Mỗi phần tử gồm hồ sơ (`HorseResponseDto`, có `mediaId`), `photoUrl` (link tải ảnh ký sẵn có hạn, `null` nếu chưa có ảnh; ký một lần cho cả trang, chỉ để hiển thị, không lưu lâu dài), `location { barn { id, name } | null, stall { id, code } | null, placementStatus }`, `canRegisterRace` và `isDeleted`. Với OWNER, `barn` và `stall` không có key `id`, chỉ có tên khu và mã ô.
 
 Lỗi đáng chú ý: `403 Không có quyền xem hồ sơ đã xóa` khi role khác CM dùng `includeDeleted=true`.
 
@@ -540,7 +540,7 @@ Rule:
   - Khu chưa có HT: `409 Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được`.
   - Hết chỗ: `409 Khu chuồng đã hết ô trống, vui lòng chọn khu khác`, hoặc khi có ngựa đang chờ: `409 Khu chuồng đã hết chỗ: <n> ô trống nhưng đã có <m> ngựa chờ xếp ô, vui lòng chọn khu khác`.
 - Đổi khu: đóng dòng xếp ô đang mở và trả ô cũ về trống (`releaseStallByHorse`), cập nhật `barnId`; ngựa vào "Chờ xếp ô" của khu mới. Groom giữ nguyên.
-- Khu mới do Head Trainer khác phụ trách: rút ngựa khỏi các lớp của Head Trainer khu cũ (`withdrawHorseFromClasses` lọc theo HT, cùng luật như đổi vòng đời ở mục 4, lý do `Đổi khu: <reason>`). Cùng Head Trainer, hoặc ngựa chưa có khu, thì giữ lớp (`headTrainerToLeaveOnBarnChange`, quyết định 2026-09-29).
+- Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách (`withdrawHorseFromClasses` với `exceptHeadTrainerId`, cùng luật như đổi vòng đời ở mục 4, lý do `Đổi khu: <reason>`). Lớp của Head Trainer khu mới giữ nguyên; lớp của Head Trainer cũ đã bàn giao khu cũng bị rút.
 - Ghi audit `UPDATE` entity `HORSE` (feature `F1.6`) với `before { barnId, stallCode }`, `after { barnId, stallCode: null }` (thêm `classesWithdrawn` khi có rút lớp) và `reason`.
 - Sau commit: báo Head Trainer khu mới (mục 14).
 
@@ -557,15 +557,21 @@ Các loại chỉ số (`HORSE_MEASUREMENT_SPECS`):
 | `BODY_CONDITION` | `score`   | 1–9           | 4–6                |
 | `TEMPERATURE`    | `celsius` | 30–45         | 37.2–38.3          |
 
-Giá trị ngoài khoảng hợp lệ bị từ chối. Giá trị ngoài khoảng bình thường vẫn lưu được nhưng phải xác nhận (`confirmAbnormal`), và luôn được đánh dấu `isAbnormal = true` khi đọc. Bản ghi đo không có API sửa; ghi sai thì VET xóa rồi đo lại.
+Giá trị ngoài khoảng hợp lệ bị từ chối. Giá trị ngoài khoảng bình thường vẫn lưu được nhưng phải xác nhận (`confirmAbnormal`). Cờ `isAbnormal` được lưu vào cột `is_abnormal` lúc ghi theo khoảng bình thường tại thời điểm đó, đổi khoảng về sau không làm đổi bản ghi cũ; nhật ký ghi thêm `isAbnormal`, `abnormalConfirmed`. Bản ghi đo không có API sửa; ghi sai thì VET xóa rồi đo lại.
 
-### `GET /horses/:horseId/measurements?type=WEIGHT`
+### `GET /horses/:horseId/measurements?type=WEIGHT&from=...&to=...&page=1&limit=20`
 
-Liệt kê chỉ số chưa xóa, `measuredAt` mới nhất trước, tối đa 200 dòng, không phân trang. `type` không bắt buộc.
+Liệt kê chỉ số chưa xóa, `measuredAt` mới nhất trước, có phân trang. Trả `{ items, meta }` giống danh sách ngựa.
+
+| Tham số        | Ý nghĩa                                                          |
+| -------------- | ---------------------------------------------------------------- |
+| `type`         | Lọc theo loại chỉ số, không bắt buộc                             |
+| `from`, `to`   | Khoảng thời điểm đo (ISO date-time, tính cả hai đầu), không bắt buộc; `from` sau `to` trả `400` |
+| `page`, `limit`| Mặc định `1` và `20`, `limit` tối đa `500` (vẽ biểu đồ dùng `from`/`to` và `limit` lớn) |
 
 Quyền: mọi role, theo phạm vi ở mục 2 (CM xem được cả ngựa đã xóa).
 
-Mỗi dòng: `id`, `horseId`, `type`, `value` (chuỗi 2 chữ số thập phân), `unit`, `measuredAt`, `isAbnormal`, `measuredBy`, `measuredByName`, `source`.
+Mỗi dòng trong `items`: `id`, `horseId`, `type`, `value` (chuỗi 2 chữ số thập phân), `unit`, `measuredAt`, `isAbnormal` (giá trị đã lưu lúc ghi), `measuredBy`, `measuredByName`, `source`.
 
 ### `POST /horses/:horseId/measurements`
 
@@ -760,6 +766,29 @@ Rule:
 - Hai request đồng thời vi phạm unique index: `409 Ngựa vừa được giao groom khác, vui lòng tải lại`.
 
 Kết quả: `200` cùng dòng phân công đang mở.
+
+### `PUT /horses/:id/placement`
+
+Xếp ô và giao Groom trong một lần gửi (luồng chính F1.7).
+
+Quyền: `HEAD_TRAINER` phụ trách khu của ngựa.
+
+Body:
+
+```json
+{
+  "stallId": "00000000-0000-0000-0000-000000000011",
+  "groomId": "00000000-0000-0000-0000-000000000020"
+}
+```
+
+Rule:
+
+- Chạy xếp ô (luật như `PUT /horses/:id/stall`) rồi giao Groom (luật như `PUT /horses/:id/groom`) trong **cùng một transaction**; phần nào lỗi thì không lưu gì.
+- Hai API lẻ vẫn giữ cho các luồng chỉ đổi một thứ (A1 chuyển ô, A2 đổi Groom, cách ly, sau đổi khu, kích hoạt lại).
+- Sau commit: phát event `stable.groom-assignment.changed` như API giao Groom.
+
+Kết quả: `200` cùng `{ stallAssignment, groomAssignment }`.
 
 Không có API gỡ Groom mà không giao ai (bỏ ngày 2026-09-23 theo F1.7: chỉ giao và đổi Groom, ngựa luôn có Groom phụ trách). Groom chỉ tự kết thúc khi ngựa chuyển nhượng.
 
