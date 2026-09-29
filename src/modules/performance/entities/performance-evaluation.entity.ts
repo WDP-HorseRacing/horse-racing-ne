@@ -18,7 +18,10 @@ export class PerformanceEvaluationEntity extends MutableRecordEntity {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'session_participant_id' })
+  @JoinColumn({
+    name: 'session_participant_id',
+    foreignKeyConstraintName: 'FK_performance_evaluations_participant',
+  })
   sessionParticipant!: SessionParticipantEntity;
 
   @Column({ name: 'evaluator_id', type: 'uuid' })

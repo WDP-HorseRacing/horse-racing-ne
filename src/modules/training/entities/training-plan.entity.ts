@@ -20,7 +20,10 @@ export class TrainingPlanEntity extends MutableRecordEntity {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'class_id' })
+  @JoinColumn({
+    name: 'class_id',
+    foreignKeyConstraintName: 'FK_training_plans_class',
+  })
   trainingClass!: TrainingClassEntity;
 
   @Column({ type: 'varchar', length: 160 })

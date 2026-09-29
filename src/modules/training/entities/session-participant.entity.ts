@@ -20,14 +20,20 @@ export class SessionParticipantEntity extends MutableRecordEntity {
   sessionId!: string;
 
   @ManyToOne(() => TrainingSessionEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'session_id' })
+  @JoinColumn({
+    name: 'session_id',
+    foreignKeyConstraintName: 'FK_session_participants_session',
+  })
   session!: TrainingSessionEntity;
 
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
 
   @ManyToOne(() => HorseEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'horse_id' })
+  @JoinColumn({
+    name: 'horse_id',
+    foreignKeyConstraintName: 'FK_session_participants_horse',
+  })
   horse!: HorseEntity;
 
   @Column({ name: 'horse_enrollment_id', type: 'uuid' })
@@ -37,14 +43,20 @@ export class SessionParticipantEntity extends MutableRecordEntity {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'horse_enrollment_id' })
+  @JoinColumn({
+    name: 'horse_enrollment_id',
+    foreignKeyConstraintName: 'FK_session_participants_enrollment',
+  })
   horseEnrollment!: HorseEnrollmentEntity;
 
   @Column({ name: 'assigned_groom_id', type: 'uuid', nullable: true })
   assignedGroomId!: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'assigned_groom_id' })
+  @JoinColumn({
+    name: 'assigned_groom_id',
+    foreignKeyConstraintName: 'FK_session_participants_groom',
+  })
   assignedGroom!: UserEntity | null;
 
   @Column({

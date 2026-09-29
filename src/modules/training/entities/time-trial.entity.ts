@@ -16,7 +16,10 @@ export class TimeTrialEntity extends MutableRecordEntity {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'session_id' })
+  @JoinColumn({
+    name: 'session_id',
+    foreignKeyConstraintName: 'FK_time_trials_session',
+  })
   session!: TrainingSessionEntity;
 
   @Column({ name: 'distance_m', type: 'numeric', precision: 10, scale: 2 })

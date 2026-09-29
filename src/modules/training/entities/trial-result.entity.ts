@@ -16,7 +16,10 @@ export class TrialResultEntity extends MutableRecordEntity {
   timeTrialId!: string;
 
   @ManyToOne(() => TimeTrialEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'time_trial_id' })
+  @JoinColumn({
+    name: 'time_trial_id',
+    foreignKeyConstraintName: 'FK_trial_results_time_trial',
+  })
   timeTrial!: TimeTrialEntity;
 
   @Column({ name: 'session_participant_id', type: 'uuid' })
@@ -26,7 +29,10 @@ export class TrialResultEntity extends MutableRecordEntity {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'session_participant_id' })
+  @JoinColumn({
+    name: 'session_participant_id',
+    foreignKeyConstraintName: 'FK_trial_results_participant',
+  })
   sessionParticipant!: SessionParticipantEntity;
 
   @Column({ name: 'attempt_no', type: 'integer' })
@@ -42,14 +48,20 @@ export class TrialResultEntity extends MutableRecordEntity {
   videoMediaId!: string | null;
 
   @ManyToOne(() => MediaAssetEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'video_media_id' })
+  @JoinColumn({
+    name: 'video_media_id',
+    foreignKeyConstraintName: 'FK_trial_results_video',
+  })
   videoMedia!: MediaAssetEntity | null;
 
   @Column({ name: 'recorded_by', type: 'uuid' })
   recordedBy!: string;
 
   @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'recorded_by' })
+  @JoinColumn({
+    name: 'recorded_by',
+    foreignKeyConstraintName: 'FK_trial_results_recorder',
+  })
   recorder!: UserEntity;
 
   @Column({ name: 'recorded_at', type: 'timestamptz' })

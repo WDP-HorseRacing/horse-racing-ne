@@ -30,7 +30,10 @@ export class TrainingClassEntity extends MutableRecordEntity {
   headTrainerId!: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'head_trainer_id' })
+  @JoinColumn({
+    name: 'head_trainer_id',
+    foreignKeyConstraintName: 'FK_training_classes_head_trainer',
+  })
   headTrainer!: UserEntity | null;
 
   @Column({ name: 'start_date', type: 'date' })

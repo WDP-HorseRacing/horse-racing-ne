@@ -19,7 +19,10 @@ export class PerformanceMetricEntity extends BaseRecordEntity {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'session_participant_id' })
+  @JoinColumn({
+    name: 'session_participant_id',
+    foreignKeyConstraintName: 'FK_performance_metrics_participant',
+  })
   sessionParticipant!: SessionParticipantEntity;
 
   @Column({ name: 'recorded_at', type: 'timestamptz' })
