@@ -139,7 +139,7 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
    - **Đang hoạt động (ACTIVE):** dùng đầy đủ mọi chức năng.
    - **Đã giải nghệ (RETIRED):** vẫn ở lại câu lạc bộ, vẫn được chăm sóc và chữa bệnh, không học lớp và không đăng ký đua.
    - **Đã chuyển nhượng (TRANSFERRED):** đã rời khỏi câu lạc bộ. Hồ sơ chuyển sang chỉ đọc.
-2. Chuyển trạng thái đi và về đều được: ACTIVE ⇄ RETIRED và ACTIVE ⇄ TRANSFERRED. Trường hợp câu lạc bộ mua lại con ngựa đã bán thì kích hoạt lại hồ sơ cũ, không tạo hồ sơ mới (xem F1.8).
+2. Chuyển trạng thái đi và về đều được: ACTIVE ⇄ RETIRED, ACTIVE ⇄ TRANSFERRED, và RETIRED → TRANSFERRED (bán ngựa đã giải nghệ, xem F1.8 mục 2; bổ sung 2026-09-29 cho khớp F1.8). Trường hợp câu lạc bộ mua lại con ngựa đã bán thì kích hoạt lại hồ sơ cũ, không tạo hồ sơ mới (xem F1.8).
 
 ### 4. Quy tắc "được tập" và "được đua"
 
@@ -647,6 +647,28 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 - ~~Đánh giá buổi tập bị bỏ~~ Sai, đính chính 2026-09-29: chức năng vẫn có ở nhánh Flow 2, chỉ bị merge làm rơi; đã gộp lại, tab hiệu suất đọc lại được đánh giá mới nhất.
 - **Lỗi schema của Flow 2** (đã hỏi Flow 2): trên DB migrate mới, lưu giáo án, buổi tập, time trial, chỉ số hiệu suất đều lỗi vì các cột cũ còn `NOT NULL` mà entity mới không ghi (ví dụ `training_plans.legacy_horse_id`).
 
+### 1c. Rà đặc tả Flow 1 với code (2026-09-29)
+
+Đối chiếu khoảng 205 luật của F1.1–F1.8 và mục III với code; khoảng 189 luật đã đúng. Đã sửa:
+
+- Đổi sức khỏe ghi nhật ký (III.6.1).
+- Kiểm quyền trước, kiểm trạng thái sau (III.6.3): sửa hồ sơ, ghi chỉ số, giao Groom. Người ngoài phạm vi nhận 403 trước 409.
+- Khu không hoạt động và Groom không còn hoạt động trả 409 thay vì 400 (III.6.3); Groom sai id hoặc sai vai trò vẫn 400.
+- Tách lý do "không được tập" / "không được đua" thành `trainingReasons` / `racingReasons` (III.4, F1.3 mục 2).
+- Lượt tập mới tạo không còn mang lý do chỉ chặn đua (ngựa `UNDER_OBSERVATION` được tập thì lý do để trống).
+- Tab Huấn luyện: lịch `upcoming` bỏ lượt đã hủy (F1.6 mục 4, F1.8 mục 1).
+- III.3.2 thêm hướng RETIRED → TRANSFERRED.
+
+Còn lại, chưa làm:
+
+- **Tổng chi phí y tế** ở tab Bệnh án (F1.3): chưa có dữ liệu chi phí, thuộc Flow 3.
+- **Tab 1 hồ sơ (F1.3 mục 1)**: hồ sơ, phả hệ, lịch sử chỉ số, quyền và ảnh là 5 API riêng (`GET /horses/:id`, `/pedigree`, `/measurements`, `/permissions`, `/photo-url`); FE gọi song song khi mở hồ sơ.
+- **Chỉ số cơ thể (F1.5)**: cờ "bất thường" tính lại mỗi lần đọc, không lưu; đổi khoảng bình thường thì bản ghi cũ đổi theo, và việc người ghi đã xác nhận `confirmAbnormal` không lưu. Lịch sử cắt ở 200 bản mới nhất, chưa phân trang hay lọc thời gian.
+- **Danh sách ngựa (F1.1)**: chỉ trả `mediaId`, muốn hiện ảnh FE gọi `photo-url` từng dòng.
+- **Xếp ô và giao Groom (F1.7)**: hai API, hai transaction; xếp ô xong mà giao Groom lỗi thì ngựa có ô chưa có Groom.
+- **Đổi khu (F1.6 mục 4)**: rút lớp theo HT hiện tại của khu cũ; lớp của HT trước đó (đã bàn giao khu) không bị rút.
+- **Tab Huấn luyện** chưa gộp đánh giá buổi tập (mục 1b).
+
 ### 2. Cần quyết định
 
 - MinIO: README ghi Docker Compose tự tạo bucket nhưng `docker/compose.yaml` không có bước này. Chọn: (A) thêm service `minio-init` tạo bucket `racehorse`, hoặc (B) sửa README hướng dẫn tạo tay.
@@ -656,7 +678,7 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 
 - API đọc thông báo đang trả 501: `GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`. Không có thì người offline không xem lại được thông báo (thông báo vẫn lưu trong bảng `notifications`).
 - Chưa thử client socket thật nhận sự kiện `notification.created` (namespace `/events`, gửi token ở `auth.token`).
-- PATCH health-status (VET) đang nằm ở module horses; docs nói thuộc Flow 3.
+- PATCH health-status (VET) đang nằm ở module horses; docs nói thuộc Flow 3. Đã ghi nhật ký từ 2026-09-29 (III.6.1).
 
 ### 3b. Phát hiện khi review nghiệp vụ (2026-09-23), thuộc flow khác
 
@@ -668,4 +690,4 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 
 ### 4. Việc tay
 
-- Báo FE thay đổi API (xem `docs/api-catalog.md`): lọc danh sách (`includeDeleted`, `placementStatus`, `myBarns`, `myHorses`), body ghi chỉ số (`values[]`, `confirmAbnormal`), xóa chỉ số cần `reason`, API bỏ (`/horses/:id/owners`, `/horses/:id/activate`, `POST /stalls/:id/assignments`), API mới (`PUT /horses/:id/barn`, `PUT /horses/:id/stall`, `GET /grooms/workload`, `GET /horses/:id/lifecycle-status/preview`, `POST /horses/:id/restore`, `GET /horses/:id/photo-url`), tải ảnh cần `purpose=HORSE_PHOTO` và chỉ CM. Thay đổi 2026-09-23: xem ảnh ngựa qua `GET /horses/:id/photo-url` (`GET /media/:id` và `/media/:id/download-url` chỉ còn cho người tải lên); bỏ `DELETE /horses/:id/groom` (chỉ còn đổi Groom); GROOM gọi `GET /horses/:id/training-plans` nhận 403; preview đổi vòng đời có thêm `pendingBarnAfter`, `ownerCleared`; khóa tài khoản còn phụ trách ngựa/khu trả 409. Thay đổi 2026-09-29: preview đổi vòng đời đổi `trainingPlansCancelled` thành `classesWithdrawn` (số lớp bị rút), câu `summary` nói "lớp đang học" / "rút khỏi lớp"; Flow 2 đã bỏ `GET /horses/:id/training-plans`; tab Huấn luyện dùng `GET /horses/:horseId/training/classes` và `GET /horses/:horseId/training/sessions` (mục 1b).
+- Báo FE thay đổi API (xem `docs/api-catalog.md`): lọc danh sách (`includeDeleted`, `placementStatus`, `myBarns`, `myHorses`), body ghi chỉ số (`values[]`, `confirmAbnormal`), xóa chỉ số cần `reason`, API bỏ (`/horses/:id/owners`, `/horses/:id/activate`, `POST /stalls/:id/assignments`), API mới (`PUT /horses/:id/barn`, `PUT /horses/:id/stall`, `GET /grooms/workload`, `GET /horses/:id/lifecycle-status/preview`, `POST /horses/:id/restore`, `GET /horses/:id/photo-url`), tải ảnh cần `purpose=HORSE_PHOTO` và chỉ CM. Thay đổi 2026-09-23: xem ảnh ngựa qua `GET /horses/:id/photo-url` (`GET /media/:id` và `/media/:id/download-url` chỉ còn cho người tải lên); bỏ `DELETE /horses/:id/groom` (chỉ còn đổi Groom); GROOM gọi `GET /horses/:id/training-plans` nhận 403; preview đổi vòng đời có thêm `pendingBarnAfter`, `ownerCleared`; khóa tài khoản còn phụ trách ngựa/khu trả 409. Thay đổi 2026-09-29 (lần 2): khu không hoạt động và Groom không còn hoạt động trả 409 (trước 400), lỗi Groom tách hai câu `Groom phụ trách không hợp lệ` (400) / `Groom phụ trách không ở trạng thái hoạt động` (409); HT ngoài khu / Groom không được giao gặp ngựa đã chuyển nhượng nhận 403 (trước 409); eligibility có thêm `trainingReasons`, `racingReasons`; `/training/sessions?when=upcoming` không còn lượt đã hủy; có thêm `POST/GET /session-participants/:id/evaluation`. Thay đổi 2026-09-29: preview đổi vòng đời đổi `trainingPlansCancelled` thành `classesWithdrawn` (số lớp bị rút), câu `summary` nói "lớp đang học" / "rút khỏi lớp"; Flow 2 đã bỏ `GET /horses/:id/training-plans`; tab Huấn luyện dùng `GET /horses/:horseId/training/classes` và `GET /horses/:horseId/training/sessions` (mục 1b).
