@@ -41,7 +41,8 @@ export class HorsePlacementsService {
    * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom vì Groom gắn với con ngựa
    * - Chọn đúng khu đang ở thì không đổi gì
    * - Bắt buộc lý do; ghi nhật ký; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT để module notifications báo Head Trainer khu mới
-   * - Đổi sang khu của Head Trainer khác: rút ngựa khỏi các lớp của Head Trainer khu cũ (training; buổi chưa diễn ra bị hủy, buổi đã học giữ nguyên), nhật ký ghi thêm số lớp bị rút (classesWithdrawn). Cùng Head Trainer thì giữ lớp
+   * - Khu mới do Head Trainer khác phụ trách: rút ngựa khỏi các lớp của Head Trainer khu cũ, nhật ký ghi thêm classesWithdrawn
+   * - Khu mới cùng Head Trainer: giữ lớp
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa

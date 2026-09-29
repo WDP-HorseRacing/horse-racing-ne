@@ -14,7 +14,7 @@ import {
 import { HorseTrainingRepository } from './horse-training.repository';
 
 /**
- * Dữ liệu tab Huấn luyện trong hồ sơ ngựa (F1.3): lớp của ngựa và lịch buổi tập kèm kết quả. Chỉ đọc.
+ * Đọc lớp và lịch buổi tập kèm kết quả của một con ngựa. Chỉ đọc.
  */
 @Injectable()
 export class HorseTrainingService {
@@ -26,7 +26,7 @@ export class HorseTrainingService {
   /**
    * Liệt kê các lớp của con ngựa, lớp đang học trước rồi tới lớp đã rời
    *
-   * - Vai trò được xem kiểm ở controller (GROOM nhận 403, F1.3)
+   * - Vai trò được xem kiểm ở controller
    * - Phạm vi xem theo HorseAccessService.findReadable: Club Manager xem cả hồ sơ đã xóa, Horse Owner chỉ ngựa mình sở hữu, Head Trainer xem toàn câu lạc bộ
    *
    * @param actor Thông tin danh tính từ Access Token

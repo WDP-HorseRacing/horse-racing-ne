@@ -60,7 +60,7 @@ export class HorseStatusesService {
    * Đổi vòng đời ngựa và xử lý toàn bộ hệ quả trong cùng một transaction (F1.8).
    *
    * - Khóa row ngựa trước rồi mới kiểm tra, tránh hai request đổi cùng lúc
-   * - Giải nghệ: rút khỏi lớp đang học (training; buổi chưa diễn ra bị hủy, buổi đã học giữ nguyên), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
+   * - Giải nghệ: rút khỏi lớp đang học (training), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
    * - Chuyển nhượng: sau khi commit phát HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT để báo Groom vừa bị kết thúc phân công (BA chốt 2026-09-23); làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); bỏ khu; giữ chủ sở hữu
    * - Kích hoạt lại: sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại; từ chuyển nhượng thì ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ (khóa chia sẻ row tài khoản chủ khi kiểm)
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
@@ -240,14 +240,16 @@ export class HorseStatusesService {
 
   /**
    * Change a horse's health status
+   *
+   * - Gửi đúng trạng thái hiện tại thì không ghi gì
+   * - Có đổi thì ghi nhật ký trạng thái trước và sau
+   *
    * @param actor The actor resolved from the JWT
    * @param id The ID of the horse
    * @param body The new health status
    * @returns A promise resolving to the updated horse
    * @throws NotFoundException if the horse is not found
    * @throws ConflictException if the horse is transferred or marked ELIGIBLE while under an active training lock
-   *
-   * Ghi nhật ký trạng thái sức khỏe trước và sau (III.6.1), feature F3 vì đổi sức khỏe thuộc Flow 3; gửi đúng trạng thái hiện tại thì không ghi gì
    */
   async updateHealth(
     actor: Actor,

@@ -12,7 +12,7 @@ export class HorseStatusesRepository {
   /**
    * Đếm những gì sẽ bị ảnh hưởng khi đổi vòng đời, để hiện bảng xác nhận trước khi thực hiện (F1.8 mục 5). Chỉ đọc.
    *
-   * - Số lớp ngựa đang học (enrollment ACTIVE, bảng horse_enrollments của training, chỉ đọc) và đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra
+   * - Số lớp ngựa đang học (enrollment ACTIVE) và đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra
    * - Ô chuồng, groom và khu hiện tại
    * - Lệnh khóa huấn luyện đang ACTIVE không đếm ở đây, nơi gọi lấy qua HorsesSharedRepository.hasActiveTrainingLock
    *

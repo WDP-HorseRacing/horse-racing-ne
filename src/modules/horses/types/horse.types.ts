@@ -170,7 +170,7 @@ export interface EligibilityResult {
   trainingReasons: EligibilityReason[];
   /** Lý do không được đua, rỗng khi được đua */
   racingReasons: EligibilityReason[];
-  /** Mọi lý do (bằng racingReasons), giữ cho FE cũ */
+  /** Mọi lý do, bằng racingReasons */
   reasons: EligibilityReason[];
 }
 
@@ -234,7 +234,7 @@ export interface HorseDetailParts {
 /**
  * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa (F1.8). Mỗi cờ đúng một việc.
  *
- * - withdrawFromClasses: rút ngựa khỏi mọi lớp đang học (training); buổi chưa diễn ra bị hủy, buổi đã học giữ nguyên.
+ * - withdrawFromClasses: rút ngựa khỏi mọi lớp đang học (training).
  * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra.
  * - releaseStall: trả ô chuồng đang giữ về trống.
  * - endGroom: kết thúc phân công groom đang mở.

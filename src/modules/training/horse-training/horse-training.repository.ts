@@ -22,7 +22,7 @@ const SESSION_FROM = `
   JOIN training_classes c ON c.id = p.class_id`;
 
 /**
- * Các câu đọc gom nhiều bảng của training cho tab Huấn luyện trong hồ sơ ngựa (F1.3). Chỉ đọc.
+ * Các câu đọc lớp và lịch buổi tập theo con ngựa. Chỉ đọc.
  */
 @Injectable()
 export class HorseTrainingRepository {
@@ -57,7 +57,7 @@ export class HorseTrainingRepository {
   /**
    * Đọc một trang lượt tập của ngựa kèm tổng số lượt khớp bộ lọc
    *
-   * - upcoming: buổi bắt đầu từ `now` trở đi, gần nhất trước; bỏ lượt đã hủy (CANCELLED, CANCELLED_BY_LOCK) vì buổi chưa diễn ra phải biến mất khỏi lịch khi ngựa bị rút (F1.6 mục 4, F1.8 mục 1)
+   * - upcoming: buổi bắt đầu từ `now` trở đi, gần nhất trước, bỏ lượt CANCELLED và CANCELLED_BY_LOCK
    * - history: buổi bắt đầu trước `now`, mới nhất trước
    * - Bỏ trống `when`: mọi buổi, mới nhất trước
    *

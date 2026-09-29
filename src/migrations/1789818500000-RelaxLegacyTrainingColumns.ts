@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Các cột cũ còn NOT NULL sau khi chuyển sang mô hình lớp học (TrainingClassParticipantRefactor).
- * Entity mới không ghi các cột này, nên mọi lần tạo giáo án, buổi tập, time trial, chỉ số hiệu suất và đánh giá đều lỗi.
- * Giữ nguyên cột và dữ liệu cũ để còn đối chiếu, chỉ bỏ NOT NULL.
+ * Các cột cũ mà entity không còn ghi; migration bỏ NOT NULL, giữ nguyên cột và dữ liệu.
  */
 const LEGACY_COLUMNS: Array<[table: string, column: string]> = [
   ['training_plans', 'legacy_horse_id'],
@@ -36,7 +34,7 @@ export class RelaxLegacyTrainingColumns1789818500000 implements MigrationInterfa
   /**
    * Đặt lại NOT NULL như trước
    *
-   * - Chỉ chạy được khi chưa có dòng mới nào để trống các cột này (dòng tạo sau migration này sẽ làm down lỗi)
+   * - Lỗi nếu đã có dòng để trống các cột này
    *
    * @param queryRunner QueryRunner của TypeORM
    * @returns A promise resolving khi đã đổi xong mọi cột

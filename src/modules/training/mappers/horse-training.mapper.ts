@@ -10,7 +10,7 @@ import type {
 } from '../types/horse-training.types';
 
 /**
- * Chuyển một lần vào lớp sang dữ liệu trả về cho tab Huấn luyện (F1.3)
+ * Chuyển một lần vào lớp sang dữ liệu trả về
  *
  * @param row Dòng đọc từ HorseTrainingRepository.listClasses
  * @returns Lớp của ngựa kèm trạng thái đang học hay đã rời
@@ -32,7 +32,7 @@ export function toHorseTrainingClassResponse(
 }
 
 /**
- * Chuyển một lượt tập sang dữ liệu trả về cho tab Huấn luyện (F1.3), gắn kèm kết quả time trial của lượt đó
+ * Chuyển một lượt tập sang dữ liệu trả về, gắn kèm kết quả time trial của lượt đó
  *
  * - Chỉ lấy các lần chạy thuộc đúng lượt tập này; không có thì trả mảng rỗng
  *

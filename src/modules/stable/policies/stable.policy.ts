@@ -149,7 +149,7 @@ export function assertHorseNotTransferred(
  *
  * @param barn Khu chuồng cần kiểm
  * @param label Cách gọi khu trong câu báo lỗi (vd "Khu chuồng", "Khu chuồng đích")
- * @throws ConflictException Nếu khu không ở trạng thái ACTIVE (trạng thái dữ liệu không cho phép, III.6.3)
+ * @throws ConflictException Nếu khu không ở trạng thái ACTIVE
  */
 export function assertBarnActive(
   barn: Pick<BarnEntity, 'status'>,
@@ -243,8 +243,8 @@ export function assertFreeStallRemovable(capacity: BarnStallCapacity): void {
  * Chặn giao việc cho user không phải Groom đang hoạt động
  *
  * @param user User được chọn làm groom (đã lock), null nếu không có hoặc đã xóa
- * @throws BadRequestException Nếu user không có hoặc không phải GROOM (dữ liệu gửi lên sai)
- * @throws ConflictException Nếu là Groom nhưng không còn ACTIVE (trạng thái dữ liệu không cho phép, III.6.3)
+ * @throws BadRequestException Nếu user không có hoặc không phải GROOM
+ * @throws ConflictException Nếu là Groom nhưng không còn ACTIVE
  */
 export function assertAssignableGroom<
   T extends Pick<UserEntity, 'role' | 'status'>,

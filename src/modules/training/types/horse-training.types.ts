@@ -6,7 +6,7 @@ import type { TrainingSessionStatus } from '../enums/training-session-status.enu
 import type { TrainingSessionType } from '../enums/training-session-type.enum';
 
 /**
- * Một lần ngựa vào lớp, kèm thông tin lớp, đọc cho tab Huấn luyện (F1.3).
+ * Một lần ngựa vào lớp, kèm thông tin lớp.
  */
 export interface HorseTrainingClassRow {
   enrollmentId: string;
@@ -21,7 +21,7 @@ export interface HorseTrainingClassRow {
 }
 
 /**
- * Một lượt ngựa dự buổi tập, kèm thông tin buổi, giáo án và lớp, đọc cho tab Huấn luyện (F1.3).
+ * Một lượt ngựa dự buổi tập, kèm thông tin buổi, giáo án và lớp.
  */
 export interface HorseTrainingSessionRow {
   participantId: string;

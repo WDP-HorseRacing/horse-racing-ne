@@ -161,7 +161,7 @@ export class HorseEligibilityDto {
   @ApiProperty({
     enum: EligibilityReason,
     isArray: true,
-    description: 'Mọi lý do (bằng racingReasons), giữ cho FE cũ',
+    description: 'Mọi lý do, bằng racingReasons',
   })
   reasons!: EligibilityReason[];
 }

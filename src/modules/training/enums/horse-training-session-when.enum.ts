@@ -1,5 +1,5 @@
 /**
- * Khoảng thời gian khi xem lịch buổi tập của một con ngựa (tab Huấn luyện, F1.3).
+ * Khoảng thời gian khi xem lịch buổi tập của một con ngựa.
  */
 export enum HorseTrainingSessionWhen {
   UPCOMING = 'upcoming',

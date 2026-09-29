@@ -125,7 +125,7 @@ export class HorseTrainingSessionResponseDto {
   @ApiPropertyOptional({
     nullable: true,
     type: String,
-    description: 'Lý do lượt tập của ngựa bị hủy (vd rời lớp, giải nghệ)',
+    description: 'Lý do lượt tập của ngựa bị hủy',
   })
   cancelReason!: string | null;
 
