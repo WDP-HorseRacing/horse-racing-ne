@@ -645,7 +645,7 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 - **Giao Groom lần đầu**: lượt tập của ngựa chưa có Groom đang để trống người dắt; giao Groom lần đầu hiện không tự điền vào các lượt này. Cần quyết định có điền không (lưu ý HT có thể cố ý để trống một lượt).
 - **Khóa huấn luyện chưa hủy buổi tập**: `TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock` chưa có nơi gọi. Nối vào khi làm Flow 3 (medical).
 - ~~Đánh giá buổi tập bị bỏ~~ Sai, đính chính 2026-09-29: chức năng vẫn có ở nhánh Flow 2, chỉ bị merge làm rơi; đã gộp lại, tab hiệu suất đọc lại được đánh giá mới nhất.
-- **Lỗi schema của Flow 2** (đã hỏi Flow 2): trên DB migrate mới, lưu giáo án, buổi tập, time trial, chỉ số hiệu suất đều lỗi vì các cột cũ còn `NOT NULL` mà entity mới không ghi (ví dụ `training_plans.legacy_horse_id`).
+- ~~Lỗi schema của Flow 2~~ Đã sửa 2026-09-29 (migration `RelaxLegacyTrainingColumns`): bỏ `NOT NULL` cho 8 cột cũ, giữ dữ liệu; đã lưu thử giáo án, buổi tập, time trial, chỉ số, đánh giá trên DB migrate mới. Cùng đợt: buổi bị rút hết ngựa chuyển `CANCELLED` (không còn `COMPLETED`), khóa huấn luyện hủy lượt từ đúng thời điểm khóa (`>=`).
 
 ### 1c. Rà đặc tả Flow 1 với code (2026-09-29)
 
