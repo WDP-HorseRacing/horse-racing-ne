@@ -63,6 +63,24 @@ export class HorseTrainingTrialResultDto {
   recordedAt!: Date;
 }
 
+export class HorseTrainingEvaluationDto {
+  @ApiProperty({ description: 'Điểm đánh giá' })
+  score!: number;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  comment!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Tên người đánh giá',
+  })
+  evaluatorName!: string | null;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt!: Date;
+}
+
 export class HorseTrainingSessionResponseDto {
   @ApiProperty({ format: 'uuid' })
   participantId!: string;
@@ -137,6 +155,13 @@ export class HorseTrainingSessionResponseDto {
     description: 'Kết quả time trial của ngựa trong buổi, rỗng nếu không có',
   })
   trialResults!: HorseTrainingTrialResultDto[];
+
+  @ApiPropertyOptional({
+    type: HorseTrainingEvaluationDto,
+    nullable: true,
+    description: 'Đánh giá sau buổi tập, null nếu chưa có',
+  })
+  evaluation!: HorseTrainingEvaluationDto | null;
 }
 
 export class HorseTrainingSessionQueryDto {

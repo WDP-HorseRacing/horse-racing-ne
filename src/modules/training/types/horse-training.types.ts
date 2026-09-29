@@ -56,6 +56,17 @@ export interface HorseTrainingTrialRow {
 }
 
 /**
+ * Đánh giá của một lượt tập, gắn với lượt tham gia của nó.
+ */
+export interface HorseTrainingEvaluationRow {
+  participantId: string;
+  score: number;
+  comment: string | null;
+  evaluatorName: string | null;
+  createdAt: Date;
+}
+
+/**
  * Bộ lọc khi đọc lịch buổi tập của một con ngựa.
  */
 export interface HorseTrainingSessionFilter {

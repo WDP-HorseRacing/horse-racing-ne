@@ -5,6 +5,7 @@ import { HorseTrainingSessionWhen } from '../enums/horse-training-session-when.e
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import type {
   HorseTrainingClassRow,
+  HorseTrainingEvaluationRow,
   HorseTrainingSessionFilter,
   HorseTrainingSessionRow,
   HorseTrainingTrialRow,
@@ -143,6 +144,29 @@ export class HorseTrainingRepository {
          FROM trial_results tr
         WHERE tr.session_participant_id = ANY($1)
         ORDER BY tr.session_participant_id, tr.attempt_no`,
+      [participantIds],
+    );
+  }
+
+  /**
+   * Lấy đánh giá của các lượt tập
+   *
+   * @param participantIds UUID các lượt tập cần lấy đánh giá
+   * @returns A promise resolving to đánh giá kèm tên người đánh giá, rỗng nếu không truyền lượt nào
+   */
+  async listEvaluations(
+    participantIds: string[],
+  ): Promise<HorseTrainingEvaluationRow[]> {
+    if (participantIds.length === 0) return [];
+    return this.dataSource.query(
+      `SELECT pe.session_participant_id AS "participantId",
+              pe.score AS "score",
+              pe.comment AS "comment",
+              u.full_name AS "evaluatorName",
+              pe.created_at AS "createdAt"
+         FROM performance_evaluations pe
+         LEFT JOIN users u ON u.id = pe.evaluator_id
+        WHERE pe.session_participant_id = ANY($1)`,
       [participantIds],
     );
   }

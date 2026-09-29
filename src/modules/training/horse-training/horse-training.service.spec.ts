@@ -38,6 +38,7 @@ describe('HorseTrainingService', () => {
     listClasses: jest.Mock;
     listSessions: jest.Mock;
     listTrialResults: jest.Mock;
+    listEvaluations: jest.Mock;
   };
   let service: HorseTrainingService;
 
@@ -50,6 +51,7 @@ describe('HorseTrainingService', () => {
       listClasses: jest.fn().mockResolvedValue([]),
       listSessions: jest.fn().mockResolvedValue({ rows: [], total: 0 }),
       listTrialResults: jest.fn().mockResolvedValue([]),
+      listEvaluations: jest.fn().mockResolvedValue([]),
     };
     service = new HorseTrainingService(
       horseAccess as unknown as HorseAccessService,
@@ -125,5 +127,32 @@ describe('HorseTrainingService', () => {
     ]);
     expect(page.items[1].trialResults).toEqual([]);
     expect(page.meta).toEqual({ total: 25, page: 1, limit: 20, totalPages: 2 });
+  });
+
+  it('attaches each evaluation to its own session and leaves the others null', async () => {
+    repository.listSessions.mockResolvedValue({
+      rows: [sessionRow('p1'), sessionRow('p2')],
+      total: 2,
+    });
+    repository.listEvaluations.mockResolvedValue([
+      {
+        participantId: 'p2',
+        score: 8,
+        comment: 'Tốc độ ổn định',
+        evaluatorName: 'HT Nam',
+        createdAt: new Date('2026-10-01T10:00:00Z'),
+      },
+    ]);
+
+    const page = await service.listSessions(actor, 'h1', query());
+
+    expect(repository.listEvaluations).toHaveBeenCalledWith(['p1', 'p2']);
+    expect(page.items[0].evaluation).toBeNull();
+    expect(page.items[1].evaluation).toEqual({
+      score: 8,
+      comment: 'Tốc độ ổn định',
+      evaluatorName: 'HT Nam',
+      createdAt: new Date('2026-10-01T10:00:00Z'),
+    });
   });
 });

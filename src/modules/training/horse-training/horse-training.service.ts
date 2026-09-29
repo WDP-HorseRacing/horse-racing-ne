@@ -45,7 +45,7 @@ export class HorseTrainingService {
   }
 
   /**
-   * Đọc một trang lịch buổi tập của con ngựa, mỗi buổi kèm kết quả time trial
+   * Đọc một trang lịch buổi tập của con ngựa, mỗi buổi kèm kết quả time trial và đánh giá
    *
    * - Quyền và phạm vi xem như listClasses
    * - Lọc theo lớp và theo buổi sắp tới / đã diễn ra (xem HorseTrainingRepository.listSessions)
@@ -70,11 +70,15 @@ export class HorseTrainingService {
       skip: (query.page - 1) * query.limit,
       limit: query.limit,
     });
-    const trials = await this.repository.listTrialResults(
-      rows.map((row) => row.participantId),
-    );
+    const participantIds = rows.map((row) => row.participantId);
+    const [trials, evaluations] = await Promise.all([
+      this.repository.listTrialResults(participantIds),
+      this.repository.listEvaluations(participantIds),
+    ]);
     return new PaginationResponseDto(
-      rows.map((row) => toHorseTrainingSessionResponse(row, trials)),
+      rows.map((row) =>
+        toHorseTrainingSessionResponse(row, trials, evaluations),
+      ),
       total,
       query.page,
       query.limit,

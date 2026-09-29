@@ -5,6 +5,7 @@ import type {
 } from '../dto/horse-training.dto';
 import type {
   HorseTrainingClassRow,
+  HorseTrainingEvaluationRow,
   HorseTrainingSessionRow,
   HorseTrainingTrialRow,
 } from '../types/horse-training.types';
@@ -32,18 +33,23 @@ export function toHorseTrainingClassResponse(
 }
 
 /**
- * Chuyển một lượt tập sang dữ liệu trả về, gắn kèm kết quả time trial của lượt đó
+ * Chuyển một lượt tập sang dữ liệu trả về, gắn kèm kết quả time trial và đánh giá của lượt đó
  *
- * - Chỉ lấy các lần chạy thuộc đúng lượt tập này; không có thì trả mảng rỗng
+ * - Chỉ lấy các lần chạy và đánh giá thuộc đúng lượt tập này; không có thì trả mảng rỗng và null
  *
  * @param row Dòng đọc từ HorseTrainingRepository.listSessions
  * @param trials Kết quả time trial của cả trang, sẽ được lọc theo lượt tập
- * @returns Buổi tập của ngựa kèm kết quả
+ * @param evaluations Đánh giá của cả trang, sẽ được lọc theo lượt tập
+ * @returns Buổi tập của ngựa kèm kết quả và đánh giá
  */
 export function toHorseTrainingSessionResponse(
   row: HorseTrainingSessionRow,
   trials: HorseTrainingTrialRow[],
+  evaluations: HorseTrainingEvaluationRow[],
 ): HorseTrainingSessionResponseDto {
+  const evaluation = evaluations.find(
+    (item) => item.participantId === row.participantId,
+  );
   const trialResults: HorseTrainingTrialResultDto[] = trials
     .filter((trial) => trial.participantId === row.participantId)
     .map((trial) => ({
@@ -72,5 +78,13 @@ export function toHorseTrainingSessionResponse(
     cancelReason: row.cancelReason,
     completedAt: row.completedAt,
     trialResults,
+    evaluation: evaluation
+      ? {
+          score: evaluation.score,
+          comment: evaluation.comment,
+          evaluatorName: evaluation.evaluatorName,
+          createdAt: evaluation.createdAt,
+        }
+      : null,
   };
 }
