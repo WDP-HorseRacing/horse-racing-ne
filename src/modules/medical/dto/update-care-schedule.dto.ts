@@ -31,12 +31,16 @@ export class UpdateCareScheduleDto {
   @IsUUID('4')
   assignedTo?: string | null;
 
-  @ApiPropertyOptional({ maxLength: 2000 })
+  @ApiPropertyOptional({
+    maxLength: 2000,
+    nullable: true,
+    description: 'Gửi null để xóa ghi chú',
+  })
   @IsOptional()
   @Transform(trimValue)
   @IsString()
   @MaxLength(2000)
-  notes?: string;
+  notes?: string | null;
 
   @ApiPropertyOptional({ minLength: 1, maxLength: 500 })
   @IsOptional()

@@ -9194,8 +9194,10 @@
             "description": "Gửi null để bỏ người được giao"
           },
           "notes": {
-            "type": "string",
-            "maxLength": 2000
+            "type": "object",
+            "maxLength": 2000,
+            "nullable": true,
+            "description": "Gửi null để xóa ghi chú"
           },
           "reason": {
             "type": "string",
