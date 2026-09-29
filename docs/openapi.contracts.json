@@ -4427,9 +4427,9 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/sessions/{id}/time-trials": {
+    "/api/v1/training-sessions/{id}/time-trial": {
       "get": {
-        "operationId": "TimeTrialsController_list",
+        "operationId": "TimeTrialsController_getBySession",
         "parameters": [
           {
             "name": "id",
@@ -4446,10 +4446,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TimeTrialResponseDto"
-                  }
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
                 }
               }
             }
@@ -4460,7 +4457,6 @@
             "bearer": []
           }
         ],
-        "summary": "List session time trials",
         "tags": [
           "training"
         ]
@@ -4504,7 +4500,6 @@
             "bearer": []
           }
         ],
-        "summary": "Record time trial during an active session",
         "tags": [
           "training"
         ]
@@ -4540,60 +4535,14 @@
             "bearer": []
           }
         ],
-        "summary": "Get time trial result and media reference",
         "tags": [
           "training"
         ]
       }
     },
-    "/api/v1/sessions/{id}/evaluation": {
-      "post": {
-        "operationId": "EvaluationsController_create",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EvaluateSessionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionEvaluationResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Evaluate completed session",
-        "tags": [
-          "training"
-        ]
-      },
+    "/api/v1/session-participants/{id}/trial-results": {
       "get": {
-        "description": "Groom không xem điểm đánh giá.",
-        "operationId": "EvaluationsController_get",
+        "operationId": "TrialResultsController_list",
         "parameters": [
           {
             "name": "id",
@@ -4610,7 +4559,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionEvaluationResponseDto"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrialResultResponseDto"
+                  }
                 }
               }
             }
@@ -4621,19 +4573,372 @@
             "bearer": []
           }
         ],
-        "summary": "Get session evaluation",
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "operationId": "TrialResultsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrialResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialResultResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "training"
         ]
       }
     },
-    "/api/v1/horses/{horseId}/training-plans": {
+    "/api/v1/classes": {
       "get": {
-        "description": "Dữ liệu tab Huấn luyện của hồ sơ ngựa (F1.3). GROOM không xem tab này nên nhận 403.",
+        "operationId": "TrainingClassesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingClassResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "operationId": "TrainingClassesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingClassDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingClassResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}": {
+      "get": {
+        "operationId": "TrainingClassesController_get",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingClassResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      },
+      "patch": {
+        "operationId": "TrainingClassesController_update",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingClassDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingClassResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/status": {
+      "patch": {
+        "operationId": "TrainingClassesController_updateStatus",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingClassStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingClassResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/enrollments": {
+      "get": {
+        "operationId": "TrainingClassesController_listEnrollments",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseEnrollmentResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "operationId": "TrainingClassesController_createEnrollment",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHorseEnrollmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseEnrollmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/enrollments/{id}/leave": {
+      "patch": {
+        "operationId": "TrainingClassesController_leaveEnrollment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaveHorseEnrollmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseEnrollmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-classes/{classId}/plans": {
+      "get": {
         "operationId": "TrainingPlansController_list",
         "parameters": [
           {
-            "name": "horseId",
+            "name": "classId",
             "required": true,
             "in": "path",
             "schema": {
@@ -4661,7 +4966,6 @@
             "bearer": []
           }
         ],
-        "summary": "List horse training plans",
         "tags": [
           "training"
         ]
@@ -4670,7 +4974,7 @@
         "operationId": "TrainingPlansController_create",
         "parameters": [
           {
-            "name": "horseId",
+            "name": "classId",
             "required": true,
             "in": "path",
             "schema": {
@@ -4705,7 +5009,6 @@
             "bearer": []
           }
         ],
-        "summary": "Create training plan",
         "tags": [
           "training"
         ]
@@ -4741,7 +5044,6 @@
             "bearer": []
           }
         ],
-        "summary": "Get training plan",
         "tags": [
           "training"
         ]
@@ -4785,7 +5087,6 @@
             "bearer": []
           }
         ],
-        "summary": "Update a scheduled training plan",
         "tags": [
           "training"
         ]
@@ -4821,7 +5122,6 @@
             "bearer": []
           }
         ],
-        "summary": "Activate training plan",
         "tags": [
           "training"
         ]
@@ -4857,7 +5157,6 @@
             "bearer": []
           }
         ],
-        "summary": "Complete training plan",
         "tags": [
           "training"
         ]
@@ -4903,7 +5202,274 @@
             "bearer": []
           }
         ],
-        "summary": "Cancel training plan and scheduled sessions",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-sessions/{sessionId}/participants": {
+      "get": {
+        "operationId": "SessionParticipantsController_list",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/groom": {
+      "patch": {
+        "operationId": "SessionParticipantsController_assignGroom",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignParticipantGroomDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/check-in": {
+      "post": {
+        "operationId": "SessionParticipantsController_checkIn",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/absent": {
+      "post": {
+        "operationId": "SessionParticipantsController_absent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkParticipantAbsentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/ready": {
+      "post": {
+        "operationId": "SessionParticipantsController_ready",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/start": {
+      "post": {
+        "operationId": "SessionParticipantsController_start",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/complete": {
+      "post": {
+        "operationId": "SessionParticipantsController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "training"
         ]
@@ -4942,7 +5508,6 @@
             "bearer": []
           }
         ],
-        "summary": "List sessions in training plan",
         "tags": [
           "training"
         ]
@@ -4986,18 +5551,17 @@
             "bearer": []
           }
         ],
-        "summary": "Schedule training session",
         "tags": [
           "training"
         ]
       }
     },
-    "/api/v1/sessions/{id}": {
+    "/api/v1/training-sessions/{sessionId}": {
       "get": {
         "operationId": "TrainingSessionsController_get",
         "parameters": [
           {
-            "name": "id",
+            "name": "sessionId",
             "required": true,
             "in": "path",
             "schema": {
@@ -5022,7 +5586,6 @@
             "bearer": []
           }
         ],
-        "summary": "Get training session",
         "tags": [
           "training"
         ]
@@ -5031,7 +5594,7 @@
         "operationId": "TrainingSessionsController_update",
         "parameters": [
           {
-            "name": "id",
+            "name": "sessionId",
             "required": true,
             "in": "path",
             "schema": {
@@ -5066,18 +5629,17 @@
             "bearer": []
           }
         ],
-        "summary": "Reschedule or reassign a scheduled session",
         "tags": [
           "training"
         ]
       }
     },
-    "/api/v1/sessions/{id}/start": {
+    "/api/v1/training-sessions/{sessionId}/publish": {
       "post": {
-        "operationId": "TrainingSessionsController_start",
+        "operationId": "TrainingSessionsController_publish",
         "parameters": [
           {
-            "name": "id",
+            "name": "sessionId",
             "required": true,
             "in": "path",
             "schema": {
@@ -5102,64 +5664,17 @@
             "bearer": []
           }
         ],
-        "summary": "Start training session",
         "tags": [
           "training"
         ]
       }
     },
-    "/api/v1/sessions/{id}/complete": {
-      "post": {
-        "operationId": "TrainingSessionsController_complete",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CompleteTrainingSessionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Complete training session and record actual result",
-        "tags": [
-          "training"
-        ]
-      }
-    },
-    "/api/v1/sessions/{id}/cancel": {
+    "/api/v1/training-sessions/{sessionId}/cancel": {
       "post": {
         "operationId": "TrainingSessionsController_cancel",
         "parameters": [
           {
-            "name": "id",
+            "name": "sessionId",
             "required": true,
             "in": "path",
             "schema": {
@@ -5194,7 +5709,6 @@
             "bearer": []
           }
         ],
-        "summary": "Cancel training session with a reason",
         "tags": [
           "training"
         ]
@@ -6903,9 +7417,9 @@
             "nullable": true,
             "description": "Lý do không được đổi, null nếu allowed = true"
           },
-          "trainingPlansCancelled": {
+          "classesWithdrawn": {
             "type": "number",
-            "description": "Số giáo án đang mở sẽ bị hủy"
+            "description": "Số lớp đang học mà ngựa sẽ bị rút khỏi"
           },
           "raceRegistrationsWithdrawn": {
             "type": "number",
@@ -6953,7 +7467,7 @@
           "summary": {
             "type": "string",
             "nullable": true,
-            "description": "Câu tóm tắt để hiện ở bảng xác nhận, ví dụ \"Winx đang có 2 giáo án huấn luyện đang mở, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ hủy giáo án, rút khỏi giải.\"; null nếu allowed = false"
+            "description": "Câu tóm tắt để hiện ở bảng xác nhận, ví dụ \"Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.\"; null nếu allowed = false"
           }
         },
         "required": [
@@ -6961,7 +7475,7 @@
           "from",
           "to",
           "allowed",
-          "trainingPlansCancelled",
+          "classesWithdrawn",
           "raceRegistrationsWithdrawn",
           "trainingLockReleased",
           "pendingBarnAfter"
@@ -8544,15 +9058,11 @@
             "type": "string",
             "format": "uuid"
           },
-          "distanceMeters": {
+          "distanceM": {
             "type": "string"
           },
-          "durationSeconds": {
-            "type": "string"
-          },
-          "videoAssetId": {
-            "type": "object",
-            "format": "uuid"
+          "targetTimeMs": {
+            "type": "object"
           },
           "notes": {
             "type": "object"
@@ -8565,84 +9075,373 @@
         "required": [
           "id",
           "sessionId",
-          "distanceMeters",
-          "durationSeconds",
+          "distanceM",
           "createdAt"
         ]
       },
       "CreateTimeTrialDto": {
         "type": "object",
         "properties": {
-          "distanceMeters": {
+          "distanceM": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0.01
           },
-          "durationSeconds": {
+          "targetTimeMs": {
             "type": "number",
-            "minimum": 0
-          },
-          "videoAssetId": {
-            "type": "string",
-            "format": "uuid"
+            "minimum": 1
           },
           "notes": {
             "type": "string"
           }
         },
         "required": [
-          "distanceMeters",
-          "durationSeconds"
+          "distanceM"
         ]
       },
-      "EvaluateSessionDto": {
-        "type": "object",
-        "properties": {
-          "score": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "comment": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "score"
-        ]
-      },
-      "SessionEvaluationResponseDto": {
+      "TrialResultResponseDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "sessionId": {
+          "timeTrialId": {
             "type": "string",
             "format": "uuid"
           },
-          "evaluatorId": {
+          "sessionParticipantId": {
             "type": "string",
             "format": "uuid"
           },
-          "score": {
+          "attemptNo": {
             "type": "number"
           },
-          "comment": {
+          "elapsedMs": {
+            "type": "string"
+          },
+          "notes": {
             "type": "object"
           },
-          "createdAt": {
+          "videoMediaId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "recordedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordedAt": {
             "format": "date-time",
             "type": "string"
           }
         },
         "required": [
           "id",
-          "sessionId",
-          "evaluatorId",
-          "score",
-          "createdAt"
+          "timeTrialId",
+          "sessionParticipantId",
+          "attemptNo",
+          "elapsedMs",
+          "recordedBy",
+          "recordedAt"
         ]
+      },
+      "CreateTrialResultDto": {
+        "type": "object",
+        "properties": {
+          "attemptNo": {
+            "type": "number",
+            "minimum": 1
+          },
+          "elapsedMs": {
+            "type": "number",
+            "minimum": 1
+          },
+          "notes": {
+            "type": "string"
+          },
+          "videoMediaId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "attemptNo",
+          "elapsedMs"
+        ]
+      },
+      "TrainingClassResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "object"
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ]
+          },
+          "maxHorses": {
+            "type": "number"
+          },
+          "headTrainerId": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelReason": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "maxHorses",
+          "startDate",
+          "endDate",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateTrainingClassDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Mã lớp huấn luyện (ví dụ: TC-2026-01)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên lớp huấn luyện"
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả lớp học"
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "description": "Sở trường cự ly mục tiêu (SPRINTER, MILER, STAYER)"
+          },
+          "maxHorses": {
+            "type": "number",
+            "default": 10,
+            "minimum": 1,
+            "description": "Sức chứa tối đa số ngựa trong lớp"
+          },
+          "headTrainerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "UpdateTrainingClassDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Mã lớp huấn luyện (ví dụ: TC-2026-01)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên lớp huấn luyện"
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả lớp học"
+          },
+          "raceAptitude": {
+            "type": "string",
+            "enum": [
+              "SPRINTER",
+              "MILER",
+              "STAYER"
+            ],
+            "description": "Sở trường cự ly mục tiêu (SPRINTER, MILER, STAYER)"
+          },
+          "maxHorses": {
+            "type": "number",
+            "default": 10,
+            "minimum": 1,
+            "description": "Sức chứa tối đa số ngựa trong lớp"
+          },
+          "headTrainerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "UpdateTrainingClassStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "cancelReason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Lý do hủy class, bắt buộc khi status = CANCELLED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "HorseEnrollmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "leftAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "LEFT",
+              "CANCELLED"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "classId",
+          "horseId",
+          "enrolledAt",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateHorseEnrollmentDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "horseId"
+        ]
+      },
+      "LeaveHorseEnrollmentDto": {
+        "type": "object",
+        "properties": {
+          "leftAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
       },
       "TrainingPlanResponseDto": {
         "type": "object",
@@ -8651,9 +9450,12 @@
             "type": "string",
             "format": "uuid"
           },
-          "horseId": {
+          "classId": {
             "type": "string",
             "format": "uuid"
+          },
+          "name": {
+            "type": "string"
           },
           "createdBy": {
             "type": "string",
@@ -8709,7 +9511,8 @@
         },
         "required": [
           "id",
-          "horseId",
+          "classId",
+          "name",
           "createdBy",
           "phaseName",
           "startDate",
@@ -8722,6 +9525,14 @@
       "CreateTrainingPlanDto": {
         "type": "object",
         "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Được lấy từ route nếu bỏ trống"
+          },
+          "name": {
+            "type": "string"
+          },
           "phaseName": {
             "type": "string"
           },
@@ -8738,6 +9549,7 @@
           }
         },
         "required": [
+          "name",
           "phaseName",
           "goal",
           "startDate",
@@ -8747,6 +9559,14 @@
       "UpdateTrainingPlanDto": {
         "type": "object",
         "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Được lấy từ route nếu bỏ trống"
+          },
+          "name": {
+            "type": "string"
+          },
           "phaseName": {
             "type": "string"
           },
@@ -8776,6 +9596,107 @@
           "reason"
         ]
       },
+      "SessionParticipantResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseEnrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignedGroomId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "PRESENT",
+              "READY",
+              "ONGOING",
+              "COMPLETED",
+              "ABSENT",
+              "SKIPPED",
+              "INELIGIBLE",
+              "CANCELLED_BY_LOCK",
+              "CANCELLED"
+            ]
+          },
+          "checkedInAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "absenceReason": {
+            "type": "object"
+          },
+          "cancelReason": {
+            "type": "object"
+          },
+          "ineligibilityReason": {
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "horseId",
+          "horseEnrollmentId",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AssignParticipantGroomDto": {
+        "type": "object",
+        "properties": {
+          "groomId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
+      "MarkParticipantAbsentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "TrainingSessionResponseDto": {
         "type": "object",
         "properties": {
@@ -8787,54 +9708,42 @@
             "type": "string",
             "format": "uuid"
           },
-          "scheduledAt": {
+          "name": {
+            "type": "string"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ]
+          },
+          "scheduledStartAt": {
             "format": "date-time",
             "type": "string"
           },
-          "distanceKm": {
+          "scheduledEndAt": {
+            "format": "date-time",
             "type": "string"
           },
-          "plannedDurationMinutes": {
+          "location": {
             "type": "object"
-          },
-          "intensity": {
-            "type": "string"
           },
           "surface": {
             "type": "object"
           },
-          "groomId": {
-            "type": "object",
-            "format": "uuid"
+          "notes": {
+            "type": "object"
           },
           "status": {
             "type": "string",
             "enum": [
+              "DRAFT",
               "SCHEDULED",
               "IN_PROGRESS",
               "COMPLETED",
               "CANCELLED"
             ]
-          },
-          "startedAt": {
-            "type": "object",
-            "format": "date-time"
-          },
-          "completedAt": {
-            "type": "object",
-            "format": "date-time"
-          },
-          "actualDistanceKm": {
-            "type": "object"
-          },
-          "actualDurationSeconds": {
-            "type": "object"
-          },
-          "perceivedEffort": {
-            "type": "object"
-          },
-          "completionNotes": {
-            "type": "object"
           },
           "cancelledAt": {
             "type": "object",
@@ -8851,86 +9760,77 @@
         "required": [
           "id",
           "planId",
-          "scheduledAt",
-          "distanceKm",
-          "intensity",
+          "name",
+          "sessionType",
+          "scheduledStartAt",
+          "scheduledEndAt",
           "status"
         ]
       },
       "CreateTrainingSessionDto": {
         "type": "object",
         "properties": {
-          "scheduledAt": {
+          "name": {
+            "type": "string"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ]
+          },
+          "scheduledStartAt": {
             "type": "string",
             "format": "date-time"
           },
-          "distanceKm": {
-            "type": "number",
-            "minimum": 0
+          "scheduledEndAt": {
+            "type": "string",
+            "format": "date-time"
           },
-          "intensity": {
+          "location": {
             "type": "string"
           },
           "surface": {
             "type": "string"
           },
-          "plannedDurationMinutes": {
-            "type": "number",
-            "minimum": 1
-          },
-          "groomId": {
-            "type": "string",
-            "format": "uuid"
+          "notes": {
+            "type": "string"
           }
         },
         "required": [
-          "scheduledAt",
-          "distanceKm",
-          "intensity"
+          "name",
+          "sessionType",
+          "scheduledStartAt",
+          "scheduledEndAt"
         ]
       },
       "UpdateTrainingSessionDto": {
         "type": "object",
         "properties": {
-          "scheduledAt": {
+          "name": {
+            "type": "string"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ]
+          },
+          "scheduledStartAt": {
             "type": "string",
             "format": "date-time"
           },
-          "distanceKm": {
-            "type": "number",
-            "minimum": 0
+          "scheduledEndAt": {
+            "type": "string",
+            "format": "date-time"
           },
-          "intensity": {
+          "location": {
             "type": "string"
           },
           "surface": {
             "type": "string"
-          },
-          "plannedDurationMinutes": {
-            "type": "number",
-            "minimum": 1
-          },
-          "groomId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      },
-      "CompleteTrainingSessionDto": {
-        "type": "object",
-        "properties": {
-          "actualDistanceKm": {
-            "type": "number",
-            "minimum": 0
-          },
-          "actualDurationSeconds": {
-            "type": "number",
-            "minimum": 0
-          },
-          "perceivedEffort": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
           },
           "notes": {
             "type": "string"
