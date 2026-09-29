@@ -6,8 +6,8 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { TrainingLockService } from '../../medical/services/training-locks.service';
-import { RacingRepository } from '../../racing/repositories/racing.repository';
+import { TrainingLockService } from '../../medical/training-locks/training-locks.service';
+import { RaceRegistrationsRepository } from '../../racing/race-registrations/race-registrations.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
@@ -51,7 +51,7 @@ export class HorseStatusesService {
     private readonly stalls: StallsService,
     private readonly grooms: GroomAssignmentsService,
     private readonly trainingLocks: TrainingLockService,
-    private readonly racing: RacingRepository,
+    private readonly racing: RaceRegistrationsRepository,
     private readonly events: DomainEventPublisher,
     private readonly training: TrainingOperationsFacade,
   ) {}

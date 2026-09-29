@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../../audit/audit.module';
-import { MedicalModule } from '../../medical/medical.module';
-import { RacingModule } from '../../racing/racing.module';
+import { TrainingLocksModule } from '../../medical/training-locks/training-locks.module';
+import { RaceRegistrationsModule } from '../../racing/race-registrations/race-registrations.module';
 import { GroomAssignmentsModule } from '../../stable/groom-assignments/groom-assignments.module';
 import { StallsModule } from '../../stable/stalls/stalls.module';
 import { TrainingSharedModule } from '../../training/shared/training-shared.module';
@@ -16,8 +16,8 @@ import { HorseStatusesService } from './horse-statuses.service';
     AuditModule,
     StallsModule,
     GroomAssignmentsModule,
-    MedicalModule,
-    RacingModule,
+    TrainingLocksModule,
+    RaceRegistrationsModule,
     TrainingSharedModule,
   ],
   controllers: [HorseStatusesController],

@@ -10,7 +10,6 @@ import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { RacingRepository } from '../../racing/repositories/racing.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
@@ -152,7 +151,7 @@ describe('HorseStatusesService', () => {
       stalls as unknown as StallsService,
       grooms as unknown as GroomAssignmentsService,
       trainingLocks,
-      racing as unknown as RacingRepository,
+      racing,
       events as unknown as DomainEventPublisher,
       training as unknown as TrainingOperationsFacade,
     );
@@ -474,7 +473,7 @@ describe('HorseStatusesService', () => {
         stalls as unknown as StallsService,
         grooms as unknown as GroomAssignmentsService,
         trainingLocks,
-        racing as unknown as RacingRepository,
+        racing,
         events as unknown as DomainEventPublisher,
         training as unknown as TrainingOperationsFacade,
       );

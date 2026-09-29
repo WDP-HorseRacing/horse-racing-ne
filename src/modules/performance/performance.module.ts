@@ -1,18 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { HorsesSharedModule } from '../horses/shared/horses-shared.module';
-import { PerformanceDetailsController } from './controllers/performance-details.controller';
-import { PerformanceController } from './controllers/performance.controller';
-import { PerformanceMetricEntity } from './entities/performance-metric.entity';
-import { PerformanceRepository } from './repositories/performance.repository';
-import { PerformanceService } from './services/performance.service';
+import { PerformanceDetailsModule } from './performance-details/performance-details.module';
+import { EvaluationsModule } from './evaluations/evaluations.module';
+import { PerformanceMetricsModule } from './performance-metrics/performance-metrics.module';
+import { PerformanceSummariesModule } from './performance-summaries/performance-summaries.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PerformanceMetricEntity]),
-    HorsesSharedModule,
+    PerformanceSummariesModule,
+    EvaluationsModule,
+    PerformanceMetricsModule,
+    PerformanceDetailsModule,
   ],
-  providers: [PerformanceRepository, PerformanceService],
-  controllers: [PerformanceController, PerformanceDetailsController],
 })
 export class PerformanceModule {}
