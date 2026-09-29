@@ -664,7 +664,7 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 
 Còn lại, chưa làm:
 
-- **Tổng chi phí y tế** ở tab Bệnh án (F1.3): chưa có dữ liệu chi phí, thuộc Flow 3.
+- ~~Tổng chi phí y tế ở tab Bệnh án (F1.3)~~ Có từ Flow 3: `GET /horses/:id/medical-cases` trả `totalCost` (tổng các bệnh án đã đóng); Head Trainer không có key này.
 - **Tab 1 hồ sơ (F1.3 mục 1)**: hồ sơ, phả hệ, lịch sử chỉ số, quyền và ảnh là 5 API riêng (`GET /horses/:id`, `/pedigree`, `/measurements`, `/permissions`, `/photo-url`); FE gọi song song khi mở hồ sơ.
 - ~~Chỉ số cơ thể (F1.5)~~ Đã làm 2026-09-29: cờ bất thường lưu lúc ghi (`is_abnormal`), xác nhận ghi vào nhật ký; lịch sử lọc `from`/`to`/`type` và phân trang.
 - ~~Danh sách ngựa (F1.1)~~ Đã làm 2026-09-29: mỗi dòng có `photoUrl` ký sẵn, vẫn giữ `mediaId`.
