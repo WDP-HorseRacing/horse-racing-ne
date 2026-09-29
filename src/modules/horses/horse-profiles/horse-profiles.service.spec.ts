@@ -80,6 +80,7 @@ describe('HorseProfilesService', () => {
   let media: {
     assertAttachableHorsePhoto: jest.Mock;
     signDownloadUrl: jest.Mock;
+    signDownloadUrls: jest.Mock;
   };
   let events: { publish: jest.Mock };
   let service: HorseProfilesService;
@@ -198,6 +199,7 @@ describe('HorseProfilesService', () => {
     media = {
       assertAttachableHorsePhoto: jest.fn().mockResolvedValue({}),
       signDownloadUrl: jest.fn().mockResolvedValue('https://s3/get'),
+      signDownloadUrls: jest.fn().mockResolvedValue(new Map()),
     };
     events = { publish: jest.fn() };
     const typedDataSource = dataSource as unknown as DataSource;
@@ -246,6 +248,29 @@ describe('HorseProfilesService', () => {
         CALLER_ID,
         expect.objectContaining({ includeDeleted: true }),
       );
+    });
+
+    it('signs the photo of every listed horse in one batch and returns it as photoUrl', async () => {
+      const other = { ...horse, id: 'h2', mediaId: null };
+      profiles.list.mockResolvedValue([
+        [{ ...horse, mediaId: 'm1' }, other],
+        2,
+      ]);
+      media.signDownloadUrls.mockResolvedValue(
+        new Map([['m1', 'https://s3/m1']]),
+      );
+
+      const page = await service.list(actorWith(UserRole.CLUB_MANAGER), {
+        page: 1,
+        limit: 20,
+      } as HorseListQueryDto);
+
+      expect(media.signDownloadUrls).toHaveBeenCalledTimes(1);
+      expect(media.signDownloadUrls).toHaveBeenCalledWith(['m1']);
+      expect(page.items.map((item) => item.photoUrl)).toEqual([
+        'https://s3/m1',
+        null,
+      ]);
     });
   });
 
