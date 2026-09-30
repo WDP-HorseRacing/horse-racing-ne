@@ -780,6 +780,44 @@ describe('HorseProfilesService', () => {
       expect(horseRepository.update).not.toHaveBeenCalled();
     });
 
+    it('changes only the date of birth when the kept sire profile was deleted', async () => {
+      horse.sireId = 'deleted-sire';
+      await service.update(cm(), HORSE_ID, {
+        version: 3,
+        dateOfBirth: '2020-03-01',
+      });
+      expect(horseRepository.update).toHaveBeenCalledWith(
+        { id: HORSE_ID, version: 3 },
+        { dateOfBirth: '2020-03-01' },
+      );
+    });
+
+    it('still requires a kept live dam to be born before the horse', async () => {
+      horse.damId = 'live-dam';
+      horses.findById.mockImplementation((id: string) =>
+        Promise.resolve(
+          id === 'live-dam'
+            ? {
+                id: 'live-dam',
+                gender: HorseGender.FEMALE,
+                dateOfBirth: '2020-06-01',
+              }
+            : id === HORSE_ID
+              ? horse
+              : null,
+        ),
+      );
+      await expect(
+        service.update(cm(), HORSE_ID, {
+          version: 3,
+          dateOfBirth: '2020-03-01',
+        }),
+      ).rejects.toThrow(
+        new BadRequestException('Cha/mẹ phải sinh trước ngựa con'),
+      );
+      expect(horseRepository.update).not.toHaveBeenCalled();
+    });
+
     it('accepts a date of birth before every child', async () => {
       children = [{ id: 'foal', sireId: HORSE_ID, dateOfBirth: '2024-01-01' }];
       await service.update(cm(), HORSE_ID, {

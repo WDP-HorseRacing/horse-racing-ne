@@ -90,7 +90,7 @@ export class HorsePedigreeService {
    * Kiểm tra thay đổi phả hệ của một con ngựa khi đang giữ khóa phả hệ
    *
    * - Đổi giới tính: không làm sai vai trò sire/dam của ngựa khác
-   * - Đổi cha/mẹ hoặc ngày sinh: cha/mẹ hợp lệ, không tạo vòng lặp phả hệ
+   * - Đổi cha/mẹ hoặc ngày sinh: cha/mẹ hợp lệ, không tạo vòng lặp phả hệ; cha/mẹ giữ nguyên mà đã xóa hồ sơ thì bỏ qua
    * - Đổi ngày sinh: vẫn sinh trước ngựa con sớm nhất, tính cả con đã xóa hồ sơ
    *
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
@@ -121,8 +121,12 @@ export class HorsePedigreeService {
               ? horse.dateOfBirth
               : changes.dateOfBirth,
         },
-        changes.sireId === undefined ? horse.sireId : changes.sireId,
-        changes.damId === undefined ? horse.damId : changes.damId,
+        changes.sireId === undefined
+          ? await this.keptParentId(manager, horse.sireId)
+          : changes.sireId,
+        changes.damId === undefined
+          ? await this.keptParentId(manager, horse.damId)
+          : changes.damId,
       );
     }
     if (changes.dateOfBirth) {
@@ -131,6 +135,21 @@ export class HorsePedigreeService {
         await this.pedigree.earliestChildBirthDate(manager, horse.id),
       );
     }
+  }
+
+  /**
+   * Lấy cha/mẹ đang giữ nguyên để kiểm lại, bỏ qua cha/mẹ đã bị xóa hồ sơ vì hồ sơ đã xóa coi như không có
+   *
+   * @param manager EntityManager của transaction đang giữ khóa phả hệ
+   * @param parentId UUID cha/mẹ hiện tại của ngựa, null nếu bỏ trống
+   * @returns A promise resolving to UUID cha/mẹ nếu hồ sơ còn, null nếu bỏ trống hoặc đã xóa
+   */
+  private async keptParentId(
+    manager: EntityManager,
+    parentId: string | null,
+  ): Promise<string | null> {
+    if (!parentId) return null;
+    return (await this.horses.findById(parentId, manager)) ? parentId : null;
   }
 
   /**
