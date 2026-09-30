@@ -55,9 +55,9 @@ export class StableAccessService {
       lock: { mode: 'pessimistic_write' },
     });
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    assertHorseNotTransferred(horse, operation);
     assertHorseHasBarn(horse);
     await this.assertHorseInTrainerBarn(manager, horseId, callerId);
-    assertHorseNotTransferred(horse, operation);
     return horse as HorseInBarn;
   }
 

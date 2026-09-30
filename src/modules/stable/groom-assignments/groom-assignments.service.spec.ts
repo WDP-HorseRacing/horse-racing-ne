@@ -231,6 +231,18 @@ describe('GroomAssignmentsService', () => {
       expect(manager.save).not.toHaveBeenCalled();
     });
 
+    it('says the horse was transferred even though the transfer cleared its barn', async () => {
+      rows.set(HorseEntity, {
+        id: 'h1',
+        barnId: null,
+        lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
+      });
+      await expect(assign()).rejects.toThrow(
+        'Ngựa đã chuyển nhượng, không giao groom được',
+      );
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
     it('locks the horse before checking it', async () => {
       await assign();
       expect(manager.findOne).toHaveBeenCalledWith(HorseEntity, {

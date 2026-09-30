@@ -200,6 +200,18 @@ describe('StallsService', () => {
       expect(manager.save).not.toHaveBeenCalled();
     });
 
+    it('says the horse was transferred even though the transfer cleared its barn', async () => {
+      rows.set(HorseEntity, {
+        id: 'h1',
+        barnId: null,
+        lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
+      });
+      await expect(move()).rejects.toThrow(
+        'Ngựa đã chuyển nhượng, không xếp ô chuồng được',
+      );
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
     it('rejects a stall that does not exist', async () => {
       await expect(move('missing')).rejects.toThrow(NotFoundException);
     });
