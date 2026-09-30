@@ -237,6 +237,22 @@ export function lifecycleTransitionError(
 }
 
 /**
+ * Bắt lý do khi đổi khu cho ngựa đã có khu; xếp khu lần đầu (ngựa đang Chờ xếp khu) không cần lý do
+ *
+ * @param currentBarnId Khu hiện tại của ngựa, null nếu đang Chờ xếp khu
+ * @param reason Lý do người dùng nhập, đã cắt khoảng trắng
+ * @throws BadRequestException Nếu ngựa đã có khu mà không có lý do
+ */
+export function assertBarnChangeReason(
+  currentBarnId: string | null,
+  reason: string | undefined,
+): void {
+  if (currentBarnId !== null && !reason) {
+    throw new BadRequestException('Đổi khu bắt buộc nhập lý do');
+  }
+}
+
+/**
  * Chặn đổi vòng đời không có trong bảng chuyển trạng thái (F1.8)
  *
  * @param from Trạng thái vòng đời hiện tại

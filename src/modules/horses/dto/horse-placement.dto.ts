@@ -1,6 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { GroomAssignmentResponseDto } from '../../stable/dto/groom-assignment.dto';
 import { StallAssignmentResponseDto } from '../../stable/dto/stall.dto';
 
@@ -13,18 +19,20 @@ export class AssignHorseBarnDto {
   @IsUUID()
   barnId!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     minLength: 1,
     maxLength: 500,
-    description: 'Lý do xếp hoặc đổi khu, bắt buộc',
+    description:
+      'Lý do đổi khu. Bắt buộc khi ngựa đã có khu; xếp khu lần đầu thì bỏ trống được',
   })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(500)
-  reason!: string;
+  reason?: string;
 }
 
 export class PlaceHorseDto {

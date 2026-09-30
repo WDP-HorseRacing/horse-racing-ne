@@ -24,6 +24,7 @@ import {
 import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import {
   assertAbnormalConfirmed,
+  assertBarnChangeReason,
   assertBornBeforeChildren,
   assertDateOfBirth,
   assertDistinctMeasurementTypes,
@@ -936,6 +937,19 @@ describe('horse.policy', () => {
           classesToWithdraw: 0,
         }),
       ).toBe('Nếu chuyển Winx sang Khu C; ngựa vào Chờ xếp ô của khu mới.');
+    });
+  });
+
+  describe('assertBarnChangeReason', () => {
+    it('lets a horse waiting for a barn be placed without a reason', () => {
+      expect(() => assertBarnChangeReason(null, undefined)).not.toThrow();
+    });
+
+    it('requires a reason to move a horse that already has a barn', () => {
+      expect(() => assertBarnChangeReason('b1', undefined)).toThrow(
+        new BadRequestException('Đổi khu bắt buộc nhập lý do'),
+      );
+      expect(() => assertBarnChangeReason('b1', 'Cân bằng khu')).not.toThrow();
     });
   });
 });

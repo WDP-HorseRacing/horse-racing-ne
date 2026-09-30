@@ -24,6 +24,7 @@ import { toHorseResponse } from '../mappers/horse.mapper';
 import { HORSE_BARN_ASSIGNED_EVENT } from '../constants/horse.constants';
 import { toBarnPreviewResponse } from '../mappers/horse-placements.mapper';
 import {
+  assertBarnChangeReason,
   barnChangeBlockedReason,
   barnChangeSummary,
 } from '../policies/horse.policy';
@@ -55,15 +56,16 @@ export class HorsePlacementsService {
    * - Khu mới phải đang hoạt động, có Head Trainer phụ trách và còn ít nhất một ô trống (khóa row khu trước khi kiểm)
    * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom vì Groom gắn với con ngựa
    * - Chọn đúng khu đang ở thì không đổi gì
-   * - Bắt buộc lý do; ghi nhật ký; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT để module notifications báo Head Trainer khu mới
+   * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT để module notifications báo Head Trainer khu mới
    * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách; có rút thì nhật ký ghi thêm classesWithdrawn
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @param body Khu mới và lý do
+   * @param body Khu mới và lý do (bỏ trống được khi xếp khu lần đầu)
    * @returns Promise trả về hồ sơ ngựa sau khi xếp khu
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã xóa (phải khôi phục trước)
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
+   * @throws BadRequestException Nếu đổi khu (ngựa đã có khu) mà không có lý do
    * @throws ConflictException Nếu ngựa đã chuyển nhượng, hoặc khu không hoạt động, chưa có Head Trainer, hết ô trống
    */
   async assignBarn(
@@ -80,13 +82,14 @@ export class HorsePlacementsService {
       );
       this.access.assertNotTransferred(horse);
       if (horse.barnId === body.barnId) return false;
+      assertBarnChangeReason(horse.barnId, body.reason);
       const newBarn = await this.barns.lockAssignableBarn(manager, body.barnId);
       const released = await this.stalls.releaseStallByHorse(manager, horseId);
       const withdrawn = await this.training.withdrawHorseFromClasses(
         manager,
         horseId,
         {
-          reason: `Đổi khu: ${body.reason}`,
+          reason: body.reason ? `Đổi khu: ${body.reason}` : 'Xếp khu',
           at: new Date(),
           exceptHeadTrainerId: newBarn.headTrainerId ?? undefined,
         },
@@ -110,7 +113,7 @@ export class HorsePlacementsService {
             ? { classesWithdrawn: withdrawn.classIds.length }
             : {}),
         },
-        reason: body.reason,
+        reason: body.reason ?? null,
         feature: 'F1.6',
       });
       return true;

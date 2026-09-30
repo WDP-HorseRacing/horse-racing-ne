@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -265,6 +266,27 @@ describe('HorsePlacementsService', () => {
       HORSE_BARN_ASSIGNED_EVENT,
       expect.objectContaining({ horseId: HORSE_ID, barnId: 'b2' }),
     );
+  });
+
+  it('places a horse waiting for a barn without a reason', async () => {
+    horse.barnId = null;
+    await service.assignBarn(actor(), HORSE_ID, { barnId: 'b2' });
+    expect(horseRepository.update).toHaveBeenCalledWith(
+      { id: HORSE_ID },
+      { barnId: 'b2' },
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      manager,
+      expect.objectContaining({ reason: null, feature: 'F1.6' }),
+    );
+  });
+
+  it('requires a reason to move a horse that already has a barn', async () => {
+    await expect(
+      service.assignBarn(actor(), HORSE_ID, { barnId: 'b2' }),
+    ).rejects.toThrow(new BadRequestException('Đổi khu bắt buộc nhập lý do'));
+    expect(horseRepository.update).not.toHaveBeenCalled();
+    expect(events.publish).not.toHaveBeenCalled();
   });
 
   it('neither updates nor notifies when the barn cannot take the horse', async () => {
