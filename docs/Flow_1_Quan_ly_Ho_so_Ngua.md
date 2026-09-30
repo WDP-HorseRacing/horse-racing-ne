@@ -447,7 +447,7 @@ Ghi lại các phép đo định kỳ của con ngựa: cân nặng, chiều cao
 | **Tiền điều kiện** | Người dùng đã đăng nhập. Con ngựa nằm trong phạm vi thao tác của người dùng và đang ở trạng thái Đang hoạt động hoặc Đã giải nghệ. |
 | **Hậu điều kiện** | Bản ghi đo được lưu và hiện trên biểu đồ. Nếu chạm ngưỡng cảnh báo thì thông báo được gửi đi. |
 | **Luồng sự kiện chính** | 1. Người dùng mở hồ sơ ngựa và chọn phần chỉ số cơ thể.<br>2. Người dùng chọn "Ghi chỉ số".<br>3. Người dùng chọn loại chỉ số, nhập giá trị và thời điểm đo.<br>4. Người dùng gửi.<br>5. Hệ thống kiểm tra thời điểm đo và khoảng giá trị.<br>6. Hệ thống lưu bản ghi, đánh dấu bất thường nếu ngoài khoảng bình thường và vẽ lại biểu đồ.<br>7. Hệ thống sinh cảnh báo nếu chạm ngưỡng. |
-| **Luồng thay thế** | A1. Người dùng ghi nhiều loại chỉ số trong cùng một lần đo.<br>A2. VETERINARIAN phát hiện bản ghi sai → xóa kèm lý do rồi đo lại.<br>A3. Số đo đến từ một buổi khám của Flow 3 → hệ thống tự ghi vào đây kèm nguồn. |
+| **Luồng thay thế** | A1. Người dùng ghi nhiều loại chỉ số trong cùng một lần đo.<br>A2. VETERINARIAN phát hiện bản ghi sai → xóa kèm lý do rồi đo lại.<br>A3. Số đo đến từ một buổi khám của Flow 3 → hệ thống tự ghi vào đây kèm nguồn, không gửi cảnh báo sốt / sụt cân vì bác sĩ đang khám (Flow 3 mục III.5.4, BA chốt 2026-09-30). |
 | **Luồng ngoại lệ** | E1. Thời điểm đo ở tương lai hoặc lùi quá 7 ngày → báo lỗi.<br>E2. GROOM ghi chỉ số cho ngựa không được phân công → trả về 403.<br>E3. Giá trị ngoài khoảng bình thường → hệ thống hỏi xác nhận, người dùng hủy thì không lưu. |
 
 ---

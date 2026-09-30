@@ -33,6 +33,20 @@ describe('HorseMeasurementAlertListener', () => {
     expect(notifyMeasurementAlert).toHaveBeenCalledWith(event);
   });
 
+  it('sends nothing for a measurement taken by the vet during an exam', async () => {
+    const notifyMeasurementAlert = jest.fn();
+    const listener = new HorseMeasurementAlertListener({
+      notifyMeasurementAlert,
+    } as unknown as HorseNotificationsService);
+
+    await listener.handle({
+      ...event,
+      source: HorseMeasurementSource.MEDICAL_EXAM,
+    });
+
+    expect(notifyMeasurementAlert).not.toHaveBeenCalled();
+  });
+
   it('logs and swallows errors instead of throwing back to the publisher', async () => {
     const listener = new HorseMeasurementAlertListener({
       notifyMeasurementAlert: jest.fn().mockRejectedValue(new Error('db down')),

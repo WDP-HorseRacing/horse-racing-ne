@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { HORSE_MEASUREMENT_ALERT_EVENT } from '../../horses/constants/horse.constants';
+import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';
 
@@ -13,6 +14,7 @@ export class HorseMeasurementAlertListener {
   /**
    * Nghe HORSE_MEASUREMENT_ALERT_EVENT và gửi thông báo cho Veterinarian và Head Trainer của khu.
    *
+   * - Bỏ qua số đo do bác sĩ ghi trong buổi khám (nguồn MEDICAL_EXAM): bác sĩ đang xử lý trực tiếp, quyết định của bác sĩ có thông báo riêng (Flow 3 mục III.5.4)
    * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event (bản ghi đo đã commit xong)
    *
    * @param event The measurement alert event published by the horses module
@@ -20,6 +22,7 @@ export class HorseMeasurementAlertListener {
    */
   @OnEvent(HORSE_MEASUREMENT_ALERT_EVENT, { async: true })
   async handle(event: HorseMeasurementAlertEvent): Promise<void> {
+    if (event.source === HorseMeasurementSource.MEDICAL_EXAM) return;
     try {
       await this.horseNotifications.notifyMeasurementAlert(event);
     } catch (error) {
