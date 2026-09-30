@@ -120,7 +120,7 @@ export class MedicalSharedRepository {
                 WHERE a.entity_type = $4
                   AND a.entity_id = h.id
                   AND a.after_data->>'lifecycleStatus' = $2
-                  AND a.before_data->>'lifecycleStatus' IS DISTINCT FROM $2
+                  AND a.before_data->>'lifecycleStatus' <> $2
               ) AS "reactivatedDate"
          FROM horses h
          LEFT JOIN medical_records r

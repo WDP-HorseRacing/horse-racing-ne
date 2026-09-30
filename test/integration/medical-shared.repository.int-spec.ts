@@ -5,6 +5,7 @@ import {
   truncateAll,
   type TestDatabase,
 } from './postgres';
+import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
 import { fixtures } from './fixtures';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { UserStatus } from '../../src/common/enums/user-status.enum';
@@ -189,6 +190,32 @@ describe('MedicalSharedRepository (Postgres)', () => {
       expect(row).toMatchObject({
         lastVisitDate: '2026-09-21',
         createdDate: '2026-01-01',
+      });
+    });
+
+    it('does not treat the profile creation log as a reactivation', async () => {
+      const horse = await seed.horse('Newborn', {
+        createdAt: '2026-09-01T03:00:00Z',
+      });
+      await dataSource.query(
+        `INSERT INTO audit_logs (action, entity_type, entity_id, before_data, after_data, created_at, feature)
+         VALUES ('CREATE', $1, $2, NULL, $3, '2026-09-01T03:00:00Z', 'F1.2')`,
+        [
+          AuditEntityType.HORSE,
+          horse,
+          JSON.stringify({
+            name: 'Newborn',
+            healthStatus: 'ELIGIBLE',
+            lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+          }),
+        ],
+      );
+
+      const [row] = await repository.herdCheckupAnchors();
+
+      expect(row).toMatchObject({
+        createdDate: '2026-09-01',
+        reactivatedDate: null,
       });
     });
 
