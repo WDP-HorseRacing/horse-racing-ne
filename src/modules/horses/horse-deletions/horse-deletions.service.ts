@@ -54,9 +54,9 @@ export class HorseDeletionsService {
    * @param id UUID của ngựa
    * @param body Lý do xóa
    * @returns A promise resolving khi đã xóa
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã bị xóa trước đó
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng (hồ sơ chỉ đọc), đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ trong phả hệ
+   * @throws ConflictException Nếu hồ sơ đã bị xóa trước đó, ngựa đã chuyển nhượng (hồ sơ chỉ đọc), đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ trong phả hệ
    */
   async remove(actor: Actor, id: string, body: DeleteHorseDto): Promise<void> {
     const caller = await this.access.currentUser(actor);
@@ -96,8 +96,9 @@ export class HorseDeletionsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
    * @returns A promise resolving to cờ xóa được và từng lý do chặn
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã bị xóa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
+   * @throws ConflictException Nếu hồ sơ đã bị xóa
    */
   async previewRemove(
     actor: Actor,

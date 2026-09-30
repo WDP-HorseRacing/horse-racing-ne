@@ -74,9 +74,9 @@ export class HorseStatusesService {
    * @param id UUID của ngựa
    * @param body Trạng thái vòng đời mới và lý do
    * @returns Promise trả về hồ sơ ngựa sau khi đổi
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã xóa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
-   * @throws ConflictException Nếu không được chuyển giữa hai trạng thái, hoặc chuyển nhượng ngựa còn bệnh án đang mở
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), không được chuyển giữa hai trạng thái, hoặc chuyển nhượng ngựa còn bệnh án đang mở
    */
   async updateLifecycle(
     actor: Actor,
@@ -208,8 +208,9 @@ export class HorseStatusesService {
    * @param id UUID của ngựa
    * @param query Trạng thái vòng đời muốn chuyển sang
    * @returns A promise resolving to cờ được phép, lý do chặn (nếu có), từng hệ quả sẽ xảy ra và câu tóm tắt
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã xóa (Club Manager phải khôi phục trước, giống lúc đổi thật)
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), giống lúc đổi thật
    */
   async previewLifecycle(
     actor: Actor,

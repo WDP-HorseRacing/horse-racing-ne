@@ -63,10 +63,10 @@ export class HorsePlacementsService {
    * @param horseId UUID của ngựa
    * @param body Khu mới và lý do (bỏ trống được khi xếp khu lần đầu)
    * @returns Promise trả về hồ sơ ngựa sau khi xếp khu
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã xóa (phải khôi phục trước)
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
    * @throws BadRequestException Nếu đổi khu (ngựa đã có khu) mà không có lý do
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng, hoặc khu không hoạt động, chưa có Head Trainer, hết ô trống
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), ngựa đã chuyển nhượng, hoặc khu không hoạt động, chưa có Head Trainer, hết ô trống
    */
   async assignBarn(
     actor: Actor,
@@ -140,8 +140,9 @@ export class HorsePlacementsService {
    * @param horseId UUID của ngựa
    * @param query Khu muốn chuyển sang
    * @returns A promise resolving to cờ đổi được, lý do chặn, từng hệ quả và câu tóm tắt
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc hồ sơ đã xóa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
+   * @throws ConflictException Nếu Club Manager xem trước trên hồ sơ đã xóa
    */
   async previewBarnChange(
     actor: Actor,

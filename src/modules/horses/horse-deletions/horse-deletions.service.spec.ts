@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
@@ -189,10 +185,10 @@ describe('HorseDeletionsService', () => {
       await expect(remove()).rejects.toThrow(NotFoundException);
     });
 
-    it('rejects deleting a deleted profile again with 403', async () => {
+    it('rejects deleting a deleted profile again with 409', async () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
       await expect(remove()).rejects.toThrow(
-        new ForbiddenException(DELETED_MESSAGE),
+        new ConflictException(DELETED_MESSAGE),
       );
       expect(horseRepository.softDelete).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
@@ -246,10 +242,10 @@ describe('HorseDeletionsService', () => {
       });
     });
 
-    it('rejects previewing a deleted profile with 403 like the deletion itself', async () => {
+    it('rejects previewing a deleted profile with 409 like the deletion itself', async () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
       await expect(service.previewRemove(actor(), HORSE_ID)).rejects.toThrow(
-        ForbiddenException,
+        ConflictException,
       );
     });
   });

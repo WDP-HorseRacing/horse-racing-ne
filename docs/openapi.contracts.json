@@ -354,7 +354,7 @@
     },
     "/api/v1/horses/{horseId}": {
       "delete": {
-        "description": "Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 403.",
+        "description": "Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 409.",
         "operationId": "HorseDeletionsController_deleteHorse",
         "parameters": [
           {
@@ -427,7 +427,7 @@
         ]
       },
       "patch": {
-        "description": "Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409, cần GET lại. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 403 (phải khôi phục trước), Head Trainer nhận 404.",
+        "description": "Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409, cần GET lại. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 409 (phải khôi phục trước), Head Trainer nhận 404.",
         "operationId": "HorseProfilesController_updateHorse",
         "parameters": [
           {
@@ -7797,12 +7797,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 500,
-            "description": "Lý do xếp hoặc đổi khu, bắt buộc"
+            "description": "Lý do đổi khu. Bắt buộc khi ngựa đã có khu; xếp khu lần đầu thì bỏ trống được"
           }
         },
         "required": [
-          "barnId",
-          "reason"
+          "barnId"
         ]
       },
       "PlaceHorseDto": {

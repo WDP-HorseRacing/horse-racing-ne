@@ -311,9 +311,9 @@ export class HorseProfilesService {
    * @param body Các field cần sửa kèm version
    * @returns Promise trả về hồ sơ sau khi sửa
    * @throws NotFoundException Nếu không có ngựa (Head Trainer: kể cả hồ sơ đã xóa) hoặc không tìm thấy tệp ảnh của người gọi
-   * @throws ForbiddenException Nếu Club Manager sửa hồ sơ đã xóa, người gọi gửi field ngoài quyền, hoặc Head Trainer sửa ngựa ngoài khu
+   * @throws ForbiddenException Nếu người gọi gửi field ngoài quyền, hoặc Head Trainer sửa ngựa ngoài khu
    * @throws BadRequestException Nếu ngày sinh, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
+   * @throws ConflictException Nếu Club Manager sửa hồ sơ đã xóa, ngựa đã chuyển nhượng, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
    */
   async update(
     actor: Actor,

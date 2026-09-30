@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
@@ -107,7 +103,7 @@ describe('MedicalAccessService.lockHorseForWrite on a deleted profile', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  it('answers forbidden to a caller holding CLUB_MANAGER', async () => {
+  it('answers conflict to a caller holding CLUB_MANAGER', async () => {
     await expect(
       service.lockHorseForWrite(
         deletedManager,
@@ -117,6 +113,6 @@ describe('MedicalAccessService.lockHorseForWrite on a deleted profile', () => {
         },
         'h1',
       ),
-    ).rejects.toThrow(new ForbiddenException(DELETED_HORSE_READ_ONLY_MESSAGE));
+    ).rejects.toThrow(new ConflictException(DELETED_HORSE_READ_ONLY_MESSAGE));
   });
 });

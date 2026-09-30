@@ -346,23 +346,23 @@ describe('HorseMeasurementsService', () => {
       expect(measurementRepository.save).not.toHaveBeenCalled();
     });
 
-    it('rejects a caller holding CLUB_MANAGER adding measurements with 403', async () => {
+    it('rejects a caller holding CLUB_MANAGER adding measurements with 409', async () => {
       await expect(
         service.addMeasurements(
           managerVet(),
           HORSE_ID,
           values([[HorseMeasurementType.TEMPERATURE, 37.8]]),
         ),
-      ).rejects.toThrow(new ForbiddenException(DELETED_MESSAGE));
+      ).rejects.toThrow(new ConflictException(DELETED_MESSAGE));
       expect(measurementRepository.save).not.toHaveBeenCalled();
     });
 
-    it('rejects a caller holding CLUB_MANAGER deleting a measurement with 403', async () => {
+    it('rejects a caller holding CLUB_MANAGER deleting a measurement with 409', async () => {
       await expect(
         service.deleteMeasurement(managerVet(), HORSE_ID, 'm1', {
           reason: 'Nhập sai',
         }),
-      ).rejects.toThrow(new ForbiddenException(DELETED_MESSAGE));
+      ).rejects.toThrow(new ConflictException(DELETED_MESSAGE));
       expect(manager.softDelete).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
     });

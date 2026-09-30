@@ -104,7 +104,8 @@ export class HorseAccessService {
    * @param horseId UUID của ngựa
    * @param manager EntityManager của transaction đang chạy
    * @returns A promise resolving to user hiện tại và con ngựa đã khóa
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc Club Manager thao tác hồ sơ đã xóa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa (vai trò khác Club Manager), hoặc ngựa nằm ngoài phạm vi
    */
   async lockVisibleHorse(
@@ -133,7 +134,7 @@ export class HorseAccessService {
    * @param horseId UUID của ngựa
    * @returns A promise resolving to con ngựa đã khóa, chắc chắn chưa bị xóa
    * @throws NotFoundException Nếu không có ngựa, hoặc hồ sơ đã xóa và người gọi không phải Club Manager
-   * @throws ForbiddenException Nếu hồ sơ đã xóa và người gọi là Club Manager
+   * @throws ConflictException Nếu hồ sơ đã xóa và người gọi là Club Manager
    */
   async lockWritableHorse(
     manager: EntityManager,
@@ -153,7 +154,7 @@ export class HorseAccessService {
    * @param horseId UUID của ngựa
    * @returns A promise resolving to con ngựa, chắc chắn chưa bị xóa
    * @throws NotFoundException Nếu không có ngựa, hoặc hồ sơ đã xóa và người gọi không phải Club Manager
-   * @throws ForbiddenException Nếu hồ sơ đã xóa và người gọi là Club Manager
+   * @throws ConflictException Nếu hồ sơ đã xóa và người gọi là Club Manager
    */
   async findWritableHorse(actor: Actor, horseId: string): Promise<HorseEntity> {
     return this.ensureNotDeleted(
@@ -260,16 +261,16 @@ export class HorseAccessService {
   }
 
   /**
-   * Chặn thao tác ghi trên hồ sơ không có hoặc đã xóa mềm, chọn 403 hay 404 theo vai trò người gọi.
+   * Chặn thao tác ghi trên hồ sơ không có hoặc đã xóa mềm, chọn 409 hay 404 theo vai trò người gọi.
    *
-   * - Club Manager: hồ sơ đã xóa trả 403 vì Club Manager vẫn xem được hồ sơ đó
+   * - Club Manager: hồ sơ đã xóa trả 409 vì Club Manager vẫn xem được hồ sơ đó, chỉ là trạng thái hồ sơ không cho thao tác
    * - Vai trò khác: hồ sơ đã xóa trả 404 như không tồn tại
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horse Con ngựa đã tải kèm hồ sơ đã xóa, hoặc null nếu không có
    * @returns Con ngựa chưa bị xóa
    * @throws NotFoundException Nếu không có ngựa, hoặc hồ sơ đã xóa và người gọi không phải Club Manager
-   * @throws ForbiddenException Nếu hồ sơ đã xóa và người gọi là Club Manager
+   * @throws ConflictException Nếu hồ sơ đã xóa và người gọi là Club Manager
    */
   private ensureNotDeleted(
     actor: Actor,
@@ -278,7 +279,7 @@ export class HorseAccessService {
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
     if (!horse.deletedAt) return horse;
     if (this.hasRole(actor, UserRole.CLUB_MANAGER)) {
-      throw new ForbiddenException(DELETED_HORSE_READ_ONLY_MESSAGE);
+      throw new ConflictException(DELETED_HORSE_READ_ONLY_MESSAGE);
     }
     throw new NotFoundException('Không tìm thấy ngựa');
   }

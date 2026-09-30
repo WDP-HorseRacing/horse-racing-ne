@@ -53,7 +53,7 @@ export class HorseDeletionsController {
   @ApiOperation({
     summary: 'Soft-delete a horse profile created by mistake',
     description:
-      'Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 403.',
+      'Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 409.',
   })
   @ApiNoContentResponse()
   @HttpCode(HttpStatus.NO_CONTENT)

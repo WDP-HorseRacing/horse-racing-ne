@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
@@ -567,24 +563,24 @@ describe('HorseStatusesService', () => {
       expectNoWrite();
     });
 
-    it('rejects a CLUB_MANAGER changing the lifecycle of a deleted profile with 403 and writes nothing', async () => {
+    it('rejects a CLUB_MANAGER changing the lifecycle of a deleted profile with 409 and writes nothing', async () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
       await expect(
         service.updateLifecycle(actor, HORSE_ID, {
           lifecycleStatus: HorseLifecycleStatus.RETIRED,
           reason: 'Giải nghệ',
         }),
-      ).rejects.toThrow(new ForbiddenException(DELETED_MESSAGE));
+      ).rejects.toThrow(new ConflictException(DELETED_MESSAGE));
       expectNoWrite();
     });
 
-    it('rejects a CLUB_MANAGER previewing a lifecycle change of a deleted profile with 403', async () => {
+    it('rejects a CLUB_MANAGER previewing a lifecycle change of a deleted profile with 409', async () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
       await expect(
         service.previewLifecycle(actor, HORSE_ID, {
           lifecycleStatus: HorseLifecycleStatus.RETIRED,
         }),
-      ).rejects.toThrow(new ForbiddenException(DELETED_MESSAGE));
+      ).rejects.toThrow(new ConflictException(DELETED_MESSAGE));
       expect(statuses.lifecycleImpact).not.toHaveBeenCalled();
     });
   });

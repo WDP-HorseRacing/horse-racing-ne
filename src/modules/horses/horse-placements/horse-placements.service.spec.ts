@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -185,10 +184,10 @@ describe('HorsePlacementsService', () => {
     expectNoWrite();
   });
 
-  it('rejects a CLUB_MANAGER on a deleted profile with 403 before locking the barn', async () => {
+  it('rejects a CLUB_MANAGER on a deleted profile with 409 before locking the barn', async () => {
     horse.deletedAt = new Date('2026-09-01T00:00:00Z');
     await expect(assign()).rejects.toThrow(
-      new ForbiddenException(
+      new ConflictException(
         'Hồ sơ đã xóa, chỉ xem được. Khôi phục hồ sơ trước khi thao tác',
       ),
     );
@@ -449,10 +448,10 @@ describe('HorsePlacementsService', () => {
       expect(placements.barnChangeImpact).not.toHaveBeenCalled();
     });
 
-    it('returns 403 on a deleted profile and reads no barn', async () => {
+    it('returns 409 on a deleted profile and reads no barn', async () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
 
-      await expect(preview()).rejects.toThrow(ForbiddenException);
+      await expect(preview()).rejects.toThrow(ConflictException);
       expect(placements.findBarn).not.toHaveBeenCalled();
     });
   });

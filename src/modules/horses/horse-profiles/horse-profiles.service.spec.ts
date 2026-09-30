@@ -472,13 +472,13 @@ describe('HorseProfilesService', () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
     });
 
-    it('rejects a CLUB_MANAGER updating a deleted profile with 403', async () => {
+    it('rejects a CLUB_MANAGER updating a deleted profile with 409', async () => {
       await expect(
         service.update(actorWith(UserRole.CLUB_MANAGER), HORSE_ID, {
           version: 3,
           name: 'Bão',
         }),
-      ).rejects.toThrow(new ForbiddenException(DELETED_MESSAGE));
+      ).rejects.toThrow(new ConflictException(DELETED_MESSAGE));
       expect(dataSource.transaction).not.toHaveBeenCalled();
     });
 
