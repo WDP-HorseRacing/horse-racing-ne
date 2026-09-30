@@ -47,6 +47,7 @@ MinIO's S3 API is available at `http://localhost:9000` and its management consol
 | `pnpm build`                           | Compile the app                                       |
 | `pnpm lint`                            | Run ESLint                                            |
 | `pnpm test`                            | Run unit tests                                        |
+| `pnpm test:integration`                | Run SQL tests on a throwaway Postgres (needs Docker)   |
 | `pnpm db:migrate`                      | Apply pending migrations                              |
 | `pnpm db:revert`                       | Revert the last migration                             |
 | `pnpm db:generate src/migrations/Name` | Generate a migration from entity changes              |
