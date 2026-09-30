@@ -1,4 +1,5 @@
 import { UserRole } from '../../../common/enums/role.enum';
+import { UserStatus } from '../../../common/enums/user-status.enum';
 import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseGender } from '../enums/horse-gender.enum';
 import {
@@ -24,6 +25,7 @@ import {
 import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import {
   assertAbnormalConfirmed,
+  assertAssignableOwner,
   assertBarnChangeReason,
   assertBornBeforeChildren,
   assertDateOfBirth,
@@ -950,6 +952,36 @@ describe('horse.policy', () => {
         new BadRequestException('Đổi khu bắt buộc nhập lý do'),
       );
       expect(() => assertBarnChangeReason('b1', 'Cân bằng khu')).not.toThrow();
+    });
+  });
+
+  describe('assertAssignableOwner', () => {
+    it('rejects a missing account or an account that is not a horse owner with 400', () => {
+      expect(() => assertAssignableOwner(null)).toThrow(BadRequestException);
+      expect(() =>
+        assertAssignableOwner({
+          role: UserRole.GROOM,
+          status: UserStatus.ACTIVE,
+        }),
+      ).toThrow(BadRequestException);
+    });
+
+    it('rejects a horse owner who is no longer active with 409', () => {
+      expect(() =>
+        assertAssignableOwner({
+          role: UserRole.HORSE_OWNER,
+          status: UserStatus.LOCKED,
+        }),
+      ).toThrow(ConflictException);
+    });
+
+    it('accepts an active horse owner', () => {
+      expect(() =>
+        assertAssignableOwner({
+          role: UserRole.HORSE_OWNER,
+          status: UserStatus.ACTIVE,
+        }),
+      ).not.toThrow();
     });
   });
 });

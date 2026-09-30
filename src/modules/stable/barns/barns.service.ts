@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -31,6 +30,7 @@ import { BarnEntity } from '../entities/barn.entity';
 import { StallEntity } from '../entities/stall.entity';
 import { toBarnListItem, toBarnResponse } from '../mappers/barn.mapper';
 import {
+  assertAssignableHeadTrainer,
   assertBarnChangeKeepsHorses,
   assertCapacityFitsStalls,
   assertBarnRemovable,
@@ -158,8 +158,8 @@ export class BarnsService {
    * @param body Các field cần đổi
    * @returns A promise resolving to khu chuồng sau khi sửa
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
-   * @throws BadRequestException Nếu Head Trainer mới không phải HEAD_TRAINER đang hoạt động
-   * @throws ConflictException Nếu tên khu đã tồn tại, hoặc khu còn ngựa mà thay đổi thuộc trường hợp bị chặn
+   * @throws BadRequestException Nếu Head Trainer mới không có hoặc không phải HEAD_TRAINER
+   * @throws ConflictException Nếu Head Trainer mới không còn hoạt động, tên khu đã tồn tại, hoặc khu còn ngựa mà thay đổi thuộc trường hợp bị chặn
    */
   async update(
     actor: Actor,
@@ -173,18 +173,11 @@ export class BarnsService {
         const barn = await this.access.lockBarn(manager, barnId);
 
         if (body.headTrainerId) {
-          const isValidTrainer = await manager.exists(UserEntity, {
-            where: {
-              id: body.headTrainerId,
-              role: UserRole.HEAD_TRAINER,
-              status: UserStatus.ACTIVE,
-            },
-          });
-          if (!isValidTrainer) {
-            throw new BadRequestException(
-              'Người phụ trách phải là Head Trainer đang hoạt động',
-            );
-          }
+          assertAssignableHeadTrainer(
+            await manager.findOne(UserEntity, {
+              where: { id: body.headTrainerId },
+            }),
+          );
         }
 
         assertBarnChangeKeepsHorses({

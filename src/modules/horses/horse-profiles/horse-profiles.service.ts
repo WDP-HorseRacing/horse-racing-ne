@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -56,6 +55,7 @@ import {
 } from '../mappers/horse-profiles.mapper';
 import { toHorseResponse } from '../mappers/horse.mapper';
 import {
+  assertAssignableOwner,
   assertDateOfBirth,
   evaluateEligibility,
   evaluateHorsePermissions,
@@ -232,7 +232,7 @@ export class HorseProfilesService {
    * @returns Promise trả về hồ sơ vừa tạo
    * @throws BadRequestException Nếu ngày sinh ở tương lai, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ
    * @throws NotFoundException Nếu không tìm thấy tệp ảnh của người gọi
-   * @throws ConflictException Nếu số chip đã được dùng (kể cả hồ sơ đã xóa), ảnh chưa được tải lên xong, hoặc khu không xếp được
+   * @throws ConflictException Nếu số chip đã được dùng (kể cả hồ sơ đã xóa), ảnh chưa được tải lên xong, khu không xếp được, hoặc chủ sở hữu không còn hoạt động
    */
   async create(actor: Actor, body: CreateHorseDto): Promise<HorseResponseDto> {
     const caller = await this.access.currentUser(actor);
@@ -313,7 +313,7 @@ export class HorseProfilesService {
    * @throws NotFoundException Nếu không có ngựa (Head Trainer: kể cả hồ sơ đã xóa) hoặc không tìm thấy tệp ảnh của người gọi
    * @throws ForbiddenException Nếu người gọi gửi field ngoài quyền, hoặc Head Trainer sửa ngựa ngoài khu
    * @throws BadRequestException Nếu ngày sinh, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ
-   * @throws ConflictException Nếu Club Manager sửa hồ sơ đã xóa, ngựa đã chuyển nhượng, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
+   * @throws ConflictException Nếu Club Manager sửa hồ sơ đã xóa, ngựa đã chuyển nhượng, chủ sở hữu không còn hoạt động, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
    */
   async update(
     actor: Actor,
@@ -533,18 +533,15 @@ export class HorseProfilesService {
    * @param manager EntityManager của transaction đang chạy
    * @param ownerId UUID chủ sở hữu, null nếu bỏ trống
    * @returns A promise resolving khi kiểm tra xong
-   * @throws BadRequestException Nếu tài khoản không tồn tại, không phải HORSE_OWNER hoặc không hoạt động
+   * @throws BadRequestException Nếu tài khoản không tồn tại hoặc không phải HORSE_OWNER
+   * @throws ConflictException Nếu tài khoản HORSE_OWNER không còn hoạt động
    */
   private async assertActiveOwner(
     manager: EntityManager,
     ownerId: string | null,
   ): Promise<void> {
     if (!ownerId) return;
-    if (!(await this.horses.lockActiveHorseOwner(manager, ownerId))) {
-      throw new BadRequestException(
-        'Chủ sở hữu phải là tài khoản HORSE_OWNER đang hoạt động',
-      );
-    }
+    assertAssignableOwner(await this.horses.lockOwnerAccount(manager, ownerId));
   }
 
   /**

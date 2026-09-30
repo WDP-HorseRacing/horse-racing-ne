@@ -186,6 +186,23 @@ export class HorsesSharedRepository {
   }
 
   /**
+   * Khóa chia sẻ tài khoản được chọn làm chủ ngựa tới hết transaction, để module users không đổi vai trò hoặc khóa tài khoản xen vào
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param ownerId UUID tài khoản được chọn
+   * @returns A promise resolving to tài khoản (vai trò, trạng thái), hoặc null nếu không có
+   */
+  lockOwnerAccount(
+    manager: EntityManager,
+    ownerId: string,
+  ): Promise<UserEntity | null> {
+    return manager.findOne(UserEntity, {
+      where: { id: ownerId },
+      lock: { mode: 'pessimistic_read' },
+    });
+  }
+
+  /**
    * Khóa chia sẻ row tài khoản chủ (FOR SHARE) rồi kiểm tài khoản đó có đang là HORSE_OWNER hoạt động không (bảng users, chỉ đọc)
    *
    * - Khóa FOR SHARE chặn module users đổi role hoặc khóa tài khoản này (module đó khóa FOR UPDATE) cho tới hết transaction, nên không có khe gán chủ trong lúc tài khoản đang bị đổi

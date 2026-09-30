@@ -11,6 +11,7 @@ import { StallStatus } from '../constants/stall-status.enum';
 import type { BarnChange } from '../types/stable.types';
 import {
   assertAssignableGroom,
+  assertAssignableHeadTrainer,
   assertBarnActive,
   assertBarnChangeKeepsHorses,
   assertBarnHasStallRoom,
@@ -356,6 +357,29 @@ describe('stable.policy', () => {
           { name: 'A', capacity: undefined },
         ),
       ).toBeNull();
+    });
+  });
+
+  describe('assertAssignableHeadTrainer', () => {
+    it('rejects a missing account or an account that is not a head trainer with 400', () => {
+      expect(() => assertAssignableHeadTrainer(null)).toThrow(
+        BadRequestException,
+      );
+      expect(() =>
+        assertAssignableHeadTrainer({
+          role: UserRole.GROOM,
+          status: UserStatus.ACTIVE,
+        }),
+      ).toThrow(BadRequestException);
+    });
+
+    it('rejects a head trainer who is no longer active with 409', () => {
+      expect(() =>
+        assertAssignableHeadTrainer({
+          role: UserRole.HEAD_TRAINER,
+          status: UserStatus.INACTIVE,
+        }),
+      ).toThrow(ConflictException);
     });
   });
 });

@@ -52,6 +52,7 @@ describe('HorseProfilesService', () => {
   let callerRole: UserRole;
   let barnRows: unknown[];
   let isActiveOwner: boolean;
+  let ownerAccount: { role: UserRole; status: UserStatus } | null;
   let microchipTaken: boolean;
   let horseRepository: {
     update: jest.Mock;
@@ -112,6 +113,7 @@ describe('HorseProfilesService', () => {
     callerRole = UserRole.CLUB_MANAGER;
     barnRows = [{ '?column?': 1 }];
     isActiveOwner = true;
+    ownerAccount = { role: UserRole.HORSE_OWNER, status: UserStatus.ACTIVE };
     microchipTaken = false;
     horseRepository = {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -193,6 +195,7 @@ describe('HorseProfilesService', () => {
       isGroomAssigned: jest.fn().mockResolvedValue(false),
       isHorseInTrainerBarn: jest.fn(() => Promise.resolve(barnRows.length > 0)),
       lockActiveHorseOwner: jest.fn(() => Promise.resolve(isActiveOwner)),
+      lockOwnerAccount: jest.fn(() => Promise.resolve(ownerAccount)),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     barnsService = { lockAssignableBarn: jest.fn().mockResolvedValue({}) };
@@ -347,18 +350,34 @@ describe('HorseProfilesService', () => {
       );
     });
 
-    it('rejects an ownerId that is not an active HORSE_OWNER with 400', async () => {
-      isActiveOwner = false;
+    it.each([
+      ['a missing account', null],
+      [
+        'an account that is not a horse owner',
+        { role: UserRole.GROOM, status: UserStatus.ACTIVE },
+      ],
+    ])('rejects %s as owner with 400', async (_label, account) => {
+      ownerAccount = account;
       await expect(
         service.update(
           actorWith(UserRole.CLUB_MANAGER),
           HORSE_ID,
           body({ ownerId: 'someone' }),
         ),
-      ).rejects.toThrow(BadRequestException);
-      expect(horses.lockActiveHorseOwner).toHaveBeenCalledWith(
-        manager,
-        'someone',
+      ).rejects.toThrow(new BadRequestException('Chủ sở hữu không hợp lệ'));
+      expect(horseRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects an owner account that is no longer active with 409', async () => {
+      ownerAccount = { role: UserRole.HORSE_OWNER, status: UserStatus.LOCKED };
+      await expect(
+        service.update(
+          actorWith(UserRole.CLUB_MANAGER),
+          HORSE_ID,
+          body({ ownerId: 'someone' }),
+        ),
+      ).rejects.toThrow(
+        new ConflictException('Chủ sở hữu không ở trạng thái hoạt động'),
       );
       expect(horseRepository.update).not.toHaveBeenCalled();
     });
@@ -370,12 +389,9 @@ describe('HorseProfilesService', () => {
         body({ ownerId: 'owner-2' }),
       );
       expect(dataSource.transaction).toHaveBeenCalled();
-      expect(horses.lockActiveHorseOwner).toHaveBeenCalledWith(
-        manager,
-        'owner-2',
-      );
+      expect(horses.lockOwnerAccount).toHaveBeenCalledWith(manager, 'owner-2');
       expect(
-        horses.lockActiveHorseOwner.mock.invocationCallOrder[0],
+        horses.lockOwnerAccount.mock.invocationCallOrder[0],
       ).toBeGreaterThan(dataSource.transaction.mock.invocationCallOrder[0]);
     });
 

@@ -301,7 +301,7 @@ describe('BarnsService', () => {
     let barn: Record<string, unknown> | null;
     let hasHorses: boolean;
     let hasStalls: boolean;
-    let validTrainer: boolean;
+    let trainer: Record<string, unknown> | null;
 
     beforeEach(() => {
       barn = {
@@ -314,9 +314,20 @@ describe('BarnsService', () => {
       };
       hasHorses = false;
       hasStalls = false;
-      validTrainer = true;
-      manager.findOne.mockImplementation((entity: unknown) =>
-        Promise.resolve(entity === BarnEntity ? barn : clubManager),
+      trainer = {
+        id: 'u-9',
+        role: UserRole.HEAD_TRAINER,
+        status: UserStatus.ACTIVE,
+      };
+      manager.findOne.mockImplementation(
+        (entity: unknown, options: { where: { id?: string } }) =>
+          Promise.resolve(
+            entity === BarnEntity
+              ? barn
+              : options.where.id === 'u-9'
+                ? trainer
+                : clubManager,
+          ),
       );
       manager.exists.mockImplementation((entity: unknown) =>
         Promise.resolve(
@@ -324,7 +335,7 @@ describe('BarnsService', () => {
             ? hasHorses
             : entity === StallEntity
               ? hasStalls
-              : validTrainer,
+              : false,
         ),
       );
       manager.count.mockResolvedValue(4);
@@ -409,11 +420,31 @@ describe('BarnsService', () => {
         });
       });
 
-      it('rejects a head trainer who is not an active HEAD_TRAINER', async () => {
-        validTrainer = false;
+      it.each([
+        ['a missing account', null],
+        [
+          'an account that is not a head trainer',
+          { id: 'u-9', role: UserRole.GROOM, status: UserStatus.ACTIVE },
+        ],
+      ])('rejects %s as head trainer with 400', async (_label, account) => {
+        trainer = account;
         await expect(
           service.update(actor, 'b1', { headTrainerId: 'u-9' }),
-        ).rejects.toThrow(BadRequestException);
+        ).rejects.toThrow(
+          new BadRequestException('Head Trainer phụ trách không hợp lệ'),
+        );
+        expect(manager.save).not.toHaveBeenCalled();
+      });
+
+      it('rejects a head trainer account that is no longer active with 409', async () => {
+        trainer = { ...trainer, status: UserStatus.LOCKED };
+        await expect(
+          service.update(actor, 'b1', { headTrainerId: 'u-9' }),
+        ).rejects.toThrow(
+          new ConflictException(
+            'Head Trainer phụ trách không ở trạng thái hoạt động',
+          ),
+        );
         expect(manager.save).not.toHaveBeenCalled();
       });
 

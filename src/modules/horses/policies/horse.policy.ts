@@ -4,6 +4,8 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
+import { UserStatus } from '../../../common/enums/user-status.enum';
+import type { UserEntity } from '../../users/entities/user.entity';
 import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseGender } from '../enums/horse-gender.enum';
 import {
@@ -234,6 +236,24 @@ export function lifecycleTransitionError(
   return canTransitionLifecycle(from, to)
     ? null
     : `Không thể chuyển vòng đời từ ${from} sang ${to}`;
+}
+
+/**
+ * Chặn chọn chủ sở hữu không phải HORSE_OWNER đang hoạt động
+ *
+ * @param user Tài khoản được chọn làm chủ, null nếu không có hoặc đã xóa
+ * @throws BadRequestException Nếu tài khoản không có hoặc không phải HORSE_OWNER
+ * @throws ConflictException Nếu là HORSE_OWNER nhưng không còn ACTIVE
+ */
+export function assertAssignableOwner<
+  T extends Pick<UserEntity, 'role' | 'status'>,
+>(user: T | null): asserts user is T {
+  if (user === null || user.role !== UserRole.HORSE_OWNER) {
+    throw new BadRequestException('Chủ sở hữu không hợp lệ');
+  }
+  if (user.status !== UserStatus.ACTIVE) {
+    throw new ConflictException('Chủ sở hữu không ở trạng thái hoạt động');
+  }
 }
 
 /**

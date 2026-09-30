@@ -258,6 +258,26 @@ export function assertAssignableGroom<
 }
 
 /**
+ * Chặn gán khu cho người không phải Head Trainer đang hoạt động
+ *
+ * @param user Tài khoản được chọn làm Head Trainer phụ trách, null nếu không có hoặc đã xóa
+ * @throws BadRequestException Nếu tài khoản không có hoặc không phải HEAD_TRAINER
+ * @throws ConflictException Nếu là Head Trainer nhưng không còn ACTIVE
+ */
+export function assertAssignableHeadTrainer<
+  T extends Pick<UserEntity, 'role' | 'status'>,
+>(user: T | null): asserts user is T {
+  if (user === null || user.role !== UserRole.HEAD_TRAINER) {
+    throw new BadRequestException('Head Trainer phụ trách không hợp lệ');
+  }
+  if (user.status !== UserStatus.ACTIVE) {
+    throw new ConflictException(
+      'Head Trainer phụ trách không ở trạng thái hoạt động',
+    );
+  }
+}
+
+/**
  * Chặn các thay đổi làm khu còn ngựa mất chỗ ở hoặc mất người phụ trách (F1.6)
  *
  * - Khu không còn ngựa: cho qua mọi thay đổi
