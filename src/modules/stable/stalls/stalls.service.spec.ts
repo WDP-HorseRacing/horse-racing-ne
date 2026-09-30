@@ -374,6 +374,73 @@ describe('StallsService', () => {
     });
   });
 
+  describe('releaseHorseStall', () => {
+    const release = () =>
+      service.releaseHorseStall(actorWith(UserRole.HEAD_TRAINER), 'h1');
+
+    beforeEach(() => {
+      rows.set(StallAssignmentEntity, {
+        id: 'sa-1',
+        horseId: 'h1',
+        stallId: 's0',
+        startAt: new Date('2026-01-01T00:00:00Z'),
+        endAt: null,
+      });
+    });
+
+    it('rejects a horse that does not exist', async () => {
+      rows.set(HorseEntity, null);
+      await expect(release()).rejects.toThrow(NotFoundException);
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a head trainer who does not lead the horse barn', async () => {
+      manager.query.mockResolvedValue([]);
+      await expect(release()).rejects.toThrow(ForbiddenException);
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('answers 404 when the horse has no stall', async () => {
+      rows.set(StallAssignmentEntity, null);
+      await expect(release()).rejects.toThrow(
+        new NotFoundException('Ngựa chưa được xếp ô chuồng'),
+      );
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it('locks the horse, then ends its open stall assignment, frees the stall and audits it', async () => {
+      const result = await release();
+      expect(manager.findOne).toHaveBeenCalledWith(HorseEntity, {
+        where: { id: 'h1' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(manager.findOne).toHaveBeenCalledWith(StallAssignmentEntity, {
+        where: { horseId: 'h1', endAt: anything },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(manager.update).toHaveBeenCalledWith(
+        StallAssignmentEntity,
+        { id: 'sa-1' },
+        { endAt: anyDate },
+      );
+      expect(manager.update).toHaveBeenCalledWith(
+        StallEntity,
+        { id: 's0' },
+        { status: StallStatus.AVAILABLE },
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          entityType: AuditEntityType.STALL_ASSIGNMENT,
+          entityId: 'sa-1',
+          feature: 'F1.7',
+        }),
+      );
+      expect(result).toMatchObject({ id: 'sa-1', endAt: anyDate });
+    });
+  });
+
   describe('endAssignment', () => {
     const end = (roles: UserRole[] = [UserRole.HEAD_TRAINER]) =>
       service.endAssignment({ sub: 'kc-user', roles }, 'sa-1');

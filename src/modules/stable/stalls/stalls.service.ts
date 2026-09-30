@@ -564,29 +564,78 @@ export class StallsService {
         );
       }
 
-      const now = new Date();
-      const stall = await this.closeAssignment(manager, assignment, now);
-      const snapshot = {
-        horseId: assignment.horseId,
-        stallId: stall.id,
-        stallCode: stall.code,
-      };
-      await this.auditService.record(manager, {
-        actorId: caller.id,
-        action: AuditAction.UPDATE,
-        entityType: AuditEntityType.STALL_ASSIGNMENT,
-        feature: 'F1.7',
-        entityId: assignment.id,
-        before: { ...snapshot, endAt: null },
-        after: { ...snapshot, endAt: now },
-      });
-
-      const horse = await manager.findOneOrFail(HorseEntity, {
-        where: { id: assignment.horseId },
-        withDeleted: true,
-      });
-      return toStallAssignmentResponse({ ...assignment, endAt: now, horse });
+      return this.finishAssignment(manager, caller.id, assignment);
     });
+  }
+
+  /**
+   * Gỡ ngựa khỏi ô chuồng đang ở (F1.7), theo id ngựa thay vì id phân công
+   *
+   * - Chỉ Head Trainer phụ trách khu của ngựa được thao tác; ngựa đã chuyển nhượng hoặc chưa có khu trả 409
+   * - Chạy trong một transaction: lock ngựa, rồi lock phân công ô đang mở của ngựa
+   * - Đóng phân công, trả ô về trống và ghi nhật ký giống endAssignment
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns A promise resolving to phân công ô vừa kết thúc
+   * @throws NotFoundException Nếu không có ngựa, hoặc ngựa chưa được xếp ô chuồng
+   * @throws ForbiddenException Nếu ngựa không thuộc khu người gọi phụ trách
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc chưa được xếp khu
+   */
+  async releaseHorseStall(
+    actor: Actor,
+    horseId: string,
+  ): Promise<StallAssignmentResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+
+    return this.dataSource.transaction(async (manager) => {
+      await this.access.lockOperableHorse(manager, caller.id, horseId, 'STALL');
+      const assignment = await manager.findOne(StallAssignmentEntity, {
+        where: { horseId, endAt: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!assignment) {
+        throw new NotFoundException('Ngựa chưa được xếp ô chuồng');
+      }
+      return this.finishAssignment(manager, caller.id, assignment);
+    });
+  }
+
+  /**
+   * Đóng một phân công ô đang mở đã lock, ghi nhật ký và dựng response
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID người thao tác (users.id)
+   * @param assignment Phân công ô đang mở (đã lock)
+   * @returns A promise resolving to phân công ô vừa kết thúc
+   */
+  private async finishAssignment(
+    manager: EntityManager,
+    callerId: string,
+    assignment: StallAssignmentEntity,
+  ): Promise<StallAssignmentResponseDto> {
+    const now = new Date();
+    const stall = await this.closeAssignment(manager, assignment, now);
+    const snapshot = {
+      horseId: assignment.horseId,
+      stallId: stall.id,
+      stallCode: stall.code,
+    };
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.STALL_ASSIGNMENT,
+      feature: 'F1.7',
+      entityId: assignment.id,
+      before: { ...snapshot, endAt: null },
+      after: { ...snapshot, endAt: now },
+    });
+
+    const horse = await manager.findOneOrFail(HorseEntity, {
+      where: { id: assignment.horseId },
+      withDeleted: true,
+    });
+    return toStallAssignmentResponse({ ...assignment, endAt: now, horse });
   }
 
   /**

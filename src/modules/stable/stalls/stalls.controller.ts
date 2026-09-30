@@ -139,6 +139,21 @@ export class StallsController {
   }
 
   @Access([UserRole.HEAD_TRAINER])
+  @Delete('horses/:id/stall')
+  @ApiOperation({
+    summary: 'Remove a horse from its current stall',
+    description:
+      'Head Trainer of the horse barn only. Ends the open stall assignment of the horse and frees the stall, same rules and audit as ending the assignment by id. 404 if the horse has no stall; 409 if the horse is transferred or has no barn.',
+  })
+  @ApiOkResponse({ type: StallAssignmentResponseDto })
+  releaseHorseStall(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<StallAssignmentResponseDto> {
+    return this.stallsService.releaseHorseStall(actor, id);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
   @Post('stall-assignments/:id/end')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

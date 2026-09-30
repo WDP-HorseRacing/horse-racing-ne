@@ -23,4 +23,12 @@ describe('StallsController', () => {
       ).toBe(HttpStatus.OK);
     });
   });
+
+  describe('releaseHorseStall', () => {
+    it('is open to the head trainer only, not the club manager', () => {
+      expect(
+        Reflect.getMetadata(ACCESS_KEY, handlerOf('releaseHorseStall')),
+      ).toEqual([UserRole.HEAD_TRAINER]);
+    });
+  });
 });

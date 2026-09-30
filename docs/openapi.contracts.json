@@ -5063,6 +5063,41 @@
         "tags": [
           "stable"
         ]
+      },
+      "delete": {
+        "description": "Head Trainer of the horse barn only. Ends the open stall assignment of the horse and frees the stall, same rules and audit as ending the assignment by id. 404 if the horse has no stall; 409 if the horse is transferred or has no barn.",
+        "operationId": "StallsController_releaseHorseStall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StallAssignmentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a horse from its current stall",
+        "tags": [
+          "stable"
+        ]
       }
     },
     "/api/v1/stall-assignments/{id}/end": {
