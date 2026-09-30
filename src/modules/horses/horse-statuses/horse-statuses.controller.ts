@@ -35,7 +35,7 @@ export class HorseStatusesController {
   @ApiOperation({
     summary: 'Preview the consequences of a lifecycle change',
     description:
-      'Không ghi gì. Trả về có được đổi không và từng hệ quả (giáo án bị hủy, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại) để hiện bảng xác nhận.',
+      'Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại) để hiện bảng xác nhận.',
   })
   @ApiOkResponse({ type: HorseLifecyclePreviewResponseDto })
   previewLifecycle(
@@ -51,7 +51,7 @@ export class HorseStatusesController {
   @ApiOperation({
     summary: 'Change horse lifecycle status',
     description:
-      'Bắt buộc lý do. Giải nghệ: hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại: sức khỏe về UNDER_OBSERVATION. Nên gọi preview trước để xác nhận.',
+      'Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại: sức khỏe về UNDER_OBSERVATION. Nên gọi preview trước để xác nhận.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   updateLifecycle(

@@ -261,7 +261,7 @@ export class HorseStatusesService {
   }
 
   /**
-   * Tạo ghi chú gắn vào giáo án bị hủy và khóa huấn luyện bị tự gỡ, để người xem biết vì sao.
+   * Tạo ghi chú gắn vào các lượt rút khỏi lớp khi giải nghệ hoặc chuyển nhượng, để người xem biết vì sao.
    *
    * @param body Trạng thái vòng đời mới và lý do
    * @returns Ghi chú dạng "Ngựa giải nghệ: <lý do>" hoặc "Ngựa chuyển nhượng: <lý do>"

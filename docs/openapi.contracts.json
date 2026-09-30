@@ -1261,7 +1261,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status/preview": {
       "get": {
-        "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (giáo án bị hủy, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại) để hiện bảng xác nhận.",
+        "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại) để hiện bảng xác nhận.",
         "operationId": "HorseStatusesController_previewLifecycle",
         "parameters": [
           {
@@ -1311,7 +1311,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status": {
       "patch": {
-        "description": "Bắt buộc lý do. Giải nghệ: hủy giáo án đang mở, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại: sức khỏe về UNDER_OBSERVATION. Nên gọi preview trước để xác nhận.",
+        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại: sức khỏe về UNDER_OBSERVATION. Nên gọi preview trước để xác nhận.",
         "operationId": "HorseStatusesController_updateLifecycle",
         "parameters": [
           {
