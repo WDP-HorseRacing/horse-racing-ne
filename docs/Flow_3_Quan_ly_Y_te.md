@@ -102,7 +102,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 3. Cảnh báo tự động của F1.5 sinh yêu cầu khám (F3.4):
    - Sốt (thân nhiệt trên 38.6 độ C): yêu cầu mức **Khẩn**.
    - Sụt cân (giảm quá 5% trong 14 ngày): yêu cầu mức **Bình thường**.
-4. Số đo lấy ngay trong buổi khám **không** sinh yêu cầu khám, vì bác sĩ đang khám chính con ngựa đó.
+4. Số đo lấy ngay trong buổi khám **không** sinh yêu cầu khám và **không** gửi cảnh báo của F1.5, vì bác sĩ đang khám chính con ngựa đó. Quyết định của bác sĩ (đổi sức khỏe, đặt khóa huấn luyện, mở bệnh án) đã có thông báo riêng theo mục III.7. *(BA chốt 2026-09-30)*
 5. Mỗi con ngựa chỉ có tối đa một yêu cầu tự động đang chờ cho mỗi loại cảnh báo. Cảnh báo lặp lại khi yêu cầu cũ còn chờ thì không sinh thêm yêu cầu.
 6. Yêu cầu tự động không gửi thêm thông báo, vì cảnh báo của F1.5 đã báo cho VETERINARIAN và HEAD TRAINER.
 
@@ -123,6 +123,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Yêu cầu khám mức Khẩn được tạo bởi người dùng, hoặc bác sĩ nâng một yêu cầu (kể cả yêu cầu tự động) lên Khẩn | URGENT | Mọi VETERINARIAN đang hoạt động |
 | Đặt khóa huấn luyện | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER |
 | Trạng thái sức khỏe chuyển sang Chấn thương hoặc Cách ly | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
+| Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) *(BA chốt 2026-09-30)* | NORMAL | HEAD TRAINER phụ trách khu |
 | Quá hạn khám định kỳ trên 7 ngày | HIGH | Mọi VETERINARIAN đang hoạt động, CLUB MANAGER |
 | Mở bệnh án | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER |
@@ -239,7 +240,7 @@ Theo dõi hạn khám định kỳ của từng con ngựa và đặt ngày hẹ
 | **Hậu điều kiện** | Danh sách hạn khám được hiển thị đúng. Ngày hẹn khám được lưu và ghi nhật ký. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở mục "Lịch khám định kỳ".<br>2. Hệ thống tính hạn khám của từng con ngựa.<br>3. Hệ thống xếp các con quá hạn lên đầu, rồi tới các con đến hạn.<br>4. VETERINARIAN chọn một con và đặt ngày hẹn khám.<br>5. Hệ thống lưu và ghi nhật ký. |
 | **Luồng thay thế** | A1. VETERINARIAN dời ngày hẹn đã đặt -> hệ thống lưu ngày mới kèm lý do.<br>A2. Ngựa vừa được khám (trong hoặc ngoài bệnh án) -> hạn khám tự đẩy sang chu kỳ tiếp theo, ngày hẹn đang hiệu lực chuyển Đã thực hiện. |
-| **Luồng ngoại lệ** | E1. Đặt ngày hẹn trong quá khứ, hoặc muộn hơn hạn khám khi ngựa chưa quá hạn -> báo lỗi.<br>E2. Đặt lịch cho ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 403) theo quy ước Flow 1.<br>E3. Dời lịch không nhập lý do -> báo lỗi. |
+| **Luồng ngoại lệ** | E1. Đặt ngày hẹn trong quá khứ, hoặc muộn hơn hạn khám khi ngựa chưa quá hạn -> báo lỗi.<br>E2. Đặt lịch cho ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E3. Dời lịch không nhập lý do -> báo lỗi. |
 
 ---
 
@@ -294,7 +295,7 @@ Ghi lại một buổi khám cho con ngựa chưa có bệnh án đang mở: kh�
 | **Hậu điều kiện** | Buổi khám được lưu, chỉ số cơ thể được ghi vào F1.5, hạn khám định kỳ được đẩy sang chu kỳ tiếp theo, các yêu cầu được gắn chuyển Đã khám. Nếu kết luận Có vấn đề thì có thêm một bệnh án đang mở. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN chọn con ngựa từ lịch khám định kỳ hoặc từ hàng đợi yêu cầu khám.<br>2. Hệ thống hiển thị biểu mẫu buổi khám và danh sách yêu cầu khám đang chờ của con ngựa.<br>3. VETERINARIAN gắn yêu cầu (nếu có), nhập chỉ số cơ thể, nhận xét, kết luận và trạng thái sức khỏe.<br>4. VETERINARIAN lưu.<br>5. Hệ thống ghi chỉ số vào F1.5 kèm nguồn, lưu buổi khám, chuyển các yêu cầu sang Đã khám, đẩy hạn khám và ghi nhật ký. |
 | **Luồng thay thế** | A1. Kết luận Có vấn đề -> VETERINARIAN nhập chẩn đoán ban đầu, hệ thống mở bệnh án ngay trong thao tác lưu (UC-F3-05).<br>A2. Trạng thái sức khỏe thay đổi -> hệ thống thực hiện các hệ quả của UC-F3-07.<br>A3. Chỉ số ngoài khoảng bình thường -> hệ thống hỏi xác nhận theo F1.5; không sinh yêu cầu khám tự động. |
-| **Luồng ngoại lệ** | E1. Con ngựa đã có bệnh án đang mở -> trả về 409 và hướng sang UC-F3-06.<br>E2. Ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 403) theo quy ước Flow 1.<br>E3. Thời điểm khám ở tương lai hoặc lùi quá 7 ngày -> báo lỗi.<br>E4. Kết luận Có vấn đề mà không nhập chẩn đoán ban đầu -> báo lỗi.<br>E5. Yêu cầu được gắn không còn ở trạng thái Chờ xử lý (người khác vừa xử lý) -> trả về 409, không lưu gì. |
+| **Luồng ngoại lệ** | E1. Con ngựa đã có bệnh án đang mở -> trả về 409 và hướng sang UC-F3-06.<br>E2. Ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E3. Thời điểm khám ở tương lai hoặc lùi quá 7 ngày -> báo lỗi.<br>E4. Kết luận Có vấn đề mà không nhập chẩn đoán ban đầu -> báo lỗi.<br>E5. Yêu cầu được gắn không còn ở trạng thái Chờ xử lý (người khác vừa xử lý) -> trả về 409, không lưu gì. |
 
 ---
 
@@ -343,7 +344,7 @@ Hàng đợi các yêu cầu khám phát sinh ngoài lịch định kỳ. Đây 
 | **Hậu điều kiện** | Yêu cầu khám được lưu ở trạng thái Chờ xử lý, hoặc được chuyển sang Đã khám / Đã bỏ qua. |
 | **Luồng sự kiện chính** | 1. Người gửi mô tả dấu hiệu bất thường và chọn mức độ.<br>2. Hệ thống lưu yêu cầu ở trạng thái Chờ xử lý và gửi thông báo nếu là mức Khẩn.<br>3. VETERINARIAN mở hàng đợi yêu cầu.<br>4. VETERINARIAN chọn một yêu cầu và bắt đầu buổi khám: UC-F3-03 nếu ngựa chưa có bệnh án mở, UC-F3-06 nếu đã có.<br>5. Hệ thống chuyển yêu cầu sang Đã khám và ghi nhật ký. |
 | **Luồng thay thế** | A1. Chỉ số cơ thể vượt ngưỡng -> hệ thống tự tạo yêu cầu, không cần người gửi.<br>A2. VETERINARIAN thấy yêu cầu không cần khám -> bỏ qua kèm lý do.<br>A3. Nhiều yêu cầu của cùng một con ngựa -> gắn tất cả vào một buổi khám.<br>A4. VETERINARIAN đổi mức độ -> nhập lý do, hệ thống lưu và ghi nhật ký. |
-| **Luồng ngoại lệ** | E1. Không nhập mô tả -> báo lỗi.<br>E2. GROOM gửi yêu cầu cho ngựa không được phân công, HEAD TRAINER gửi cho ngựa ngoài khu -> trả về 403.<br>E3. Ngựa đã chuyển nhượng -> không cho tạo yêu cầu (409). Hồ sơ đã xóa -> 404 (CLUB MANAGER: 403).<br>E4. Bỏ qua hoặc đổi mức độ một yêu cầu không còn Chờ xử lý -> trả về 409. |
+| **Luồng ngoại lệ** | E1. Không nhập mô tả -> báo lỗi.<br>E2. GROOM gửi yêu cầu cho ngựa không được phân công, HEAD TRAINER gửi cho ngựa ngoài khu -> trả về 403.<br>E3. Ngựa đã chuyển nhượng -> không cho tạo yêu cầu (409). Riêng HEAD TRAINER và GROOM: ngựa đã chuyển nhượng không còn thuộc khu hay phân công của họ nên nhận 403, không lộ tình trạng con ngựa. *(BA chốt 2026-09-30)* Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E4. Bỏ qua hoặc đổi mức độ một yêu cầu không còn Chờ xử lý -> trả về 409. |
 
 ---
 
@@ -402,7 +403,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 | VETERINARIAN | Thêm, Xem, Sửa (hủy) | Toàn câu lạc bộ | Vai trò duy nhất ghi nhận và hủy buổi khám. |
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | |
 | HEAD TRAINER | Xem | Toàn câu lạc bộ | Xem chẩn đoán, ghi chú chăm sóc và hạn chế vận động để sắp lịch tập. |
-| GROOM | Không | | Nhận ghi chú chăm sóc qua công việc hằng ngày ở Flow 4. |
+| GROOM | Xem ghi chú chăm sóc | Ngựa được phân công | Xem ghi chú chăm sóc đang hiệu lực (của buổi khám gần nhất) ngay trong hồ sơ ngựa. Không xem được chẩn đoán, thuốc hay chi phí. *(BA chốt 2026-09-30)* |
 | HORSE OWNER | Xem | Ngựa sở hữu | Không thấy liều lượng, tần suất của đơn thuốc; không thấy chi phí cho tới khi bệnh án đóng. |
 
 ### Nghiệp vụ
@@ -491,7 +492,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 | **Hậu điều kiện** | Trạng thái sức khỏe được cập nhật, các giá trị được tập và được đua được tính lại, thông báo được gửi nếu cần. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở hồ sơ ngựa hoặc bảng điều khiển y tế.<br>2. VETERINARIAN chọn "Đổi trạng thái sức khỏe".<br>3. Hệ thống hiển thị bốn giá trị kèm mô tả hệ quả.<br>4. VETERINARIAN chọn giá trị mới và nhập lý do.<br>5. Hệ thống lưu, gửi thông báo nếu cần và ghi nhật ký. |
 | **Luồng thay thế** | A1. Trạng thái được đổi ngay trong một buổi khám -> hệ thống lưu cùng buổi khám, không cần thao tác riêng.<br>A2. Trạng thái mới trùng trạng thái cũ -> hệ thống không ghi nhật ký và báo không có thay đổi. |
-| **Luồng ngoại lệ** | E1. Không nhập lý do -> chặn thao tác.<br>E2. Ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 403) theo quy ước Flow 1.<br>E3. Vai trò khác VETERINARIAN gọi trực tiếp API -> trả về 403. |
+| **Luồng ngoại lệ** | E1. Không nhập lý do -> chặn thao tác.<br>E2. Ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E3. Vai trò khác VETERINARIAN gọi trực tiếp API -> trả về 403. |
 
 ---
 
@@ -536,7 +537,7 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 | **Hậu điều kiện** | Lệnh khóa được tạo hoặc được gỡ. Giá trị được tập và được đua của con ngựa được tính lại. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở hồ sơ ngựa hoặc bệnh án.<br>2. VETERINARIAN chọn "Khóa huấn luyện".<br>3. VETERINARIAN nhập lý do và ngày dự kiến gỡ (nếu có).<br>4. Hệ thống kiểm tra con ngựa chưa có khóa đang hiệu lực.<br>5. Hệ thống lưu lệnh khóa (gắn bệnh án đang mở nếu có), gửi thông báo mức HIGH và ghi nhật ký. |
 | **Luồng thay thế** | A1. VETERINARIAN gỡ khóa -> nhập lý do, hệ thống gỡ và gửi thông báo mức NORMAL.<br>A2. Đóng bệnh án mà khóa còn hiệu lực -> hệ thống yêu cầu chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ. |
-| **Luồng ngoại lệ** | E1. Con ngựa đã có khóa đang hiệu lực -> trả về 409 và hiển thị khóa hiện có.<br>E2. Không nhập lý do -> chặn thao tác.<br>E3. Ngày dự kiến gỡ ở quá khứ (so theo ngày lịch câu lạc bộ) -> báo lỗi.<br>E4. Ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 403) theo quy ước Flow 1.<br>E5. Gỡ một lệnh khóa đã gỡ -> trả về 409. |
+| **Luồng ngoại lệ** | E1. Con ngựa đã có khóa đang hiệu lực -> trả về 409 kèm câu thông báo; giao diện tải lại để hiện khóa hiện có. *(BA chốt 2026-09-30)*<br>E2. Không nhập lý do -> chặn thao tác.<br>E3. Ngày dự kiến gỡ ở quá khứ (so theo ngày lịch câu lạc bộ) -> báo lỗi.<br>E4. Ngựa đã chuyển nhượng -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E5. Gỡ một lệnh khóa đã gỡ -> trả về 409. |
 
 ---
 
@@ -565,7 +566,7 @@ Kết thúc một bệnh án khi con ngựa đã khỏi, ghi kết luận cuối
 3. Ngày đóng là thời điểm thực hiện thao tác.
 4. Nếu lệnh khóa huấn luyện gắn với bệnh án này còn hiệu lực, hệ thống bắt chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ (theo F3.8 nghiệp vụ 7).
 5. Nếu trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly, hệ thống cảnh báo và hỏi bác sĩ có muốn cập nhật trạng thái trước khi đóng không. Bác sĩ vẫn được phép đóng, vì có trường hợp ngựa hồi phục dần mà bệnh án đã kết thúc.
-6. Nếu con ngựa còn yêu cầu khám đang chờ, hệ thống liệt kê để bác sĩ biết; các yêu cầu này vẫn ở hàng đợi và được xử lý như bình thường sau khi đóng.
+6. Nếu con ngựa còn yêu cầu khám đang chờ, hệ thống báo số lượng để bác sĩ biết, kèm nút mở hàng đợi yêu cầu khám; các yêu cầu này vẫn ở hàng đợi và được xử lý như bình thường sau khi đóng. *(BA chốt 2026-09-30)*
 7. Sau khi đóng, bệnh án chuyển sang chỉ đọc. Không mở lại bệnh án đã đóng; vấn đề tái phát thì khám ngoài bệnh án (F3.3) và mở bệnh án mới.
 8. Điều chỉnh chi phí sau khi đóng theo mục III.6.3: chỉ đổi con số tổng chi phí, bắt buộc lý do, ghi nhật ký giá trị trước và sau, gửi thông báo mức NORMAL cho HORSE OWNER và CLUB MANAGER.
 9. Chi phí của bệnh án đã đóng được cộng vào tổng chi phí y tế của con ngựa, hiển thị ở F1.3 và F3.10.
@@ -666,7 +667,7 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 2. Trạng thái: Đã lên lịch, Hoàn tất, Đã hủy. Hoàn tất và Đã hủy là trạng thái cuối.
 3. Dời ngày đến hạn hoặc hủy lịch bắt buộc nhập lý do.
 4. Đánh dấu hoàn tất ghi lại thời điểm và người thực hiện. Khi hoàn tất, VETERINARIAN có thể nhập "Ngày đến hạn lần tới" (ví dụ tẩy giun sau 3 tháng): hệ thống tạo luôn lịch mới cùng loại trong cùng thao tác, giữ người được giao nếu vẫn hợp lệ. Để trống thì không tạo lịch mới. GROOM hoàn tất thì không nhập được ngày lần tới.
-5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần. Lịch quá hạn chưa làm hiển thị trong bảng điều khiển y tế cùng khối lịch khám.
+5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần cho mỗi ngày đến hạn: lịch bị dời sang ngày khác thì được nhắc lại theo ngày mới. *(BA chốt 2026-09-30)* Lịch quá hạn chưa làm hiển thị trong bảng điều khiển y tế cùng khối lịch khám.
 6. Khi ngựa chuyển nhượng, các lịch đang Đã lên lịch tự hủy với lý do "Do chuyển nhượng".
 7. Không tạo lịch cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa.
 8. Ghi nhật ký khi tạo, dời, hủy và hoàn tất.
@@ -683,7 +684,7 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 | **Hậu điều kiện** | Lịch chăm sóc được tạo, dời, hủy hoặc hoàn tất và ghi nhật ký. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở tab Lịch chăm sóc của con ngựa.<br>2. VETERINARIAN chọn loại, ngày đến hạn, người được giao và lưu.<br>3. Đến hạn, hệ thống gửi thông báo.<br>4. Người thực hiện đánh dấu hoàn tất.<br>5. Hệ thống lưu thời điểm, người thực hiện và ghi nhật ký. |
 | **Luồng thay thế** | A1. Dời ngày -> nhập lý do, hệ thống lưu ngày mới.<br>A2. Hủy lịch -> nhập lý do, hệ thống chuyển Đã hủy. |
-| **Luồng ngoại lệ** | E1. Ngày đến hạn ở quá khứ khi tạo hoặc dời -> báo lỗi.<br>E2. Dời, hủy hoặc hoàn tất lịch đã Hoàn tất hoặc Đã hủy -> trả về 409.<br>E3. GROOM hoàn tất lịch không giao cho mình, hoặc không còn phụ trách con ngựa, hoặc nhập ngày lần tới -> trả về 403.<br>E4. Ngựa đã chuyển nhượng -> không cho tạo lịch (409). Hồ sơ đã xóa -> 404 (CLUB MANAGER: 403).<br>E5. Giao lịch cho người không phải VETERINARIAN hoặc GROOM đang phụ trách con ngựa -> báo lỗi. |
+| **Luồng ngoại lệ** | E1. Ngày đến hạn ở quá khứ khi tạo hoặc dời -> báo lỗi.<br>E2. Dời, hủy hoặc hoàn tất lịch đã Hoàn tất hoặc Đã hủy -> trả về 409.<br>E3. GROOM hoàn tất lịch không giao cho mình, hoặc không còn phụ trách con ngựa, hoặc nhập ngày lần tới -> trả về 403.<br>E4. Ngựa đã chuyển nhượng -> không cho tạo lịch (409). Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E5. Giao lịch cho người không phải VETERINARIAN hoặc GROOM đang phụ trách con ngựa -> báo lỗi. |
 
 ---
 
@@ -717,19 +718,19 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 
 ## Phụ lục 2: Câu hỏi mở
 
-Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang tổng hợp nghiệp vụ gửi BA: https://claude.ai/artifact/TsCADNF5Kn51aF88q1Aouh. Bảng dưới ghi hướng hệ thống đang chạy; BA chọn khác thì sửa theo.
+Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang tổng hợp nghiệp vụ gửi BA: https://claude.ai/artifact/TsCADNF5Kn51aF88q1Aouh. Bảng dưới ghi hướng hệ thống đang chạy; BA đã trả lời ngày 2026-09-30 (các câu Q4–Q10 và câu số đo trong buổi khám).
 
 | # | Câu hỏi | Liên quan | Hệ thống đang chạy |
 |---|---|---|---|
 | Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Được tập, không được đua. Giữ luật Flow 1 (chỉ Nhẹ và Trung bình) nhưng chưa chặn được vì lớp học của Flow 2 không có cường độ; chờ Flow 2 và BA |
 | Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt 2026-09-30: không hủy lượt đã xếp; chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh; gỡ trước giờ tập thì tập bình thường |
 | Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | GROOM gửi yêu cầu khám trực tiếp (ngựa được phân công) |
-| Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Chưa có chỗ xem; dữ liệu đã lưu trong buổi khám |
-| Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |
-| Q6 | Có cần màn "Việc được giao cho tôi" cho GROOM không? | FE | Chỉ xem lịch chăm sóc theo từng con ngựa |
-| Q7 | Tài liệu mô hình dữ liệu ghi quyền ghi số đo lệch spec F1.5 | Flow 1 | Hệ thống theo spec F1.5 (cả bốn loại) |
-| Q8 | Ngựa đã chuyển nhượng có được hủy buổi khám, điều chỉnh chi phí không? | Flow 1, F3.6, F3.9 | Đang chặn |
-| Q9 | Lọc bảng điều khiển theo trạng thái thì số đếm tính trên đâu? | F3.1 | Đếm theo bộ lọc |
-| Q10 | BA xác nhận các thay đổi ở Phụ lục 1 | Toàn Flow 3 | Đã áp dụng |
+| Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Đã chốt 2026-09-30: trong hồ sơ ngựa; GROOM chỉ thấy ghi chú mới nhất của ngựa mình được giao |
+| Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Đã chốt 2026-09-30: lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |
+| Q6 | Có cần màn "Việc được giao cho tôi" cho GROOM không? | FE | Đã chốt 2026-09-30: không cần, xem lịch chăm sóc theo từng con ngựa |
+| Q7 | Tài liệu mô hình dữ liệu ghi quyền ghi số đo lệch spec F1.5 | Flow 1 | Đã xác nhận 2026-09-30: theo spec F1.5 (cả bốn loại) |
+| Q8 | Ngựa đã chuyển nhượng có được hủy buổi khám, điều chỉnh chi phí không? | Flow 1, F3.6, F3.9 | Đã chốt 2026-09-30: chặn (hồ sơ đã chuyển nhượng chỉ xem được) |
+| Q9 | Lọc bảng điều khiển theo trạng thái thì số đếm tính trên đâu? | F3.1 | Đã chốt 2026-09-30: đếm theo bộ lọc |
+| Q10 | BA xác nhận các thay đổi ở Phụ lục 1 | Toàn Flow 3 | Đã xác nhận 2026-09-30 |
 
 Đã chốt: GROOM được gửi yêu cầu khám trong lúc Flow 4 chưa làm, phạm vi ngựa được phân công, nguồn ghi là "Báo cáo sự cố của GROOM". Ảnh đính kèm để dành cho báo cáo sự cố của Flow 4.
