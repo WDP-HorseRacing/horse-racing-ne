@@ -11,6 +11,10 @@ import {
   CareScheduleStatus,
   CareScheduleType,
 } from '../../src/modules/medical/constants/care-schedule.enum';
+import {
+  ExamRequestSource,
+  ExamRequestStatus,
+} from '../../src/modules/medical/constants/exam-request.enum';
 import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
 
 /**
@@ -220,6 +224,75 @@ export function fixtures(dataSource: DataSource) {
     );
   };
 
+  /**
+   * Ghi một dòng nhật ký HORSE có dữ liệu trước và sau tùy ý
+   *
+   * @param horseId Id ngựa
+   * @param before Dữ liệu trước khi đổi
+   * @param after Dữ liệu sau khi đổi
+   * @param at Thời điểm ghi (ISO)
+   * @param options Lý do, tính năng, người thực hiện, loại đối tượng
+   * @returns A promise resolving khi đã ghi
+   */
+  const horseAudit = async (
+    horseId: string,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+    at: string,
+    options: {
+      reason?: string;
+      feature?: string;
+      actorId?: string;
+      entityType?: AuditEntityType;
+    } = {},
+  ): Promise<void> => {
+    await dataSource.query(
+      `INSERT INTO audit_logs (action, entity_type, entity_id, before_data, after_data, created_at, reason, feature, actor_id)
+       VALUES ('UPDATE', $1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        options.entityType ?? AuditEntityType.HORSE,
+        horseId,
+        JSON.stringify(before),
+        JSON.stringify(after),
+        at,
+        options.reason ?? null,
+        options.feature ?? null,
+        options.actorId ?? null,
+      ],
+    );
+  };
+
+  /**
+   * Tạo yêu cầu khám
+   *
+   * @param horseId Id ngựa
+   * @param options Trạng thái, khẩn, thời điểm tạo
+   * @returns A promise resolving to id yêu cầu
+   */
+  const examRequest = async (
+    horseId: string,
+    options: {
+      status?: ExamRequestStatus;
+      urgent?: boolean;
+      createdAt?: string;
+    } = {},
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO medical_exam_requests (id, version, horse_id, source, urgent, description, status, created_at)
+       VALUES ($1, 1, $2, $3, $4, 'Mô tả', $5, $6)`,
+      [
+        id,
+        horseId,
+        ExamRequestSource.STAFF,
+        options.urgent ?? false,
+        options.status ?? ExamRequestStatus.PENDING,
+        options.createdAt ?? '2026-09-20T02:00:00Z',
+      ],
+    );
+    return id;
+  };
+
   return {
     user,
     barn,
@@ -228,5 +301,7 @@ export function fixtures(dataSource: DataSource) {
     medicalCase,
     visit,
     lifecycleAudit,
+    horseAudit,
+    examRequest,
   };
 }
