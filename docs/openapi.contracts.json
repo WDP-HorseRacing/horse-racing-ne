@@ -1311,7 +1311,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status": {
       "patch": {
-        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại: sức khỏe về UNDER_OBSERVATION. Nên gọi preview trước để xác nhận.",
+        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe. Nên gọi preview trước để xác nhận.",
         "operationId": "HorseStatusesController_updateLifecycle",
         "parameters": [
           {

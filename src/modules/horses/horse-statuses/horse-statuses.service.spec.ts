@@ -404,7 +404,20 @@ describe('HorseStatusesService', () => {
       );
     });
 
-    it.each([HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.TRANSFERRED])(
+    it('keeps the health of a RETIRED horse coming back to ACTIVE', async () => {
+      horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
+      await change(HorseLifecycleStatus.ACTIVE, 'Quay lại tập luyện');
+      const [, changes] = horseRepository.update.mock.calls[0] as [
+        unknown,
+        Record<string, unknown>,
+      ];
+      expect(changes).toMatchObject({
+        lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+      });
+      expect(changes).not.toHaveProperty('healthStatus');
+    });
+
+    it.each([HorseLifecycleStatus.TRANSFERRED])(
       'puts health under observation when reactivating from %s',
       async (from) => {
         horse.lifecycleStatus = from;

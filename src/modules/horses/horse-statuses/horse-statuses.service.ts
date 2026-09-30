@@ -63,7 +63,7 @@ export class HorseStatusesService {
    * - Khóa row ngựa trước rồi mới kiểm tra, tránh hai request đổi cùng lúc
    * - Giải nghệ: rút khỏi lớp đang học (training), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
    * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical, Flow 3 mục III.8); sau khi commit phát HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT để báo Groom vừa bị kết thúc phân công (BA chốt 2026-09-23); làm phần giải nghệ nếu đang ACTIVE; trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); bỏ khu; giữ chủ sở hữu
-   * - Kích hoạt lại: sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại; từ chuyển nhượng thì ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ (khóa chia sẻ row tài khoản chủ khi kiểm)
+   * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe; từ chuyển nhượng thì sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ (khóa chia sẻ row tài khoản chủ khi kiểm)
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
    * - Ngựa đang tập hoặc đang đua vẫn đổi được (BA chốt 2026-09-23); giao diện hiện câu tóm tắt từ previewLifecycle để xác nhận trước
    * - Bắt buộc lý do; ghi nhật ký kèm lý do. Gửi đúng trạng thái hiện tại thì không đổi gì

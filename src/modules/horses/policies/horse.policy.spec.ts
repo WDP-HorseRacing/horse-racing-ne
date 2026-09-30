@@ -450,13 +450,13 @@ describe('horse.policy', () => {
       ).toEqual({ ...none, ...transferEffects, withdrawFromClasses: true });
     });
 
-    it('only resets health when reactivating from RETIRED', () => {
+    it('keeps the health when reactivating from RETIRED', () => {
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.RETIRED,
           HorseLifecycleStatus.ACTIVE,
         ),
-      ).toEqual({ ...none, resetHealth: true });
+      ).toEqual(none);
     });
 
     it('resets health and marks the reactivation from a transfer', () => {
@@ -772,7 +772,7 @@ describe('horse.policy', () => {
       );
     });
 
-    it('only states the action when nothing is affected', () => {
+    it('says nothing else changes when a retired horse comes back', () => {
       expect(
         lifecycleImpactSummary(
           'Winx',
@@ -783,9 +783,21 @@ describe('horse.policy', () => {
           ),
           impact,
         ),
-      ).toBe(
-        'Nếu kích hoạt lại sẽ đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại.',
-      );
+      ).toBe('Nếu kích hoạt lại sẽ không ảnh hưởng dữ liệu nào khác.');
+    });
+
+    it('states the health reset when a transferred horse comes back', () => {
+      expect(
+        lifecycleImpactSummary(
+          'Winx',
+          HorseLifecycleStatus.ACTIVE,
+          lifecycleSideEffects(
+            HorseLifecycleStatus.TRANSFERRED,
+            HorseLifecycleStatus.ACTIVE,
+          ),
+          impact,
+        ),
+      ).toContain('đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại');
     });
   });
 

@@ -292,8 +292,8 @@ export function assertLifecycleTransition(
  *
  * - Giải nghệ (ACTIVE sang RETIRED): rút khỏi lớp đang học, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
  * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; rút khỏi lớp (cả khi đi từ RETIRED); trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt phần y tế; giữ chủ sở hữu
- * - Kích hoạt lại (sang ACTIVE): đặt sức khỏe về UNDER_OBSERVATION; lớp học và đăng ký thi đấu đã hủy không tự khôi phục
- * - Kích hoạt lại từ chuyển nhượng: ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
+ * - Kích hoạt lại (sang ACTIVE): lớp học và đăng ký thi đấu đã hủy không tự khôi phục; từ giải nghệ thì giữ nguyên sức khỏe
+ * - Kích hoạt lại từ chuyển nhượng: đặt sức khỏe về UNDER_OBSERVATION; ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
  *
  * @param from Trạng thái vòng đời hiện tại
  * @param to Trạng thái vòng đời đích (đã qua canTransitionLifecycle)
@@ -308,6 +308,9 @@ export function lifecycleSideEffects(
     (to === HorseLifecycleStatus.RETIRED ||
       to === HorseLifecycleStatus.TRANSFERRED);
   const transferred = to === HorseLifecycleStatus.TRANSFERRED;
+  const reactivateFromTransfer =
+    from === HorseLifecycleStatus.TRANSFERRED &&
+    to === HorseLifecycleStatus.ACTIVE;
   return {
     withdrawFromClasses: retiringFromActive || transferred,
     withdrawRegistrations: retiringFromActive,
@@ -316,10 +319,8 @@ export function lifecycleSideEffects(
     clearBarn: transferred,
     releaseTrainingLock: transferred,
     settleMedicalWork: transferred,
-    resetHealth: to === HorseLifecycleStatus.ACTIVE,
-    reactivateFromTransfer:
-      from === HorseLifecycleStatus.TRANSFERRED &&
-      to === HorseLifecycleStatus.ACTIVE,
+    resetHealth: reactivateFromTransfer,
+    reactivateFromTransfer,
   };
 }
 

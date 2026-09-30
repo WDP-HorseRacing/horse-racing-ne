@@ -75,7 +75,7 @@ export class MedicalSharedRepository {
    *
    * - Chỉ lấy ngựa chưa xóa, đang ACTIVE hoặc RETIRED
    * - lastVisitDate: buổi khám chưa hủy có thời điểm khám lớn nhất
-   * - reactivatedDate: lần kích hoạt lại gần nhất (nhật ký HORSE chuyển sang ACTIVE từ trạng thái khác), vẫn giữ được khi ngựa sau đó giải nghệ
+   * - reactivatedDate: lần kích hoạt lại gần nhất từ Đã chuyển nhượng (nhật ký HORSE chuyển TRANSFERRED sang ACTIVE), vẫn giữ được khi ngựa sau đó giải nghệ; giải nghệ quay lại không tính
    * - Mọi ngày đổi sang lịch câu lạc bộ dạng YYYY-MM-DD
    * - Kèm ô chuồng đang xếp (stall_assignments còn mở) để vẽ sơ đồ đàn theo ô (F3.1 khối 1)
    *
@@ -92,6 +92,7 @@ export class MedicalSharedRepository {
       HorseLifecycleStatus.ACTIVE,
       HorseLifecycleStatus.RETIRED,
       AuditEntityType.HORSE,
+      HorseLifecycleStatus.TRANSFERRED,
     ];
     const conditions: string[] = [];
     if (filter.horseIds) {
@@ -120,7 +121,7 @@ export class MedicalSharedRepository {
                 WHERE a.entity_type = $4
                   AND a.entity_id = h.id
                   AND a.after_data->>'lifecycleStatus' = $2
-                  AND a.before_data->>'lifecycleStatus' <> $2
+                  AND a.before_data->>'lifecycleStatus' = $5
               ) AS "reactivatedDate"
          FROM horses h
          LEFT JOIN medical_records r

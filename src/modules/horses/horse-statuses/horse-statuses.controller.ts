@@ -51,7 +51,7 @@ export class HorseStatusesController {
   @ApiOperation({
     summary: 'Change horse lifecycle status',
     description:
-      'Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại: sức khỏe về UNDER_OBSERVATION. Nên gọi preview trước để xác nhận.',
+      'Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe. Nên gọi preview trước để xác nhận.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   updateLifecycle(

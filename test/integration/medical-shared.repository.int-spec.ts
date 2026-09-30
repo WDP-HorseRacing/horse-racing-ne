@@ -219,19 +219,19 @@ describe('MedicalSharedRepository (Postgres)', () => {
       });
     });
 
-    it('takes the latest reactivation, even when the horse retired again later', async () => {
+    it('takes the latest reactivation from a transfer, even when the horse retired again later', async () => {
       const horse = await seed.horse('Winx', {
         lifecycle: HorseLifecycleStatus.RETIRED,
       });
       await seed.lifecycleAudit(
         horse,
-        HorseLifecycleStatus.RETIRED,
+        HorseLifecycleStatus.TRANSFERRED,
         HorseLifecycleStatus.ACTIVE,
         '2026-05-01T02:00:00Z',
       );
       await seed.lifecycleAudit(
         horse,
-        HorseLifecycleStatus.RETIRED,
+        HorseLifecycleStatus.TRANSFERRED,
         HorseLifecycleStatus.ACTIVE,
         '2026-08-01T02:00:00Z',
       );
@@ -254,6 +254,20 @@ describe('MedicalSharedRepository (Postgres)', () => {
         lastVisitDate: null,
         reactivatedDate: '2026-08-01',
       });
+    });
+
+    it('does not count a retired horse coming back to active as a reactivation', async () => {
+      const horse = await seed.horse('Winx');
+      await seed.lifecycleAudit(
+        horse,
+        HorseLifecycleStatus.RETIRED,
+        HorseLifecycleStatus.ACTIVE,
+        '2026-09-15T02:00:00Z',
+      );
+
+      const [row] = await repository.herdCheckupAnchors();
+
+      expect(row).toMatchObject({ reactivatedDate: null });
     });
   });
 });

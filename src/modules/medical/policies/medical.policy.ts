@@ -70,7 +70,7 @@ export function daysBetween(from: string, to: string): number {
 /**
  * Tính hạn khám định kỳ kế tiếp (Flow 3 mục III.3)
  *
- * - Ngựa vừa kích hoạt lại mà chưa khám từ ngày đó: hạn chính là ngày kích hoạt lại, để bác sĩ khám lại ngay (III.3.2)
+ * - Ngựa đã chuyển nhượng vừa được kích hoạt lại mà chưa khám từ ngày đó: hạn chính là ngày kích hoạt lại, để bác sĩ khám lại ngay (III.3.2)
  * - Còn lại: hạn = ngày muộn nhất trong (buổi khám gần nhất chưa hủy, ngày tạo hồ sơ) + MEDICAL_CHECKUP_CYCLE_DAYS
  *
  * @param anchors Các mốc ngày của con ngựa

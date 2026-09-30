@@ -258,7 +258,7 @@ export interface HorseDetailParts {
  * - clearBarn: bỏ khu chuồng (horses.barn_id = null).
  * - releaseTrainingLock: tự gỡ lệnh khóa huấn luyện đang ACTIVE.
  * - settleMedicalWork: chốt phần y tế khi chuyển nhượng (Flow 3 mục III.8): chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
- * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại.
+ * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại (chỉ khi kích hoạt lại từ chuyển nhượng).
  * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
  * - Chủ sở hữu không bao giờ bị đổi ở đây: chuyển nhượng vẫn giữ chủ để chủ cũ còn tra cứu.
  */
