@@ -662,7 +662,7 @@
     },
     "/api/v1/horses/{horseId}/measurements/{measurementId}": {
       "delete": {
-        "description": "Chỉ Veterinarian, bắt buộc nhập lý do. Bản ghi đến từ buổi khám (source MEDICAL_EXAM) trả 409.",
+        "description": "Chỉ Veterinarian, bắt buộc nhập lý do. Ngựa đã chuyển nhượng vẫn xóa được bản ghi sai. Bản ghi đến từ buổi khám (source MEDICAL_EXAM) trả 409.",
         "operationId": "HorseMeasurementsController_deleteMeasurement",
         "parameters": [
           {

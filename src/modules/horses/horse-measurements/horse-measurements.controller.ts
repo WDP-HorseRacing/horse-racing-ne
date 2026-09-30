@@ -77,7 +77,7 @@ export class HorseMeasurementsController {
   @ApiOperation({
     summary: 'Soft-delete a wrong horse measurement',
     description:
-      'Chỉ Veterinarian, bắt buộc nhập lý do. Bản ghi đến từ buổi khám (source MEDICAL_EXAM) trả 409.',
+      'Chỉ Veterinarian, bắt buộc nhập lý do. Ngựa đã chuyển nhượng vẫn xóa được bản ghi sai. Bản ghi đến từ buổi khám (source MEDICAL_EXAM) trả 409.',
   })
   @ApiNoContentResponse()
   @HttpCode(HttpStatus.NO_CONTENT)

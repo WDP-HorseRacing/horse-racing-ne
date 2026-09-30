@@ -288,7 +288,7 @@ describe('horse.policy', () => {
       );
     });
 
-    it('turns off every profile write except canChangeLifecycle on a TRANSFERRED horse', () => {
+    it('keeps only canChangeLifecycle and canDeleteMeasurement on a TRANSFERRED horse', () => {
       const permissions = permissionsOf({
         roles: [
           UserRole.CLUB_MANAGER,
@@ -308,7 +308,7 @@ describe('horse.policy', () => {
         canRestore: false,
         canChangeHealth: false,
         canRecordMeasurement: false,
-        canDeleteMeasurement: false,
+        canDeleteMeasurement: true,
       });
     });
 

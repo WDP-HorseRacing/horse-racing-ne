@@ -286,6 +286,7 @@ export class HorseMeasurementsService {
    * Xóa mềm một bản ghi đo sai (F1.5 mục 4). Bản ghi không được sửa, ghi sai thì xóa rồi đo lại.
    *
    * - Chỉ Veterinarian (kiểm ở controller), bắt buộc nhập lý do
+   * - Ngựa đã chuyển nhượng vẫn xóa được bản ghi sai (chỉ cấm ghi mới)
    * - Bản ghi có nguồn từ buổi khám (MEDICAL_EXAM) không xóa ở đây, phải xử lý bên hồ sơ y tế
    * - Khóa ngựa rồi khóa dòng bản ghi trong transaction; lưu lý do, người xóa và ghi nhật ký kèm lý do
    * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ, chỉ số mới nhất và mốc cảnh báo giảm cân
@@ -296,7 +297,7 @@ export class HorseMeasurementsService {
    * @param body Lý do xóa
    * @returns Promise hoàn tất khi đã xóa
    * @throws NotFoundException Nếu không có ngựa, ngựa ngoài phạm vi, hoặc không có bản ghi đo (chưa xóa) của ngựa này
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng, hoặc bản ghi đến từ buổi khám
+   * @throws ConflictException Nếu bản ghi đến từ buổi khám
    */
   async deleteMeasurement(
     actor: Actor,
@@ -305,12 +306,11 @@ export class HorseMeasurementsService {
     body: DeleteHorseMeasurementDto,
   ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
-      const { caller, horse } = await this.access.lockVisibleHorse(
+      const { caller } = await this.access.lockVisibleHorse(
         actor,
         horseId,
         manager,
       );
-      this.access.assertNotTransferred(horse);
 
       const measurement = await manager.findOne(HorseMeasurementEntity, {
         where: { id: measurementId, horseId },

@@ -721,7 +721,7 @@ export function evaluateHorsePermissions(
     canRestore: has(UserRole.CLUB_MANAGER) && input.isDeleted,
     canChangeHealth: has(UserRole.VETERINARIAN) && writable,
     canRecordMeasurement: writable && canRecordMeasurement(input),
-    canDeleteMeasurement: has(UserRole.VETERINARIAN) && writable,
+    canDeleteMeasurement: has(UserRole.VETERINARIAN) && live,
     canViewMedicalTab: has(
       UserRole.CLUB_MANAGER,
       UserRole.HEAD_TRAINER,

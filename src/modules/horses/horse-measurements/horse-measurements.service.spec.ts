@@ -405,17 +405,19 @@ describe('HorseMeasurementsService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('rejects a TRANSFERRED horse with 409', async () => {
+    it('lets a VETERINARIAN delete a wrong record of a TRANSFERRED horse with the reason', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
-      await expect(
-        service.deleteMeasurement(
-          actorWith(UserRole.VETERINARIAN),
-          HORSE_ID,
-          'm1',
-          reason,
-        ),
-      ).rejects.toThrow(ConflictException);
-      expect(manager.softDelete).not.toHaveBeenCalled();
+      await service.deleteMeasurement(
+        actorWith(UserRole.VETERINARIAN),
+        HORSE_ID,
+        'm1',
+        reason,
+      );
+      expect(manager.softDelete).toHaveBeenCalled();
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({ reason: reason.reason }),
+      );
     });
 
     it('locks the record, stores deleteReason and deletedBy, soft-deletes and audits the reason', async () => {
