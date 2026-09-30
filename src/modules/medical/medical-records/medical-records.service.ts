@@ -1,14 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
+import { CareInstructionsResponseDto } from '../dto/care-instructions.response.dto';
 import { MedicalRecordResponseDto } from '../dto/medical-record.response.dto';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
-import { toMedicalRecordResponse } from '../mappers/medical.mapper';
-import { canSeeDosage } from '../policies/medical.policy';
+import {
+  toCareInstructionsResponse,
+  toMedicalRecordResponse,
+} from '../mappers/medical.mapper';
+import { canSeeDosage, isGroomOnly } from '../policies/medical.policy';
 
 @Injectable()
 export class MedicalRecordsService {
@@ -20,6 +29,7 @@ export class MedicalRecordsService {
     private readonly prescriptions: Repository<PrescriptionEntity>,
     @InjectRepository(InjuryMarkerEntity)
     private readonly injuries: Repository<InjuryMarkerEntity>,
+    private readonly horses: HorsesSharedRepository,
   ) {}
 
   /**
@@ -68,6 +78,36 @@ export class MedicalRecordsService {
       canSeeDosage(actor.roles),
     );
     return response;
+  }
+
+  /**
+   * Lấy ghi chú chăm sóc đang hiệu lực của con ngựa (ghi chú của buổi khám gần nhất chưa hủy), hiện trong hồ sơ ngựa (F3.10, Q4)
+   *
+   * - Groom chỉ xem được ngựa mình đang phụ trách; các vai trò khác theo phạm vi xem hồ sơ ngựa
+   * - Chỉ trả ghi chú, không trả chẩn đoán, đơn thuốc hay chi phí
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns A promise resolving to ghi chú đang hiệu lực, hoặc current = null nếu không có
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc Groom không phụ trách con ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
+  async getCareInstructions(
+    actor: Actor,
+    horseId: string,
+  ): Promise<CareInstructionsResponseDto> {
+    await this.horseAccess.findReadable(actor, horseId);
+    if (isGroomOnly(actor.roles)) {
+      const caller = await this.horseAccess.currentUser(actor);
+      if (!(await this.horses.isGroomAssigned(horseId, caller.id))) {
+        throw new ForbiddenException('Bạn không phụ trách con ngựa này');
+      }
+    }
+    const latest = await this.records.findOne({
+      where: { horseId, voidedAt: IsNull() },
+      order: { examDate: 'DESC' },
+    });
+    return toCareInstructionsResponse(horseId, latest);
   }
 
   /**

@@ -1,6 +1,7 @@
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
+import { CareInstructionsResponseDto } from '../dto/care-instructions.response.dto';
 import { CareScheduleResponseDto } from '../dto/care-schedule.response.dto';
 import { CheckupAppointmentDto } from '../dto/checkup.dto';
 import { CaseActiveLockDto } from '../dto/medical-case.response.dto';
@@ -257,4 +258,34 @@ export function toCheckupAppointment(
  */
 export function toCaseActiveLock(lock: TrainingLockEntity): CaseActiveLockDto {
   return { id: lock.id, reason: lock.reason, lockEnd: lock.lockEnd };
+}
+
+/**
+ * Dựng ghi chú chăm sóc đang hiệu lực của con ngựa từ buổi khám gần nhất chưa hủy
+ *
+ * - Không có buổi khám, hoặc buổi gần nhất để trống ghi chú: current = null (không còn hạn chế)
+ *
+ * @param horseId UUID của ngựa
+ * @param latest Buổi khám gần nhất chưa hủy, null nếu chưa khám lần nào
+ * @returns Ghi chú đang hiệu lực kèm buổi khám nguồn
+ */
+export function toCareInstructionsResponse(
+  horseId: string,
+  latest: Pick<
+    MedicalRecordEntity,
+    'id' | 'examDate' | 'careInstructions'
+  > | null,
+): CareInstructionsResponseDto {
+  const note = latest?.careInstructions?.trim();
+  return {
+    horseId,
+    current:
+      latest && note
+        ? {
+            careInstructions: note,
+            examDate: latest.examDate,
+            medicalRecordId: latest.id,
+          }
+        : null,
+  };
 }

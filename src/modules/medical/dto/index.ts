@@ -16,3 +16,4 @@ export * from './health-status.dto';
 export * from './checkup.dto';
 export * from './medical-dashboard.dto';
 export * from './care-schedule.response.dto';
+export * from './care-instructions.response.dto';

@@ -733,4 +733,11 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 | Q9 | Lọc bảng điều khiển theo trạng thái thì số đếm tính trên đâu? | F3.1 | Đã chốt 2026-09-30: đếm theo bộ lọc |
 | Q10 | BA xác nhận các thay đổi ở Phụ lục 1 | Toàn Flow 3 | Đã xác nhận 2026-09-30 |
 
+Cần báo FE (2026-09-30, theo câu trả lời BA):
+
+- API mới `GET /horses/:horseId/care-instructions`: ghi chú chăm sóc đang hiệu lực để hiện trong hồ sơ ngựa (`current` = null khi không có). GROOM xem được ngựa mình phụ trách, 403 nếu không.
+- Số đo bác sĩ ghi trong buổi khám không còn gửi cảnh báo sốt / sụt cân.
+- Thông báo mới cho HEAD TRAINER khi sức khỏe chuyển sang Cần theo dõi (mức NORMAL).
+- Hồ sơ đã xóa, CLUB MANAGER thao tác ghi: 409 thay cho 403 (theo Flow 1).
+
 Đã chốt: GROOM được gửi yêu cầu khám trong lúc Flow 4 chưa làm, phạm vi ngựa được phân công, nguồn ghi là "Báo cáo sự cố của GROOM". Ảnh đính kèm để dành cho báo cáo sự cố của Flow 4.

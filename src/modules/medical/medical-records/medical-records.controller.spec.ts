@@ -38,6 +38,13 @@ describe('medical records and cases controllers access', () => {
     expect(rolesOf(controller, method)).not.toContain(UserRole.GROOM);
   });
 
+  it('lets every reader and the groom read the current care instructions', () => {
+    expect(rolesOf(MedicalRecordsController, 'careInstructions')).toEqual([
+      ...READERS,
+      UserRole.GROOM,
+    ]);
+  });
+
   it.each([
     ['record a visit', MedicalRecordsController, 'createRecord'],
     ['void a visit', MedicalRecordsController, 'voidRecord'],

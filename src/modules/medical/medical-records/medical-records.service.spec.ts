@@ -1,8 +1,9 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
@@ -53,6 +54,7 @@ describe('MedicalRecordsService.listRecords', () => {
       records as unknown as Repository<MedicalRecordEntity>,
       prescriptions as unknown as Repository<PrescriptionEntity>,
       injuries as unknown as Repository<InjuryMarkerEntity>,
+      {} as HorsesSharedRepository,
     );
   });
 
@@ -160,5 +162,91 @@ describe('MedicalRecordsService.listRecords', () => {
       );
       expect(visit.injuries).toHaveLength(1);
     });
+  });
+});
+
+describe('MedicalRecordsService.getCareInstructions', () => {
+  let latest: Record<string, unknown> | null;
+  let groomAssigned: boolean;
+  let records: { findOne: jest.Mock };
+  let horseAccess: { findReadable: jest.Mock; currentUser: jest.Mock };
+  let horses: { isGroomAssigned: jest.Mock };
+  let service: MedicalRecordsService;
+
+  beforeEach(() => {
+    latest = {
+      id: 'r2',
+      examDate: new Date('2026-09-20T08:00:00Z'),
+      careInstructions:
+        'Chườm lạnh chân trước trái 2 lần/ngày, không chạy nhanh',
+    };
+    groomAssigned = true;
+    records = { findOne: jest.fn(() => Promise.resolve(latest)) };
+    horseAccess = {
+      findReadable: jest.fn().mockResolvedValue({ id: 'h1' }),
+      currentUser: jest.fn().mockResolvedValue({ id: 'groom-1' }),
+    };
+    horses = {
+      isGroomAssigned: jest.fn(() => Promise.resolve(groomAssigned)),
+    };
+    service = new MedicalRecordsService(
+      horseAccess as unknown as HorseAccessService,
+      records as unknown as Repository<MedicalRecordEntity>,
+      {} as Repository<PrescriptionEntity>,
+      {} as Repository<InjuryMarkerEntity>,
+      horses as unknown as HorsesSharedRepository,
+    );
+  });
+
+  it('gives the assigned groom the note of the latest visit that was not voided', async () => {
+    await expect(
+      service.getCareInstructions(actorWith(UserRole.GROOM), 'h1'),
+    ).resolves.toEqual({
+      horseId: 'h1',
+      current: {
+        careInstructions:
+          'Chườm lạnh chân trước trái 2 lần/ngày, không chạy nhanh',
+        examDate: new Date('2026-09-20T08:00:00Z'),
+        medicalRecordId: 'r2',
+      },
+    });
+    expect(records.findOne).toHaveBeenCalledWith({
+      where: { horseId: 'h1', voidedAt: expect.anything() as unknown },
+      order: { examDate: 'DESC' },
+    });
+    expect(horses.isGroomAssigned).toHaveBeenCalledWith('h1', 'groom-1');
+  });
+
+  it('rejects a groom who does not look after the horse with 403', async () => {
+    groomAssigned = false;
+    await expect(
+      service.getCareInstructions(actorWith(UserRole.GROOM), 'h1'),
+    ).rejects.toThrow(ForbiddenException);
+    expect(records.findOne).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for a horse outside the caller scope', async () => {
+    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    await expect(
+      service.getCareInstructions(actorWith(UserRole.GROOM), 'h9'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it.each([
+    ['the horse has never been examined', null],
+    [
+      'the latest visit left the note empty',
+      { id: 'r3', examDate: new Date(), careInstructions: null },
+    ],
+  ])('has no current note when %s', async (_label, row) => {
+    latest = row;
+    await expect(
+      service.getCareInstructions(actorWith(UserRole.GROOM), 'h1'),
+    ).resolves.toEqual({ horseId: 'h1', current: null });
+  });
+
+  it('does not check the groom assignment for a head trainer', async () => {
+    await service.getCareInstructions(actorWith(UserRole.HEAD_TRAINER), 'h1');
+    expect(horses.isGroomAssigned).not.toHaveBeenCalled();
   });
 });

@@ -17,6 +17,7 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
+  CareInstructionsResponseDto,
   CreateStandaloneVisitDto,
   MedicalRecordResponseDto,
   VoidMedicalRecordDto,
@@ -71,6 +72,21 @@ export class MedicalRecordsController {
     @Body() body: CreateStandaloneVisitDto,
   ): Promise<MedicalRecordResponseDto> {
     return this.visits.createStandaloneVisit(actor, horseId, body);
+  }
+
+  @Access([...MEDICAL_READERS, UserRole.GROOM])
+  @Get('horses/:horseId/care-instructions')
+  @ApiOperation({
+    summary: 'Get the current care instructions of a horse',
+    description:
+      'Ghi chú chăm sóc và hạn chế vận động đang hiệu lực (của buổi khám gần nhất chưa hủy), để hiện trong hồ sơ ngựa. Groom chỉ xem ngựa mình phụ trách (403 nếu không). current = null khi ngựa chưa được khám hoặc buổi gần nhất để trống ghi chú. Không trả chẩn đoán, thuốc hay chi phí.',
+  })
+  @ApiOkResponse({ type: CareInstructionsResponseDto })
+  careInstructions(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+  ): Promise<CareInstructionsResponseDto> {
+    return this.medicalRecords.getCareInstructions(actor, horseId);
   }
 
   @Access(MEDICAL_READERS)

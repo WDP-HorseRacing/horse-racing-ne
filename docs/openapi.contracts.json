@@ -2739,6 +2739,43 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}/care-instructions": {
+      "get": {
+        "description": "Ghi chú chăm sóc và hạn chế vận động đang hiệu lực (của buổi khám gần nhất chưa hủy), để hiện trong hồ sơ ngựa. Groom chỉ xem ngựa mình phụ trách (403 nếu không). current = null khi ngựa chưa được khám hoặc buổi gần nhất để trống ghi chú. Không trả chẩn đoán, thuốc hay chi phí.",
+        "operationId": "MedicalRecordsController_careInstructions",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareInstructionsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the current care instructions of a horse",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
     "/api/v1/medical-records/{id}": {
       "get": {
         "operationId": "MedicalDetailsController_record",
@@ -10831,6 +10868,52 @@
         "required": [
           "kind",
           "conclusion"
+        ]
+      },
+      "CurrentCareInstructionsDto": {
+        "type": "object",
+        "properties": {
+          "careInstructions": {
+            "type": "string",
+            "description": "Ghi chú chăm sóc và hạn chế vận động của buổi khám gần nhất chưa hủy"
+          },
+          "examDate": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Thời điểm khám của buổi khám có ghi chú này"
+          },
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Buổi khám có ghi chú này"
+          }
+        },
+        "required": [
+          "careInstructions",
+          "examDate",
+          "medicalRecordId"
+        ]
+      },
+      "CareInstructionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "current": {
+            "nullable": true,
+            "description": "Ghi chú đang hiệu lực; null khi ngựa chưa được khám hoặc buổi khám gần nhất để trống ghi chú (không còn hạn chế)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CurrentCareInstructionsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "horseId"
         ]
       },
       "VoidMedicalRecordDto": {

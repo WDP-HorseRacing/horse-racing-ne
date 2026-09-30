@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 179 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 180 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -76,6 +76,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/exam-requests` | Exam request queue (F3.4) |
 | PATCH | `/api/v1/exam-requests/{id}` | Change the urgency of a pending exam request (F3.4) |
 | POST | `/api/v1/exam-requests/{id}/dismiss` | Dismiss an exam request with a reason (F3.4) |
+| GET | `/api/v1/horses/{horseId}/care-instructions` | Get the current care instructions of a horse |
 | GET | `/api/v1/horses/{horseId}/care-schedules` | List vaccination, deworming and farrier schedules (F3.11) |
 | POST | `/api/v1/horses/{horseId}/care-schedules` | Create a care schedule (F3.11) |
 | PUT | `/api/v1/horses/{horseId}/checkup-appointment` | Set or reschedule the routine checkup appointment (F3.2) |

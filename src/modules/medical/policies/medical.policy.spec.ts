@@ -48,6 +48,7 @@ import {
   assertStandaloneVisitInput,
   resolveVisitVoid,
   canSeeDosage,
+  isGroomOnly,
   canSeeMedicalCost,
   resolveLockOnClose,
   assertHealthChangeReason,
@@ -582,6 +583,14 @@ describe('medical.policy', () => {
       expect(() =>
         assertCanCompleteCareSchedule([UserRole.GROOM], false),
       ).toThrow(ForbiddenException);
+    });
+  });
+
+  describe('isGroomOnly', () => {
+    it('is true only for a groom without a club-wide reading role', () => {
+      expect(isGroomOnly([UserRole.GROOM])).toBe(true);
+      expect(isGroomOnly([UserRole.GROOM, UserRole.HEAD_TRAINER])).toBe(false);
+      expect(isGroomOnly([UserRole.VETERINARIAN])).toBe(false);
     });
   });
 });
