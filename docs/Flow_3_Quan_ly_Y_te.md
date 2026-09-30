@@ -82,7 +82,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 
 1. Chu kỳ khám định kỳ cố định **30 ngày** cho toàn câu lạc bộ, là quy định của hệ thống. Không vai trò nào sửa được trên giao diện.
 2. Mốc tính hạn = ngày muộn hơn giữa ngày của buổi khám gần nhất (cả ngoài lẫn trong bệnh án) và ngày tạo hồ sơ. Mục đích: ngựa mới tạo không bị báo quá hạn ngay lập tức.
-   - Ngoại lệ kích hoạt lại (F1.8): ngựa vừa kích hoạt lại mà chưa có buổi khám nào từ ngày đó thì hạn khám **chính là ngày kích hoạt lại** (hiện ngay ở mục Đến hạn), vì ngựa đang ở trạng thái Cần theo dõi cho tới khi bác sĩ khám lại. Ngày kích hoạt lại lấy lần gần nhất, kể cả khi sau đó ngựa đã giải nghệ.
+   - Ngoại lệ kích hoạt lại (F1.8): ngựa **đã chuyển nhượng** được kích hoạt lại mà chưa có buổi khám nào từ ngày đó thì hạn khám **chính là ngày kích hoạt lại** (hiện ngay ở mục Đến hạn), vì ngựa đang ở trạng thái Cần theo dõi cho tới khi bác sĩ khám lại. Ngày kích hoạt lại lấy lần gần nhất, kể cả khi sau đó ngựa đã giải nghệ. Ngựa kích hoạt lại từ Đã giải nghệ giữ hạn khám cũ (buổi khám gần nhất + 30 ngày), vì vẫn được khám định kỳ trong thời gian giải nghệ. *(BA chốt 2026-09-30)*
 3. Hạn khám kế tiếp = mốc tính hạn + 30 ngày. Mọi ngày tính theo lịch Việt Nam (Asia/Ho_Chi_Minh), không tính theo giờ.
 4. Con ngựa đang điều trị thường không bị quá hạn nếu bác sĩ tái khám đều, vì mỗi buổi tái khám đã đẩy hạn đi. Nếu bệnh án bị bỏ quên quá 30 ngày không có buổi khám nào thì ngựa vẫn bị báo quá hạn như bình thường, đây là tín hiệu đúng.
 5. Ngựa ở trạng thái Đang hoạt động và Đã giải nghệ đều có lịch khám định kỳ. Ngựa Đã chuyển nhượng và hồ sơ đã xóa thì không.
