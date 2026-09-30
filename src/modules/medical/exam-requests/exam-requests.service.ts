@@ -13,6 +13,7 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
+import { formatMeasurement } from '../../horses/utils/measurement-format';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
@@ -547,6 +548,6 @@ export class ExamRequestsService {
  */
 function describeAlert(event: HorseMeasurementAlertEvent): string {
   return event.alert === HorseMeasurementAlert.FEVER
-    ? `Cảnh báo tự động: sốt, thân nhiệt ${event.value} ${event.unit}`
-    : `Cảnh báo tự động: giảm ${event.dropPercent}% cân nặng (còn ${event.value} ${event.unit})`;
+    ? `Cảnh báo tự động: sốt, thân nhiệt ${formatMeasurement(event.value, event.unit)}`
+    : `Cảnh báo tự động: giảm ${event.dropPercent}% cân nặng (còn ${formatMeasurement(event.value, event.unit)})`;
 }

@@ -11,6 +11,7 @@ import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
 } from '../../horses/enums/horse-measurement-alert.enum';
+import { HORSE_MEASUREMENT_SPECS } from '../../horses/constants/horse.constants';
 import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
 import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
@@ -74,7 +75,7 @@ describe('ExamRequestsService', () => {
       measuredBy: 'groom-1',
       type: HorseMeasurementType.TEMPERATURE,
       value: 39.2,
-      unit: '°C',
+      unit: HORSE_MEASUREMENT_SPECS[HorseMeasurementType.TEMPERATURE].unit,
       measuredAt: new Date(),
       source: HorseMeasurementSource.MANUAL,
       ...overrides,
@@ -424,6 +425,7 @@ describe('ExamRequestsService', () => {
           source: ExamRequestSource.MEASUREMENT_ALERT,
           urgent: true,
           alertType: HorseMeasurementAlert.FEVER,
+          description: 'Cảnh báo tự động: sốt, thân nhiệt 39.2 °C',
         }),
       );
       expect(insertBuilder.orIgnore).toHaveBeenCalled();
@@ -445,10 +447,16 @@ describe('ExamRequestsService', () => {
           severity: HorseMeasurementAlertSeverity.WARNING,
           baselineValue: 500,
           dropPercent: 6,
+          type: HorseMeasurementType.WEIGHT,
+          value: 470,
+          unit: HORSE_MEASUREMENT_SPECS[HorseMeasurementType.WEIGHT].unit,
         }),
       );
       expect(insertBuilder.values).toHaveBeenCalledWith(
-        expect.objectContaining({ urgent: false }),
+        expect.objectContaining({
+          urgent: false,
+          description: 'Cảnh báo tự động: giảm 6% cân nặng (còn 470 kg)',
+        }),
       );
     });
 
