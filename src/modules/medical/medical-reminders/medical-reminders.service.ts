@@ -30,6 +30,7 @@ export class MedicalRemindersService {
   /**
    * Job hằng ngày 07:00 giờ Việt Nam: chạy các nhắc nhở y tế định kỳ
    *
+   * - Mỗi loại nhắc chạy độc lập: loại này lỗi vẫn chạy loại kia
    * - Lỗi chỉ được log, không làm dừng scheduler
    *
    * @returns A promise resolving khi đã chạy xong
@@ -39,18 +40,37 @@ export class MedicalRemindersService {
     timeZone: CLUB_TIME_ZONE,
   })
   async runDaily(): Promise<void> {
+    const today = toClubDate(new Date());
+    const overdue = await this.runSafely('nhắc quá hạn khám định kỳ', () =>
+      this.notifyOverdueCheckups(today),
+    );
+    const due = await this.runSafely('nhắc lịch chăm sóc đến hạn', () =>
+      this.notifyDueCareSchedules(today),
+    );
+    this.logger.log(
+      `Nhắc quá hạn khám định kỳ: ${overdue ?? 'lỗi'}; nhắc lịch chăm sóc đến hạn: ${due ?? 'lỗi'}`,
+    );
+  }
+
+  /**
+   * Chạy một loại nhắc, lỗi thì log và trả null để loại khác vẫn chạy tiếp
+   *
+   * @param label Tên loại nhắc dùng trong log
+   * @param run Hàm chạy loại nhắc, trả về số nhắc đã phát
+   * @returns A promise resolving to số nhắc đã phát, hoặc null nếu loại nhắc này lỗi
+   */
+  private async runSafely(
+    label: string,
+    run: () => Promise<number>,
+  ): Promise<number | null> {
     try {
-      const today = toClubDate(new Date());
-      const overdue = await this.notifyOverdueCheckups(today);
-      const due = await this.notifyDueCareSchedules(today);
-      this.logger.log(
-        `Đã phát ${overdue} nhắc quá hạn khám định kỳ, ${due} nhắc lịch chăm sóc đến hạn`,
-      );
+      return await run();
     } catch (error) {
       this.logger.error(
-        'Chạy nhắc nhở y tế hằng ngày thất bại',
+        `Chạy ${label} thất bại`,
         error instanceof Error ? error.stack : String(error),
       );
+      return null;
     }
   }
 

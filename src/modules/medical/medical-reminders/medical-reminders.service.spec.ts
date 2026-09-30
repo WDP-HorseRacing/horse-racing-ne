@@ -122,4 +122,32 @@ describe('MedicalRemindersService.runDaily', () => {
     shared.herdCheckupAnchors.mockRejectedValue(new Error('db down'));
     await expect(service.runDaily()).resolves.toBeUndefined();
   });
+
+  it('still sends care schedule reminders when the overdue checkup run fails', async () => {
+    shared.herdCheckupAnchors.mockRejectedValue(new Error('db down'));
+    shared.dueCareSchedules.mockResolvedValue([
+      {
+        scheduleId: 's1',
+        horseId: 'h1',
+        horseName: 'Winx',
+        type: 'FARRIER',
+        dueDate: '2026-09-27',
+        assignedTo: 'groom-1',
+      },
+    ]);
+    await service.runDaily();
+    expect(events.publish).toHaveBeenCalledWith(
+      MEDICAL_CARE_SCHEDULE_DUE_EVENT,
+      expect.objectContaining({ scheduleId: 's1' }),
+    );
+  });
+
+  it('still sends overdue checkup reminders when the care schedule run fails', async () => {
+    shared.dueCareSchedules.mockRejectedValue(new Error('db down'));
+    await expect(service.runDaily()).resolves.toBeUndefined();
+    expect(events.publish).toHaveBeenCalledWith(
+      MEDICAL_CHECKUP_OVERDUE_EVENT,
+      expect.objectContaining({ horseId: 'h-8' }),
+    );
+  });
 });
