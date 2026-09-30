@@ -195,6 +195,24 @@ function toAlertPriority(
 }
 
 /**
+ * Ký hiệu đơn vị hiển thị trong câu thông báo, cho các đơn vị mà mã lưu trữ khác cách viết thông thường
+ */
+const UNIT_LABELS: Readonly<Record<string, string>> = {
+  celsius: '°C',
+};
+
+/**
+ * Ghép giá trị đo với ký hiệu đơn vị để đưa vào câu thông báo
+ *
+ * @param value Giá trị đo
+ * @param unit Mã đơn vị lưu trong chỉ số (vd kg, celsius)
+ * @returns Chuỗi dạng "39.1 °C" hoặc "470 kg"
+ */
+function formatMeasurement(value: number, unit: string): string {
+  return `${value} ${UNIT_LABELS[unit] ?? unit}`;
+}
+
+/**
  * Soạn tiêu đề và nội dung tiếng Việt cho một cảnh báo chỉ số, có tên ngựa và giá trị đo.
  *
  * @param horseName The name of the horse
@@ -209,12 +227,12 @@ function describeMeasurementAlert(
     case HorseMeasurementAlert.FEVER:
       return {
         title: `KHẨN: Ngựa ${horseName} bị sốt`,
-        message: `Ngựa ${horseName} có thân nhiệt ${event.value} ${event.unit}, vượt ngưỡng sốt. Cần kiểm tra ngay.`,
+        message: `Ngựa ${horseName} có thân nhiệt ${formatMeasurement(event.value, event.unit)}, vượt ngưỡng sốt. Cần kiểm tra ngay.`,
       };
     case HorseMeasurementAlert.WEIGHT_DROP:
       return {
         title: `Cảnh báo: Ngựa ${horseName} giảm cân`,
-        message: `Ngựa ${horseName} giảm ${event.dropPercent}% cân nặng trong ${WEIGHT_DROP_WINDOW_DAYS} ngày (từ ${event.baselineValue} ${event.unit} xuống ${event.value} ${event.unit}).`,
+        message: `Ngựa ${horseName} giảm ${event.dropPercent}% cân nặng trong ${WEIGHT_DROP_WINDOW_DAYS} ngày (từ ${formatMeasurement(event.baselineValue, event.unit)} xuống ${formatMeasurement(event.value, event.unit)}).`,
       };
   }
 }
