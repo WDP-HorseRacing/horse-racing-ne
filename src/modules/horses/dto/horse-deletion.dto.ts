@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsString, MaxLength, MinLength } from 'class-validator';
 
@@ -50,4 +50,31 @@ export class HorseDeletionPreviewResponseDto {
 
   @ApiProperty({ description: 'Ngựa đang là cha hoặc mẹ của ngựa khác' })
   isParent!: boolean;
+}
+
+export class HorseRestorePreviewResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description:
+      'Tên khu ngựa sẽ rời khi khôi phục (khôi phục luôn đưa ngựa vào Chờ xếp khu), null nếu ngựa không có khu',
+  })
+  barnCleared!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description:
+      'Tên chủ sẽ bị bỏ trống vì tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ',
+  })
+  ownerCleared!: string | null;
+
+  @ApiProperty({
+    description:
+      'Câu tóm tắt để hiện ở bảng xác nhận, ví dụ "Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu."',
+  })
+  summary!: string;
 }

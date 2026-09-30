@@ -257,6 +257,32 @@ export function assertAssignableOwner<
 }
 
 /**
+ * Tạo câu tóm tắt hệ quả khi khôi phục hồ sơ đã xóa, hiện ở bảng xác nhận (F1.8 mục 4, 5)
+ *
+ * @param horseName Tên ngựa
+ * @param barnCleared Tên khu ngựa sẽ rời, null nếu ngựa không có khu
+ * @param ownerCleared Tên chủ sẽ bị bỏ trống, null nếu giữ chủ
+ * @returns Câu tóm tắt, ví dụ: Nếu khôi phục, Winx sẽ rời khu "Khu A" và vào Chờ xếp khu.
+ */
+export function restoreImpactSummary(
+  horseName: string,
+  barnCleared: string | null,
+  ownerCleared: string | null,
+): string {
+  const actions: string[] = [];
+  if (barnCleared !== null) {
+    actions.push(`rời khu "${barnCleared}" và vào Chờ xếp khu`);
+  }
+  if (ownerCleared !== null) {
+    actions.push(`bỏ trống chủ sở hữu ${ownerCleared}`);
+  }
+  if (actions.length === 0) {
+    return `Nếu khôi phục, ${horseName} trở lại như trước khi xóa.`;
+  }
+  return `Nếu khôi phục, ${horseName} sẽ ${actions.join(', ')}.`;
+}
+
+/**
  * Bắt lý do khi đổi khu cho ngựa đã có khu; xếp khu lần đầu (ngựa đang Chờ xếp khu) không cần lý do
  *
  * @param currentBarnId Khu hiện tại của ngựa, null nếu đang Chờ xếp khu

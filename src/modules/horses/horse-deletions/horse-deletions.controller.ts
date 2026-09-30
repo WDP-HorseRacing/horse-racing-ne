@@ -23,6 +23,7 @@ import {
   DeleteHorseDto,
   HorseDeletionPreviewResponseDto,
   HorseResponseDto,
+  HorseRestorePreviewResponseDto,
   RestoreHorseDto,
 } from '../dto';
 import { HorseDeletionsService } from './horse-deletions.service';
@@ -66,12 +67,27 @@ export class HorseDeletionsController {
   }
 
   @Access([UserRole.CLUB_MANAGER])
+  @Get('restore-preview')
+  @ApiOperation({
+    summary: 'Preview the consequences of restoring a deleted horse profile',
+    description:
+      'Không ghi gì. Trả về khu ngựa sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu), chủ sẽ bị bỏ trống nếu không còn hoạt động, và câu tóm tắt để hiện bảng xác nhận. Hồ sơ chưa bị xóa trả 409.',
+  })
+  @ApiOkResponse({ type: HorseRestorePreviewResponseDto })
+  previewRestore(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+  ): Promise<HorseRestorePreviewResponseDto> {
+    return this.deletionsService.previewRestore(actor, horseId);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
   @Post('restore')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Restore a soft-deleted horse profile',
     description:
-      'Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Khu cũ không còn nhận được thì ngựa vào "Chờ xếp khu"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Hồ sơ chưa bị xóa trả 409.',
+      'Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Ngựa luôn rời khu cũ và vào "Chờ xếp khu"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Nên gọi restore-preview trước để xác nhận. Hồ sơ chưa bị xóa trả 409.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   restoreHorse(

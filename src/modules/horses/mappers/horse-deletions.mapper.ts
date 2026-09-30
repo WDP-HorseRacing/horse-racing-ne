@@ -1,6 +1,10 @@
-import type { HorseDeletionPreviewResponseDto } from '../dto';
+import type {
+  HorseDeletionPreviewResponseDto,
+  HorseRestorePreviewResponseDto,
+} from '../dto';
 import type { HorseEntity } from '../entities/horse.entity';
 import { HorseLifecycleStatus } from '../enums/horse-status.enum';
+import { restoreImpactSummary } from '../policies/horse.policy';
 import type { ParentUsage } from '../types/horse.types';
 
 /**
@@ -27,5 +31,26 @@ export function toDeletionPreviewResponse(
     transferred,
     businessData,
     isParent,
+  };
+}
+
+/**
+ * Dựng kết quả xem trước việc khôi phục hồ sơ đã xóa
+ *
+ * @param horse Hồ sơ ngựa đã xóa
+ * @param barnCleared Tên khu ngựa sẽ rời, null nếu ngựa không có khu
+ * @param ownerCleared Tên chủ sẽ bị bỏ trống, null nếu giữ chủ
+ * @returns Các hệ quả và câu tóm tắt để hiện ở bảng xác nhận
+ */
+export function toRestorePreviewResponse(
+  horse: HorseEntity,
+  barnCleared: string | null,
+  ownerCleared: string | null,
+): HorseRestorePreviewResponseDto {
+  return {
+    horseId: horse.id,
+    barnCleared,
+    ownerCleared,
+    summary: restoreImpactSummary(horse.name, barnCleared, ownerCleared),
   };
 }

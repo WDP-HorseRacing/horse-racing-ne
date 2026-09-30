@@ -472,9 +472,46 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}/restore-preview": {
+      "get": {
+        "description": "Không ghi gì. Trả về khu ngựa sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu), chủ sẽ bị bỏ trống nếu không còn hoạt động, và câu tóm tắt để hiện bảng xác nhận. Hồ sơ chưa bị xóa trả 409.",
+        "operationId": "HorseDeletionsController_previewRestore",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseRestorePreviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview the consequences of restoring a deleted horse profile",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/restore": {
       "post": {
-        "description": "Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Khu cũ không còn nhận được thì ngựa vào \"Chờ xếp khu\"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Hồ sơ chưa bị xóa trả 409.",
+        "description": "Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Ngựa luôn rời khu cũ và vào \"Chờ xếp khu\"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Nên gọi restore-preview trước để xác nhận. Hồ sơ chưa bị xóa trả 409.",
         "operationId": "HorseDeletionsController_restoreHorse",
         "parameters": [
           {
@@ -7329,6 +7366,33 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "HorseRestorePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "barnCleared": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên khu ngựa sẽ rời khi khôi phục (khôi phục luôn đưa ngựa vào Chờ xếp khu), null nếu ngựa không có khu"
+          },
+          "ownerCleared": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên chủ sẽ bị bỏ trống vì tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Câu tóm tắt để hiện ở bảng xác nhận, ví dụ \"Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu.\""
+          }
+        },
+        "required": [
+          "horseId",
+          "summary"
         ]
       },
       "RestoreHorseDto": {

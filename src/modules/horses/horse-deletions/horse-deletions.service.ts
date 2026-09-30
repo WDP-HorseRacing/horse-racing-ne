@@ -3,20 +3,23 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { BarnsService } from '../../stable/barns/barns.service';
 import {
   DeleteHorseDto,
   HorseDeletionPreviewResponseDto,
   HorseResponseDto,
+  HorseRestorePreviewResponseDto,
   RestoreHorseDto,
 } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
-import { toDeletionPreviewResponse } from '../mappers/horse-deletions.mapper';
+import {
+  toDeletionPreviewResponse,
+  toRestorePreviewResponse,
+} from '../mappers/horse-deletions.mapper';
 import { toHorseResponse } from '../mappers/horse.mapper';
 import {
   assertNoBusinessData,
@@ -37,7 +40,6 @@ export class HorseDeletionsService {
     private readonly horses: HorsesSharedRepository,
     private readonly access: HorseAccessService,
     private readonly pedigree: HorsePedigreeService,
-    private readonly barns: BarnsService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
   ) {}
@@ -115,14 +117,48 @@ export class HorseDeletionsService {
   }
 
   /**
+   * Xem trước hệ quả khi khôi phục hồ sơ đã xóa, không ghi gì (F1.8 mục 4, 5)
+   *
+   * - Ngựa có khu: báo tên khu sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu)
+   * - Ngựa có chủ không còn là HORSE_OWNER đang hoạt động: báo tên chủ sẽ bị bỏ trống
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của ngựa
+   * @returns A promise resolving to các hệ quả và câu tóm tắt
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có hồ sơ ngựa
+   * @throws ConflictException Nếu hồ sơ chưa bị xóa
+   */
+  async previewRestore(
+    actor: Actor,
+    id: string,
+  ): Promise<HorseRestorePreviewResponseDto> {
+    await this.access.currentUser(actor);
+    const horse = await this.horses.findByIdWithDeleted(id);
+    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    if (horse.deletedAt === null) {
+      throw new ConflictException('Hồ sơ ngựa chưa bị xóa');
+    }
+    const manager = this.dataSource.manager;
+    const [barnCleared, ownerCleared] = await Promise.all([
+      horse.barnId ? this.deletions.barnName(horse.barnId, manager) : null,
+      horse.ownerId
+        ? this.horses.inactiveOwnerName(horse.ownerId, manager)
+        : null,
+    ]);
+    return toRestorePreviewResponse(horse, barnCleared, ownerCleared);
+  }
+
+  /**
    * Khôi phục hồ sơ ngựa đã xóa (F1.8, A2). Hồ sơ trở về trạng thái trước khi xóa
    *
    * - Bỏ dấu đã xóa và lý do xóa; vòng đời, sức khỏe, phả hệ giữ nguyên
-   * - Ngựa có khu: kiểm lại khu (khóa row khu) như lúc xếp khu. Khu vẫn nhận được thì giữ; hết chỗ, ngừng hoạt động, không còn Head Trainer đang hoạt động hoặc đã bị xóa thì bỏ khu, ngựa vào "Chờ xếp khu" (BA chốt 2026-09-23, Q-1 B)
+   * - Ngựa có khu: luôn bỏ khu, ngựa vào "Chờ xếp khu", vì lúc xóa hồ sơ chỗ của ngựa trong khu đã nhả cho ngựa khác
    * - Ngựa có chủ: chủ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ (quyết định 2026-09-23), Club Manager chọn chủ mới sau
    * - Phả hệ không cần kiểm lại: trong lúc hồ sơ bị xóa, cha mẹ không đổi được giới tính và ngày sinh trái với con đã xóa (luật phả hệ tính cả con đã xóa), và hồ sơ đã xóa không chọn làm cha mẹ được
    * - Số chip không bị trùng vì hồ sơ đã xóa vẫn giữ chỗ của số chip
    * - Ghi nhật ký RESTORE kèm lý do; khu hoặc chủ bị bỏ trống thì ghi cả giá trị cũ
+   * - Giao diện gọi previewRestore trước để hiện bảng xác nhận
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
@@ -144,9 +180,7 @@ export class HorseDeletionsService {
       if (horse.deletedAt === null) {
         throw new ConflictException('Hồ sơ ngựa chưa bị xóa');
       }
-      const clearBarn =
-        horse.barnId !== null &&
-        !(await this.canKeepBarn(manager, horse.barnId));
+      const clearBarn = horse.barnId !== null;
       const clearOwner =
         horse.ownerId !== null &&
         !(await this.horses.lockActiveHorseOwner(manager, horse.ownerId));
@@ -174,31 +208,5 @@ export class HorseDeletionsService {
       });
     });
     return toHorseResponse(await this.access.findHorse(id));
-  }
-
-  /**
-   * Kiểm tra khu cũ còn nhận lại được ngựa khi khôi phục hồ sơ, dùng đúng luật xếp khu của stable (khóa row khu)
-   *
-   * @param manager EntityManager của transaction khôi phục
-   * @param barnId UUID khu cũ của ngựa
-   * @returns A promise resolving to true nếu khu còn nhận được, false nếu khu hết chỗ, ngừng hoạt động, không có Head Trainer đang hoạt động hoặc đã bị xóa
-   * @throws Error Nếu gặp lỗi khác ngoài 409/404 của việc kiểm khu
-   */
-  private async canKeepBarn(
-    manager: EntityManager,
-    barnId: string,
-  ): Promise<boolean> {
-    try {
-      await this.barns.lockAssignableBarn(manager, barnId);
-      return true;
-    } catch (error) {
-      if (
-        error instanceof ConflictException ||
-        error instanceof NotFoundException
-      ) {
-        return false;
-      }
-      throw error;
-    }
   }
 }

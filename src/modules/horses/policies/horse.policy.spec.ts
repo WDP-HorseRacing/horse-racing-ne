@@ -41,6 +41,7 @@ import {
   assertParentProfiles,
   barnChangeBlockedReason,
   barnChangeSummary,
+  restoreImpactSummary,
   canRecordMeasurement,
   evaluateEligibility,
   evaluateHorsePermissions,
@@ -994,6 +995,20 @@ describe('horse.policy', () => {
           status: UserStatus.ACTIVE,
         }),
       ).not.toThrow();
+    });
+  });
+
+  describe('restoreImpactSummary', () => {
+    it('names the barn left and the owner cleared', () => {
+      expect(restoreImpactSummary('Winx', 'Khu A', 'Trần Văn Chủ')).toBe(
+        'Nếu khôi phục, Winx sẽ rời khu "Khu A" và vào Chờ xếp khu, bỏ trống chủ sở hữu Trần Văn Chủ.',
+      );
+    });
+
+    it('says the profile comes back unchanged when nothing is cleared', () => {
+      expect(restoreImpactSummary('Winx', null, null)).toBe(
+        'Nếu khôi phục, Winx trở lại như trước khi xóa.',
+      );
     });
   });
 });

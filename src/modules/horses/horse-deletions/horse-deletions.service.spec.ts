@@ -5,7 +5,6 @@ import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { BarnsService } from '../../stable/barns/barns.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseGender } from '../enums/horse-gender.enum';
@@ -49,9 +48,9 @@ describe('HorseDeletionsService', () => {
     findByIdWithDeleted: jest.Mock;
     lockHorseWithDeleted: jest.Mock;
     lockActiveHorseOwner: jest.Mock;
+    inactiveOwnerName: jest.Mock;
   };
-  let deletions: { businessDataLabels: jest.Mock };
-  let barns: { lockAssignableBarn: jest.Mock };
+  let deletions: { businessDataLabels: jest.Mock; barnName: jest.Mock };
   let audit: { record: jest.Mock };
   let service: HorseDeletionsService;
 
@@ -112,9 +111,12 @@ describe('HorseDeletionsService', () => {
       findByIdWithDeleted: jest.fn(() => Promise.resolve(horse)),
       lockHorseWithDeleted: jest.fn(() => Promise.resolve(horse)),
       lockActiveHorseOwner: jest.fn().mockResolvedValue(true),
+      inactiveOwnerName: jest.fn().mockResolvedValue(null),
     };
-    deletions = { businessDataLabels: jest.fn().mockResolvedValue([]) };
-    barns = { lockAssignableBarn: jest.fn().mockResolvedValue({}) };
+    deletions = {
+      businessDataLabels: jest.fn().mockResolvedValue([]),
+      barnName: jest.fn().mockResolvedValue('Khu A'),
+    };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     const typedDataSource = dataSource as unknown as DataSource;
     const sharedRepository = horses as unknown as HorsesSharedRepository;
@@ -123,7 +125,6 @@ describe('HorseDeletionsService', () => {
       sharedRepository,
       new HorseAccessService(typedDataSource, sharedRepository),
       new HorsePedigreeService(new HorsePedigreeRepository(), sharedRepository),
-      barns as unknown as BarnsService,
       typedDataSource,
       audit,
     );
@@ -274,13 +275,12 @@ describe('HorseDeletionsService', () => {
       expect(horseRepository.restore).not.toHaveBeenCalled();
     });
 
-    it('restores, keeps a valid barn and owner, and audits RESTORE with the reason', async () => {
+    it('restores, always leaves the barn, keeps a valid owner and audits RESTORE with the reason', async () => {
       await restore();
       expect(horses.lockHorseWithDeleted).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
       );
-      expect(barns.lockAssignableBarn).toHaveBeenCalledWith(manager, 'b1');
       expect(horses.lockActiveHorseOwner).toHaveBeenCalledWith(
         manager,
         'owner-1',
@@ -288,55 +288,27 @@ describe('HorseDeletionsService', () => {
       expect(horseRepository.restore).toHaveBeenCalledWith({ id: HORSE_ID });
       expect(horseRepository.update).toHaveBeenCalledWith(
         { id: HORSE_ID },
-        { deletedReason: null },
+        { deletedReason: null, barnId: null },
       );
       expect(audit.record).toHaveBeenCalledWith(manager, {
         actorId: CALLER_ID,
         action: AuditAction.RESTORE,
         entityType: AuditEntityType.HORSE,
         entityId: HORSE_ID,
-        before: { deletedAt, deletedReason: 'Tạo nhầm' },
-        after: { deletedAt: null, deletedReason: null },
+        before: { deletedAt, deletedReason: 'Tạo nhầm', barnId: 'b1' },
+        after: { deletedAt: null, deletedReason: null, barnId: null },
         reason: 'Xóa nhầm',
         feature: 'F1.8',
       });
     });
 
-    it.each([
-      [
-        'full, inactive or without an active head trainer',
-        new ConflictException('Khu chuồng đã hết chỗ'),
-      ],
-      ['deleted', new NotFoundException('Không tìm thấy khu chuồng')],
-    ])(
-      'clears the barn when the barn is %s and audits it (BA 2026-09-23, Q-1 B)',
-      async (_case, error) => {
-        barns.lockAssignableBarn.mockRejectedValue(error);
-        await restore();
-        expect(horseRepository.update).toHaveBeenCalledWith(
-          { id: HORSE_ID },
-          { deletedReason: null, barnId: null },
-        );
-        expect(audit.record).toHaveBeenCalledWith(
-          manager,
-          expect.objectContaining({
-            before: expect.objectContaining({ barnId: 'b1' }) as unknown,
-            after: expect.objectContaining({ barnId: null }) as unknown,
-          }),
-        );
-      },
-    );
-
-    it('does not check a barn for a horse that had none', async () => {
+    it('changes no barn for a horse that had none', async () => {
       horse.barnId = null;
       await restore();
-      expect(barns.lockAssignableBarn).not.toHaveBeenCalled();
-    });
-
-    it('rethrows unexpected barn errors', async () => {
-      barns.lockAssignableBarn.mockRejectedValue(new Error('db down'));
-      await expect(restore()).rejects.toThrow('db down');
-      expect(horseRepository.restore).not.toHaveBeenCalled();
+      expect(horseRepository.update).toHaveBeenCalledWith(
+        { id: HORSE_ID },
+        { deletedReason: null },
+      );
     });
 
     it('clears an owner who is no longer an active HORSE_OWNER and audits it', async () => {
@@ -344,7 +316,7 @@ describe('HorseDeletionsService', () => {
       await restore();
       expect(horseRepository.update).toHaveBeenCalledWith(
         { id: HORSE_ID },
-        { deletedReason: null, ownerId: null },
+        { deletedReason: null, barnId: null, ownerId: null },
       );
       expect(audit.record).toHaveBeenCalledWith(
         manager,
@@ -359,6 +331,59 @@ describe('HorseDeletionsService', () => {
       horse.ownerId = null;
       await restore();
       expect(horses.lockActiveHorseOwner).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('previewRestore', () => {
+    const preview = () => service.previewRestore(actor(), HORSE_ID);
+
+    beforeEach(() => {
+      horse.deletedAt = new Date('2026-09-01T00:00:00Z');
+    });
+
+    it('returns 404 when there is no profile', async () => {
+      horses.findByIdWithDeleted.mockResolvedValue(null);
+      await expect(preview()).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects a profile that is not deleted with 409', async () => {
+      horse.deletedAt = null;
+      await expect(preview()).rejects.toThrow(
+        new ConflictException('Hồ sơ ngựa chưa bị xóa'),
+      );
+    });
+
+    it('lists the barn that will be left and writes nothing', async () => {
+      const result = await preview();
+      expect(result).toEqual({
+        horseId: HORSE_ID,
+        barnCleared: 'Khu A',
+        ownerCleared: null,
+        summary: 'Nếu khôi phục, Gió sẽ rời khu "Khu A" và vào Chờ xếp khu.',
+      });
+      expect(deletions.barnName).toHaveBeenCalledWith('b1', manager);
+      expect(horseRepository.restore).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
+    it('also names the owner who will be cleared', async () => {
+      horses.inactiveOwnerName.mockResolvedValue('Trần Văn Chủ');
+      const result = await preview();
+      expect(result).toMatchObject({
+        ownerCleared: 'Trần Văn Chủ',
+        summary:
+          'Nếu khôi phục, Gió sẽ rời khu "Khu A" và vào Chờ xếp khu, bỏ trống chủ sở hữu Trần Văn Chủ.',
+      });
+    });
+
+    it('says the profile comes back unchanged without barn or owner changes', async () => {
+      horse.barnId = null;
+      const result = await preview();
+      expect(result).toMatchObject({
+        barnCleared: null,
+        ownerCleared: null,
+        summary: 'Nếu khôi phục, Gió trở lại như trước khi xóa.',
+      });
     });
   });
 });

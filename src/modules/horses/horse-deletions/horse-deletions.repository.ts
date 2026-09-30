@@ -33,4 +33,22 @@ export class HorseDeletionsRepository {
       .filter((table) => rows[0]?.[table] === true)
       .map((table) => HORSE_BUSINESS_TABLES[table]);
   }
+
+  /**
+   * Lấy tên khu theo id, kể cả khu đã xóa mềm, để hiện ở bảng xem trước khôi phục hồ sơ
+   *
+   * @param barnId UUID của khu
+   * @param manager EntityManager dùng để query
+   * @returns A promise resolving to tên khu, hoặc null nếu không có khu đó
+   */
+  async barnName(
+    barnId: string,
+    manager: EntityManager,
+  ): Promise<string | null> {
+    const rows: Array<{ name: string }> = await manager.query(
+      'SELECT name FROM barns WHERE id = $1',
+      [barnId],
+    );
+    return rows[0]?.name ?? null;
+  }
 }
