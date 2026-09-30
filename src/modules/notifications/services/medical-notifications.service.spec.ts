@@ -2,6 +2,7 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
 import { NotificationPriority } from '../constants/notification-priority.enum';
+import { NotificationType } from '../constants/notification-type.enum';
 import { NotificationRecipientsRepository } from '../repositories/notification-recipients.repository';
 import type { NotificationDraft } from '../types/notification.types';
 import { MedicalNotificationsService } from './medical-notifications.service';
@@ -101,20 +102,35 @@ describe('MedicalNotificationsService', () => {
     },
   );
 
-  it.each([HorseHealthStatus.ELIGIBLE, HorseHealthStatus.UNDER_OBSERVATION])(
-    'sends nothing for a change to %s',
-    async (to) => {
-      await expect(
-        service.notifyHealthChanged({
-          eventId: 'e5',
-          horseId: 'h1',
-          from: HorseHealthStatus.INJURED,
-          to,
-        }),
-      ).resolves.toEqual([]);
-      expect(notifications.send).not.toHaveBeenCalled();
-    },
-  );
+  it('sends nothing when the horse becomes eligible again', async () => {
+    await expect(
+      service.notifyHealthChanged({
+        eventId: 'e5',
+        horseId: 'h1',
+        from: HorseHealthStatus.INJURED,
+        to: HorseHealthStatus.ELIGIBLE,
+      }),
+    ).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+
+  it('tells only the barn head trainer at NORMAL level when the horse goes under observation', async () => {
+    await service.notifyHealthChanged({
+      eventId: 'e5b',
+      horseId: 'h1',
+      from: HorseHealthStatus.ELIGIBLE,
+      to: HorseHealthStatus.UNDER_OBSERVATION,
+    });
+    expect(sentDraft()).toMatchObject({
+      eventId: 'e5b',
+      recipientIds: ['ht-1'],
+      type: NotificationType.INFO,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Winx: Cần theo dõi',
+      message:
+        'Trạng thái sức khỏe của ngựa Winx chuyển từ Đủ điều kiện sang Cần theo dõi. Ngựa không được đua cho tới khi bác sĩ kết luận lại.',
+    });
+  });
 
   it('sends a closed case with its cost to the owner and club managers', async () => {
     await service.notifyCaseClosed({

@@ -125,14 +125,29 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu, Club Manager và chủ ngựa khi ngựa chuyển sang Chấn thương hoặc Cách ly (F3.7 mục 3)
+   * Báo khi trạng thái sức khỏe đổi (Flow 3 mục III.7)
    *
-   * - Đổi sang trạng thái khác không gửi gì
+   * - Sang Chấn thương hoặc Cách ly: báo Head Trainer của khu, Club Manager và chủ ngựa, mức HIGH (F3.7 mục 3)
+   * - Sang Cần theo dõi: chỉ báo Head Trainer của khu, mức NORMAL, vì ngựa bị cấm đua
+   * - Về Đủ điều kiện không gửi gì
    *
    * @param event Payload của MEDICAL_HEALTH_CHANGED_EVENT
    * @returns A promise resolving to id những người nhận vừa được lưu mới, rỗng nếu không cần báo
    */
   async notifyHealthChanged(event: HealthChangedEvent): Promise<string[]> {
+    if (event.to === HorseHealthStatus.UNDER_OBSERVATION) {
+      return this.sendForHorse(
+        event.eventId,
+        event.horseId,
+        { headTrainer: true },
+        NotificationType.INFO,
+        NotificationPriority.NORMAL,
+        (horse) => ({
+          title: `Ngựa ${horse}: ${HEALTH_LABELS[event.to]}`,
+          message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa không được đua cho tới khi bác sĩ kết luận lại.`,
+        }),
+      );
+    }
     if (
       event.to !== HorseHealthStatus.INJURED &&
       event.to !== HorseHealthStatus.QUARANTINED
