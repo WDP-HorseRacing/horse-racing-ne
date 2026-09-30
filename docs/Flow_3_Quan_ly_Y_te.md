@@ -721,8 +721,8 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 
 | # | Câu hỏi | Liên quan | Hệ thống đang chạy |
 |---|---|---|---|
-| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Flow 2 chặn hết |
-| Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Chỉ chặn lúc bắt đầu buổi tập |
+| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Được tập, không được đua. Giữ luật Flow 1 (chỉ Nhẹ và Trung bình) nhưng chưa chặn được vì lớp học của Flow 2 không có cường độ; chờ Flow 2 và BA |
+| Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt 2026-09-30: không hủy lượt đã xếp; chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh; gỡ trước giờ tập thì tập bình thường |
 | Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | GROOM gửi yêu cầu khám trực tiếp (ngựa được phân công) |
 | Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Chưa có chỗ xem; dữ liệu đã lưu trong buổi khám |
 | Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |
