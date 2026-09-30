@@ -115,6 +115,15 @@ describe('TrainingLockService set and release', () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it('propagates not found for a horse outside the caller scope', async () => {
+      access.lockHorseForWrite.mockRejectedValue(new NotFoundException());
+      await expect(
+        service.setLock(vet, 'h9', { reason: 'Nghỉ' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
+    });
+
     it('starts now, attaches the open case, audits and publishes after commit', async () => {
       shared.findOpenCase.mockResolvedValue({ id: 'case-1' });
       const result = await service.setLock(vet, 'h1', {
@@ -158,6 +167,18 @@ describe('TrainingLockService set and release', () => {
       expect(events.publish).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['not found for a horse outside the caller scope', NotFoundException],
+      ['conflict for a transferred horse', ConflictException],
+    ])('propagates %s', async (_label, error) => {
+      access.lockHorseForWrite.mockRejectedValue(new error());
+      await expect(
+        service.releaseLock(vet, 'lock-1', { conclusion: 'Khỏi' }),
+      ).rejects.toThrow(error);
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
+    });
+
     it('releases with the vet and reason, audits and publishes', async () => {
       const result = await service.releaseLock(vet, 'lock-1', {
         conclusion: 'Đã hồi phục',
@@ -176,6 +197,32 @@ describe('TrainingLockService set and release', () => {
         expect.objectContaining({ lockId: 'lock-1' }),
       );
       expect(result.releasedBySystem).toBe(false);
+    });
+  });
+
+  describe('getLock', () => {
+    it('answers not found for a missing lock', async () => {
+      lockRow = null;
+      await expect(service.getLock(vet, 'lock-404')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(horseAccess.findReadable).not.toHaveBeenCalled();
+    });
+
+    it('answers not found when the horse of the lock is outside the caller scope', async () => {
+      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      await expect(service.getLock(vet, 'lock-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('returns the lock of a readable horse', async () => {
+      const result = await service.getLock(vet, 'lock-1');
+      expect(horseAccess.findReadable).toHaveBeenCalledWith(vet, 'h1');
+      expect(result).toMatchObject({
+        id: 'lock-1',
+        status: TrainingLockStatus.ACTIVE,
+      });
     });
   });
 

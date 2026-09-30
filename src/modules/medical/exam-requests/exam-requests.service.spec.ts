@@ -183,6 +183,15 @@ describe('ExamRequestsService', () => {
       expect(manager.save).not.toHaveBeenCalled();
     });
 
+    it('propagates not found for a horse outside the caller scope', async () => {
+      horseAccess.lockVisibleHorse.mockRejectedValue(new NotFoundException());
+      await expect(
+        service.create(actorWith(UserRole.CLUB_MANAGER), 'h9', body),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
+    });
+
     it('answers 403, not 409, to a groom outside scope on a transferred horse', async () => {
       horseAccess.assertNotTransferred.mockImplementation(() => {
         throw new ConflictException();
@@ -305,6 +314,14 @@ describe('ExamRequestsService', () => {
       expect(manager.update).not.toHaveBeenCalled();
     });
 
+    it('propagates conflict for a transferred horse', async () => {
+      access.lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(
+        service.dismiss(vet, 'req-1', { reason: 'Nhầm' }),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
     it('dismisses a pending request with the reason and audits it', async () => {
       const result = await service.dismiss(vet, 'req-1', {
         reason: 'Groom báo nhầm ngựa',
@@ -350,6 +367,15 @@ describe('ExamRequestsService', () => {
       await expect(
         service.updateUrgency(vet, 'req-404', { urgent: true, reason: 'x' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates conflict for a transferred horse', async () => {
+      access.lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(
+        service.updateUrgency(vet, 'req-1', { urgent: true, reason: 'x' }),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
     });
 
     it('alerts veterinarians when an automatic request is raised to urgent', async () => {

@@ -38,6 +38,8 @@ describe('CareSchedulesService', () => {
     findOneOrFail: jest.Mock;
   };
   let schedules: { find: jest.Mock; findOne: jest.Mock };
+  let lockHorseForWrite: jest.Mock;
+  let findReadable: jest.Mock;
   let audit: { record: jest.Mock };
   let service: CareSchedulesService;
 
@@ -71,6 +73,10 @@ describe('CareSchedulesService', () => {
       findOne: jest.fn(() => Promise.resolve(scheduleRow)),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    lockHorseForWrite = jest.fn(() =>
+      Promise.resolve({ caller: { id: callerId }, horse: { id: 'h1' } }),
+    );
+    findReadable = jest.fn().mockResolvedValue({ id: 'h1' });
     service = new CareSchedulesService(
       {
         transaction: jest.fn((work: (m: typeof manager) => unknown) =>
@@ -78,13 +84,9 @@ describe('CareSchedulesService', () => {
         ),
       } as unknown as DataSource,
       schedules as unknown as Repository<CareScheduleEntity>,
+      { lockHorseForWrite } as unknown as MedicalAccessService,
       {
-        lockHorseForWrite: jest.fn(() =>
-          Promise.resolve({ caller: { id: callerId }, horse: { id: 'h1' } }),
-        ),
-      } as unknown as MedicalAccessService,
-      {
-        findReadable: jest.fn().mockResolvedValue({ id: 'h1' }),
+        findReadable,
         currentUser: jest.fn(() => Promise.resolve({ id: callerId })),
       } as unknown as HorseAccessService,
       {
@@ -95,6 +97,21 @@ describe('CareSchedulesService', () => {
   });
 
   describe('create', () => {
+    it.each([
+      ['not found for a horse outside the caller scope', NotFoundException],
+      ['conflict for a transferred horse', ConflictException],
+    ])('propagates %s', async (_label, error) => {
+      lockHorseForWrite.mockRejectedValue(new error());
+      await expect(
+        service.create(vet, 'h1', {
+          type: CareScheduleType.FARRIER,
+          dueAt: inDays(5),
+        }),
+      ).rejects.toThrow(error);
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+    });
+
     it('rejects a due date in the past', async () => {
       await expect(
         service.create(vet, 'h1', {
@@ -148,6 +165,37 @@ describe('CareSchedulesService', () => {
   });
 
   describe('update', () => {
+    it('answers not found for a missing schedule', async () => {
+      scheduleRow = null;
+      await expect(service.update(vet, 's404', { notes: 'x' })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(lockHorseForWrite).not.toHaveBeenCalled();
+    });
+
+    it('propagates conflict for a transferred horse', async () => {
+      lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(service.update(vet, 's1', { notes: 'x' })).rejects.toThrow(
+        ConflictException,
+      );
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects moving the due date into the past', async () => {
+      await expect(
+        service.update(vet, 's1', { dueAt: inDays(-2), reason: 'Dời lịch' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects an assignee who is not an active vet or groom', async () => {
+      assigneeValid = false;
+      await expect(
+        service.update(vet, 's1', { assignedTo: 'user-x' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
     it('requires a reason to move the due date', async () => {
       await expect(
         service.update(vet, 's1', { dueAt: inDays(8) }),
@@ -248,9 +296,40 @@ describe('CareSchedulesService', () => {
         NotFoundException,
       );
     });
+
+    it('rejects a next due date in the past', async () => {
+      await expect(
+        service.complete(vet, 's1', { nextDueAt: inDays(-2) }),
+      ).rejects.toThrow(BadRequestException);
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it('propagates conflict for a transferred horse', async () => {
+      lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(service.complete(vet, 's1', {})).rejects.toThrow(
+        ConflictException,
+      );
+      expect(manager.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('cancel', () => {
+    it('answers not found for a missing schedule', async () => {
+      scheduleRow = null;
+      await expect(
+        service.cancel(vet, 's404', { reason: 'x' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(lockHorseForWrite).not.toHaveBeenCalled();
+    });
+
+    it('propagates conflict for a transferred horse', async () => {
+      lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(service.cancel(vet, 's1', { reason: 'x' })).rejects.toThrow(
+        ConflictException,
+      );
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
     it('answers conflict for a schedule already completed', async () => {
       scheduleRow = { ...scheduleRow, status: CareScheduleStatus.COMPLETED };
       await expect(service.cancel(vet, 's1', { reason: 'x' })).rejects.toThrow(
@@ -271,6 +350,12 @@ describe('CareSchedulesService', () => {
   });
 
   describe('list', () => {
+    it('answers not found for a horse outside the caller scope', async () => {
+      findReadable.mockRejectedValue(new NotFoundException());
+      await expect(service.list(vet, 'h9')).rejects.toThrow(NotFoundException);
+      expect(schedules.find).not.toHaveBeenCalled();
+    });
+
     it('shows a groom only the tasks assigned to them', async () => {
       callerId = 'groom-1';
       await service.list(groom, 'h1');

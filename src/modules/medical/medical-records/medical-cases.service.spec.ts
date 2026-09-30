@@ -8,6 +8,7 @@ import { DomainEventPublisher } from '../../../common/infrastructure/events/doma
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
   CaseLockDecision,
@@ -183,6 +184,60 @@ describe('MedicalCasesService', () => {
         NotFoundException,
       );
     });
+
+    it('answers not found when the horse of the case is outside the caller scope', async () => {
+      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      await expect(service.getCase(vet, 'case-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(manager.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('closePreview', () => {
+    it('answers not found for a missing case', async () => {
+      caseRow = null;
+      await expect(service.closePreview(vet, 'case-404')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('answers not found when the horse of the case is outside the caller scope', async () => {
+      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      await expect(service.closePreview(vet, 'case-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('answers conflict for a case already closed', async () => {
+      caseRow = closedCase;
+      await expect(service.closePreview(vet, 'case-2')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(manager.findOne).not.toHaveBeenCalled();
+    });
+
+    it('shows the active lock, the health warning and the pending requests', async () => {
+      horseAccess.findReadable.mockResolvedValue({
+        id: 'h1',
+        healthStatus: HorseHealthStatus.INJURED,
+      });
+      lockRow = {
+        id: 'lock-1',
+        status: TrainingLockStatus.ACTIVE,
+        lockStart: new Date('2026-09-20T00:00:00Z'),
+        lockEnd: null,
+        reason: 'Viêm gân',
+      };
+      manager.count.mockResolvedValue(2);
+      const result = await service.closePreview(vet, 'case-1');
+      expect(result).toMatchObject({
+        activeLock: expect.objectContaining({ id: 'lock-1' }) as unknown,
+        healthStatus: HorseHealthStatus.INJURED,
+        healthWarning: true,
+        pendingRequestCount: 2,
+      });
+    });
   });
 
   describe('closeCase', () => {
@@ -198,6 +253,30 @@ describe('MedicalCasesService', () => {
       await expect(close()).rejects.toThrow(ConflictException);
       expect(manager.update).not.toHaveBeenCalled();
       expect(events.publish).not.toHaveBeenCalled();
+    });
+
+    it('answers not found for a missing case', async () => {
+      caseRow = null;
+      await expect(close()).rejects.toThrow(NotFoundException);
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['not found for a horse outside the caller scope', NotFoundException],
+      ['conflict for a transferred horse', ConflictException],
+    ])('propagates %s', async (_label, error) => {
+      access.lockHorseForWrite.mockRejectedValue(new error());
+      await expect(close()).rejects.toThrow(error);
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
+    });
+
+    it('requires an expected end when keeping the lock', async () => {
+      lockRow = { id: 'lock-1', status: TrainingLockStatus.ACTIVE };
+      await expect(
+        close({ lockDecision: CaseLockDecision.KEEP }),
+      ).rejects.toThrow(BadRequestException);
+      expect(manager.update).not.toHaveBeenCalled();
     });
 
     it('requires a decision while the case lock is still active', async () => {
@@ -271,6 +350,16 @@ describe('MedicalCasesService', () => {
       await expect(
         service.adjustCost(vet, 'case-404', { totalCost: 1, reason: 'x' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates conflict for a transferred horse', async () => {
+      caseRow = closedCase;
+      access.lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(
+        service.adjustCost(vet, 'case-2', { totalCost: 10, reason: 'Sai' }),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
     });
 
     it('does nothing when the cost is unchanged', async () => {

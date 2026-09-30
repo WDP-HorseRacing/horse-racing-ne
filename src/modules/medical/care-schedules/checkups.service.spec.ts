@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -185,6 +189,14 @@ describe('CheckupsService', () => {
       await expect(
         service.setAppointment(vet, 'ok', { scheduledAt: inDays(3) }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('propagates not found for a horse outside the caller scope', async () => {
+      access.lockHorseForWrite.mockRejectedValue(new NotFoundException());
+      await expect(
+        service.setAppointment(vet, 'h9', { scheduledAt: inDays(3) }),
+      ).rejects.toThrow(NotFoundException);
+      expect(audit.record).not.toHaveBeenCalled();
     });
   });
 });

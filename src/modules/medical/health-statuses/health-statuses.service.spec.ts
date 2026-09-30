@@ -78,6 +78,18 @@ describe('HealthStatusesService', () => {
     ).rejects.toThrow(ConflictException);
   });
 
+  it('propagates not found for a horse outside the caller scope', async () => {
+    access.lockHorseForWrite.mockRejectedValue(new NotFoundException());
+    await expect(
+      service.updateHealth(vet, 'h9', {
+        healthStatus: HorseHealthStatus.INJURED,
+        reason: 'Viêm gân',
+      }),
+    ).rejects.toThrow(NotFoundException);
+    expect(horseHealth.applyHealthStatus).not.toHaveBeenCalled();
+    expect(events.publish).not.toHaveBeenCalled();
+  });
+
   it('writes the new status with feature F3.7 and publishes after commit', async () => {
     const result = await service.updateHealth(vet, 'h1', {
       healthStatus: HorseHealthStatus.QUARANTINED,

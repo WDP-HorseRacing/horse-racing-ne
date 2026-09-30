@@ -176,6 +176,27 @@ describe('MedicalVisitsService', () => {
       expectNothingWritten();
     });
 
+    it('propagates conflict for a transferred horse', async () => {
+      access.lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(
+        service.createStandaloneVisit(vet, HORSE_ID, standalone()),
+      ).rejects.toThrow(ConflictException);
+      expectNothingWritten();
+    });
+
+    it('rejects an exam in the future before any write', async () => {
+      await expect(
+        service.createStandaloneVisit(
+          vet,
+          HORSE_ID,
+          standalone({
+            examDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          }),
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expectNothingWritten();
+    });
+
     it('requires an initial diagnosis when the conclusion is ISSUE', async () => {
       await expect(
         service.createStandaloneVisit(
@@ -419,6 +440,46 @@ describe('MedicalVisitsService', () => {
       expectNothingWritten();
     });
 
+    it.each([
+      ['not found for a horse outside the caller scope', NotFoundException],
+      ['conflict for a transferred horse', ConflictException],
+    ])('propagates %s', async (_label, error) => {
+      access.lockHorseForWrite.mockRejectedValue(new error());
+      await expect(
+        service.createFollowUpVisit(vet, 'case-1', {}),
+      ).rejects.toThrow(error);
+      expectNothingWritten();
+    });
+
+    it('rejects an exam in the future', async () => {
+      await expect(
+        service.createFollowUpVisit(vet, 'case-1', {
+          examDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expectNothingWritten();
+    });
+
+    it('rejects a next visit on a past day', async () => {
+      await expect(
+        service.createFollowUpVisit(vet, 'case-1', {
+          nextVisitAt: new Date(
+            Date.now() - 2 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expectNothingWritten();
+    });
+
+    it('requires a reason when the health status changes', async () => {
+      await expect(
+        service.createFollowUpVisit(vet, 'case-1', {
+          healthStatus: HorseHealthStatus.INJURED,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expectNothingWritten();
+    });
+
     it('rejects an exam earlier than the case opening', async () => {
       await expect(
         service.createFollowUpVisit(vet, 'case-1', {
@@ -461,6 +522,41 @@ describe('MedicalVisitsService', () => {
       await expect(
         service.voidVisit(vet, 'r404', { reason: 'Sai' }),
       ).rejects.toThrow(NotFoundException);
+      expectNothingWritten();
+    });
+
+    it('propagates conflict for a transferred horse', async () => {
+      rows.set(MedicalRecordEntity, visit());
+      access.lockHorseForWrite.mockRejectedValue(new ConflictException());
+      await expect(
+        service.voidVisit(vet, 'r1', { reason: 'Sai' }),
+      ).rejects.toThrow(ConflictException);
+      expect(measurements.voidExamMeasurements).not.toHaveBeenCalled();
+      expectNothingWritten();
+    });
+
+    it('answers conflict for a visit already voided', async () => {
+      rows.set(MedicalRecordEntity, visit({ voidedAt: new Date() }));
+      await expect(
+        service.voidVisit(vet, 'r1', { reason: 'Sai' }),
+      ).rejects.toThrow(ConflictException);
+      expect(measurements.voidExamMeasurements).not.toHaveBeenCalled();
+      expectNothingWritten();
+    });
+
+    it('refuses to void the opening visit of a closed case', async () => {
+      rows.set(
+        MedicalRecordEntity,
+        visit({ caseId: 'case-1', conclusion: MedicalVisitConclusion.ISSUE }),
+      );
+      rows.set(MedicalCaseEntity, {
+        id: 'case-1',
+        status: MedicalCaseStatus.CLOSED,
+      });
+      await expect(
+        service.voidVisit(vet, 'r1', { reason: 'Sai' }),
+      ).rejects.toThrow(ConflictException);
+      expect(measurements.voidExamMeasurements).not.toHaveBeenCalled();
       expectNothingWritten();
     });
 

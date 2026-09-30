@@ -83,3 +83,43 @@ describe('MedicalRemindersService.notifyOverdueCheckups', () => {
     expect(calls[0][1].assigneeId).toBe('groom-1');
   });
 });
+
+describe('MedicalRemindersService.runDaily', () => {
+  let shared: { herdCheckupAnchors: jest.Mock; dueCareSchedules: jest.Mock };
+  let events: { publish: jest.Mock };
+  let service: MedicalRemindersService;
+
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-27T01:00:00Z'));
+    shared = {
+      herdCheckupAnchors: jest
+        .fn()
+        .mockResolvedValue([anchor('h-8', '2026-08-20')]),
+      dueCareSchedules: jest.fn().mockResolvedValue([]),
+    };
+    events = { publish: jest.fn() };
+    service = new MedicalRemindersService(
+      shared as unknown as MedicalSharedRepository,
+      events as unknown as DomainEventPublisher,
+    );
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('runs both reminders for today on the club calendar', async () => {
+    await service.runDaily();
+    expect(shared.herdCheckupAnchors).toHaveBeenCalledTimes(1);
+    expect(shared.dueCareSchedules).toHaveBeenCalledWith('2026-09-27');
+    expect(events.publish).toHaveBeenCalledWith(
+      MEDICAL_CHECKUP_OVERDUE_EVENT,
+      expect.objectContaining({ horseId: 'h-8' }),
+    );
+  });
+
+  it('logs a failure instead of throwing so the scheduler keeps running', async () => {
+    shared.herdCheckupAnchors.mockRejectedValue(new Error('db down'));
+    await expect(service.runDaily()).resolves.toBeUndefined();
+  });
+});
