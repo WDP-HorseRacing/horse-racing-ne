@@ -121,7 +121,7 @@ Bảng chuyển (`LIFECYCLE_TRANSITIONS`):
 
 - Ngựa mới tạo luôn là `ACTIVE` và `ELIGIBLE`; client không chọn được hai giá trị này.
 - Mọi lần đổi phải có `reason`. Hệ thống lưu `lifecycleReason` và `lifecycleChangedAt`.
-- Kích hoạt lại (sang `ACTIVE` từ `RETIRED` hoặc `TRANSFERRED`) đặt `healthStatus = UNDER_OBSERVATION` cho tới khi bác sĩ khám lại. Lớp học đã rút và đăng ký đua đã hủy không tự khôi phục.
+- Kích hoạt lại (sang `ACTIVE` từ `RETIRED` hoặc `TRANSFERRED`): lớp học đã rút và đăng ký đua đã hủy không tự khôi phục. Từ `TRANSFERRED` thì đặt `healthStatus = UNDER_OBSERVATION` cho tới khi bác sĩ khám lại; từ `RETIRED` thì giữ nguyên `healthStatus`.
 - Kích hoạt lại từ `TRANSFERRED`: ngựa vào "Chờ xếp khu". Chủ cũ không còn là `HORSE_OWNER` đang `ACTIVE` thì bỏ trống chủ (khóa chia sẻ row tài khoản khi kiểm), nhật ký ghi `ownerId` trước/sau (quyết định 2026-09-23).
 - Nhật ký đổi vòng đời ghi thêm `classesWithdrawn` (số lớp bị rút) khi có rút lớp.
 - Ngựa `TRANSFERRED` chỉ được xem. Sửa hồ sơ, đổi health, xếp khu, xếp ô, giao Groom, ghi hoặc xóa chỉ số và xóa hồ sơ đều trả `409`. Chỉ còn CM đổi lifecycle để kích hoạt lại.
@@ -449,7 +449,7 @@ Response:
 
 - `allowed = false` khi trạng thái đích trùng hiện tại (`blockedReason = "Ngựa đang ở đúng trạng thái này"`) hoặc ngoài bảng chuyển. Khi đó `summary = null`.
 - `stallReleased` là mã ô, `groomEnded` là tên Groom, `barnCleared` là tên khu sẽ bị bỏ; `null` nếu không áp dụng.
-- `summary` (`lifecycleImpactSummary`) chỉ nhắc mục thật sự có dữ liệu. Câu 1 liệt kê ngựa đang có gì, câu 2 bắt đầu bằng `Nếu <giải nghệ | chuyển nhượng | kích hoạt lại> sẽ ...`. Không có gì bị ảnh hưởng thì còn `Nếu <động từ> sẽ không ảnh hưởng dữ liệu nào khác.` Kích hoạt lại luôn có vế `đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại`; kích hoạt lại từ `TRANSFERRED` có thêm vế `đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom)`, và khi chủ không còn hợp lệ thì thêm `bỏ trống chủ <tên> vì tài khoản không còn là chủ ngựa đang hoạt động`.
+- `summary` (`lifecycleImpactSummary`) chỉ nhắc mục thật sự có dữ liệu. Câu 1 liệt kê ngựa đang có gì, câu 2 bắt đầu bằng `Nếu <giải nghệ | chuyển nhượng | kích hoạt lại> sẽ ...`. Không có gì bị ảnh hưởng thì còn `Nếu <động từ> sẽ không ảnh hưởng dữ liệu nào khác.` Kích hoạt lại từ `TRANSFERRED` có vế `đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom)` và vế `đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại`; kích hoạt lại từ `RETIRED` không có hai vế này, và khi chủ không còn hợp lệ thì thêm `bỏ trống chủ <tên> vì tài khoản không còn là chủ ngựa đang hoạt động`.
 - `pendingBarnAfter = true` khi kích hoạt lại từ `TRANSFERRED`. `ownerCleared` là tên chủ sẽ bị bỏ trống, `null` nếu giữ chủ.
 
 ### `PATCH /horses/:horseId/lifecycle-status`
