@@ -233,12 +233,6 @@ Mỗi phần tử gồm hồ sơ (`HorseResponseDto`, có `mediaId`), `photoUrl`
 
 Lỗi đáng chú ý: `403 Không có quyền xem hồ sơ đã xóa` khi role khác CM dùng `includeDeleted=true`.
 
-### `GET /owners/me/horses`
-
-Danh sách ngựa caller đang là chủ (`owner_id`), kể cả ngựa đã chuyển nhượng, không gồm hồ sơ đã xóa, sắp theo tên.
-
-Quyền: `HORSE_OWNER`.
-
 ### `POST /horses`
 
 Tạo hồ sơ ngựa. Có thể gắn ảnh, cha mẹ, chủ và xếp khu ngay trong cùng transaction.

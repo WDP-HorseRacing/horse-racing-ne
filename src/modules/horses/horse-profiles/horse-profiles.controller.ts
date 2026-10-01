@@ -56,14 +56,6 @@ export class HorseProfilesController {
     return this.profilesService.list(actor, query);
   }
 
-  @Access([UserRole.HORSE_OWNER])
-  @Get('owners/me/horses')
-  @ApiOperation({ summary: 'List horses owned by the current user' })
-  @ApiOkResponse({ type: [HorseResponseDto] })
-  listMyHorses(@CurrentUser() actor: Actor): Promise<HorseResponseDto[]> {
-    return this.profilesService.listMyHorses(actor);
-  }
-
   @Access([UserRole.CLUB_MANAGER])
   @Post('horses')
   @ApiOperation({

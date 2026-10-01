@@ -143,21 +143,6 @@ export class HorseProfilesService {
   }
 
   /**
-   * Lấy danh sách ngựa người gọi đang là chủ sở hữu, kể cả ngựa đã chuyển nhượng (hồ sơ chỉ đọc).
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @returns Promise trả về các hồ sơ ngựa của người gọi, sắp theo tên
-   */
-  async listMyHorses(actor: Actor): Promise<HorseResponseDto[]> {
-    const caller = await this.access.currentUser(actor);
-    const horses = await this.horseRecords.find({
-      where: { ownerId: caller.id },
-      order: { name: 'ASC' },
-    });
-    return horses.map(toHorseResponse);
-  }
-
-  /**
    * Lấy tab thông tin hồ sơ ngựa (F1.3, nhóm 1): định danh, trạng thái, được tập/được đua, vị trí, groom, chủ và chỉ số mới nhất.
    *
    * - Mọi vai trò trong phạm vi xem đều nhận cùng nhóm thông tin này

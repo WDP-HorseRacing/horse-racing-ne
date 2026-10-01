@@ -1119,36 +1119,6 @@
         ]
       }
     },
-    "/api/v1/owners/me/horses": {
-      "get": {
-        "operationId": "HorseProfilesController_listMyHorses",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/HorseResponseDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List horses owned by the current user",
-        "tags": [
-          "horses"
-        ]
-      }
-    },
     "/api/v1/horses/{horseId}/photo-url": {
       "get": {
         "description": "Ai xem được hồ sơ ngựa thì lấy được link ảnh. Ngựa chưa có ảnh hoặc nằm ngoài phạm vi xem trả 404.",
