@@ -10,7 +10,7 @@ import {
 import { DATE_ONLY_PATTERN, trimValue } from './medical-visit.dto';
 
 /**
- * Một dòng đơn thuốc trong buổi khám (F3.3 mục 1): không trừ kho, không tính tiền.
+ * Một dòng đơn thuốc trong buổi khám: không trừ kho, không tính tiền.
  */
 export class CreatePrescriptionDto {
   @ApiProperty({ maxLength: 160 })

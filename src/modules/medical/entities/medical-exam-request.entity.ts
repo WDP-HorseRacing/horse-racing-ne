@@ -11,7 +11,7 @@ import {
 import { MedicalRecordEntity } from './medical-record.entity';
 
 /**
- * MedicalExamRequestEntity: yêu cầu khám khi ngựa có vấn đề, hàng đợi của bác sĩ (F3.4).
+ * MedicalExamRequestEntity: yêu cầu khám khi ngựa có vấn đề, hàng đợi của bác sĩ.
  *
  * - requestedBy null khi hệ thống tự sinh từ cảnh báo chỉ số (source MEASUREMENT_ALERT)
  * - alertType chỉ có với yêu cầu tự động, dùng để chặn trùng: mỗi ngựa một yêu cầu PENDING cho mỗi loại cảnh báo

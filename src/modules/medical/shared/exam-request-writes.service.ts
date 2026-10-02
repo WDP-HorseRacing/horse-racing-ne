@@ -5,7 +5,7 @@ import { TRANSFER_CANCEL_REASON } from '../constants/medical.constants';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 
 /**
- * Các câu ghi lên bảng medical_exam_requests mà nhiều feature y tế cùng dùng, luôn chạy trong transaction của nơi gọi
+ * Các câu ghi dùng chung lên bảng medical_exam_requests, luôn chạy trong transaction đang mở
  */
 @Injectable()
 export class ExamRequestWritesService {

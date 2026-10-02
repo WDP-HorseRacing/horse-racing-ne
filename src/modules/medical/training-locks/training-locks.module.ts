@@ -8,7 +8,7 @@ import { TrainingLocksController } from './training-locks.controller';
 import { TrainingLockService } from './training-locks.service';
 
 /**
- * Owns veterinary training locks (F3.8) and exports the system release used by lifecycle transfers (F1.8).
+ * Quản lý lệnh khóa huấn luyện do bác sĩ đặt, export hàm hệ thống tự gỡ khóa.
  */
 @Module({
   imports: [

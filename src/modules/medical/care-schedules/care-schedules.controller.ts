@@ -42,7 +42,7 @@ export class CareSchedulesController {
   ])
   @Get('horses/:horseId/care-schedules')
   @ApiOperation({
-    summary: 'List vaccination, deworming and farrier schedules (F3.11)',
+    summary: 'List vaccination, deworming and farrier schedules',
     description: 'Groom chỉ thấy lịch được giao cho mình.',
     operationId: 'MedicalDetailsController_careSchedules',
   })
@@ -57,7 +57,7 @@ export class CareSchedulesController {
   @Access([UserRole.VETERINARIAN])
   @Post('horses/:horseId/care-schedules')
   @ApiOperation({
-    summary: 'Create a care schedule (F3.11)',
+    summary: 'Create a care schedule',
     description:
       'Ngày đến hạn ở quá khứ hoặc người được giao không phải VET/Groom đang hoạt động: 400. Ngựa đã chuyển nhượng: 409.',
     operationId: 'MedicalDetailsController_createCareSchedule',
@@ -74,7 +74,7 @@ export class CareSchedulesController {
   @Access([UserRole.VETERINARIAN])
   @Patch('care-schedules/:id')
   @ApiOperation({
-    summary: 'Reschedule or reassign a care schedule (F3.11)',
+    summary: 'Reschedule or reassign a care schedule',
     description: 'Dời ngày bắt buộc reason. Lịch đã hoàn tất/đã hủy: 409.',
     operationId: 'MedicalDetailsController_updateCareSchedule',
   })
@@ -90,7 +90,7 @@ export class CareSchedulesController {
   @Access([UserRole.VETERINARIAN, UserRole.GROOM])
   @Post('care-schedules/:id/complete')
   @ApiOperation({
-    summary: 'Complete a care schedule (F3.11)',
+    summary: 'Complete a care schedule',
     description:
       'Veterinarian, hoặc đúng Groom được giao mà vẫn phụ trách ngựa; người khác 403. Chỉ Veterinarian được nhập nextDueAt để tạo luôn lịch lần tới. Lịch đã hoàn tất/đã hủy: 409.',
     operationId: 'MedicalDetailsController_completeCareSchedule',
@@ -107,7 +107,7 @@ export class CareSchedulesController {
   @Access([UserRole.VETERINARIAN])
   @Post('care-schedules/:id/cancel')
   @ApiOperation({
-    summary: 'Cancel a care schedule with a reason (F3.11)',
+    summary: 'Cancel a care schedule with a reason',
     description: 'Lịch đã hoàn tất/đã hủy: 409.',
   })
   @ApiCreatedResponse({ type: CareScheduleResponseDto })

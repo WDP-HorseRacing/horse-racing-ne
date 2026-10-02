@@ -1,5 +1,5 @@
 /**
- * Tên domain event của Flow 3, phát sau khi transaction đã commit. Người nhận từng event theo Flow 3 mục III.7.
+ * Tên domain event y tế, phát sau khi transaction đã commit.
  */
 export const MEDICAL_EXAM_REQUEST_URGENT_EVENT = 'medical.exam-request.urgent';
 export const MEDICAL_TRAINING_LOCK_SET_EVENT = 'medical.training-lock.set';

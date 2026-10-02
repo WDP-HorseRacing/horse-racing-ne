@@ -33,7 +33,7 @@ export class MedicalRemindersService {
    * - Mỗi loại nhắc chạy độc lập: loại này lỗi vẫn chạy loại kia
    * - Lỗi chỉ được log, không làm dừng scheduler
    *
-   * @returns A promise resolving khi đã chạy xong
+   * @returns Promise hoàn tất khi đã chạy xong
    */
   @Cron('0 7 * * *', {
     name: 'medical-daily-reminders',
@@ -57,7 +57,7 @@ export class MedicalRemindersService {
    *
    * @param label Tên loại nhắc dùng trong log
    * @param run Hàm chạy loại nhắc, trả về số nhắc đã phát
-   * @returns A promise resolving to số nhắc đã phát, hoặc null nếu loại nhắc này lỗi
+   * @returns Promise trả về số nhắc đã phát, hoặc null nếu loại nhắc này lỗi
    */
   private async runSafely(
     label: string,
@@ -75,13 +75,13 @@ export class MedicalRemindersService {
   }
 
   /**
-   * Phát nhắc cho mọi con ngựa quá hạn khám định kỳ trên 7 ngày (F3.2 mục 5, Flow 3 mục III.7)
+   * Phát nhắc cho mọi con ngựa quá hạn khám định kỳ trên CHECKUP_OVERDUE_NOTIFY_DAYS ngày
    *
    * - eventId cố định theo ngựa và hạn khám: chạy lại cùng ngày hay các ngày sau đều không báo trùng
    * - Khám xong thì hạn đổi nên eventId đổi, có thể báo lại khi hạn mới quá
    *
    * @param today Hôm nay theo lịch câu lạc bộ
-   * @returns A promise resolving to số con ngựa đã phát nhắc
+   * @returns Promise trả về số con ngựa đã phát nhắc
    */
   async notifyOverdueCheckups(today: string): Promise<number> {
     const rows = await this.checkups.herdCheckupAnchors();
@@ -101,12 +101,12 @@ export class MedicalRemindersService {
   }
 
   /**
-   * Phát nhắc cho mọi lịch tiêm phòng, tẩy giun, kiểm tra móng đến hạn hôm nay hoặc trước đó mà chưa làm (F3.11 mục 5)
+   * Phát nhắc cho mọi lịch tiêm phòng, tẩy giun, kiểm tra móng đến hạn hôm nay hoặc trước đó mà chưa làm
    *
    * - eventId cố định theo lịch và ngày đến hạn: mỗi lịch chỉ báo một lần; dời ngày thì được báo lại theo ngày mới
    *
    * @param today Hôm nay theo lịch câu lạc bộ
-   * @returns A promise resolving to số lịch đã phát nhắc
+   * @returns Promise trả về số lịch đã phát nhắc
    */
   async notifyDueCareSchedules(today: string): Promise<number> {
     const rows = await this.checkups.dueCareSchedules(today);

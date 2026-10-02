@@ -6,7 +6,7 @@ import { MedicalDashboardRepository } from './medical-dashboard.repository';
 import { MedicalDashboardService } from './medical-dashboard.service';
 
 /**
- * Owns the read-only medical dashboard (F3.1).
+ * Cung cấp bảng điều khiển y tế, chỉ đọc.
  */
 @Module({
   imports: [HorsesSharedModule, MedicalSharedModule],

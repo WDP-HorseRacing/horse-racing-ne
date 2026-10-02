@@ -13,7 +13,7 @@ export interface TrainingLockRelease {
 }
 
 /**
- * Các câu ghi lên bảng training_locks mà nhiều feature y tế cùng dùng, luôn chạy trong transaction của nơi gọi
+ * Các câu ghi dùng chung lên bảng training_locks, luôn chạy trong transaction đang mở
  */
 @Injectable()
 export class TrainingLockWritesService {

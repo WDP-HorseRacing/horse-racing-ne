@@ -11,7 +11,7 @@ import {
 import { trimValue } from './medical-visit.dto';
 
 /**
- * Dời ngày, đổi người được giao hoặc ghi chú của lịch chăm sóc (F3.11 mục 3).
+ * Dời ngày, đổi người được giao hoặc ghi chú của lịch chăm sóc.
  */
 export class UpdateCareScheduleDto {
   @ApiPropertyOptional({
@@ -52,7 +52,7 @@ export class UpdateCareScheduleDto {
 }
 
 /**
- * Hủy lịch chăm sóc, bắt buộc lý do (F3.11 mục 3).
+ * Hủy lịch chăm sóc, bắt buộc lý do.
  */
 export class CancelCareScheduleDto {
   @ApiProperty({ minLength: 1, maxLength: 500 })
@@ -64,7 +64,7 @@ export class CancelCareScheduleDto {
 }
 
 /**
- * Hoàn tất lịch chăm sóc, tùy chọn hẹn luôn lần tới (F3.11 mục 4).
+ * Hoàn tất lịch chăm sóc, tùy chọn hẹn luôn lần tới.
  */
 export class CompleteCareScheduleDto {
   @ApiPropertyOptional({

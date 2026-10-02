@@ -27,11 +27,11 @@ export class MedicalLifecycleService {
   ) {}
 
   /**
-   * Lý do chặn chuyển nhượng về mặt y tế, dùng cho bảng xem trước đổi vòng đời (F1.8 mục 5)
+   * Lý do chặn chuyển nhượng về mặt y tế
    *
    * @param horseId UUID của ngựa
    * @param manager EntityManager tùy chọn (mặc định dataSource.manager)
-   * @returns A promise resolving to câu lý do nếu ngựa còn bệnh án đang mở, null nếu chuyển nhượng được
+   * @returns Promise trả về câu lý do nếu ngựa còn bệnh án đang mở, null nếu chuyển nhượng được
    */
   async transferBlockReason(
     horseId: string,
@@ -42,11 +42,11 @@ export class MedicalLifecycleService {
   }
 
   /**
-   * Đếm việc y tế sẽ bị hệ thống tự đóng nếu chuyển nhượng, dùng cho bảng xem trước đổi vòng đời (F1.8 mục 5)
+   * Đếm việc y tế sẽ bị hệ thống tự đóng nếu chuyển nhượng
    *
    * @param horseId UUID của ngựa
    * @param manager EntityManager tùy chọn (mặc định dataSource.manager)
-   * @returns A promise resolving to số yêu cầu khám đang chờ và số lịch chưa làm
+   * @returns Promise trả về số yêu cầu khám đang chờ và số lịch chưa làm
    */
   async transferImpact(
     horseId: string,
@@ -64,16 +64,16 @@ export class MedicalLifecycleService {
   }
 
   /**
-   * Chốt phần y tế khi chuyển nhượng ngựa, chạy trong transaction của F1.8 (Flow 3 mục III.8)
+   * Chốt phần y tế khi chuyển nhượng ngựa, chạy trong transaction đang mở
    *
    * - Chặn 409 nếu ngựa còn bệnh án đang mở
-   * - Yêu cầu khám đang chờ chuyển DISMISSED với lý do "Do chuyển nhượng", người xử lý để null vì hệ thống làm
+   * - Yêu cầu khám đang chờ chuyển DISMISSED với lý do "Do chuyển nhượng", người xử lý để null
    * - Lịch hẹn khám định kỳ và lịch chăm sóc chưa làm chuyển CANCELLED với cùng lý do
-   * - Không tự mở transaction, không publish event; nơi gọi đã khóa row ngựa
+   * - Không tự mở transaction, không publish event, không khóa row ngựa
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to số yêu cầu khám bị bỏ qua và số lịch bị hủy
+   * @returns Promise trả về số yêu cầu khám bị bỏ qua và số lịch bị hủy
    * @throws ConflictException Nếu ngựa còn bệnh án đang mở
    */
   async settleForTransfer(

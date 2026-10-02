@@ -68,9 +68,9 @@ export function daysBetween(from: string, to: string): number {
 }
 
 /**
- * Tính hạn khám định kỳ kế tiếp (Flow 3 mục III.3)
+ * Tính hạn khám định kỳ kế tiếp
  *
- * - Ngựa đã chuyển nhượng vừa được kích hoạt lại mà chưa khám từ ngày đó: hạn chính là ngày kích hoạt lại, để bác sĩ khám lại ngay (III.3.2)
+ * - Ngựa đã chuyển nhượng vừa được kích hoạt lại mà chưa khám từ ngày đó: hạn chính là ngày kích hoạt lại
  * - Còn lại: hạn = ngày muộn nhất trong (buổi khám gần nhất chưa hủy, ngày tạo hồ sơ) + MEDICAL_CHECKUP_CYCLE_DAYS
  *
  * @param anchors Các mốc ngày của con ngựa
@@ -92,7 +92,7 @@ export function checkupDueDate(anchors: CheckupAnchors): string {
 }
 
 /**
- * Xếp trạng thái hạn khám theo số ngày còn lại tới hạn (F3.2 mục 2)
+ * Xếp trạng thái hạn khám theo số ngày còn lại tới hạn
  *
  * - Còn trên CHECKUP_DUE_SOON_DAYS ngày: OK
  * - Còn từ 0 tới CHECKUP_DUE_SOON_DAYS ngày: DUE_SOON
@@ -110,7 +110,7 @@ export function dueStatusOf(dueDate: string, today: string): CheckupDueStatus {
 }
 
 /**
- * Cho biết con ngựa đã quá hạn khám trên CHECKUP_OVERDUE_NOTIFY_DAYS ngày để gửi thông báo HIGH (Flow 3 mục III.7)
+ * Cho biết con ngựa đã quá hạn khám trên CHECKUP_OVERDUE_NOTIFY_DAYS ngày (ngưỡng gửi thông báo HIGH)
  *
  * @param dueDate Hạn khám dạng YYYY-MM-DD
  * @param today Hôm nay theo lịch câu lạc bộ, dạng YYYY-MM-DD
@@ -121,7 +121,7 @@ export function isOverdueNotifiable(dueDate: string, today: string): boolean {
 }
 
 /**
- * Kiểm tra thời điểm khám hợp lệ (Flow 3 mục III.2.5)
+ * Kiểm tra thời điểm khám hợp lệ
  *
  * - Không ở tương lai
  * - Không lùi quá VISIT_BACKDATE_MAX_DAYS ngày
@@ -156,7 +156,7 @@ export function assertVisitExamDate(
 }
 
 /**
- * Bắt buộc lý do khi đổi trạng thái sức khỏe (Flow 3 mục III.4.2)
+ * Bắt buộc lý do khi đổi trạng thái sức khỏe
  *
  * @param current Trạng thái sức khỏe hiện tại
  * @param next Trạng thái sức khỏe mới
@@ -179,7 +179,7 @@ export function assertHealthChangeReason(
 }
 
 /**
- * Chặn ghi buổi khám ngoài bệnh án khi ngựa đang có bệnh án mở (F3.3 mục 5)
+ * Chặn ghi buổi khám ngoài bệnh án khi ngựa đang có bệnh án mở
  *
  * @param hasOpenCase Ngựa có bệnh án đang mở không
  * @throws ConflictException Nếu ngựa đang có bệnh án mở
@@ -193,7 +193,7 @@ export function assertStandaloneVisitAllowed(hasOpenCase: boolean): void {
 }
 
 /**
- * Kiểm tra dữ liệu buổi khám ngoài bệnh án (F3.3 mục 1, 3)
+ * Kiểm tra dữ liệu buổi khám ngoài bệnh án
  *
  * - Kết luận ISSUE bắt buộc chẩn đoán ban đầu
  * - Khám theo yêu cầu (REQUEST) bắt buộc gắn ít nhất một yêu cầu
@@ -234,7 +234,7 @@ export function assertStandaloneVisitInput(input: {
 }
 
 /**
- * Ngày hẹn tái khám không được ở quá khứ, so theo ngày lịch câu lạc bộ (F3.6 mục 7)
+ * Ngày hẹn tái khám không được ở quá khứ, so theo ngày lịch câu lạc bộ
  *
  * @param nextVisitAt Ngày hẹn tái khám
  * @param now Thời điểm hiện tại
@@ -247,7 +247,7 @@ export function assertNextVisitAt(nextVisitAt: Date, now: Date): void {
 }
 
 /**
- * Chỉ gắn được yêu cầu khám đang chờ của chính con ngựa đó (F3.3 mục 4)
+ * Chỉ gắn được yêu cầu khám đang chờ của chính con ngựa đó
  *
  * @param requestedIds Các id yêu cầu người dùng gửi lên
  * @param found Các yêu cầu tìm được trong DB
@@ -272,7 +272,7 @@ export function assertRequestsAttachable(
 }
 
 /**
- * Buổi khám thay thế chỉ trỏ tới buổi khám đã hủy của cùng con ngựa (F3.6 mục 8)
+ * Buổi khám thay thế chỉ trỏ tới buổi khám đã hủy của cùng con ngựa
  *
  * @param replaced Buổi khám bị thay, hoặc null nếu không tìm thấy
  * @param horseId UUID của ngựa đang khám
@@ -290,7 +290,7 @@ export function assertReplacementTarget(
 }
 
 /**
- * Bệnh án phải còn Đang điều trị (F3.6 mục 4, F3.9 mục 1)
+ * Bệnh án phải còn Đang điều trị
  *
  * @param status Trạng thái bệnh án
  * @throws ConflictException Nếu bệnh án đã đóng
@@ -304,7 +304,7 @@ export function assertCaseOpen(status: MedicalCaseStatus): void {
 }
 
 /**
- * Quyết định việc cần làm khi hủy một buổi khám (F3.6 mục 8)
+ * Quyết định việc cần làm khi hủy một buổi khám
  *
  * - Buổi đã hủy: 409
  * - Buổi ngoài bệnh án, hoặc buổi tái khám (kể cả của bệnh án đã đóng): chỉ hủy buổi đó
@@ -341,7 +341,7 @@ export function resolveVisitVoid(
 }
 
 /**
- * Chọn cách xử lý lệnh khóa gắn với bệnh án khi đóng bệnh án (F3.8 mục 7)
+ * Chọn cách xử lý lệnh khóa gắn với bệnh án khi đóng bệnh án
  *
  * @param hasActiveLock Bệnh án có lệnh khóa còn hiệu lực không
  * @param decision Lựa chọn của bác sĩ
@@ -374,7 +374,7 @@ export function resolveLockOnClose(
 }
 
 /**
- * Chỉ điều chỉnh chi phí của bệnh án đã đóng (F3.9 E4)
+ * Chỉ điều chỉnh chi phí của bệnh án đã đóng
  *
  * @param status Trạng thái bệnh án
  * @throws ConflictException Nếu bệnh án chưa đóng
@@ -386,7 +386,7 @@ export function assertCostAdjustable(status: MedicalCaseStatus): void {
 }
 
 /**
- * Người gọi có được xem chi phí y tế không (Flow 3 mục III.6.6, F3.10 mục 8): Head Trainer không bao giờ thấy
+ * Người gọi có được xem chi phí y tế không: Head Trainer không bao giờ thấy
  *
  * @param roles Vai trò của người gọi
  * @returns True với Club Manager, Veterinarian, Horse Owner
@@ -435,7 +435,7 @@ export function isGroomOnlyForExamRequests(roles: UserRole[]): boolean {
 }
 
 /**
- * Người gọi có được xem liều lượng, tần suất đơn thuốc không (F3.10 mục 4): Horse Owner thì không
+ * Người gọi có được xem liều lượng, tần suất đơn thuốc không: Horse Owner thì không
  *
  * @param roles Vai trò của người gọi
  * @returns True với Club Manager, Head Trainer, Veterinarian
@@ -449,7 +449,7 @@ export function canSeeDosage(roles: UserRole[]): boolean {
 }
 
 /**
- * Kiểm tra người gọi được gửi yêu cầu khám cho con ngựa (F3.4 phân quyền)
+ * Kiểm tra người gọi được gửi yêu cầu khám cho con ngựa
  *
  * - Veterinarian, Club Manager: mọi ngựa
  * - Head Trainer: ngựa thuộc khu mình phụ trách
@@ -476,7 +476,7 @@ export function assertCanRequestExam(input: {
 }
 
 /**
- * Chọn nguồn gốc yêu cầu khám theo vai trò người gửi (F3.4 mục 1), ưu tiên vai trò có quyền rộng hơn
+ * Chọn nguồn gốc yêu cầu khám theo vai trò người gửi, ưu tiên vai trò có quyền rộng hơn
  *
  * @param roles Vai trò của người gửi
  * @returns VET, STAFF (Club Manager, Head Trainer) hoặc GROOM_INCIDENT
@@ -493,7 +493,7 @@ export function examRequestSourceFor(roles: UserRole[]): ExamRequestSource {
 }
 
 /**
- * Mức độ của yêu cầu khám tự sinh từ cảnh báo chỉ số (Flow 3 mục III.5.3): sốt là Khẩn, sụt cân là Bình thường
+ * Mức độ của yêu cầu khám tự sinh từ cảnh báo chỉ số: sốt là Khẩn, sụt cân là Bình thường
  *
  * @param alert Loại cảnh báo
  * @returns True nếu yêu cầu là Khẩn
@@ -503,7 +503,7 @@ export function isUrgentAlert(alert: HorseMeasurementAlert): boolean {
 }
 
 /**
- * Chỉ xử lý yêu cầu khám còn Chờ xử lý; Đã khám và Đã bỏ qua là trạng thái cuối (F3.4 mục 2)
+ * Chỉ xử lý yêu cầu khám còn Chờ xử lý; Đã khám và Đã bỏ qua là trạng thái cuối
  *
  * @param status Trạng thái yêu cầu khám
  * @throws ConflictException Nếu yêu cầu không còn chờ
@@ -515,7 +515,7 @@ export function assertRequestPending(status: ExamRequestStatus): void {
 }
 
 /**
- * Mỗi con ngựa có tối đa một lệnh khóa đang hiệu lực (F3.8 mục 3)
+ * Mỗi con ngựa có tối đa một lệnh khóa đang hiệu lực
  *
  * @param hasActiveLock Ngựa đang có lệnh khóa hiệu lực không
  * @throws ConflictException Nếu ngựa đã có lệnh khóa đang hiệu lực
@@ -527,7 +527,7 @@ export function assertNoActiveLock(hasActiveLock: boolean): void {
 }
 
 /**
- * Chỉ gỡ được lệnh khóa đang hiệu lực (F3.8 E5)
+ * Chỉ gỡ được lệnh khóa đang hiệu lực
  *
  * @param status Trạng thái lệnh khóa
  * @throws ConflictException Nếu lệnh khóa đã được gỡ
@@ -539,7 +539,7 @@ export function assertLockActive(status: TrainingLockStatus): void {
 }
 
 /**
- * Ngày dự kiến gỡ khóa không được ở quá khứ, so theo ngày lịch câu lạc bộ (F3.8 E3)
+ * Ngày dự kiến gỡ khóa không được ở quá khứ, so theo ngày lịch câu lạc bộ
  *
  * @param lockEnd Ngày dự kiến gỡ
  * @param now Thời điểm hiện tại
@@ -564,7 +564,7 @@ export function toClubDate(date: Date): string {
 }
 
 /**
- * Tính hạn khám, số ngày còn lại và trạng thái hạn của một con ngựa (F3.2 mục 1, 2)
+ * Tính hạn khám, số ngày còn lại và trạng thái hạn của một con ngựa
  *
  * @param anchors Các mốc ngày của con ngựa
  * @param today Hôm nay theo lịch câu lạc bộ
@@ -583,7 +583,7 @@ export function checkupStateOf(
 }
 
 /**
- * Kiểm tra ngày hẹn khám định kỳ (F3.2 mục 3)
+ * Kiểm tra ngày hẹn khám định kỳ
  *
  * - Không ở quá khứ
  * - Ngựa chưa quá hạn thì không muộn hơn hạn khám; đã quá hạn thì chọn ngày bất kỳ từ hôm nay
@@ -609,7 +609,7 @@ export function assertAppointmentDate(
 }
 
 /**
- * Dời ngày của lịch đã đặt bắt buộc lý do (ngày hẹn khám F3.2 mục 5, lịch chăm sóc F3.11 mục 3)
+ * Dời ngày của lịch đã đặt bắt buộc lý do (ngày hẹn khám định kỳ hoặc lịch chăm sóc)
  *
  * @param hasAppointment Lịch đã có ngày cần dời không (ngựa đã có ngày hẹn, hoặc ngày đến hạn thay đổi)
  * @param reason Lý do người dùng nhập
@@ -625,7 +625,7 @@ export function assertRescheduleReason(
 }
 
 /**
- * Thứ tự ưu tiên trong sơ đồ đàn ngựa (F3.1 mục 2): Cách ly, Chấn thương, Cần theo dõi, Đủ điều kiện
+ * Thứ tự ưu tiên trong sơ đồ đàn ngựa: Cách ly, Chấn thương, Cần theo dõi, Đủ điều kiện
  *
  * @param status Trạng thái sức khỏe
  * @returns Số nhỏ hơn đứng trước
@@ -644,7 +644,7 @@ export function healthPriority(status: HorseHealthStatus): number {
 }
 
 /**
- * Chỉ dời, sửa, hủy hoặc hoàn tất lịch chăm sóc còn Đã lên lịch (F3.11 mục 2)
+ * Chỉ dời, sửa, hủy hoặc hoàn tất lịch chăm sóc còn Đã lên lịch
  *
  * @param status Trạng thái lịch chăm sóc
  * @throws ConflictException Nếu lịch đã Hoàn tất hoặc Đã hủy
@@ -656,7 +656,7 @@ export function assertCareScheduleOpen(status: CareScheduleStatus): void {
 }
 
 /**
- * Ngày đến hạn của lịch chăm sóc không được ở quá khứ (F3.11 E1)
+ * Ngày đến hạn của lịch chăm sóc không được ở quá khứ
  *
  * @param dueDate Ngày đến hạn theo lịch câu lạc bộ
  * @param today Hôm nay theo lịch câu lạc bộ
@@ -669,7 +669,7 @@ export function assertCareDueDate(dueDate: string, today: string): void {
 }
 
 /**
- * Chỉ Veterinarian hoặc đúng người được giao mới đánh dấu hoàn tất lịch chăm sóc (F3.11 phân quyền, E3)
+ * Chỉ Veterinarian hoặc đúng người được giao mới đánh dấu hoàn tất lịch chăm sóc
  *
  * @param roles Vai trò người gọi
  * @param isAssignee Người gọi có phải người được giao không
@@ -687,7 +687,7 @@ export function assertCanCompleteCareSchedule(
 }
 
 /**
- * Chỉ Veterinarian được hẹn lịch lần tới khi hoàn tất lịch chăm sóc, vì tạo lịch là việc của bác sĩ (F3.11 phân quyền)
+ * Chỉ Veterinarian được hẹn lịch lần tới khi hoàn tất lịch chăm sóc
  *
  * @param roles Vai trò người gọi
  * @param hasNext Người gọi có nhập ngày đến hạn lần tới không
@@ -703,7 +703,7 @@ export function assertCanScheduleNext(
 }
 
 /**
- * Một chấn thương được định danh bằng (vùng cơ thể, loại) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp (F3.6 mục 2)
+ * Một chấn thương được định danh bằng (vùng cơ thể, loại) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp
  *
  * @param injuries Các chấn thương ghi trong buổi khám
  * @throws BadRequestException Nếu có hai dòng cùng vùng cơ thể và cùng loại
@@ -720,7 +720,7 @@ export function assertDistinctInjuries(
 }
 
 /**
- * Ngày kết thúc đơn thuốc không được sớm hơn ngày bắt đầu (F3.3 mục 1)
+ * Ngày kết thúc đơn thuốc không được sớm hơn ngày bắt đầu
  *
  * @param prescriptions Các dòng đơn thuốc, ngày dạng YYYY-MM-DD
  * @throws BadRequestException Nếu có dòng kết thúc trước khi bắt đầu

@@ -47,7 +47,7 @@ export class MedicalCasesController {
   @Access(MEDICAL_READER_ROLES)
   @Get('horses/:horseId/medical-cases')
   @ApiOperation({
-    summary: 'List horse medical cases (F3.10)',
+    summary: 'List horse medical cases',
     description:
       'Mới nhất lên trên. totalCost là tổng chi phí các bệnh án đã đóng. Head Trainer không có key chi phí; chi phí bệnh án chưa đóng là null.',
   })
@@ -63,7 +63,7 @@ export class MedicalCasesController {
   @Access(MEDICAL_READER_ROLES)
   @Get('medical-cases/:caseId')
   @ApiOperation({
-    summary: 'Get a medical case with its visits (F3.10)',
+    summary: 'Get a medical case with its visits',
   })
   @ApiOkResponse({ type: MedicalCaseDetailResponseDto })
   getCase(
@@ -76,7 +76,7 @@ export class MedicalCasesController {
   @Access([UserRole.VETERINARIAN])
   @Post('medical-cases/:caseId/visits')
   @ApiOperation({
-    summary: 'Record a follow-up visit in an open case (F3.6)',
+    summary: 'Record a follow-up visit in an open case',
     description:
       'Bệnh án đã đóng: 409. Thời điểm khám không sớm hơn ngày mở bệnh án.',
   })
@@ -92,7 +92,7 @@ export class MedicalCasesController {
   @Access([UserRole.VETERINARIAN])
   @Get('medical-cases/:caseId/close-preview')
   @ApiOperation({
-    summary: 'Preview what must be handled before closing a case (F3.9)',
+    summary: 'Preview what must be handled before closing a case',
   })
   @ApiOkResponse({ type: MedicalCaseClosePreviewResponseDto })
   closePreview(
@@ -105,7 +105,7 @@ export class MedicalCasesController {
   @Access([UserRole.VETERINARIAN])
   @Post('medical-cases/:caseId/close')
   @ApiOperation({
-    summary: 'Close a case with final conclusion and total cost (F3.9)',
+    summary: 'Close a case with final conclusion and total cost',
     description:
       'Lệnh khóa gắn bệnh án còn hiệu lực thì bắt buộc lockDecision (RELEASE hoặc KEEP kèm lockExpectedEnd). Bệnh án đã đóng: 409.',
   })
@@ -121,7 +121,7 @@ export class MedicalCasesController {
   @Access([UserRole.VETERINARIAN])
   @Patch('medical-cases/:caseId/cost')
   @ApiOperation({
-    summary: 'Adjust the cost of a closed case with a reason (F3.9)',
+    summary: 'Adjust the cost of a closed case with a reason',
     description: 'Bệnh án chưa đóng: 409.',
   })
   @ApiOkResponse({ type: MedicalCaseResponseDto })
@@ -136,7 +136,7 @@ export class MedicalCasesController {
   @Access([UserRole.CLUB_MANAGER])
   @Get('medical/cost-report')
   @ApiOperation({
-    summary: 'Medical cost report by closing date (F3.10)',
+    summary: 'Medical cost report by closing date',
     description: 'Lọc theo khu hoặc chủ ngựa hiện tại trên hồ sơ.',
   })
   @ApiOkResponse({ type: MedicalCostReportResponseDto })

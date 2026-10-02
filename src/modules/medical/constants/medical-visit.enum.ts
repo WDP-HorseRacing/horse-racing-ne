@@ -1,9 +1,9 @@
 /**
- * Loại buổi khám (Flow 3 mục III.1).
+ * Loại buổi khám.
  *
- * - ROUTINE: khám định kỳ ngoài bệnh án (F3.3)
- * - REQUEST: khám theo yêu cầu ngoài bệnh án (F3.3)
- * - FOLLOW_UP: tái khám trong bệnh án đang mở (F3.6)
+ * - ROUTINE: khám định kỳ ngoài bệnh án
+ * - REQUEST: khám theo yêu cầu ngoài bệnh án
+ * - FOLLOW_UP: tái khám trong bệnh án đang mở
  */
 export enum MedicalVisitKind {
   ROUTINE = 'ROUTINE',
@@ -12,7 +12,7 @@ export enum MedicalVisitKind {
 }
 
 /**
- * Kết luận của buổi khám ngoài bệnh án: ISSUE bắt buộc mở bệnh án ngay trong lần lưu (F3.3 mục 3).
+ * Kết luận của buổi khám ngoài bệnh án: ISSUE bắt buộc mở bệnh án ngay trong lần lưu.
  */
 export enum MedicalVisitConclusion {
   NORMAL = 'NORMAL',

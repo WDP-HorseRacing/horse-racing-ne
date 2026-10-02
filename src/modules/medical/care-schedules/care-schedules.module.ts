@@ -10,7 +10,7 @@ import { CheckupsController } from './checkups.controller';
 import { CheckupsService } from './checkups.service';
 
 /**
- * Owns routine checkup appointments (F3.2) and care schedules (F3.11).
+ * Quản lý ngày hẹn khám định kỳ và lịch chăm sóc.
  */
 @Module({
   imports: [

@@ -14,16 +14,15 @@ export class InjuryCasesService {
   ) {}
 
   /**
-   * Diễn biến chấn thương của con ngựa theo thời điểm khám (F3.6 mục 2, F3.10 mục 5).
+   * Diễn biến chấn thương của con ngựa theo thời điểm khám.
    *
    * - Horse Owner xem đầy đủ như Veterinarian, nhưng chỉ với ngựa đang sở hữu.
-   * - Head Trainer xem toàn câu lạc bộ (F1.3). Groom không xem (chặn ở controller).
-   * - Bỏ chấn thương của buổi khám đã hủy; xếp theo thời điểm khám tăng dần, kèm bệnh án để FE gom theo (bệnh án, vùng, loại).
-   * - Bảng injury_markers do feature medical-records ghi; ở đây chỉ đọc qua DataSource.
+   * - Head Trainer xem toàn câu lạc bộ. Groom không xem (chặn ở controller).
+   * - Bỏ chấn thương của buổi khám đã hủy; xếp theo thời điểm khám tăng dần, kèm bệnh án.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to diễn biến chấn thương
+   * @returns Promise trả về diễn biến chấn thương
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */

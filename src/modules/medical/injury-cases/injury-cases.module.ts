@@ -4,7 +4,7 @@ import { InjuryCasesController } from './injury-cases.controller';
 import { InjuryCasesService } from './injury-cases.service';
 
 /**
- * Owns the read-only injury timeline of a horse (F3.10). Injury markers are written by medical-records.
+ * Cung cấp diễn biến chấn thương của con ngựa, chỉ đọc.
  */
 @Module({
   imports: [HorsesSharedModule],

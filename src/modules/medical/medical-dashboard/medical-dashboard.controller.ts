@@ -20,7 +20,7 @@ export class MedicalDashboardController {
   @Access([UserRole.VETERINARIAN, UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER])
   @Get('medical/dashboard')
   @ApiOperation({
-    summary: 'Medical dashboard (F3.1)',
+    summary: 'Medical dashboard',
     description:
       'Bốn khối: sơ đồ đàn theo sức khỏe, lịch khám đến hạn/quá hạn, bệnh án đang mở, yêu cầu khám đang chờ. Groom và Horse Owner: 403.',
   })

@@ -44,7 +44,7 @@ export class ExamRequestsController {
   @Access(EXAM_REQUEST_ROLES)
   @Post('horses/:horseId/exam-requests')
   @ApiOperation({
-    summary: 'Request a medical exam for a horse (F3.4)',
+    summary: 'Request a medical exam for a horse',
     description:
       'Veterinarian, Club Manager: mọi ngựa. Head Trainer: ngựa thuộc khu mình (ngoài khu 403). Groom: ngựa được phân công (không được phân công 403). Ngựa đã chuyển nhượng: 409.',
   })
@@ -60,7 +60,7 @@ export class ExamRequestsController {
   @Access(EXAM_REQUEST_ROLES)
   @Get('exam-requests')
   @ApiOperation({
-    summary: 'Exam request queue (F3.4)',
+    summary: 'Exam request queue',
     description:
       'Mặc định chỉ yêu cầu Chờ xử lý, Khẩn lên trước rồi cũ nhất lên trước. Groom chỉ thấy ngựa được phân công.',
   })
@@ -75,7 +75,7 @@ export class ExamRequestsController {
   @Access(EXAM_REQUEST_ROLES)
   @Get('horses/:horseId/exam-requests')
   @ApiOperation({
-    summary: 'List exam requests of a horse (F3.4)',
+    summary: 'List exam requests of a horse',
     description: 'Groom chỉ xem ngựa được phân công (403).',
   })
   @ApiOkResponse({ type: [ExamRequestResponseDto] })
@@ -89,7 +89,7 @@ export class ExamRequestsController {
   @Access([UserRole.VETERINARIAN])
   @Patch('exam-requests/:id')
   @ApiOperation({
-    summary: 'Change the urgency of a pending exam request (F3.4)',
+    summary: 'Change the urgency of a pending exam request',
     description: 'Bắt buộc lý do. Yêu cầu không còn chờ: 409.',
   })
   @ApiOkResponse({ type: ExamRequestResponseDto })
@@ -104,7 +104,7 @@ export class ExamRequestsController {
   @Access([UserRole.VETERINARIAN])
   @Post('exam-requests/:id/dismiss')
   @ApiOperation({
-    summary: 'Dismiss an exam request with a reason (F3.4)',
+    summary: 'Dismiss an exam request with a reason',
     description: 'Yêu cầu không còn chờ: 409.',
   })
   @ApiCreatedResponse({ type: ExamRequestResponseDto })

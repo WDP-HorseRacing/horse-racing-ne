@@ -39,7 +39,7 @@ export function trimValue({ value }: { value: unknown }): unknown {
 }
 
 /**
- * Các trường chung của một buổi khám (F3.3 mục 1, F3.6 mục 1).
+ * Các trường chung của một buổi khám.
  */
 export class MedicalVisitBaseDto {
   @ApiPropertyOptional({
@@ -119,7 +119,7 @@ export class MedicalVisitBaseDto {
   measurements?: HorseMeasurementValueDto[];
 
   @ApiPropertyOptional({
-    description: 'Xác nhận lưu số đo ngoài khoảng bình thường (F1.5 mục 2)',
+    description: 'Xác nhận lưu số đo ngoài khoảng bình thường',
   })
   @IsOptional()
   @IsBoolean()
@@ -146,7 +146,7 @@ export class MedicalVisitBaseDto {
 
   @ApiPropertyOptional({
     format: 'uuid',
-    description: 'Buổi khám đã hủy mà buổi này ghi thay (F3.6 mục 8)',
+    description: 'Buổi khám đã hủy mà buổi này ghi thay',
   })
   @IsOptional()
   @IsUUID('4')
@@ -154,7 +154,7 @@ export class MedicalVisitBaseDto {
 }
 
 /**
- * Ghi buổi khám ngoài bệnh án (F3.3). Kết luận ISSUE mở bệnh án ngay trong lần lưu (F3.5).
+ * Ghi buổi khám ngoài bệnh án. Kết luận ISSUE mở bệnh án ngay trong lần lưu.
  */
 export class CreateStandaloneVisitDto extends MedicalVisitBaseDto {
   @ApiProperty({
@@ -182,12 +182,12 @@ export class CreateStandaloneVisitDto extends MedicalVisitBaseDto {
 }
 
 /**
- * Ghi buổi tái khám trong bệnh án đang mở (F3.6).
+ * Ghi buổi tái khám trong bệnh án đang mở.
  */
 export class CreateFollowUpVisitDto extends MedicalVisitBaseDto {}
 
 /**
- * Hủy buổi khám ghi sai (F3.6 mục 8).
+ * Hủy buổi khám ghi sai.
  */
 export class VoidMedicalRecordDto {
   @ApiProperty({ minLength: 1, maxLength: 500 })

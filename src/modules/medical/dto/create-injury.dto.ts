@@ -34,7 +34,7 @@ export class CreateInjuryDto {
 
   @ApiPropertyOptional({
     type: InjuryPositionDto,
-    description: 'Point on the 3D horse model, in model coordinates',
+    description: 'Điểm trên mô hình 3D của ngựa, theo tọa độ của mô hình',
   })
   @IsOptional()
   @ValidateNested()
@@ -47,7 +47,7 @@ export class CreateInjuryDto {
 
   @ApiProperty({
     enum: RecoveryStatus,
-    description: 'Mức hồi phục tại buổi khám này (F3.6 mục 2)',
+    description: 'Mức hồi phục tại buổi khám này',
   })
   @IsEnum(RecoveryStatus)
   recoveryStatus!: RecoveryStatus;

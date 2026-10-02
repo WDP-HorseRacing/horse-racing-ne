@@ -47,7 +47,7 @@ export class TrainingLockService {
   ) {}
 
   /**
-   * Bác sĩ đặt khóa huấn luyện cho con ngựa (F3.8)
+   * Bác sĩ đặt khóa huấn luyện cho con ngựa
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa trước khi kiểm
    * - Mỗi ngựa tối đa một lệnh khóa hiệu lực: 409; ngựa đã chuyển nhượng: 409
@@ -58,7 +58,7 @@ export class TrainingLockService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Lý do và ngày dự kiến gỡ
-   * @returns A promise resolving to lệnh khóa vừa đặt
+   * @returns Promise trả về lệnh khóa vừa đặt
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu ngày dự kiến gỡ ở quá khứ
@@ -125,7 +125,7 @@ export class TrainingLockService {
   }
 
   /**
-   * Bác sĩ gỡ khóa huấn luyện, bắt buộc lý do (F3.8 mục 6)
+   * Bác sĩ gỡ khóa huấn luyện, bắt buộc lý do
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row lệnh khóa
    * - Lệnh khóa đã gỡ: 409
@@ -134,7 +134,7 @@ export class TrainingLockService {
    * @param actor Thông tin danh tính từ Access Token
    * @param lockId UUID của lệnh khóa
    * @param body Lý do gỡ khóa
-   * @returns A promise resolving to lệnh khóa sau khi gỡ
+   * @returns Promise trả về lệnh khóa sau khi gỡ
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có lệnh khóa, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu lệnh khóa đã gỡ, hoặc ngựa đã chuyển nhượng
@@ -184,11 +184,11 @@ export class TrainingLockService {
   }
 
   /**
-   * Lệnh khóa đang hiệu lực và lịch sử khóa của con ngựa, mới nhất lên trên (F3.10 mục 7)
+   * Lệnh khóa đang hiệu lực và lịch sử khóa của con ngựa, mới nhất lên trên
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to danh sách lệnh khóa
+   * @returns Promise trả về danh sách lệnh khóa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -209,7 +209,7 @@ export class TrainingLockService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param lockId UUID của lệnh khóa
-   * @returns A promise resolving to lệnh khóa
+   * @returns Promise trả về lệnh khóa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có lệnh khóa, hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -223,18 +223,18 @@ export class TrainingLockService {
   }
 
   /**
-   * Hệ thống tự gỡ lệnh khóa huấn luyện đang ACTIVE của một con ngựa. Dùng cho module khác gọi trong transaction của họ (vd: F1.8 chuyển nhượng ngựa).
+   * Hệ thống tự gỡ lệnh khóa huấn luyện đang ACTIVE của một con ngựa trong transaction đang mở
    *
    * - Chuyển lệnh khóa sang RELEASED, releasedAt là thời điểm gọi hàm
-   * - releasedBy để null vì hệ thống gỡ, không phải bác sĩ gỡ
-   * - releaseConclusion ghi đúng lý do nơi gọi truyền vào (vd: "Gỡ do chuyển nhượng")
-   * - Không tự mở transaction và không publish event; nơi gọi truyền manager của transaction đang chạy
-   * - Mỗi ngựa chỉ có tối đa một lệnh khóa ACTIVE (unique index training_locks_active_horse_uq), nên nhiều nhất một dòng bị gỡ
+   * - releasedBy để null
+   * - releaseConclusion ghi đúng giá trị conclusion truyền vào
+   * - Không tự mở transaction và không publish event
+   * - Gỡ nhiều nhất một dòng, do mỗi ngựa tối đa một lệnh khóa ACTIVE (unique index training_locks_active_horse_uq)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param conclusion Kết luận ghi vào lệnh khóa, nói rõ lý do tự gỡ
-   * @returns A promise resolving to true nếu có lệnh khóa ACTIVE được gỡ, false nếu ngựa không có lệnh khóa nào đang hiệu lực
+   * @returns Promise trả về true nếu có lệnh khóa ACTIVE được gỡ, false nếu ngựa không có lệnh khóa nào đang hiệu lực
    */
   async releaseActiveLockByHorse(
     manager: EntityManager,
@@ -254,7 +254,7 @@ export class TrainingLockService {
    * Tìm lệnh khóa theo id
    *
    * @param lockId UUID của lệnh khóa
-   * @returns A promise resolving to lệnh khóa
+   * @returns Promise trả về lệnh khóa
    * @throws NotFoundException Nếu không có lệnh khóa
    */
   private async findLock(lockId: string): Promise<TrainingLockEntity> {

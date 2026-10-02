@@ -6,7 +6,7 @@ export enum CareScheduleType {
 }
 
 /**
- * Trạng thái lịch chăm sóc (F3.11 mục 2): COMPLETED và CANCELLED là trạng thái cuối.
+ * Trạng thái lịch chăm sóc: COMPLETED và CANCELLED là trạng thái cuối.
  */
 export enum CareScheduleStatus {
   SCHEDULED = 'SCHEDULED',

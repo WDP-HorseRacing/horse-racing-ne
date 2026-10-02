@@ -20,14 +20,14 @@ export class HealthStatusesRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Lịch sử trạng thái sức khỏe của con ngựa, dựng từ nhật ký HORSE có trường healthStatus (F3.7 mục 7), mới nhất lên trên
+   * Lịch sử trạng thái sức khỏe của con ngựa, dựng từ nhật ký HORSE có trường healthStatus, mới nhất lên trên
    *
-   * - Gồm đổi trực tiếp (F3.7), đổi trong buổi khám (F3.3, F3.6) và hệ thống đặt lại khi kích hoạt lại (F1.8)
+   * - Gồm đổi trực tiếp, đổi trong buổi khám và hệ thống đặt lại khi kích hoạt lại
    * - Bỏ các dòng trạng thái trước và sau trùng nhau (ví dụ kích hoạt lại khi ngựa đã đang Cần theo dõi)
    * - Chỉ đọc bảng audit_logs, dùng index audit_logs_entity_idx
    *
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to các lần đổi trạng thái sức khỏe
+   * @returns Promise trả về các lần đổi trạng thái sức khỏe
    */
   history(horseId: string): Promise<HealthHistoryRow[]> {
     return this.dataSource.query(

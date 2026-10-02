@@ -20,7 +20,7 @@ import {
 import { DATE_ONLY_PATTERN, trimValue } from './medical-visit.dto';
 
 /**
- * Chi phí tối đa nhập được cho một bệnh án (VND), chặn gõ nhầm quá nhiều chữ số.
+ * Chi phí tối đa nhập được cho một bệnh án (VND).
  */
 export const MAX_CASE_COST_VND = 10_000_000_000;
 
@@ -35,7 +35,7 @@ export class MedicalCaseListQueryDto {
 }
 
 /**
- * Đóng bệnh án và chốt chi phí (F3.9).
+ * Đóng bệnh án và chốt chi phí.
  */
 export class CloseMedicalCaseDto {
   @ApiProperty({ minLength: 1, maxLength: 4000 })
@@ -74,7 +74,7 @@ export class CloseMedicalCaseDto {
 }
 
 /**
- * Điều chỉnh chi phí bệnh án đã đóng (F3.9 mục 8).
+ * Điều chỉnh chi phí bệnh án đã đóng.
  */
 export class AdjustCaseCostDto {
   @ApiProperty({ minimum: 0, maximum: MAX_CASE_COST_VND })
@@ -92,7 +92,7 @@ export class AdjustCaseCostDto {
 }
 
 /**
- * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án (F3.10 mục 4).
+ * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án.
  */
 export class MedicalCostReportQueryDto {
   @ApiProperty({

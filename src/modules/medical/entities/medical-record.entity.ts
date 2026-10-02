@@ -11,7 +11,7 @@ import {
 import { MedicalCaseEntity } from './medical-case.entity';
 
 /**
- * MedicalRecordEntity: một buổi khám của ngựa (Flow 3 mục III.1).
+ * MedicalRecordEntity: một buổi khám của ngựa.
  * Buổi khám ngoài bệnh án có caseId null (trừ buổi mở bệnh án); buổi tái khám luôn thuộc một bệnh án.
  * Không sửa, không xóa; ghi sai thì hủy bằng voidedAt và voidReason.
  */

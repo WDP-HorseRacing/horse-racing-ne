@@ -14,7 +14,7 @@ import { CheckupDueStatus } from '../constants/checkup.enum';
 import { trimValue } from './medical-visit.dto';
 
 /**
- * Lọc lịch khám định kỳ (F3.2).
+ * Lọc lịch khám định kỳ.
  */
 export class CheckupListQueryDto {
   @ApiPropertyOptional({ enum: CheckupDueStatus })
@@ -29,7 +29,7 @@ export class CheckupListQueryDto {
 }
 
 /**
- * Đặt hoặc dời ngày hẹn khám định kỳ (F3.2 mục 3, 5).
+ * Đặt hoặc dời ngày hẹn khám định kỳ.
  */
 export class SetCheckupAppointmentDto {
   @ApiProperty({
@@ -67,7 +67,7 @@ export class CheckupAppointmentDto {
 }
 
 /**
- * Hạn khám định kỳ của một con ngựa (F3.2 mục 2).
+ * Hạn khám định kỳ của một con ngựa.
  */
 export class CheckupItemDto {
   @ApiProperty({ format: 'uuid' })

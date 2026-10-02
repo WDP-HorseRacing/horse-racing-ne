@@ -8,7 +8,7 @@ import { TRANSFER_CANCEL_REASON } from '../constants/medical.constants';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 
 /**
- * Các câu ghi lên bảng care_schedules mà nhiều feature y tế cùng dùng, luôn chạy trong transaction của nơi gọi
+ * Các câu ghi dùng chung lên bảng care_schedules, luôn chạy trong transaction đang mở
  */
 @Injectable()
 export class CareScheduleWritesService {

@@ -4,7 +4,7 @@ import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import { MedicalRecordResponseDto } from './medical-record.response.dto';
 
 /**
- * Một bệnh án (F3.5, F3.9). totalCost không có key với Head Trainer, và là null khi bệnh án chưa đóng.
+ * Một bệnh án. totalCost không có key với Head Trainer, và là null khi bệnh án chưa đóng.
  */
 export class MedicalCaseResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -35,7 +35,7 @@ export class MedicalCaseResponseDto {
     type: Number,
     nullable: true,
     required: false,
-    description: 'VND; không có key với Head Trainer (F3.10 mục 8)',
+    description: 'VND; không có key với Head Trainer',
   })
   totalCost?: number | null;
 }
@@ -57,7 +57,7 @@ export class MedicalCaseListResponseDto {
 }
 
 /**
- * Bệnh án kèm toàn bộ buổi khám, mới nhất lên trên (F3.10 A1).
+ * Bệnh án kèm toàn bộ buổi khám, mới nhất lên trên.
  */
 export class MedicalCaseDetailResponseDto extends MedicalCaseResponseDto {
   @ApiProperty({ type: [MedicalRecordResponseDto] })
@@ -79,7 +79,7 @@ export class CaseActiveLockDto {
 }
 
 /**
- * Những gì bác sĩ cần xem trước khi đóng bệnh án (F3.9 bước 2).
+ * Những gì bác sĩ cần xem trước khi đóng bệnh án.
  */
 export class MedicalCaseClosePreviewResponseDto {
   @ApiProperty({ type: CaseActiveLockDto, nullable: true })
@@ -89,7 +89,7 @@ export class MedicalCaseClosePreviewResponseDto {
   healthStatus!: HorseHealthStatus;
 
   @ApiProperty({
-    description: 'True khi ngựa vẫn Chấn thương hoặc Cách ly (F3.9 mục 5)',
+    description: 'True khi ngựa vẫn Chấn thương hoặc Cách ly',
   })
   healthWarning!: boolean;
 
@@ -115,7 +115,7 @@ export class MedicalCostReportRowDto {
 }
 
 /**
- * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án (F3.10 mục 4).
+ * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án.
  */
 export class MedicalCostReportResponseDto {
   @ApiProperty({ format: 'date' })

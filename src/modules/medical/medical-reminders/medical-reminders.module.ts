@@ -3,7 +3,7 @@ import { MedicalSharedModule } from '../shared/medical-shared.module';
 import { MedicalRemindersService } from './medical-reminders.service';
 
 /**
- * Owns the daily medical reminder job (F3.2 overdue checkups, F3.11 due care schedules).
+ * Chạy job nhắc nhở y tế hằng ngày: ngựa quá hạn khám định kỳ và lịch chăm sóc đến hạn.
  */
 @Module({
   imports: [MedicalSharedModule],

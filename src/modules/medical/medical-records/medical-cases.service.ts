@@ -86,7 +86,7 @@ export class MedicalCasesService {
   ) {}
 
   /**
-   * Lấy các bệnh án của con ngựa, mới nhất lên trên, kèm tổng chi phí các bệnh án đã đóng (F3.10, F1.3)
+   * Lấy các bệnh án của con ngựa, mới nhất lên trên, kèm tổng chi phí các bệnh án đã đóng
    *
    * - Head Trainer không có key chi phí; người khác chỉ thấy chi phí của bệnh án đã đóng
    * - totalCost tính trên mọi bệnh án đã đóng của ngựa, không theo bộ lọc trạng thái
@@ -94,7 +94,7 @@ export class MedicalCasesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param query Lọc theo trạng thái bệnh án
-   * @returns A promise resolving to danh sách bệnh án và tổng chi phí
+   * @returns Promise trả về danh sách bệnh án và tổng chi phí
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -120,11 +120,11 @@ export class MedicalCasesService {
   }
 
   /**
-   * Lấy bệnh án kèm toàn bộ buổi khám, mới nhất lên trên (F3.10 A1)
+   * Lấy bệnh án kèm toàn bộ buổi khám, mới nhất lên trên
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
-   * @returns A promise resolving to bệnh án và các buổi khám
+   * @returns Promise trả về bệnh án và các buổi khám
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -145,11 +145,11 @@ export class MedicalCasesService {
   }
 
   /**
-   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ (F3.9 bước 2)
+   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
-   * @returns A promise resolving to thông tin xem trước
+   * @returns Promise trả về thông tin xem trước
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
    * @throws ConflictException Nếu bệnh án đã đóng
@@ -187,17 +187,17 @@ export class MedicalCasesService {
   }
 
   /**
-   * Đóng bệnh án, chốt kết luận cuối và chi phí (F3.9)
+   * Đóng bệnh án, chốt kết luận cuối và chi phí
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row bệnh án
    * - Lệnh khóa gắn bệnh án còn hiệu lực: bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
-   * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng (giao diện cảnh báo qua closePreview)
+   * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
    * - Sau commit: báo chủ ngựa và Club Manager; gỡ khóa thì báo Head Trainer và Club Manager
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
    * @param body Kết luận cuối, chi phí và cách xử lý lệnh khóa
-   * @returns A promise resolving to bệnh án sau khi đóng
+   * @returns Promise trả về bệnh án sau khi đóng
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
    * @throws BadRequestException Nếu còn khóa mà không chọn cách xử lý, hoặc ngày dự kiến gỡ không hợp lệ
@@ -322,7 +322,7 @@ export class MedicalCasesService {
   }
 
   /**
-   * Điều chỉnh chi phí của bệnh án đã đóng, bắt buộc lý do (F3.9 mục 8)
+   * Điều chỉnh chi phí của bệnh án đã đóng, bắt buộc lý do
    *
    * - Số mới trùng số cũ thì không ghi gì và không báo
    * - Ghi nhật ký giá trị trước, sau và lý do; sau commit báo lại chủ ngựa và Club Manager
@@ -330,7 +330,7 @@ export class MedicalCasesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
    * @param body Chi phí mới và lý do
-   * @returns A promise resolving to bệnh án sau khi điều chỉnh
+   * @returns Promise trả về bệnh án sau khi điều chỉnh
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
    * @throws ConflictException Nếu bệnh án chưa đóng, hoặc ngựa đã chuyển nhượng
@@ -386,11 +386,11 @@ export class MedicalCasesService {
   }
 
   /**
-   * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án, lọc theo khu hoặc chủ ngựa (F3.10 mục 4)
+   * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án, lọc theo khu hoặc chủ ngựa
    *
    * @param actor Thông tin danh tính từ Access Token (chỉ Club Manager, kiểm ở controller)
    * @param query Khoảng ngày và bộ lọc
-   * @returns A promise resolving to tổng chi phí, số bệnh án và từng con ngựa
+   * @returns Promise trả về tổng chi phí, số bệnh án và từng con ngựa
    * @throws BadRequestException Nếu ngày bắt đầu sau ngày kết thúc
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    */
@@ -416,7 +416,7 @@ export class MedicalCasesService {
    * Tìm bệnh án theo id
    *
    * @param caseId UUID của bệnh án
-   * @returns A promise resolving to bệnh án
+   * @returns Promise trả về bệnh án
    * @throws NotFoundException Nếu không có bệnh án
    */
   private async findCase(caseId: string): Promise<MedicalCaseEntity> {

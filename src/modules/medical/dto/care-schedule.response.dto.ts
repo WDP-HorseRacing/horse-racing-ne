@@ -5,7 +5,7 @@ import {
 } from '../constants/care-schedule.enum';
 
 /**
- * Một lịch chăm sóc định kỳ (F3.11).
+ * Một lịch chăm sóc định kỳ.
  */
 export class CareScheduleResponseDto {
   @ApiProperty({ format: 'uuid' })

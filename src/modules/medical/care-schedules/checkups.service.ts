@@ -38,14 +38,14 @@ export class CheckupsService {
   ) {}
 
   /**
-   * Lịch khám định kỳ của cả đàn: hạn khám, trạng thái hạn và ngày hẹn, quá hạn lên đầu rồi tới đến hạn (F3.2)
+   * Lịch khám định kỳ của cả đàn: hạn khám, trạng thái hạn và ngày hẹn, quá hạn lên đầu rồi tới đến hạn
    *
    * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa
    * - Tính trực tiếp mỗi lần gọi theo ngày lịch câu lạc bộ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Lọc theo trạng thái hạn và khu
-   * @returns A promise resolving to hạn khám từng con ngựa
+   * @returns Promise trả về hạn khám từng con ngựa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    */
   async list(
@@ -62,7 +62,7 @@ export class CheckupsService {
   }
 
   /**
-   * Bác sĩ đặt hoặc dời ngày hẹn khám định kỳ cho một con ngựa (F3.2 mục 3–5)
+   * Bác sĩ đặt hoặc dời ngày hẹn khám định kỳ cho một con ngựa
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa; ngựa đã chuyển nhượng: 409
    * - Ngày hẹn không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám
@@ -72,7 +72,7 @@ export class CheckupsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Ngày giờ hẹn và lý do dời (nếu dời)
-   * @returns A promise resolving to ngày hẹn đang hiệu lực
+   * @returns Promise trả về ngày hẹn đang hiệu lực
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu ngày hẹn không hợp lệ, hoặc dời lịch không có lý do

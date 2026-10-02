@@ -9,7 +9,7 @@ import { ExamRequestsService } from './exam-requests.service';
 import { MeasurementAlertExamRequestListener } from './measurement-alert.listener';
 
 /**
- * Owns the exam request queue (F3.4), including requests generated from measurement alerts.
+ * Quản lý hàng đợi yêu cầu khám, gồm cả yêu cầu tự sinh từ cảnh báo chỉ số cơ thể.
  */
 @Module({
   imports: [

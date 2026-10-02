@@ -95,7 +95,7 @@ export function toMedicalRecordResponse(
 }
 
 /**
- * Chuyển bệnh án sang DTO, loại chi phí theo quyền người gọi (F3.10 mục 8).
+ * Chuyển bệnh án sang DTO, loại chi phí theo quyền người gọi.
  *
  * @param medicalCase Thực thể bệnh án
  * @param seesCost Người gọi có được xem chi phí không (Head Trainer thì không)

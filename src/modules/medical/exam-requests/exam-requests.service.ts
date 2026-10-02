@@ -59,7 +59,7 @@ export class ExamRequestsService {
   ) {}
 
   /**
-   * Gửi yêu cầu khám cho con ngựa (F3.4)
+   * Gửi yêu cầu khám cho con ngựa
    *
    * - Veterinarian, Club Manager: mọi ngựa; Head Trainer: ngựa thuộc khu mình; Groom: ngựa được phân công
    * - Khóa row ngựa; kiểm phạm vi người gửi trước, rồi mới chặn ngựa đã chuyển nhượng (ngoài phạm vi luôn là 403)
@@ -70,7 +70,7 @@ export class ExamRequestsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Mô tả dấu hiệu và mức độ
-   * @returns A promise resolving to yêu cầu vừa tạo
+   * @returns Promise trả về yêu cầu vừa tạo
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws ForbiddenException Nếu người gọi không được gửi yêu cầu cho con ngựa này
    * @throws ConflictException Nếu ngựa đã chuyển nhượng
@@ -107,7 +107,7 @@ export class ExamRequestsService {
   }
 
   /**
-   * Hàng đợi yêu cầu khám, Khẩn lên trước rồi cũ nhất lên trước (F3.4, F3.1 khối 4)
+   * Hàng đợi yêu cầu khám, Khẩn lên trước rồi cũ nhất lên trước
    *
    * - Veterinarian, Club Manager, Head Trainer: toàn câu lạc bộ
    * - Groom: chỉ yêu cầu của ngựa đang được phân công
@@ -115,7 +115,7 @@ export class ExamRequestsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Trạng thái, mức độ và phân trang
-   * @returns A promise resolving to một trang yêu cầu khám
+   * @returns Promise trả về một trang yêu cầu khám
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    */
   async list(
@@ -156,11 +156,11 @@ export class ExamRequestsService {
   }
 
   /**
-   * Mọi yêu cầu khám của một con ngựa, mới nhất lên trên (F3.4)
+   * Mọi yêu cầu khám của một con ngựa, mới nhất lên trên
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to danh sách yêu cầu khám
+   * @returns Promise trả về danh sách yêu cầu khám
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    * @throws ForbiddenException Nếu người gọi chỉ là Groom và không được phân công con ngựa này
    */
@@ -187,15 +187,15 @@ export class ExamRequestsService {
   }
 
   /**
-   * Bác sĩ đổi mức độ của yêu cầu đang chờ, bắt buộc lý do (F3.4 mục 5)
+   * Bác sĩ đổi mức độ của yêu cầu đang chờ, bắt buộc lý do
    *
    * - Mức mới trùng mức cũ thì không ghi gì
-   * - Nâng lên Khẩn thì sau commit báo mọi Veterinarian, kể cả yêu cầu tự sinh từ cảnh báo (F3.4 mục 6)
+   * - Nâng lên Khẩn thì sau commit báo mọi Veterinarian, kể cả yêu cầu tự sinh từ cảnh báo
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param requestId UUID của yêu cầu khám
    * @param body Mức độ mới và lý do
-   * @returns A promise resolving to yêu cầu sau khi đổi
+   * @returns Promise trả về yêu cầu sau khi đổi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có yêu cầu, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu yêu cầu không còn chờ, hoặc ngựa đã chuyển nhượng
@@ -244,12 +244,12 @@ export class ExamRequestsService {
   }
 
   /**
-   * Bác sĩ bỏ qua yêu cầu khám không cần khám, bắt buộc lý do (F3.4 mục 4)
+   * Bác sĩ bỏ qua yêu cầu khám không cần khám, bắt buộc lý do
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param requestId UUID của yêu cầu khám
    * @param body Lý do bỏ qua
-   * @returns A promise resolving to yêu cầu sau khi bỏ qua
+   * @returns Promise trả về yêu cầu sau khi bỏ qua
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có yêu cầu, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu yêu cầu không còn chờ, hoặc ngựa đã chuyển nhượng
@@ -295,14 +295,14 @@ export class ExamRequestsService {
   }
 
   /**
-   * Tạo yêu cầu khám từ báo cáo sự cố của Groom (Flow 4). Dùng cho module stable gọi trong transaction của họ.
+   * Tạo yêu cầu khám từ báo cáo sự cố của Groom trong transaction đang mở
    *
-   * - Nơi gọi đã khóa row ngựa, kiểm Groom được phân công và ngựa chưa chuyển nhượng
-   * - Không publish event; sau commit nơi gọi gọi announceCreated để báo Veterinarian nếu Khẩn
+   * - Không khóa row ngựa, không kiểm Groom được phân công và ngựa đã chuyển nhượng
+   * - Không publish event; báo Veterinarian khi Khẩn bằng announceCreated sau commit
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Ngựa, báo cáo sự cố, người báo, mô tả và mức độ
-   * @returns A promise resolving to yêu cầu khám vừa tạo
+   * @returns Promise trả về yêu cầu khám vừa tạo
    */
   createFromIncident(
     manager: EntityManager,
@@ -326,16 +326,16 @@ export class ExamRequestsService {
   }
 
   /**
-   * Tự sinh yêu cầu khám từ cảnh báo chỉ số của F1.5 (Flow 3 mục III.5.3–III.5.6)
+   * Tự sinh yêu cầu khám từ cảnh báo chỉ số cơ thể
    *
-   * - Khóa row ngựa trước khi kiểm, để không chèn yêu cầu vào ngựa đang được chuyển nhượng hoặc xóa trong transaction khác
-   * - Bỏ qua ngựa đã chuyển nhượng hoặc hồ sơ đã xóa; việc bỏ qua số đo lấy trong buổi khám nằm ở listener
+   * - Khóa row ngựa trước khi kiểm
+   * - Bỏ qua ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
    * - Sốt là Khẩn, sụt cân là Bình thường; người gửi là Hệ thống (requestedBy null)
    * - Mỗi ngựa chỉ một yêu cầu tự động PENDING cho mỗi loại cảnh báo: trùng thì bỏ qua (ON CONFLICT DO NOTHING)
-   * - Không gửi thêm thông báo vì cảnh báo F1.5 đã báo
+   * - Không gửi thêm thông báo
    *
    * @param event Payload của HORSE_MEASUREMENT_ALERT_EVENT
-   * @returns A promise resolving to true nếu đã tạo yêu cầu mới
+   * @returns Promise trả về true nếu đã tạo yêu cầu mới
    */
   async createFromAlert(event: HorseMeasurementAlertEvent): Promise<boolean> {
     return this.dataSource.transaction(async (manager) => {
@@ -388,7 +388,7 @@ export class ExamRequestsService {
   }
 
   /**
-   * Báo mọi Veterinarian khi có yêu cầu khám Khẩn do người dùng tạo hoặc vừa nâng lên Khẩn (F3.4 mục 6). Gọi sau khi commit
+   * Báo mọi Veterinarian khi có yêu cầu khám Khẩn do người dùng tạo hoặc vừa nâng lên Khẩn. Gọi sau khi commit
    *
    * @param request Yêu cầu khám
    */
@@ -422,7 +422,7 @@ export class ExamRequestsService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Dữ liệu yêu cầu khám
-   * @returns A promise resolving to yêu cầu vừa lưu
+   * @returns Promise trả về yêu cầu vừa lưu
    */
   private async insert(
     manager: EntityManager,
@@ -471,7 +471,7 @@ export class ExamRequestsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param callerId UUID người gọi
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to cờ ngựa thuộc khu của Head Trainer và Groom được phân công
+   * @returns Promise trả về cờ ngựa thuộc khu của Head Trainer và Groom được phân công
    */
   private async scopeFlags(
     manager: EntityManager,
@@ -491,10 +491,10 @@ export class ExamRequestsService {
   }
 
   /**
-   * Lấy ngựa của yêu cầu khám trước khi mở transaction, để khóa row ngựa trước row yêu cầu
+   * Lấy ngựa của yêu cầu khám trước khi mở transaction
    *
    * @param requestId UUID của yêu cầu khám
-   * @returns A promise resolving to UUID của ngựa
+   * @returns Promise trả về UUID của ngựa
    * @throws NotFoundException Nếu không có yêu cầu
    */
   private async requestHorseId(requestId: string): Promise<string> {
@@ -511,7 +511,7 @@ export class ExamRequestsService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param requestId UUID của yêu cầu khám
-   * @returns A promise resolving to yêu cầu đã khóa
+   * @returns Promise trả về yêu cầu đã khóa
    */
   private lockRequest(
     manager: EntityManager,
@@ -524,7 +524,7 @@ export class ExamRequestsService {
   }
 
   /**
-   * Lấy các con ngựa groom đang được giao chăm (dòng groom_assignments còn mở, bảng của module stable, chỉ đọc)
+   * Lấy các con ngựa groom đang được giao chăm (dòng groom_assignments còn mở)
    *
    * @param groomId UUID của groom
    * @returns Promise trả về danh sách UUID ngựa

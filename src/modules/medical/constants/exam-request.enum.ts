@@ -1,5 +1,5 @@
 /**
- * Trạng thái yêu cầu khám (F3.4): EXAMINED và DISMISSED là trạng thái cuối, không mở lại.
+ * Trạng thái yêu cầu khám: EXAMINED và DISMISSED là trạng thái cuối, không mở lại.
  */
 export enum ExamRequestStatus {
   PENDING = 'PENDING',
@@ -8,10 +8,10 @@ export enum ExamRequestStatus {
 }
 
 /**
- * Nguồn gốc yêu cầu khám (F3.4 mục 1).
+ * Nguồn gốc yêu cầu khám.
  *
- * - GROOM_INCIDENT: báo cáo sự cố của Groom (Flow 4)
- * - MEASUREMENT_ALERT: cảnh báo tự động từ chỉ số cơ thể (F1.5)
+ * - GROOM_INCIDENT: báo cáo sự cố của Groom
+ * - MEASUREMENT_ALERT: cảnh báo tự động từ chỉ số cơ thể
  * - STAFF: Head Trainer hoặc Club Manager gửi tay
  * - VET: bác sĩ tự tạo
  */

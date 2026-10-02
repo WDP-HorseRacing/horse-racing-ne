@@ -5,7 +5,7 @@ import { UserEntity } from '../../users/entities/user.entity';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 
 /**
- * MedicalCaseEntity: bệnh án, nơi gom nhiều buổi khám của cùng một vấn đề (F3.5, F3.9).
+ * MedicalCaseEntity: bệnh án, nơi gom nhiều buổi khám của cùng một vấn đề.
  * Mỗi con ngựa có tối đa một bệnh án OPEN; kết luận cuối và chi phí chỉ có khi CLOSED.
  */
 @Entity({ name: 'medical_cases' })

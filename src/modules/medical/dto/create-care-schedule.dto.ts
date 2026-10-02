@@ -12,7 +12,7 @@ import { CareScheduleType } from '../constants/care-schedule.enum';
 import { trimValue } from './medical-visit.dto';
 
 /**
- * Các loại lịch chăm sóc tạo tay ở F3.11; ngày hẹn khám định kỳ đặt ở F3.2.
+ * Các loại lịch chăm sóc tạo tay, không gồm ngày hẹn khám định kỳ.
  */
 export const CARE_TASK_TYPES = [
   CareScheduleType.VACCINATION,
@@ -21,12 +21,12 @@ export const CARE_TASK_TYPES = [
 ] as const;
 
 /**
- * Loại lịch chăm sóc tạo tay ở F3.11.
+ * Loại lịch chăm sóc tạo tay.
  */
 export type CareTaskType = (typeof CARE_TASK_TYPES)[number];
 
 /**
- * Tạo lịch chăm sóc định kỳ: tiêm phòng, tẩy giun, kiểm tra móng (F3.11 mục 1).
+ * Tạo lịch chăm sóc định kỳ: tiêm phòng, tẩy giun, kiểm tra móng.
  */
 export class CreateCareScheduleDto {
   @ApiProperty({ enum: CARE_TASK_TYPES })

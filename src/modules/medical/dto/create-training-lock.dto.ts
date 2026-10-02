@@ -10,7 +10,7 @@ import {
 import { trimValue } from './medical-visit.dto';
 
 /**
- * Bác sĩ đặt khóa huấn luyện (F3.8 mục 1). Thời điểm bắt đầu là lúc đặt.
+ * Bác sĩ đặt khóa huấn luyện. Thời điểm bắt đầu là lúc đặt.
  */
 export class CreateTrainingLockDto {
   @ApiProperty({ minLength: 1, maxLength: 1000 })

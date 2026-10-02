@@ -120,12 +120,12 @@ export class MedicalVisitsService {
   ) {}
 
   /**
-   * Ghi buổi khám ngoài bệnh án; kết luận Có vấn đề thì mở bệnh án ngay trong cùng transaction (F3.3, F3.5)
+   * Ghi buổi khám ngoài bệnh án; kết luận Có vấn đề thì mở bệnh án ngay trong cùng transaction
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa trước khi kiểm tra
    * - Ngựa đang có bệnh án mở: 409, phải ghi vào bệnh án đó
    * - Gắn yêu cầu khám đang chờ của chính con ngựa, chuyển chúng sang EXAMINED
-   * - Số đo ghi vào F1.5 với nguồn MEDICAL_EXAM; đổi trạng thái sức khỏe bắt buộc lý do
+   * - Số đo ghi vào lịch sử số đo cơ thể với nguồn MEDICAL_EXAM; đổi trạng thái sức khỏe bắt buộc lý do
    * - Ngày hẹn khám định kỳ đang hiệu lực chuyển COMPLETED
    * - Mở bệnh án thì lệnh khóa đang hiệu lực chưa gắn bệnh án được gắn vào bệnh án mới
    * - Sau commit: phát cảnh báo chỉ số, event mở bệnh án và đổi trạng thái sức khỏe
@@ -133,7 +133,7 @@ export class MedicalVisitsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Nội dung buổi khám
-   * @returns A promise resolving to buổi khám vừa ghi
+   * @returns Promise trả về buổi khám vừa ghi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu dữ liệu buổi khám không hợp lệ
@@ -210,7 +210,7 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Ghi buổi tái khám vào bệnh án đang mở (F3.6)
+   * Ghi buổi tái khám vào bệnh án đang mở
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi khóa row bệnh án
    * - Bệnh án đã đóng: 409
@@ -219,7 +219,7 @@ export class MedicalVisitsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
    * @param body Nội dung buổi khám
-   * @returns A promise resolving to buổi khám vừa ghi
+   * @returns Promise trả về buổi khám vừa ghi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu dữ liệu buổi khám không hợp lệ
@@ -282,18 +282,18 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Hủy buổi khám ghi sai (F3.6 mục 8, Flow 3 mục III.2.4)
+   * Hủy buổi khám ghi sai
    *
    * - Chỉ Veterinarian (kiểm ở controller), bắt buộc lý do
    * - Buổi đã hủy: 409. Buổi tái khám hủy được kể cả khi bệnh án đã đóng (không đổi chi phí, kết luận)
    * - Buổi mở bệnh án chỉ hủy được khi bệnh án còn đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy, lệnh khóa tách khỏi bệnh án, sau commit báo Club Manager và chủ ngựa
-   * - Số đo của buổi khám bị xóa mềm khỏi F1.5; trạng thái sức khỏe không tự quay lại
+   * - Số đo của buổi khám bị xóa mềm khỏi lịch sử số đo cơ thể; trạng thái sức khỏe không tự quay lại
    * - Yêu cầu khám đã gắn giữ nguyên EXAMINED
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param recordId UUID của buổi khám
    * @param body Lý do hủy
-   * @returns A promise resolving to buổi khám sau khi hủy
+   * @returns Promise trả về buổi khám sau khi hủy
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có buổi khám, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu buổi khám không được hủy, hoặc ngựa đã chuyển nhượng
@@ -398,7 +398,7 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Hủy bệnh án mở nhầm khi buổi mở bệnh án bị hủy (F3.6 mục 8)
+   * Hủy bệnh án mở nhầm khi buổi mở bệnh án bị hủy
    *
    * - Bệnh án chuyển Đã hủy, không có chi phí
    * - Lệnh khóa đang gắn được tách khỏi bệnh án, bản thân lệnh khóa giữ nguyên
@@ -407,7 +407,7 @@ export class MedicalVisitsService {
    * @param medicalCase Bệnh án đã khóa
    * @param callerId UUID bác sĩ hủy
    * @param reason Lý do hủy buổi khám
-   * @returns A promise resolving to bệnh án sau khi hủy
+   * @returns Promise trả về bệnh án sau khi hủy
    */
   private async cancelCase(
     manager: EntityManager,
@@ -441,10 +441,10 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Lấy ngựa của bệnh án trước khi mở transaction, để khóa row ngựa trước row bệnh án
+   * Lấy ngựa của bệnh án trước khi mở transaction
    *
    * @param caseId UUID của bệnh án
-   * @returns A promise resolving to UUID của ngựa
+   * @returns Promise trả về UUID của ngựa
    * @throws NotFoundException Nếu không có bệnh án
    */
   private async caseHorseId(caseId: string): Promise<string> {
@@ -462,7 +462,7 @@ export class MedicalVisitsService {
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa đang khám
    * @param body Nội dung buổi khám
-   * @returns A promise resolving to các yêu cầu khám đã khóa
+   * @returns Promise trả về các yêu cầu khám đã khóa
    * @throws ConflictException Nếu có yêu cầu không còn chờ, khác ngựa, hoặc buổi bị thay không hợp lệ
    */
   private async lockAttachableRequests(
@@ -487,11 +487,11 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Mở bệnh án mới, gắn lệnh khóa đang hiệu lực chưa thuộc bệnh án nào (F3.5 mục 5)
+   * Mở bệnh án mới, gắn lệnh khóa đang hiệu lực chưa thuộc bệnh án nào
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Ngựa, người mở, ngày mở và chẩn đoán ban đầu
-   * @returns A promise resolving to bệnh án vừa mở
+   * @returns Promise trả về bệnh án vừa mở
    */
   private async openCase(
     manager: EntityManager,
@@ -542,7 +542,7 @@ export class MedicalVisitsService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Bối cảnh buổi khám đã qua kiểm tra
-   * @returns A promise resolving to response của buổi khám, cảnh báo chỉ số và thay đổi trạng thái sức khỏe
+   * @returns Promise trả về response của buổi khám, cảnh báo chỉ số và thay đổi trạng thái sức khỏe
    * @throws BadRequestException Nếu số đo không hợp lệ
    * @throws UnprocessableEntityException Nếu có số đo bất thường chưa xác nhận
    */
@@ -650,12 +650,12 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Chuyển các yêu cầu khám đã gắn sang EXAMINED, mỗi yêu cầu một dòng nhật ký (F3.4 mục 7, 10)
+   * Chuyển các yêu cầu khám đã gắn sang EXAMINED, mỗi yêu cầu một dòng nhật ký
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Bối cảnh buổi khám, gồm các yêu cầu đã khóa
    * @param visitId UUID của buổi khám vừa ghi
-   * @returns A promise resolving khi đã cập nhật xong
+   * @returns Promise hoàn tất khi đã cập nhật xong
    */
   private async markRequestsExamined(
     manager: EntityManager,

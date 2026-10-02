@@ -5,7 +5,7 @@ import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { trimValue } from './medical-visit.dto';
 
 /**
- * Bác sĩ đổi trạng thái sức khỏe trực tiếp, bắt buộc lý do (F3.7 mục 1).
+ * Bác sĩ đổi trạng thái sức khỏe trực tiếp, bắt buộc lý do.
  */
 export class UpdateHealthStatusDto {
   @ApiProperty({ enum: HorseHealthStatus })
@@ -21,7 +21,7 @@ export class UpdateHealthStatusDto {
 }
 
 /**
- * Kết quả đổi trạng thái sức khỏe; changed = false khi trạng thái mới trùng trạng thái cũ (F3.7 A3).
+ * Kết quả đổi trạng thái sức khỏe; changed = false khi trạng thái mới trùng trạng thái cũ.
  */
 export class HealthStatusChangeResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -38,7 +38,7 @@ export class HealthStatusChangeResponseDto {
 }
 
 /**
- * Một lần đổi trạng thái sức khỏe trong lịch sử (F3.10 mục 6).
+ * Một lần đổi trạng thái sức khỏe trong lịch sử.
  */
 export class HealthHistoryItemDto {
   @ApiProperty({ format: 'date-time' })

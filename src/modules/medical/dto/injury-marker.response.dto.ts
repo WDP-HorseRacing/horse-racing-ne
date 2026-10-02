@@ -30,7 +30,7 @@ export class InjuryMarkerResponseDto {
 }
 
 /**
- * Một dòng diễn biến chấn thương, kèm thời điểm khám và bệnh án của buổi khám (F3.6 mục 2).
+ * Một dòng diễn biến chấn thương, kèm thời điểm khám và bệnh án của buổi khám.
  */
 export class InjuryTimelineItemDto extends InjuryMarkerResponseDto {
   @ApiProperty({ format: 'date-time' })

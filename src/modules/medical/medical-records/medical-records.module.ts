@@ -16,7 +16,7 @@ import { MedicalRecordsService } from './medical-records.service';
 import { MedicalVisitsService } from './medical-visits.service';
 
 /**
- * Owns medical visits and cases: recording, voiding, closing, cost and reports (F3.3, F3.5, F3.6, F3.9, F3.10).
+ * Quản lý buổi khám và bệnh án: ghi, hủy, đóng, chi phí và báo cáo.
  */
 @Module({
   imports: [

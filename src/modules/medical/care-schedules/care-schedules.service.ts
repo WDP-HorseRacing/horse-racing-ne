@@ -40,7 +40,7 @@ import { MedicalAccessService } from '../shared/medical-access.service';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 /**
- * Vai trò được giao thực hiện lịch chăm sóc (F3.11 mục 1).
+ * Vai trò được giao thực hiện lịch chăm sóc.
  */
 const ASSIGNABLE_ROLES = [UserRole.VETERINARIAN, UserRole.GROOM];
 
@@ -56,14 +56,14 @@ export class CareSchedulesService {
   ) {}
 
   /**
-   * Lịch tiêm phòng, tẩy giun, kiểm tra móng của con ngựa, ngày đến hạn gần nhất lên trên (F3.11)
+   * Lịch tiêm phòng, tẩy giun, kiểm tra móng của con ngựa, ngày đến hạn gần nhất lên trên
    *
-   * - Không gồm ngày hẹn khám định kỳ (xem F3.2)
+   * - Không gồm ngày hẹn khám định kỳ
    * - Người chỉ có vai trò Groom chỉ thấy lịch được giao cho mình, và chỉ khi vẫn đang phụ trách con ngựa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to các lịch chăm sóc
+   * @returns Promise trả về các lịch chăm sóc
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -92,7 +92,7 @@ export class CareSchedulesService {
   }
 
   /**
-   * Bác sĩ tạo lịch chăm sóc cho con ngựa (F3.11 mục 1)
+   * Bác sĩ tạo lịch chăm sóc cho con ngựa
    *
    * - Khóa row ngựa; ngựa đã chuyển nhượng: 409
    * - Ngày đến hạn không ở quá khứ; người được giao phải là Veterinarian hoặc Groom đang hoạt động
@@ -100,7 +100,7 @@ export class CareSchedulesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Loại, ngày đến hạn, người được giao, ghi chú
-   * @returns A promise resolving to lịch vừa tạo
+   * @returns Promise trả về lịch vừa tạo
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu ngày đến hạn ở quá khứ, hoặc người được giao không hợp lệ
@@ -153,7 +153,7 @@ export class CareSchedulesService {
   }
 
   /**
-   * Bác sĩ dời ngày, đổi người được giao hoặc ghi chú của lịch chăm sóc (F3.11 mục 3)
+   * Bác sĩ dời ngày, đổi người được giao hoặc ghi chú của lịch chăm sóc
    *
    * - Chỉ lịch còn Đã lên lịch: 409
    * - Dời ngày bắt buộc lý do; ngày mới không ở quá khứ
@@ -162,7 +162,7 @@ export class CareSchedulesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param scheduleId UUID của lịch chăm sóc
    * @param body Các trường cần đổi và lý do
-   * @returns A promise resolving to lịch sau khi đổi
+   * @returns Promise trả về lịch sau khi đổi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu dời ngày không có lý do, ngày ở quá khứ, hoặc người được giao không hợp lệ
@@ -223,16 +223,16 @@ export class CareSchedulesService {
   }
 
   /**
-   * Đánh dấu hoàn tất lịch chăm sóc, lưu thời điểm và người thực hiện (F3.11 mục 4)
+   * Đánh dấu hoàn tất lịch chăm sóc, lưu thời điểm và người thực hiện
    *
    * - Veterinarian, hoặc đúng Groom được giao mà vẫn đang phụ trách con ngựa; người khác: 403
    * - Chỉ lịch còn Đã lên lịch: 409
-   * - Bác sĩ có thể nhập ngày đến hạn lần tới: tạo luôn lịch mới cùng loại trong cùng transaction, giữ người được giao nếu vẫn hợp lệ (F3.11 mục 4)
+   * - Bác sĩ có thể nhập ngày đến hạn lần tới: tạo luôn lịch mới cùng loại trong cùng transaction, giữ người được giao nếu vẫn hợp lệ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param scheduleId UUID của lịch chăm sóc
    * @param body Ngày đến hạn lần tới (tùy chọn, chỉ Veterinarian)
-   * @returns A promise resolving to lịch vừa hoàn tất và lịch lần tới (nếu có)
+   * @returns Promise trả về lịch vừa hoàn tất và lịch lần tới (nếu có)
    * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
    * @throws ForbiddenException Nếu tài khoản không hoạt động, người gọi không được hoàn tất lịch này, hoặc không phải Veterinarian mà nhập ngày lần tới
    * @throws BadRequestException Nếu ngày đến hạn lần tới ở quá khứ
@@ -296,13 +296,13 @@ export class CareSchedulesService {
   }
 
   /**
-   * Tạo lịch lần tới cùng loại sau khi hoàn tất, giữ người được giao nếu vẫn hợp lệ (F3.11 mục 4)
+   * Tạo lịch lần tới cùng loại sau khi hoàn tất, giữ người được giao nếu vẫn hợp lệ
    *
    * @param manager EntityManager của transaction đang chạy
    * @param done Lịch vừa hoàn tất
    * @param dueAt Ngày đến hạn lần tới
    * @param callerId UUID bác sĩ tạo lịch
-   * @returns A promise resolving to lịch lần tới vừa tạo
+   * @returns Promise trả về lịch lần tới vừa tạo
    */
   private async createNext(
     manager: EntityManager,
@@ -345,12 +345,12 @@ export class CareSchedulesService {
   }
 
   /**
-   * Bác sĩ hủy lịch chăm sóc, bắt buộc lý do (F3.11 mục 3)
+   * Bác sĩ hủy lịch chăm sóc, bắt buộc lý do
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param scheduleId UUID của lịch chăm sóc
    * @param body Lý do hủy
-   * @returns A promise resolving to lịch sau khi hủy
+   * @returns Promise trả về lịch sau khi hủy
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu lịch đã hoàn tất hoặc đã hủy, hoặc ngựa đã chuyển nhượng
@@ -390,12 +390,12 @@ export class CareSchedulesService {
   }
 
   /**
-   * Người được giao phải là Veterinarian đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa (F3.11 mục 1)
+   * Người được giao phải là Veterinarian đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param userId UUID người được giao; bỏ trống hoặc null thì không kiểm
-   * @returns A promise resolving khi kiểm xong
+   * @returns Promise hoàn tất khi kiểm xong
    * @throws BadRequestException Nếu người được giao không hợp lệ
    */
   private async assertAssignee(
@@ -417,7 +417,7 @@ export class CareSchedulesService {
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param userId UUID người được giao
-   * @returns A promise resolving to true nếu là Veterinarian đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa
+   * @returns Promise trả về true nếu là Veterinarian đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa
    */
   private async isValidAssignee(
     manager: EntityManager,
@@ -441,7 +441,7 @@ export class CareSchedulesService {
    * Tìm lịch chăm sóc (không gồm ngày hẹn khám định kỳ) theo id
    *
    * @param scheduleId UUID của lịch chăm sóc
-   * @returns A promise resolving to lịch chăm sóc
+   * @returns Promise trả về lịch chăm sóc
    * @throws NotFoundException Nếu không có lịch
    */
   private async findSchedule(scheduleId: string): Promise<CareScheduleEntity> {
@@ -457,7 +457,7 @@ export class CareSchedulesService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param scheduleId UUID của lịch chăm sóc
-   * @returns A promise resolving to lịch đã khóa
+   * @returns Promise trả về lịch đã khóa
    */
   private lockSchedule(
     manager: EntityManager,

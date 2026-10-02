@@ -22,18 +22,17 @@ export class MedicalDashboardService {
   ) {}
 
   /**
-   * Bảng điều khiển y tế gồm bốn khối, tính trực tiếp mỗi lần mở, không có chi phí (F3.1)
+   * Bảng điều khiển y tế gồm bốn khối, tính trực tiếp mỗi lần mở, không có chi phí
    *
    * - Sơ đồ đàn: đếm theo trạng thái sức khỏe, mỗi con kèm khu và ô chuồng để vẽ theo chuồng trại, Cách ly và Chấn thương lên đầu
-   * - Yêu cầu khám đọc qua DataSource vì bảng thuộc feature exam-requests
-   * - Lịch khám: các con quá hạn và đến hạn trong 3 ngày tới; kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong 3 ngày tới (F3.11 mục 5)
+   * - Lịch khám: các con Quá hạn và Đến hạn; kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong CHECKUP_DUE_SOON_DAYS ngày tới
    * - Bệnh án đang mở kèm buổi khám gần nhất và ngày hẹn tái khám
    * - Yêu cầu khám đang chờ, Khẩn lên trước
    * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu và trạng thái sức khỏe áp cho cả bốn khối
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Lọc theo khu và trạng thái sức khỏe
-   * @returns A promise resolving to bốn khối thông tin y tế
+   * @returns Promise trả về bốn khối thông tin y tế
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    */
   async get(

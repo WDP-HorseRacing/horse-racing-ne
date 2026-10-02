@@ -6,7 +6,7 @@ import { CheckupItemDto } from './checkup.dto';
 import { ExamRequestResponseDto } from './exam-request.dto';
 
 /**
- * Bộ lọc bảng điều khiển y tế theo khu và trạng thái sức khỏe (F3.1 mục 3).
+ * Bộ lọc bảng điều khiển y tế theo khu và trạng thái sức khỏe.
  */
 export class MedicalDashboardQueryDto {
   @ApiPropertyOptional({ format: 'uuid' })
@@ -106,7 +106,7 @@ export class DashboardOpenCaseDto {
 }
 
 /**
- * Một lịch chăm sóc đã đến hạn hoặc sắp đến hạn trên bảng điều khiển (F3.11 mục 5).
+ * Một lịch chăm sóc đã đến hạn hoặc sắp đến hạn trên bảng điều khiển.
  */
 export class DashboardCareScheduleDto {
   @ApiProperty({ format: 'uuid' })
@@ -129,7 +129,7 @@ export class DashboardCareScheduleDto {
 }
 
 /**
- * Bảng điều khiển y tế (F3.1): bốn khối, tính trực tiếp khi mở, không có chi phí.
+ * Bảng điều khiển y tế: bốn khối, tính trực tiếp khi mở, không có chi phí.
  */
 export class MedicalDashboardResponseDto {
   @ApiProperty({ type: HerdBlockDto })

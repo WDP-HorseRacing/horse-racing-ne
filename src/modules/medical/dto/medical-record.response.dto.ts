@@ -8,7 +8,7 @@ import { InjuryMarkerResponseDto } from './injury-marker.response.dto';
 import { PrescriptionResponseDto } from './prescription.response.dto';
 
 /**
- * Một buổi khám (Flow 3 mục III.1), kèm đơn thuốc và chấn thương.
+ * Một buổi khám, kèm đơn thuốc và chấn thương.
  */
 export class MedicalRecordResponseDto {
   @ApiProperty({ format: 'uuid' })

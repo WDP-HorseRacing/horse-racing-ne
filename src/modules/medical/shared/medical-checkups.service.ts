@@ -24,11 +24,11 @@ export class MedicalCheckupsService {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Tính hạn khám và ngày hẹn cho các con ngựa theo bộ lọc, số ngày còn lại tăng dần (dùng chung cho F3.1 và F3.2)
+   * Tính hạn khám và ngày hẹn cho các con ngựa theo bộ lọc, số ngày còn lại tăng dần
    *
    * @param filter Bộ lọc đàn ngựa
    * @param today Hôm nay theo lịch câu lạc bộ, mặc định ngày hiện tại
-   * @returns A promise resolving to hạn khám từng con ngựa
+   * @returns Promise trả về hạn khám từng con ngựa
    */
   async checkupItems(
     filter: HerdFilter,
@@ -43,7 +43,7 @@ export class MedicalCheckupsService {
    *
    * @param rows Đàn ngựa kèm mốc tính hạn
    * @param today Hôm nay theo lịch câu lạc bộ
-   * @returns A promise resolving to hạn khám từng con ngựa
+   * @returns Promise trả về hạn khám từng con ngựa
    */
   async checkupItemsFor(
     rows: HorseCheckupAnchorRow[],

@@ -1,5 +1,5 @@
 /**
- * Trạng thái bệnh án (F3.5, F3.9, F3.6 mục 8).
+ * Trạng thái bệnh án.
  *
  * - OPEN: đang điều trị
  * - CLOSED: đã đóng, có kết luận cuối và chi phí
@@ -12,7 +12,7 @@ export enum MedicalCaseStatus {
 }
 
 /**
- * Việc cần làm khi hủy một buổi khám (F3.6 mục 8).
+ * Việc cần làm khi hủy một buổi khám.
  *
  * - VOID: chỉ hủy buổi khám
  * - VOID_AND_CANCEL_CASE: hủy buổi mở bệnh án và hủy luôn bệnh án mở nhầm
@@ -23,7 +23,7 @@ export enum VisitVoidAction {
 }
 
 /**
- * Cách xử lý lệnh khóa huấn luyện gắn với bệnh án khi đóng bệnh án (F3.8 mục 7).
+ * Cách xử lý lệnh khóa huấn luyện gắn với bệnh án khi đóng bệnh án.
  *
  * - RELEASE: gỡ khóa ngay
  * - KEEP: giữ khóa, bắt buộc kèm ngày dự kiến gỡ

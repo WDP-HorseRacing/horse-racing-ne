@@ -54,9 +54,9 @@ export class MedicalRecordsController {
   @Access([UserRole.VETERINARIAN])
   @Post('horses/:horseId/medical-records')
   @ApiOperation({
-    summary: 'Record a medical visit outside a case (F3.3)',
+    summary: 'Record a medical visit outside a case',
     description:
-      'Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay (F3.5). Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.',
+      'Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.',
     operationId: 'MedicalController_createRecord',
   })
   @ApiCreatedResponse({ type: MedicalRecordResponseDto })
@@ -73,7 +73,7 @@ export class MedicalRecordsController {
   @ApiOperation({
     summary: 'Get the current care instructions of a horse',
     description:
-      'Ghi chú chăm sóc và hạn chế vận động đang hiệu lực (của buổi khám gần nhất chưa hủy), để hiện trong hồ sơ ngựa. Groom chỉ xem ngựa mình phụ trách (403 nếu không). current = null khi ngựa chưa được khám hoặc buổi gần nhất để trống ghi chú. Không trả chẩn đoán, thuốc hay chi phí.',
+      'Ghi chú chăm sóc và hạn chế vận động đang hiệu lực (của buổi khám gần nhất chưa hủy). Groom chỉ xem ngựa mình phụ trách (403 nếu không). current = null khi ngựa chưa được khám hoặc buổi gần nhất để trống ghi chú. Không trả chẩn đoán, thuốc hay chi phí.',
   })
   @ApiOkResponse({ type: CareInstructionsResponseDto })
   careInstructions(
@@ -100,9 +100,9 @@ export class MedicalRecordsController {
   @Access([UserRole.VETERINARIAN])
   @Post('medical-records/:id/void')
   @ApiOperation({
-    summary: 'Void a wrongly recorded medical visit (F3.6)',
+    summary: 'Void a wrongly recorded medical visit',
     description:
-      'Bắt buộc lý do. Số đo của buổi khám bị gỡ khỏi F1.5. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.',
+      'Bắt buộc lý do. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.',
     operationId: 'MedicalDetailsController_voidRecord',
   })
   @ApiCreatedResponse({ type: MedicalRecordResponseDto })

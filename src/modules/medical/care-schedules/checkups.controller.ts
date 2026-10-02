@@ -33,7 +33,7 @@ export class CheckupsController {
   @Access([UserRole.VETERINARIAN, UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER])
   @Get('medical/checkups')
   @ApiOperation({
-    summary: 'Routine checkup schedule of the herd (F3.2)',
+    summary: 'Routine checkup schedule of the herd',
     description:
       'Chu kỳ cố định 30 ngày. Quá hạn lên đầu rồi tới đến hạn. Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa.',
   })
@@ -48,7 +48,7 @@ export class CheckupsController {
   @Access([UserRole.VETERINARIAN])
   @Put('horses/:horseId/checkup-appointment')
   @ApiOperation({
-    summary: 'Set or reschedule the routine checkup appointment (F3.2)',
+    summary: 'Set or reschedule the routine checkup appointment',
     description:
       'Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Ngựa đã chuyển nhượng: 409.',
   })

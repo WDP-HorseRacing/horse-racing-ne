@@ -30,7 +30,7 @@ function toBoolean({ value }: { value: unknown }): unknown {
 }
 
 /**
- * Gửi yêu cầu khám khi ngựa có vấn đề (F3.4 mục 1).
+ * Gửi yêu cầu khám khi ngựa có vấn đề.
  */
 export class CreateExamRequestDto {
   @ApiProperty({ minLength: 1, maxLength: 2000, description: 'Mô tả dấu hiệu' })
@@ -47,7 +47,7 @@ export class CreateExamRequestDto {
 }
 
 /**
- * Bác sĩ đổi mức độ của yêu cầu đang chờ, bắt buộc lý do (F3.4 mục 5).
+ * Bác sĩ đổi mức độ của yêu cầu đang chờ, bắt buộc lý do.
  */
 export class UpdateExamRequestUrgencyDto {
   @ApiProperty()
@@ -63,7 +63,7 @@ export class UpdateExamRequestUrgencyDto {
 }
 
 /**
- * Bác sĩ bỏ qua yêu cầu khám, bắt buộc lý do (F3.4 mục 4).
+ * Bác sĩ bỏ qua yêu cầu khám, bắt buộc lý do.
  */
 export class DismissExamRequestDto {
   @ApiProperty({ minLength: 1, maxLength: 500 })

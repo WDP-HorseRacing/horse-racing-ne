@@ -14,13 +14,13 @@ export class MeasurementAlertExamRequestListener {
   constructor(private readonly examRequests: ExamRequestsService) {}
 
   /**
-   * Nghe HORSE_MEASUREMENT_ALERT_EVENT và tự sinh yêu cầu khám (Flow 3 mục III.5.3)
+   * Nghe HORSE_MEASUREMENT_ALERT_EVENT và tự sinh yêu cầu khám
    *
-   * - Bỏ qua số đo lấy trong buổi khám vì bác sĩ đang khám chính con ngựa đó (mục III.5.4)
-   * - Mọi lỗi đều được log rồi nuốt, vì số đo đã commit xong
+   * - Bỏ qua số đo lấy trong buổi khám
+   * - Mọi lỗi đều được log rồi nuốt
    *
    * @param event Payload của cảnh báo chỉ số
-   * @returns A promise resolving when the attempt has finished
+   * @returns Promise hoàn tất khi đã xử lý xong
    */
   @OnEvent(HORSE_MEASUREMENT_ALERT_EVENT, { async: true })
   async handle(event: HorseMeasurementAlertEvent): Promise<void> {

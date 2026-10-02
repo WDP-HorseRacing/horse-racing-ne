@@ -39,7 +39,7 @@ export class TrainingLocksController {
   @Access([UserRole.VETERINARIAN])
   @Post('horses/:horseId/training-locks')
   @ApiOperation({
-    summary: 'Set a veterinary training lock (F3.8)',
+    summary: 'Set a veterinary training lock',
     description:
       'Ngựa đã có khóa hiệu lực hoặc đã chuyển nhượng: 409. Ngày dự kiến gỡ ở quá khứ: 400. Ngựa đang có bệnh án mở thì khóa gắn vào bệnh án.',
     operationId: 'MedicalController_lock',
@@ -56,7 +56,7 @@ export class TrainingLocksController {
   @Access([UserRole.VETERINARIAN])
   @Post('training-locks/:id/release')
   @ApiOperation({
-    summary: 'Release a training lock with a reason (F3.8)',
+    summary: 'Release a training lock with a reason',
     description: 'Lệnh khóa đã gỡ: 409.',
     operationId: 'MedicalController_release',
   })
@@ -72,9 +72,9 @@ export class TrainingLocksController {
   @Access(LOCK_READERS)
   @Get('horses/:horseId/training-locks')
   @ApiOperation({
-    summary: 'List current and past training locks of a horse (F3.10)',
+    summary: 'List current and past training locks of a horse',
     description:
-      'Groom không xem chi tiết khóa, chỉ thấy nhãn trong hồ sơ ngựa (F1.3).',
+      'Groom không xem chi tiết khóa, chỉ thấy nhãn trong hồ sơ ngựa.',
     operationId: 'MedicalDetailsController_locks',
   })
   @ApiOkResponse({ type: [TrainingLockResponseDto] })

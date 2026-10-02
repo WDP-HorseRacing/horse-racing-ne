@@ -24,7 +24,7 @@ export class MedicalAccessService {
    * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to user hiện tại và con ngựa đã khóa
+   * @returns Promise trả về user hiện tại và con ngựa đã khóa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa, hoặc ngựa đã chuyển nhượng

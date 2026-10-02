@@ -32,7 +32,7 @@ export class HealthStatusesController {
   @Access([UserRole.VETERINARIAN])
   @Patch('horses/:horseId/health-status')
   @ApiOperation({
-    summary: 'Change horse health status with a reason (F3.7)',
+    summary: 'Change horse health status with a reason',
     description:
       'Bắt buộc lý do. Trùng trạng thái cũ thì changed = false, không ghi nhật ký. Được đặt ELIGIBLE khi đang có lệnh khóa. Ngựa đã chuyển nhượng: 409.',
     operationId: 'HorseStatusesController_updateHealth',
@@ -49,7 +49,7 @@ export class HealthStatusesController {
   @Access(MEDICAL_READER_ROLES)
   @Get('horses/:horseId/health-history')
   @ApiOperation({
-    summary: 'Horse health status history (F3.10)',
+    summary: 'Horse health status history',
     description: 'Mới nhất lên trên. Groom không xem.',
   })
   @ApiOkResponse({ type: [HealthHistoryItemDto] })

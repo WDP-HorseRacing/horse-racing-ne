@@ -8,10 +8,10 @@ export class MedicalDashboardRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Bệnh án đang mở của các con ngựa, kèm buổi khám gần nhất chưa hủy và ngày hẹn tái khám của buổi đó (F3.1 khối 3)
+   * Bệnh án đang mở của các con ngựa, kèm buổi khám gần nhất chưa hủy và ngày hẹn tái khám của buổi đó
    *
    * @param horseIds Các con ngựa đang hiển thị trên bảng điều khiển
-   * @returns A promise resolving to bệnh án đang mở, ngày hẹn tái khám gần nhất lên trên
+   * @returns Promise trả về bệnh án đang mở, ngày hẹn tái khám gần nhất lên trên
    */
   openCases(horseIds: string[]): Promise<DashboardOpenCaseDto[]> {
     if (horseIds.length === 0) return Promise.resolve([]);

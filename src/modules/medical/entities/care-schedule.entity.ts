@@ -10,7 +10,7 @@ import {
 /**
  * CareScheduleEntity: lịch chăm sóc / điều trị định kỳ cho ngựa.
  * Dùng để lên lịch công việc y tế, chăm sóc hoặc kiểm tra sức khỏe.
- * Loại ROUTINE_CHECKUP là ngày hẹn khám định kỳ (F3.2): mỗi ngựa tối đa một lịch hẹn SCHEDULED.
+ * Loại ROUTINE_CHECKUP là ngày hẹn khám định kỳ: mỗi ngựa tối đa một lịch hẹn SCHEDULED.
  */
 @Entity({ name: 'care_schedules' })
 @Index('care_schedules_active_checkup_uq', ['horseId'], {

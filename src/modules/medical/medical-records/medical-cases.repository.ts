@@ -4,7 +4,7 @@ import { CLUB_TIME_ZONE } from '../../horses/constants/horse.constants';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 
 /**
- * Một dòng báo cáo chi phí, đọc thô từ DB (tổng chi phí dạng chuỗi vì SUM trên bigint).
+ * Một dòng báo cáo chi phí, đọc thô từ DB (tổng chi phí dạng chuỗi).
  */
 export interface MedicalCostReportRow {
   horseId: string;
@@ -18,13 +18,13 @@ export class MedicalCasesRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Tổng chi phí các bệnh án đã đóng theo từng con ngựa, lọc theo khoảng ngày đóng (F3.10 mục 4)
+   * Tổng chi phí các bệnh án đã đóng theo từng con ngựa, lọc theo khoảng ngày đóng
    *
    * - Ngày đóng tính theo lịch câu lạc bộ, lấy cả hai đầu khoảng
-   * - Lọc khu và chủ theo hồ sơ ngựa hiện tại; tính cả hồ sơ đã xóa vì chi phí đã phát sinh
+   * - Lọc khu và chủ theo hồ sơ ngựa hiện tại; tính cả hồ sơ đã xóa
    *
    * @param filter Khoảng ngày (YYYY-MM-DD), khu và chủ ngựa (tùy chọn)
-   * @returns A promise resolving to mỗi con ngựa một dòng, chi phí cao nhất lên trên
+   * @returns Promise trả về mỗi con ngựa một dòng, chi phí cao nhất lên trên
    */
   costByHorse(filter: {
     from: string;

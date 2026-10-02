@@ -31,7 +31,7 @@ export class MedicalRecordsService {
   ) {}
 
   /**
-   * Lấy mọi buổi khám của con ngựa (trong và ngoài bệnh án, kể cả buổi đã hủy), mới nhất lên trên (F3.10).
+   * Lấy mọi buổi khám của con ngựa (trong và ngoài bệnh án, kể cả buổi đã hủy), mới nhất lên trên.
    *
    * - Club Manager, Veterinarian, Head Trainer: xem đầy đủ, toàn câu lạc bộ.
    * - Groom: không xem (chặn ở controller).
@@ -39,7 +39,7 @@ export class MedicalRecordsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to danh sách buổi khám kèm đơn thuốc và chấn thương
+   * @returns Promise trả về danh sách buổi khám kèm đơn thuốc và chấn thương
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -56,11 +56,11 @@ export class MedicalRecordsService {
   }
 
   /**
-   * Lấy chi tiết một buổi khám (F3.10).
+   * Lấy chi tiết một buổi khám.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param recordId UUID của buổi khám
-   * @returns A promise resolving to buổi khám kèm đơn thuốc và chấn thương
+   * @returns Promise trả về buổi khám kèm đơn thuốc và chấn thương
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có buổi khám, hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -79,14 +79,14 @@ export class MedicalRecordsService {
   }
 
   /**
-   * Lấy ghi chú chăm sóc đang hiệu lực của con ngựa (ghi chú của buổi khám gần nhất chưa hủy), hiện trong hồ sơ ngựa (F3.10, Q4)
+   * Lấy ghi chú chăm sóc đang hiệu lực của con ngựa (ghi chú của buổi khám gần nhất chưa hủy)
    *
    * - Groom chỉ xem được ngựa mình đang phụ trách; các vai trò khác theo phạm vi xem hồ sơ ngựa
    * - Chỉ trả ghi chú, không trả chẩn đoán, đơn thuốc hay chi phí
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to ghi chú đang hiệu lực, hoặc current = null nếu không có
+   * @returns Promise trả về ghi chú đang hiệu lực, hoặc current = null nếu không có
    * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc Groom không phụ trách con ngựa
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -113,7 +113,7 @@ export class MedicalRecordsService {
    *
    * @param records Các buổi khám
    * @param seesDosage Người gọi có được xem liều lượng, tần suất đơn thuốc không
-   * @returns A promise resolving to danh sách buổi khám dạng DTO
+   * @returns Promise trả về danh sách buổi khám dạng DTO
    */
   async toResponses(
     records: MedicalRecordEntity[],

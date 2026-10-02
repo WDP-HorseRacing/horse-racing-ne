@@ -33,17 +33,17 @@ export class HealthStatusesService {
   ) {}
 
   /**
-   * Bác sĩ đổi trạng thái sức khỏe trực tiếp, không qua buổi khám (F3.7)
+   * Bác sĩ đổi trạng thái sức khỏe trực tiếp, không qua buổi khám
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa; ngựa đã chuyển nhượng: 409
    * - Bắt buộc lý do; trạng thái mới trùng trạng thái cũ thì không ghi gì và trả changed = false
-   * - Được đặt Đủ điều kiện cả khi đang có lệnh khóa; không tự gỡ khóa (F3.7 mục 5)
+   * - Được đặt Đủ điều kiện cả khi đang có lệnh khóa; không tự gỡ khóa
    * - Chuyển sang Chấn thương hoặc Cách ly: sau commit báo Head Trainer của khu, Club Manager và Horse Owner
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Trạng thái mới và lý do
-   * @returns A promise resolving to trạng thái trước, sau và cờ có thay đổi
+   * @returns Promise trả về trạng thái trước, sau và cờ có thay đổi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu thiếu lý do
@@ -86,11 +86,11 @@ export class HealthStatusesService {
   }
 
   /**
-   * Lịch sử trạng thái sức khỏe của con ngựa, mới nhất lên trên (F3.10 mục 6)
+   * Lịch sử trạng thái sức khỏe của con ngựa, mới nhất lên trên
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to các lần đổi trạng thái sức khỏe
+   * @returns Promise trả về các lần đổi trạng thái sức khỏe
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */

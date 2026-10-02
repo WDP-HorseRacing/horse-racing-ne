@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 
 /**
- * Một lệnh khóa huấn luyện (F3.8, F3.10 mục 7).
+ * Một lệnh khóa huấn luyện.
  */
 export class TrainingLockResponseDto {
   @ApiProperty({ format: 'uuid' })
