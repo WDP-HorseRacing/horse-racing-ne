@@ -17,7 +17,7 @@ describe('MedicalRecordsService.listRecords', () => {
   let records: { find: jest.Mock };
   let prescriptions: { find: jest.Mock };
   let injuries: { find: jest.Mock };
-  let horseAccess: { findReadable: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock };
   let service: MedicalRecordsService;
 
   beforeEach(() => {
@@ -48,7 +48,7 @@ describe('MedicalRecordsService.listRecords', () => {
       ]),
     };
     injuries = { find: jest.fn().mockResolvedValue([]) };
-    horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     service = new MedicalRecordsService(
       horseAccess as unknown as HorseAccessService,
       records as unknown as Repository<MedicalRecordEntity>,
@@ -80,12 +80,12 @@ describe('MedicalRecordsService.listRecords', () => {
 
   it('lets a club manager read the records of a deleted horse the access service returns', async () => {
     const manager = actorWith(UserRole.CLUB_MANAGER);
-    horseAccess.findReadable.mockResolvedValue({
+    horseAccess.findReadableHorseForActor.mockResolvedValue({
       id: 'h1',
       deletedAt: new Date('2026-09-01T00:00:00Z'),
     });
     const result = await service.listRecords(manager, 'h1');
-    expect(horseAccess.findReadable).toHaveBeenCalledWith(manager, 'h1');
+    expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(manager, 'h1');
     expect(result).toHaveLength(1);
   });
 
@@ -116,7 +116,7 @@ describe('MedicalRecordsService.listRecords', () => {
   });
 
   it('answers not found for a horse outside the caller scope', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
     await expect(
       service.listRecords(actorWith(UserRole.HORSE_OWNER), 'h1'),
     ).rejects.toThrow(NotFoundException);
@@ -131,14 +131,14 @@ describe('MedicalRecordsService.listRecords', () => {
       await expect(
         service.getRecord(actorWith(UserRole.VETERINARIAN), 'r404'),
       ).rejects.toThrow(NotFoundException);
-      expect(horseAccess.findReadable).not.toHaveBeenCalled();
+      expect(horseAccess.findReadableHorseForActor).not.toHaveBeenCalled();
     });
 
     it('answers not found when the horse of the visit is outside the caller scope', async () => {
       (records as { findOne?: jest.Mock }).findOne = jest
         .fn()
         .mockResolvedValue({ id: 'r1', horseId: 'h9' });
-      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
       await expect(
         service.getRecord(actorWith(UserRole.HORSE_OWNER), 'r1'),
       ).rejects.toThrow(NotFoundException);
@@ -156,7 +156,7 @@ describe('MedicalRecordsService.listRecords', () => {
         actorWith(UserRole.HEAD_TRAINER),
         'r1',
       );
-      expect(horseAccess.findReadable).toHaveBeenCalledWith(
+      expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(
         expect.anything(),
         'h1',
       );
@@ -169,7 +169,7 @@ describe('MedicalRecordsService.getCareInstructions', () => {
   let latest: Record<string, unknown> | null;
   let groomAssigned: boolean;
   let records: { findOne: jest.Mock };
-  let horseAccess: { findReadable: jest.Mock; currentUser: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock; currentUser: jest.Mock };
   let horses: { isGroomAssigned: jest.Mock };
   let service: MedicalRecordsService;
 
@@ -183,7 +183,7 @@ describe('MedicalRecordsService.getCareInstructions', () => {
     groomAssigned = true;
     records = { findOne: jest.fn(() => Promise.resolve(latest)) };
     horseAccess = {
-      findReadable: jest.fn().mockResolvedValue({ id: 'h1' }),
+      findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }),
       currentUser: jest.fn().mockResolvedValue({ id: 'groom-1' }),
     };
     horses = {
@@ -226,7 +226,7 @@ describe('MedicalRecordsService.getCareInstructions', () => {
   });
 
   it('answers 404 for a horse outside the caller scope', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
     await expect(
       service.getCareInstructions(actorWith(UserRole.GROOM), 'h9'),
     ).rejects.toThrow(NotFoundException);

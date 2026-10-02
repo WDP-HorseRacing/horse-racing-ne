@@ -39,7 +39,7 @@ describe('CareSchedulesService', () => {
   };
   let schedules: { find: jest.Mock; findOne: jest.Mock };
   let lockHorseForWrite: jest.Mock;
-  let findReadable: jest.Mock;
+  let findReadableHorseForActor: jest.Mock;
   let audit: { record: jest.Mock };
   let service: CareSchedulesService;
 
@@ -76,7 +76,7 @@ describe('CareSchedulesService', () => {
     lockHorseForWrite = jest.fn(() =>
       Promise.resolve({ caller: { id: callerId }, horse: { id: 'h1' } }),
     );
-    findReadable = jest.fn().mockResolvedValue({ id: 'h1' });
+    findReadableHorseForActor = jest.fn().mockResolvedValue({ id: 'h1' });
     service = new CareSchedulesService(
       {
         transaction: jest.fn((work: (m: typeof manager) => unknown) =>
@@ -86,7 +86,7 @@ describe('CareSchedulesService', () => {
       schedules as unknown as Repository<CareScheduleEntity>,
       { lockHorseForWrite } as unknown as MedicalAccessService,
       {
-        findReadable,
+        findReadableHorseForActor,
         currentUser: jest.fn(() => Promise.resolve({ id: callerId })),
       } as unknown as HorseAccessService,
       {
@@ -351,7 +351,7 @@ describe('CareSchedulesService', () => {
 
   describe('list', () => {
     it('answers not found for a horse outside the caller scope', async () => {
-      findReadable.mockRejectedValue(new NotFoundException());
+      findReadableHorseForActor.mockRejectedValue(new NotFoundException());
       await expect(service.list(vet, 'h9')).rejects.toThrow(NotFoundException);
       expect(schedules.find).not.toHaveBeenCalled();
     });

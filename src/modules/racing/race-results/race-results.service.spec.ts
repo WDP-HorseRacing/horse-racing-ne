@@ -11,12 +11,12 @@ import { RaceResultsService } from './race-results.service';
 const owner: Actor = { sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] };
 
 describe('RaceResultsService.listHorseResults', () => {
-  let horseAccess: { findReadable: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock };
   let repository: { find: jest.Mock };
   let service: RaceResultsService;
 
   beforeEach(() => {
-    horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     repository = {
       find: jest.fn().mockResolvedValue([
         {
@@ -42,7 +42,7 @@ describe('RaceResultsService.listHorseResults', () => {
   it('maps each registration of a readable horse to a race result row', async () => {
     const rows = await service.listHorseResults(owner, 'h1');
 
-    expect(horseAccess.findReadable).toHaveBeenCalledWith(owner, 'h1');
+    expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(owner, 'h1');
     expect(repository.find).toHaveBeenCalledWith(
       expect.objectContaining({ where: { horseId: 'h1' } }),
     );
@@ -61,7 +61,7 @@ describe('RaceResultsService.listHorseResults', () => {
   });
 
   it('answers not found for a horse outside the caller scope without reading results', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
 
     await expect(service.listHorseResults(owner, 'h1')).rejects.toThrow(
       NotFoundException,

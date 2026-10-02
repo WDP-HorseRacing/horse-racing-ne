@@ -15,20 +15,20 @@ const manager = {} as EntityManager;
 
 describe('MedicalAccessService.lockHorseForWrite', () => {
   let horseAccess: {
-    lockVisibleHorse: jest.Mock;
+    lockWritableHorseInScope: jest.Mock;
     assertNotTransferred: jest.Mock;
-    findReadable: jest.Mock;
+    findReadableHorseForActor: jest.Mock;
   };
   let service: MedicalAccessService;
 
   beforeEach(() => {
     horseAccess = {
-      lockVisibleHorse: jest.fn().mockResolvedValue({
+      lockWritableHorseInScope: jest.fn().mockResolvedValue({
         caller: { id: 'vet-1' },
         horse: { id: 'h1', lifecycleStatus: HorseLifecycleStatus.ACTIVE },
       }),
       assertNotTransferred: jest.fn(),
-      findReadable: jest.fn(),
+      findReadableHorseForActor: jest.fn(),
     };
     service = new MedicalAccessService(
       horseAccess as unknown as HorseAccessService,
@@ -38,10 +38,10 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
   it('locks the visible horse inside the given transaction', async () => {
     const result = await service.lockHorseForWrite(manager, vet, 'h1');
 
-    expect(horseAccess.lockVisibleHorse).toHaveBeenCalledWith(
+    expect(horseAccess.lockWritableHorseInScope).toHaveBeenCalledWith(
+      manager,
       vet,
       'h1',
-      manager,
     );
     expect(result.horse.id).toBe('h1');
   });
@@ -57,7 +57,7 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
   });
 
   it('answers not found for a horse outside the caller scope', async () => {
-    horseAccess.lockVisibleHorse.mockRejectedValue(new NotFoundException());
+    horseAccess.lockWritableHorseInScope.mockRejectedValue(new NotFoundException());
 
     await expect(service.lockHorseForWrite(manager, vet, 'h1')).rejects.toThrow(
       NotFoundException,

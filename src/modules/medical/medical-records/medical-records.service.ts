@@ -49,7 +49,7 @@ export class MedicalRecordsService {
     actor: Actor,
     horseId: string,
   ): Promise<MedicalRecordResponseDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const records = await this.records.find({
       where: { horseId },
       order: { examDate: 'DESC' },
@@ -72,7 +72,7 @@ export class MedicalRecordsService {
   ): Promise<MedicalRecordResponseDto> {
     const record = await this.records.findOne({ where: { id: recordId } });
     if (!record) throw new NotFoundException('Không tìm thấy buổi khám');
-    await this.horseAccess.findReadable(actor, record.horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, record.horseId);
     const [response] = await this.toResponses(
       [record],
       canSeeDosage(actor.roles),
@@ -96,7 +96,7 @@ export class MedicalRecordsService {
     actor: Actor,
     horseId: string,
   ): Promise<CareInstructionsResponseDto> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     if (isGroomOnly(actor.roles)) {
       const caller = await this.horseAccess.currentUser(actor);
       if (!(await this.horses.isGroomAssigned(horseId, caller.id))) {

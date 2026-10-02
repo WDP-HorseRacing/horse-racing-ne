@@ -97,7 +97,7 @@ export class MedicalCasesService {
     horseId: string,
     query: MedicalCaseListQueryDto,
   ): Promise<MedicalCaseListResponseDto> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const cases = await this.cases.find({
       where: { horseId, ...(query.status ? { status: query.status } : {}) },
       order: { openedAt: 'DESC' },
@@ -127,7 +127,7 @@ export class MedicalCasesService {
     caseId: string,
   ): Promise<MedicalCaseDetailResponseDto> {
     const medicalCase = await this.findCase(caseId);
-    await this.horseAccess.findReadable(actor, medicalCase.horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, medicalCase.horseId);
     const visits = await this.dataSource.manager.find(MedicalRecordEntity, {
       where: { caseId },
       order: { examDate: 'DESC' },
@@ -153,7 +153,7 @@ export class MedicalCasesService {
     caseId: string,
   ): Promise<MedicalCaseClosePreviewResponseDto> {
     const medicalCase = await this.findCase(caseId);
-    const horse = await this.horseAccess.findReadable(
+    const horse = await this.horseAccess.findReadableHorseForActor(
       actor,
       medicalCase.horseId,
     );

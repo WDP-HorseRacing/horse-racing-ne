@@ -248,8 +248,8 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
       { horseId: 'h1' },
     );
     expect(participantQb.andWhere).toHaveBeenCalledWith(
-      '(participant.assigned_groom_id = :fromGroomId OR participant.assigned_groom_id IS NULL)',
-      { fromGroomId: 'g-old' },
+      '(participant.assigned_groom_id = :previousGroomId OR participant.assigned_groom_id IS NULL)',
+      { previousGroomId: 'g-old' },
     );
     expect(participantQb.andWhere).toHaveBeenCalledWith(
       'participant.status IN (:...statuses)',
@@ -285,7 +285,7 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
 
     expect(participantQb.andWhere).toHaveBeenCalledWith(
       'participant.assigned_groom_id IS NULL',
-      { fromGroomId: null },
+      { previousGroomId: null },
     );
   });
 

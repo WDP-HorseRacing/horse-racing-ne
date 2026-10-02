@@ -24,7 +24,7 @@ Module Horses được chia theo capability:
 - `horse-placements`: xếp và đổi khu chuồng (F1.6).
 - `horse-measurements`: ghi, xem, xóa chỉ số đo và sinh cảnh báo.
 - `shared` (`HorsesSharedModule`, module khác cũng import): phần dùng chung.
-  - `HorseAccessService`: lấy người gọi; tìm ngựa theo phạm vi xem (`findReadable`, `findReadableHorse`, 404); tìm/khóa ngựa trước khi ghi (`lockWritableHorse`, `findWritableHorse`: hồ sơ đã xóa trả 403 cho CM, 404 cho role khác); phạm vi HT theo khu (`isHorseInTrainerBarn`, `assertTrainerBarn`); chặn ngựa `TRANSFERRED`.
+  - `HorseAccessService`: lấy người gọi; tìm ngựa theo phạm vi xem (`findReadableHorseForActor`, `findReadableHorse`, 404); tìm/khóa ngựa trước khi ghi (`lockWritableHorse`, `findWritableHorse`: hồ sơ đã xóa trả 403 cho CM, 404 cho role khác); phạm vi HT theo khu (`isHorseInTrainerBarn`, `assertTrainerBarn`); chặn ngựa `TRANSFERRED`.
   - `HorsePedigreeService` + `HorsePedigreeRepository`: khóa phả hệ, kiểm cha mẹ, vòng lặp, đổi giới tính và ngày sinh (tính cả con đã xóa hồ sơ).
   - `HorsesSharedRepository`: tìm ngựa, row lock, training lock, Groom được giao, chủ còn hoạt động, chỉ số mới nhất. Chỉ ĐỌC bảng module khác; ghi bảng module khác luôn qua hàm module đó export.
 
@@ -42,16 +42,16 @@ Thông báo đi qua domain event, phát SAU commit bằng `DomainEventPublisher`
 Phần chuồng trại nằm trong module Stable:
 
 - `stable/barns`: CRUD khu, `GET /barns` kèm số chỗ còn nhận ngựa, và hàm `lockAssignableBarn` cho module horses gọi.
-- `stable/stalls`: CRUD ô, xếp và chuyển ô (`PUT /horses/:id/stall`), kết thúc xếp ô, hàm `releaseStallByHorse`.
-- `stable/groom-assignments`: giao, đổi Groom, khối lượng việc của Groom, hàm `endGroomByHorse` (chuyển nhượng gọi).
+- `stable/stalls`: CRUD ô, xếp và chuyển ô (`PUT /horses/:id/stall`), kết thúc xếp ô, hàm `closeOpenStallAssignment`.
+- `stable/groom-assignments`: giao, đổi Groom, khối lượng việc của Groom, hàm `endOpenGroomAssignment` (chuyển nhượng gọi).
 
 Các hàm export mà Flow 1 gọi trong transaction của mình (không tự mở transaction):
 
 | Hàm                                                 | Module        | Dùng ở                                          |
 | --------------------------------------------------- | ------------- | ----------------------------------------------- |
 | `BarnsService.lockAssignableBarn`                   | stable        | Tạo ngựa kèm `barnId`, xếp khu                  |
-| `StallsService.releaseStallByHorse`                 | stable        | Đổi khu, chuyển nhượng                          |
-| `GroomAssignmentsService.endGroomByHorse`           | stable        | Chuyển nhượng                                   |
+| `StallsService.closeOpenStallAssignment`           | stable        | Đổi khu, chuyển nhượng                          |
+| `GroomAssignmentsService.endOpenGroomAssignment`    | stable        | Chuyển nhượng                                   |
 | `TrainingLockService.releaseActiveLockByHorse`      | medical       | Chuyển nhượng                                   |
 | `RacingRepository.withdrawOpenRegistrationsByHorse` | racing        | Giải nghệ, chuyển nhượng từ `ACTIVE`            |
 | `MediaService.assertAttachableHorsePhoto`           | media         | Tạo, sửa ngựa kèm `mediaId` (gọi TRƯỚC transaction vì có HEAD tới storage) |
@@ -581,7 +581,7 @@ Rule:
   - Khu không `ACTIVE`: `409 Khu chuồng không ở trạng thái hoạt động`.
   - Khu chưa có HT: `409 Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được`.
   - Hết chỗ: `409 Khu chuồng đã hết ô trống, vui lòng chọn khu khác`, hoặc khi có ngựa đang chờ: `409 Khu chuồng đã hết chỗ: <n> ô trống nhưng đã có <m> ngựa chờ xếp ô, vui lòng chọn khu khác`.
-- Đổi khu: đóng dòng xếp ô đang mở và trả ô cũ về trống (`releaseStallByHorse`), cập nhật `barnId`; ngựa vào "Chờ xếp ô" của khu mới. Groom giữ nguyên.
+- Đổi khu: đóng dòng xếp ô đang mở và trả ô cũ về trống (`closeOpenStallAssignment`), cập nhật `barnId`; ngựa vào "Chờ xếp ô" của khu mới. Groom giữ nguyên.
 - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách (`withdrawHorseFromClasses` với `exceptHeadTrainerId`, cùng luật như đổi vòng đời ở mục 4, lý do `Đổi khu: <reason>`). Lớp của Head Trainer khu mới giữ nguyên; lớp của Head Trainer cũ đã bàn giao khu cũng bị rút.
 - Ghi audit `UPDATE` entity `HORSE` (feature `F1.6`) với `before { barnId, stallCode }`, `after { barnId, stallCode: null }` (thêm `classesWithdrawn` khi có rút lớp) và `reason`.
 - Sau commit: báo Head Trainer khu mới (mục 14).
@@ -770,7 +770,7 @@ Chỉ HT phụ trách khu của ngựa (theo `horses.barn_id`); người có th�
 
 ### `GET /horses/:id/grooms`
 
-Lịch sử Groom của ngựa, kèm `groom { id, fullName, email }`, sắp theo `startAt` giảm dần. Phạm vi xem theo `findReadable`: CM xem được cả ngựa đã xóa; role khác nhận `404` với ngựa không có hoặc đã xóa.
+Lịch sử Groom của ngựa, kèm `groom { id, fullName, email }`, sắp theo `startAt` giảm dần. Phạm vi xem theo `findReadableHorseForActor`: CM xem được cả ngựa đã xóa; role khác nhận `404` với ngựa không có hoặc đã xóa.
 
 Quyền: CM, HT, VET, GROOM.
 
@@ -849,7 +849,7 @@ Không có API gỡ Groom mà không giao ai (bỏ ngày 2026-09-23 theo F1.7: c
    - Tệp được xin với mục đích `HORSE_PHOTO` (`400 Tệp không phải ảnh đại diện ngựa`).
    - Tệp đã có trên storage (`409 Tệp chưa được tải lên storage`), đúng định dạng, dung lượng và khớp số liệu khai báo (`400`).
 
-Xem ảnh ngựa: `GET /horses/:horseId/photo-url` trả `{ "url": "<presigned GET URL>" }`. Ai xem được hồ sơ ngựa (theo `findReadable`) thì lấy được link; ngựa chưa có ảnh hoặc ngoài phạm vi trả `404`. Module horses quyết quyền, media chỉ ký link.
+Xem ảnh ngựa: `GET /horses/:horseId/photo-url` trả `{ "url": "<presigned GET URL>" }`. Ai xem được hồ sơ ngựa (theo `findReadableHorseForActor`) thì lấy được link; ngựa chưa có ảnh hoặc ngoài phạm vi trả `404`. Module horses quyết quyền, media chỉ ký link.
 
 `GET /media/:id`, `GET /media/:id/download-url` giờ chỉ cho người đã tải tệp lên; người khác nhận `404`.
 
@@ -872,8 +872,8 @@ Lock:
 - Row lock `pessimistic_write`:
   - Row ngựa: xóa, khôi phục (kể cả hồ sơ đã xóa), đổi lifecycle, đổi health, xếp khu, ghi và xóa chỉ số, xếp ô, giao và đổi Groom.
   - Row khu: `lockAssignableBarn` khi tạo ngựa kèm `barnId` và khi xếp khu.
-  - Dòng xếp ô đang mở và row ô: xếp ô, `releaseStallByHorse`.
-  - Dòng Groom đang mở và checklist cần chuyển: đổi Groom, `endGroomByHorse`.
+  - Dòng xếp ô đang mở và row ô: xếp ô, `closeOpenStallAssignment`.
+  - Dòng Groom đang mở và checklist cần chuyển: đổi Groom, `endOpenGroomAssignment`.
   - Bản ghi đo: xóa chỉ số.
 - Optimistic lock bằng `version`: chỉ `PATCH /horses/:id`.
 - Lỗi unique `23505` được đổi sang `409` có message: `horses_microchip_uq`, `stall_assignments_active_stall_uq`, `stall_assignments_active_horse_uq`, `groom_assignments_active_horse_uq`, `daily_checklists_horse_groom_date_uq`.

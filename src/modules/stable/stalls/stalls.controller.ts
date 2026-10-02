@@ -150,7 +150,7 @@ export class StallsController {
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<StallAssignmentResponseDto> {
-    return this.stallsService.releaseHorseStall(actor, id);
+    return this.stallsService.removeHorseFromStall(actor, id);
   }
 
   @Access([UserRole.HEAD_TRAINER])

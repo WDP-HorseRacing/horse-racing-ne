@@ -32,7 +32,7 @@ import {
   HorseResponseDto,
   UpdateHorseDto,
 } from '../dto';
-import { ALL_ROLES } from '../constants/horse.constants';
+import { HORSE_READER_ROLES } from '../constants/horse.constants';
 import { HorseProfilesService } from './horse-profiles.service';
 
 @ApiTags('horses')
@@ -41,7 +41,7 @@ import { HorseProfilesService } from './horse-profiles.service';
 export class HorseProfilesController {
   constructor(private readonly profilesService: HorseProfilesService) {}
 
-  @Access(ALL_ROLES)
+  @Access(HORSE_READER_ROLES)
   @Get('horses')
   @ApiOperation({
     summary: 'List horses visible to the current user',
@@ -71,7 +71,7 @@ export class HorseProfilesController {
     return this.profilesService.create(actor, body);
   }
 
-  @Access(ALL_ROLES)
+  @Access(HORSE_READER_ROLES)
   @Get('horses/:horseId')
   @ApiOperation({
     summary: 'Get horse profile detail',
@@ -86,7 +86,7 @@ export class HorseProfilesController {
     return this.profilesService.get(actor, horseId);
   }
 
-  @Access(ALL_ROLES)
+  @Access(HORSE_READER_ROLES)
   @Get('horses/:horseId/photo-url')
   @ApiOperation({
     summary: 'Get a time-limited download URL of the horse photo',
@@ -117,7 +117,7 @@ export class HorseProfilesController {
     return this.profilesService.update(actor, horseId, body);
   }
 
-  @Access(ALL_ROLES)
+  @Access(HORSE_READER_ROLES)
   @Get('horses/:horseId/pedigree')
   @ApiOperation({
     summary: 'Get horse pedigree: parents and grandparents',
@@ -132,7 +132,7 @@ export class HorseProfilesController {
     return this.profilesService.getPedigree(actor, horseId);
   }
 
-  @Access(ALL_ROLES)
+  @Access(HORSE_READER_ROLES)
   @Get('horses/:horseId/permissions')
   @ApiOperation({
     summary: 'Get what the current user can do on this horse profile',
@@ -147,7 +147,7 @@ export class HorseProfilesController {
     return this.profilesService.getPermissions(actor, horseId);
   }
 
-  @Access(ALL_ROLES)
+  @Access(HORSE_READER_ROLES)
   @Get('horses/:horseId/eligibility')
   @ApiOperation({ summary: 'Get current training and racing eligibility' })
   @ApiOkResponse({ type: HorseEligibilityResponseDto })

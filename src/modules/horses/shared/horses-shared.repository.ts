@@ -232,7 +232,7 @@ export class HorsesSharedRepository {
    * @param manager EntityManager dùng để query, bỏ trống khi không ở trong transaction
    * @returns Promise trả về tên chủ nếu chủ không còn hợp lệ, null nếu chủ vẫn hợp lệ hoặc không tìm thấy
    */
-  async inactiveOwnerName(
+  async invalidOwnerName(
     ownerId: string,
     manager?: EntityManager,
   ): Promise<string | null> {

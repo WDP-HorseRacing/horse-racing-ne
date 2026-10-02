@@ -53,7 +53,7 @@ export class GroomAssignmentsService {
   /**
    * Liệt kê lịch sử groom phụ trách của một con ngựa, mới nhất trước
    *
-   * - Phạm vi xem theo HorseAccessService.findReadable: Club Manager xem được cả hồ sơ đã xóa, Horse Owner chỉ ngựa của mình, vai trò khác mọi ngựa chưa xóa
+   * - Phạm vi xem theo HorseAccessService.findReadableHorseForActor: Club Manager xem được cả hồ sơ đã xóa, Horse Owner chỉ ngựa của mình, vai trò khác mọi ngựa chưa xóa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -65,7 +65,7 @@ export class GroomAssignmentsService {
     actor: Actor,
     horseId: string,
   ): Promise<GroomAssignmentResponseDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const assignments = await this.dataSource.manager.find(
       GroomAssignmentEntity,
       {
@@ -103,17 +103,17 @@ export class GroomAssignmentsService {
     body: AssignGroomDto,
   ): Promise<GroomAssignmentResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const { response, notice } = await this.dataSource.transaction((manager) =>
+    const { response, changedEvent } = await this.dataSource.transaction((manager) =>
       this.assignInTransaction(manager, caller.id, horseId, body.groomId),
     );
-    if (notice) this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, notice);
+    if (changedEvent) this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, changedEvent);
     return response;
   }
 
   /**
    * Giao hoặc đổi groom cho ngựa, chạy trong transaction của nơi gọi (luật như assign)
    *
-   * - Không phát event; nơi gọi phát GROOM_ASSIGNMENT_CHANGED_EVENT với notice trả về sau khi commit
+   * - Không phát event; nơi gọi phát GROOM_ASSIGNMENT_CHANGED_EVENT với changedEvent trả về sau khi commit
    *
    * @param manager EntityManager của transaction đang chạy
    * @param callerId UUID của người gọi (users.id)
@@ -132,7 +132,7 @@ export class GroomAssignmentsService {
     groomId: string,
   ): Promise<{
     response: GroomAssignmentResponseDto;
-    notice: GroomAssignmentChangedEvent | null;
+    changedEvent: GroomAssignmentChangedEvent | null;
   }> {
     return this.saveUnique(async () => {
       const groom = await manager.findOne(UserEntity, {
@@ -154,7 +154,7 @@ export class GroomAssignmentsService {
       if (current?.groomId === groom.id) {
         return {
           response: toGroomAssignmentResponse({ ...current, groom }),
-          notice: null,
+          changedEvent: null,
         };
       }
       const now = new Date();
@@ -216,7 +216,7 @@ export class GroomAssignmentsService {
       };
       return {
         response: toGroomAssignmentResponse({ ...saved, groom }),
-        notice: changed,
+        changedEvent: changed,
       };
     });
   }
@@ -231,7 +231,7 @@ export class GroomAssignmentsService {
    * @param horseId UUID của ngựa
    * @returns Promise chứa UUID groom vừa kết thúc phân công, hoặc null nếu ngựa không có groom phụ trách
    */
-  async endGroomByHorse(
+  async endOpenGroomAssignment(
     manager: EntityManager,
     horseId: string,
   ): Promise<string | null> {

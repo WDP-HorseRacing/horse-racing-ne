@@ -233,13 +233,13 @@ export class TrainingOperationsFacade {
    * Chuyển các lượt tham gia buổi tập tương lai của một con ngựa sang groom mới, chạy trong transaction của nơi gọi.
    *
    * - Chuyển lượt đang giao cho groom cũ và lượt chưa ai dắt; lượt giao cho người khác giữ nguyên
-   * - `fromGroomId` null: chỉ điền các lượt chưa ai dắt
+   * - `previousGroomId` null: chỉ điền các lượt chưa ai dắt
    * - Chỉ lượt PLANNED/PRESENT/READY của buổi bắt đầu từ `from` trở đi; lượt ONGOING và lượt đã kết thúc giữ tên người đã làm
    * - Không kiểm quyền, nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
-   * @param fromGroomId UUID groom cũ, null nếu ngựa chưa có Groom
+   * @param previousGroomId UUID groom cũ, null nếu ngựa chưa có Groom
    * @param toGroomId UUID groom mới
    * @param from Thời điểm đổi groom; buổi bắt đầu từ thời điểm này trở đi được chuyển
    * @returns Promise trả về UUID các lượt tham gia đã chuyển
@@ -247,7 +247,7 @@ export class TrainingOperationsFacade {
   async moveFutureParticipantsToGroom(
     manager: EntityManager,
     horseId: string,
-    fromGroomId: string | null,
+    previousGroomId: string | null,
     toGroomId: string,
     from: Date,
   ): Promise<string[]> {
@@ -261,10 +261,10 @@ export class TrainingOperationsFacade {
       )
       .where('participant.horse_id = :horseId', { horseId })
       .andWhere(
-        fromGroomId
-          ? '(participant.assigned_groom_id = :fromGroomId OR participant.assigned_groom_id IS NULL)'
+        previousGroomId
+          ? '(participant.assigned_groom_id = :previousGroomId OR participant.assigned_groom_id IS NULL)'
           : 'participant.assigned_groom_id IS NULL',
-        { fromGroomId },
+        { previousGroomId },
       )
       .andWhere('participant.status IN (:...statuses)', {
         statuses: OPEN_PARTICIPANT_STATUSES,

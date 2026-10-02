@@ -19,7 +19,7 @@ export class HorsePlacementsRepository {
    * @param barnId UUID của khu
    * @returns Promise trả về khu kèm tên Head Trainer, null nếu không có khu
    */
-  async findBarn(barnId: string): Promise<BarnPreviewTarget | null> {
+  async findBarnWithHeadTrainer(barnId: string): Promise<BarnPreviewTarget | null> {
     const rows = await this.dataSource.query<BarnPreviewTarget[]>(
       `SELECT b.id AS "id",
               b.name AS "name",

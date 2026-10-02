@@ -28,10 +28,10 @@ export class MedicalAccessService {
     actor: Actor,
     horseId: string,
   ): Promise<{ caller: CurrentActorUser; horse: HorseEntity }> {
-    const locked = await this.horseAccess.lockVisibleHorse(
+    const locked = await this.horseAccess.lockWritableHorseInScope(
+      manager,
       actor,
       horseId,
-      manager,
     );
     this.horseAccess.assertNotTransferred(locked.horse);
     return locked;

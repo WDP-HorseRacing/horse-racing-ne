@@ -52,8 +52,8 @@ describe('HorseDeletionsRepository', () => {
     const manager = { query } as unknown as EntityManager;
 
     const labels = await new HorseDeletionsRepository().businessDataLabels(
-      'h1',
       manager,
+      'h1',
     );
 
     expect(labels).toEqual(['lớp học']);

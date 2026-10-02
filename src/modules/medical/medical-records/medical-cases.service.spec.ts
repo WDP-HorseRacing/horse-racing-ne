@@ -48,7 +48,7 @@ describe('MedicalCasesService', () => {
     update: jest.Mock;
   };
   let cases: { find: jest.Mock; findOne: jest.Mock };
-  let horseAccess: { findReadable: jest.Mock; currentUser: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock; currentUser: jest.Mock };
   let access: { lockHorseForWrite: jest.Mock };
   let casesRepository: {
     costByHorse: jest.Mock;
@@ -98,7 +98,7 @@ describe('MedicalCasesService', () => {
       findOne: jest.fn(() => Promise.resolve(caseRow)),
     };
     horseAccess = {
-      findReadable: jest.fn().mockResolvedValue({ id: 'h1' }),
+      findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }),
       currentUser: jest.fn().mockResolvedValue({ id: 'cm-1' }),
     };
     access = {
@@ -169,7 +169,7 @@ describe('MedicalCasesService', () => {
     });
 
     it('answers not found for a horse outside the caller scope', async () => {
-      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
       await expect(
         service.listCases(actorWith(UserRole.HORSE_OWNER), 'h9', {}),
       ).rejects.toThrow(NotFoundException);
@@ -186,7 +186,7 @@ describe('MedicalCasesService', () => {
     });
 
     it('answers not found when the horse of the case is outside the caller scope', async () => {
-      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
       await expect(service.getCase(vet, 'case-1')).rejects.toThrow(
         NotFoundException,
       );
@@ -203,7 +203,7 @@ describe('MedicalCasesService', () => {
     });
 
     it('answers not found when the horse of the case is outside the caller scope', async () => {
-      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
       await expect(service.closePreview(vet, 'case-1')).rejects.toThrow(
         NotFoundException,
       );
@@ -218,7 +218,7 @@ describe('MedicalCasesService', () => {
     });
 
     it('shows the active lock, the health warning and the pending requests', async () => {
-      horseAccess.findReadable.mockResolvedValue({
+      horseAccess.findReadableHorseForActor.mockResolvedValue({
         id: 'h1',
         healthStatus: HorseHealthStatus.INJURED,
       });

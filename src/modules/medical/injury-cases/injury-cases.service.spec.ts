@@ -12,7 +12,7 @@ function actorWith(role: UserRole): Actor {
 
 describe('InjuryCasesService.listInjuries', () => {
   let injuries: { find: jest.Mock };
-  let horseAccess: { findReadable: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock };
   let service: InjuryCasesService;
 
   beforeEach(() => {
@@ -33,7 +33,7 @@ describe('InjuryCasesService.listInjuries', () => {
         },
       ]),
     };
-    horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     service = new InjuryCasesService(
       horseAccess as unknown as HorseAccessService,
       { manager: injuries } as unknown as DataSource,
@@ -52,7 +52,7 @@ describe('InjuryCasesService.listInjuries', () => {
   });
 
   it('answers not found for a horse outside the caller scope', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
     await expect(
       service.listInjuries(actorWith(UserRole.HORSE_OWNER), 'h1'),
     ).rejects.toThrow(NotFoundException);

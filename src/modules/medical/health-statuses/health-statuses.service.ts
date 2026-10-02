@@ -93,7 +93,7 @@ export class HealthStatusesService {
     actor: Actor,
     horseId: string,
   ): Promise<HealthHistoryItemDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     return this.repository.history(horseId);
   }
 }

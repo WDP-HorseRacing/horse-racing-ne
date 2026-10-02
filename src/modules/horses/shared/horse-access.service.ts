@@ -21,8 +21,8 @@ import { HorsesSharedRepository } from './horses-shared.repository';
 /**
  * Các kiểm tra người gọi và con ngựa dùng chung cho mọi feature của module horses và cho module khác (export qua HorsesSharedModule).
  *
- * - Xem (404 khi ngoài phạm vi): findReadable, findReadableHorse
- * - Ghi (409 hồ sơ đã xóa với Club Manager, 404 với vai trò khác): lockWritableHorse, findWritableHorse, lockVisibleHorse
+ * - Xem (404 khi ngoài phạm vi): findReadableHorseForActor, findReadableHorse
+ * - Ghi (409 hồ sơ đã xóa với Club Manager, 404 với vai trò khác): lockWritableHorse, findWritableHorse, lockWritableHorseInScope
  * - Phạm vi Head Trainer theo khu: isHorseInTrainerBarn, assertTrainerBarn
  */
 @Injectable()
@@ -59,7 +59,7 @@ export class HorseAccessService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
-  async findReadable(
+  async findReadableHorseForActor(
     actor: Actor,
     horseId: string,
     manager = this.dataSource.manager,
@@ -100,18 +100,18 @@ export class HorseAccessService {
   /**
    * Lấy user hiện tại, khóa row con ngựa rồi kiểm lại phạm vi xem, dùng trước thao tác ghi trong transaction
    *
+   * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @param manager EntityManager của transaction đang chạy
    * @returns Promise trả về user hiện tại và con ngựa đã khóa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa (vai trò khác Club Manager), hoặc ngựa nằm ngoài phạm vi
    */
-  async lockVisibleHorse(
+  async lockWritableHorseInScope(
+    manager: EntityManager,
     actor: Actor,
     horseId: string,
-    manager: EntityManager,
   ): Promise<{ caller: CurrentActorUser; horse: HorseEntity }> {
     const caller = await this.currentUser(actor, manager);
     const horse = await this.lockWritableHorse(manager, actor, horseId);
@@ -171,7 +171,7 @@ export class HorseAccessService {
    * @returns Promise trả về con ngựa
    * @throws NotFoundException Nếu không có ngựa hoặc hồ sơ đã xóa
    */
-  async findHorse(
+  async findNotDeletedHorse(
     id: string,
     manager = this.dataSource.manager,
   ): Promise<HorseEntity> {

@@ -91,7 +91,7 @@ export class HorseMeasurementsService {
     const from = query.from ? new Date(query.from) : undefined;
     const to = query.to ? new Date(query.to) : undefined;
     assertTimeRange(from, to);
-    await this.access.findReadable(actor, horseId);
+    await this.access.findReadableHorseForActor(actor, horseId);
     const [measurements, total] = await this.measurements.findAndCount({
       where: {
         horseId,
@@ -153,10 +153,10 @@ export class HorseMeasurementsService {
 
     const { callerId, created } = await this.dataSource.transaction(
       async (manager) => {
-        const { caller, horse } = await this.access.lockVisibleHorse(
+        const { caller, horse } = await this.access.lockWritableHorseInScope(
+          manager,
           actor,
           horseId,
-          manager,
         );
         await this.assertCanRecord(actor, caller.id, horseId, manager);
         this.access.assertNotTransferred(horse);
@@ -306,10 +306,10 @@ export class HorseMeasurementsService {
     body: DeleteHorseMeasurementDto,
   ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
-      const { caller } = await this.access.lockVisibleHorse(
+      const { caller } = await this.access.lockWritableHorseInScope(
+        manager,
         actor,
         horseId,
-        manager,
       );
 
       const measurement = await manager.findOne(HorseMeasurementEntity, {

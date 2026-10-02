@@ -197,7 +197,7 @@ export class TrainingLockService {
     actor: Actor,
     horseId: string,
   ): Promise<TrainingLockResponseDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const locks = await this.locks.find({
       where: { horseId },
       order: { lockStart: 'DESC' },
@@ -219,7 +219,7 @@ export class TrainingLockService {
     lockId: string,
   ): Promise<TrainingLockResponseDto> {
     const lock = await this.findLock(lockId);
-    await this.horseAccess.findReadable(actor, lock.horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, lock.horseId);
     return toTrainingLockResponse(lock);
   }
 

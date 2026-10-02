@@ -67,7 +67,7 @@ export class HorseDeletionsService {
       const horse = await this.access.lockWritableHorse(manager, actor, id);
       this.access.assertNotTransferred(horse);
       assertNoBusinessData(
-        await this.deletions.businessDataLabels(id, manager),
+        await this.deletions.businessDataLabels(manager, id),
       );
       assertNotParent(await this.pedigree.parentUsage(manager, id));
       const horses = manager.getRepository(HorseEntity);
@@ -110,7 +110,7 @@ export class HorseDeletionsService {
     const horse = await this.access.findWritableHorse(actor, id);
     const manager = this.dataSource.manager;
     const [businessData, parentUsage] = await Promise.all([
-      this.deletions.businessDataLabels(id, manager),
+      this.deletions.businessDataLabels(manager, id),
       this.pedigree.parentUsage(manager, id),
     ]);
     return toDeletionPreviewResponse(horse, businessData, parentUsage);
@@ -141,9 +141,9 @@ export class HorseDeletionsService {
     }
     const manager = this.dataSource.manager;
     const [barnCleared, ownerCleared] = await Promise.all([
-      horse.barnId ? this.deletions.barnName(horse.barnId, manager) : null,
+      horse.barnId ? this.deletions.barnName(manager, horse.barnId) : null,
       horse.ownerId
-        ? this.horses.inactiveOwnerName(horse.ownerId, manager)
+        ? this.horses.invalidOwnerName(horse.ownerId, manager)
         : null,
     ]);
     return toRestorePreviewResponse(horse, barnCleared, ownerCleared);
@@ -180,12 +180,12 @@ export class HorseDeletionsService {
         throw new ConflictException('Hồ sơ ngựa chưa bị xóa');
       }
       const clearBarn = horse.barnId !== null;
-      const clearOwner =
+      const shouldClearOwner =
         horse.ownerId !== null &&
         !(await this.horses.lockActiveHorseOwner(manager, horse.ownerId));
       const cleared = {
         ...(clearBarn ? { barnId: null } : {}),
-        ...(clearOwner ? { ownerId: null } : {}),
+        ...(shouldClearOwner ? { ownerId: null } : {}),
       };
       const horses = manager.getRepository(HorseEntity);
       await horses.restore({ id });
@@ -199,13 +199,13 @@ export class HorseDeletionsService {
           deletedAt: horse.deletedAt,
           deletedReason: horse.deletedReason,
           ...(clearBarn ? { barnId: horse.barnId } : {}),
-          ...(clearOwner ? { ownerId: horse.ownerId } : {}),
+          ...(shouldClearOwner ? { ownerId: horse.ownerId } : {}),
         },
         after: { deletedAt: null, deletedReason: null, ...cleared },
         reason: body.reason,
         feature: 'F1.8',
       });
     });
-    return toHorseResponse(await this.access.findHorse(id));
+    return toHorseResponse(await this.access.findNotDeletedHorse(id));
   }
 }

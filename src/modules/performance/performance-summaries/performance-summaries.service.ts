@@ -33,7 +33,7 @@ export class PerformanceSummariesService {
     actor: Actor,
     horseId: string,
   ): Promise<HorsePerformanceResponseDto> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const metrics = await this.performanceRepository.listMetrics(horseId);
     const evaluations =
       await this.performanceRepository.listEvaluations(horseId);
@@ -53,7 +53,7 @@ export class PerformanceSummariesService {
     actor: Actor,
     horseId: string,
   ): Promise<SessionPerformanceSummaryDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const rows = await this.performanceRepository.sessionSummaries(horseId);
     return rows.map(toSessionPerformanceSummary);
   }

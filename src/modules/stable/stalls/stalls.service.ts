@@ -295,15 +295,15 @@ export class StallsService {
     await this.dataSource.transaction(async (manager) => {
       const { stall } = await this.lockStallWithBarns(manager, id);
 
-      const hasActiveAssignment = await manager.exists(StallAssignmentEntity, {
+      const hasOpenAssignment = await manager.exists(StallAssignmentEntity, {
         where: { stallId: id, endAt: IsNull() },
       });
-      if (hasActiveAssignment) {
+      if (hasOpenAssignment) {
         throw new ConflictException(
           'Không thể xóa ô chuồng đang có ngựa phân công',
         );
       }
-      if (isStallFree(stall.status, hasActiveAssignment)) {
+      if (isStallFree(stall.status, hasOpenAssignment)) {
         await this.assertBarnKeepsStallsForPendingHorses(manager, stall.barnId);
       }
 
@@ -435,10 +435,10 @@ export class StallsService {
           'Ô chuồng không thuộc khu chuồng của ngựa',
         );
       }
-      const isStallOccupied = await manager.exists(StallAssignmentEntity, {
+      const hasOpenAssignment = await manager.exists(StallAssignmentEntity, {
         where: { stallId: stall.id, endAt: IsNull() },
       });
-      if (!isStallFree(stall.status, isStallOccupied)) {
+      if (!isStallFree(stall.status, hasOpenAssignment)) {
         const capacity =
           (
             await this.stableRepository.countStallCapacity(manager, [
@@ -454,7 +454,7 @@ export class StallsService {
 
       const now = new Date();
       if (current) {
-        await this.closeAssignment(manager, current, now);
+        await this.closeAssignmentAndFreeStall(manager, current, now);
         await this.auditService.record(manager, {
           actorId: callerId,
           action: AuditAction.UPDATE,
@@ -510,7 +510,7 @@ export class StallsService {
    * @param horseId UUID của ngựa
    * @returns Promise chứa ô vừa được trả, hoặc null nếu ngựa không có phân công ô đang mở
    */
-  async releaseStallByHorse(
+  async closeOpenStallAssignment(
     manager: EntityManager,
     horseId: string,
   ): Promise<ReleasedStall | null> {
@@ -519,7 +519,7 @@ export class StallsService {
       lock: { mode: 'pessimistic_write' },
     });
     if (!current) return null;
-    const stall = await this.closeAssignment(manager, current, new Date());
+    const stall = await this.closeAssignmentAndFreeStall(manager, current, new Date());
     return { stallId: stall.id, stallCode: stall.code };
   }
 
@@ -563,7 +563,7 @@ export class StallsService {
         );
       }
 
-      return this.finishAssignment(manager, caller.id, assignment);
+      return this.closeAssignmentWithAudit(manager, caller.id, assignment);
     });
   }
 
@@ -581,7 +581,7 @@ export class StallsService {
    * @throws ForbiddenException Nếu ngựa không thuộc khu người gọi phụ trách
    * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc chưa được xếp khu
    */
-  async releaseHorseStall(
+  async removeHorseFromStall(
     actor: Actor,
     horseId: string,
   ): Promise<StallAssignmentResponseDto> {
@@ -596,7 +596,7 @@ export class StallsService {
       if (!assignment) {
         throw new NotFoundException('Ngựa chưa được xếp ô chuồng');
       }
-      return this.finishAssignment(manager, caller.id, assignment);
+      return this.closeAssignmentWithAudit(manager, caller.id, assignment);
     });
   }
 
@@ -608,13 +608,13 @@ export class StallsService {
    * @param assignment Phân công ô đang mở (đã lock)
    * @returns Promise trả về phân công ô vừa kết thúc
    */
-  private async finishAssignment(
+  private async closeAssignmentWithAudit(
     manager: EntityManager,
     callerId: string,
     assignment: StallAssignmentEntity,
   ): Promise<StallAssignmentResponseDto> {
     const now = new Date();
-    const stall = await this.closeAssignment(manager, assignment, now);
+    const stall = await this.closeAssignmentAndFreeStall(manager, assignment, now);
     const snapshot = {
       horseId: assignment.horseId,
       stallId: stall.id,
@@ -647,7 +647,7 @@ export class StallsService {
    * @param endAt Thời điểm kết thúc phân công
    * @returns Promise chứa ô chuồng của phân công vừa đóng
    */
-  private async closeAssignment(
+  private async closeAssignmentAndFreeStall(
     manager: EntityManager,
     assignment: StallAssignmentEntity,
     endAt: Date,

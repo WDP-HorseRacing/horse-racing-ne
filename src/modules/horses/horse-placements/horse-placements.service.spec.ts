@@ -43,14 +43,14 @@ describe('HorsePlacementsService', () => {
   };
   let barns: { lockAssignableBarn: jest.Mock };
   let stalls: {
-    releaseStallByHorse: jest.Mock;
+    closeOpenStallAssignment: jest.Mock;
     moveHorseToStallInTransaction: jest.Mock;
   };
   let grooms: { assignInTransaction: jest.Mock };
   let training: { withdrawHorseFromClasses: jest.Mock };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
-  let placements: { findBarn: jest.Mock; barnChangeImpact: jest.Mock };
+  let placements: { findBarnWithHeadTrainer: jest.Mock; barnChangeImpact: jest.Mock };
   let service: HorsePlacementsService;
 
   const actor = (): Actor => ({ sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] });
@@ -62,7 +62,7 @@ describe('HorsePlacementsService', () => {
   };
 
   const expectNoWrite = () => {
-    expect(stalls.releaseStallByHorse).not.toHaveBeenCalled();
+    expect(stalls.closeOpenStallAssignment).not.toHaveBeenCalled();
     expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
     expect(horseRepository.update).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe('HorsePlacementsService', () => {
       assignInTransaction: jest.fn(
         track('assignInTransaction', {
           response: { id: 'ga-1', groomId: 'g-1' },
-          notice: { eventId: 'ga-1', horseId: HORSE_ID },
+          changedEvent: { eventId: 'ga-1', horseId: HORSE_ID },
         }),
       ),
     };
@@ -126,8 +126,8 @@ describe('HorsePlacementsService', () => {
       moveHorseToStallInTransaction: jest.fn(
         track('moveHorseToStallInTransaction', { id: 'sa-1', stallId: 's1' }),
       ),
-      releaseStallByHorse: jest.fn(
-        track('releaseStallByHorse', { stallId: 's1', stallCode: 'A-01' }),
+      closeOpenStallAssignment: jest.fn(
+        track('closeOpenStallAssignment', { stallId: 's1', stallCode: 'A-01' }),
       ),
     };
     events = {
@@ -145,7 +145,7 @@ describe('HorsePlacementsService', () => {
     };
     audit = { record: jest.fn(track('audit')) };
     placements = {
-      findBarn: jest.fn(() =>
+      findBarnWithHeadTrainer: jest.fn(() =>
         Promise.resolve({
           id: 'b2',
           name: 'Khu C',
@@ -211,7 +211,7 @@ describe('HorsePlacementsService', () => {
   it('moves the horse to the new barn and notifies after the commit', async () => {
     await assign('b2');
     expect(barns.lockAssignableBarn).toHaveBeenCalledWith(manager, 'b2');
-    expect(stalls.releaseStallByHorse).toHaveBeenCalledWith(manager, HORSE_ID);
+    expect(stalls.closeOpenStallAssignment).toHaveBeenCalledWith(manager, HORSE_ID);
     expect(horseRepository.update).toHaveBeenCalledWith(
       { id: HORSE_ID },
       { barnId: 'b2' },
@@ -234,7 +234,7 @@ describe('HorsePlacementsService', () => {
     expect(calls).toEqual([
       'transaction:start',
       'lockAssignableBarn',
-      'releaseStallByHorse',
+      'closeOpenStallAssignment',
       'withdrawHorseFromClasses',
       'update',
       'audit',
@@ -244,7 +244,7 @@ describe('HorsePlacementsService', () => {
   });
 
   it('records a null old stall when the horse had no stall', async () => {
-    stalls.releaseStallByHorse.mockResolvedValue(null);
+    stalls.closeOpenStallAssignment.mockResolvedValue(null);
     await assign('b2');
     expect(audit.record).toHaveBeenCalledWith(
       manager,
@@ -412,7 +412,7 @@ describe('HorsePlacementsService', () => {
     });
 
     it('returns allowed = false with the reason when the horse is already in that barn', async () => {
-      placements.findBarn.mockResolvedValue({
+      placements.findBarnWithHeadTrainer.mockResolvedValue({
         id: 'b1',
         name: 'Khu A',
         headTrainerId: 'ht-1',
@@ -442,7 +442,7 @@ describe('HorsePlacementsService', () => {
     });
 
     it('returns 404 when the barn is missing', async () => {
-      placements.findBarn.mockResolvedValue(null);
+      placements.findBarnWithHeadTrainer.mockResolvedValue(null);
 
       await expect(preview('b9')).rejects.toThrow(NotFoundException);
       expect(placements.barnChangeImpact).not.toHaveBeenCalled();
@@ -452,7 +452,7 @@ describe('HorsePlacementsService', () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
 
       await expect(preview()).rejects.toThrow(ConflictException);
-      expect(placements.findBarn).not.toHaveBeenCalled();
+      expect(placements.findBarnWithHeadTrainer).not.toHaveBeenCalled();
     });
   });
 });

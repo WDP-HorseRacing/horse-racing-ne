@@ -10,13 +10,13 @@ export class HorseDeletionsRepository {
    * - Tính cả dòng đã đóng, đã hủy hoặc đã xóa mềm
    * - Danh sách bảng và nhãn lấy từ HORSE_BUSINESS_TABLES; chỉ đọc bảng của module khác
    *
-   * @param horseId UUID của ngựa
    * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
    * @returns Promise trả về nhãn các loại dữ liệu đang có, rỗng nếu chưa phát sinh gì
    */
   async businessDataLabels(
-    horseId: string,
     manager: EntityManager,
+    horseId: string,
   ): Promise<string[]> {
     const tables = Object.keys(HORSE_BUSINESS_TABLES);
     const checks = tables
@@ -37,13 +37,13 @@ export class HorseDeletionsRepository {
   /**
    * Lấy tên khu theo id, kể cả khu đã xóa mềm
    *
-   * @param barnId UUID của khu
    * @param manager EntityManager dùng để query
+   * @param barnId UUID của khu
    * @returns Promise trả về tên khu, hoặc null nếu không có khu đó
    */
   async barnName(
-    barnId: string,
     manager: EntityManager,
+    barnId: string,
   ): Promise<string | null> {
     const rows: Array<{ name: string }> = await manager.query(
       'SELECT name FROM barns WHERE id = $1',

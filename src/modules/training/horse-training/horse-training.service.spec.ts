@@ -33,7 +33,7 @@ function sessionRow(participantId: string) {
 }
 
 describe('HorseTrainingService', () => {
-  let horseAccess: { findReadable: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock };
   let repository: {
     listClasses: jest.Mock;
     listSessions: jest.Mock;
@@ -46,7 +46,7 @@ describe('HorseTrainingService', () => {
     Object.assign(new HorseTrainingSessionQueryDto(), patch);
 
   beforeEach(() => {
-    horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     repository = {
       listClasses: jest.fn().mockResolvedValue([]),
       listSessions: jest.fn().mockResolvedValue({ rows: [], total: 0 }),
@@ -60,7 +60,7 @@ describe('HorseTrainingService', () => {
   });
 
   it('returns 404 and reads nothing when the horse is outside the caller scope', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
 
     await expect(service.listClasses(actor, 'h1')).rejects.toThrow(
       NotFoundException,
@@ -75,7 +75,7 @@ describe('HorseTrainingService', () => {
   it('checks the caller scope with the shared horse access rules', async () => {
     await service.listClasses(actor, 'h1');
 
-    expect(horseAccess.findReadable).toHaveBeenCalledWith(actor, 'h1');
+    expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(actor, 'h1');
   });
 
   it('passes the page, class and time filters to the repository', async () => {

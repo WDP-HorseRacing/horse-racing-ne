@@ -49,10 +49,10 @@ import {
   lifecycleImpactSummary,
   lifecycleSideEffects,
   lifecycleTransitionError,
-  managerForbiddenFields,
+  raceAptitudeFieldsIn,
   measurementAlerts,
   placementStatusOf,
-  trainerForbiddenFields,
+  nonRaceAptitudeFieldsIn,
 } from './horse.policy';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -470,30 +470,30 @@ describe('horse.policy', () => {
     });
   });
 
-  describe('managerForbiddenFields / trainerForbiddenFields', () => {
-    it('forbids raceAptitude for the manager and ignores undefined values', () => {
+  describe('raceAptitudeFieldsIn / nonRaceAptitudeFieldsIn', () => {
+    it('returns raceAptitude only when it is sent', () => {
       expect(
-        managerForbiddenFields({
+        raceAptitudeFieldsIn({
           name: 'Gió',
           raceAptitude: 'SPRINTER',
           color: undefined,
         }),
       ).toEqual(['raceAptitude']);
       expect(
-        managerForbiddenFields({ name: 'Gió', raceAptitude: undefined }),
+        raceAptitudeFieldsIn({ name: 'Gió', raceAptitude: undefined }),
       ).toEqual([]);
     });
 
-    it('forbids every field except raceAptitude for the trainer', () => {
+    it('returns every sent field except raceAptitude', () => {
       expect(
-        trainerForbiddenFields({
+        nonRaceAptitudeFieldsIn({
           raceAptitude: 'MILER',
           name: 'Gió',
           ownerId: null,
           color: undefined,
         }),
       ).toEqual(['name', 'ownerId']);
-      expect(trainerForbiddenFields({ raceAptitude: 'MILER' })).toEqual([]);
+      expect(nonRaceAptitudeFieldsIn({ raceAptitude: 'MILER' })).toEqual([]);
     });
   });
 

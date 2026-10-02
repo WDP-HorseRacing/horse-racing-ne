@@ -84,7 +84,7 @@ export class HorsePlacementsService {
       if (horse.barnId === body.barnId) return false;
       assertBarnChangeReason(horse.barnId, body.reason);
       const newBarn = await this.barns.lockAssignableBarn(manager, body.barnId);
-      const released = await this.stalls.releaseStallByHorse(manager, horseId);
+      const released = await this.stalls.closeOpenStallAssignment(manager, horseId);
       const withdrawn = await this.training.withdrawHorseFromClasses(
         manager,
         horseId,
@@ -126,7 +126,7 @@ export class HorsePlacementsService {
       };
       this.events.publish(HORSE_BARN_ASSIGNED_EVENT, event);
     }
-    return toHorseResponse(await this.access.findHorse(horseId));
+    return toHorseResponse(await this.access.findNotDeletedHorse(horseId));
   }
 
   /**
@@ -151,7 +151,7 @@ export class HorsePlacementsService {
   ): Promise<HorseBarnPreviewResponseDto> {
     await this.access.currentUser(actor);
     const horse = await this.access.findWritableHorse(actor, horseId);
-    const target = await this.placements.findBarn(query.barnId);
+    const target = await this.placements.findBarnWithHeadTrainer(query.barnId);
     if (!target) throw new NotFoundException('Không tìm thấy khu chuồng');
     const blockedReason = barnChangeBlockedReason(
       horse.lifecycleStatus,
@@ -215,8 +215,8 @@ export class HorsePlacementsService {
         ),
       }),
     );
-    if (groom.notice) {
-      this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, groom.notice);
+    if (groom.changedEvent) {
+      this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, groom.changedEvent);
     }
     return { stallAssignment, groomAssignment: groom.response };
   }

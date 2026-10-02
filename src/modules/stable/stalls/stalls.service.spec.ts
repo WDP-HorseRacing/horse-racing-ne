@@ -374,9 +374,9 @@ describe('StallsService', () => {
     });
   });
 
-  describe('releaseHorseStall', () => {
+  describe('removeHorseFromStall', () => {
     const release = () =>
-      service.releaseHorseStall(actorWith(UserRole.HEAD_TRAINER), 'h1');
+      service.removeHorseFromStall(actorWith(UserRole.HEAD_TRAINER), 'h1');
 
     beforeEach(() => {
       rows.set(StallAssignmentEntity, {
@@ -575,10 +575,10 @@ describe('StallsService', () => {
     });
   });
 
-  describe('releaseStallByHorse', () => {
+  describe('closeOpenStallAssignment', () => {
     it('returns null when the horse has no open stall assignment', async () => {
       await expect(
-        service.releaseStallByHorse(manager as unknown as EntityManager, 'h1'),
+        service.closeOpenStallAssignment(manager as unknown as EntityManager, 'h1'),
       ).resolves.toBeNull();
       expect(manager.update).not.toHaveBeenCalled();
     });
@@ -591,7 +591,7 @@ describe('StallsService', () => {
         endAt: null,
       });
       await expect(
-        service.releaseStallByHorse(manager as unknown as EntityManager, 'h1'),
+        service.closeOpenStallAssignment(manager as unknown as EntityManager, 'h1'),
       ).resolves.toEqual({ stallId: 's0', stallCode: 'A-00' });
       expect(manager.findOne).toHaveBeenCalledWith(StallAssignmentEntity, {
         where: { horseId: 'h1', endAt: anything },

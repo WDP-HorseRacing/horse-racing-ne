@@ -9,11 +9,11 @@ const owner: Actor = { sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] };
 
 describe('PerformanceSummariesService', () => {
   let repository: Record<string, jest.Mock>;
-  let horseAccess: { findReadable: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock };
   let service: PerformanceSummariesService;
 
   beforeEach(() => {
-    horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     repository = {
       sessionSummaries: jest.fn().mockResolvedValue([
         {
@@ -38,18 +38,18 @@ describe('PerformanceSummariesService', () => {
   it('returns the per-session summary of a readable horse', async () => {
     const [row] = await service.listSessionSummaries(owner, 'h1');
     expect(row).toMatchObject({ sessionId: 'session-1', alertCount: 2 });
-    expect(horseAccess.findReadable).toHaveBeenCalledWith(owner, 'h1');
+    expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(owner, 'h1');
   });
 
   it('returns the raw summary of a readable horse', async () => {
     await service.getHorseSummary(owner, 'h1');
-    expect(horseAccess.findReadable).toHaveBeenCalledWith(owner, 'h1');
+    expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(owner, 'h1');
     expect(repository.listMetrics).toHaveBeenCalledWith('h1');
     expect(repository.listEvaluations).toHaveBeenCalledWith('h1');
   });
 
   it('answers not found for the per-session summary of a horse outside the caller scope', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
     await expect(service.listSessionSummaries(owner, 'h1')).rejects.toThrow(
       NotFoundException,
     );
@@ -57,7 +57,7 @@ describe('PerformanceSummariesService', () => {
   });
 
   it('answers not found for the raw summary of a horse outside the caller scope', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
     await expect(service.getHorseSummary(owner, 'h1')).rejects.toThrow(
       NotFoundException,
     );

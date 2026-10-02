@@ -570,7 +570,7 @@ describe('HorseMeasurementsService', () => {
 describe('HorseMeasurementsService.listMeasurements', () => {
   const owner: Actor = { sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] };
   let repository: { findAndCount: jest.Mock };
-  let access: { findReadable: jest.Mock };
+  let access: { findReadableHorseForActor: jest.Mock };
   let service: HorseMeasurementsService;
 
   const query = (patch: Partial<HorseMeasurementListQueryDto> = {}) =>
@@ -578,7 +578,7 @@ describe('HorseMeasurementsService.listMeasurements', () => {
 
   beforeEach(() => {
     repository = { findAndCount: jest.fn().mockResolvedValue([[], 45]) };
-    access = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    access = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     service = new HorseMeasurementsService(
       repository as unknown as Repository<HorseMeasurementEntity>,
       {} as HorsesSharedRepository,
@@ -652,7 +652,7 @@ describe('HorseMeasurementsService.listMeasurements', () => {
   });
 
   it('answers 404 for a horse outside the caller scope', async () => {
-    access.findReadable.mockRejectedValue(new NotFoundException());
+    access.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
     await expect(
       service.listMeasurements(owner, 'h1', query()),
     ).rejects.toThrow(NotFoundException);

@@ -16,13 +16,13 @@ export class HorseStatusesRepository {
    * - Ô chuồng, groom và khu hiện tại
    * - Lệnh khóa huấn luyện đang ACTIVE không đếm ở đây, nơi gọi lấy qua HorsesSharedRepository.hasActiveTrainingLock
    *
-   * @param horseId UUID của ngựa
    * @param manager EntityManager dùng để query
+   * @param horseId UUID của ngựa
    * @returns Promise trả về số liệu hiện tại của ngựa, chưa gồm cờ khóa huấn luyện
    */
   async lifecycleImpact(
-    horseId: string,
     manager: EntityManager,
+    horseId: string,
   ): Promise<Omit<LifecycleImpactRow, 'hasActiveTrainingLock'>> {
     const rows: Array<Omit<LifecycleImpactRow, 'hasActiveTrainingLock'>> =
       await manager.query(

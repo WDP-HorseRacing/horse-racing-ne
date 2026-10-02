@@ -21,7 +21,7 @@ export class RaceResultsService {
   /**
    * Lấy lịch sử thi đấu của con ngựa, cuộc đua mới nhất đứng đầu
    *
-   * - Phạm vi xem theo HorseAccessService.findReadable: Club Manager xem cả hồ sơ đã xóa, Horse Owner chỉ ngựa mình sở hữu
+   * - Phạm vi xem theo HorseAccessService.findReadableHorseForActor: Club Manager xem cả hồ sơ đã xóa, Horse Owner chỉ ngựa mình sở hữu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -33,7 +33,7 @@ export class RaceResultsService {
     actor: Actor,
     horseId: string,
   ): Promise<HorseRaceResultResponseDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const registrations = await this.registrationsRepo.find({
       select: {
         id: true,

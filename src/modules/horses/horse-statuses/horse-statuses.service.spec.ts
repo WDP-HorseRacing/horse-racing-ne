@@ -44,18 +44,18 @@ describe('HorseStatusesService', () => {
   let horses: {
     hasActiveTrainingLock: jest.Mock;
     lockActiveHorseOwner: jest.Mock;
-    inactiveOwnerName: jest.Mock;
+    invalidOwnerName: jest.Mock;
   };
   let access: {
     currentUser: jest.Mock;
     lockWritableHorse: jest.Mock;
-    findHorse: jest.Mock;
+    findNotDeletedHorse: jest.Mock;
     findWritableHorse: jest.Mock;
     assertNotTransferred: jest.Mock;
   };
   let audit: { record: jest.Mock };
-  let stalls: { releaseStallByHorse: jest.Mock };
-  let grooms: { endGroomByHorse: jest.Mock };
+  let stalls: { closeOpenStallAssignment: jest.Mock };
+  let grooms: { endOpenGroomAssignment: jest.Mock };
   let trainingLocks: { releaseActiveLockByHorse: jest.Mock };
   let medicalLifecycle: {
     settleForTransfer: jest.Mock;
@@ -71,8 +71,8 @@ describe('HorseStatusesService', () => {
   const sideEffectMocks = () => [
     training.withdrawHorseFromClasses,
     racing.withdrawOpenRegistrationsByHorse,
-    stalls.releaseStallByHorse,
-    grooms.endGroomByHorse,
+    stalls.closeOpenStallAssignment,
+    grooms.endOpenGroomAssignment,
     trainingLocks.releaseActiveLockByHorse,
     medicalLifecycle.settleForTransfer,
   ];
@@ -126,22 +126,22 @@ describe('HorseStatusesService', () => {
     horses = {
       hasActiveTrainingLock: jest.fn().mockResolvedValue(false),
       lockActiveHorseOwner: jest.fn().mockResolvedValue(true),
-      inactiveOwnerName: jest.fn().mockResolvedValue(null),
+      invalidOwnerName: jest.fn().mockResolvedValue(null),
     };
     access = {
       currentUser: jest.fn().mockResolvedValue({ id: CALLER_ID }),
       lockWritableHorse: jest.fn(() => Promise.resolve(horse)),
-      findHorse: jest.fn(() => Promise.resolve(horse)),
+      findNotDeletedHorse: jest.fn(() => Promise.resolve(horse)),
       findWritableHorse: jest.fn(() => Promise.resolve(horse)),
       assertNotTransferred: jest.fn(),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     stalls = {
-      releaseStallByHorse: jest
+      closeOpenStallAssignment: jest
         .fn()
         .mockResolvedValue({ stallId: 's1', stallCode: 'A-01' }),
     };
-    grooms = { endGroomByHorse: jest.fn().mockResolvedValue('g1') };
+    grooms = { endOpenGroomAssignment: jest.fn().mockResolvedValue('g1') };
     events = { publish: jest.fn() };
     trainingLocks = {
       releaseActiveLockByHorse: jest.fn().mockResolvedValue(true),
@@ -194,7 +194,7 @@ describe('HorseStatusesService', () => {
     });
 
     it('tells no groom when the transferred horse had none', async () => {
-      grooms.endGroomByHorse.mockResolvedValue(null);
+      grooms.endOpenGroomAssignment.mockResolvedValue(null);
       await change(HorseLifecycleStatus.TRANSFERRED);
       expect(events.publish).not.toHaveBeenCalled();
     });
@@ -215,11 +215,11 @@ describe('HorseStatusesService', () => {
         manager,
         HORSE_ID,
       );
-      expect(stalls.releaseStallByHorse).toHaveBeenCalledWith(
+      expect(stalls.closeOpenStallAssignment).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
       );
-      expect(grooms.endGroomByHorse).toHaveBeenCalledWith(manager, HORSE_ID);
+      expect(grooms.endOpenGroomAssignment).toHaveBeenCalledWith(manager, HORSE_ID);
       expect(trainingLocks.releaseActiveLockByHorse).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
@@ -314,8 +314,8 @@ describe('HorseStatusesService', () => {
 
     it('audits only the transfer effects that actually happened', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
-      stalls.releaseStallByHorse.mockResolvedValue(null);
-      grooms.endGroomByHorse.mockResolvedValue(null);
+      stalls.closeOpenStallAssignment.mockResolvedValue(null);
+      grooms.endOpenGroomAssignment.mockResolvedValue(null);
       trainingLocks.releaseActiveLockByHorse.mockResolvedValue(false);
       await change(HorseLifecycleStatus.TRANSFERRED, 'Bán');
       expect(audit.record).toHaveBeenCalledWith(
@@ -368,11 +368,11 @@ describe('HorseStatusesService', () => {
         { reason: 'Ngựa chuyển nhượng: Bán', at: anyDate },
       );
       expect(racing.withdrawOpenRegistrationsByHorse).not.toHaveBeenCalled();
-      expect(stalls.releaseStallByHorse).toHaveBeenCalledWith(
+      expect(stalls.closeOpenStallAssignment).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
       );
-      expect(grooms.endGroomByHorse).toHaveBeenCalledWith(manager, HORSE_ID);
+      expect(grooms.endOpenGroomAssignment).toHaveBeenCalledWith(manager, HORSE_ID);
       expect(trainingLocks.releaseActiveLockByHorse).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
@@ -391,8 +391,8 @@ describe('HorseStatusesService', () => {
         manager,
         HORSE_ID,
       );
-      expect(stalls.releaseStallByHorse).not.toHaveBeenCalled();
-      expect(grooms.endGroomByHorse).not.toHaveBeenCalled();
+      expect(stalls.closeOpenStallAssignment).not.toHaveBeenCalled();
+      expect(grooms.endOpenGroomAssignment).not.toHaveBeenCalled();
       expect(trainingLocks.releaseActiveLockByHorse).not.toHaveBeenCalled();
       expect(horseRepository.update).toHaveBeenCalledWith(
         { id: HORSE_ID },
@@ -699,13 +699,13 @@ describe('HorseStatusesService', () => {
         summary:
           'Nếu kích hoạt lại sẽ đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom), đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại.',
       });
-      expect(horses.inactiveOwnerName).toHaveBeenCalledWith('owner-1', manager);
+      expect(horses.invalidOwnerName).toHaveBeenCalledWith('owner-1', manager);
       expectNothingWritten();
     });
 
     it('warns that an owner who is no longer an active HORSE_OWNER will be cleared when reactivating a transfer', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
-      horses.inactiveOwnerName.mockResolvedValue('Nguyen Van B');
+      horses.invalidOwnerName.mockResolvedValue('Nguyen Van B');
       await expect(preview(HorseLifecycleStatus.ACTIVE)).resolves.toEqual(
         expect.objectContaining({
           ownerCleared: 'Nguyen Van B',
@@ -723,7 +723,7 @@ describe('HorseStatusesService', () => {
           ownerCleared: null,
         }),
       );
-      expect(horses.inactiveOwnerName).not.toHaveBeenCalled();
+      expect(horses.invalidOwnerName).not.toHaveBeenCalled();
     });
 
     it('blocks an invalid transition', async () => {

@@ -83,7 +83,7 @@ export class HorseStatusesService {
     id: string,
     body: UpdateHorseLifecycleDto,
   ): Promise<HorseResponseDto> {
-    const releasedGroomId = await this.dataSource.transaction(
+    const endedGroomId = await this.dataSource.transaction(
       async (manager) => {
         const caller = await this.access.currentUser(actor, manager);
         const horse = await this.access.lockWritableHorse(manager, actor, id);
@@ -111,11 +111,11 @@ export class HorseStatusesService {
           );
           effectAfter.classesWithdrawn = withdrawn.classIds.length;
         }
-        const clearOwner =
+        const shouldClearOwner =
           effects.reactivateFromTransfer &&
           horse.ownerId !== null &&
           !(await this.horses.lockActiveHorseOwner(manager, horse.ownerId));
-        if (clearOwner) {
+        if (shouldClearOwner) {
           effectBefore.ownerId = horse.ownerId;
           effectAfter.ownerId = null;
         }
@@ -124,7 +124,7 @@ export class HorseStatusesService {
             await this.racing.withdrawOpenRegistrationsByHorse(manager, id);
         }
         if (effects.releaseStall) {
-          const released = await this.stalls.releaseStallByHorse(manager, id);
+          const released = await this.stalls.closeOpenStallAssignment(manager, id);
           if (released) {
             effectBefore.stallCode = released.stallCode;
             effectAfter.stallCode = null;
@@ -132,10 +132,9 @@ export class HorseStatusesService {
         }
         let endedGroomId: string | null = null;
         if (effects.endGroom) {
-          const groomId = await this.grooms.endGroomByHorse(manager, id);
-          endedGroomId = groomId;
-          if (groomId) {
-            effectBefore.groomId = groomId;
+          endedGroomId = await this.grooms.endOpenGroomAssignment(manager, id);
+          if (endedGroomId) {
+            effectBefore.groomId = endedGroomId;
             effectAfter.groomId = null;
           }
         }
@@ -156,7 +155,7 @@ export class HorseStatusesService {
           ...(effects.resetHealth
             ? { healthStatus: HorseHealthStatus.UNDER_OBSERVATION }
             : {}),
-          ...(clearOwner ? { ownerId: null } : {}),
+          ...(shouldClearOwner ? { ownerId: null } : {}),
         };
         await manager.getRepository(HorseEntity).update({ id }, changes);
         await this.auditService.record(manager, {
@@ -188,15 +187,15 @@ export class HorseStatusesService {
         return endedGroomId;
       },
     );
-    if (releasedGroomId) {
+    if (endedGroomId) {
       const event: HorseGroomReleasedEvent = {
         eventId: randomUUID(),
         horseId: id,
-        groomId: releasedGroomId,
+        groomId: endedGroomId,
       };
       this.events.publish(HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT, event);
     }
-    return toHorseResponse(await this.access.findHorse(id));
+    return toHorseResponse(await this.access.findNotDeletedHorse(id));
   }
 
   /**
@@ -231,10 +230,10 @@ export class HorseStatusesService {
             : null));
     const [counts, hasActiveTrainingLock, invalidOwnerName, medical] =
       await Promise.all([
-        this.statuses.lifecycleImpact(id, manager),
+        this.statuses.lifecycleImpact(manager, id),
         this.horses.hasActiveTrainingLock(id, manager),
         effects.reactivateFromTransfer && horse.ownerId
-          ? this.horses.inactiveOwnerName(horse.ownerId, manager)
+          ? this.horses.invalidOwnerName(horse.ownerId, manager)
           : Promise.resolve(null),
         effects.settleMedicalWork
           ? this.medicalLifecycle.transferImpact(id, manager)

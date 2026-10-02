@@ -428,30 +428,30 @@ export function lifecycleImpactSummary(
 }
 
 /**
- * Liệt kê các field Club Manager gửi lên nhưng không có quyền sửa
+ * Lấy field sở trường cự ly (raceAptitude) trong các field gửi lên
  *
- * - Club Manager không được sửa sở trường cự ly (raceAptitude); chỉ Head Trainer phụ trách khu được sửa
+ * - Chỉ Head Trainer phụ trách khu được sửa field này, Club Manager không được sửa
  * - Field có giá trị undefined được coi là không gửi lên
  *
  * @param fields Các field hồ sơ ngựa người gọi gửi lên, không gồm version
- * @returns Tên các field ngoài quyền, rỗng nếu hợp lệ
+ * @returns ['raceAptitude'] nếu có gửi, rỗng nếu không
  */
-export function managerForbiddenFields(fields: object): string[] {
+export function raceAptitudeFieldsIn(fields: object): string[] {
   return Object.entries(fields)
     .filter(([key, value]) => value !== undefined && key === 'raceAptitude')
     .map(([key]) => key);
 }
 
 /**
- * Liệt kê các field Head Trainer gửi lên nhưng không có quyền sửa
+ * Lấy các field khác sở trường cự ly (raceAptitude) trong các field gửi lên
  *
- * - Head Trainer chỉ được sửa sở trường cự ly (raceAptitude)
+ * - Chỉ Club Manager được sửa các field này, Head Trainer chỉ được sửa raceAptitude
  * - Field có giá trị undefined được coi là không gửi lên
  *
  * @param fields Các field hồ sơ ngựa người gọi gửi lên, không gồm version
- * @returns Tên các field ngoài quyền, rỗng nếu hợp lệ
+ * @returns Tên các field đã gửi khác raceAptitude, rỗng nếu không có
  */
-export function trainerForbiddenFields(fields: object): string[] {
+export function nonRaceAptitudeFieldsIn(fields: object): string[] {
   return Object.entries(fields)
     .filter(([key, value]) => value !== undefined && key !== 'raceAptitude')
     .map(([key]) => key);

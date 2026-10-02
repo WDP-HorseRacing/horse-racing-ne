@@ -19,7 +19,7 @@ const vet: Actor = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
 
 describe('HealthStatusesService', () => {
   let access: { lockHorseForWrite: jest.Mock };
-  let horseAccess: { findReadable: jest.Mock };
+  let horseAccess: { findReadableHorseForActor: jest.Mock };
   let horseHealth: { applyHealthStatus: jest.Mock };
   let repository: { history: jest.Mock };
   let events: { publish: jest.Mock };
@@ -33,7 +33,7 @@ describe('HealthStatusesService', () => {
         horse: { id: 'h1', healthStatus: HorseHealthStatus.ELIGIBLE },
       }),
     };
-    horseAccess = { findReadable: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     horseHealth = {
       applyHealthStatus: jest.fn(
         (_m: unknown, input: { to: HorseHealthStatus }) =>
@@ -125,7 +125,7 @@ describe('HealthStatusesService', () => {
   });
 
   it('answers not found for the history of a horse outside the caller scope', async () => {
-    horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
     await expect(
       service.history({ sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] }, 'h9'),
     ).rejects.toThrow(NotFoundException);

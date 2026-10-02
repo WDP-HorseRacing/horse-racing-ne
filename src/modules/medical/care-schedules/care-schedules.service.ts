@@ -71,7 +71,7 @@ export class CareSchedulesService {
     actor: Actor,
     horseId: string,
   ): Promise<CareScheduleResponseDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const caller = await this.horseAccess.currentUser(actor);
     const groomOnly = this.isGroomOnly(actor);
     if (groomOnly && !(await this.horses.isGroomAssigned(horseId, caller.id))) {

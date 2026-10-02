@@ -54,9 +54,9 @@ describe('ExamRequestsService', () => {
   let access: { lockHorseForWrite: jest.Mock };
   let horseAccess: {
     currentUser: jest.Mock;
-    findReadable: jest.Mock;
+    findReadableHorseForActor: jest.Mock;
     isHorseInTrainerBarn: jest.Mock;
-    lockVisibleHorse: jest.Mock;
+    lockWritableHorseInScope: jest.Mock;
     assertNotTransferred: jest.Mock;
   };
   let horses: { isGroomAssigned: jest.Mock; assignedHorseIds: jest.Mock };
@@ -127,9 +127,9 @@ describe('ExamRequestsService', () => {
     };
     horseAccess = {
       currentUser: jest.fn().mockResolvedValue({ id: 'user-1' }),
-      findReadable: jest.fn().mockResolvedValue(HORSE),
+      findReadableHorseForActor: jest.fn().mockResolvedValue(HORSE),
       isHorseInTrainerBarn: jest.fn().mockResolvedValue(false),
-      lockVisibleHorse: jest.fn().mockResolvedValue({
+      lockWritableHorseInScope: jest.fn().mockResolvedValue({
         caller: { id: 'user-1' },
         horse: HORSE,
       }),
@@ -185,7 +185,7 @@ describe('ExamRequestsService', () => {
     });
 
     it('propagates not found for a horse outside the caller scope', async () => {
-      horseAccess.lockVisibleHorse.mockRejectedValue(new NotFoundException());
+      horseAccess.lockWritableHorseInScope.mockRejectedValue(new NotFoundException());
       await expect(
         service.create(actorWith(UserRole.CLUB_MANAGER), 'h9', body),
       ).rejects.toThrow(NotFoundException);
@@ -290,7 +290,7 @@ describe('ExamRequestsService', () => {
     });
 
     it('answers not found for a horse outside the caller scope', async () => {
-      horseAccess.findReadable.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
       await expect(
         service.listByHorse(actorWith(UserRole.VETERINARIAN), 'h9'),
       ).rejects.toThrow(NotFoundException);

@@ -80,10 +80,10 @@ export class ExamRequestsService {
     body: CreateExamRequestDto,
   ): Promise<ExamRequestResponseDto> {
     const request = await this.dataSource.transaction(async (manager) => {
-      const { caller, horse } = await this.horseAccess.lockVisibleHorse(
+      const { caller, horse } = await this.horseAccess.lockWritableHorseInScope(
+        manager,
         actor,
         horseId,
-        manager,
       );
       assertCanRequestExam({
         roles: actor.roles,
@@ -167,7 +167,7 @@ export class ExamRequestsService {
     actor: Actor,
     horseId: string,
   ): Promise<ExamRequestResponseDto[]> {
-    const horse = await this.horseAccess.findReadable(actor, horseId);
+    const horse = await this.horseAccess.findReadableHorseForActor(actor, horseId);
     if (this.isGroomOnly(actor)) {
       const caller = await this.horseAccess.currentUser(actor);
       if (!(await this.horses.isGroomAssigned(horseId, caller.id))) {

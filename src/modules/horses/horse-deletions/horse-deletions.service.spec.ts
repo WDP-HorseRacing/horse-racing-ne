@@ -48,7 +48,7 @@ describe('HorseDeletionsService', () => {
     findByIdWithDeleted: jest.Mock;
     lockHorseWithDeleted: jest.Mock;
     lockActiveHorseOwner: jest.Mock;
-    inactiveOwnerName: jest.Mock;
+    invalidOwnerName: jest.Mock;
   };
   let deletions: { businessDataLabels: jest.Mock; barnName: jest.Mock };
   let audit: { record: jest.Mock };
@@ -111,7 +111,7 @@ describe('HorseDeletionsService', () => {
       findByIdWithDeleted: jest.fn(() => Promise.resolve(horse)),
       lockHorseWithDeleted: jest.fn(() => Promise.resolve(horse)),
       lockActiveHorseOwner: jest.fn().mockResolvedValue(true),
-      inactiveOwnerName: jest.fn().mockResolvedValue(null),
+      invalidOwnerName: jest.fn().mockResolvedValue(null),
     };
     deletions = {
       businessDataLabels: jest.fn().mockResolvedValue([]),
@@ -361,13 +361,13 @@ describe('HorseDeletionsService', () => {
         ownerCleared: null,
         summary: 'Nếu khôi phục, Gió sẽ rời khu "Khu A" và vào Chờ xếp khu.',
       });
-      expect(deletions.barnName).toHaveBeenCalledWith('b1', manager);
+      expect(deletions.barnName).toHaveBeenCalledWith(manager, 'b1');
       expect(horseRepository.restore).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
     });
 
     it('also names the owner who will be cleared', async () => {
-      horses.inactiveOwnerName.mockResolvedValue('Trần Văn Chủ');
+      horses.invalidOwnerName.mockResolvedValue('Trần Văn Chủ');
       const result = await preview();
       expect(result).toMatchObject({
         ownerCleared: 'Trần Văn Chủ',

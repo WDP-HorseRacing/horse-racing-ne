@@ -26,7 +26,7 @@ export class HorseTrainingService {
   /**
    * Liệt kê các lớp của con ngựa, lớp đang học trước rồi tới lớp đã rời
    *
-   * - Phạm vi xem theo HorseAccessService.findReadable: Club Manager xem cả hồ sơ đã xóa, Horse Owner chỉ ngựa mình sở hữu, Head Trainer xem toàn câu lạc bộ
+   * - Phạm vi xem theo HorseAccessService.findReadableHorseForActor: Club Manager xem cả hồ sơ đã xóa, Horse Owner chỉ ngựa mình sở hữu, Head Trainer xem toàn câu lạc bộ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -38,7 +38,7 @@ export class HorseTrainingService {
     actor: Actor,
     horseId: string,
   ): Promise<HorseTrainingClassResponseDto[]> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const rows = await this.repository.listClasses(horseId);
     return rows.map(toHorseTrainingClassResponse);
   }
@@ -61,7 +61,7 @@ export class HorseTrainingService {
     horseId: string,
     query: HorseTrainingSessionQueryDto,
   ): Promise<PaginationResponseDto<HorseTrainingSessionResponseDto>> {
-    await this.horseAccess.findReadable(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const { rows, total } = await this.repository.listSessions(horseId, {
       classId: query.classId,
       when: query.when,

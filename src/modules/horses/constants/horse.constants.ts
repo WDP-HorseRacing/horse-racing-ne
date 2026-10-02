@@ -10,7 +10,7 @@ import {
 /**
  * Các role được xem hồ sơ ngựa
  */
-export const ALL_ROLES = [
+export const HORSE_READER_ROLES = [
   UserRole.CLUB_MANAGER,
   UserRole.HEAD_TRAINER,
   UserRole.VETERINARIAN,

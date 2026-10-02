@@ -59,8 +59,8 @@ import {
   assertDateOfBirth,
   evaluateEligibility,
   evaluateHorsePermissions,
-  managerForbiddenFields,
-  trainerForbiddenFields,
+  raceAptitudeFieldsIn,
+  nonRaceAptitudeFieldsIn,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
@@ -156,7 +156,7 @@ export class HorseProfilesService {
    */
   async get(actor: Actor, id: string): Promise<HorseDetailResponseDto> {
     const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findReadable(actor, id);
+    const horse = await this.access.findReadableHorseForActor(actor, id);
     const [locations, groom, owner, latestMeasurements, activeTrainingLock] =
       await Promise.all([
         this.profiles.locationsByHorseIds([id]),
@@ -181,7 +181,7 @@ export class HorseProfilesService {
   /**
    * Cấp link tải ảnh đại diện của ngựa cho người xem được hồ sơ
    *
-   * - Quyền xem theo findReadable: ai xem được hồ sơ thì xem được ảnh; module media chỉ ký link, không tự quyết quyền
+   * - Quyền xem theo findReadableHorseForActor: ai xem được hồ sơ thì xem được ảnh; module media chỉ ký link, không tự quyết quyền
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
@@ -193,7 +193,7 @@ export class HorseProfilesService {
     actor: Actor,
     id: string,
   ): Promise<HorsePhotoUrlResponseDto> {
-    const horse = await this.access.findReadable(actor, id);
+    const horse = await this.access.findReadableHorseForActor(actor, id);
     if (!horse.mediaId) {
       throw new NotFoundException('Ngựa chưa có ảnh đại diện');
     }
@@ -355,7 +355,7 @@ export class HorseProfilesService {
         });
       }),
     );
-    return toHorseResponse(await this.access.findHorse(id));
+    return toHorseResponse(await this.access.findNotDeletedHorse(id));
   }
 
   /**
@@ -374,7 +374,7 @@ export class HorseProfilesService {
     id: string,
   ): Promise<HorsePedigreeResponseDto> {
     const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findReadable(actor, id);
+    const horse = await this.access.findReadableHorseForActor(actor, id);
     const ownerOnly = this.access.scopeOf(actor, caller.id).kind === 'OWNER';
     const ancestors = await this.profiles.findPedigreeAncestors(
       id,
@@ -401,7 +401,7 @@ export class HorseProfilesService {
     actor: Actor,
     horseId: string,
   ): Promise<HorseEligibilityResponseDto> {
-    const horse = await this.access.findReadable(actor, horseId);
+    const horse = await this.access.findReadableHorseForActor(actor, horseId);
     const activeTrainingLock = await this.horses.hasActiveTrainingLock(horseId);
     return toHorseEligibilityResponse(
       horse,
@@ -429,7 +429,7 @@ export class HorseProfilesService {
     horseId: string,
   ): Promise<HorsePermissionsResponseDto> {
     const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findReadable(actor, horseId);
+    const horse = await this.access.findReadableHorseForActor(actor, horseId);
     const [isInTrainerBarn, isAssignedGroom] = await Promise.all([
       this.access.hasRole(actor, UserRole.HEAD_TRAINER)
         ? this.access.isHorseInTrainerBarn(
@@ -476,37 +476,30 @@ export class HorseProfilesService {
     horseId: string,
     fields: object,
   ): Promise<void> {
-    const profileFields = trainerForbiddenFields(fields);
-    if (
-      profileFields.length > 0 &&
-      !this.access.hasRole(actor, UserRole.CLUB_MANAGER)
-    ) {
+    const isClubManager = this.access.hasRole(actor, UserRole.CLUB_MANAGER);
+    const nonAptitudeFields = nonRaceAptitudeFieldsIn(fields);
+    if (nonAptitudeFields.length > 0 && !isClubManager) {
       throw new ForbiddenException(
-        `Huấn luyện viên trưởng chỉ được sửa sở trường cự ly, không được sửa: ${profileFields.join(', ')}`,
+        `Huấn luyện viên trưởng chỉ được sửa sở trường cự ly, không được sửa: ${nonAptitudeFields.join(', ')}`,
       );
     }
-    if (managerForbiddenFields(fields).length === 0) {
-      if (!this.access.hasRole(actor, UserRole.CLUB_MANAGER)) {
-        await this.access.assertTrainerBarn(
-          this.dataSource.manager,
-          actor,
-          callerId,
-          horseId,
-        );
-      }
-      return;
-    }
-    if (!this.access.hasRole(actor, UserRole.HEAD_TRAINER)) {
+    const sendsRaceAptitude = raceAptitudeFieldsIn(fields).length > 0;
+    if (
+      sendsRaceAptitude &&
+      !this.access.hasRole(actor, UserRole.HEAD_TRAINER)
+    ) {
       throw new ForbiddenException(
         'Chỉ Huấn luyện viên trưởng phụ trách khu mới được sửa sở trường cự ly',
       );
     }
-    await this.access.assertTrainerBarn(
-      this.dataSource.manager,
-      actor,
-      callerId,
-      horseId,
-    );
+    if (sendsRaceAptitude || !isClubManager) {
+      await this.access.assertTrainerBarn(
+        this.dataSource.manager,
+        actor,
+        callerId,
+        horseId,
+      );
+    }
   }
 
   /**

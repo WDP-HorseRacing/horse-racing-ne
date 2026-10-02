@@ -442,10 +442,10 @@ describe('GroomAssignmentsService', () => {
     });
   });
 
-  describe('endGroomByHorse', () => {
+  describe('endOpenGroomAssignment', () => {
     it('returns null when the horse has no open groom assignment', async () => {
       await expect(
-        service.endGroomByHorse(manager as unknown as EntityManager, 'h1'),
+        service.endOpenGroomAssignment(manager as unknown as EntityManager, 'h1'),
       ).resolves.toBeNull();
       expect(manager.update).not.toHaveBeenCalled();
     });
@@ -458,7 +458,7 @@ describe('GroomAssignmentsService', () => {
         endAt: null,
       });
       await expect(
-        service.endGroomByHorse(manager as unknown as EntityManager, 'h1'),
+        service.endOpenGroomAssignment(manager as unknown as EntityManager, 'h1'),
       ).resolves.toBe('g-old');
       expect(manager.findOne).toHaveBeenCalledWith(GroomAssignmentEntity, {
         where: { horseId: 'h1', endAt: anything },
