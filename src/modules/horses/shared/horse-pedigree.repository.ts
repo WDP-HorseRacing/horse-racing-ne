@@ -36,24 +36,23 @@ export class HorsePedigreeRepository {
     childHorseId: string,
     parentHorseId: string,
   ): Promise<boolean> {
-    const rows: Array<{ exists: boolean }> = await manager.query(
+    const rows: Array<{ createsCycle: boolean }> = await manager.query(
       `
-        WITH RECURSIVE ancestors(horse_id, path) AS (
-          SELECT $1::uuid, ARRAY[$1::uuid]
-          UNION ALL
-          SELECT parent_id, ancestors.path || parent_id
-          FROM horses child
-          JOIN ancestors ON ancestors.horse_id = child.id
-          CROSS JOIN LATERAL unnest(ARRAY[child.sire_id, child.dam_id]) AS parent_id
+        WITH RECURSIVE ancestors (horse_id) AS (
+          SELECT $1::uuid
+          UNION
+          SELECT parent_id
+          FROM ancestors
+          JOIN horses child ON child.id = ancestors.horse_id
+          CROSS JOIN unnest(ARRAY[child.sire_id, child.dam_id]) AS parent_id
           WHERE parent_id IS NOT NULL
-            AND NOT parent_id = ANY(ancestors.path)
         )
         SELECT EXISTS (
           SELECT 1 FROM ancestors WHERE horse_id = $2::uuid
-        ) AS exists
+        ) AS "createsCycle"
       `,
       [parentHorseId, childHorseId],
     );
-    return rows[0]?.exists === true;
+    return rows[0]?.createsCycle === true;
   }
 }

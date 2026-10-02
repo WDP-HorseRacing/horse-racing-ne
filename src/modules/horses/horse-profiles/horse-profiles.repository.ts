@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
+import { BarnEntity } from '../../stable/entities/barn.entity';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
+import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
 import {
@@ -95,13 +98,28 @@ export class HorseProfilesRepository {
     }
     if (query.myBarns) {
       qb.andWhere(
-        'horse.barn_id IN (SELECT b.id FROM barns b WHERE b.head_trainer_id = :callerId AND b.deleted_at IS NULL)',
+        (outer: SelectQueryBuilder<HorseEntity>) =>
+          `horse.barnId IN ${outer
+            .subQuery()
+            .select('barn.id')
+            .from(BarnEntity, 'barn')
+            .where('barn.headTrainerId = :callerId')
+            .andWhere('barn.deletedAt IS NULL')
+            .getQuery()}`,
         { callerId },
       );
     }
     if (query.myHorses) {
       qb.andWhere(
-        'EXISTS (SELECT 1 FROM groom_assignments ga WHERE ga.horse_id = horse.id AND ga.groom_id = :callerId AND ga.end_at IS NULL)',
+        (outer: SelectQueryBuilder<HorseEntity>) =>
+          `EXISTS ${outer
+            .subQuery()
+            .select('1')
+            .from(GroomAssignmentEntity, 'assignment')
+            .where('assignment.horseId = horse.id')
+            .andWhere('assignment.groomId = :callerId')
+            .andWhere('assignment.endAt IS NULL')
+            .getQuery()}`,
         { callerId },
       );
     }
@@ -148,20 +166,23 @@ export class HorseProfilesRepository {
    */
   async locationsByHorseIds(horseIds: string[]): Promise<HorseLocationRow[]> {
     if (horseIds.length === 0) return [];
-    const rows: HorseLocationRow[] = await this.dataSource.query(
-      `SELECT h.id AS "horseId",
-              b.id AS "barnId",
-              b.name AS "barnName",
-              s.id AS "stallId",
-              s.code AS "stallCode"
-         FROM horses h
-         LEFT JOIN barns b ON b.id = h.barn_id AND b.deleted_at IS NULL
-         LEFT JOIN stall_assignments sa ON sa.horse_id = h.id AND sa.end_at IS NULL
-         LEFT JOIN stalls s ON s.id = sa.stall_id AND s.deleted_at IS NULL
-        WHERE h.id = ANY($1)`,
-      [horseIds],
-    );
-    return rows;
+    return this.horses
+      .createQueryBuilder('horse')
+      .withDeleted()
+      .leftJoin('horse.barn', 'barn', 'barn.deletedAt IS NULL')
+      .leftJoin(
+        StallAssignmentEntity,
+        'assignment',
+        'assignment.horseId = horse.id AND assignment.endAt IS NULL',
+      )
+      .leftJoin('assignment.stall', 'stall', 'stall.deletedAt IS NULL')
+      .select('horse.id', 'horseId')
+      .addSelect('barn.id', 'barnId')
+      .addSelect('barn.name', 'barnName')
+      .addSelect('stall.id', 'stallId')
+      .addSelect('stall.code', 'stallCode')
+      .where('horse.id IN (:...horseIds)', { horseIds })
+      .getRawMany<HorseLocationRow>();
   }
 
   /**
@@ -177,16 +198,8 @@ export class HorseProfilesRepository {
   ): Promise<PedigreeAncestorRow[]> {
     return this.dataSource.query(
       `
-        WITH RECURSIVE pedigree AS (
-          SELECT parent.id,
-                 child.id AS child_id,
-                 CASE WHEN child.sire_id = parent.id THEN 'SIRE' ELSE 'DAM' END AS parent_role,
-                 1 AS generation,
-                 ARRAY[child.id, parent.id] AS path
-          FROM horses child
-          JOIN horses parent ON parent.id IN (child.sire_id, child.dam_id)
-          WHERE child.id = $1::uuid
-            AND parent.deleted_at IS NULL
+        WITH RECURSIVE pedigree (id, child_id, parent_role, generation, path) AS (
+          SELECT $1::uuid, NULL::uuid, NULL::text, 0, ARRAY[$1::uuid]
 
           UNION ALL
 
@@ -215,7 +228,11 @@ export class HorseProfilesRepository {
                pedigree.child_id AS "childId"
         FROM pedigree
         JOIN horses ancestor ON ancestor.id = pedigree.id
-        ORDER BY pedigree.generation, pedigree.parent_role DESC, ancestor.name
+        WHERE pedigree.generation > 0
+        ORDER BY pedigree.generation,
+                 (pedigree.parent_role = 'SIRE') DESC,
+                 ancestor.name,
+                 pedigree.child_id
       `,
       [horseId, depth],
     );
