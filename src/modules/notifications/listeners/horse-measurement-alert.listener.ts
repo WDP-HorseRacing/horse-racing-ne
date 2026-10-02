@@ -14,11 +14,11 @@ export class HorseMeasurementAlertListener {
   /**
    * Nghe HORSE_MEASUREMENT_ALERT_EVENT và gửi thông báo cho Veterinarian và Head Trainer của khu.
    *
-   * - Bỏ qua số đo do bác sĩ ghi trong buổi khám (nguồn MEDICAL_EXAM): bác sĩ đang xử lý trực tiếp, quyết định của bác sĩ có thông báo riêng (Flow 3 mục III.5.4)
-   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event (bản ghi đo đã commit xong)
+   * - Bỏ qua số đo do bác sĩ ghi trong buổi khám (nguồn MEDICAL_EXAM)
+   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event
    *
-   * @param event The measurement alert event published by the horses module
-   * @returns A promise resolving when the notification attempt has finished
+   * @param event Event cảnh báo số đo do module horses phát
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(HORSE_MEASUREMENT_ALERT_EVENT, { async: true })
   async handle(event: HorseMeasurementAlertEvent): Promise<void> {

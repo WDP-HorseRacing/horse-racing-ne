@@ -30,16 +30,16 @@ export class HorseNotificationsService {
   ) {}
 
   /**
-   * Gửi thông báo cho một cảnh báo chỉ số cơ thể (F1.5 mục 6).
+   * Gửi thông báo cho một cảnh báo chỉ số cơ thể.
    *
    * - Người nhận: mọi Veterinarian đang ACTIVE và Head Trainer đang ACTIVE phụ trách khu hiện tại của ngựa
    * - Ngựa chưa có khu (hoặc khu chưa có Head Trainer) thì chỉ gửi cho Veterinarian
    * - Mức ưu tiên lấy theo severity của event: URGENT → URGENT, WARNING → HIGH
-   * - eventId của thông báo là measurementId, nên event bị phát lại cũng không sinh thông báo trùng
+   * - eventId của thông báo là measurementId: event phát lại không sinh thông báo trùng
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
-   * @param event The measurement alert event published by the horses module
-   * @returns A promise resolving to danh sách id người nhận vừa được lưu mới
+   * @param event Event cảnh báo số đo do module horses phát
+   * @returns Promise trả về danh sách id người nhận vừa được lưu mới
    */
   async notifyMeasurementAlert(
     event: HorseMeasurementAlertEvent,
@@ -69,15 +69,15 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu khi một con ngựa được xếp hoặc đổi vào khu đó (F1.6).
+   * Báo Head Trainer của khu khi một con ngựa được xếp hoặc đổi vào khu đó.
    *
-   * - Gọi từ listener của HORSE_BARN_ASSIGNED_EVENT, tức SAU khi transaction xếp khu đã commit; không nhận EntityManager
+   * - Ghi bằng connection riêng, không nhận EntityManager
    * - Người nhận: Head Trainer đang ACTIVE phụ trách khu; khu chưa có Head Trainer thì không gửi gì
    * - Idempotent theo notice.eventId: phát lại cùng event không sinh thông báo trùng
    * - Không tìm thấy ngựa hoặc khu (đã bị xóa) thì log cảnh báo và bỏ qua
    *
    * @param notice Payload của HORSE_BARN_ASSIGNED_EVENT: ngựa, khu mới và eventId chống trùng
-   * @returns A promise resolving to danh sách id người nhận vừa được lưu mới (rỗng nếu không có ai để báo)
+   * @returns Promise trả về danh sách id người nhận vừa được lưu mới (rỗng nếu không có ai để báo)
    */
   async notifyBarnAssigned(notice: HorseBarnAssignedEvent): Promise<string[]> {
     const [horseName, barn] = await Promise.all([
@@ -105,15 +105,15 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo Groom khi phân công chăm ngựa thay đổi (F1.7: Groom là actor nhận thông báo).
+   * Báo Groom khi phân công chăm ngựa thay đổi.
    *
    * - Groom mới nhận "được phân công chăm ngựa"; Groom cũ nhận "không còn phụ trách ngựa"
-   * - Gọi từ listener của GROOM_ASSIGNMENT_CHANGED_EVENT, tức SAU khi transaction phân công đã commit; không nhận EntityManager
+   * - Ghi bằng connection riêng, không nhận EntityManager
    * - Idempotent theo notice.eventId: gọi lại cùng eventId không sinh thông báo trùng
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
    * @param notice Payload của GROOM_ASSIGNMENT_CHANGED_EVENT: ngựa, Groom mới, Groom cũ và eventId chống trùng
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   async notifyGroomChanged(
     notice: GroomAssignmentChangedEvent,
@@ -154,14 +154,14 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo Groom khi ngựa chuyển nhượng làm phân công chăm ngựa của họ tự kết thúc (F1.8, BA chốt 2026-09-23).
+   * Báo Groom khi ngựa chuyển nhượng làm phân công chăm ngựa của họ tự kết thúc.
    *
-   * - Gọi từ listener của HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT, tức SAU khi transaction chuyển nhượng đã commit; không nhận EntityManager
+   * - Ghi bằng connection riêng, không nhận EntityManager
    * - Idempotent theo notice.eventId
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
    * @param notice Payload của HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT: ngựa, Groom bị kết thúc phân công và eventId chống trùng
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   async notifyGroomReleasedByTransfer(
     notice: HorseGroomReleasedEvent,
@@ -202,7 +202,7 @@ export class HorseNotificationsService {
 /**
  * Đổi mức độ cảnh báo chỉ số sang mức ưu tiên thông báo.
  *
- * @param severity The alert severity computed by the horses module
+ * @param severity Mức độ cảnh báo do module horses tính
  * @returns URGENT cho cảnh báo khẩn, HIGH cho cảnh báo thường
  */
 function toAlertPriority(
@@ -216,8 +216,8 @@ function toAlertPriority(
 /**
  * Soạn tiêu đề và nội dung tiếng Việt cho một cảnh báo chỉ số, có tên ngựa và giá trị đo.
  *
- * @param horseName The name of the horse
- * @param event The measurement alert event
+ * @param horseName Tên ngựa
+ * @param event Event cảnh báo số đo
  * @returns Tiêu đề và nội dung thông báo
  */
 function describeMeasurementAlert(

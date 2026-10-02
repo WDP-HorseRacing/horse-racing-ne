@@ -11,12 +11,12 @@ export class HorseGroomReleasedListener {
   constructor(private readonly horseNotifications: HorseNotificationsService) {}
 
   /**
-   * Nghe HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT và báo Groom vừa bị kết thúc phân công do ngựa chuyển nhượng (F1.8)
+   * Nghe HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT và báo Groom vừa bị kết thúc phân công do ngựa chuyển nhượng
    *
-   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event (việc chuyển nhượng đã commit xong)
+   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event
    *
    * @param event Payload do module horses phát sau khi chuyển nhượng
-   * @returns A promise resolving khi đã gửi xong hoặc đã log lỗi
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT, { async: true })
   async handle(event: HorseGroomReleasedEvent): Promise<void> {

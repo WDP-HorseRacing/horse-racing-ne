@@ -16,7 +16,7 @@ export interface AuditEntry {
   after: Record<string, unknown> | null;
   /** Lý do người dùng nhập cho thao tác (vd lý do xóa, khôi phục); bỏ trống thì lưu null */
   reason?: string | null;
-  /** Mã chức năng theo spec (vd 'F1.4'), tối đa 16 ký tự; bỏ trống thì lưu null */
+  /** Mã chức năng của thao tác, tối đa 16 ký tự; bỏ trống thì lưu null */
   feature?: string | null;
 }
 
@@ -25,8 +25,8 @@ export class AuditService {
   /**
    * Ghi một dòng nhật ký thao tác vào bảng audit_logs.
    *
-   * - Truyền EntityManager của transaction đang chạy để nhật ký chỉ được lưu khi thao tác chính thành công
-   * - correlationId tạm để null vì Actor chưa mang correlationId của request
+   * - Ghi bằng EntityManager của transaction đang chạy: nhật ký chỉ được lưu khi transaction commit
+   * - Lưu correlationId là null
    *
    * @param manager EntityManager của transaction đang chạy
    * @param entry Nội dung nhật ký

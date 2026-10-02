@@ -11,12 +11,12 @@ export class HorseBarnAssignedListener {
   constructor(private readonly horseNotifications: HorseNotificationsService) {}
 
   /**
-   * Nghe HORSE_BARN_ASSIGNED_EVENT và báo Head Trainer của khu mới (F1.2, F1.6)
+   * Nghe HORSE_BARN_ASSIGNED_EVENT và báo Head Trainer của khu mới
    *
-   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event (việc xếp khu đã commit xong)
+   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event
    *
    * @param event Payload do module horses phát sau khi xếp khu
-   * @returns A promise resolving khi đã gửi xong hoặc đã log lỗi
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(HORSE_BARN_ASSIGNED_EVENT, { async: true })
   async handle(event: HorseBarnAssignedEvent): Promise<void> {

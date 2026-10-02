@@ -36,7 +36,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_EXAM_REQUEST_URGENT_EVENT và báo Veterinarian
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_EXAM_REQUEST_URGENT_EVENT, { async: true })
   onUrgentExamRequest(event: ExamRequestUrgentEvent): Promise<void> {
@@ -49,7 +49,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_TRAINING_LOCK_SET_EVENT và báo Head Trainer, Club Manager
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_TRAINING_LOCK_SET_EVENT, { async: true })
   onLockSet(event: TrainingLockSetEvent): Promise<void> {
@@ -60,7 +60,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_TRAINING_LOCK_RELEASED_EVENT và báo Head Trainer, Club Manager
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_TRAINING_LOCK_RELEASED_EVENT, { async: true })
   onLockReleased(event: TrainingLockReleasedEvent): Promise<void> {
@@ -73,7 +73,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_HEALTH_CHANGED_EVENT và báo khi ngựa chuyển sang Chấn thương, Cách ly hoặc Cần theo dõi
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_HEALTH_CHANGED_EVENT, { async: true })
   onHealthChanged(event: HealthChangedEvent): Promise<void> {
@@ -86,7 +86,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_CASE_OPENED_EVENT và báo Club Manager, chủ ngựa
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_CASE_OPENED_EVENT, { async: true })
   onCaseOpened(event: MedicalCaseOpenedEvent): Promise<void> {
@@ -99,7 +99,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_CASE_CLOSED_EVENT và báo chủ ngựa, Club Manager
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_CASE_CLOSED_EVENT, { async: true })
   onCaseClosed(event: MedicalCaseClosedEvent): Promise<void> {
@@ -112,7 +112,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_CASE_CANCELLED_EVENT và báo Club Manager, chủ ngựa
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_CASE_CANCELLED_EVENT, { async: true })
   onCaseCancelled(event: MedicalCaseCancelledEvent): Promise<void> {
@@ -125,7 +125,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_CASE_COST_ADJUSTED_EVENT và báo chủ ngựa, Club Manager
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_CASE_COST_ADJUSTED_EVENT, { async: true })
   onCaseCostAdjusted(event: MedicalCaseCostAdjustedEvent): Promise<void> {
@@ -138,7 +138,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_CHECKUP_OVERDUE_EVENT và báo Veterinarian, Club Manager
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_CHECKUP_OVERDUE_EVENT, { async: true })
   onCheckupOverdue(event: CheckupOverdueEvent): Promise<void> {
@@ -151,7 +151,7 @@ export class MedicalEventsListener {
    * Nghe MEDICAL_CARE_SCHEDULE_DUE_EVENT và báo Veterinarian, người được giao
    *
    * @param event Payload của event
-   * @returns A promise resolving when the notification attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(MEDICAL_CARE_SCHEDULE_DUE_EVENT, { async: true })
   onCareScheduleDue(event: CareScheduleDueEvent): Promise<void> {
@@ -161,11 +161,11 @@ export class MedicalEventsListener {
   }
 
   /**
-   * Chạy việc gửi thông báo, log rồi nuốt mọi lỗi vì dữ liệu gốc đã commit xong
+   * Chạy việc gửi thông báo, lỗi được log rồi nuốt, không ném ra ngoài
    *
    * @param eventId Khóa của event, dùng trong log
    * @param send Việc gửi thông báo
-   * @returns A promise resolving when the attempt has finished
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   private async safely(
     eventId: string,

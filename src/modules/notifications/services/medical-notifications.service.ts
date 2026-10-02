@@ -22,7 +22,7 @@ import type { HorseMedicalContact } from '../types/notification.types';
 import { NotificationsService } from './notifications.service';
 
 /**
- * Nhóm người nhận của một thông báo y tế (Flow 3 mục III.7).
+ * Nhóm người nhận của một thông báo y tế.
  */
 interface MedicalAudience {
   veterinarians?: boolean;
@@ -62,10 +62,10 @@ export class MedicalNotificationsService {
   ) {}
 
   /**
-   * Báo mọi Veterinarian khi có yêu cầu khám mức Khẩn do người dùng tạo (F3.4 mục 6)
+   * Báo mọi Veterinarian khi có yêu cầu khám mức Khẩn do người dùng tạo
    *
    * @param event Payload của MEDICAL_EXAM_REQUEST_URGENT_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyUrgentExamRequest(event: ExamRequestUrgentEvent): Promise<string[]> {
     return this.sendForHorse(
@@ -82,10 +82,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu và Club Manager khi bác sĩ đặt khóa huấn luyện (F3.8 mục 8)
+   * Báo Head Trainer của khu và Club Manager khi bác sĩ đặt khóa huấn luyện
    *
    * @param event Payload của MEDICAL_TRAINING_LOCK_SET_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyLockSet(event: TrainingLockSetEvent): Promise<string[]> {
     const until = event.expectedEnd
@@ -105,10 +105,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu và Club Manager khi bác sĩ gỡ khóa huấn luyện (F3.8 mục 8)
+   * Báo Head Trainer của khu và Club Manager khi bác sĩ gỡ khóa huấn luyện
    *
    * @param event Payload của MEDICAL_TRAINING_LOCK_RELEASED_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyLockReleased(event: TrainingLockReleasedEvent): Promise<string[]> {
     return this.sendForHorse(
@@ -125,14 +125,14 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo khi trạng thái sức khỏe đổi (Flow 3 mục III.7)
+   * Báo khi trạng thái sức khỏe đổi
    *
-   * - Sang Chấn thương hoặc Cách ly: báo Head Trainer của khu, Club Manager và chủ ngựa, mức HIGH (F3.7 mục 3)
-   * - Sang Cần theo dõi: chỉ báo Head Trainer của khu, mức NORMAL, vì ngựa bị cấm đua
-   * - Về Đủ điều kiện không gửi gì
+   * - Sang Chấn thương hoặc Cách ly: báo Head Trainer của khu, Club Manager và chủ ngựa, mức HIGH
+   * - Sang Cần theo dõi: chỉ báo Head Trainer của khu, mức NORMAL
+   * - Sang trạng thái khác: không gửi gì
    *
    * @param event Payload của MEDICAL_HEALTH_CHANGED_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới, rỗng nếu không cần báo
+   * @returns Promise trả về id những người nhận vừa được lưu mới, rỗng nếu không cần báo
    */
   async notifyHealthChanged(event: HealthChangedEvent): Promise<string[]> {
     if (event.to === HorseHealthStatus.UNDER_OBSERVATION) {
@@ -168,10 +168,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Club Manager và chủ ngựa khi bệnh án được mở (F3.5 mục 6)
+   * Báo Club Manager và chủ ngựa khi bệnh án được mở
    *
    * @param event Payload của MEDICAL_CASE_OPENED_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyCaseOpened(event: MedicalCaseOpenedEvent): Promise<string[]> {
     return this.sendForHorse(
@@ -188,10 +188,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Club Manager và chủ ngựa khi bệnh án mở nhầm bị hủy, vì họ đã nhận thông báo mở bệnh án (F3.6 mục 8)
+   * Báo Club Manager và chủ ngựa khi bệnh án mở nhầm bị hủy
    *
    * @param event Payload của MEDICAL_CASE_CANCELLED_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyCaseCancelled(event: MedicalCaseCancelledEvent): Promise<string[]> {
     return this.sendForHorse(
@@ -208,10 +208,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo chủ ngựa và Club Manager khi bệnh án đóng, kèm chi phí chốt (F3.9 mục 10)
+   * Báo chủ ngựa và Club Manager khi bệnh án đóng, kèm chi phí chốt
    *
    * @param event Payload của MEDICAL_CASE_CLOSED_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyCaseClosed(event: MedicalCaseClosedEvent): Promise<string[]> {
     return this.sendForHorse(
@@ -228,10 +228,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo chủ ngựa và Club Manager khi chi phí bệnh án đã đóng được điều chỉnh (F3.9 mục 8)
+   * Báo chủ ngựa và Club Manager khi chi phí bệnh án đã đóng được điều chỉnh
    *
    * @param event Payload của MEDICAL_CASE_COST_ADJUSTED_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyCaseCostAdjusted(
     event: MedicalCaseCostAdjustedEvent,
@@ -250,10 +250,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo mọi Veterinarian và Club Manager khi ngựa quá hạn khám định kỳ trên số ngày ngưỡng (F3.2 mục 6)
+   * Báo mọi Veterinarian và Club Manager khi ngựa quá hạn khám định kỳ trên số ngày ngưỡng
    *
    * @param event Payload của MEDICAL_CHECKUP_OVERDUE_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyCheckupOverdue(event: CheckupOverdueEvent): Promise<string[]> {
     return this.sendForHorse(
@@ -270,10 +270,10 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo mọi Veterinarian và người được giao khi lịch chăm sóc định kỳ đến hạn (F3.11 mục 5)
+   * Báo mọi Veterinarian và người được giao khi lịch chăm sóc định kỳ đến hạn
    *
    * @param event Payload của MEDICAL_CARE_SCHEDULE_DUE_EVENT
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   notifyCareScheduleDue(event: CareScheduleDueEvent): Promise<string[]> {
     return this.sendForHorse(
@@ -301,7 +301,7 @@ export class MedicalNotificationsService {
    * @param type Loại thông báo
    * @param priority Mức ưu tiên
    * @param describe Hàm soạn tiêu đề và nội dung từ tên ngựa
-   * @returns A promise resolving to id những người nhận vừa được lưu mới
+   * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   private async sendForHorse(
     eventId: string,
@@ -336,7 +336,7 @@ export class MedicalNotificationsService {
    *
    * @param audience Các nhóm người nhận
    * @param contact Head Trainer và chủ của con ngựa
-   * @returns A promise resolving to danh sách id người nhận
+   * @returns Promise trả về danh sách id người nhận
    */
   private async resolveAudience(
     audience: MedicalAudience,

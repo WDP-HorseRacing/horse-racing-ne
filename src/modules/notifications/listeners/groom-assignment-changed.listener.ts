@@ -11,12 +11,12 @@ export class GroomAssignmentChangedListener {
   constructor(private readonly horseNotifications: HorseNotificationsService) {}
 
   /**
-   * Nghe GROOM_ASSIGNMENT_CHANGED_EVENT và báo Groom mới, Groom cũ (F1.7)
+   * Nghe GROOM_ASSIGNMENT_CHANGED_EVENT và báo Groom mới, Groom cũ
    *
-   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event (phân công đã commit xong)
+   * - Mọi lỗi đều được log rồi nuốt, không ném ngược về nơi phát event
    *
    * @param event Payload do module stable phát sau khi đổi phân công Groom
-   * @returns A promise resolving khi đã gửi xong hoặc đã log lỗi
+   * @returns Promise hoàn tất khi đã gửi xong hoặc đã log lỗi
    */
   @OnEvent(GROOM_ASSIGNMENT_CHANGED_EVENT, { async: true })
   async handle(event: GroomAssignmentChangedEvent): Promise<void> {

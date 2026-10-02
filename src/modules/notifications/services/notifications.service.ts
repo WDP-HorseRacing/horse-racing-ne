@@ -26,13 +26,13 @@ export class NotificationsService {
   /**
    * Gửi một thông báo cho danh sách người nhận: lưu vào bảng notifications rồi đẩy realtime.
    *
-   * - Gọi SAU khi transaction nghiệp vụ đã commit; hàm tự ghi bằng connection riêng, không nhận EntityManager
+   * - Ghi bằng connection riêng, không nhận EntityManager
    * - Idempotent theo (eventId, recipientId): dòng đã tồn tại bị bỏ qua (ON CONFLICT DO NOTHING), gọi lại cùng eventId không sinh thông báo trùng
    * - Người nhận trùng trong danh sách chỉ được lưu một lần
    * - Chỉ dòng mới lưu mới được đẩy realtime tới room `user:<id>`; đẩy realtime lỗi thì chỉ log, không làm hỏng việc lưu
    *
-   * @param draft The notification content and its recipients
-   * @returns A promise resolving to danh sách id người nhận vừa được lưu mới (bỏ qua người đã có thông báo của eventId này)
+   * @param draft Nội dung thông báo và danh sách người nhận
+   * @returns Promise trả về danh sách id người nhận vừa được lưu mới (bỏ qua người đã có thông báo của eventId này)
    */
   async send(draft: NotificationDraft): Promise<string[]> {
     const recipientIds = [...new Set(draft.recipientIds)];
@@ -72,8 +72,8 @@ export class NotificationsService {
   /**
    * Đẩy một thông báo mới tới các socket của người nhận; lỗi (vd gateway chưa khởi tạo) chỉ được log.
    *
-   * @param recipientId The id of the recipient user
-   * @param payload The notification data sent to the client
+   * @param recipientId UUID của người nhận
+   * @param payload Dữ liệu thông báo gửi tới client
    * @returns Không trả gì
    */
   private pushRealtime(

@@ -4,8 +4,8 @@ import type { NotificationType } from '../constants/notification-type.enum';
 /**
  * Nội dung một thông báo cần gửi cho nhiều người nhận.
  *
- * eventId là khóa chống trùng: cùng eventId và cùng người nhận thì chỉ lưu một lần,
- * nên caller phải truyền id ổn định của sự kiện gốc (vd id bản ghi đo), không sinh mới mỗi lần gọi.
+ * eventId là khóa chống trùng: cùng eventId và cùng người nhận thì chỉ lưu một lần.
+ * eventId là id ổn định của sự kiện gốc (vd id bản ghi đo).
  */
 export interface NotificationDraft {
   eventId: string;
@@ -48,7 +48,7 @@ export interface BarnContact {
 }
 
 /**
- * Người liên quan tới một con ngựa để nhận thông báo y tế (Flow 3 mục III.7).
+ * Người liên quan tới một con ngựa để nhận thông báo y tế.
  *
  * headTrainerId, ownerId là null khi không có người đang hoạt động để báo.
  */

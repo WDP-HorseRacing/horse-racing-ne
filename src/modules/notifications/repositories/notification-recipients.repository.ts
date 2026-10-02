@@ -16,10 +16,10 @@ export class NotificationRecipientsRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Lấy id mọi người dùng đang ACTIVE (chưa bị xóa mềm) của một vai trò, ví dụ mọi Veterinarian để gửi cảnh báo y tế toàn câu lạc bộ.
+   * Lấy id mọi người dùng đang ACTIVE (chưa bị xóa mềm) của một vai trò.
    *
    * @param role Vai trò cần lấy
-   * @returns A promise resolving to danh sách id người dùng, rỗng nếu không có ai ACTIVE
+   * @returns Promise trả về danh sách id người dùng, rỗng nếu không có ai ACTIVE
    */
   async findActiveUserIdsByRole(role: UserRole): Promise<string[]> {
     const rows = await this.dataSource
@@ -35,11 +35,11 @@ export class NotificationRecipientsRepository {
   /**
    * Lấy tên ngựa và Head Trainer phụ trách khu hiện tại của ngựa (horses.barn_id → barns.head_trainer_id).
    *
-   * - Đọc cả ngựa đã xóa mềm, vì cảnh báo phát sau commit và hồ sơ có thể vừa bị xóa
+   * - Đọc cả ngựa đã xóa mềm
    * - Khu đã xóa mềm, khu chưa có Head Trainer, hoặc Head Trainer không còn ACTIVE/không còn role HEAD_TRAINER thì headTrainerId là null
    *
-   * @param horseId The id of the horse
-   * @returns A promise resolving to tên ngựa kèm Head Trainer của khu, hoặc null nếu không tìm thấy ngựa
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về tên ngựa kèm Head Trainer của khu, hoặc null nếu không tìm thấy ngựa
    */
   async findHorseBarnContact(
     horseId: string,
@@ -57,14 +57,14 @@ export class NotificationRecipientsRepository {
   }
 
   /**
-   * Lấy tên ngựa, Head Trainer phụ trách khu và chủ ngựa để gửi thông báo y tế (Flow 3 mục III.7).
+   * Lấy tên ngựa, Head Trainer phụ trách khu và chủ ngựa để gửi thông báo y tế.
    *
-   * - Đọc cả ngựa đã xóa mềm, vì thông báo phát sau commit
+   * - Đọc cả ngựa đã xóa mềm
    * - headTrainerId null theo cùng luật với findHorseBarnContact
    * - ownerId null khi ngựa chưa có chủ, hoặc chủ không còn là HORSE_OWNER đang ACTIVE
    *
-   * @param horseId The id of the horse
-   * @returns A promise resolving to tên ngựa, Head Trainer và chủ, hoặc null nếu không tìm thấy ngựa
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về tên ngựa, Head Trainer và chủ, hoặc null nếu không tìm thấy ngựa
    */
   async findHorseMedicalContact(
     horseId: string,
@@ -101,8 +101,8 @@ export class NotificationRecipientsRepository {
    *
    * - Head Trainer không còn ACTIVE hoặc không còn role HEAD_TRAINER thì headTrainerId là null
    *
-   * @param barnId The id of the barn
-   * @returns A promise resolving to tên khu kèm Head Trainer, hoặc null nếu khu không tồn tại hay đã xóa mềm
+   * @param barnId UUID của khu
+   * @returns Promise trả về tên khu kèm Head Trainer, hoặc null nếu khu không tồn tại hay đã xóa mềm
    */
   async findBarnContact(barnId: string): Promise<BarnContact | null> {
     const row = await this.leftJoinActiveHeadTrainer(
