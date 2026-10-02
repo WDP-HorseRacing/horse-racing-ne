@@ -53,6 +53,7 @@ import {
   resolveLockOnClose,
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
+import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 import type {
   MedicalCaseClosedEvent,
   MedicalCaseCostAdjustedEvent,
@@ -73,6 +74,7 @@ export class MedicalCasesService {
     private readonly dataSource: DataSource,
     private readonly horseAccess: HorseAccessService,
     private readonly access: MedicalAccessService,
+    private readonly lockWrites: TrainingLockWritesService,
     private readonly records: MedicalRecordsService,
     private readonly casesRepository: MedicalCasesRepository,
     @InjectRepository(MedicalCaseEntity)
@@ -243,16 +245,11 @@ export class MedicalCasesService {
         };
         await manager.update(MedicalCaseEntity, { id: caseId }, changes);
         if (activeLock && decision === CaseLockDecision.RELEASE) {
-          await manager.update(
-            TrainingLockEntity,
-            { id: activeLock.id },
-            {
-              status: TrainingLockStatus.RELEASED,
-              releasedBy: caller.id,
-              releasedAt: now,
-              releaseConclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
-            },
-          );
+          await this.lockWrites.releaseLock(manager, activeLock.id, {
+            releasedBy: caller.id,
+            releasedAt: now,
+            releaseConclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+          });
           await this.audit.record(manager, {
             actorId: caller.id,
             action: AuditAction.UPDATE,
@@ -265,10 +262,10 @@ export class MedicalCasesService {
           });
         }
         if (activeLock && decision === CaseLockDecision.KEEP) {
-          await manager.update(
-            TrainingLockEntity,
-            { id: activeLock.id },
-            { lockEnd: lockExpectedEnd },
+          await this.lockWrites.extendLockEnd(
+            manager,
+            activeLock.id,
+            lockExpectedEnd,
           );
           await this.audit.record(manager, {
             actorId: caller.id,

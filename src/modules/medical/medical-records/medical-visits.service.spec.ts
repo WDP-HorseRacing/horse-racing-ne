@@ -37,6 +37,9 @@ import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalVisitsService } from './medical-visits.service';
+import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
+import { ExamRequestWritesService } from '../shared/exam-request-writes.service';
+import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -159,6 +162,9 @@ describe('MedicalVisitsService', () => {
           manager.findOne(MedicalCaseEntity, options),
       } as unknown as Repository<MedicalCaseEntity>,
       access as unknown as MedicalAccessService,
+      new TrainingLockWritesService(),
+      new CareScheduleWritesService(),
+      new ExamRequestWritesService(),
       horseHealth as unknown as HorseHealthService,
       measurements as unknown as HorseMeasurementsService,
       audit,

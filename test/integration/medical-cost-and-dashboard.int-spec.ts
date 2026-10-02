@@ -33,6 +33,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       unused,
       unused,
       unused,
+      unused,
       cases,
       dataSource.getRepository(MedicalCaseEntity),
       unused,

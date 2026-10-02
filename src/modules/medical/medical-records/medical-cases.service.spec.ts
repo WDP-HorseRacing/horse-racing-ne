@@ -27,6 +27,7 @@ import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalCasesRepository } from './medical-cases.repository';
 import { MedicalCasesService } from './medical-cases.service';
 import { MedicalRecordsService } from './medical-records.service';
+import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -133,6 +134,7 @@ describe('MedicalCasesService', () => {
       dataSource as unknown as DataSource,
       horseAccess as unknown as HorseAccessService,
       access as unknown as MedicalAccessService,
+      new TrainingLockWritesService(),
       {
         toResponses: jest.fn().mockResolvedValue([]),
       } as unknown as MedicalRecordsService,

@@ -2,6 +2,7 @@ import { EntityManager } from 'typeorm';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { TrainingLockService } from './training-locks.service';
+import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 
 /**
  * Dựng service chỉ để gọi hàm hệ thống releaseActiveLockByHorse, không cần dependency nào.
@@ -14,6 +15,7 @@ function systemService(): TrainingLockService {
     unused,
     unused,
     unused,
+    new TrainingLockWritesService(),
     unused,
     unused,
     unused,

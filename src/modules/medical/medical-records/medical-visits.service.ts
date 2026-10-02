@@ -22,10 +22,6 @@ import {
   HorseHealthService,
 } from '../../horses/shared/horse-health.service';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
-import {
-  CareScheduleStatus,
-  CareScheduleType,
-} from '../constants/care-schedule.enum';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
@@ -40,7 +36,6 @@ import {
   MedicalVisitConclusion,
   MedicalVisitKind,
 } from '../constants/medical-visit.enum';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
 import {
   CreateFollowUpVisitDto,
   CreateStandaloneVisitDto,
@@ -48,13 +43,11 @@ import {
   MedicalVisitBaseDto,
   VoidMedicalRecordDto,
 } from '../dto';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { toMedicalRecordResponse } from '../mappers/medical.mapper';
 import {
   assertCaseOpen,
@@ -69,7 +62,10 @@ import {
   assertVisitExamDate,
   resolveVisitVoid,
 } from '../policies/medical.policy';
+import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
+import { ExamRequestWritesService } from '../shared/exam-request-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
+import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 import type {
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
@@ -114,6 +110,9 @@ export class MedicalVisitsService {
     @InjectRepository(MedicalCaseEntity)
     private readonly medicalCases: Repository<MedicalCaseEntity>,
     private readonly access: MedicalAccessService,
+    private readonly lockWrites: TrainingLockWritesService,
+    private readonly scheduleWrites: CareScheduleWritesService,
+    private readonly requestWrites: ExamRequestWritesService,
     private readonly horseHealth: HorseHealthService,
     private readonly measurements: HorseMeasurementsService,
     private readonly audit: AuditService,
@@ -421,10 +420,9 @@ export class MedicalVisitsService {
       { id: medicalCase.id },
       { status: MedicalCaseStatus.CANCELLED },
     );
-    const detached = await manager.update(
-      TrainingLockEntity,
-      { caseId: medicalCase.id },
-      { caseId: null },
+    const detached = await this.lockWrites.detachLocksFromCase(
+      manager,
+      medicalCase.id,
     );
     await this.audit.record(manager, {
       actorId: callerId,
@@ -434,7 +432,7 @@ export class MedicalVisitsService {
       before: { status: medicalCase.status },
       after: {
         status: MedicalCaseStatus.CANCELLED,
-        trainingLocksDetached: detached.affected ?? 0,
+        trainingLocksDetached: detached,
       },
       reason,
       feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
@@ -517,14 +515,10 @@ export class MedicalVisitsService {
         totalCost: null,
       }),
     );
-    const attached = await manager.update(
-      TrainingLockEntity,
-      {
-        horseId: input.horseId,
-        status: TrainingLockStatus.ACTIVE,
-        caseId: IsNull(),
-      },
-      { caseId: medicalCase.id },
+    const attached = await this.lockWrites.attachActiveLockToCase(
+      manager,
+      input.horseId,
+      medicalCase.id,
     );
     await this.audit.record(manager, {
       actorId: input.callerId,
@@ -536,7 +530,7 @@ export class MedicalVisitsService {
         horseId: input.horseId,
         openedAt: input.openedAt,
         initialDiagnosis: input.initialDiagnosis,
-        trainingLockAttached: (attached.affected ?? 0) > 0,
+        trainingLockAttached: attached > 0,
       },
       feature: MEDICAL_AUDIT_FEATURE.OPEN_CASE,
     });
@@ -619,19 +613,12 @@ export class MedicalVisitsService {
           feature: input.feature,
         })
       : null;
-    const appointment = await manager.update(
-      CareScheduleEntity,
-      {
-        horseId: horse.id,
-        type: CareScheduleType.ROUTINE_CHECKUP,
-        status: CareScheduleStatus.SCHEDULED,
-      },
-      {
-        status: CareScheduleStatus.COMPLETED,
-        completedAt: new Date(),
-        completedBy: input.callerId,
-      },
-    );
+    const appointmentsCompleted =
+      await this.scheduleWrites.completeRoutineCheckup(
+        manager,
+        horse.id,
+        input.callerId,
+      );
     await this.audit.record(manager, {
       actorId: input.callerId,
       action: AuditAction.CREATE,
@@ -648,7 +635,7 @@ export class MedicalVisitsService {
         requestIds: input.requests.map((request) => request.id),
         prescriptionCount: prescriptions.length,
         injuryCount: injuries.length,
-        appointmentCompleted: (appointment.affected ?? 0) > 0,
+        appointmentCompleted: appointmentsCompleted > 0,
         ...(visit.replacesRecordId
           ? { replacesRecordId: visit.replacesRecordId }
           : {}),
@@ -676,16 +663,11 @@ export class MedicalVisitsService {
     visitId: string,
   ): Promise<void> {
     if (input.requests.length === 0) return;
-    const handledAt = new Date();
-    await manager.update(
-      MedicalExamRequestEntity,
-      { id: In(input.requests.map((request) => request.id)) },
-      {
-        status: ExamRequestStatus.EXAMINED,
-        handledBy: input.callerId,
-        handledAt,
-        medicalRecordId: visitId,
-      },
+    await this.requestWrites.markExamined(
+      manager,
+      input.requests.map((request) => request.id),
+      input.callerId,
+      visitId,
     );
     for (const request of input.requests) {
       await this.audit.record(manager, {

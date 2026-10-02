@@ -2,12 +2,11 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { CareScheduleStatus } from '../constants/care-schedule.enum';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
-import {
-  OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
-  TRANSFER_CANCEL_REASON,
-} from '../constants/medical.constants';
+import { OPEN_CASE_BLOCKS_TRANSFER_MESSAGE } from '../constants/medical.constants';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
+import { CareScheduleWritesService } from './care-schedule-writes.service';
+import { ExamRequestWritesService } from './exam-request-writes.service';
 import { MedicalAccessService } from './medical-access.service';
 
 /**
@@ -22,6 +21,8 @@ export interface MedicalTransferSettlement {
 export class MedicalLifecycleService {
   constructor(
     private readonly access: MedicalAccessService,
+    private readonly requestWrites: ExamRequestWritesService,
+    private readonly scheduleWrites: CareScheduleWritesService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -82,31 +83,17 @@ export class MedicalLifecycleService {
     const blockReason = await this.transferBlockReason(horseId, manager);
     if (blockReason) throw new ConflictException(blockReason);
 
-    const now = new Date();
-    const requests = await manager
-      .getRepository(MedicalExamRequestEntity)
-      .update(
-        { horseId, status: ExamRequestStatus.PENDING },
-        {
-          status: ExamRequestStatus.DISMISSED,
-          dismissReason: TRANSFER_CANCEL_REASON,
-          handledBy: null,
-          handledAt: now,
-        },
-      );
-    const schedules = await manager.getRepository(CareScheduleEntity).update(
-      {
+    const examRequestsDismissed =
+      await this.requestWrites.dismissPendingForTransfer(
+        manager,
         horseId,
-        status: CareScheduleStatus.SCHEDULED,
-      },
-      {
-        status: CareScheduleStatus.CANCELLED,
-        cancelReason: TRANSFER_CANCEL_REASON,
-      },
-    );
-    return {
-      examRequestsDismissed: requests.affected ?? 0,
-      careSchedulesCancelled: schedules.affected ?? 0,
-    };
+        new Date(),
+      );
+    const careSchedulesCancelled =
+      await this.scheduleWrites.cancelOpenSchedulesForTransfer(
+        manager,
+        horseId,
+      );
+    return { examRequestsDismissed, careSchedulesCancelled };
   }
 }

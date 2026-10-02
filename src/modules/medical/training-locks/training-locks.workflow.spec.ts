@@ -17,6 +17,7 @@ import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { TrainingLockService } from './training-locks.service';
+import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -81,6 +82,7 @@ describe('TrainingLockService set and release', () => {
       dataSource as unknown as DataSource,
       locks as unknown as Repository<TrainingLockEntity>,
       access as unknown as MedicalAccessService,
+      new TrainingLockWritesService(),
       horseAccess as unknown as HorseAccessService,
       audit,
       events as unknown as DomainEventPublisher,

@@ -26,6 +26,7 @@ import {
   assertNoActiveLock,
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
+import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 import type {
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
@@ -39,6 +40,7 @@ export class TrainingLockService {
     @InjectRepository(TrainingLockEntity)
     private readonly locks: Repository<TrainingLockEntity>,
     private readonly access: MedicalAccessService,
+    private readonly lockWrites: TrainingLockWritesService,
     private readonly horseAccess: HorseAccessService,
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
@@ -154,13 +156,11 @@ export class TrainingLockService {
         lock: { mode: 'pessimistic_write' },
       });
       assertLockActive(lock.status);
-      const changes = {
-        status: TrainingLockStatus.RELEASED,
+      const changes = await this.lockWrites.releaseLock(manager, lockId, {
         releasedBy: caller.id,
         releasedAt: new Date(),
         releaseConclusion: body.conclusion,
-      };
-      await manager.update(TrainingLockEntity, { id: lockId }, changes);
+      });
       await this.audit.record(manager, {
         actorId: caller.id,
         action: AuditAction.UPDATE,
@@ -241,16 +241,13 @@ export class TrainingLockService {
     horseId: string,
     conclusion: string,
   ): Promise<boolean> {
-    const result = await manager.getRepository(TrainingLockEntity).update(
-      { horseId, status: TrainingLockStatus.ACTIVE },
-      {
-        status: TrainingLockStatus.RELEASED,
-        releasedAt: new Date(),
-        releasedBy: null,
-        releaseConclusion: conclusion,
-      },
+    return (
+      (await this.lockWrites.releaseActiveLockOfHorse(
+        manager,
+        horseId,
+        conclusion,
+      )) > 0
     );
-    return (result.affected ?? 0) > 0;
   }
 
   /**
