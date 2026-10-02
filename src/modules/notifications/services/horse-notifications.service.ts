@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
 } from '../../horses/enums/horse-measurement-alert.enum';
 import { WEIGHT_DROP_WINDOW_DAYS } from '../../horses/constants/horse.constants';
+import { HorseEntity } from '../../horses/entities/horse.entity';
 import { formatMeasurement } from '../../horses/utils/measurement-format';
 import type {
   HorseBarnAssignedEvent,
@@ -24,6 +26,7 @@ export class HorseNotificationsService {
   constructor(
     private readonly recipients: NotificationRecipientsRepository,
     private readonly notifications: NotificationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -78,7 +81,7 @@ export class HorseNotificationsService {
    */
   async notifyBarnAssigned(notice: HorseBarnAssignedEvent): Promise<string[]> {
     const [horseName, barn] = await Promise.all([
-      this.recipients.findHorseName(notice.horseId),
+      this.horseName(notice.horseId),
       this.recipients.findBarnContact(notice.barnId),
     ]);
     if (!horseName || !barn) {
@@ -115,7 +118,7 @@ export class HorseNotificationsService {
   async notifyGroomChanged(
     notice: GroomAssignmentChangedEvent,
   ): Promise<string[]> {
-    const horseName = await this.recipients.findHorseName(notice.horseId);
+    const horseName = await this.horseName(notice.horseId);
     if (!horseName) {
       this.logger.warn(
         `Bỏ qua thông báo đổi Groom ${notice.eventId}: không tìm thấy ngựa ${notice.horseId}`,
@@ -163,7 +166,7 @@ export class HorseNotificationsService {
   async notifyGroomReleasedByTransfer(
     notice: HorseGroomReleasedEvent,
   ): Promise<string[]> {
-    const horseName = await this.recipients.findHorseName(notice.horseId);
+    const horseName = await this.horseName(notice.horseId);
     if (!horseName) {
       this.logger.warn(
         `Bỏ qua thông báo chuyển nhượng ${notice.eventId}: không tìm thấy ngựa ${notice.horseId}`,
@@ -178,6 +181,21 @@ export class HorseNotificationsService {
       title: 'Ngựa đã chuyển nhượng',
       message: `Ngựa ${horseName} đã chuyển nhượng, bạn không còn phụ trách con ngựa này. Bạn vẫn xem được hồ sơ nhưng không thao tác được.`,
     });
+  }
+
+  /**
+   * Lấy tên ngựa theo id, đọc cả hồ sơ đã xóa mềm
+   *
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về tên ngựa, null nếu không có
+   */
+  private async horseName(horseId: string): Promise<string | null> {
+    const horse = await this.dataSource.manager.findOne(HorseEntity, {
+      where: { id: horseId },
+      withDeleted: true,
+      select: { id: true, name: true },
+    });
+    return horse?.name ?? null;
   }
 }
 

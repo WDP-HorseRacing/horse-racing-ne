@@ -1,3 +1,4 @@
+import { DataSource } from 'typeorm';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
@@ -20,9 +21,18 @@ function setup() {
     findHorseName: jest.fn(),
   };
   const notifications = { send: jest.fn().mockResolvedValue([]) };
+  const dataSource = {
+    manager: {
+      findOne: async () => {
+        const name = (await recipients.findHorseName()) as string | null;
+        return name === null ? null : { name };
+      },
+    },
+  } as unknown as DataSource;
   const service = new HorseNotificationsService(
     recipients as unknown as NotificationRecipientsRepository,
     notifications as unknown as NotificationsService,
+    dataSource,
   );
   return { service, recipients, notifications };
 }

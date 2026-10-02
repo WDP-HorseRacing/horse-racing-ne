@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
@@ -44,24 +44,11 @@ export class NotificationRecipientsRepository {
   async findHorseBarnContact(
     horseId: string,
   ): Promise<HorseBarnContact | null> {
-    const row = await this.dataSource
-      .getRepository(HorseEntity)
-      .createQueryBuilder('horse')
-      .withDeleted()
-      .leftJoin(
-        BarnEntity,
-        'barn',
-        'barn.id = horse.barnId AND barn.deletedAt IS NULL',
-      )
-      .leftJoin(
-        UserEntity,
-        'trainer',
-        'trainer.id = barn.headTrainerId AND trainer.deletedAt IS NULL AND trainer.status = :status AND trainer.role = :role',
-        { status: UserStatus.ACTIVE, role: UserRole.HEAD_TRAINER },
-      )
+    const row = await this.leftJoinActiveHeadTrainer(
+      this.horseWithLiveBarn(horseId),
+    )
       .select('horse.name', 'horseName')
       .addSelect('trainer.id', 'headTrainerId')
-      .where('horse.id = :horseId', { horseId })
       .getRawOne<{ horseName: string; headTrainerId: string | null }>();
     if (!row) {
       return null;
@@ -82,31 +69,18 @@ export class NotificationRecipientsRepository {
   async findHorseMedicalContact(
     horseId: string,
   ): Promise<HorseMedicalContact | null> {
-    const row = await this.dataSource
-      .getRepository(HorseEntity)
-      .createQueryBuilder('horse')
-      .withDeleted()
-      .leftJoin(
-        BarnEntity,
-        'barn',
-        'barn.id = horse.barnId AND barn.deletedAt IS NULL',
-      )
-      .leftJoin(
-        UserEntity,
-        'trainer',
-        'trainer.id = barn.headTrainerId AND trainer.deletedAt IS NULL AND trainer.status = :status AND trainer.role = :trainerRole',
-        { status: UserStatus.ACTIVE, trainerRole: UserRole.HEAD_TRAINER },
-      )
+    const row = await this.leftJoinActiveHeadTrainer(
+      this.horseWithLiveBarn(horseId),
+    )
       .leftJoin(
         UserEntity,
         'owner',
-        'owner.id = horse.ownerId AND owner.deletedAt IS NULL AND owner.status = :status AND owner.role = :ownerRole',
-        { ownerRole: UserRole.HORSE_OWNER },
+        'owner.id = horse.ownerId AND owner.deletedAt IS NULL AND owner.status = :ownerStatus AND owner.role = :ownerRole',
+        { ownerStatus: UserStatus.ACTIVE, ownerRole: UserRole.HORSE_OWNER },
       )
       .select('horse.name', 'horseName')
       .addSelect('trainer.id', 'headTrainerId')
       .addSelect('owner.id', 'ownerId')
-      .where('horse.id = :horseId', { horseId })
       .getRawOne<{
         horseName: string;
         headTrainerId: string | null;
@@ -131,15 +105,9 @@ export class NotificationRecipientsRepository {
    * @returns A promise resolving to tên khu kèm Head Trainer, hoặc null nếu khu không tồn tại hay đã xóa mềm
    */
   async findBarnContact(barnId: string): Promise<BarnContact | null> {
-    const row = await this.dataSource
-      .getRepository(BarnEntity)
-      .createQueryBuilder('barn')
-      .leftJoin(
-        UserEntity,
-        'trainer',
-        'trainer.id = barn.headTrainerId AND trainer.deletedAt IS NULL AND trainer.status = :status AND trainer.role = :role',
-        { status: UserStatus.ACTIVE, role: UserRole.HEAD_TRAINER },
-      )
+    const row = await this.leftJoinActiveHeadTrainer(
+      this.dataSource.getRepository(BarnEntity).createQueryBuilder('barn'),
+    )
       .select('barn.name', 'barnName')
       .addSelect('trainer.id', 'headTrainerId')
       .where('barn.id = :barnId', { barnId })
@@ -151,17 +119,38 @@ export class NotificationRecipientsRepository {
   }
 
   /**
-   * Lấy tên ngựa theo id, đọc cả hồ sơ đã xóa mềm.
+   * Tạo query ngựa (kể cả hồ sơ đã xóa mềm) kèm khu hiện tại chưa xóa của nó
    *
-   * @param horseId The id of the horse
-   * @returns A promise resolving to tên ngựa, hoặc null nếu không tìm thấy
+   * @param horseId UUID của ngựa
+   * @returns Query builder với alias `horse` và `barn`
    */
-  async findHorseName(horseId: string): Promise<string | null> {
-    const horse = await this.dataSource.getRepository(HorseEntity).findOne({
-      where: { id: horseId },
-      withDeleted: true,
-      select: { id: true, name: true },
-    });
-    return horse?.name ?? null;
+  private horseWithLiveBarn(horseId: string): SelectQueryBuilder<HorseEntity> {
+    return this.dataSource
+      .getRepository(HorseEntity)
+      .createQueryBuilder('horse')
+      .withDeleted()
+      .leftJoin(
+        BarnEntity,
+        'barn',
+        'barn.id = horse.barnId AND barn.deletedAt IS NULL',
+      )
+      .andWhere('horse.id = :horseId', { horseId });
+  }
+
+  /**
+   * Join Head Trainer đang phụ trách khu vào query, chỉ khi tài khoản chưa xóa, đang ACTIVE và còn vai trò HEAD_TRAINER
+   *
+   * @param qb Query builder đã có alias `barn`
+   * @returns Query builder kèm alias `trainer`
+   */
+  private leftJoinActiveHeadTrainer<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+  ): SelectQueryBuilder<T> {
+    return qb.leftJoin(
+      UserEntity,
+      'trainer',
+      'trainer.id = barn.headTrainerId AND trainer.deletedAt IS NULL AND trainer.status = :trainerStatus AND trainer.role = :trainerRole',
+      { trainerStatus: UserStatus.ACTIVE, trainerRole: UserRole.HEAD_TRAINER },
+    );
   }
 }
