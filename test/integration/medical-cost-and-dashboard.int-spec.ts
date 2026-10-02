@@ -2,7 +2,9 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
 import { MedicalDashboardRepository } from '../../src/modules/medical/medical-dashboard/medical-dashboard.repository';
+import { MedicalCaseEntity } from '../../src/modules/medical/entities/medical-case.entity';
 import { MedicalCasesRepository } from '../../src/modules/medical/medical-records/medical-cases.repository';
+import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
 import { fixtures } from './fixtures';
 import {
   startTestDatabase,
@@ -16,6 +18,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let cases: MedicalCasesRepository;
+  let caseService: MedicalCasesService;
   let dashboard: MedicalDashboardRepository;
   let vet: string;
 
@@ -24,6 +27,18 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     cases = new MedicalCasesRepository(dataSource);
+    const unused = {} as never;
+    caseService = new MedicalCasesService(
+      dataSource,
+      unused,
+      unused,
+      unused,
+      cases,
+      dataSource.getRepository(MedicalCaseEntity),
+      unused,
+      unused,
+      unused,
+    );
     dashboard = new MedicalDashboardRepository(dataSource);
   });
 
@@ -140,12 +155,12 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
         totalCost: 9000,
       });
 
-      await expect(cases.closedCostOfHorse(winx)).resolves.toBe(1000);
+      await expect(caseService['closedCostOfHorse'](winx)).resolves.toBe(1000);
     });
 
     it('answers 0 for a horse without closed cases', async () => {
       const winx = await seed.horse('Winx');
-      await expect(cases.closedCostOfHorse(winx)).resolves.toBe(0);
+      await expect(caseService['closedCostOfHorse'](winx)).resolves.toBe(0);
     });
   });
 

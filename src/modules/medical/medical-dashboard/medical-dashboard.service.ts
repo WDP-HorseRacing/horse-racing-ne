@@ -18,14 +18,12 @@ import {
   toClubDate,
 } from '../policies/medical.policy';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';
 
 @Injectable()
 export class MedicalDashboardService {
   constructor(
     private readonly horseAccess: HorseAccessService,
-    private readonly shared: MedicalSharedRepository,
     private readonly checkups: MedicalCheckupsService,
     private readonly dashboard: MedicalDashboardRepository,
     private readonly dataSource: DataSource,
@@ -53,12 +51,12 @@ export class MedicalDashboardService {
     await this.horseAccess.currentUser(actor);
     const filter = { barnId: query.barnId, healthStatus: query.healthStatus };
     const today = toClubDate(new Date());
-    const rows = await this.shared.herdCheckupAnchors(filter);
+    const rows = await this.checkups.herdCheckupAnchors(filter);
     const horseIds = rows.map((row) => row.horseId);
     const [checkups, careSchedules, openCases, pending] = await Promise.all([
       this.checkups.checkupItemsFor(rows, today),
       horseIds.length
-        ? this.shared.dueCareSchedules(
+        ? this.checkups.dueCareSchedules(
             addDays(today, CHECKUP_DUE_SOON_DAYS),
             horseIds,
           )

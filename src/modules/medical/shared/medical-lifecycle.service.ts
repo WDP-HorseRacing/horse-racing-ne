@@ -8,7 +8,7 @@ import {
 } from '../constants/medical.constants';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalSharedRepository } from './medical-shared.repository';
+import { MedicalAccessService } from './medical-access.service';
 
 /**
  * Số việc y tế còn treo đã được hệ thống tự đóng khi ngựa chuyển nhượng.
@@ -21,7 +21,7 @@ export interface MedicalTransferSettlement {
 @Injectable()
 export class MedicalLifecycleService {
   constructor(
-    private readonly shared: MedicalSharedRepository,
+    private readonly access: MedicalAccessService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -36,7 +36,7 @@ export class MedicalLifecycleService {
     horseId: string,
     manager: EntityManager = this.dataSource.manager,
   ): Promise<string | null> {
-    const openCase = await this.shared.findOpenCase(horseId, manager);
+    const openCase = await this.access.findOpenCase(horseId, manager);
     return openCase ? OPEN_CASE_BLOCKS_TRANSFER_MESSAGE : null;
   }
 

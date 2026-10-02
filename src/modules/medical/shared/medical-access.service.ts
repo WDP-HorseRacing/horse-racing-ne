@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { assertNotTransferred } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import type { CurrentActorUser } from '../../users/utils/current-user';
+import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { MedicalCaseEntity } from '../entities/medical-case.entity';
 
 @Injectable()
 export class MedicalAccessService {
-  constructor(private readonly horseAccess: HorseAccessService) {}
+  constructor(
+    private readonly horseAccess: HorseAccessService,
+    private readonly dataSource: DataSource,
+  ) {}
 
   /**
    * Khóa row con ngựa trước mọi thao tác ghi y tế trong transaction
@@ -36,5 +41,21 @@ export class MedicalAccessService {
     );
     assertNotTransferred(locked.horse);
     return locked;
+  }
+
+  /**
+   * Tìm bệnh án đang mở của con ngựa, mỗi ngựa tối đa một
+   *
+   * @param horseId UUID của ngựa
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Promise trả về bệnh án đang mở, null nếu không có
+   */
+  findOpenCase(
+    horseId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<MedicalCaseEntity | null> {
+    return manager.findOne(MedicalCaseEntity, {
+      where: { horseId, status: MedicalCaseStatus.OPEN },
+    });
   }
 }

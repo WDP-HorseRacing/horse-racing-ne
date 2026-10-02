@@ -59,6 +59,7 @@ describe('ExamRequestsService', () => {
     isHorseInTrainerBarn: jest.Mock;
     lockWritableHorseInScope: jest.Mock;
     isGroomAssigned: jest.Mock;
+    lockHorseWithDeleted: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
@@ -135,6 +136,13 @@ describe('ExamRequestsService', () => {
         horse: HORSE,
       }),
       isGroomAssigned: jest.fn().mockResolvedValue(false),
+      lockHorseWithDeleted: jest.fn((m: typeof manager, horseId: string) =>
+        m.findOne(HorseEntity, {
+          where: { id: horseId },
+          withDeleted: true,
+          lock: { mode: 'pessimistic_write' },
+        }),
+      ),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };

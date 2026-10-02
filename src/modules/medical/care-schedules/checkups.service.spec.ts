@@ -15,7 +15,6 @@ import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { addDays, toClubDate } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 import { CheckupsService } from './checkups.service';
 
 type Row = Record<string, unknown>;
@@ -72,7 +71,10 @@ describe('CheckupsService', () => {
       }),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    const typedShared = shared as unknown as MedicalSharedRepository;
+    const herdCheckups = Object.assign(
+      new MedicalCheckupsService({} as DataSource),
+      shared,
+    );
     service = new CheckupsService(
       {
         transaction: jest.fn((work: (m: typeof manager) => unknown) =>
@@ -83,8 +85,7 @@ describe('CheckupsService', () => {
       {
         currentUser: jest.fn().mockResolvedValue({ id: 'vet-1' }),
       } as unknown as HorseAccessService,
-      typedShared,
-      new MedicalCheckupsService(typedShared),
+      herdCheckups,
       audit,
     );
   });

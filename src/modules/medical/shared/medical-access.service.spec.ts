@@ -29,6 +29,7 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
     };
     service = new MedicalAccessService(
       horseAccess as unknown as HorseAccessService,
+      {} as DataSource,
     );
   });
 
@@ -93,6 +94,7 @@ describe('MedicalAccessService.lockHorseForWrite on a deleted profile', () => {
         } as unknown as DataSource),
         { lockHorseWithDeleted },
       ),
+      {} as DataSource,
     );
   });
 

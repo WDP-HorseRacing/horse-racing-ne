@@ -14,7 +14,6 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { formatMeasurement } from '../../horses/utils/measurement-format';
-import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { assertNotTransferred } from '../../horses/policies/horse.policy';
@@ -337,11 +336,10 @@ export class ExamRequestsService {
    */
   async createFromAlert(event: HorseMeasurementAlertEvent): Promise<boolean> {
     return this.dataSource.transaction(async (manager) => {
-      const horse = await manager.findOne(HorseEntity, {
-        where: { id: event.horseId },
-        withDeleted: true,
-        lock: { mode: 'pessimistic_write' },
-      });
+      const horse = await this.horseAccess.lockHorseWithDeleted(
+        manager,
+        event.horseId,
+      );
       if (
         !horse ||
         horse.deletedAt ||
@@ -543,17 +541,13 @@ export class ExamRequestsService {
    * Lấy các con ngựa groom đang được giao chăm (dòng groom_assignments còn mở, bảng của module stable, chỉ đọc)
    *
    * @param groomId UUID của groom
-   * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
    * @returns Promise trả về danh sách UUID ngựa
    */
-  private async assignedHorseIds(
-    groomId: string,
-    manager?: EntityManager,
-  ): Promise<string[]> {
-    const rows = await (manager ?? this.dataSource.manager).find(
-      GroomAssignmentEntity,
-      { where: { groomId, endAt: IsNull() }, select: { horseId: true } },
-    );
+  private async assignedHorseIds(groomId: string): Promise<string[]> {
+    const rows = await this.dataSource.manager.find(GroomAssignmentEntity, {
+      where: { groomId, endAt: IsNull() },
+      select: { horseId: true },
+    });
     return rows.map((row) => row.horseId);
   }
 }

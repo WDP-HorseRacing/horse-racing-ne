@@ -17,7 +17,6 @@ function systemService(): TrainingLockService {
     unused,
     unused,
     unused,
-    unused,
   );
 }
 

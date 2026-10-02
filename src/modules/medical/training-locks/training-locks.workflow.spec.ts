@@ -16,7 +16,6 @@ import {
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 import { TrainingLockService } from './training-locks.service';
 
 type Row = Record<string, unknown>;
@@ -34,7 +33,7 @@ describe('TrainingLockService set and release', () => {
     update: jest.Mock;
   };
   let locks: { findOne: jest.Mock; find: jest.Mock };
-  let access: { lockHorseForWrite: jest.Mock };
+  let access: { lockHorseForWrite: jest.Mock; findOpenCase: jest.Mock };
   let horseAccess: { findReadableHorseForActor: jest.Mock };
   let shared: { findOpenCase: jest.Mock };
   let audit: { record: jest.Mock };
@@ -67,14 +66,15 @@ describe('TrainingLockService set and release', () => {
       findOne: jest.fn(() => Promise.resolve(lockRow)),
       find: jest.fn().mockResolvedValue([]),
     };
+    shared = { findOpenCase: jest.fn().mockResolvedValue(null) };
     access = {
       lockHorseForWrite: jest.fn().mockResolvedValue({
         caller: { id: 'vet-1' },
         horse: { id: 'h1' },
       }),
+      findOpenCase: shared.findOpenCase,
     };
     horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
-    shared = { findOpenCase: jest.fn().mockResolvedValue(null) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };
     service = new TrainingLockService(
@@ -82,7 +82,6 @@ describe('TrainingLockService set and release', () => {
       locks as unknown as Repository<TrainingLockEntity>,
       access as unknown as MedicalAccessService,
       horseAccess as unknown as HorseAccessService,
-      shared as unknown as MedicalSharedRepository,
       audit,
       events as unknown as DomainEventPublisher,
     );

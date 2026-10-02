@@ -17,20 +17,20 @@ import {
   CareScheduleStatus,
   CareScheduleType,
 } from '../../src/modules/medical/constants/care-schedule.enum';
-import { MedicalSharedRepository } from '../../src/modules/medical/shared/medical-shared.repository';
+import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
 
 const TODAY = '2026-09-27';
 
-describe('MedicalSharedRepository (Postgres)', () => {
+describe('MedicalCheckupsService (Postgres)', () => {
   let db: TestDatabase;
   let dataSource: DataSource;
-  let repository: MedicalSharedRepository;
+  let repository: MedicalCheckupsService;
   let seed: ReturnType<typeof fixtures>;
 
   beforeAll(async () => {
     db = await startTestDatabase();
     dataSource = db.dataSource;
-    repository = new MedicalSharedRepository(dataSource);
+    repository = new MedicalCheckupsService(dataSource);
     seed = fixtures(dataSource);
   });
 

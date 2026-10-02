@@ -4,7 +4,6 @@ import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';
 import { MedicalDashboardService } from './medical-dashboard.service';
 
@@ -53,8 +52,7 @@ describe('MedicalDashboardService', () => {
       {
         currentUser: jest.fn().mockResolvedValue({ id: 'u1' }),
       } as unknown as HorseAccessService,
-      shared as unknown as MedicalSharedRepository,
-      checkups as unknown as MedicalCheckupsService,
+      { ...shared, ...checkups } as unknown as MedicalCheckupsService,
       dashboard as unknown as MedicalDashboardRepository,
       { manager: requests } as unknown as DataSource,
     );

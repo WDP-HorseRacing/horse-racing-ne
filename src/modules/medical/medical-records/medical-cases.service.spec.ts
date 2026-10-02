@@ -21,6 +21,7 @@ import {
 } from '../constants/medical-events.constants';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
+import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalCasesRepository } from './medical-cases.repository';
@@ -47,12 +48,21 @@ describe('MedicalCasesService', () => {
     count: jest.Mock;
     update: jest.Mock;
   };
-  let cases: { find: jest.Mock; findOne: jest.Mock };
+  let cases: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let costBuilder: {
+    select: jest.Mock;
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    getRawOne: jest.Mock;
+  };
   let horseAccess: { findReadableHorseForActor: jest.Mock; currentUser: jest.Mock };
   let access: { lockHorseForWrite: jest.Mock };
   let casesRepository: {
     costByHorse: jest.Mock;
-    closedCostOfHorse: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
@@ -93,9 +103,16 @@ describe('MedicalCasesService', () => {
         work(manager),
       ),
     };
+    costBuilder = {
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ totalCost: '1500000' }),
+    };
     cases = {
       find: jest.fn(() => Promise.resolve([openCase, closedCase])),
       findOne: jest.fn(() => Promise.resolve(caseRow)),
+      createQueryBuilder: jest.fn(() => costBuilder),
     };
     horseAccess = {
       findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }),
@@ -109,7 +126,6 @@ describe('MedicalCasesService', () => {
     };
     casesRepository = {
       costByHorse: jest.fn().mockResolvedValue([]),
-      closedCostOfHorse: jest.fn().mockResolvedValue(1500000),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };
@@ -122,6 +138,9 @@ describe('MedicalCasesService', () => {
       } as unknown as MedicalRecordsService,
       casesRepository as unknown as MedicalCasesRepository,
       cases as unknown as Repository<MedicalCaseEntity>,
+      {
+        find: (options: unknown) => manager.find(MedicalRecordEntity, options),
+      } as unknown as Repository<MedicalRecordEntity>,
       audit,
       events as unknown as DomainEventPublisher,
     );
@@ -138,7 +157,7 @@ describe('MedicalCasesService', () => {
       for (const item of result.items) {
         expect(item).not.toHaveProperty('totalCost');
       }
-      expect(casesRepository.closedCostOfHorse).not.toHaveBeenCalled();
+      expect(cases.createQueryBuilder).not.toHaveBeenCalled();
     });
 
     it('sums every closed case of the horse even when the list is filtered', async () => {
@@ -152,7 +171,10 @@ describe('MedicalCasesService', () => {
 
       expect(result.items).toHaveLength(1);
       expect(result.totalCost).toBe(1500000);
-      expect(casesRepository.closedCostOfHorse).toHaveBeenCalledWith('h1');
+      expect(costBuilder.where).toHaveBeenCalledWith(
+        'medicalCase.horseId = :horseId',
+        { horseId: 'h1' },
+      );
     });
 
     it('shows an owner the cost of closed cases only and sums them', async () => {

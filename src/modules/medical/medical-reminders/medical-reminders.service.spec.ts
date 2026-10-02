@@ -3,7 +3,7 @@ import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
 } from '../constants/medical-events.constants';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MedicalRemindersService } from './medical-reminders.service';
 
 const anchor = (horseId: string, lastVisitDate: string) => ({
@@ -41,7 +41,7 @@ describe('MedicalRemindersService.notifyOverdueCheckups', () => {
             assignedTo: 'groom-1',
           },
         ]),
-      } as unknown as MedicalSharedRepository,
+      } as unknown as MedicalCheckupsService,
       events as unknown as DomainEventPublisher,
     );
   });
@@ -99,7 +99,7 @@ describe('MedicalRemindersService.runDaily', () => {
     };
     events = { publish: jest.fn() };
     service = new MedicalRemindersService(
-      shared as unknown as MedicalSharedRepository,
+      shared as unknown as MedicalCheckupsService,
       events as unknown as DomainEventPublisher,
     );
   });

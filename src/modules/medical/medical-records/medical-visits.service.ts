@@ -1,6 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource, EntityManager, In, IsNull, Not } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -62,7 +70,6 @@ import {
   resolveVisitVoid,
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 import type {
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
@@ -101,8 +108,11 @@ interface VisitWriteResult {
 export class MedicalVisitsService {
   constructor(
     private readonly dataSource: DataSource,
+    @InjectRepository(MedicalRecordEntity)
+    private readonly medicalRecords: Repository<MedicalRecordEntity>,
+    @InjectRepository(MedicalCaseEntity)
+    private readonly medicalCases: Repository<MedicalCaseEntity>,
     private readonly access: MedicalAccessService,
-    private readonly shared: MedicalSharedRepository,
     private readonly horseHealth: HorseHealthService,
     private readonly measurements: HorseMeasurementsService,
     private readonly audit: AuditService,
@@ -144,7 +154,7 @@ export class MedicalVisitsService {
         actor,
         horseId,
       );
-      const openCase = await this.shared.findOpenCase(horseId, manager);
+      const openCase = await this.access.findOpenCase(horseId, manager);
       assertStandaloneVisitAllowed(openCase !== null);
       assertVisitExamDate(examDate, now);
       assertStandaloneVisitInput({
@@ -293,7 +303,7 @@ export class MedicalVisitsService {
     recordId: string,
     body: VoidMedicalRecordDto,
   ): Promise<MedicalRecordResponseDto> {
-    const found = await this.dataSource.manager.findOne(MedicalRecordEntity, {
+    const found = await this.medicalRecords.findOne({
       where: { id: recordId },
     });
     if (!found) throw new NotFoundException('Không tìm thấy buổi khám');
@@ -439,10 +449,10 @@ export class MedicalVisitsService {
    * @throws NotFoundException Nếu không có bệnh án
    */
   private async caseHorseId(caseId: string): Promise<string> {
-    const medicalCase = await this.dataSource.manager.findOne(
-      MedicalCaseEntity,
-      { where: { id: caseId }, select: { id: true, horseId: true } },
-    );
+    const medicalCase = await this.medicalCases.findOne({
+      where: { id: caseId },
+      select: { id: true, horseId: true },
+    });
     if (!medicalCase) throw new NotFoundException('Không tìm thấy bệnh án');
     return medicalCase.horseId;
   }

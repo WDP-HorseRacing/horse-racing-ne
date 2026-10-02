@@ -157,9 +157,9 @@ describe('Health history and exam request queries (Postgres)', () => {
         dataSource,
         dataSource.getRepository(MedicalExamRequestEntity),
         {} as MedicalAccessService,
-        {
+        Object.assign(new HorseAccessService(dataSource), {
           currentUser: jest.fn().mockResolvedValue({ id: callerId }),
-        } as unknown as HorseAccessService,
+        }),
         audit,
         { publish: jest.fn() } as unknown as DomainEventPublisher,
       );

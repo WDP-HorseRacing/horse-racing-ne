@@ -26,7 +26,6 @@ import {
   assertNoActiveLock,
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 import type {
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
@@ -40,7 +39,6 @@ export class TrainingLockService {
     private readonly locks: Repository<TrainingLockEntity>,
     private readonly access: MedicalAccessService,
     private readonly horseAccess: HorseAccessService,
-    private readonly shared: MedicalSharedRepository,
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
   ) {}
@@ -81,7 +79,7 @@ export class TrainingLockService {
       });
       assertNoActiveLock(active);
       if (lockEnd) assertLockEnd(lockEnd, now);
-      const openCase = await this.shared.findOpenCase(horseId, manager);
+      const openCase = await this.access.findOpenCase(horseId, manager);
       const saved = await manager.save(
         manager.create(TrainingLockEntity, {
           horseId,

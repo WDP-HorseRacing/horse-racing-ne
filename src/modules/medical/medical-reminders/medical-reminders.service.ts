@@ -12,7 +12,7 @@ import {
   isOverdueNotifiable,
   toClubDate,
 } from '../policies/medical.policy';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import type {
   CareScheduleDueEvent,
   CheckupOverdueEvent,
@@ -23,7 +23,7 @@ export class MedicalRemindersService {
   private readonly logger = new Logger(MedicalRemindersService.name);
 
   constructor(
-    private readonly shared: MedicalSharedRepository,
+    private readonly checkups: MedicalCheckupsService,
     private readonly events: DomainEventPublisher,
   ) {}
 
@@ -84,7 +84,7 @@ export class MedicalRemindersService {
    * @returns A promise resolving to số con ngựa đã phát nhắc
    */
   async notifyOverdueCheckups(today: string): Promise<number> {
-    const rows = await this.shared.herdCheckupAnchors();
+    const rows = await this.checkups.herdCheckupAnchors();
     let sent = 0;
     for (const row of rows) {
       const dueDate = checkupDueDate(row);
@@ -109,7 +109,7 @@ export class MedicalRemindersService {
    * @returns A promise resolving to số lịch đã phát nhắc
    */
   async notifyDueCareSchedules(today: string): Promise<number> {
-    const rows = await this.shared.dueCareSchedules(today);
+    const rows = await this.checkups.dueCareSchedules(today);
     for (const row of rows) {
       const event: CareScheduleDueEvent = {
         eventId: deterministicUuid(

@@ -75,6 +75,8 @@ export class MedicalCasesService {
     private readonly casesRepository: MedicalCasesRepository,
     @InjectRepository(MedicalCaseEntity)
     private readonly cases: Repository<MedicalCaseEntity>,
+    @InjectRepository(MedicalRecordEntity)
+    private readonly medicalRecords: Repository<MedicalRecordEntity>,
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
   ) {}
@@ -109,7 +111,7 @@ export class MedicalCasesService {
     if (!seesCost) return { items };
     return {
       items,
-      totalCost: await this.casesRepository.closedCostOfHorse(horseId),
+      totalCost: await this.closedCostOfHorse(horseId),
     };
   }
 
@@ -128,7 +130,7 @@ export class MedicalCasesService {
   ): Promise<MedicalCaseDetailResponseDto> {
     const medicalCase = await this.findCase(caseId);
     await this.horseAccess.findReadableHorseForActor(actor, medicalCase.horseId);
-    const visits = await this.dataSource.manager.find(MedicalRecordEntity, {
+    const visits = await this.medicalRecords.find({
       where: { caseId },
       order: { examDate: 'DESC' },
     });
@@ -434,5 +436,23 @@ export class MedicalCasesService {
     const medicalCase = await this.cases.findOne({ where: { id: caseId } });
     if (!medicalCase) throw new NotFoundException('Không tìm thấy bệnh án');
     return medicalCase;
+  }
+
+  /**
+   * Cộng chi phí mọi bệnh án đã đóng của một con ngựa
+   *
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về tổng chi phí (VND), 0 nếu chưa có bệnh án đã đóng
+   */
+  private async closedCostOfHorse(horseId: string): Promise<number> {
+    const row = await this.cases
+      .createQueryBuilder('medicalCase')
+      .select('COALESCE(SUM(medicalCase.totalCost), 0)', 'totalCost')
+      .where('medicalCase.horseId = :horseId', { horseId })
+      .andWhere('medicalCase.status = :status', {
+        status: MedicalCaseStatus.CLOSED,
+      })
+      .getRawOne<{ totalCost: string }>();
+    return Number(row?.totalCost ?? 0);
   }
 }

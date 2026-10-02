@@ -9,7 +9,7 @@ import {
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import { MedicalLifecycleService } from './medical-lifecycle.service';
-import { MedicalSharedRepository } from './medical-shared.repository';
+import { MedicalAccessService } from './medical-access.service';
 
 describe('MedicalLifecycleService', () => {
   const now = new Date('2026-09-27T08:00:00Z');
@@ -37,7 +37,7 @@ describe('MedicalLifecycleService', () => {
       ),
     } as unknown as EntityManager;
     service = new MedicalLifecycleService(
-      shared as unknown as MedicalSharedRepository,
+      shared as unknown as MedicalAccessService,
       { manager } as unknown as DataSource,
     );
   });

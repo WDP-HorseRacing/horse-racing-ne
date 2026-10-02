@@ -25,7 +25,6 @@ import {
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 
 @Injectable()
 export class CheckupsService {
@@ -33,7 +32,6 @@ export class CheckupsService {
     private readonly dataSource: DataSource,
     private readonly access: MedicalAccessService,
     private readonly horseAccess: HorseAccessService,
-    private readonly shared: MedicalSharedRepository,
     private readonly herdCheckups: MedicalCheckupsService,
     private readonly audit: AuditService,
   ) {}
@@ -91,7 +89,7 @@ export class CheckupsService {
         actor,
         horseId,
       );
-      const [anchors] = await this.shared.herdCheckupAnchors(
+      const [anchors] = await this.herdCheckups.herdCheckupAnchors(
         { horseIds: [horseId] },
         manager,
       );
@@ -102,7 +100,7 @@ export class CheckupsService {
         checkupStateOf(anchors, today).dueDate,
       );
       const existing = (
-        await this.shared.activeAppointments([horseId], manager)
+        await this.herdCheckups.activeAppointments([horseId], manager)
       ).get(horseId);
       assertRescheduleReason(existing !== undefined, body.reason);
 

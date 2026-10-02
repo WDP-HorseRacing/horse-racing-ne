@@ -3,7 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -36,7 +36,6 @@ import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entit
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalSharedRepository } from '../shared/medical-shared.repository';
 import { MedicalVisitsService } from './medical-visits.service';
 
 type Row = Record<string, unknown>;
@@ -57,7 +56,7 @@ describe('MedicalVisitsService', () => {
     save: jest.Mock;
     update: jest.Mock;
   };
-  let access: { lockHorseForWrite: jest.Mock };
+  let access: { lockHorseForWrite: jest.Mock; findOpenCase: jest.Mock };
   let shared: { findOpenCase: jest.Mock };
   let horseHealth: { applyHealthStatus: jest.Mock };
   let measurements: {
@@ -124,12 +123,13 @@ describe('MedicalVisitsService', () => {
         return result;
       }),
     };
+    shared = { findOpenCase: jest.fn().mockResolvedValue(null) };
     access = {
       lockHorseForWrite: jest.fn(() =>
         Promise.resolve({ caller: { id: 'vet-1' }, horse }),
       ),
+      findOpenCase: shared.findOpenCase,
     };
-    shared = { findOpenCase: jest.fn().mockResolvedValue(null) };
     horseHealth = {
       applyHealthStatus: jest.fn((_m: unknown, input: { to: string }) =>
         Promise.resolve({
@@ -150,8 +150,15 @@ describe('MedicalVisitsService', () => {
     };
     service = new MedicalVisitsService(
       dataSource as unknown as DataSource,
+      {
+        findOne: (options: unknown) =>
+          manager.findOne(MedicalRecordEntity, options),
+      } as unknown as Repository<MedicalRecordEntity>,
+      {
+        findOne: (options: unknown) =>
+          manager.findOne(MedicalCaseEntity, options),
+      } as unknown as Repository<MedicalCaseEntity>,
       access as unknown as MedicalAccessService,
-      shared as unknown as MedicalSharedRepository,
       horseHealth as unknown as HorseHealthService,
       measurements as unknown as HorseMeasurementsService,
       audit,
