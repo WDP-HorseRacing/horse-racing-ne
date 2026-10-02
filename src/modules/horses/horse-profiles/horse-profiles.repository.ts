@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
+import { DataSource, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
 import {
@@ -172,15 +174,17 @@ export class HorseProfilesRepository {
    * @returns Promise trả về Groom, hoặc null nếu chưa phân công
    */
   async currentGroom(horseId: string): Promise<HorsePersonRow | null> {
-    const rows: HorsePersonRow[] = await this.dataSource.query(
-      `SELECT u.id, u.full_name AS "fullName"
-         FROM groom_assignments ga
-         JOIN users u ON u.id = ga.groom_id
-        WHERE ga.horse_id = $1 AND ga.end_at IS NULL
-        LIMIT 1`,
-      [horseId],
+    const assignment = await this.dataSource.manager.findOne(
+      GroomAssignmentEntity,
+      {
+        where: { horseId, endAt: IsNull() },
+        relations: { groom: true },
+        withDeleted: true,
+      },
     );
-    return rows[0] ?? null;
+    return assignment
+      ? { id: assignment.groom.id, fullName: assignment.groom.fullName }
+      : null;
   }
 
   /**
@@ -191,11 +195,12 @@ export class HorseProfilesRepository {
    */
   async ownerOf(ownerId: string | null): Promise<HorsePersonRow | null> {
     if (!ownerId) return null;
-    const rows: HorsePersonRow[] = await this.dataSource.query(
-      `SELECT id, full_name AS "fullName" FROM users WHERE id = $1`,
-      [ownerId],
-    );
-    return rows[0] ?? null;
+    const owner = await this.dataSource.manager.findOne(UserEntity, {
+      select: { id: true, fullName: true },
+      where: { id: ownerId },
+      withDeleted: true,
+    });
+    return owner ? { id: owner.id, fullName: owner.fullName } : null;
   }
 
   /**

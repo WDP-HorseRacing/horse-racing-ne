@@ -31,6 +31,23 @@ type Row = Record<string, unknown> | null;
 const anyDate: unknown = expect.any(Date);
 const anything: unknown = expect.anything();
 
+/**
+ * Tạo getRepository giả cho manager giả: câu kiểm ngựa thuộc khu Head Trainer đọc kết quả từ manager.query, như khi còn viết SQL thô
+ *
+ * @param query Mock manager.query của test
+ * @returns Hàm getRepository giả trả về query builder có getExists
+ */
+function trainerBarnRepository(query: jest.Mock): jest.Mock {
+  const builder = {
+    innerJoin: () => builder,
+    where: () => builder,
+    andWhere: () => builder,
+    getExists: async () =>
+      ((await query('isHorseInTrainerBarn')) as unknown[]).length > 0,
+  };
+  return jest.fn(() => ({ createQueryBuilder: () => builder }));
+}
+
 describe('GroomAssignmentsService', () => {
   const caller = {
     id: 'ht-1',
@@ -53,6 +70,7 @@ describe('GroomAssignmentsService', () => {
     findOneBy: jest.Mock;
     find: jest.Mock;
     query: jest.Mock;
+    getRepository: jest.Mock;
     create: jest.Mock;
     save: jest.Mock;
     update: jest.Mock;
@@ -108,7 +126,9 @@ describe('GroomAssignmentsService', () => {
       create: jest.fn((_entity: unknown, row: object) => row),
       save: jest.fn((row: object) => Promise.resolve({ id: 'ga-new', ...row })),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      getRepository: jest.fn(),
     };
+    manager.getRepository = trainerBarnRepository(manager.query);
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };
     training = {

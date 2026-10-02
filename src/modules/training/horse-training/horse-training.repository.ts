@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In, SelectQueryBuilder } from 'typeorm';
+import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
+import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
+import { SessionParticipantEntity } from '../entities/session-participant.entity';
+import { TrialResultEntity } from '../entities/trial-result.entity';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { HorseTrainingSessionWhen } from '../enums/horse-training-session-when.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
@@ -16,12 +20,6 @@ const HIDDEN_UPCOMING_STATUSES = [
   SessionParticipantStatus.CANCELLED_BY_LOCK,
 ];
 
-const SESSION_FROM = `
-  FROM session_participants sp
-  JOIN training_sessions s ON s.id = sp.session_id
-  JOIN training_plans p ON p.id = s.plan_id
-  JOIN training_classes c ON c.id = p.class_id`;
-
 /**
  * Các câu đọc lớp và lịch buổi tập theo con ngựa. Chỉ đọc.
  */
@@ -36,23 +34,26 @@ export class HorseTrainingRepository {
    * @returns Promise trả về các lần vào lớp kèm tên lớp và Head Trainer phụ trách
    */
   listClasses(horseId: string): Promise<HorseTrainingClassRow[]> {
-    return this.dataSource.query(
-      `SELECT e.id AS "enrollmentId",
-              c.id AS "classId",
-              c.code AS "code",
-              c.name AS "name",
-              c.status AS "classStatus",
-              u.full_name AS "headTrainerName",
-              e.status AS "enrollmentStatus",
-              e.enrolled_at AS "enrolledAt",
-              e.left_at AS "leftAt"
-         FROM horse_enrollments e
-         JOIN training_classes c ON c.id = e.class_id
-         LEFT JOIN users u ON u.id = c.head_trainer_id
-        WHERE e.horse_id = $1
-        ORDER BY (e.status = $2) DESC, e.enrolled_at DESC`,
-      [horseId, HorseEnrollmentStatus.ACTIVE],
-    );
+    return this.dataSource
+      .getRepository(HorseEnrollmentEntity)
+      .createQueryBuilder('enrollment')
+      .withDeleted()
+      .innerJoin('enrollment.trainingClass', 'class')
+      .leftJoin('class.headTrainer', 'headTrainer')
+      .select('enrollment.id', 'enrollmentId')
+      .addSelect('class.id', 'classId')
+      .addSelect('class.code', 'code')
+      .addSelect('class.name', 'name')
+      .addSelect('class.status', 'classStatus')
+      .addSelect('headTrainer.fullName', 'headTrainerName')
+      .addSelect('enrollment.status', 'enrollmentStatus')
+      .addSelect('enrollment.enrolledAt', 'enrolledAt')
+      .addSelect('enrollment.leftAt', 'leftAt')
+      .where('enrollment.horseId = :horseId', { horseId })
+      .orderBy('enrollment.status = :activeStatus', 'DESC')
+      .addOrderBy('enrollment.enrolledAt', 'DESC')
+      .setParameter('activeStatus', HorseEnrollmentStatus.ACTIVE)
+      .getRawMany<HorseTrainingClassRow>();
   }
 
   /**
@@ -70,59 +71,75 @@ export class HorseTrainingRepository {
     horseId: string,
     filter: HorseTrainingSessionFilter,
   ): Promise<{ rows: HorseTrainingSessionRow[]; total: number }> {
-    const params: unknown[] = [horseId];
-    const where = ['sp.horse_id = $1'];
-    if (filter.classId) {
-      params.push(filter.classId);
-      where.push(`c.id = $${params.length}`);
-    }
-    if (filter.when) {
-      params.push(filter.now);
-      where.push(
-        filter.when === HorseTrainingSessionWhen.UPCOMING
-          ? `s.scheduled_start_at >= $${params.length}`
-          : `s.scheduled_start_at < $${params.length}`,
-      );
-      if (filter.when === HorseTrainingSessionWhen.UPCOMING) {
-        params.push(HIDDEN_UPCOMING_STATUSES);
-        where.push(`sp.status <> ALL($${params.length})`);
-      }
-    }
-    const whereSql = `WHERE ${where.join(' AND ')}`;
-    const order =
-      filter.when === HorseTrainingSessionWhen.UPCOMING ? 'ASC' : 'DESC';
+    const query = this.sessionsOfHorse(horseId, filter);
+    const total = await query.clone().getCount();
+    const rows = await query
+      .leftJoin('participant.assignedGroom', 'groom')
+      .select('participant.id', 'participantId')
+      .addSelect('session.id', 'sessionId')
+      .addSelect('class.id', 'classId')
+      .addSelect('class.name', 'className')
+      .addSelect('plan.name', 'planName')
+      .addSelect('plan.phaseName', 'phaseName')
+      .addSelect('session.name', 'name')
+      .addSelect('session.sessionType', 'sessionType')
+      .addSelect('session.scheduledStartAt', 'scheduledStartAt')
+      .addSelect('session.scheduledEndAt', 'scheduledEndAt')
+      .addSelect('session.location', 'location')
+      .addSelect('session.surface', 'surface')
+      .addSelect('session.status', 'sessionStatus')
+      .addSelect('participant.status', 'participantStatus')
+      .addSelect('groom.fullName', 'groomName')
+      .addSelect('participant.absenceReason', 'absenceReason')
+      .addSelect('participant.cancelReason', 'cancelReason')
+      .addSelect('participant.completedAt', 'completedAt')
+      .orderBy(
+        'session.scheduledStartAt',
+        filter.when === HorseTrainingSessionWhen.UPCOMING ? 'ASC' : 'DESC',
+      )
+      .addOrderBy('participant.id', 'ASC')
+      .offset(filter.skip)
+      .limit(filter.limit)
+      .getRawMany<HorseTrainingSessionRow>();
+    return { rows, total };
+  }
 
-    const [countRow] = await this.dataSource.query<Array<{ total: number }>>(
-      `SELECT count(*)::int AS "total" ${SESSION_FROM} ${whereSql}`,
-      params,
-    );
-    const rows = await this.dataSource.query<HorseTrainingSessionRow[]>(
-      `SELECT sp.id AS "participantId",
-              s.id AS "sessionId",
-              c.id AS "classId",
-              c.name AS "className",
-              p.name AS "planName",
-              p.phase_name AS "phaseName",
-              s.name AS "name",
-              s.session_type AS "sessionType",
-              s.scheduled_start_at AS "scheduledStartAt",
-              s.scheduled_end_at AS "scheduledEndAt",
-              s.location AS "location",
-              s.surface AS "surface",
-              s.status AS "sessionStatus",
-              sp.status AS "participantStatus",
-              g.full_name AS "groomName",
-              sp.absence_reason AS "absenceReason",
-              sp.cancel_reason AS "cancelReason",
-              sp.completed_at AS "completedAt"
-         ${SESSION_FROM}
-         LEFT JOIN users g ON g.id = sp.assigned_groom_id
-         ${whereSql}
-        ORDER BY s.scheduled_start_at ${order}, sp.id
-        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-      [...params, filter.limit, filter.skip],
-    );
-    return { rows, total: countRow?.total ?? 0 };
+  /**
+   * Dựng câu đọc lượt tập của một con ngựa theo bộ lọc, chưa chọn cột và chưa sắp xếp
+   *
+   * - Nối lượt tập với buổi, giáo án và lớp; đọc cả tài khoản đã xóa mềm
+   * - upcoming: buổi bắt đầu từ `now` trở đi, bỏ lượt CANCELLED và CANCELLED_BY_LOCK
+   * - history: buổi bắt đầu trước `now`
+   *
+   * @param horseId UUID của ngựa
+   * @param filter Lớp và khoảng thời gian cần lọc
+   * @returns Query builder của các lượt tập khớp bộ lọc
+   */
+  private sessionsOfHorse(
+    horseId: string,
+    filter: HorseTrainingSessionFilter,
+  ): SelectQueryBuilder<SessionParticipantEntity> {
+    const query = this.dataSource
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .withDeleted()
+      .innerJoin('participant.session', 'session')
+      .innerJoin('session.plan', 'plan')
+      .innerJoin('plan.trainingClass', 'class')
+      .where('participant.horseId = :horseId', { horseId });
+    if (filter.classId) {
+      query.andWhere('class.id = :classId', { classId: filter.classId });
+    }
+    if (filter.when === HorseTrainingSessionWhen.UPCOMING) {
+      query
+        .andWhere('session.scheduledStartAt >= :now', { now: filter.now })
+        .andWhere('participant.status NOT IN (:...hiddenStatuses)', {
+          hiddenStatuses: HIDDEN_UPCOMING_STATUSES,
+        });
+    } else if (filter.when === HorseTrainingSessionWhen.HISTORY) {
+      query.andWhere('session.scheduledStartAt < :now', { now: filter.now });
+    }
+    return query;
   }
 
   /**
@@ -135,17 +152,17 @@ export class HorseTrainingRepository {
     participantIds: string[],
   ): Promise<HorseTrainingTrialRow[]> {
     if (participantIds.length === 0) return [];
-    return this.dataSource.query(
-      `SELECT tr.session_participant_id AS "participantId",
-              tr.attempt_no AS "attemptNo",
-              tr.elapsed_ms::text AS "elapsedMs",
-              tr.notes AS "notes",
-              tr.recorded_at AS "recordedAt"
-         FROM trial_results tr
-        WHERE tr.session_participant_id = ANY($1)
-        ORDER BY tr.session_participant_id, tr.attempt_no`,
-      [participantIds],
-    );
+    const trials = await this.dataSource.getRepository(TrialResultEntity).find({
+      where: { sessionParticipantId: In(participantIds) },
+      order: { sessionParticipantId: 'ASC', attemptNo: 'ASC' },
+    });
+    return trials.map((trial) => ({
+      participantId: trial.sessionParticipantId,
+      attemptNo: trial.attemptNo,
+      elapsedMs: trial.elapsedMs,
+      notes: trial.notes,
+      recordedAt: trial.recordedAt,
+    }));
   }
 
   /**
@@ -158,16 +175,19 @@ export class HorseTrainingRepository {
     participantIds: string[],
   ): Promise<HorseTrainingEvaluationRow[]> {
     if (participantIds.length === 0) return [];
-    return this.dataSource.query(
-      `SELECT pe.session_participant_id AS "participantId",
-              pe.score AS "score",
-              pe.comment AS "comment",
-              u.full_name AS "evaluatorName",
-              pe.created_at AS "createdAt"
-         FROM performance_evaluations pe
-         LEFT JOIN users u ON u.id = pe.evaluator_id
-        WHERE pe.session_participant_id = ANY($1)`,
-      [participantIds],
-    );
+    const evaluations = await this.dataSource
+      .getRepository(PerformanceEvaluationEntity)
+      .find({
+        where: { sessionParticipantId: In(participantIds) },
+        relations: { evaluator: true },
+        withDeleted: true,
+      });
+    return evaluations.map((evaluation) => ({
+      participantId: evaluation.sessionParticipantId,
+      score: evaluation.score,
+      comment: evaluation.comment,
+      evaluatorName: evaluation.evaluator?.fullName ?? null,
+      createdAt: evaluation.createdAt,
+    }));
   }
 }

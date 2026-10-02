@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { HORSE_BUSINESS_TABLES } from '../constants/horse.constants';
 
 @Injectable()
@@ -45,10 +46,11 @@ export class HorseDeletionsRepository {
     manager: EntityManager,
     barnId: string,
   ): Promise<string | null> {
-    const rows: Array<{ name: string }> = await manager.query(
-      'SELECT name FROM barns WHERE id = $1',
-      [barnId],
-    );
-    return rows[0]?.name ?? null;
+    const barn = await manager.findOne(BarnEntity, {
+      select: { name: true },
+      where: { id: barnId },
+      withDeleted: true,
+    });
+    return barn?.name ?? null;
   }
 }

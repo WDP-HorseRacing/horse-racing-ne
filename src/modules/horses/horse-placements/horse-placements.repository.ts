@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { HorseEnrollmentStatus } from '../../training/enums/horse-enrollment-status.enum';
 import type {
   BarnChangeImpactRow,
@@ -19,18 +20,24 @@ export class HorsePlacementsRepository {
    * @param barnId UUID của khu
    * @returns Promise trả về khu kèm tên Head Trainer, null nếu không có khu
    */
-  async findBarnWithHeadTrainer(barnId: string): Promise<BarnPreviewTarget | null> {
-    const rows = await this.dataSource.query<BarnPreviewTarget[]>(
-      `SELECT b.id AS "id",
-              b.name AS "name",
-              b.head_trainer_id AS "headTrainerId",
-              u.full_name AS "headTrainerName"
-         FROM barns b
-         LEFT JOIN users u ON u.id = b.head_trainer_id
-        WHERE b.id = $1 AND b.deleted_at IS NULL`,
-      [barnId],
-    );
-    return rows[0] ?? null;
+  async findBarnWithHeadTrainer(
+    barnId: string,
+  ): Promise<BarnPreviewTarget | null> {
+    const barn = await this.dataSource
+      .getRepository(BarnEntity)
+      .createQueryBuilder('barn')
+      .withDeleted()
+      .leftJoinAndSelect('barn.headTrainer', 'headTrainer')
+      .where('barn.id = :barnId', { barnId })
+      .andWhere('barn.deletedAt IS NULL')
+      .getOne();
+    if (!barn) return null;
+    return {
+      id: barn.id,
+      name: barn.name,
+      headTrainerId: barn.headTrainerId,
+      headTrainerName: barn.headTrainer?.fullName ?? null,
+    };
   }
 
   /**

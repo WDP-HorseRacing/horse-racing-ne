@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, IsNull } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull } from 'typeorm';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
+import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from '../entities/horse.entity';
@@ -75,13 +76,14 @@ export class HorsesSharedRepository {
     manager?: EntityManager,
   ): Promise<Set<string>> {
     if (horseIds.length === 0) return new Set();
-    const rows: Array<{ horse_id: string }> = await (
-      manager ?? this.dataSource
-    ).query(
-      `SELECT DISTINCT horse_id FROM training_locks WHERE horse_id = ANY($1) AND status = $2`,
-      [horseIds, TrainingLockStatus.ACTIVE],
+    const locks = await (manager ?? this.dataSource.manager).find(
+      TrainingLockEntity,
+      {
+        select: { horseId: true },
+        where: { horseId: In(horseIds), status: TrainingLockStatus.ACTIVE },
+      },
     );
-    return new Set(rows.map((row) => row.horse_id));
+    return new Set(locks.map((lock) => lock.horseId));
   }
 
   /**
@@ -154,17 +156,13 @@ export class HorsesSharedRepository {
     horseId: string,
     trainerId: string,
   ): Promise<boolean> {
-    const rows: unknown[] = await manager.query(
-      `SELECT 1
-         FROM horses h
-         JOIN barns b ON b.id = h.barn_id AND b.deleted_at IS NULL
-        WHERE h.id = $1
-          AND h.deleted_at IS NULL
-          AND b.head_trainer_id = $2
-        LIMIT 1`,
-      [horseId, trainerId],
-    );
-    return rows.length > 0;
+    return manager
+      .getRepository(HorseEntity)
+      .createQueryBuilder('horse')
+      .innerJoin('horse.barn', 'barn', 'barn.deletedAt IS NULL')
+      .where('horse.id = :horseId', { horseId })
+      .andWhere('barn.headTrainerId = :trainerId', { trainerId })
+      .getExists();
   }
 
   /**
