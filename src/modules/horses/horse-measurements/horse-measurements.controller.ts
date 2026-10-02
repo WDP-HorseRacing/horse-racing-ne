@@ -22,6 +22,7 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { HORSE_READER_ROLES } from '../constants/horse.constants';
 import {
   CreatedHorseMeasurementResponseDto,
   CreateHorseMeasurementDto,
@@ -38,13 +39,7 @@ import { HorseMeasurementsService } from './horse-measurements.service';
 export class HorseMeasurementsController {
   constructor(private readonly measurementsService: HorseMeasurementsService) {}
 
-  @Access([
-    UserRole.CLUB_MANAGER,
-    UserRole.HEAD_TRAINER,
-    UserRole.VETERINARIAN,
-    UserRole.GROOM,
-    UserRole.HORSE_OWNER,
-  ])
+  @Access(HORSE_READER_ROLES)
   @Get('measurements')
   @ApiOperation({ summary: 'List horse measurement history' })
   @ApiOkResponse({ type: HorseMeasurementPageDto })
