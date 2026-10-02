@@ -70,7 +70,7 @@ export class MedicalEventsListener {
   }
 
   /**
-   * Nghe MEDICAL_HEALTH_CHANGED_EVENT và báo khi ngựa chuyển sang Chấn thương hoặc Cách ly
+   * Nghe MEDICAL_HEALTH_CHANGED_EVENT và báo khi ngựa chuyển sang Chấn thương, Cách ly hoặc Cần theo dõi
    *
    * @param event Payload của event
    * @returns A promise resolving when the notification attempt has finished

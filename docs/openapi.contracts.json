@@ -11322,11 +11322,11 @@
             ]
           },
           "placing": {
-            "type": "object",
+            "type": "number",
             "nullable": true
           },
           "timeSeconds": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           }
         },

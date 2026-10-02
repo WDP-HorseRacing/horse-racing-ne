@@ -21,9 +21,9 @@ export class HorseRaceResultResponseDto {
   @ApiProperty({ enum: RegistrationStatus })
   registrationStatus!: RegistrationStatus;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: Number, nullable: true })
   placing!: number | null;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   timeSeconds!: string | null;
 }
