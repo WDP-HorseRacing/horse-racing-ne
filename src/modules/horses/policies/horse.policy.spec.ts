@@ -30,6 +30,7 @@ import {
   assertBarnChangeReason,
   assertBornBeforeChildren,
   assertDeletedHorse,
+  assertNotTransferred,
   isActiveHorseOwner,
   assertDateOfBirth,
   assertDistinctMeasurementTypes,
@@ -1050,6 +1051,24 @@ describe('horse.policy', () => {
     it('passes a deleted horse', () => {
       expect(() =>
         assertDeletedHorse({ deletedAt: new Date('2026-01-01') }),
+      ).not.toThrow();
+    });
+  });
+
+  describe('assertNotTransferred', () => {
+    it('answers 409 for a transferred horse', () => {
+      expect(() =>
+        assertNotTransferred({
+          lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
+        }),
+      ).toThrow(
+        new ConflictException('Ngựa đã chuyển nhượng, hồ sơ chỉ được xem'),
+      );
+    });
+
+    it('passes a horse still in the club', () => {
+      expect(() =>
+        assertNotTransferred({ lifecycleStatus: HorseLifecycleStatus.ACTIVE }),
       ).not.toThrow();
     });
   });

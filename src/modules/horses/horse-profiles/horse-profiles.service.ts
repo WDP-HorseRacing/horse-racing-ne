@@ -57,6 +57,7 @@ import { toHorseResponse } from '../mappers/horse.mapper';
 import {
   assertAssignableOwner,
   assertDateOfBirth,
+  assertNotTransferred,
   evaluateEligibility,
   evaluateHorsePermissions,
   nonRaceAptitudeFieldsIn,
@@ -152,11 +153,17 @@ export class HorseProfilesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
    * @returns Promise trả về hồ sơ chi tiết của ngựa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async get(actor: Actor, id: string): Promise<HorseDetailResponseDto> {
     const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findReadableHorseForActor(actor, id);
+    const horse = await this.access.findReadableHorse(
+      this.dataSource.manager,
+      actor,
+      caller.id,
+      id,
+    );
     const [locations, groom, owner, latestMeasurements, activeTrainingLock] =
       await Promise.all([
         this.profiles.locationsByHorseIds([id]),
@@ -311,7 +318,7 @@ export class HorseProfilesService {
     const horse = await this.access.findWritableHorse(actor, id);
     const { version, ...fields } = body;
     await this.assertEditableFields(actor, caller.id, horse.id, fields);
-    this.access.assertNotTransferred(horse);
+    assertNotTransferred(horse);
     this.assertCurrentVersion(horse, version);
     assertDateOfBirth(fields.dateOfBirth, clubToday());
     const microchipId =
@@ -373,6 +380,7 @@ export class HorseProfilesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
    * @returns Promise trả về cây phả hệ của ngựa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async getPedigree(
@@ -380,7 +388,12 @@ export class HorseProfilesService {
     id: string,
   ): Promise<HorsePedigreeResponseDto> {
     const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findReadableHorseForActor(actor, id);
+    const horse = await this.access.findReadableHorse(
+      this.dataSource.manager,
+      actor,
+      caller.id,
+      id,
+    );
     const ownerOnly = this.isOwnerView(actor, caller.id);
     const ancestors = await this.profiles.findPedigreeAncestors(
       id,
@@ -401,6 +414,7 @@ export class HorseProfilesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @returns Promise trả về hai cờ, trạng thái hiện tại và lý do chặn
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async getEligibility(
@@ -423,6 +437,7 @@ export class HorseProfilesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @returns Promise trả về các cờ quyền của người gọi
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async getPermissions(
@@ -430,7 +445,12 @@ export class HorseProfilesService {
     horseId: string,
   ): Promise<HorsePermissionsResponseDto> {
     const caller = await this.access.currentUser(actor);
-    const horse = await this.access.findReadableHorseForActor(actor, horseId);
+    const horse = await this.access.findReadableHorse(
+      this.dataSource.manager,
+      actor,
+      caller.id,
+      horseId,
+    );
     const [isInTrainerBarn, isAssignedGroom] = await Promise.all([
       this.access.hasRole(actor, UserRole.HEAD_TRAINER)
         ? this.access.isHorseInTrainerBarn(

@@ -45,7 +45,6 @@ describe('HorseStatusesService', () => {
     lockWritableHorse: jest.Mock;
     findNotDeletedHorse: jest.Mock;
     findWritableHorse: jest.Mock;
-    assertNotTransferred: jest.Mock;
     hasActiveTrainingLock: jest.Mock;
     lockActiveHorseOwner: jest.Mock;
     invalidOwnerName: jest.Mock;
@@ -125,7 +124,6 @@ describe('HorseStatusesService', () => {
       lockWritableHorse: jest.fn(() => Promise.resolve(horse)),
       findNotDeletedHorse: jest.fn(() => Promise.resolve(horse)),
       findWritableHorse: jest.fn(() => Promise.resolve(horse)),
-      assertNotTransferred: jest.fn(),
       hasActiveTrainingLock: jest.fn().mockResolvedValue(false),
       lockActiveHorseOwner: jest.fn().mockResolvedValue(true),
       invalidOwnerName: jest.fn().mockResolvedValue(null),

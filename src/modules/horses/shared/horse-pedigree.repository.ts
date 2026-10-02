@@ -3,7 +3,7 @@ import { EntityManager } from 'typeorm';
 import { PEDIGREE_LOCK_KEY } from '../constants/horse.constants';
 
 /**
- * Các query phả hệ phức tạp (advisory lock, CTE đệ quy) chạy trong transaction đang giữ khóa phả hệ. Dùng chung cho tạo/sửa hồ sơ (horse-profiles) và xóa hồ sơ (horse-deletions).
+ * Các query phả hệ phức tạp (advisory lock, CTE đệ quy) chạy trong transaction đang giữ khóa phả hệ.
  */
 @Injectable()
 export class HorsePedigreeRepository {

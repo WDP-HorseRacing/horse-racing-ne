@@ -97,19 +97,19 @@ export const WEIGHT_DROP_WINDOW_DAYS = 14;
 
 /**
  * Tên domain event phát ra cho mỗi cảnh báo chỉ số, sau khi bản ghi đã lưu.
- * Payload là HorseMeasurementAlertEvent; module notifications nghe event này để gửi thông báo.
+ * Payload là HorseMeasurementAlertEvent.
  */
 export const HORSE_MEASUREMENT_ALERT_EVENT = 'horse.measurement.alert';
 
 /**
  * Tên domain event phát ra sau khi ngựa được xếp hoặc đổi vào một khu và transaction đã commit.
- * Payload là HorseBarnAssignedEvent; module notifications nghe event này để báo Head Trainer khu mới.
+ * Payload là HorseBarnAssignedEvent.
  */
 export const HORSE_BARN_ASSIGNED_EVENT = 'horse.barn.assigned';
 
 /**
  * Tên domain event phát ra sau khi chuyển nhượng làm phân công Groom của ngựa tự kết thúc và transaction đã commit.
- * Payload là HorseGroomReleasedEvent; module notifications nghe event này để báo Groom đó.
+ * Payload là HorseGroomReleasedEvent.
  */
 export const HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT =
   'horse.groom.released-by-transfer';

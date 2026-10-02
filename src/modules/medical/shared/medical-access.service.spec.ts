@@ -15,7 +15,6 @@ const manager = {} as EntityManager;
 describe('MedicalAccessService.lockHorseForWrite', () => {
   let horseAccess: {
     lockWritableHorseInScope: jest.Mock;
-    assertNotTransferred: jest.Mock;
     findReadableHorseForActor: jest.Mock;
   };
   let service: MedicalAccessService;
@@ -26,7 +25,6 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
         caller: { id: 'vet-1' },
         horse: { id: 'h1', lifecycleStatus: HorseLifecycleStatus.ACTIVE },
       }),
-      assertNotTransferred: jest.fn(),
       findReadableHorseForActor: jest.fn(),
     };
     service = new MedicalAccessService(
@@ -46,8 +44,9 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
   });
 
   it('answers conflict for a transferred horse', async () => {
-    horseAccess.assertNotTransferred.mockImplementation(() => {
-      throw new ConflictException();
+    horseAccess.lockWritableHorseInScope.mockResolvedValue({
+      caller: { id: 'vet-1' },
+      horse: { id: 'h1', lifecycleStatus: HorseLifecycleStatus.TRANSFERRED },
     });
 
     await expect(service.lockHorseForWrite(manager, vet, 'h1')).rejects.toThrow(
@@ -61,7 +60,6 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
     await expect(service.lockHorseForWrite(manager, vet, 'h1')).rejects.toThrow(
       NotFoundException,
     );
-    expect(horseAccess.assertNotTransferred).not.toHaveBeenCalled();
   });
 });
 

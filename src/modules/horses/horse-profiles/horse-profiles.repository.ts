@@ -241,7 +241,6 @@ export class HorseProfilesRepository {
 
 /**
  * Biểu thức SQL tính HorsePlacementStatus của một dòng ngựa, gắn với alias `horse` của query builder.
- * Cùng luật với placementStatusOf trong policies/horse.policy.ts.
  */
 const PLACEMENT_STATUS_SQL = `CASE
   WHEN horse.lifecycle_status = '${HorseLifecycleStatus.TRANSFERRED}' THEN '${HorsePlacementStatus.NOT_APPLICABLE}'

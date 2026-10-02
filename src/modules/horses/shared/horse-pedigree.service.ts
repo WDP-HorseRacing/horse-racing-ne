@@ -26,7 +26,7 @@ const SIRE_LABEL = 'Sire';
 const DAM_LABEL = 'Dam';
 
 /**
- * Luật phả hệ dùng chung cho tạo/sửa hồ sơ (horse-profiles) và xóa hồ sơ (horse-deletions).
+ * Kiểm tra luật phả hệ khi tạo, sửa và xóa hồ sơ ngựa.
  *
  * - Mọi hàm kiểm tra phải chạy trong transaction đã gọi lockPedigree
  */

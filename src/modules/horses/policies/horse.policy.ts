@@ -55,7 +55,7 @@ import type {
  * - Phạm vi ALL: mọi con ngựa
  * - Phạm vi OWNER (Horse Owner): chỉ ngựa có owner_id là người gọi
  *
- * @param horse Chủ sở hữu hiện tại của ngựa
+ * @param horse Con ngựa cần kiểm, chỉ dùng owner_id
  * @param scope Phạm vi xem của người gọi (HorseAccessService.scopeOf)
  * @returns true nếu người gọi được xem con ngựa
  */
@@ -289,6 +289,20 @@ export function assertDeletedHorse<T extends { deletedAt: Date | null }>(
   if (!horse) throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
   if (horse.deletedAt === null) {
     throw new ConflictException(HORSE_NOT_DELETED_MESSAGE);
+  }
+}
+
+/**
+ * Chặn thao tác trên ngựa đã chuyển nhượng
+ *
+ * @param horse Con ngựa cần kiểm
+ * @throws ConflictException Nếu ngựa đã chuyển nhượng
+ */
+export function assertNotTransferred(horse: {
+  lifecycleStatus: HorseLifecycleStatus;
+}): void {
+  if (horse.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
+    throw new ConflictException('Ngựa đã chuyển nhượng, hồ sơ chỉ được xem');
   }
 }
 

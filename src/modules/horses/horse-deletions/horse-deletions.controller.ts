@@ -87,7 +87,7 @@ export class HorseDeletionsController {
   @ApiOperation({
     summary: 'Restore a soft-deleted horse profile',
     description:
-      'Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Ngựa luôn rời khu cũ và vào "Chờ xếp khu"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Hồ sơ chưa bị xóa trả 409.',
+      'Bắt buộc nhập lý do. Bỏ dấu đã xóa, vòng đời, sức khỏe và phả hệ giữ nguyên. Ngựa luôn rời khu cũ và vào "Chờ xếp khu"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Hồ sơ chưa bị xóa trả 409.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   restoreHorse(

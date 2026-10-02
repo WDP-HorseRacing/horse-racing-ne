@@ -421,18 +421,6 @@ export class HorseAccessService {
   }
 
   /**
-   * Chặn thao tác trên ngựa đã chuyển nhượng
-   *
-   * @param horse Con ngựa cần kiểm
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng
-   */
-  assertNotTransferred(horse: HorseEntity): void {
-    if (horse.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
-      throw new ConflictException('Ngựa đã chuyển nhượng, hồ sơ chỉ được xem');
-    }
-  }
-
-  /**
    * Chặn thao tác ghi trên hồ sơ không có hoặc đã xóa mềm, chọn 409 hay 404 theo vai trò người gọi.
    *
    * - Club Manager: hồ sơ đã xóa trả 409

@@ -17,6 +17,7 @@ import { formatMeasurement } from '../../horses/utils/measurement-format';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { assertNotTransferred } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
@@ -88,7 +89,7 @@ export class ExamRequestsService {
         roles: actor.roles,
         ...(await this.scopeFlags(manager, actor, caller.id, horseId)),
       });
-      this.horseAccess.assertNotTransferred(horse);
+      assertNotTransferred(horse);
       const saved = await this.insert(manager, {
         horseId,
         requestedBy: caller.id,

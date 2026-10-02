@@ -23,6 +23,7 @@ import {
   assertDeletedHorse,
   assertNoBusinessData,
   assertNotParent,
+  assertNotTransferred,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
@@ -62,7 +63,7 @@ export class HorseDeletionsService {
     await this.dataSource.transaction(async (manager) => {
       await this.pedigree.lockPedigree(manager);
       const horse = await this.access.lockWritableHorse(manager, actor, id);
-      this.access.assertNotTransferred(horse);
+      assertNotTransferred(horse);
       assertNoBusinessData(
         await this.deletions.businessDataLabels(manager, id),
       );
@@ -144,7 +145,7 @@ export class HorseDeletionsService {
   }
 
   /**
-   * Khôi phục hồ sơ ngựa đã xóa. Hồ sơ trở về trạng thái trước khi xóa
+   * Khôi phục hồ sơ ngựa đã xóa
    *
    * - Bỏ dấu đã xóa và lý do xóa; vòng đời, sức khỏe, phả hệ giữ nguyên
    * - Ngựa có khu: luôn bỏ khu, ngựa vào "Chờ xếp khu"

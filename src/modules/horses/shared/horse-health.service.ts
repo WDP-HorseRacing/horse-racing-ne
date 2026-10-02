@@ -23,7 +23,7 @@ export class HorseHealthService {
   constructor(private readonly audit: AuditService) {}
 
   /**
-   * Ghi trạng thái sức khỏe của con ngựa (cột horses.health_status do module horses sở hữu). Dùng cho module medical gọi trong transaction của họ.
+   * Ghi trạng thái sức khỏe của con ngựa trong transaction của nơi gọi
    *
    * - Trạng thái mới trùng trạng thái cũ thì không ghi gì, không ghi nhật ký
    * - Có thay đổi thì cập nhật cột và ghi một dòng nhật ký HORSE kèm giá trị trước, sau và lý do

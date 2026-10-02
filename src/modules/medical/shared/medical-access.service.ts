@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { assertNotTransferred } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import type { CurrentActorUser } from '../../users/utils/current-user';
 
@@ -33,7 +34,7 @@ export class MedicalAccessService {
       actor,
       horseId,
     );
-    this.horseAccess.assertNotTransferred(locked.horse);
+    assertNotTransferred(locked.horse);
     return locked;
   }
 }

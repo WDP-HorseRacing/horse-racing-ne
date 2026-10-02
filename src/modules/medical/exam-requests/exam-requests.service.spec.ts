@@ -58,7 +58,6 @@ describe('ExamRequestsService', () => {
     findReadableHorseForActor: jest.Mock;
     isHorseInTrainerBarn: jest.Mock;
     lockWritableHorseInScope: jest.Mock;
-    assertNotTransferred: jest.Mock;
     isGroomAssigned: jest.Mock;
   };
   let audit: { record: jest.Mock };
@@ -135,7 +134,6 @@ describe('ExamRequestsService', () => {
         caller: { id: 'user-1' },
         horse: HORSE,
       }),
-      assertNotTransferred: jest.fn(),
       isGroomAssigned: jest.fn().mockResolvedValue(false),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
@@ -173,8 +171,9 @@ describe('ExamRequestsService', () => {
     });
 
     it('propagates conflict for a transferred horse', async () => {
-      horseAccess.assertNotTransferred.mockImplementation(() => {
-        throw new ConflictException();
+      horseAccess.lockWritableHorseInScope.mockResolvedValue({
+        caller: { id: 'user-1' },
+        horse: { ...HORSE, lifecycleStatus: HorseLifecycleStatus.TRANSFERRED },
       });
       await expect(
         service.create(actorWith(UserRole.CLUB_MANAGER), 'h1', body),
@@ -192,8 +191,9 @@ describe('ExamRequestsService', () => {
     });
 
     it('answers 403, not 409, to a groom outside scope on a transferred horse', async () => {
-      horseAccess.assertNotTransferred.mockImplementation(() => {
-        throw new ConflictException();
+      horseAccess.lockWritableHorseInScope.mockResolvedValue({
+        caller: { id: 'user-1' },
+        horse: { ...HORSE, lifecycleStatus: HorseLifecycleStatus.TRANSFERRED },
       });
       await expect(
         service.create(actorWith(UserRole.GROOM), 'h1', body),

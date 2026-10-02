@@ -32,6 +32,7 @@ import {
 } from '../mappers/horse-placements.mapper';
 import {
   assertBarnChangeReason,
+  assertNotTransferred,
   barnChangeBlockedReason,
   barnChangeSummary,
 } from '../policies/horse.policy';
@@ -112,7 +113,7 @@ export class HorsePlacementsService {
         actor,
         horseId,
       );
-      this.access.assertNotTransferred(horse);
+      assertNotTransferred(horse);
       if (horse.barnId === body.barnId) return false;
       assertBarnChangeReason(horse.barnId, body.reason);
       await this.applyBarnChange(manager, {

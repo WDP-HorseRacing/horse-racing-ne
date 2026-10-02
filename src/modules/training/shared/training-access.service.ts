@@ -38,6 +38,18 @@ export class TrainingAccessService {
     return caller;
   }
 
+  /**
+   * Lấy user hiện tại và con ngựa người gọi được xem
+   *
+   * - Phạm vi xem theo HorseAccessService.findReadableHorse: Club Manager xem được cả hồ sơ đã xóa, Horse Owner chỉ ngựa của mình, vai trò khác mọi ngựa chưa xóa
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Promise trả về user hiện tại và con ngựa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi xem của người gọi
+   */
   async readableHorseForActor(
     actor: Actor,
     horseId: string,
@@ -449,6 +461,18 @@ export class TrainingAccessService {
     return trainer;
   }
 
+  /**
+   * Chặn Head Trainer thao tác trên ngựa ngoài khu mình phụ trách, theo HorseAccessService.assertTrainerBarn
+   *
+   * - Người có cả vai trò Club Manager thì không bị giới hạn theo khu
+   *
+   * @param manager EntityManager dùng để query
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi kiểm tra xong
+   * @throws ForbiddenException Nếu người gọi là Head Trainer và ngựa không thuộc khu mình phụ trách
+   */
   async assertTrainerBarn(
     manager: EntityManager,
     actor: Actor,

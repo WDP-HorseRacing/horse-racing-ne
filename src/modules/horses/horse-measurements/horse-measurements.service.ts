@@ -45,6 +45,7 @@ import {
   assertMeasurementValue,
   assertMeasurementDeletable,
   assertTimeRange,
+  assertNotTransferred,
   canRecordMeasurement,
   measurementAlerts,
 } from '../policies/horse.policy';
@@ -83,6 +84,7 @@ export class HorseMeasurementsService {
    * @param horseId UUID của ngựa
    * @param query Loại chỉ số, khoảng thời gian đo và trang cần đọc
    * @returns Promise trả về một trang bản ghi đo của ngựa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws BadRequestException Nếu from sau to
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -167,7 +169,7 @@ export class HorseMeasurementsService {
           horseId,
         );
         await this.assertCanRecord(actor, caller.id, horseId, manager);
-        this.access.assertNotTransferred(horse);
+        assertNotTransferred(horse);
         this.assertValidValues(body, measuredAt);
 
         const created = await this.saveMeasurements(manager, {
@@ -193,7 +195,7 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Ghi số đo lấy trong một buổi khám vào bảng chỉ số. Dùng cho module medical gọi trong transaction của họ.
+   * Ghi số đo lấy trong một buổi khám vào bảng chỉ số, trong transaction của nơi gọi
    *
    * - Cùng luật giá trị, thời điểm đo và xác nhận giá trị bất thường như addMeasurements
    * - Bản ghi lưu với nguồn MEDICAL_EXAM và medicalRecordId của buổi khám; mỗi bản ghi một dòng nhật ký
@@ -230,7 +232,7 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Xóa mềm mọi số đo của một buổi khám vừa bị hủy. Dùng cho module medical gọi trong transaction của họ.
+   * Xóa mềm mọi số đo của một buổi khám vừa bị hủy, trong transaction của nơi gọi
    *
    * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ và mốc cảnh báo giảm cân, giống deleteMeasurement
    * - Lưu lý do, người xóa; mỗi bản ghi một dòng nhật ký kèm lý do
@@ -294,6 +296,7 @@ export class HorseMeasurementsService {
    * @param measurementId UUID của bản ghi đo
    * @param body Lý do xóa
    * @returns Promise hoàn tất khi đã xóa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, ngựa ngoài phạm vi, hoặc không có bản ghi đo (chưa xóa) của ngựa này
    * @throws ConflictException Nếu bản ghi đến từ buổi khám
    */
