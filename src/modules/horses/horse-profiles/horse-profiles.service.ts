@@ -321,7 +321,7 @@ export class HorseProfilesService {
     if (microchipId !== undefined) {
       await this.assertMicrochipFree(microchipId, id);
     }
-
+    // Lọc xem coi thật sự field nào sẽ thay đổi
     const changes = changedFields<HorseEntity>(horse, {
       ...fields,
       name: fields.name?.trim(),
@@ -335,6 +335,7 @@ export class HorseProfilesService {
     await mapUniqueViolation(
       () =>
         this.dataSource.transaction(async (manager) => {
+          // Nếu có đổi chủ sở hữu thì kiểm tra coi còn active và đùng role không và khoá row
           if (changes.ownerId !== undefined) {
             await this.assertActiveOwner(manager, changes.ownerId);
           }
@@ -478,11 +479,18 @@ export class HorseProfilesService {
   ): Promise<void> {
     const isClubManager = this.access.hasRole(actor, UserRole.CLUB_MANAGER);
     const nonAptitudeFields = nonRaceAptitudeFieldsIn(fields);
+    //Nếu không phải Club Manager mà gửi field ngoài sở trường cự ly thì trả 403
+    /**
+     * Pass if:
+     * 1. Không có gữi field ngoài sở trường cự ly (Có hoặc không gữi gữi field sở trường cự ly)
+     * 2. Có gữi field ngoài sở trường cự ly nhưng là Club Manager
+     */
     if (nonAptitudeFields.length > 0 && !isClubManager) {
       throw new ForbiddenException(
         `Huấn luyện viên trưởng chỉ được sửa sở trường cự ly, không được sửa: ${nonAptitudeFields.join(', ')}`,
       );
     }
+    // Nếu có gữi field sở trường cự ly thì chỉ có HEAD_TRAINER phụ trách khu mới được sửa
     const sendsRaceAptitude = raceAptitudeFieldsIn(fields).length > 0;
     if (
       sendsRaceAptitude &&
@@ -492,6 +500,7 @@ export class HorseProfilesService {
         'Chỉ Huấn luyện viên trưởng phụ trách khu mới được sửa sở trường cự ly',
       );
     }
+    // Nếu có gữi field sở trường cự ly hoặc không phải Club Manager thì kiểm khu
     if (sendsRaceAptitude || !isClubManager) {
       await this.access.assertTrainerBarn(
         this.dataSource.manager,

@@ -87,13 +87,14 @@ export class HorsePedigreeService {
     sireId: string | null,
     damId: string | null,
   ): Promise<void> {
+    // Kiểm tra cha/mẹ không trùng nhau, không phải chính con ngựa
     assertParentIds(child.id, sireId, damId);
     const sire = sireId
       ? await this.findParent(manager, sireId, SIRE_LABEL)
       : null;
     const dam = damId ? await this.findParent(manager, damId, DAM_LABEL) : null;
+    // Kiểm tra cha/mẹ có hồ sơ, đúng giới tính, sinh trước con
     assertParentProfiles(child, sire, dam);
-
     const childId = child.id;
     if (!childId) return;
     for (const parent of [sire, dam]) {
@@ -125,6 +126,8 @@ export class HorsePedigreeService {
     horse: HorseEntity,
     changes: Partial<HorseEntity>,
   ): Promise<void> {
+    // Nếu có thay đổi giới tính thì không làm sai vai trò cha mẹ của con
+    // ngựa đang thay đổi so với các con của nó(tính cả con đã xóa hồ sơ)
     if (changes.gender) {
       assertGenderKeepsPedigree(
         await this.parentUsage(manager, horse.id),
