@@ -41,8 +41,8 @@ import {
   HorseResponseDto,
   UpdateHorseDto,
 } from '../dto';
-import { HorseEntity } from '../entities/horse.entity';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
+import { HorseEntity } from '../entities/horse.entity';
 import {
   eligibilityInputOf,
   toHorseDetailResponse,
@@ -59,8 +59,8 @@ import {
   assertDateOfBirth,
   evaluateEligibility,
   evaluateHorsePermissions,
-  raceAptitudeFieldsIn,
   nonRaceAptitudeFieldsIn,
+  raceAptitudeFieldsIn,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
