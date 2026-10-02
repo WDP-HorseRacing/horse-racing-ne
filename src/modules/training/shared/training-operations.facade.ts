@@ -201,6 +201,7 @@ export class TrainingOperationsFacade {
    *
    * - Chỉ hủy lượt PLANNED/PRESENT/READY của buổi có giờ bắt đầu từ `from` trở đi
    * - Lượt ONGOING, lượt đã kết thúc và buổi trước `from` giữ nguyên
+   * - Khóa các lượt sẽ hủy; lượt vừa được thao tác khác chuyển sang ONGOING thì không bị hủy
    * - Buổi không còn lượt nào mở thì cập nhật lại trạng thái buổi
    *
    * @param manager EntityManager của transaction đang chạy
@@ -231,6 +232,7 @@ export class TrainingOperationsFacade {
         statuses: OPEN_PARTICIPANT_STATUSES,
       })
       .andWhere('session.scheduled_start_at >= :from', { from })
+      .setLock('pessimistic_write', undefined, ['participant'])
       .getMany();
     return this.cancelLoadedParticipants(manager, participants, reason);
   }

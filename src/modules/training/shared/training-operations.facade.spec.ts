@@ -226,6 +226,11 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
       'session.scheduled_start_at >= :from',
       { from: AT },
     );
+    expect(participantQb.setLock).toHaveBeenCalledWith(
+      'pessimistic_write',
+      undefined,
+      ['participant'],
+    );
   });
 });
 

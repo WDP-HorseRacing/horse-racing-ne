@@ -35,6 +35,7 @@ function setup(
     innerJoin: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    setLock: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue(participants),
   };
   const save = jest.fn((...args: unknown[]) =>
