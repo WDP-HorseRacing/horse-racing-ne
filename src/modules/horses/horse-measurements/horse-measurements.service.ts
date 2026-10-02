@@ -72,16 +72,16 @@ export class HorseMeasurementsService {
   ) {}
 
   /**
-   * List the measurements of a horse visible to the caller, newest first
+   * Lấy một trang lịch sử chỉ số của ngựa trong phạm vi người gọi, mới nhất trước
    *
    * - Lọc theo loại chỉ số và khoảng thời gian đo (from, to), phân trang theo page, limit
    *
-   * @param actor The actor resolved from the JWT
-   * @param horseId The ID of the horse
-   * @param query The type, time range and page to read
-   * @returns A promise resolving to a page of measurements of the horse
-   * @throws BadRequestException if from is after to
-   * @throws NotFoundException if the horse is not found or not visible to the caller
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @param query Loại chỉ số, khoảng thời gian đo và trang cần đọc
+   * @returns Promise trả về một trang bản ghi đo của ngựa
+   * @throws BadRequestException Nếu from sau to
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async listMeasurements(
     actor: Actor,
@@ -125,12 +125,12 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Ghi một lần đo chỉ số cơ thể của con ngựa, gồm một hoặc nhiều loại chỉ số (F1.5).
+   * Ghi một lần đo chỉ số cơ thể của con ngựa, gồm một hoặc nhiều loại chỉ số.
    *
    * - Veterinarian ghi cho mọi ngựa; Head Trainer chỉ ngựa thuộc khu mình; Groom chỉ ngựa được phân công. Ai được ghi thì ghi được cả bốn loại
    * - Không ghi cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
    * - Giá trị phải trong khoảng hợp lệ; thời điểm đo không ở tương lai, lùi tối đa 7 ngày; mỗi loại chỉ một giá trị
-   * - Có giá trị ngoài khoảng bình thường mà chưa gửi confirmAbnormal = true thì trả 422 để giao diện hỏi xác nhận, chưa lưu gì
+   * - Có giá trị ngoài khoảng bình thường mà chưa gửi confirmAbnormal = true thì trả 422, chưa lưu gì
    * - Bản ghi lưu với nguồn MANUAL; mỗi bản ghi một dòng nhật ký
    * - Tự sinh cảnh báo (sốt, giảm cân trong 14 ngày), trả trong response và phát HORSE_MEASUREMENT_ALERT_EVENT sau khi commit
    *
@@ -185,16 +185,16 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Ghi số đo lấy trong một buổi khám của Flow 3 vào bảng chỉ số (Flow 3 mục III.5.1). Dùng cho module medical gọi trong transaction của họ.
+   * Ghi số đo lấy trong một buổi khám vào bảng chỉ số. Dùng cho module medical gọi trong transaction của họ.
    *
-   * - Cùng luật giá trị, thời điểm đo và xác nhận giá trị bất thường như F1.5
+   * - Cùng luật giá trị, thời điểm đo và xác nhận giá trị bất thường như addMeasurements
    * - Bản ghi lưu với nguồn MEDICAL_EXAM và medicalRecordId của buổi khám; mỗi bản ghi một dòng nhật ký
-   * - Không tự mở transaction, không publish event: trả về các cảnh báo để nơi gọi phát bằng publishAlerts sau khi commit
+   * - Không tự mở transaction, không publish event: trả về các cảnh báo; nơi gọi phát bằng publishAlerts sau khi commit
    * - Nơi gọi đã khóa row ngựa và kiểm quyền ghi y tế
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Ngựa, buổi khám, người đo, thời điểm đo, các cặp loại/giá trị và cờ xác nhận
-   * @returns A promise resolving to các cảnh báo sinh ra, chưa phát
+   * @returns Promise trả về các cảnh báo sinh ra, chưa phát
    * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ, trùng loại hoặc thời điểm đo không hợp lệ
    * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà chưa xác nhận
    */
@@ -222,14 +222,14 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Xóa mềm mọi số đo của một buổi khám vừa bị hủy (Flow 3 mục III.2.4). Dùng cho module medical gọi trong transaction của họ.
+   * Xóa mềm mọi số đo của một buổi khám vừa bị hủy. Dùng cho module medical gọi trong transaction của họ.
    *
-   * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ và mốc cảnh báo giảm cân, giống xóa ở F1.5
+   * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ và mốc cảnh báo giảm cân, giống deleteMeasurement
    * - Lưu lý do, người xóa; mỗi bản ghi một dòng nhật ký kèm lý do
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Buổi khám bị hủy, lý do hủy, người hủy và mã chức năng ghi nhật ký
-   * @returns A promise resolving to số bản ghi đo đã xóa mềm
+   * @returns Promise trả về số bản ghi đo đã xóa mềm
    */
   async voidExamMeasurements(
     manager: EntityManager,
@@ -283,7 +283,7 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Xóa mềm một bản ghi đo sai (F1.5 mục 4). Bản ghi không được sửa, ghi sai thì xóa rồi đo lại.
+   * Xóa mềm một bản ghi đo sai. Bản ghi không được sửa, ghi sai thì xóa rồi đo lại.
    *
    * - Chỉ Veterinarian (kiểm ở controller), bắt buộc nhập lý do
    * - Ngựa đã chuyển nhượng vẫn xóa được bản ghi sai (chỉ cấm ghi mới)
@@ -352,7 +352,7 @@ export class HorseMeasurementsService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Ngựa, các cặp loại/giá trị, thời điểm đo, người đo, nguồn, buổi khám (nếu có), cờ đã xác nhận giá trị bất thường và mã chức năng ghi nhật ký
-   * @returns A promise resolving to các bản ghi vừa lưu (kèm người đo), mỗi bản kèm cảnh báo của nó
+   * @returns Promise trả về các bản ghi vừa lưu (kèm người đo), mỗi bản kèm cảnh báo của nó
    */
   private async saveMeasurements(
     manager: EntityManager,
@@ -465,6 +465,7 @@ export class HorseMeasurementsService {
    * @param horseId UUID của ngựa
    * @param type Loại chỉ số đang ghi
    * @param measuredAt Thời điểm đo của bản ghi mới
+   * @param manager EntityManager của transaction đang chạy
    * @returns Promise trả về cân nặng mốc, null nếu không phải loại WEIGHT hoặc không có bản ghi trong cửa sổ
    */
   private async weightBaseline(
@@ -492,7 +493,7 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Kiểm tra người gọi được ghi chỉ số cho con ngựa (F1.5).
+   * Kiểm tra người gọi được ghi chỉ số cho con ngựa.
    *
    * - Chỉ query khu phụ trách khi người gọi là Head Trainer, chỉ query phân công khi là Groom
    *

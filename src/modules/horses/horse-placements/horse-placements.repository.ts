@@ -17,7 +17,7 @@ export class HorsePlacementsRepository {
    * Lấy khu chuồng chưa xóa kèm Head Trainer phụ trách
    *
    * @param barnId UUID của khu
-   * @returns A promise resolving to khu kèm tên Head Trainer, null nếu không có khu
+   * @returns Promise trả về khu kèm tên Head Trainer, null nếu không có khu
    */
   async findBarn(barnId: string): Promise<BarnPreviewTarget | null> {
     const rows = await this.dataSource.query<BarnPreviewTarget[]>(
@@ -40,7 +40,7 @@ export class HorsePlacementsRepository {
    *
    * @param horseId UUID của ngựa
    * @param newHeadTrainerId Head Trainer khu mới, null nếu khu mới chưa có
-   * @returns A promise resolving to khu hiện tại, ô, Groom và số lớp sẽ bị rút
+   * @returns Promise trả về khu hiện tại, ô, Groom và số lớp sẽ bị rút
    */
   async barnChangeImpact(
     horseId: string,

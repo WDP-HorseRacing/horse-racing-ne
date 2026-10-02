@@ -24,7 +24,7 @@ import type { HorseMeasurementEntity } from '../entities/horse-measurement.entit
 export type HorseScope = { kind: 'ALL' } | { kind: 'OWNER'; userId: string };
 
 /**
- * An ancestor row returned by the pedigree query
+ * Một dòng tổ tiên do query phả hệ trả về
  */
 export interface PedigreeAncestorRow {
   id: string;
@@ -55,7 +55,7 @@ export interface HorseLocationRow {
 }
 
 /**
- * The unit, allowed range and normal range of a measurement type
+ * Đơn vị, khoảng cho phép và khoảng bình thường của một loại chỉ số
  *
  * - min/max: ngoài khoảng này là nhập sai, API từ chối
  * - normalMin/normalMax: khoảng bình thường; ngoài khoảng vẫn ghi được nhưng bị đánh dấu bất thường
@@ -89,7 +89,7 @@ export type HorseMeasurementAlertResult =
 /**
  * Payload của domain event HORSE_MEASUREMENT_ALERT_EVENT, phát một lần cho mỗi cảnh báo sau khi bản ghi đã lưu.
  *
- * Quy ước người nhận cho listener gửi thông báo (F1.7):
+ * Quy ước người nhận cho listener gửi thông báo:
  * - FEVER (URGENT): mọi Veterinarian đang ACTIVE và Head Trainer của khu đang chứa ngựa
  * - WEIGHT_DROP (WARNING): như trên (cảnh báo y tế cho Vet, cảnh báo quá tải cho Head Trainer)
  */
@@ -105,9 +105,9 @@ export type HorseMeasurementAlertEvent = HorseMeasurementAlertResult & {
 };
 
 /**
- * Số đo lấy trong một buổi khám của Flow 3, ghi vào bảng chỉ số của F1.5 với nguồn MEDICAL_EXAM (Flow 3 mục III.5).
+ * Số đo lấy trong một buổi khám, ghi vào bảng chỉ số cơ thể với nguồn MEDICAL_EXAM.
  *
- * - feature: mã chức năng ghi vào nhật ký, ví dụ F3.3 hoặc F3.6
+ * - feature: mã chức năng ghi vào nhật ký
  */
 export interface ExamMeasurementInput {
   horseId: string;
@@ -143,7 +143,7 @@ export interface HorseGroomReleasedEvent {
 }
 
 /**
- * The horse fields needed to validate a sire or dam
+ * Các field của ngựa cần để kiểm tra cha hoặc mẹ
  */
 export interface ParentCandidate {
   id: string;
@@ -160,7 +160,7 @@ export interface ParentUsage {
 }
 
 /**
- * The child horse fields needed to validate its parents
+ * Các field của ngựa con cần để kiểm tra cha mẹ của nó
  */
 export interface ChildProfile {
   id?: string;
@@ -168,7 +168,7 @@ export interface ChildProfile {
 }
 
 /**
- * The horse state needed to evaluate training and racing eligibility
+ * Trạng thái ngựa cần để tính điều kiện được tập và được đua
  */
 export interface EligibilityInput {
   isDeleted: boolean;
@@ -178,7 +178,7 @@ export interface EligibilityInput {
 }
 
 /**
- * The training and racing eligibility of a horse with the blocking reasons
+ * Điều kiện được tập, được đua của ngựa kèm lý do chặn
  */
 export interface EligibilityResult {
   trainingEligible: boolean;
@@ -219,7 +219,7 @@ export interface HorsePermissionInput {
 
 /**
  * Các cờ quyền của người gọi trên một hồ sơ ngựa.
- * FE dùng để ẩn/hiện nút và tab; các API ghi vẫn tự kiểm tra quyền.
+ * Các API ghi vẫn tự kiểm tra quyền.
  */
 export interface HorsePermissions {
   canEditProfile: boolean;
@@ -249,7 +249,7 @@ export interface HorseDetailParts {
 }
 
 /**
- * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa (F1.8). Mỗi cờ đúng một việc.
+ * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa. Mỗi cờ đúng một việc.
  *
  * - withdrawFromClasses: rút ngựa khỏi mọi lớp đang học (training).
  * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra.
@@ -257,10 +257,10 @@ export interface HorseDetailParts {
  * - endGroom: kết thúc phân công groom đang mở.
  * - clearBarn: bỏ khu chuồng (horses.barn_id = null).
  * - releaseTrainingLock: tự gỡ lệnh khóa huấn luyện đang ACTIVE.
- * - settleMedicalWork: chốt phần y tế khi chuyển nhượng (Flow 3 mục III.8): chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
+ * - settleMedicalWork: chốt phần y tế khi chuyển nhượng: chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
  * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại (chỉ khi kích hoạt lại từ chuyển nhượng).
  * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
- * - Chủ sở hữu không bao giờ bị đổi ở đây: chuyển nhượng vẫn giữ chủ để chủ cũ còn tra cứu.
+ * - Chủ sở hữu không bị đổi ở đây: chuyển nhượng vẫn giữ chủ.
  */
 export interface LifecycleSideEffects {
   withdrawFromClasses: boolean;
@@ -275,7 +275,7 @@ export interface LifecycleSideEffects {
 }
 
 /**
- * Những gì sẽ bị ảnh hưởng nếu đổi vòng đời, đếm trên dữ liệu hiện tại để Club Manager xác nhận trước (F1.8 mục 5).
+ * Những gì sẽ bị ảnh hưởng nếu đổi vòng đời, đếm trên dữ liệu hiện tại.
  */
 export interface LifecycleImpactRow {
   activeClasses: number;

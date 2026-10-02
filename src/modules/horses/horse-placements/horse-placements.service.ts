@@ -33,7 +33,7 @@ import type { HorseBarnAssignedEvent } from '../types/horse.types';
 import { HorsePlacementsRepository } from './horse-placements.repository';
 
 /**
- * Xếp và đổi khu chuồng cho ngựa (F1.6). Việc xếp ô và phân công Groom (F1.7) thuộc module stable.
+ * Xếp và đổi khu chuồng cho ngựa; xếp ô kèm giao Groom trong một lần gửi. Luật xếp ô và phân công Groom do module stable quản lý.
  */
 @Injectable()
 export class HorsePlacementsService {
@@ -50,13 +50,13 @@ export class HorsePlacementsService {
   ) {}
 
   /**
-   * Xếp hoặc đổi khu chuồng cho ngựa (F1.6). Chỉ Club Manager (kiểm ở controller).
+   * Xếp hoặc đổi khu chuồng cho ngựa. Chỉ Club Manager (kiểm ở controller).
    *
    * - Chỉ ngựa ACTIVE hoặc RETIRED; ngựa đã chuyển nhượng hoặc hồ sơ đã xóa thì không thao tác được
    * - Khu mới phải đang hoạt động, có Head Trainer phụ trách và còn ít nhất một ô trống (khóa row khu trước khi kiểm)
-   * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom vì Groom gắn với con ngựa
+   * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom
    * - Chọn đúng khu đang ở thì không đổi gì
-   * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT để module notifications báo Head Trainer khu mới
+   * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT báo Head Trainer khu mới
    * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách; có rút thì nhật ký ghi thêm classesWithdrawn
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -130,7 +130,7 @@ export class HorsePlacementsService {
   }
 
   /**
-   * Xem trước hệ quả của việc đổi khu để Club Manager xác nhận trước khi lưu. Không ghi gì
+   * Xem trước hệ quả của việc đổi khu. Không ghi gì
    *
    * - Dùng cùng luật rút lớp như assignBarn: mọi lớp không do Head Trainer khu mới phụ trách
    * - Ngựa đã chuyển nhượng hoặc đang ở đúng khu này thì trả allowed = false kèm lý do
@@ -139,7 +139,7 @@ export class HorsePlacementsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param query Khu muốn chuyển sang
-   * @returns A promise resolving to cờ đổi được, lý do chặn, từng hệ quả và câu tóm tắt
+   * @returns Promise trả về cờ đổi được, lý do chặn, từng hệ quả và câu tóm tắt
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
    * @throws ConflictException Nếu Club Manager xem trước trên hồ sơ đã xóa
@@ -187,7 +187,7 @@ export class HorsePlacementsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Ô chuồng và groom được giao
-   * @returns A promise resolving to phân công ô và phân công groom đang mở của ngựa
+   * @returns Promise trả về phân công ô và phân công groom đang mở của ngựa
    * @throws BadRequestException Nếu ô không thuộc khu của ngựa, hoặc groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phụ trách khu của ngựa

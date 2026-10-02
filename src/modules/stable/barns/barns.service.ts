@@ -55,7 +55,7 @@ export class BarnsService {
   ) {}
 
   /**
-   * Liệt kê các khu chuồng kèm Head Trainer phụ trách và số chỗ còn nhận ngựa (F1.6 bước 3).
+   * Liệt kê các khu chuồng kèm Head Trainer phụ trách và số chỗ còn nhận ngựa.
    *
    * - Ô trống: ô AVAILABLE, chưa xóa và không có phân công đang mở.
    * - Ngựa chờ xếp ô: ngựa thuộc khu (horses.barn_id), chưa xóa mềm, lifecycle khác TRANSFERRED và không có phân công ô đang mở.
@@ -101,7 +101,7 @@ export class BarnsService {
   }
 
   /**
-   * Thêm khu chuồng mới, chưa có Head Trainer phụ trách (F1.6)
+   * Thêm khu chuồng mới, chưa có Head Trainer phụ trách
    *
    * - Chạy trong transaction: kiểm tên, lưu khu và ghi nhật ký cùng commit hoặc cùng rollback
    * - Tên khu phải chưa tồn tại (khu đã xóa không tính); status mặc định ACTIVE
@@ -109,7 +109,7 @@ export class BarnsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin khu chuồng
-   * @returns A promise resolving to khu chuồng vừa tạo
+   * @returns Promise trả về khu chuồng vừa tạo
    * @throws ConflictException Nếu tên khu đã tồn tại
    */
   async create(actor: Actor, body: CreateBarnDto): Promise<BarnResponseDto> {
@@ -146,20 +146,21 @@ export class BarnsService {
   }
 
   /**
-   * Sửa thông tin khu chuồng: tên, mô tả, sức chứa, trạng thái, Head Trainer phụ trách (F1.6)
+   * Sửa thông tin khu chuồng: tên, mô tả, sức chứa, trạng thái, Head Trainer phụ trách
    *
    * - Chạy trong transaction, lock khu (pessimistic_write) trước khi kiểm luật
    * - Head Trainer mới phải là user HEAD_TRAINER đang ACTIVE; gửi null để gỡ người phụ trách
-   * - Khu còn ngựa (horses.barn_id, hồ sơ chưa xóa) thì chặn: chuyển sang CLOSED hoặc MAINTENANCE, gỡ Head Trainer, hạ sức chứa xuống dưới số ô hiện có
+   * - Khu còn ngựa (horses.barn_id, hồ sơ chưa xóa) thì chặn: chuyển sang CLOSED hoặc MAINTENANCE, gỡ Head Trainer
+   * - Mọi khu, dù còn ngựa hay không: chặn hạ sức chứa xuống dưới số ô hiện có
    * - Ghi nhật ký UPDATE với before/after của các field thực sự đổi; không field nào đổi thì không ghi
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param barnId UUID của khu chuồng
    * @param body Các field cần đổi
-   * @returns A promise resolving to khu chuồng sau khi sửa
+   * @returns Promise trả về khu chuồng sau khi sửa
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
    * @throws BadRequestException Nếu Head Trainer mới không có hoặc không phải HEAD_TRAINER
-   * @throws ConflictException Nếu Head Trainer mới không còn hoạt động, tên khu đã tồn tại, hoặc khu còn ngựa mà thay đổi thuộc trường hợp bị chặn
+   * @throws ConflictException Nếu Head Trainer mới không còn hoạt động, tên khu đã tồn tại, sức chứa mới nhỏ hơn số ô hiện có, hoặc khu còn ngựa mà thay đổi thuộc trường hợp bị chặn
    */
   async update(
     actor: Actor,
@@ -224,7 +225,7 @@ export class BarnsService {
   }
 
   /**
-   * Xóa mềm một khu chuồng (F1.6)
+   * Xóa mềm một khu chuồng
    *
    * - Chạy trong transaction, lock khu (pessimistic_write) trước khi kiểm luật
    * - Chặn khi khu còn ngựa (horses.barn_id, hồ sơ chưa xóa) hoặc còn ô chuồng chưa xóa
@@ -232,7 +233,7 @@ export class BarnsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param barnId UUID của khu cần xóa
-   * @returns A promise resolving khi đã xóa
+   * @returns Promise hoàn tất khi đã xóa
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
    * @throws ConflictException Nếu khu còn ngựa hoặc còn ô chuồng
    */
@@ -264,10 +265,10 @@ export class BarnsService {
   }
 
   /**
-   * Lock một khu chuồng và kiểm tra khu đủ điều kiện để Club Manager xếp ngựa vào (F1.2 mục 9, F1.6 mục 2, E1). Dùng cho module horses.
+   * Lock một khu chuồng và kiểm tra khu đủ điều kiện để Club Manager xếp ngựa vào. Dùng cho module horses.
    *
    * - Chạy trong transaction của nơi gọi, không tự mở transaction.
-   * - Lock row khu trước rồi mới đếm, để hai request xếp ngựa vào cùng khu phải chạy lần lượt.
+   * - Lock row khu trước rồi mới đếm.
    * - Khu phải tồn tại, chưa xóa, đang ACTIVE, đã có Head Trainer phụ trách và còn ít nhất một chỗ nhận ngựa.
    * - Head Trainer phụ trách phải là user chưa xóa, đang ACTIVE và còn vai trò HEAD_TRAINER.
    * - Số chỗ còn nhận = ô trống − ngựa chờ xếp ô trong khu (xem `StableSharedRepository.countStallCapacity`).
@@ -314,10 +315,11 @@ export class BarnsService {
   }
 
   /**
-   * Run a write operation and map a unique violation to a barn name conflict
-   * @param operation The write operation to run
-   * @returns A promise resolving to the operation result
-   * @throws ConflictException if the barn name is already used
+   * Chạy thao tác ghi và đổi lỗi unique violation thành 409 trùng tên khu
+   *
+   * @param operation Thao tác ghi cần chạy
+   * @returns Promise trả về kết quả của thao tác
+   * @throws ConflictException Nếu tên khu chuồng đã tồn tại
    */
   private async saveUnique<T>(operation: () => Promise<T>): Promise<T> {
     try {

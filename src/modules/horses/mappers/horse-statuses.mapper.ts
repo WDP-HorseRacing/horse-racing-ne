@@ -10,7 +10,7 @@ import type {
 } from '../types/horse.types';
 
 /**
- * Dựng bảng xem trước hệ quả đổi vòng đời (F1.8 mục 5)
+ * Dựng bảng xem trước hệ quả đổi vòng đời
  *
  * - Hệ quả nào không chạy (theo effects) thì trả 0, null hoặc false
  *
@@ -19,7 +19,7 @@ import type {
  * @param blockedReason Lý do không được đổi, null nếu được đổi
  * @param effects Các việc sẽ chạy (từ lifecycleSideEffects)
  * @param impact Số liệu hiện tại của ngựa
- * @param summary Câu tóm tắt cho bảng xác nhận, null nếu không được đổi
+ * @param summary Câu tóm tắt hệ quả, null nếu không được đổi
  * @returns Bảng xem trước hệ quả
  */
 export function toLifecyclePreviewResponse(

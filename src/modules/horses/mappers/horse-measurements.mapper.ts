@@ -9,10 +9,10 @@ import { requiredRelationName } from './horse.mapper';
 import type { HorseMeasurementAlertResult } from '../types/horse.types';
 
 /**
- * Map the latest horse measurement fields, including its unit and the abnormal flag stored at record time.
+ * Map các field của chỉ số mới nhất, kèm đơn vị và cờ bất thường đã lưu lúc ghi
  *
- * @param entity The horse measurement entity
- * @returns The latest measurement response fields
+ * @param entity Bản ghi chỉ số cơ thể
+ * @returns Các field chỉ số mới nhất trong response
  */
 export function toLatestMeasurement(
   entity: HorseMeasurementEntity,
@@ -27,10 +27,10 @@ export function toLatestMeasurement(
 }
 
 /**
- * Map a measurement history row with its measurer's name.
+ * Map một dòng lịch sử chỉ số kèm tên người đo
  *
- * @param entity The horse measurement entity with its measurer relation loaded
- * @returns The measurement response
+ * @param entity Bản ghi chỉ số cơ thể đã load quan hệ measurer
+ * @returns Response của bản ghi chỉ số
  */
 export function toMeasurementResponse(
   entity: HorseMeasurementEntity,
@@ -46,11 +46,11 @@ export function toMeasurementResponse(
 }
 
 /**
- * Map a newly created measurement together with its automatically calculated alerts.
+ * Map bản ghi chỉ số vừa tạo kèm các cảnh báo tự động tính được
  *
- * @param entity The saved measurement entity with its measurer relation loaded
- * @param alerts The alerts calculated for this measurement
- * @returns The created measurement response; FEVER alerts have null baseline and drop values
+ * @param entity Bản ghi chỉ số đã lưu, đã load quan hệ measurer
+ * @param alerts Các cảnh báo tính cho lần đo này
+ * @returns Response bản ghi chỉ số vừa tạo; cảnh báo FEVER có baselineValue và dropPercent là null
  */
 export function toCreatedMeasurementResponse(
   entity: HorseMeasurementEntity,

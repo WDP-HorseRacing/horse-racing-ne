@@ -40,7 +40,7 @@ export function toDeletionPreviewResponse(
  * @param horse Hồ sơ ngựa đã xóa
  * @param barnCleared Tên khu ngựa sẽ rời, null nếu ngựa không có khu
  * @param ownerCleared Tên chủ sẽ bị bỏ trống, null nếu giữ chủ
- * @returns Các hệ quả và câu tóm tắt để hiện ở bảng xác nhận
+ * @returns Các hệ quả và câu tóm tắt
  */
 export function toRestorePreviewResponse(
   horse: HorseEntity,

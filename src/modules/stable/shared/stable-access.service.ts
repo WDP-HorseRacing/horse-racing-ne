@@ -31,7 +31,7 @@ export class StableAccessService {
    * Lock con ngựa và kiểm tra Head Trainer được thao tác trên nó (xếp ô, giao hoặc đổi groom)
    *
    * - Lock row ngựa (pessimistic_write) trước khi kiểm, hồ sơ đã xóa coi như không có
-   * - Thứ tự kiểm: có ngựa → đã xếp khu → người gọi phụ trách khu → chưa chuyển nhượng
+   * - Thứ tự kiểm: có ngựa → chưa chuyển nhượng → đã xếp khu → người gọi phụ trách khu
    * - Chỉ tính Head Trainer phụ trách khu, kể cả khi người gọi có thêm vai trò khác
    * - Không kiểm trạng thái khu; nơi cần thì gọi thêm lockActiveBarn
    *
@@ -39,7 +39,7 @@ export class StableAccessService {
    * @param callerId UUID của người gọi (users.id)
    * @param horseId UUID của ngựa
    * @param operation Thao tác đang làm, để chọn câu báo lỗi khi ngựa đã chuyển nhượng
-   * @returns A promise resolving to con ngựa đã lock, chắc chắn đã có khu
+   * @returns Promise trả về con ngựa đã lock, chắc chắn đã có khu
    * @throws NotFoundException Nếu không có ngựa hoặc hồ sơ đã xóa
    * @throws ConflictException Nếu ngựa chưa được xếp khu hoặc đã chuyển nhượng
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
@@ -67,7 +67,7 @@ export class StableAccessService {
    * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
    * @param horseId UUID của ngựa
    * @param callerId UUID của người gọi (users.id)
-   * @returns A promise resolving khi kiểm tra xong
+   * @returns Promise hoàn tất khi kiểm tra xong
    * @throws ForbiddenException Nếu ngựa không thuộc khu người gọi phụ trách
    */
   async assertHorseInTrainerBarn(
@@ -81,12 +81,12 @@ export class StableAccessService {
   }
 
   /**
-   * Lock một khu chuồng (pessimistic_write) để các thao tác đổi khu, thêm ô, xếp ngựa vào khu chạy lần lượt
+   * Lock một khu chuồng (pessimistic_write), dùng khi đổi khu, thêm ô hoặc xếp ngựa vào khu
    *
    * @param manager EntityManager của transaction đang chạy
    * @param barnId UUID của khu chuồng
    * @param notFoundMessage Câu báo 404 khi không có khu
-   * @returns A promise resolving to khu chuồng đã lock
+   * @returns Promise trả về khu chuồng đã lock
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
    */
   async lockBarn(
@@ -108,7 +108,7 @@ export class StableAccessService {
    * @param manager EntityManager của transaction đang chạy
    * @param barnId UUID của khu chuồng
    * @param label Cách gọi khu trong câu báo lỗi (vd "Khu chuồng", "Khu chuồng đích")
-   * @returns A promise resolving to khu chuồng đã lock, chắc chắn đang ACTIVE
+   * @returns Promise trả về khu chuồng đã lock, chắc chắn đang ACTIVE
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
    * @throws ConflictException Nếu khu không ở trạng thái ACTIVE
    */

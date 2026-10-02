@@ -28,10 +28,10 @@ export class HorsePedigreeService {
   ) {}
 
   /**
-   * Giữ khóa phả hệ tới hết transaction, để các thao tác đổi phả hệ chạy lần lượt
+   * Giữ khóa phả hệ tới hết transaction; các thao tác đổi phả hệ chạy lần lượt
    *
    * @param manager EntityManager của transaction đang chạy
-   * @returns A promise resolving khi đã giữ được khóa
+   * @returns Promise hoàn tất khi đã giữ được khóa
    */
   lockPedigree(manager: EntityManager): Promise<void> {
     return this.pedigree.lockPedigree(manager);
@@ -42,7 +42,7 @@ export class HorsePedigreeService {
    *
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to cờ đang là cha (asSire) và đang là mẹ (asDam)
+   * @returns Promise trả về cờ đang là cha (asSire) và đang là mẹ (asDam)
    */
   parentUsage(manager: EntityManager, horseId: string): Promise<ParentUsage> {
     return this.pedigree.parentUsage(manager, horseId);
@@ -59,7 +59,7 @@ export class HorsePedigreeService {
    * @param child Id (khi sửa) và ngày sinh của ngựa con
    * @param sireId UUID của cha, null nếu bỏ trống
    * @param damId UUID của mẹ, null nếu bỏ trống
-   * @returns A promise resolving khi kiểm tra xong
+   * @returns Promise hoàn tất khi kiểm tra xong
    * @throws BadRequestException Nếu cha/mẹ là chính ngựa con, trùng nhau, không tồn tại, sai giới tính hoặc không sinh trước con
    * @throws ConflictException Nếu cha/mẹ tạo vòng lặp phả hệ
    */
@@ -96,7 +96,7 @@ export class HorsePedigreeService {
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param horse Hồ sơ ngựa trước khi sửa
    * @param changes Các field thực sự đổi
-   * @returns A promise resolving khi kiểm tra xong
+   * @returns Promise hoàn tất khi kiểm tra xong
    * @throws BadRequestException Nếu cha/mẹ không hợp lệ hoặc ngày sinh không trước ngựa con sớm nhất
    * @throws ConflictException Nếu đổi giới tính làm sai phả hệ, hoặc cha/mẹ tạo vòng lặp phả hệ
    */
@@ -138,11 +138,11 @@ export class HorsePedigreeService {
   }
 
   /**
-   * Lấy cha/mẹ đang giữ nguyên để kiểm lại, bỏ qua cha/mẹ đã bị xóa hồ sơ vì hồ sơ đã xóa coi như không có
+   * Lấy cha/mẹ đang giữ nguyên để kiểm lại, bỏ qua cha/mẹ đã bị xóa hồ sơ
    *
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param parentId UUID cha/mẹ hiện tại của ngựa, null nếu bỏ trống
-   * @returns A promise resolving to UUID cha/mẹ nếu hồ sơ còn, null nếu bỏ trống hoặc đã xóa
+   * @returns Promise trả về UUID cha/mẹ nếu hồ sơ còn, null nếu bỏ trống hoặc đã xóa
    */
   private async keptParentId(
     manager: EntityManager,
@@ -158,7 +158,7 @@ export class HorsePedigreeService {
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param id UUID của ngựa được chọn
    * @param label Nhãn Sire/Dam dùng trong thông báo lỗi
-   * @returns A promise resolving to hồ sơ cha/mẹ
+   * @returns Promise trả về hồ sơ cha/mẹ
    * @throws BadRequestException Nếu ngựa được chọn không tồn tại hoặc đã xóa
    */
   private async findParent(

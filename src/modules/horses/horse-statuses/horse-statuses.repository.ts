@@ -10,7 +10,7 @@ import type { LifecycleImpactRow } from '../types/horse.types';
 @Injectable()
 export class HorseStatusesRepository {
   /**
-   * Đếm những gì sẽ bị ảnh hưởng khi đổi vòng đời, để hiện bảng xác nhận trước khi thực hiện (F1.8 mục 5). Chỉ đọc.
+   * Đếm những gì sẽ bị ảnh hưởng khi đổi vòng đời. Chỉ đọc.
    *
    * - Số lớp ngựa đang học (enrollment ACTIVE) và đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra
    * - Ô chuồng, groom và khu hiện tại
@@ -18,7 +18,7 @@ export class HorseStatusesRepository {
    *
    * @param horseId UUID của ngựa
    * @param manager EntityManager dùng để query
-   * @returns A promise resolving to số liệu hiện tại của ngựa, chưa gồm cờ khóa huấn luyện
+   * @returns Promise trả về số liệu hiện tại của ngựa, chưa gồm cờ khóa huấn luyện
    */
   async lifecycleImpact(
     horseId: string,

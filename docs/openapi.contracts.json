@@ -354,7 +354,7 @@
     },
     "/api/v1/horses/{horseId}": {
       "delete": {
-        "description": "Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 409.",
+        "description": "Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 409.",
         "operationId": "HorseDeletionsController_deleteHorse",
         "parameters": [
           {
@@ -392,7 +392,7 @@
         ]
       },
       "get": {
-        "description": "Tab thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập/được đua và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.",
+        "description": "Thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập/được đua và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.",
         "operationId": "HorseProfilesController_getHorse",
         "parameters": [
           {
@@ -427,7 +427,7 @@
         ]
       },
       "patch": {
-        "description": "Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409, cần GET lại. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 409 (phải khôi phục trước), Head Trainer nhận 404.",
+        "description": "Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 409 (phải khôi phục trước), Head Trainer nhận 404.",
         "operationId": "HorseProfilesController_updateHorse",
         "parameters": [
           {
@@ -474,7 +474,7 @@
     },
     "/api/v1/horses/{horseId}/restore-preview": {
       "get": {
-        "description": "Không ghi gì. Trả về khu ngựa sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu), chủ sẽ bị bỏ trống nếu không còn hoạt động, và câu tóm tắt để hiện bảng xác nhận. Hồ sơ chưa bị xóa trả 409.",
+        "description": "Không ghi gì. Trả về khu ngựa sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu), chủ sẽ bị bỏ trống nếu không còn hoạt động, và câu tóm tắt. Hồ sơ chưa bị xóa trả 409.",
         "operationId": "HorseDeletionsController_previewRestore",
         "parameters": [
           {
@@ -511,7 +511,7 @@
     },
     "/api/v1/horses/{horseId}/restore": {
       "post": {
-        "description": "Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Ngựa luôn rời khu cũ và vào \"Chờ xếp khu\"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Nên gọi restore-preview trước để xác nhận. Hồ sơ chưa bị xóa trả 409.",
+        "description": "Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Ngựa luôn rời khu cũ và vào \"Chờ xếp khu\"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Hồ sơ chưa bị xóa trả 409.",
         "operationId": "HorseDeletionsController_restoreHorse",
         "parameters": [
           {
@@ -747,7 +747,7 @@
     },
     "/api/v1/horses/{horseId}/barn-preview": {
       "get": {
-        "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt để hiện bảng xác nhận.",
+        "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt.",
         "operationId": "HorsePlacementsController_previewBarnChange",
         "parameters": [
           {
@@ -794,7 +794,7 @@
     },
     "/api/v1/horses/{horseId}/barn": {
       "put": {
-        "description": "Chỉ Club Manager, bắt buộc lý do. Khu phải đang hoạt động, có Head Trainer và còn ô trống. Đổi khu thì ô cũ được trả về trống, ngựa vào \"Chờ xếp ô\" của khu mới, Groom giữ nguyên. Ngựa đã chuyển nhượng trả 409.",
+        "description": "Chỉ Club Manager. Bắt buộc lý do khi đổi khu (ngựa đã có khu); xếp khu lần đầu thì bỏ trống được. Khu phải đang hoạt động, có Head Trainer và còn ô trống. Đổi khu thì ô cũ được trả về trống, ngựa vào \"Chờ xếp ô\" của khu mới, Groom giữ nguyên. Ngựa đã chuyển nhượng trả 409.",
         "operationId": "HorsePlacementsController_assignBarn",
         "parameters": [
           {
@@ -1053,7 +1053,7 @@
             "name": "includeDeleted",
             "required": false,
             "in": "query",
-            "description": "true để hiện thêm hồ sơ đã xóa, kèm isDeleted = true (chỉ Club Manager)",
+            "description": "true thì trả thêm hồ sơ đã xóa, kèm isDeleted = true (chỉ Club Manager)",
             "schema": {
               "default": false,
               "type": "boolean"
@@ -1195,7 +1195,7 @@
     },
     "/api/v1/horses/{horseId}/permissions": {
       "get": {
-        "description": "Chỉ để client ẩn/hiện nút và tab. Các API ghi vẫn tự kiểm tra quyền.",
+        "description": "Trả các cờ quyền thao tác của người gọi trên hồ sơ ngựa. Các API ghi vẫn tự kiểm tra quyền.",
         "operationId": "HorseProfilesController_getPermissions",
         "parameters": [
           {
@@ -1268,7 +1268,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status/preview": {
       "get": {
-        "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại) để hiện bảng xác nhận.",
+        "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại).",
         "operationId": "HorseStatusesController_previewLifecycle",
         "parameters": [
           {
@@ -1318,7 +1318,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status": {
       "patch": {
-        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe. Nên gọi preview trước để xác nhận.",
+        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe.",
         "operationId": "HorseStatusesController_updateLifecycle",
         "parameters": [
           {
@@ -4646,7 +4646,7 @@
     },
     "/api/v1/horses/{id}/groom": {
       "put": {
-        "description": "Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Assigning the current groom again changes nothing.",
+        "description": "Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Future training participations of the horse (PLANNED/PRESENT/READY, sessions starting from now) that belong to the old groom or have no groom are moved to the new groom; if the horse had no groom, only the participations with no groom are filled. Assigning the current groom again changes nothing.",
         "operationId": "GroomAssignmentsController_assign",
         "parameters": [
           {
@@ -5508,7 +5508,7 @@
     },
     "/api/v1/horses/{horseId}/training/classes": {
       "get": {
-        "description": "Tab Huấn luyện của hồ sơ ngựa (F1.3): lớp đang học trước, rồi lớp đã rời. GROOM nhận 403.",
+        "description": "Các lớp của ngựa: lớp đang học trước, rồi tới lớp đã rời.",
         "operationId": "HorseTrainingController_listClasses",
         "parameters": [
           {
@@ -5548,7 +5548,7 @@
     },
     "/api/v1/horses/{horseId}/training/sessions": {
       "get": {
-        "description": "Tab Huấn luyện của hồ sơ ngựa (F1.3): lịch buổi tập của ngựa kèm kết quả time trial, có phân trang. GROOM nhận 403.",
+        "description": "Lịch buổi tập của ngựa kèm kết quả time trial và đánh giá, có phân trang.",
         "operationId": "HorseTrainingController_listSessions",
         "parameters": [
           {
@@ -7390,11 +7390,11 @@
           "ownerCleared": {
             "type": "string",
             "nullable": true,
-            "description": "Tên chủ sẽ bị bỏ trống vì tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
+            "description": "Tên chủ sẽ bị bỏ trống khi tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
           },
           "summary": {
             "type": "string",
-            "description": "Câu tóm tắt để hiện ở bảng xác nhận, ví dụ \"Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu.\""
+            "description": "Câu tóm tắt hệ quả, ví dụ \"Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu.\""
           }
         },
         "required": [
@@ -7549,7 +7549,7 @@
           },
           "isAbnormal": {
             "type": "boolean",
-            "description": "Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
+            "description": "Ngoài khoảng bình thường tại lúc ghi (WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
           },
           "id": {
             "type": "string",
@@ -7673,7 +7673,7 @@
           "confirmAbnormal": {
             "type": "boolean",
             "default": false,
-            "description": "Bắt buộc true khi có giá trị ngoài khoảng bình thường; không gửi thì API trả 422 để giao diện hỏi xác nhận"
+            "description": "Bắt buộc true khi có giá trị ngoài khoảng bình thường; không gửi thì API trả 422"
           }
         },
         "required": [
@@ -7741,7 +7741,7 @@
           },
           "isAbnormal": {
             "type": "boolean",
-            "description": "Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
+            "description": "Ngoài khoảng bình thường tại lúc ghi (WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
           },
           "id": {
             "type": "string",
@@ -7846,7 +7846,7 @@
           "summary": {
             "type": "string",
             "nullable": true,
-            "description": "Câu tóm tắt cho bảng xác nhận, null nếu allowed = false"
+            "description": "Câu tóm tắt hệ quả, null nếu allowed = false"
           }
         },
         "required": [
@@ -8200,7 +8200,7 @@
           "photoUrl": {
             "type": "string",
             "nullable": true,
-            "description": "Link tải ảnh đại diện có hạn dùng, chỉ để hiển thị; null nếu ngựa chưa có ảnh"
+            "description": "Link tải ảnh đại diện có hạn dùng; null nếu ngựa chưa có ảnh"
           },
           "canRegisterRace": {
             "type": "boolean",
@@ -8350,7 +8350,7 @@
           },
           "isAbnormal": {
             "type": "boolean",
-            "description": "Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
+            "description": "Ngoài khoảng bình thường tại lúc ghi (WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)"
           }
         },
         "required": [
@@ -8644,7 +8644,7 @@
               "STAYER"
             ],
             "nullable": true,
-            "description": "Chỉ Head Trainer phụ trách khu được sửa. Không nhập lúc tạo hồ sơ (BA chốt), Head Trainer bổ sung sau"
+            "description": "Chỉ Head Trainer phụ trách khu được sửa. Không nhập lúc tạo hồ sơ, Head Trainer bổ sung sau"
           },
           "version": {
             "type": "number",
@@ -8804,7 +8804,7 @@
           },
           "canDelete": {
             "type": "boolean",
-            "description": "Hiện nút xóa hồ sơ. API vẫn chặn nếu ngựa đã có dữ liệu nghiệp vụ hoặc là cha/mẹ"
+            "description": "Xóa hồ sơ. API vẫn chặn nếu ngựa đã có dữ liệu nghiệp vụ hoặc là cha/mẹ"
           },
           "canRestore": {
             "type": "boolean",
@@ -8824,15 +8824,15 @@
           },
           "canViewMedicalTab": {
             "type": "boolean",
-            "description": "Mở tab Bệnh án: mọi vai trò trừ Groom"
+            "description": "Xem bệnh án: mọi vai trò trừ Groom"
           },
           "canViewTrainingTab": {
             "type": "boolean",
-            "description": "Mở tab Huấn luyện: mọi vai trò trừ Groom"
+            "description": "Xem huấn luyện: mọi vai trò trừ Groom"
           },
           "canViewPerformanceTab": {
             "type": "boolean",
-            "description": "Mở tab Thành tích thi đấu: Club Manager, Head Trainer, Horse Owner"
+            "description": "Xem thành tích thi đấu: Club Manager, Head Trainer, Horse Owner"
           }
         },
         "required": [
@@ -9031,12 +9031,12 @@
           "ownerCleared": {
             "type": "string",
             "nullable": true,
-            "description": "Tên chủ sẽ bị bỏ trống vì tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
+            "description": "Tên chủ sẽ bị bỏ trống khi tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
           },
           "summary": {
             "type": "string",
             "nullable": true,
-            "description": "Câu tóm tắt để hiện ở bảng xác nhận, ví dụ \"Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.\"; null nếu allowed = false"
+            "description": "Câu tóm tắt hệ quả, ví dụ \"Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.\"; null nếu allowed = false"
           }
         },
         "required": [

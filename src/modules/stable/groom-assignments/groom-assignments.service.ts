@@ -57,7 +57,7 @@ export class GroomAssignmentsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to các phân công groom của ngựa
+   * @returns Promise trả về các phân công groom của ngựa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi xem của người gọi
    */
@@ -78,7 +78,7 @@ export class GroomAssignmentsService {
   }
 
   /**
-   * Giao hoặc đổi groom phụ trách một con ngựa (F1.7).
+   * Giao hoặc đổi groom phụ trách một con ngựa.
    *
    * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác.
    * - Ngựa phải đã được xếp khu, chưa chuyển nhượng và chưa bị xóa; khu của ngựa phải đang ACTIVE (lock khu như khi xếp ô).
@@ -86,7 +86,7 @@ export class GroomAssignmentsService {
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
    * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); nhật ký ghi thêm movedParticipantIds.
-   * - Sau khi commit: phát GROOM_ASSIGNMENT_CHANGED_EVENT để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách (F1.7).
+   * - Sau khi commit: phát GROOM_ASSIGNMENT_CHANGED_EVENT để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa

@@ -12,7 +12,7 @@ import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
  * Các query về ngựa mà nhiều feature trong module horses cùng dùng.
  *
  * - Chỉ đọc bảng của module khác (training_locks, groom_assignments, barns, users); việc ghi bảng module khác luôn gọi hàm do module đó export
- * - Không đăng ký entity bằng forFeature: dùng DataSource hoặc manager của transaction nơi gọi, như TrainingAccessService
+ * - Không đăng ký entity bằng forFeature: dùng DataSource hoặc manager của transaction nơi gọi
  */
 @Injectable()
 export class HorsesSharedRepository {
@@ -23,7 +23,7 @@ export class HorsesSharedRepository {
    *
    * @param id UUID của ngựa
    * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
-   * @returns A promise resolving to con ngựa, hoặc null nếu không có hoặc đã xóa
+   * @returns Promise trả về con ngựa, hoặc null nếu không có hoặc đã xóa
    */
   findById(id: string, manager?: EntityManager): Promise<HorseEntity | null> {
     return (manager ?? this.dataSource.manager).findOneBy(HorseEntity, { id });
@@ -34,7 +34,7 @@ export class HorsesSharedRepository {
    *
    * @param id UUID của ngựa
    * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
-   * @returns A promise resolving to con ngựa (deletedAt khác null nếu đã xóa), hoặc null nếu không có
+   * @returns Promise trả về con ngựa (deletedAt khác null nếu đã xóa), hoặc null nếu không có
    */
   findByIdWithDeleted(
     id: string,
@@ -51,7 +51,7 @@ export class HorsesSharedRepository {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to con ngựa đã khóa, hoặc null nếu không có
+   * @returns Promise trả về con ngựa đã khóa, hoặc null nếu không có
    */
   lockHorseWithDeleted(
     manager: EntityManager,
@@ -69,7 +69,7 @@ export class HorsesSharedRepository {
    *
    * @param horseIds UUID các con ngựa
    * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
-   * @returns A promise resolving to tập UUID các con ngựa đang bị khóa huấn luyện
+   * @returns Promise trả về tập UUID các con ngựa đang bị khóa huấn luyện
    */
   async activeTrainingLockHorseIds(
     horseIds: string[],
@@ -90,7 +90,7 @@ export class HorsesSharedRepository {
    *
    * @param horseId UUID của ngựa
    * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
-   * @returns A promise resolving to true nếu ngựa đang có lệnh khóa ACTIVE
+   * @returns Promise trả về true nếu ngựa đang có lệnh khóa ACTIVE
    */
   async hasActiveTrainingLock(
     horseId: string,
@@ -106,7 +106,7 @@ export class HorsesSharedRepository {
    *
    * @param groomId UUID của groom
    * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
-   * @returns A promise resolving to danh sách UUID ngựa
+   * @returns Promise trả về danh sách UUID ngựa
    */
   async assignedHorseIds(
     groomId: string,
@@ -125,7 +125,7 @@ export class HorsesSharedRepository {
    * @param horseId UUID của ngựa
    * @param groomId UUID của groom
    * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
-   * @returns A promise resolving to true nếu groom đang phụ trách con ngựa này
+   * @returns Promise trả về true nếu groom đang phụ trách con ngựa này
    */
   isGroomAssigned(
     horseId: string,
@@ -141,14 +141,14 @@ export class HorsesSharedRepository {
   /**
    * Kiểm tra con ngựa có đang thuộc một khu do Head Trainer này phụ trách không
    *
-   * - Khu của ngựa lấy từ horses.barn_id (Club Manager xếp ở F1.6), không suy ra từ ô chuồng
+   * - Khu của ngựa lấy từ horses.barn_id, không suy ra từ ô chuồng
    * - Ngựa chưa được xếp khu thì không thuộc Head Trainer nào
    * - Hồ sơ đã xóa hoặc khu đã xóa thì coi như không thuộc
    *
    * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
    * @param horseId UUID của ngựa
    * @param trainerId UUID của Head Trainer
-   * @returns A promise resolving to true nếu ngựa đang ở một khu có head_trainer_id là trainerId
+   * @returns Promise trả về true nếu ngựa đang ở một khu có head_trainer_id là trainerId
    */
   async isHorseInTrainerBarn(
     manager: EntityManager,
@@ -172,7 +172,7 @@ export class HorsesSharedRepository {
    * Lấy giá trị mới nhất của từng loại chỉ số cơ thể của ngựa (bỏ bản ghi đã xóa)
    *
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to tối đa một bản ghi cho mỗi loại chỉ số
+   * @returns Promise trả về tối đa một bản ghi cho mỗi loại chỉ số
    */
   latestMeasurements(horseId: string): Promise<HorseMeasurementEntity[]> {
     return this.dataSource
@@ -186,11 +186,11 @@ export class HorsesSharedRepository {
   }
 
   /**
-   * Khóa chia sẻ tài khoản được chọn làm chủ ngựa tới hết transaction, để module users không đổi vai trò hoặc khóa tài khoản xen vào
+   * Khóa chia sẻ (FOR SHARE) row tài khoản được chọn làm chủ ngựa tới hết transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param ownerId UUID tài khoản được chọn
-   * @returns A promise resolving to tài khoản (vai trò, trạng thái), hoặc null nếu không có
+   * @returns Promise trả về tài khoản (vai trò, trạng thái), hoặc null nếu không có
    */
   lockOwnerAccount(
     manager: EntityManager,
@@ -205,12 +205,12 @@ export class HorsesSharedRepository {
   /**
    * Khóa chia sẻ row tài khoản chủ (FOR SHARE) rồi kiểm tài khoản đó có đang là HORSE_OWNER hoạt động không (bảng users, chỉ đọc)
    *
-   * - Khóa FOR SHARE chặn module users đổi role hoặc khóa tài khoản này (module đó khóa FOR UPDATE) cho tới hết transaction, nên không có khe gán chủ trong lúc tài khoản đang bị đổi
+   * - Khóa giữ tới hết transaction
    * - Chỉ gọi trong transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param ownerId UUID tài khoản cần kiểm
-   * @returns A promise resolving to true nếu tài khoản tồn tại, có role HORSE_OWNER và đang ACTIVE
+   * @returns Promise trả về true nếu tài khoản tồn tại, có role HORSE_OWNER và đang ACTIVE
    */
   async lockActiveHorseOwner(
     manager: EntityManager,
@@ -226,11 +226,11 @@ export class HorsesSharedRepository {
   }
 
   /**
-   * Lấy tên chủ của ngựa nếu tài khoản đó không còn là HORSE_OWNER hoạt động (dùng cho màn xem trước, chỉ đọc)
+   * Lấy tên chủ của ngựa nếu tài khoản đó không còn là HORSE_OWNER hoạt động (chỉ đọc)
    *
    * @param ownerId UUID tài khoản chủ
    * @param manager EntityManager dùng để query, bỏ trống khi không ở trong transaction
-   * @returns A promise resolving to tên chủ nếu chủ không còn hợp lệ, null nếu chủ vẫn hợp lệ hoặc không tìm thấy
+   * @returns Promise trả về tên chủ nếu chủ không còn hợp lệ, null nếu chủ vẫn hợp lệ hoặc không tìm thấy
    */
   async inactiveOwnerName(
     ownerId: string,

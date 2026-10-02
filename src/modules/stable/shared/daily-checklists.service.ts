@@ -3,9 +3,9 @@ import { EntityManager, In, IsNull, MoreThanOrEqual } from 'typeorm';
 import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
 
 /**
- * Các thao tác trên checklist hằng ngày mà feature khác trong module stable được gọi (vd groom-assignments khi đổi groom). Đặt ở shared để feature không import feature anh em (guide mục 2).
+ * Các thao tác trên checklist hằng ngày mà feature khác trong module stable được gọi (vd groom-assignments khi đổi groom).
  *
- * - Chạy trên manager nơi gọi truyền vào, để đi chung transaction và lock
+ * - Chạy trên manager nơi gọi truyền vào, chung transaction và lock với nơi gọi
  */
 @Injectable()
 export class DailyChecklistsService {
@@ -22,7 +22,7 @@ export class DailyChecklistsService {
    * @param fromGroomId UUID của groom cũ
    * @param toGroomId UUID của groom mới
    * @param fromDate Ngày bắt đầu chuyển, dạng YYYY-MM-DD (thường là hôm nay theo giờ câu lạc bộ)
-   * @returns A promise resolving to UUID các checklist đã chuyển
+   * @returns Promise trả về UUID các checklist đã chuyển
    * @throws ConflictException Nếu groom mới đã có checklist trùng ngày cho ngựa này
    */
   async moveOpenChecklistsToGroom(

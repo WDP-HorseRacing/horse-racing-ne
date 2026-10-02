@@ -63,7 +63,7 @@ export class CreateHorseMeasurementDto {
   @ApiPropertyOptional({
     default: false,
     description:
-      'Bắt buộc true khi có giá trị ngoài khoảng bình thường; không gửi thì API trả 422 để giao diện hỏi xác nhận',
+      'Bắt buộc true khi có giá trị ngoài khoảng bình thường; không gửi thì API trả 422',
   })
   @IsOptional()
   @IsBoolean()
@@ -147,7 +147,7 @@ export class HorseLatestMeasurementDto {
 
   @ApiProperty({
     description:
-      'Ngoài khoảng bình thường tại lúc ghi (hiện hành: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)',
+      'Ngoài khoảng bình thường tại lúc ghi (WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)',
   })
   isAbnormal!: boolean;
 }

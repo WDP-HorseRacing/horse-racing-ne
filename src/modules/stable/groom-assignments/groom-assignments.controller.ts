@@ -63,7 +63,7 @@ export class GroomAssignmentsController {
   @ApiOperation({
     summary: 'Assign or change the groom of a horse',
     description:
-      'Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Assigning the current groom again changes nothing.',
+      'Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Future training participations of the horse (PLANNED/PRESENT/READY, sessions starting from now) that belong to the old groom or have no groom are moved to the new groom; if the horse had no groom, only the participations with no groom are filled. Assigning the current groom again changes nothing.',
   })
   @ApiOkResponse({ type: GroomAssignmentResponseDto })
   assign(

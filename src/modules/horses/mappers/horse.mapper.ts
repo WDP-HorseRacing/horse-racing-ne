@@ -3,10 +3,10 @@ import { HorseResponseDto } from '../dto';
 import type { HorseEntity } from '../entities/horse.entity';
 
 /**
- * Convert the shared horse profile fields to the public response DTO.
+ * Chuyển các field hồ sơ ngựa dùng chung sang response DTO công khai
  *
- * @param entity The horse entity
- * @returns The public horse response
+ * @param entity Hồ sơ ngựa
+ * @returns Response hồ sơ ngựa công khai
  */
 export function toHorseResponse(entity: HorseEntity): HorseResponseDto {
   return plainToInstance(HorseResponseDto, entity, {
@@ -15,11 +15,12 @@ export function toHorseResponse(entity: HorseEntity): HorseResponseDto {
 }
 
 /**
- * Read a relation's user name and fail clearly when the relation was not loaded.
+ * Đọc tên người dùng từ quan hệ, báo lỗi rõ ràng khi quan hệ chưa được load
  *
- * @param user The related user, if loaded
- * @param relation The relation name used in the error message
- * @returns The user's full name
+ * @param user Người dùng của quan hệ, undefined hoặc null nếu chưa load
+ * @param relation Tên quan hệ, dùng trong message lỗi
+ * @returns Họ tên đầy đủ của người dùng
+ * @throws Error Nếu quan hệ chưa được load
  */
 export function requiredRelationName(
   user: { fullName: string } | null | undefined,

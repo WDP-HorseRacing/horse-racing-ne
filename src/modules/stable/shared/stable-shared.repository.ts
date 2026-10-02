@@ -40,7 +40,7 @@ const BARN_STALL_CAPACITY_SQL = `SELECT b.id AS "barnId",
 /**
  * Các query về sức chứa khu chuồng mà nhiều feature của module stable cùng dùng (barns, stalls).
  *
- * - Không đăng ký entity bằng forFeature: luôn chạy trên manager nơi gọi truyền vào, để đi chung transaction và lock
+ * - Không đăng ký entity bằng forFeature: luôn chạy trên manager nơi gọi truyền vào, chung transaction và lock với nơi gọi
  */
 @Injectable()
 export class StableSharedRepository {
@@ -49,7 +49,7 @@ export class StableSharedRepository {
    *
    * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
    * @param barnIds UUID các khu cần đếm
-   * @returns A promise resolving to Map từ UUID khu sang số ô trống và số ngựa chờ xếp ô; khu không tồn tại thì không có trong Map
+   * @returns Promise trả về Map từ UUID khu sang số ô trống và số ngựa chờ xếp ô; khu không tồn tại thì không có trong Map
    */
   async countStallCapacity(
     manager: EntityManager,
@@ -78,7 +78,7 @@ export class StableSharedRepository {
    *
    * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
    * @param barnId UUID của khu chuồng
-   * @returns A promise resolving to số ô chuồng chưa xóa của khu
+   * @returns Promise trả về số ô chuồng chưa xóa của khu
    */
   countStallsInBarn(manager: EntityManager, barnId: string): Promise<number> {
     return manager.count(StallEntity, { where: { barnId } });

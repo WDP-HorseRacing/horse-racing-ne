@@ -32,7 +32,7 @@ export class HorsePermissionsResponseDto {
 
   @ApiProperty({
     description:
-      'Hiện nút xóa hồ sơ. API vẫn chặn nếu ngựa đã có dữ liệu nghiệp vụ hoặc là cha/mẹ',
+      'Xóa hồ sơ. API vẫn chặn nếu ngựa đã có dữ liệu nghiệp vụ hoặc là cha/mẹ',
   })
   canDelete!: boolean;
 
@@ -50,15 +50,15 @@ export class HorsePermissionsResponseDto {
   @ApiProperty({ description: 'Xóa bản ghi chỉ số sai: Veterinarian' })
   canDeleteMeasurement!: boolean;
 
-  @ApiProperty({ description: 'Mở tab Bệnh án: mọi vai trò trừ Groom' })
+  @ApiProperty({ description: 'Xem bệnh án: mọi vai trò trừ Groom' })
   canViewMedicalTab!: boolean;
 
-  @ApiProperty({ description: 'Mở tab Huấn luyện: mọi vai trò trừ Groom' })
+  @ApiProperty({ description: 'Xem huấn luyện: mọi vai trò trừ Groom' })
   canViewTrainingTab!: boolean;
 
   @ApiProperty({
     description:
-      'Mở tab Thành tích thi đấu: Club Manager, Head Trainer, Horse Owner',
+      'Xem thành tích thi đấu: Club Manager, Head Trainer, Horse Owner',
   })
   canViewPerformanceTab!: boolean;
 }

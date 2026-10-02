@@ -68,13 +68,13 @@ export class HorseRestorePreviewResponseDto {
     nullable: true,
     type: String,
     description:
-      'Tên chủ sẽ bị bỏ trống vì tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ',
+      'Tên chủ sẽ bị bỏ trống khi tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ',
   })
   ownerCleared!: string | null;
 
   @ApiProperty({
     description:
-      'Câu tóm tắt để hiện ở bảng xác nhận, ví dụ "Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu."',
+      'Câu tóm tắt hệ quả, ví dụ "Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu."',
   })
   summary!: string;
 }

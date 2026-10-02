@@ -13,11 +13,11 @@ export class HorsePedigreeRepository {
    * Giữ khóa phả hệ tới hết transaction (Postgres advisory lock)
    *
    * - Mọi thao tác đổi quan hệ cha/mẹ, giới tính, ngày sinh hoặc xóa ngựa phải gọi hàm này trước khi kiểm tra
-   * - Các thao tác đó chạy lần lượt nên luôn kiểm tra trên dữ liệu đã commit, kể cả vòng lặp phả hệ qua nhiều đời
+   * - Các thao tác giữ khóa này chạy lần lượt
    * - Khóa tự nhả khi transaction commit hoặc rollback
    *
    * @param manager EntityManager của transaction đang chạy
-   * @returns A promise resolving khi đã giữ được khóa
+   * @returns Promise hoàn tất khi đã giữ được khóa
    */
   async lockPedigree(manager: EntityManager): Promise<void> {
     await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
@@ -26,11 +26,11 @@ export class HorsePedigreeRepository {
   }
 
   /**
-   * Kiểm tra con ngựa đang được tham chiếu làm cha hoặc mẹ của ngựa khác, tính cả ngựa con đã xóa hồ sơ (khôi phục con sau này sẽ trỏ lại vào cha/mẹ này)
+   * Kiểm tra con ngựa đang được tham chiếu làm cha hoặc mẹ của ngựa khác, tính cả ngựa con đã xóa hồ sơ
    *
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to cờ đang là cha (asSire) và đang là mẹ (asDam)
+   * @returns Promise trả về cờ đang là cha (asSire) và đang là mẹ (asDam)
    */
   async parentUsage(
     manager: EntityManager,
@@ -47,11 +47,9 @@ export class HorsePedigreeRepository {
   /**
    * Lấy ngày sinh sớm nhất trong các ngựa con của một con ngựa, tính cả con đã xóa hồ sơ
    *
-   * - Con đã xóa vẫn tính vì khôi phục con sau này sẽ trỏ lại cha/mẹ này; bỏ qua con thì cha/mẹ đổi được ngày sinh sau con, khôi phục con xong phả hệ sai
-   *
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param horseId UUID của ngựa cha/mẹ
-   * @returns A promise resolving to ngày sinh sớm nhất (YYYY-MM-DD), null nếu không có con nào có ngày sinh
+   * @returns Promise trả về ngày sinh sớm nhất (YYYY-MM-DD), null nếu không có con nào có ngày sinh
    */
   async earliestChildBirthDate(
     manager: EntityManager,
@@ -75,7 +73,7 @@ export class HorsePedigreeRepository {
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param childHorseId UUID của ngựa con
    * @param parentHorseId UUID của ngựa định làm cha/mẹ
-   * @returns A promise resolving to true nếu ngựa con đã là tổ tiên của ngựa định làm cha/mẹ
+   * @returns Promise trả về true nếu ngựa con đã là tổ tiên của ngựa định làm cha/mẹ
    */
   async wouldCreateCycle(
     manager: EntityManager,

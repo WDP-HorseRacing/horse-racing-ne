@@ -33,7 +33,7 @@ export class HorseTrainingRepository {
    * Liệt kê mọi lần ngựa vào lớp, lớp đang học đứng trước rồi tới lớp đã rời, mới nhất trước
    *
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to các lần vào lớp kèm tên lớp và Head Trainer phụ trách
+   * @returns Promise trả về các lần vào lớp kèm tên lớp và Head Trainer phụ trách
    */
   listClasses(horseId: string): Promise<HorseTrainingClassRow[]> {
     return this.dataSource.query(
@@ -64,7 +64,7 @@ export class HorseTrainingRepository {
    *
    * @param horseId UUID của ngựa
    * @param filter Lớp, khoảng thời gian và trang cần lấy
-   * @returns A promise resolving to các lượt tập trong trang và tổng số lượt
+   * @returns Promise trả về các lượt tập trong trang và tổng số lượt
    */
   async listSessions(
     horseId: string,
@@ -129,7 +129,7 @@ export class HorseTrainingRepository {
    * Lấy kết quả time trial của các lượt tập, theo thứ tự lần chạy
    *
    * @param participantIds UUID các lượt tập cần lấy kết quả
-   * @returns A promise resolving to các lần chạy, rỗng nếu không truyền lượt nào
+   * @returns Promise trả về các lần chạy, rỗng nếu không truyền lượt nào
    */
   async listTrialResults(
     participantIds: string[],
@@ -152,7 +152,7 @@ export class HorseTrainingRepository {
    * Lấy đánh giá của các lượt tập
    *
    * @param participantIds UUID các lượt tập cần lấy đánh giá
-   * @returns A promise resolving to đánh giá kèm tên người đánh giá, rỗng nếu không truyền lượt nào
+   * @returns Promise trả về đánh giá kèm tên người đánh giá, rỗng nếu không truyền lượt nào
    */
   async listEvaluations(
     participantIds: string[],

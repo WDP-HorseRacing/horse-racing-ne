@@ -138,7 +138,7 @@ export function assertDateOfBirth(
 /**
  * Kiểm tra ngày sinh mới của một con ngựa đang làm cha/mẹ vẫn trước ngày sinh của các con
  *
- * - Chỉ cần so với con sinh sớm nhất (nơi gọi tính cả con đã xóa hồ sơ, vì khôi phục con sau này sẽ trỏ lại cha/mẹ này)
+ * - Chỉ cần so với con sinh sớm nhất (nơi gọi tính cả con đã xóa hồ sơ)
  * - Thiếu ngày sinh ở một bên thì bỏ qua, giống luật cha/mẹ khi tạo ngựa
  *
  * @param dateOfBirth Ngày sinh mới của ngựa (YYYY-MM-DD), null nếu không có
@@ -182,7 +182,7 @@ export function assertGenderKeepsPedigree(
 }
 
 /**
- * Chặn xóa hồ sơ ngựa đang là cha/mẹ trong phả hệ ngựa khác (F1.8)
+ * Chặn xóa hồ sơ ngựa đang là cha/mẹ trong phả hệ ngựa khác
  *
  * @param usage Ngựa đang là cha (asSire) hoặc mẹ (asDam) của ngựa khác, tính cả con đã xóa hồ sơ
  * @throws ConflictException Nếu ngựa đang là cha hoặc mẹ của ngựa khác
@@ -196,7 +196,7 @@ export function assertNotParent(usage: ParentUsage): void {
 }
 
 /**
- * Chặn xóa hồ sơ ngựa đã phát sinh dữ liệu nghiệp vụ (F1.8, E1)
+ * Chặn xóa hồ sơ ngựa đã phát sinh dữ liệu nghiệp vụ
  *
  * @param labels Nhãn các loại dữ liệu nghiệp vụ ngựa đang có, rỗng nếu chưa phát sinh gì
  * @throws ConflictException Nếu có ít nhất một loại dữ liệu; message liệt kê các loại đang vướng
@@ -210,10 +210,11 @@ export function assertNoBusinessData(labels: string[]): void {
 }
 
 /**
- * Check whether a horse can move from one lifecycle status to another
- * @param from The current lifecycle status
- * @param to The target lifecycle status
- * @returns True if the transition is allowed
+ * Kiểm tra ngựa có được chuyển từ trạng thái vòng đời này sang trạng thái khác không
+ *
+ * @param from Trạng thái vòng đời hiện tại
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @returns true nếu được chuyển
  */
 export function canTransitionLifecycle(
   from: HorseLifecycleStatus,
@@ -223,7 +224,7 @@ export function canTransitionLifecycle(
 }
 
 /**
- * Tìm lý do không được đổi vòng đời theo bảng chuyển trạng thái (F1.8). Dùng cho màn xem trước, cần lý do mà không ném lỗi
+ * Tìm lý do không được đổi vòng đời theo bảng chuyển trạng thái; trả về lý do thay vì ném lỗi
  *
  * @param from Trạng thái vòng đời hiện tại
  * @param to Trạng thái vòng đời muốn chuyển sang
@@ -257,7 +258,7 @@ export function assertAssignableOwner<
 }
 
 /**
- * Tạo câu tóm tắt hệ quả khi khôi phục hồ sơ đã xóa, hiện ở bảng xác nhận (F1.8 mục 4, 5)
+ * Tạo câu tóm tắt hệ quả khi khôi phục hồ sơ đã xóa
  *
  * @param horseName Tên ngựa
  * @param barnCleared Tên khu ngựa sẽ rời, null nếu ngựa không có khu
@@ -299,7 +300,7 @@ export function assertBarnChangeReason(
 }
 
 /**
- * Chặn đổi vòng đời không có trong bảng chuyển trạng thái (F1.8)
+ * Chặn đổi vòng đời không có trong bảng chuyển trạng thái
  *
  * @param from Trạng thái vòng đời hiện tại
  * @param to Trạng thái vòng đời muốn chuyển sang
@@ -314,7 +315,7 @@ export function assertLifecycleTransition(
 }
 
 /**
- * Xác định các việc cần chạy khi ngựa đổi vòng đời (F1.8), dựa vào trạng thái hiện tại và trạng thái đích.
+ * Xác định các việc cần chạy khi ngựa đổi vòng đời, dựa vào trạng thái hiện tại và trạng thái đích.
  *
  * - Giải nghệ (ACTIVE sang RETIRED): rút khỏi lớp đang học, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
  * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; rút khỏi lớp (cả khi đi từ RETIRED); trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt phần y tế; giữ chủ sở hữu
@@ -351,7 +352,7 @@ export function lifecycleSideEffects(
 }
 
 /**
- * Tạo câu tóm tắt hệ quả khi đổi vòng đời, hiện ở bảng xác nhận (F1.8 mục 5; BA chốt 2026-09-23).
+ * Tạo câu tóm tắt hệ quả khi đổi vòng đời
  *
  * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."
  * - Chỉ nhắc mục thật sự có dữ liệu; không có gì thì chỉ còn câu 2
@@ -427,9 +428,9 @@ export function lifecycleImpactSummary(
 }
 
 /**
- * Liệt kê các field Club Manager gửi lên nhưng không có quyền sửa (F1.4).
+ * Liệt kê các field Club Manager gửi lên nhưng không có quyền sửa
  *
- * - Sở trường cự ly là đánh giá chuyên môn, chỉ Head Trainer phụ trách khu được sửa (BA chốt Q-5)
+ * - Club Manager không được sửa sở trường cự ly (raceAptitude); chỉ Head Trainer phụ trách khu được sửa
  * - Field có giá trị undefined được coi là không gửi lên
  *
  * @param fields Các field hồ sơ ngựa người gọi gửi lên, không gồm version
@@ -442,9 +443,9 @@ export function managerForbiddenFields(fields: object): string[] {
 }
 
 /**
- * Liệt kê các field Head Trainer gửi lên nhưng không có quyền sửa.
+ * Liệt kê các field Head Trainer gửi lên nhưng không có quyền sửa
  *
- * - Head Trainer chỉ được sửa sở trường cự ly (raceAptitude), vì đó là đánh giá chuyên môn
+ * - Head Trainer chỉ được sửa sở trường cự ly (raceAptitude)
  * - Field có giá trị undefined được coi là không gửi lên
  *
  * @param fields Các field hồ sơ ngựa người gọi gửi lên, không gồm version
@@ -457,11 +458,11 @@ export function trainerForbiddenFields(fields: object): string[] {
 }
 
 /**
- * Tính "được tập" và "được đua" của ngựa kèm mọi lý do chặn (mục III.4). Không lưu DB, tính lại mỗi lần hiển thị.
+ * Tính "được tập" và "được đua" của ngựa kèm mọi lý do chặn; không lưu DB, tính lại mỗi lần gọi
  *
  * - Được tập: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, không có lệnh khóa huấn luyện
  * - Được đua: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE, không có lệnh khóa huấn luyện
- * - Lý do vòng đời tách riêng Đã giải nghệ / Đã chuyển nhượng để giao diện hiện đúng câu
+ * - Lý do vòng đời tách riêng Đã giải nghệ (LIFECYCLE_RETIRED) và Đã chuyển nhượng (LIFECYCLE_TRANSFERRED)
  * - trainingReasons: lý do không được tập, rỗng khi được tập
  * - racingReasons: lý do không được đua, rỗng khi được đua
  * - reasons: mọi lý do, bằng racingReasons
@@ -511,7 +512,7 @@ export function evaluateEligibility(
 }
 
 /**
- * Chặn giá trị đo nằm ngoài khoảng cho phép của loại chỉ số (F1.5)
+ * Chặn giá trị đo nằm ngoài khoảng cho phép của loại chỉ số
  *
  * @param type Loại chỉ số
  * @param value Giá trị đo
@@ -530,7 +531,7 @@ export function assertMeasurementValue(
 }
 
 /**
- * Chặn một lần đo ghi trùng loại chỉ số (F1.5, A1)
+ * Chặn một lần đo ghi trùng loại chỉ số
  *
  * @param types Các loại chỉ số trong lần đo
  * @throws BadRequestException Nếu có loại bị gửi hơn một lần
@@ -546,7 +547,7 @@ export function assertDistinctMeasurementTypes(
 }
 
 /**
- * Kiểm tra giá trị có nằm ngoài khoảng bình thường của loại chỉ số không (F1.7).
+ * Kiểm tra giá trị có nằm ngoài khoảng bình thường của loại chỉ số không
  *
  * @param type Loại chỉ số
  * @param value Giá trị đo
@@ -561,7 +562,7 @@ export function isAbnormalMeasurement(
 }
 
 /**
- * Chặn xóa bản ghi đo đến từ buổi khám (F1.5 mục 4): bản ghi đó phải xử lý ở hồ sơ y tế
+ * Chặn xóa bản ghi đo đến từ buổi khám; bản ghi đó chỉ xử lý ở hồ sơ y tế
  *
  * @param source Nguồn của bản ghi đo
  * @throws ConflictException Nếu bản ghi có nguồn MEDICAL_EXAM
@@ -577,7 +578,7 @@ export function assertMeasurementDeletable(
 }
 
 /**
- * Bắt người ghi xác nhận trước khi lưu giá trị ngoài khoảng bình thường (F1.5)
+ * Bắt người ghi xác nhận trước khi lưu giá trị ngoài khoảng bình thường
  *
  * @param values Các cặp loại/giá trị trong lần đo
  * @param confirmed Người ghi đã gửi confirmAbnormal = true chưa
@@ -598,7 +599,7 @@ export function assertAbnormalConfirmed(
 }
 
 /**
- * Tính các cảnh báo tự động cho một lần ghi chỉ số (F1.7).
+ * Tính các cảnh báo tự động cho một lần ghi chỉ số
  *
  * - Thân nhiệt lớn hơn FEVER_THRESHOLD_CELSIUS: FEVER, mức URGENT
  * - Cân nặng giảm quá WEIGHT_DROP_PERCENT % so với mốc: WEIGHT_DROP, mức WARNING
@@ -668,7 +669,7 @@ export function assertMeasuredAt(measuredAt: Date, now: Date): void {
 }
 
 /**
- * Kiểm tra người gọi có được ghi chỉ số cơ thể cho con ngựa không (F1.5). Ai được ghi thì ghi được cả bốn loại.
+ * Kiểm tra người gọi có được ghi chỉ số cơ thể cho con ngựa không; ai được ghi thì ghi được cả bốn loại
  *
  * - Veterinarian: toàn câu lạc bộ
  * - Head Trainer: chỉ ngựa thuộc khu mình phụ trách
@@ -694,9 +695,7 @@ export function canRecordMeasurement(
 }
 
 /**
- * Tính tình trạng xếp chỗ của ngựa để hiện nhãn "Chờ xếp khu" / "Chờ xếp ô" (F1.1).
- *
- * - Bộ lọc danh sách tính cùng luật này bằng SQL (PLACEMENT_STATUS_SQL trong horse-profiles.repository.ts); sửa một bên thì phải sửa bên kia
+ * Tính tình trạng xếp chỗ của ngựa: Chờ xếp khu, Chờ xếp ô hoặc đã xếp
  *
  * @param lifecycleStatus Vòng đời của ngựa
  * @param barnId Khu của ngựa, null nếu chưa xếp
@@ -717,16 +716,16 @@ export function placementStatusOf(
 }
 
 /**
- * Tính các cờ quyền của người gọi trên hồ sơ ngựa, khớp với kiểm tra của từng API ghi.
+ * Tính các cờ quyền của người gọi trên hồ sơ ngựa, khớp với kiểm tra của từng API ghi
  *
- * - Hồ sơ đã xóa: chỉ còn Club Manager khôi phục được, mọi thao tác khác tắt (F1.3 mục 4).
- * - Ngựa đã chuyển nhượng: hồ sơ chỉ đọc, chỉ còn Club Manager đổi được vòng đời để kích hoạt lại (F1.8).
+ * - Hồ sơ đã xóa: chỉ còn Club Manager khôi phục được, mọi thao tác khác tắt.
+ * - Ngựa đã chuyển nhượng: hồ sơ chỉ đọc, chỉ còn Club Manager đổi được vòng đời để kích hoạt lại.
  * - Head Trainer chỉ thao tác ngựa thuộc khu mình; ngựa chưa có khu thì Head Trainer không thao tác được.
- * - Tab Bệnh án, Huấn luyện: mọi vai trò trừ Groom. Tab Thành tích: Club Manager, Head Trainer, Horse Owner (F1.3).
+ * - Xem bệnh án, huấn luyện: mọi vai trò trừ Groom. Xem thành tích: Club Manager, Head Trainer, Horse Owner.
  * - Người có nhiều role: chỉ cần một role được phép là cờ bật.
  *
  * @param input Role của người gọi và trạng thái của ngựa
- * @returns HorsePermissions - Các cờ quyền
+ * @returns Các cờ quyền
  */
 export function evaluateHorsePermissions(
   input: HorsePermissionInput,
@@ -803,7 +802,7 @@ export function barnChangeBlockedReason(
 }
 
 /**
- * Tạo câu tóm tắt hệ quả khi đổi khu, hiện ở bảng xác nhận
+ * Tạo câu tóm tắt hệ quả khi đổi khu
  *
  * - Chỉ nhắc mục thật sự có dữ liệu; Groom luôn được giữ nguyên
  * - Ví dụ: "Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 2 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa."

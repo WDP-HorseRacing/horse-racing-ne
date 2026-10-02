@@ -1,12 +1,19 @@
 export enum HorseHealthStatus {
-  ELIGIBLE = 'ELIGIBLE', // Đủ điều kiện
-  UNDER_OBSERVATION = 'UNDER_OBSERVATION', // Đang được theo dõi
-  INJURED = 'INJURED', // Chân thương
-  QUARANTINED = 'QUARANTINED', // Cách ly
+  /** Đủ điều kiện */
+  ELIGIBLE = 'ELIGIBLE',
+  /** Đang được theo dõi */
+  UNDER_OBSERVATION = 'UNDER_OBSERVATION',
+  /** Chấn thương */
+  INJURED = 'INJURED',
+  /** Cách ly */
+  QUARANTINED = 'QUARANTINED',
 }
 
 export enum HorseLifecycleStatus {
-  ACTIVE = 'ACTIVE', // Ngựa còn hoạt động trong câu lạc bộ
-  RETIRED = 'RETIRED', // Ngựa đã nghỉ hưu, không còn hoạt động trong câu lạc bộ
-  TRANSFERRED = 'TRANSFERRED', // Ngựa đã được chuyển nhượng sang câu lạc bộ khác
+  /** Ngựa còn hoạt động trong câu lạc bộ */
+  ACTIVE = 'ACTIVE',
+  /** Ngựa đã nghỉ hưu, không còn hoạt động trong câu lạc bộ */
+  RETIRED = 'RETIRED',
+  /** Ngựa đã được chuyển nhượng sang câu lạc bộ khác */
+  TRANSFERRED = 'TRANSFERRED',
 }

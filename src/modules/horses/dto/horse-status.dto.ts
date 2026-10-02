@@ -112,7 +112,7 @@ export class HorseLifecyclePreviewResponseDto {
     nullable: true,
     type: String,
     description:
-      'Tên chủ sẽ bị bỏ trống vì tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ',
+      'Tên chủ sẽ bị bỏ trống khi tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ',
   })
   ownerCleared!: string | null;
 
@@ -120,7 +120,7 @@ export class HorseLifecyclePreviewResponseDto {
     nullable: true,
     type: String,
     description:
-      'Câu tóm tắt để hiện ở bảng xác nhận, ví dụ "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."; null nếu allowed = false',
+      'Câu tóm tắt hệ quả, ví dụ "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."; null nếu allowed = false',
   })
   summary!: string | null;
 }

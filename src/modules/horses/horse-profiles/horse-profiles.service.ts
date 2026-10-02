@@ -90,7 +90,7 @@ export class HorseProfilesService {
   ) {}
 
   /**
-   * Lấy một trang danh sách ngựa trong phạm vi người gọi (F1.1).
+   * Lấy một trang danh sách ngựa trong phạm vi người gọi.
    *
    * - Club Manager, Head Trainer, Veterinarian, Groom: toàn câu lạc bộ. Horse Owner: ngựa mình sở hữu
    * - Chỉ Club Manager bật được includeDeleted; hồ sơ đã xóa trả kèm isDeleted = true
@@ -143,7 +143,7 @@ export class HorseProfilesService {
   }
 
   /**
-   * Lấy tab thông tin hồ sơ ngựa (F1.3, nhóm 1): định danh, trạng thái, được tập/được đua, vị trí, groom, chủ và chỉ số mới nhất.
+   * Lấy thông tin chi tiết hồ sơ ngựa: định danh, trạng thái, được tập/được đua, vị trí, groom, chủ và chỉ số mới nhất.
    *
    * - Mọi vai trò trong phạm vi xem đều nhận cùng nhóm thông tin này
    * - Horse Owner không nhận id khu và ô
@@ -151,7 +151,7 @@ export class HorseProfilesService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
-   * @returns HorseDetailResponseDto - Hồ sơ chi tiết của ngựa
+   * @returns Promise trả về hồ sơ chi tiết của ngựa
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async get(actor: Actor, id: string): Promise<HorseDetailResponseDto> {
@@ -179,13 +179,13 @@ export class HorseProfilesService {
   }
 
   /**
-   * Cấp link tải ảnh đại diện của ngựa cho người xem được hồ sơ (F1.3)
+   * Cấp link tải ảnh đại diện của ngựa cho người xem được hồ sơ
    *
    * - Quyền xem theo findReadable: ai xem được hồ sơ thì xem được ảnh; module media chỉ ký link, không tự quyết quyền
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
-   * @returns A promise resolving to presigned GET URL có hạn dùng
+   * @returns Promise trả về presigned GET URL có hạn dùng
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, ngựa nằm ngoài phạm vi của người gọi, hoặc ngựa chưa có ảnh
    */
@@ -203,14 +203,14 @@ export class HorseProfilesService {
   }
 
   /**
-   * Tạo hồ sơ ngựa mới (F1.2). Sức khỏe luôn ELIGIBLE, vòng đời luôn ACTIVE.
+   * Tạo hồ sơ ngựa mới. Sức khỏe luôn ELIGIBLE, vòng đời luôn ACTIVE.
    *
    * - Chủ sở hữu (nếu có) phải là tài khoản HORSE_OWNER đang hoạt động
    * - Ảnh (nếu có) phải là ảnh ngựa người gọi đã tải lên: JPEG/PNG/WebP, tối đa 10 MB
    * - Cha mẹ phải là ngựa có hồ sơ tại câu lạc bộ, đúng giới tính, sinh trước con
    * - Khu (nếu có) phải đang hoạt động, có Head Trainer và còn ô trống; không chọn thì ngựa vào "Chờ xếp khu"
    * - Kiểm ảnh trên storage trước khi mở transaction (có gọi mạng tới storage)
-   * - Tạo hồ sơ, xếp khu và ghi nhật ký trong cùng một transaction; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT để báo Head Trainer khu
+   * - Tạo hồ sơ, xếp khu và ghi nhật ký trong cùng một transaction; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT báo Head Trainer của khu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin hồ sơ ngựa
@@ -283,12 +283,12 @@ export class HorseProfilesService {
   }
 
   /**
-   * Cập nhật hồ sơ ngựa (F1.4).
+   * Cập nhật hồ sơ ngựa.
    *
-   * - Club Manager: định danh, ảnh, cha mẹ, chủ sở hữu; không sửa sở trường cự ly (BA chốt Q-5)
+   * - Club Manager: định danh, ảnh, cha mẹ, chủ sở hữu; không sửa sở trường cự ly
    * - Head Trainer: chỉ sở trường cự ly, chỉ ngựa thuộc khu mình phụ trách
    * - Gửi field ngoài quyền thì trả 403, không âm thầm bỏ qua
-   * - Bắt buộc gửi version lấy từ lần GET gần nhất; người khác đã lưu trước thì trả 409 để giao diện tải lại bản mới nhất
+   * - Bắt buộc gửi version lấy từ lần GET gần nhất; người khác đã lưu trước thì trả 409
    * - Đổi chủ: chủ cũ mất quyền xem ngay khi lưu, chủ mới thấy toàn bộ lịch sử; nhật ký ghi từ ai sang ai
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -359,7 +359,7 @@ export class HorseProfilesService {
   }
 
   /**
-   * Lấy cây phả hệ 3 đời của ngựa (F1.3): con ngựa đang xem, cha mẹ, ông bà.
+   * Lấy cây phả hệ 3 đời của ngựa: con ngựa đang xem, cha mẹ, ông bà.
    *
    * - Chỉ vẽ từ ngựa có hồ sơ tại câu lạc bộ, tổ tiên đã bị xóa hồ sơ thì bỏ trống
    * - Horse Owner chỉ mở được tổ tiên mình sở hữu, tổ tiên khác chỉ hiện tên (canOpen = false)
@@ -390,7 +390,7 @@ export class HorseProfilesService {
   }
 
   /**
-   * Tính "được tập" và "được đua" của ngựa kèm lý do (mục III.4).
+   * Tính "được tập" và "được đua" của ngựa kèm lý do.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -416,12 +416,12 @@ export class HorseProfilesService {
   }
 
   /**
-   * Tính người gọi được làm gì trên hồ sơ ngựa để FE ẩn/hiện nút và tab.
+   * Tính các cờ quyền thao tác của người gọi trên hồ sơ ngựa.
    * Các API ghi vẫn tự kiểm tra quyền, không dựa vào kết quả này.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns HorsePermissionsResponseDto - Các cờ quyền của người gọi
+   * @returns Promise trả về các cờ quyền của người gọi
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async getPermissions(
@@ -456,9 +456,9 @@ export class HorseProfilesService {
   }
 
   /**
-   * Kiểm tra người gọi được sửa những field đã gửi lên (F1.4).
+   * Kiểm tra người gọi được sửa những field đã gửi lên.
    *
-   * - Sở trường cự ly: chỉ Head Trainer phụ trách khu của ngựa (Club Manager gửi thì 403, BA chốt Q-5)
+   * - Sở trường cự ly: chỉ Head Trainer phụ trách khu của ngựa (Club Manager gửi thì 403)
    * - Người không có vai trò Club Manager luôn bị kiểm khu, kể cả khi không gửi field nào (ngựa ngoài khu trả 403)
    * - Các field còn lại: chỉ Club Manager
    * - Người có cả hai vai trò thì được cả hai phần
@@ -510,14 +510,14 @@ export class HorseProfilesService {
   }
 
   /**
-   * Kiểm tra chủ sở hữu là tài khoản HORSE_OWNER đang hoạt động (F1.2 mục 7), chạy trong transaction ghi hồ sơ
+   * Kiểm tra chủ sở hữu là tài khoản HORSE_OWNER đang hoạt động, chạy trong transaction ghi hồ sơ
    *
-   * - Khóa chia sẻ row tài khoản chủ tới hết transaction, để module users không đổi role hoặc khóa tài khoản đó xen vào giữa lúc kiểm và lúc ghi
+   * - Khóa chia sẻ row tài khoản chủ tới hết transaction
    * - null là bỏ trống chủ, luôn hợp lệ
    *
    * @param manager EntityManager của transaction đang chạy
    * @param ownerId UUID chủ sở hữu, null nếu bỏ trống
-   * @returns A promise resolving khi kiểm tra xong
+   * @returns Promise hoàn tất khi kiểm tra xong
    * @throws BadRequestException Nếu tài khoản không tồn tại hoặc không phải HORSE_OWNER
    * @throws ConflictException Nếu tài khoản HORSE_OWNER không còn hoạt động
    */
@@ -543,11 +543,12 @@ export class HorseProfilesService {
   }
 
   /**
-   * Ensure a microchip ID is not used by any other horse, including soft-deleted and transferred horses
-   * @param microchipId The trimmed microchip ID, or null if not set
-   * @param excludeHorseId The ID of the horse being updated, omitted when creating
-   * @returns A promise resolving once the check passes
-   * @throws ConflictException if another horse already uses the microchip ID
+   * Kiểm tra số chip chưa được ngựa khác dùng, tính cả hồ sơ đã xóa mềm và ngựa đã chuyển nhượng
+   *
+   * @param microchipId Số chip đã cắt khoảng trắng, null nếu bỏ trống
+   * @param excludeHorseId UUID của ngựa đang sửa, bỏ trống khi tạo mới
+   * @returns Promise hoàn tất khi kiểm tra xong
+   * @throws ConflictException Nếu ngựa khác đã dùng số chip này
    */
   private async assertMicrochipFree(
     microchipId: string | null,
@@ -567,10 +568,11 @@ export class HorseProfilesService {
   }
 
   /**
-   * Run a write operation and map a unique violation raised by a concurrent write to a conflict
-   * @param operation The write operation to run
-   * @returns A promise resolving to the operation result
-   * @throws ConflictException if the microchip ID is already used or the stall was just taken by another horse
+   * Chạy thao tác ghi, đổi lỗi trùng unique do ghi đồng thời thành 409
+   *
+   * @param operation Thao tác ghi cần chạy
+   * @returns Promise trả về kết quả của thao tác
+   * @throws ConflictException Nếu số chip vừa được ngựa khác dùng
    */
   private async saveUnique<T>(operation: () => Promise<T>): Promise<T> {
     try {

@@ -15,12 +15,15 @@ export interface HealthStatusChange {
   to: HorseHealthStatus;
 }
 
+/**
+ * Ghi trạng thái sức khỏe ngựa cho module khác gọi trong transaction của họ (export qua HorsesSharedModule).
+ */
 @Injectable()
 export class HorseHealthService {
   constructor(private readonly audit: AuditService) {}
 
   /**
-   * Ghi trạng thái sức khỏe của con ngựa (cột horses.health_status do module horses sở hữu). Dùng cho module medical gọi trong transaction của họ (Flow 3 F3.7).
+   * Ghi trạng thái sức khỏe của con ngựa (cột horses.health_status do module horses sở hữu). Dùng cho module medical gọi trong transaction của họ.
    *
    * - Trạng thái mới trùng trạng thái cũ thì không ghi gì, không ghi nhật ký
    * - Có thay đổi thì cập nhật cột và ghi một dòng nhật ký HORSE kèm giá trị trước, sau và lý do
@@ -29,7 +32,7 @@ export class HorseHealthService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Ngựa, trạng thái mới, người đổi, lý do và mã chức năng ghi nhật ký
-   * @returns A promise resolving to trạng thái trước, sau và cờ có thay đổi hay không
+   * @returns Promise trả về trạng thái trước, sau và cờ có thay đổi hay không
    */
   async applyHealthStatus(
     manager: EntityManager,

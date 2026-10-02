@@ -87,10 +87,14 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Medical must call this while holding the same Horse pessimistic lock that
-   * it uses to insert an ACTIVE TrainingLock. This closes the opposite race:
-   * startParticipant() and createTrainingLock() cannot both commit for one
-   * Horse.
+   * Chặn tạo TrainingLock khi ngựa đang có lượt tập ONGOING, chạy trong transaction của nơi gọi
+   *
+   * - Nơi gọi giữ lock pessimistic_write trên row ngựa, cùng lock dùng khi thêm TrainingLock ACTIVE
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về khi kiểm tra xong
+   * @throws ConflictException Nếu ngựa đang có lượt tham gia ONGOING
    */
   async assertNoOngoingParticipant(
     manager: EntityManager,
@@ -127,7 +131,7 @@ export class TrainingOperationsFacade {
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param options Lý do, thời điểm rút và Head Trainer được giữ lớp (nếu có)
-   * @returns A promise resolving to các lớp đã rút và số lượt tham gia đã hủy
+   * @returns Promise trả về các lớp đã rút và số lượt tham gia đã hủy
    */
   async withdrawHorseFromClasses(
     manager: EntityManager,
@@ -187,7 +191,7 @@ export class TrainingOperationsFacade {
    * @param enrollmentIds UUID các enrollment vừa rời lớp
    * @param from Thời điểm rời lớp; buổi bắt đầu từ thời điểm này trở đi bị hủy lượt
    * @param reason Lý do hủy ghi vào từng lượt
-   * @returns A promise resolving to số lượt tham gia đã hủy
+   * @returns Promise trả về số lượt tham gia đã hủy
    */
   async cancelParticipantsFromEnrollments(
     manager: EntityManager,
@@ -238,7 +242,7 @@ export class TrainingOperationsFacade {
    * @param fromGroomId UUID groom cũ, null nếu ngựa chưa có Groom
    * @param toGroomId UUID groom mới
    * @param from Thời điểm đổi groom; buổi bắt đầu từ thời điểm này trở đi được chuyển
-   * @returns A promise resolving to UUID các lượt tham gia đã chuyển
+   * @returns Promise trả về UUID các lượt tham gia đã chuyển
    */
   async moveFutureParticipantsToGroom(
     manager: EntityManager,
@@ -320,7 +324,7 @@ export class TrainingOperationsFacade {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param sessionId UUID của buổi tập
-   * @returns A promise resolving to buổi tập sau khi cập nhật
+   * @returns Promise trả về buổi tập sau khi cập nhật
    * @throws NotFoundException Nếu không có buổi tập
    */
   async refreshSessionStatus(

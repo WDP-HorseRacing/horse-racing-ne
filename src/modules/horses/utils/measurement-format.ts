@@ -6,7 +6,7 @@ const UNIT_LABELS: Readonly<Record<string, string>> = {
 };
 
 /**
- * Ghép giá trị đo với ký hiệu đơn vị để đưa vào câu hiển thị cho người dùng (thông báo, mô tả yêu cầu khám)
+ * Ghép giá trị đo với ký hiệu đơn vị thành chuỗi hiển thị cho người dùng (thông báo, mô tả yêu cầu khám)
  *
  * @param value Giá trị đo
  * @param unit Mã đơn vị lưu trong chỉ số (vd kg, celsius)

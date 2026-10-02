@@ -26,12 +26,11 @@ export class HorseTrainingService {
   /**
    * Liệt kê các lớp của con ngựa, lớp đang học trước rồi tới lớp đã rời
    *
-   * - Vai trò được xem kiểm ở controller
    * - Phạm vi xem theo HorseAccessService.findReadable: Club Manager xem cả hồ sơ đã xóa, Horse Owner chỉ ngựa mình sở hữu, Head Trainer xem toàn câu lạc bộ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to các lớp của con ngựa
+   * @returns Promise trả về các lớp của con ngựa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -53,7 +52,7 @@ export class HorseTrainingService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param query Trang, lớp và khoảng thời gian cần lấy
-   * @returns A promise resolving to một trang buổi tập của con ngựa
+   * @returns Promise trả về một trang buổi tập của con ngựa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */

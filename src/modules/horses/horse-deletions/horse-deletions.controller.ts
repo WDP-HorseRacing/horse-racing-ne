@@ -54,7 +54,7 @@ export class HorseDeletionsController {
   @ApiOperation({
     summary: 'Soft-delete a horse profile created by mistake',
     description:
-      'Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác; khi đó hãy đổi trạng thái vòng đời. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 409.',
+      'Bắt buộc nhập lý do. Bị chặn (409, message liệt kê dữ liệu đang vướng) nếu ngựa đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ của ngựa khác. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa trả 409.',
   })
   @ApiNoContentResponse()
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -71,7 +71,7 @@ export class HorseDeletionsController {
   @ApiOperation({
     summary: 'Preview the consequences of restoring a deleted horse profile',
     description:
-      'Không ghi gì. Trả về khu ngựa sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu), chủ sẽ bị bỏ trống nếu không còn hoạt động, và câu tóm tắt để hiện bảng xác nhận. Hồ sơ chưa bị xóa trả 409.',
+      'Không ghi gì. Trả về khu ngựa sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu), chủ sẽ bị bỏ trống nếu không còn hoạt động, và câu tóm tắt. Hồ sơ chưa bị xóa trả 409.',
   })
   @ApiOkResponse({ type: HorseRestorePreviewResponseDto })
   previewRestore(
@@ -87,7 +87,7 @@ export class HorseDeletionsController {
   @ApiOperation({
     summary: 'Restore a soft-deleted horse profile',
     description:
-      'Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Ngựa luôn rời khu cũ và vào "Chờ xếp khu"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Nên gọi restore-preview trước để xác nhận. Hồ sơ chưa bị xóa trả 409.',
+      'Bắt buộc nhập lý do. Hồ sơ trở về trạng thái trước khi xóa. Ngựa luôn rời khu cũ và vào "Chờ xếp khu"; chủ cũ không còn là Horse Owner đang hoạt động thì bỏ trống chủ. Hồ sơ chưa bị xóa trả 409.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   restoreHorse(

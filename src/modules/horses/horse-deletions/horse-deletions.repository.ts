@@ -5,14 +5,14 @@ import { HORSE_BUSINESS_TABLES } from '../constants/horse.constants';
 @Injectable()
 export class HorseDeletionsRepository {
   /**
-   * Liệt kê các loại dữ liệu nghiệp vụ ngựa đã phát sinh, để chặn xóa hồ sơ và báo cho Club Manager biết đang vướng gì (F1.8, E1)
+   * Liệt kê các loại dữ liệu nghiệp vụ ngựa đã phát sinh
    *
-   * - Tính cả dòng đã đóng, đã hủy hoặc đã xóa mềm, vì đều là lịch sử
+   * - Tính cả dòng đã đóng, đã hủy hoặc đã xóa mềm
    * - Danh sách bảng và nhãn lấy từ HORSE_BUSINESS_TABLES; chỉ đọc bảng của module khác
    *
    * @param horseId UUID của ngựa
    * @param manager EntityManager của transaction đang chạy
-   * @returns A promise resolving to nhãn các loại dữ liệu đang có, rỗng nếu chưa phát sinh gì
+   * @returns Promise trả về nhãn các loại dữ liệu đang có, rỗng nếu chưa phát sinh gì
    */
   async businessDataLabels(
     horseId: string,
@@ -35,11 +35,11 @@ export class HorseDeletionsRepository {
   }
 
   /**
-   * Lấy tên khu theo id, kể cả khu đã xóa mềm, để hiện ở bảng xem trước khôi phục hồ sơ
+   * Lấy tên khu theo id, kể cả khu đã xóa mềm
    *
    * @param barnId UUID của khu
    * @param manager EntityManager dùng để query
-   * @returns A promise resolving to tên khu, hoặc null nếu không có khu đó
+   * @returns Promise trả về tên khu, hoặc null nếu không có khu đó
    */
   async barnName(
     barnId: string,

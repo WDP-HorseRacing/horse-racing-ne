@@ -3,9 +3,10 @@ import { HorseEntity } from '../entities/horse.entity';
 import type { HorseScope } from '../types/horse.types';
 
 /**
- * Restrict a horse query to the caller's scope: owners see horses they currently own, the ALL scope is unrestricted
- * @param qb The horse query builder to restrict
- * @param scope The visibility scope of the caller
+ * Giới hạn query ngựa theo phạm vi của người gọi: Horse Owner chỉ thấy ngựa mình đang sở hữu, phạm vi ALL không giới hạn
+ *
+ * @param qb Query builder ngựa cần giới hạn
+ * @param scope Phạm vi xem của người gọi
  */
 export function applyHorseScope(
   qb: SelectQueryBuilder<HorseEntity>,

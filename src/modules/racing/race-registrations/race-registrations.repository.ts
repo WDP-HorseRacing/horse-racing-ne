@@ -13,7 +13,7 @@ import { RaceRegistrationEntity } from '../entities/race-registration.entity';
 @Injectable()
 export class RaceRegistrationsRepository {
   /**
-   * Hủy các đăng ký thi đấu chưa diễn ra của ngựa bằng cách chuyển sang WITHDRAWN (F1.8, giải nghệ)
+   * Hủy các đăng ký thi đấu chưa diễn ra của ngựa bằng cách chuyển sang WITHDRAWN
    *
    * - Chỉ đụng đăng ký còn mở: PROPOSED, OWNER_APPROVED, MANAGER_CONFIRMED
    * - Chỉ đụng cuộc đua chưa diễn ra: PLANNED, OPEN; đua IN_PROGRESS/COMPLETED/CANCELLED giữ nguyên lịch sử

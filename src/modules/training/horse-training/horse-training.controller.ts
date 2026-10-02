@@ -35,7 +35,7 @@ export class HorseTrainingController {
   @ApiOperation({
     summary: 'List classes of a horse',
     description:
-      'Tab Huấn luyện của hồ sơ ngựa (F1.3): lớp đang học trước, rồi lớp đã rời. GROOM nhận 403.',
+      'Các lớp của ngựa: lớp đang học trước, rồi tới lớp đã rời.',
   })
   @ApiOkResponse({ type: [HorseTrainingClassResponseDto] })
   listClasses(
@@ -50,7 +50,7 @@ export class HorseTrainingController {
   @ApiOperation({
     summary: 'List training sessions of a horse',
     description:
-      'Tab Huấn luyện của hồ sơ ngựa (F1.3): lịch buổi tập của ngựa kèm kết quả time trial, có phân trang. GROOM nhận 403.',
+      'Lịch buổi tập của ngựa kèm kết quả time trial và đánh giá, có phân trang.',
   })
   @ApiOkResponse({ type: HorseTrainingSessionPageDto })
   listSessions(

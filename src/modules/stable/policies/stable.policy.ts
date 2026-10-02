@@ -278,12 +278,12 @@ export function assertAssignableHeadTrainer<
 }
 
 /**
- * Chặn các thay đổi làm khu còn ngựa mất chỗ ở hoặc mất người phụ trách (F1.6)
+ * Chặn các thay đổi làm khu còn ngựa mất chỗ ở hoặc mất người phụ trách
  *
  * - Khu không còn ngựa: cho qua mọi thay đổi
  * - Chuyển status sang CLOSED hoặc MAINTENANCE: chặn
  * - Gỡ Head Trainer (null) khi khu đang có người phụ trách: chặn
- * - Luật sức chứa áp cho mọi khu nên nằm riêng ở assertCapacityFitsStalls
+ * - Không kiểm sức chứa; sức chứa kiểm ở assertCapacityFitsStalls
  *
  * @param change Trạng thái hiện tại và giá trị mới của khu
  * @throws ConflictException Nếu khu còn ngựa và thay đổi thuộc một trong các trường hợp bị chặn
@@ -310,11 +310,10 @@ export function assertBarnChangeKeepsHorses(change: BarnChange): void {
 }
 
 /**
- * Chặn hạ sức chứa của khu xuống dưới số ô đang có, áp cho mọi khu dù còn ngựa hay không (quyết định 2026-09-23)
+ * Chặn hạ sức chứa của khu xuống dưới số ô đang có, áp cho mọi khu dù còn ngựa hay không
  *
- * - capacity là số ô tối đa của khu; nhỏ hơn số ô hiện có thì dữ liệu tự mâu thuẫn
+ * - capacity là số ô tối đa của khu
  * - Không gửi capacity (undefined) hoặc bỏ giới hạn (null) thì cho qua
- * - Muốn hạ thì xóa bớt ô trước
  *
  * @param stallCount Số ô chưa xóa của khu
  * @param nextCapacity Sức chứa mới, undefined nếu không đổi, null nếu bỏ giới hạn

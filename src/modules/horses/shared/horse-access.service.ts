@@ -22,7 +22,7 @@ import { HorsesSharedRepository } from './horses-shared.repository';
  * Các kiểm tra người gọi và con ngựa dùng chung cho mọi feature của module horses và cho module khác (export qua HorsesSharedModule).
  *
  * - Xem (404 khi ngoài phạm vi): findReadable, findReadableHorse
- * - Ghi (403 hồ sơ đã xóa với Club Manager, 404 với vai trò khác): lockWritableHorse, findWritableHorse, lockVisibleHorse
+ * - Ghi (409 hồ sơ đã xóa với Club Manager, 404 với vai trò khác): lockWritableHorse, findWritableHorse, lockVisibleHorse
  * - Phạm vi Head Trainer theo khu: isHorseInTrainerBarn, assertTrainerBarn
  */
 @Injectable()
@@ -37,7 +37,7 @@ export class HorseAccessService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param manager EntityManager của transaction đang chạy, mặc định dùng manager ngoài transaction
-   * @returns A promise resolving to user hiện tại
+   * @returns Promise trả về user hiện tại
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    */
   currentUser(
@@ -55,7 +55,7 @@ export class HorseAccessService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param manager EntityManager dùng để query, mặc định dùng manager ngoài transaction
-   * @returns A promise resolving to con ngựa người gọi được xem
+   * @returns Promise trả về con ngựa người gọi được xem
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
@@ -79,8 +79,8 @@ export class HorseAccessService {
    * @param actor Thông tin danh tính từ Access Token
    * @param callerId UUID của người gọi (users.id)
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to con ngựa người gọi được xem
-   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi (báo 'không tìm thấy' để không lộ là ngựa có tồn tại)
+   * @returns Promise trả về con ngựa người gọi được xem
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi
    */
   async findReadableHorse(
     manager: EntityManager,
@@ -103,7 +103,7 @@ export class HorseAccessService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param manager EntityManager của transaction đang chạy
-   * @returns A promise resolving to user hiện tại và con ngựa đã khóa
+   * @returns Promise trả về user hiện tại và con ngựa đã khóa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa (vai trò khác Club Manager), hoặc ngựa nằm ngoài phạm vi
@@ -124,15 +124,15 @@ export class HorseAccessService {
   /**
    * Khóa row con ngựa (pessimistic_write) để thực hiện thao tác ghi. Dùng chung cho mọi thao tác ghi trong transaction
    *
-   * - Tải kèm hồ sơ đã xóa mềm để phân biệt "không có" với "đã xóa"
-   * - Hồ sơ đã xóa + người gọi có vai trò Club Manager: 403 (Club Manager xem được hồ sơ đã xóa nhưng phải khôi phục trước khi thao tác, mục III.1 và III.6.3)
+   * - Tải kèm hồ sơ đã xóa mềm, phân biệt "không có" với "đã xóa"
+   * - Hồ sơ đã xóa + người gọi có vai trò Club Manager: 409, phải khôi phục trước khi thao tác
    * - Hồ sơ đã xóa + vai trò khác: 404 (hồ sơ nằm ngoài phạm vi xem)
    * - Không kiểm phạm vi Horse Owner và các luật riêng của thao tác; nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to con ngựa đã khóa, chắc chắn chưa bị xóa
+   * @returns Promise trả về con ngựa đã khóa, chắc chắn chưa bị xóa
    * @throws NotFoundException Nếu không có ngựa, hoặc hồ sơ đã xóa và người gọi không phải Club Manager
    * @throws ConflictException Nếu hồ sơ đã xóa và người gọi là Club Manager
    */
@@ -148,11 +148,11 @@ export class HorseAccessService {
   }
 
   /**
-   * Tìm con ngựa (không khóa row) để chuẩn bị thao tác ghi. Cùng luật 403/404 với lockWritableHorse, dùng cho thao tác kiểm tra ngoài transaction rồi mới ghi (vd sửa hồ sơ có version, xem trước đổi vòng đời)
+   * Tìm con ngựa (không khóa row) để chuẩn bị thao tác ghi. Cùng luật 409/404 với lockWritableHorse, dùng cho thao tác kiểm tra ngoài transaction rồi mới ghi (vd sửa hồ sơ có version, xem trước đổi vòng đời)
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to con ngựa, chắc chắn chưa bị xóa
+   * @returns Promise trả về con ngựa, chắc chắn chưa bị xóa
    * @throws NotFoundException Nếu không có ngựa, hoặc hồ sơ đã xóa và người gọi không phải Club Manager
    * @throws ConflictException Nếu hồ sơ đã xóa và người gọi là Club Manager
    */
@@ -168,7 +168,7 @@ export class HorseAccessService {
    *
    * @param id UUID của ngựa
    * @param manager EntityManager dùng để query, mặc định dùng manager ngoài transaction
-   * @returns A promise resolving to con ngựa
+   * @returns Promise trả về con ngựa
    * @throws NotFoundException Nếu không có ngựa hoặc hồ sơ đã xóa
    */
   async findHorse(
@@ -186,7 +186,7 @@ export class HorseAccessService {
    * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
    * @param horseId UUID của ngựa
    * @param trainerId UUID của Head Trainer
-   * @returns A promise resolving to true nếu ngựa đang ở một khu có head_trainer_id là trainerId
+   * @returns Promise trả về true nếu ngựa đang ở một khu có head_trainer_id là trainerId
    */
   isHorseInTrainerBarn(
     manager: EntityManager,
@@ -206,7 +206,7 @@ export class HorseAccessService {
    * @param actor Thông tin danh tính từ Access Token
    * @param callerId UUID của người gọi
    * @param horseId UUID của ngựa
-   * @returns A promise resolving khi kiểm tra xong
+   * @returns Promise hoàn tất khi kiểm tra xong
    * @throws ForbiddenException Nếu người gọi là Head Trainer và ngựa không thuộc khu mình phụ trách
    */
   async assertTrainerBarn(
@@ -240,19 +240,21 @@ export class HorseAccessService {
   }
 
   /**
-   * Check whether the actor has any of the given roles
-   * @param actor The actor resolved from the JWT
-   * @param roles The roles to check
-   * @returns True if the actor has at least one of the roles
+   * Kiểm tra người gọi có ít nhất một trong các vai trò cho trước
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param roles Các vai trò cần kiểm
+   * @returns true nếu người gọi có ít nhất một vai trò
    */
   hasRole(actor: Actor, ...roles: UserRole[]): boolean {
     return roles.some((role) => actor.roles.includes(role));
   }
 
   /**
-   * Ensure the horse has not been transferred
-   * @param horse The horse to check
-   * @throws ConflictException if the horse is transferred
+   * Chặn thao tác trên ngựa đã chuyển nhượng
+   *
+   * @param horse Con ngựa cần kiểm
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng
    */
   assertNotTransferred(horse: HorseEntity): void {
     if (horse.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
@@ -263,7 +265,7 @@ export class HorseAccessService {
   /**
    * Chặn thao tác ghi trên hồ sơ không có hoặc đã xóa mềm, chọn 409 hay 404 theo vai trò người gọi.
    *
-   * - Club Manager: hồ sơ đã xóa trả 409 vì Club Manager vẫn xem được hồ sơ đó, chỉ là trạng thái hồ sơ không cho thao tác
+   * - Club Manager: hồ sơ đã xóa trả 409
    * - Vai trò khác: hồ sơ đã xóa trả 404 như không tồn tại
    *
    * @param actor Thông tin danh tính từ Access Token

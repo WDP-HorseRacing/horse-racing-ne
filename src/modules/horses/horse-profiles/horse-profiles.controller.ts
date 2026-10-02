@@ -76,7 +76,7 @@ export class HorseProfilesController {
   @ApiOperation({
     summary: 'Get horse profile detail',
     description:
-      'Tab thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập/được đua và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.',
+      'Thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập/được đua và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.',
   })
   @ApiOkResponse({ type: HorseDetailResponseDto })
   getHorse(
@@ -106,7 +106,7 @@ export class HorseProfilesController {
   @ApiOperation({
     summary: 'Update horse profile, parents and owner',
     description:
-      'Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409, cần GET lại. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 409 (phải khôi phục trước), Head Trainer nhận 404.',
+      'Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 409 (phải khôi phục trước), Head Trainer nhận 404.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   updateHorse(
@@ -137,7 +137,7 @@ export class HorseProfilesController {
   @ApiOperation({
     summary: 'Get what the current user can do on this horse profile',
     description:
-      'Chỉ để client ẩn/hiện nút và tab. Các API ghi vẫn tự kiểm tra quyền.',
+      'Trả các cờ quyền thao tác của người gọi trên hồ sơ ngựa. Các API ghi vẫn tự kiểm tra quyền.',
   })
   @ApiOkResponse({ type: HorsePermissionsResponseDto })
   getPermissions(

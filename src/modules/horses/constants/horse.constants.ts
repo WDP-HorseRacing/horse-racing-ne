@@ -8,7 +8,7 @@ import {
 } from '../enums/horse-status.enum';
 
 /**
- * The roles allowed to read horse profiles
+ * Các role được xem hồ sơ ngựa
  */
 export const ALL_ROLES = [
   UserRole.CLUB_MANAGER,
@@ -19,27 +19,27 @@ export const ALL_ROLES = [
 ];
 
 /**
- * Số đời tổ tiên cây phả hệ trả về: cha mẹ (đời 1) và ông bà (đời 2), cộng con ngựa đang xem là 3 đời (F1.3).
+ * Số đời tổ tiên cây phả hệ trả về: cha mẹ (đời 1) và ông bà (đời 2), cộng con ngựa đang xem là 3 đời.
  */
 export const PEDIGREE_DEPTH = 2;
 
 /**
- * The clock skew allowed when a measurement time is slightly in the future
+ * Độ lệch đồng hồ cho phép khi thời điểm đo hơi lệch về tương lai
  */
 export const CLOCK_SKEW_MS = 60_000;
 
 /**
- * The time zone that decides which calendar day "today" is for the club
+ * Múi giờ quyết định "hôm nay" là ngày nào theo lịch câu lạc bộ
  */
 export const CLUB_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 /**
- * The ORDER BY expression that sorts horse names by the Vietnamese alphabet, bound to the `horse` query alias
+ * Biểu thức ORDER BY sắp tên ngựa theo bảng chữ cái tiếng Việt, gắn với alias `horse` của query
  */
 export const VIETNAMESE_NAME_ORDER = 'horse.name COLLATE "vi-x-icu"';
 
 /**
- * The unit, allowed range and normal range of each measurement type
+ * Đơn vị, khoảng cho phép và khoảng bình thường của từng loại chỉ số
  */
 export const HORSE_MEASUREMENT_SPECS: Record<
   HorseMeasurementType,
@@ -102,25 +102,25 @@ export const WEIGHT_DROP_WINDOW_DAYS = 14;
 export const HORSE_MEASUREMENT_ALERT_EVENT = 'horse.measurement.alert';
 
 /**
- * Tên domain event phát ra sau khi ngựa được xếp hoặc đổi vào một khu (F1.2, F1.6) và transaction đã commit.
+ * Tên domain event phát ra sau khi ngựa được xếp hoặc đổi vào một khu và transaction đã commit.
  * Payload là HorseBarnAssignedEvent; module notifications nghe event này để báo Head Trainer khu mới.
  */
 export const HORSE_BARN_ASSIGNED_EVENT = 'horse.barn.assigned';
 
 /**
- * Tên domain event phát ra sau khi chuyển nhượng làm phân công Groom của ngựa tự kết thúc (F1.8) và transaction đã commit.
+ * Tên domain event phát ra sau khi chuyển nhượng làm phân công Groom của ngựa tự kết thúc và transaction đã commit.
  * Payload là HorseGroomReleasedEvent; module notifications nghe event này để báo Groom đó.
  */
 export const HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT =
   'horse.groom.released-by-transfer';
 
 /**
- * Kết luận ghi vào lệnh khóa huấn luyện khi hệ thống tự gỡ do ngựa chuyển nhượng (F1.8 mục 2).
+ * Kết luận ghi vào lệnh khóa huấn luyện khi hệ thống tự gỡ do ngựa chuyển nhượng.
  */
 export const TRANSFER_LOCK_RELEASE_CONCLUSION = 'Gỡ do chuyển nhượng';
 
 /**
- * Các field hồ sơ ghi vào nhật ký khi tạo ngựa mới (F1.2).
+ * Các field hồ sơ ghi vào nhật ký khi tạo ngựa mới.
  */
 export const CREATE_AUDIT_FIELDS = [
   'name',
@@ -140,7 +140,7 @@ export const CREATE_AUDIT_FIELDS = [
 ];
 
 /**
- * The allowed lifecycle transitions from each status; a RETIRED horse can return to ACTIVE or be transferred, a TRANSFERRED horse can only come back as ACTIVE when the club buys it back
+ * Các bước chuyển vòng đời được phép từ mỗi trạng thái; ngựa RETIRED được quay lại ACTIVE hoặc chuyển nhượng, ngựa TRANSFERRED chỉ quay lại ACTIVE khi câu lạc bộ mua lại
  */
 export const LIFECYCLE_TRANSITIONS: Record<
   HorseLifecycleStatus,
@@ -158,7 +158,7 @@ export const LIFECYCLE_TRANSITIONS: Record<
 };
 
 /**
- * Động từ tiếng Việt cho từng trạng thái vòng đời đích, dùng trong câu tóm tắt hệ quả (F1.8).
+ * Động từ tiếng Việt cho từng trạng thái vòng đời đích, dùng trong câu tóm tắt hệ quả.
  */
 export const LIFECYCLE_VERBS: Record<HorseLifecycleStatus, string> = {
   [HorseLifecycleStatus.ACTIVE]: 'kích hoạt lại',
@@ -167,7 +167,7 @@ export const LIFECYCLE_VERBS: Record<HorseLifecycleStatus, string> = {
 };
 
 /**
- * The eligibility reason for each non-eligible health status
+ * Lý do không đủ điều kiện ứng với từng trạng thái sức khỏe khác ELIGIBLE
  */
 export const HEALTH_REASONS: Partial<
   Record<HorseHealthStatus, EligibilityReason>
@@ -179,7 +179,7 @@ export const HEALTH_REASONS: Partial<
 };
 
 /**
- * The conflict message when a microchip ID is already used by another horse
+ * Thông báo xung đột khi microchip ID đã được ngựa khác dùng
  */
 export const MICROCHIP_TAKEN_MESSAGE = 'Microchip đã được dùng cho ngựa khác';
 
@@ -199,10 +199,9 @@ export const PEDIGREE_FIELDS = [
 export const PEDIGREE_LOCK_KEY = 'horses.pedigree';
 
 /**
- * Các bảng có cột horse_id chứa dữ liệu nghiệp vụ của ngựa, kèm nhãn hiển thị khi báo lỗi chặn xóa (F1.8, E1).
+ * Các bảng có cột horse_id chứa dữ liệu nghiệp vụ của ngựa, kèm nhãn hiển thị khi báo lỗi chặn xóa.
  *
  * - Ngựa có dòng ở bất kỳ bảng nào (kể cả dòng đã đóng, đã hủy, đã xóa mềm) thì không được xóa hồ sơ.
- * - Chủ sở hữu giờ là một trường của hồ sơ (horses.owner_id), không còn là dữ liệu nghiệp vụ riêng.
  */
 export const HORSE_BUSINESS_TABLES: Readonly<Record<string, string>> = {
   medical_records: 'buổi khám',
@@ -228,13 +227,13 @@ export const STALE_HORSE_MESSAGE =
   'Hồ sơ ngựa vừa được người khác cập nhật, hãy tải lại để xem bản mới nhất';
 
 /**
- * Thông báo 403 khi Club Manager thao tác ghi trên hồ sơ ngựa đã xóa mềm (mục III.6.3: xem được nhưng không được thao tác).
+ * Thông báo 403 khi Club Manager thao tác ghi trên hồ sơ ngựa đã xóa mềm; hồ sơ này chỉ xem được.
  */
 export const DELETED_HORSE_READ_ONLY_MESSAGE =
   'Hồ sơ đã xóa, chỉ xem được. Khôi phục hồ sơ trước khi thao tác';
 
 /**
- * The conflict message for each unique index a horse write can violate under concurrent writes
+ * Thông báo xung đột ứng với từng unique index mà thao tác ghi ngựa có thể vi phạm khi ghi đồng thời
  */
 export const UNIQUE_CONFLICT_MESSAGES: Record<string, string> = {
   horses_microchip_uq: MICROCHIP_TAKEN_MESSAGE,

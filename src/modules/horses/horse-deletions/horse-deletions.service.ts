@@ -31,7 +31,7 @@ import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import { HorseDeletionsRepository } from './horse-deletions.repository';
 
 /**
- * Xóa hồ sơ ngựa tạo nhầm và khôi phục hồ sơ đã xóa (F1.8). Chỉ Club Manager (kiểm ở controller).
+ * Xóa hồ sơ ngựa tạo nhầm và khôi phục hồ sơ đã xóa. Chỉ Club Manager (kiểm ở controller).
  */
 @Injectable()
 export class HorseDeletionsService {
@@ -45,9 +45,9 @@ export class HorseDeletionsService {
   ) {}
 
   /**
-   * Xóa mềm hồ sơ ngựa tạo nhầm (F1.8). Chỉ xóa được khi ngựa chưa từng phát sinh dữ liệu nghiệp vụ
+   * Xóa mềm hồ sơ ngựa tạo nhầm. Chỉ xóa được khi ngựa chưa từng phát sinh dữ liệu nghiệp vụ
    *
-   * - Khóa phả hệ và row ngựa trước rồi mới kiểm tra, tránh vừa kiểm tra xong thì có dữ liệu mới
+   * - Khóa phả hệ và row ngựa trước khi kiểm tra
    * - Ngựa đã có dữ liệu nghiệp vụ thì báo rõ đang vướng loại dữ liệu nào; đang là cha/mẹ của ngựa khác (kể cả con đã xóa) cũng bị chặn
    * - Số chip vẫn bị coi là đã dùng; dữ liệu lịch sử và nhật ký không bị xóa theo
    * - Lưu lý do xóa và ghi nhật ký kèm lý do
@@ -55,7 +55,7 @@ export class HorseDeletionsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
    * @param body Lý do xóa
-   * @returns A promise resolving khi đã xóa
+   * @returns Promise hoàn tất khi đã xóa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
    * @throws ConflictException Nếu hồ sơ đã bị xóa trước đó, ngựa đã chuyển nhượng (hồ sơ chỉ đọc), đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ trong phả hệ
@@ -97,7 +97,7 @@ export class HorseDeletionsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
-   * @returns A promise resolving to cờ xóa được và từng lý do chặn
+   * @returns Promise trả về cờ xóa được và từng lý do chặn
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
    * @throws ConflictException Nếu hồ sơ đã bị xóa
@@ -117,14 +117,14 @@ export class HorseDeletionsService {
   }
 
   /**
-   * Xem trước hệ quả khi khôi phục hồ sơ đã xóa, không ghi gì (F1.8 mục 4, 5)
+   * Xem trước hệ quả khi khôi phục hồ sơ đã xóa, không ghi gì
    *
    * - Ngựa có khu: báo tên khu sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu)
    * - Ngựa có chủ không còn là HORSE_OWNER đang hoạt động: báo tên chủ sẽ bị bỏ trống
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
-   * @returns A promise resolving to các hệ quả và câu tóm tắt
+   * @returns Promise trả về các hệ quả và câu tóm tắt
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có hồ sơ ngựa
    * @throws ConflictException Nếu hồ sơ chưa bị xóa
@@ -150,20 +150,19 @@ export class HorseDeletionsService {
   }
 
   /**
-   * Khôi phục hồ sơ ngựa đã xóa (F1.8, A2). Hồ sơ trở về trạng thái trước khi xóa
+   * Khôi phục hồ sơ ngựa đã xóa. Hồ sơ trở về trạng thái trước khi xóa
    *
    * - Bỏ dấu đã xóa và lý do xóa; vòng đời, sức khỏe, phả hệ giữ nguyên
-   * - Ngựa có khu: luôn bỏ khu, ngựa vào "Chờ xếp khu", vì lúc xóa hồ sơ chỗ của ngựa trong khu đã nhả cho ngựa khác
-   * - Ngựa có chủ: chủ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ (quyết định 2026-09-23), Club Manager chọn chủ mới sau
-   * - Phả hệ không cần kiểm lại: trong lúc hồ sơ bị xóa, cha mẹ không đổi được giới tính và ngày sinh trái với con đã xóa (luật phả hệ tính cả con đã xóa), và hồ sơ đã xóa không chọn làm cha mẹ được
-   * - Số chip không bị trùng vì hồ sơ đã xóa vẫn giữ chỗ của số chip
+   * - Ngựa có khu: luôn bỏ khu, ngựa vào "Chờ xếp khu"
+   * - Ngựa có chủ: chủ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ, Club Manager chọn chủ mới sau
+   * - Không kiểm lại phả hệ
+   * - Không kiểm lại số chip (hồ sơ đã xóa vẫn giữ số chip của nó)
    * - Ghi nhật ký RESTORE kèm lý do; khu hoặc chủ bị bỏ trống thì ghi cả giá trị cũ
-   * - Giao diện gọi previewRestore trước để hiện bảng xác nhận
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
    * @param body Lý do khôi phục
-   * @returns A promise resolving to hồ sơ sau khi khôi phục
+   * @returns Promise trả về hồ sơ sau khi khôi phục
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có hồ sơ ngựa
    * @throws ConflictException Nếu hồ sơ chưa bị xóa

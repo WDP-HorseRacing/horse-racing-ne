@@ -24,7 +24,7 @@ import type {
 } from '../types/horse.types';
 
 /**
- * Chuyển một con ngựa thành một dòng của danh sách (F1.1), kèm vị trí, cờ được đua và cờ đã xóa.
+ * Chuyển một con ngựa thành một dòng của danh sách, kèm vị trí, cờ được đua và cờ đã xóa.
  *
  * @param horse Hồ sơ ngựa
  * @param location Khu và ô hiện tại của ngựa
@@ -58,7 +58,7 @@ export function toHorseListItem(
 /**
  * Dựng phần vị trí (khu, ô, tình trạng xếp chỗ) của hồ sơ ngựa.
  *
- * - Horse Owner chỉ thấy tên khu và mã ô, không có key id (mục III.6: dữ liệu ngoài quyền không gửi về máy)
+ * - Horse Owner chỉ thấy tên khu và mã ô, không có key id
  *
  * @param horse Hồ sơ ngựa, dùng vòng đời để tính tình trạng xếp chỗ
  * @param location Khu và ô hiện tại của ngựa
@@ -94,7 +94,7 @@ export function toLocation(
 }
 
 /**
- * Dựng hồ sơ chi tiết (tab 1 của F1.3) từ hồ sơ ngựa và các dữ liệu đã tải sẵn.
+ * Dựng hồ sơ chi tiết từ hồ sơ ngựa và các dữ liệu đã tải sẵn.
  *
  * - Mọi vai trò xem cùng nhóm thông tin; chỉ khác ở chỗ Horse Owner không nhận id khu và ô
  * - "Được tập", "được đua" tính lại tại đây, không lưu DB
@@ -128,9 +128,9 @@ export function toHorseDetailResponse(
 }
 
 /**
- * Chuyển một dòng tổ tiên thành node của cây phả hệ (F1.3), bỏ ownerId khỏi response.
+ * Chuyển một dòng tổ tiên thành node của cây phả hệ, bỏ ownerId khỏi response.
  *
- * - canOpen = false (Horse Owner xem tổ tiên không thuộc sở hữu của mình): chỉ trả tên và vị trí trong cây, không có key giới tính, giống, màu lông, ngày sinh, sở trường (F1.3.3, mục III.6.2)
+ * - canOpen = false (Horse Owner xem tổ tiên không thuộc sở hữu của mình): chỉ trả tên và vị trí trong cây, không có key giới tính, giống, màu lông, ngày sinh, sở trường
  *
  * @param row Dòng tổ tiên từ query phả hệ
  * @param canOpen Người gọi mở được hồ sơ tổ tiên này không
@@ -160,7 +160,7 @@ export function toPedigreeNode(
 }
 
 /**
- * Dựng cây phả hệ (F1.3) từ con ngựa đang xem và các dòng tổ tiên
+ * Dựng cây phả hệ từ con ngựa đang xem và các dòng tổ tiên
  *
  * @param horse Con ngựa đang xem
  * @param depth Số đời tổ tiên đã lấy
@@ -176,7 +176,7 @@ export function toHorsePedigreeResponse(
 }
 
 /**
- * Dựng kết quả "được tập / được đua" (mục III.4) kèm trạng thái hiện tại của ngựa
+ * Dựng kết quả "được tập / được đua" kèm trạng thái hiện tại của ngựa
  *
  * @param horse Hồ sơ ngựa
  * @param activeTrainingLock Ngựa có đang bị khóa huấn luyện không

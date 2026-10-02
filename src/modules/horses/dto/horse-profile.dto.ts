@@ -126,7 +126,7 @@ export class UpdateHorseDto extends PartialType(
     enum: RaceAptitude,
     nullable: true,
     description:
-      'Chỉ Head Trainer phụ trách khu được sửa. Không nhập lúc tạo hồ sơ (BA chốt), Head Trainer bổ sung sau',
+      'Chỉ Head Trainer phụ trách khu được sửa. Không nhập lúc tạo hồ sơ, Head Trainer bổ sung sau',
   })
   @IsOptional()
   @IsEnum(RaceAptitude)
@@ -223,7 +223,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     default: false,
     description:
-      'true để hiện thêm hồ sơ đã xóa, kèm isDeleted = true (chỉ Club Manager)',
+      'true thì trả thêm hồ sơ đã xóa, kèm isDeleted = true (chỉ Club Manager)',
   })
   @IsOptional()
   @Transform(({ value }) => parseQueryBoolean(value))
@@ -250,7 +250,12 @@ export class HorseListQueryDto extends PaginationQueryDto {
   @IsEnum(SortOrder)
   sortOrder: SortOrder = SortOrder.ASC;
 }
-/** Preserve invalid query values so class-validator can reject them. */
+/**
+ * Đổi chuỗi 'true'/'false' của query thành boolean; giá trị khác giữ nguyên, class-validator sẽ từ chối
+ *
+ * @param value Giá trị query thô
+ * @returns true, false hoặc chính giá trị ban đầu nếu không nhận ra
+ */
 function parseQueryBoolean(value: unknown): unknown {
   if (value === true || value === 'true') return true;
   if (value === false || value === 'false') return false;
@@ -264,7 +269,7 @@ export class HorseListItemDto extends HorseResponseDto {
     nullable: true,
     type: String,
     description:
-      'Link tải ảnh đại diện có hạn dùng, chỉ để hiển thị; null nếu ngựa chưa có ảnh',
+      'Link tải ảnh đại diện có hạn dùng; null nếu ngựa chưa có ảnh',
   })
   photoUrl!: string | null;
 

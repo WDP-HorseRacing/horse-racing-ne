@@ -68,7 +68,7 @@ const STALL_ASSIGNMENT_CONFLICT_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Thông báo 409 khi ô được chọn không còn trống và cả khu của ngựa cũng không còn ô trống nào (F1.7 E4).
+ * Thông báo 409 khi ô được chọn không còn trống và cả khu của ngựa cũng không còn ô trống nào.
  */
 const BARN_OUT_OF_STALLS_MESSAGE =
   'Khu đã hết ô trống, đề nghị Club Manager đổi khu cho ngựa';
@@ -126,16 +126,16 @@ export class StallsService {
   }
 
   /**
-   * Tạo ô chuồng mới trong một khu (F1.6). Ô mới luôn ở trạng thái AVAILABLE
+   * Tạo ô chuồng mới trong một khu. Ô mới luôn ở trạng thái AVAILABLE
    *
-   * - Chạy trong transaction, lock khu (pessimistic_write) trước khi đếm số ô, để hai request thêm ô cùng lúc không vượt sức chứa
+   * - Chạy trong transaction, lock khu (pessimistic_write) rồi mới đếm số ô
    * - Khu phải đang ACTIVE và còn chỗ theo sức chứa (khu không đặt sức chứa thì không giới hạn)
    * - Mã ô phải chưa tồn tại (ô đã xóa không tính)
    * - Ghi nhật ký CREATE, before null, after là các field vừa tạo
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin ô chuồng
-   * @returns A promise resolving to ô chuồng vừa tạo
+   * @returns Promise trả về ô chuồng vừa tạo
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
    * @throws ConflictException Nếu khu không ở trạng thái hoạt động, khu đã đủ sức chứa hoặc mã ô đã tồn tại
    */
@@ -180,7 +180,7 @@ export class StallsService {
   }
 
   /**
-   * Sửa thông tin ô chuồng (F1.6)
+   * Sửa thông tin ô chuồng
    *
    * - Chạy trong transaction, lock khu của ô (và khu đích nếu đổi khu) rồi mới lock ô, cùng thứ tự khu → ô với moveHorseToStall
    * - Đổi khu: ô không được đang có ngựa; khu đích phải ACTIVE và còn chỗ theo sức chứa
@@ -191,7 +191,7 @@ export class StallsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ô chuồng
    * @param body Các field cần đổi
-   * @returns A promise resolving to ô chuồng sau khi sửa
+   * @returns Promise trả về ô chuồng sau khi sửa
    * @throws NotFoundException Nếu không có ô, không có khu của ô hoặc không có khu đích
    * @throws ConflictException Nếu khu đích không ở trạng thái hoạt động, mã ô đã tồn tại, khu đích đã đủ sức chứa, ô đang có ngựa mà đổi khu hoặc đổi trạng thái, trạng thái hiện tại không đổi tay được, ô vừa bị chuyển khu, hoặc chuyển ô trống sang MAINTENANCE hay sang khu khác làm khu hiện tại thiếu ô cho ngựa chờ xếp ô
    */
@@ -284,7 +284,7 @@ export class StallsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ô chuồng
-   * @returns A promise resolving khi đã xóa
+   * @returns Promise hoàn tất khi đã xóa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ô chuồng hoặc không có khu của ô
    * @throws ConflictException Nếu ô đang có ngựa, ô vừa bị chuyển khu, hoặc xóa ô làm khu thiếu ô cho ngựa chờ xếp ô
@@ -354,7 +354,7 @@ export class StallsService {
   }
 
   /**
-   * Xếp ngựa vào một ô chuồng hoặc chuyển sang ô khác trong cùng khu (F1.7).
+   * Xếp ngựa vào một ô chuồng hoặc chuyển sang ô khác trong cùng khu.
    *
    * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác.
    * - Ngựa phải đã được Club Manager xếp khu, chưa chuyển nhượng và chưa bị xóa. Ngựa đã giải nghệ vẫn xếp ô được.
@@ -369,10 +369,9 @@ export class StallsService {
    * @param body Ô chuồng đích
    * @returns Promise chứa phân công ô đang mở của ngựa sau thao tác
    * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô chuồng
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, hoặc ô đích không còn trống (khu hết ô trống thì báo đề nghị Club Manager đổi khu)
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, ô đích không còn trống (khu hết ô trống thì báo đề nghị Club Manager đổi khu) hoặc có thao tác khác chạy cùng lúc
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    * @throws BadRequestException Nếu ô đích không thuộc khu của ngựa
-   * @throws ConflictException Nếu khu không hoạt động
    */
   async moveHorseToStall(
     actor: Actor,
@@ -525,10 +524,10 @@ export class StallsService {
   }
 
   /**
-   * Kết thúc một phân công ô đang mở và trả ô về trống (F1.7).
+   * Kết thúc một phân công ô đang mở và trả ô về trống.
    *
-   * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác (Club Manager không xếp ô).
-   * - Chạy trong một transaction: lock phân công (pessimistic_write) rồi mới kiểm tra đã kết thúc hay chưa, để hai request đóng cùng lúc chạy lần lượt.
+   * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác.
+   * - Chạy trong một transaction: lock phân công (pessimistic_write) rồi mới kiểm tra đã kết thúc hay chưa.
    * - Lock ô chuồng trước khi đổi trạng thái; chỉ trả ô về AVAILABLE khi ô đang OCCUPIED và không còn phân công mở nào khác.
    * - Ghi nhật ký UPDATE cho phân công (endAt, mã ô).
    *
@@ -569,7 +568,7 @@ export class StallsService {
   }
 
   /**
-   * Gỡ ngựa khỏi ô chuồng đang ở (F1.7), theo id ngựa thay vì id phân công
+   * Gỡ ngựa khỏi ô chuồng đang ở, theo id ngựa thay vì id phân công
    *
    * - Chỉ Head Trainer phụ trách khu của ngựa được thao tác; ngựa đã chuyển nhượng hoặc chưa có khu trả 409
    * - Chạy trong một transaction: lock ngựa, rồi lock phân công ô đang mở của ngựa
@@ -577,7 +576,7 @@ export class StallsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to phân công ô vừa kết thúc
+   * @returns Promise trả về phân công ô vừa kết thúc
    * @throws NotFoundException Nếu không có ngựa, hoặc ngựa chưa được xếp ô chuồng
    * @throws ForbiddenException Nếu ngựa không thuộc khu người gọi phụ trách
    * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc chưa được xếp khu
@@ -607,7 +606,7 @@ export class StallsService {
    * @param manager EntityManager của transaction đang chạy
    * @param callerId UUID người thao tác (users.id)
    * @param assignment Phân công ô đang mở (đã lock)
-   * @returns A promise resolving to phân công ô vừa kết thúc
+   * @returns Promise trả về phân công ô vừa kết thúc
    */
   private async finishAssignment(
     manager: EntityManager,
@@ -677,16 +676,16 @@ export class StallsService {
   }
 
   /**
-   * Lock khu của ô (và khu đích nếu đổi khu) rồi mới lock ô, cùng thứ tự khu → ô với moveHorseToStall để không deadlock
+   * Lock khu của ô (và khu đích nếu đổi khu) rồi mới lock ô, cùng thứ tự khu → ô với moveHorseToStall
    *
    * - Đọc ô chưa lock để biết khu hiện tại, lock các khu theo UUID tăng dần (pessimistic_write), sau đó lock ô
-   * - Ô bị chuyển sang khu khác giữa lúc đọc và lúc lock thì báo 409 để người dùng tải lại
+   * - Ô bị chuyển sang khu khác giữa lúc đọc và lúc lock thì báo 409
    * - Không kiểm trạng thái khu; nơi cần thì tự gọi assertBarnActive
    *
    * @param manager EntityManager của transaction đang chạy
    * @param stallId UUID của ô chuồng
    * @param targetBarnId UUID khu đích khi đổi khu, undefined nếu không đổi khu
-   * @returns A promise resolving to ô chuồng đã lock và khu đích đã lock (null nếu không đổi khu hoặc khu đích trùng khu hiện tại)
+   * @returns Promise trả về ô chuồng đã lock và khu đích đã lock (null nếu không đổi khu hoặc khu đích trùng khu hiện tại)
    * @throws NotFoundException Nếu không có ô chuồng, không có khu của ô hoặc không có khu đích
    * @throws ConflictException Nếu ô vừa bị chuyển sang khu khác
    */
@@ -738,7 +737,7 @@ export class StallsService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param barnId UUID khu của ô
-   * @returns A promise resolving khi kiểm tra xong
+   * @returns Promise hoàn tất khi kiểm tra xong
    * @throws ConflictException Nếu bỏ ô này thì số ô trống còn lại ít hơn số ngựa chờ xếp ô
    */
   private async assertBarnKeepsStallsForPendingHorses(

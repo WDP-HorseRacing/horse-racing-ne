@@ -1,5 +1,5 @@
 /**
- * The reasons a horse is not fully eligible for training or racing
+ * Các lý do ngựa không đủ điều kiện tập hoặc đua
  */
 export enum EligibilityReason {
   PROFILE_DELETED = 'PROFILE_DELETED',

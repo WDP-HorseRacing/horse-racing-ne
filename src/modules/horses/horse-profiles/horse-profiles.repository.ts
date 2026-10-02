@@ -27,7 +27,7 @@ export class HorseProfilesRepository {
   ) {}
 
   /**
-   * Lấy một trang danh sách ngựa trong phạm vi người gọi, theo từ khóa và bộ lọc (F1.1).
+   * Lấy một trang danh sách ngựa trong phạm vi người gọi, theo từ khóa và bộ lọc.
    *
    * - Mặc định bỏ hồ sơ đã xóa; includeDeleted gộp thêm hồ sơ đã xóa (quyền do service kiểm)
    * - myBarns: ngựa thuộc khu người gọi làm Head Trainer; myHorses: ngựa người gọi đang là Groom phụ trách
@@ -169,10 +169,11 @@ export class HorseProfilesRepository {
   }
 
   /**
-   * Find the ancestors of a horse up to the given number of generations
-   * @param horseId The ID of the horse
-   * @param depth The maximum number of generations to traverse
-   * @returns A promise resolving to the ancestor rows ordered by generation
+   * Lấy tổ tiên của ngựa tới số đời cho trước, bỏ tổ tiên đã xóa hồ sơ
+   *
+   * @param horseId UUID của ngựa
+   * @param depth Số đời tối đa cần lấy
+   * @returns Promise trả về các dòng tổ tiên, xếp theo đời
    */
   findPedigreeAncestors(
     horseId: string,
@@ -227,7 +228,7 @@ export class HorseProfilesRepository {
 
 /**
  * Biểu thức SQL tính HorsePlacementStatus của một dòng ngựa, gắn với alias `horse` của query builder.
- * Cùng luật với placementStatusOf trong policies/horse.policy.ts; sửa một bên thì phải sửa bên kia.
+ * Cùng luật với placementStatusOf trong policies/horse.policy.ts.
  */
 const PLACEMENT_STATUS_SQL = `CASE
   WHEN horse.lifecycle_status = '${HorseLifecycleStatus.TRANSFERRED}' THEN '${HorsePlacementStatus.NOT_APPLICABLE}'

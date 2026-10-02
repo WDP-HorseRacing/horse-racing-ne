@@ -37,7 +37,7 @@ export class HorsePlacementsController {
   @ApiOperation({
     summary: 'Preview the consequences of changing the barn of a horse',
     description:
-      'Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt để hiện bảng xác nhận.',
+      'Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt.',
   })
   @ApiOkResponse({ type: HorseBarnPreviewResponseDto })
   previewBarnChange(
@@ -53,7 +53,7 @@ export class HorsePlacementsController {
   @ApiOperation({
     summary: 'Assign or change the barn of a horse',
     description:
-      'Chỉ Club Manager, bắt buộc lý do. Khu phải đang hoạt động, có Head Trainer và còn ô trống. Đổi khu thì ô cũ được trả về trống, ngựa vào "Chờ xếp ô" của khu mới, Groom giữ nguyên. Ngựa đã chuyển nhượng trả 409.',
+      'Chỉ Club Manager. Bắt buộc lý do khi đổi khu (ngựa đã có khu); xếp khu lần đầu thì bỏ trống được. Khu phải đang hoạt động, có Head Trainer và còn ô trống. Đổi khu thì ô cũ được trả về trống, ngựa vào "Chờ xếp ô" của khu mới, Groom giữ nguyên. Ngựa đã chuyển nhượng trả 409.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   assignBarn(

@@ -108,7 +108,7 @@ export class HorseBarnPreviewResponseDto {
   @ApiPropertyOptional({
     nullable: true,
     type: String,
-    description: 'Câu tóm tắt cho bảng xác nhận, null nếu allowed = false',
+    description: 'Câu tóm tắt hệ quả, null nếu allowed = false',
   })
   summary!: string | null;
 }
