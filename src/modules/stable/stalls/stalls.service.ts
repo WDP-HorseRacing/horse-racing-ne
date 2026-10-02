@@ -24,6 +24,7 @@ import { HorseEntity } from '../../horses/entities/horse.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { StallStatus } from '../constants/stall-status.enum';
 import { StallType } from '../constants/stall-type.enum';
+import { STABLE_AUDIT_FEATURE } from '../constants/stable-audit.constants';
 import {
   CreateStallDto,
   MoveHorseStallDto,
@@ -175,7 +176,7 @@ export class StallsService {
           entityId: stall.id,
           before: null,
           after: fields,
-          feature: 'F1.7',
+          feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
         });
         return stall;
       });
@@ -271,7 +272,7 @@ export class StallsService {
           entityId: stall.id,
           before: diff.before,
           after: diff.after,
-          feature: 'F1.7',
+          feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
         });
         return updated;
       });
@@ -328,7 +329,7 @@ export class StallsService {
           hasCamera: stall.hasCamera,
         },
         after: null,
-        feature: 'F1.7',
+        feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
       });
     });
   }
@@ -462,7 +463,7 @@ export class StallsService {
         actorId: callerId,
         action: AuditAction.CREATE,
         entityType: AuditEntityType.STALL_ASSIGNMENT,
-        feature: 'F1.7',
+        feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
         entityId: saved.id,
         before: null,
         after: {
@@ -542,7 +543,7 @@ export class StallsService {
       actorId: callerId,
       action: AuditAction.UPDATE,
       entityType: AuditEntityType.STALL_ASSIGNMENT,
-      feature: 'F1.7',
+      feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
       entityId: current.id,
       before: { horseId, stallId: current.stallId, endAt: null },
       after: { horseId, stallId: current.stallId, endAt: now },
@@ -668,7 +669,7 @@ export class StallsService {
       actorId: callerId,
       action: AuditAction.UPDATE,
       entityType: AuditEntityType.STALL_ASSIGNMENT,
-      feature: 'F1.7',
+      feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
       entityId: assignment.id,
       before: { ...snapshot, endAt: null },
       after: { ...snapshot, endAt: now },

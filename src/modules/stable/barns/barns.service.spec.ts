@@ -23,7 +23,6 @@ import { UserEntity } from '../../users/entities/user.entity';
 import { BarnEntity } from '../entities/barn.entity';
 import { StallEntity } from '../entities/stall.entity';
 import { StableAccessService } from '../shared/stable-access.service';
-import { StableSharedRepository } from '../shared/stable-shared.repository';
 import { BarnsService } from './barns.service';
 
 describe('BarnsService', () => {
@@ -74,15 +73,10 @@ describe('BarnsService', () => {
         work(manager),
       ),
     } as unknown as DataSource;
-    const stableRepository = new StableSharedRepository();
     service = new BarnsService(
       barnRepository as unknown as Repository<BarnEntity>,
       dataSource,
-      new StableAccessService(
-        new HorseAccessService(dataSource),
-        stableRepository,
-      ),
-      stableRepository,
+      new StableAccessService(new HorseAccessService(dataSource)),
       audit,
     );
   });

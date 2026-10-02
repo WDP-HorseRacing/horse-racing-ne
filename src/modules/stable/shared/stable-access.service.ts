@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { BarnEntity } from '../entities/barn.entity';
 import { StallEntity } from '../entities/stall.entity';
+import { StallStatus } from '../constants/stall-status.enum';
 import {
   assertBarnActive,
   assertHorseHasBarn,
@@ -15,7 +17,38 @@ import type {
   BarnStallCapacity,
   StableHorseOperation,
 } from '../types/stable.types';
-import { StableSharedRepository } from './stable-shared.repository';
+
+/**
+ * Đếm ô trống và ngựa chờ xếp ô của nhiều khu trong một câu query.
+ *
+ * - Ô trống: ô thuộc khu, chưa xóa, đang AVAILABLE và không có phân công đang mở
+ * - Ngựa chờ xếp ô: horses.barn_id = khu, chưa xóa, khác TRANSFERRED và không có phân công ô đang mở
+ */
+const BARN_STALL_CAPACITY_SQL = `SELECT b.id AS "barnId",
+       (SELECT COUNT(*)::int
+          FROM stalls s
+         WHERE s.barn_id = b.id
+           AND s.deleted_at IS NULL
+           AND s.status = $2
+           AND NOT EXISTS (
+                 SELECT 1
+                   FROM stall_assignments sa
+                  WHERE sa.stall_id = s.id
+                    AND sa.end_at IS NULL
+               )) AS "freeStallCount",
+       (SELECT COUNT(*)::int
+          FROM horses h
+         WHERE h.barn_id = b.id
+           AND h.deleted_at IS NULL
+           AND h.lifecycle_status <> $3
+           AND NOT EXISTS (
+                 SELECT 1
+                   FROM stall_assignments sa
+                  WHERE sa.horse_id = h.id
+                    AND sa.end_at IS NULL
+               )) AS "pendingStallHorseCount"
+  FROM barns b
+ WHERE b.id = ANY($1::uuid[])`;
 
 /**
  * Con ngựa đã lock và chắc chắn đã được xếp khu
@@ -32,10 +65,7 @@ export type HorseInBarn = HorseEntity & { barnId: string };
  */
 @Injectable()
 export class StableAccessService {
-  constructor(
-    private readonly horseAccess: HorseAccessService,
-    private readonly stableRepository: StableSharedRepository,
-  ) {}
+  constructor(private readonly horseAccess: HorseAccessService) {}
 
   /**
    * Lock con ngựa và kiểm tra Head Trainer được thao tác trên nó (xếp ô, giao hoặc đổi groom)
@@ -137,6 +167,35 @@ export class StableAccessService {
   }
 
   /**
+   * Đếm số ô trống và số ngựa chờ xếp ô của từng khu chuồng
+   *
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param barnIds UUID các khu cần đếm
+   * @returns Promise trả về Map từ UUID khu sang số ô trống và số ngựa chờ xếp ô; khu không tồn tại thì không có trong Map
+   */
+  async countStallCapacity(
+    manager: EntityManager,
+    barnIds: string[],
+  ): Promise<Map<string, BarnStallCapacity>> {
+    if (barnIds.length === 0) return new Map();
+    const rows: ({ barnId: string } & BarnStallCapacity)[] =
+      await manager.query(BARN_STALL_CAPACITY_SQL, [
+        barnIds,
+        StallStatus.AVAILABLE,
+        HorseLifecycleStatus.TRANSFERRED,
+      ]);
+    return new Map(
+      rows.map((row) => [
+        row.barnId,
+        {
+          freeStallCount: row.freeStallCount,
+          pendingStallHorseCount: row.pendingStallHorseCount,
+        },
+      ]),
+    );
+  }
+
+  /**
    * Đếm số ô trống và số ngựa chờ xếp ô của một khu chuồng
    *
    * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
@@ -148,9 +207,8 @@ export class StableAccessService {
     barnId: string,
   ): Promise<BarnStallCapacity> {
     return (
-      (await this.stableRepository.countStallCapacity(manager, [barnId])).get(
-        barnId,
-      ) ?? EMPTY_CAPACITY
+      (await this.countStallCapacity(manager, [barnId])).get(barnId) ??
+      EMPTY_CAPACITY
     );
   }
 

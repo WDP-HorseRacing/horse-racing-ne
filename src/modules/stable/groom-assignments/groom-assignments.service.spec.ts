@@ -28,7 +28,6 @@ import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../constants/stable-events.constants';
 import { StableAccessService } from '../shared/stable-access.service';
-import { StableSharedRepository } from '../shared/stable-shared.repository';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { GroomAssignmentsService } from './groom-assignments.service';
 
@@ -152,7 +151,7 @@ describe('GroomAssignmentsService', () => {
       dataSource,
       audit,
       events as unknown as DomainEventPublisher,
-      new StableAccessService(horseAccess, new StableSharedRepository()),
+      new StableAccessService(horseAccess),
       horseAccess,
       new DailyChecklistsService(),
       training as unknown as TrainingOperationsFacade,

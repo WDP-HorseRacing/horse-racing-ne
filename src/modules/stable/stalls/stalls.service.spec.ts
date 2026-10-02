@@ -26,7 +26,6 @@ import { BarnEntity } from '../entities/barn.entity';
 import { StallAssignmentEntity } from '../entities/stall-assignment.entity';
 import { StallEntity } from '../entities/stall.entity';
 import { StableAccessService } from '../shared/stable-access.service';
-import { StableSharedRepository } from '../shared/stable-shared.repository';
 import { StallsService } from './stalls.service';
 
 type Row = Record<string, unknown> | null;
@@ -172,10 +171,7 @@ describe('StallsService', () => {
       stallAssignmentRepository as unknown as Repository<StallAssignmentEntity>,
       dataSource,
       audit,
-      new StableAccessService(
-        new HorseAccessService(dataSource),
-        new StableSharedRepository(),
-      ),
+      new StableAccessService(new HorseAccessService(dataSource)),
     );
   });
 

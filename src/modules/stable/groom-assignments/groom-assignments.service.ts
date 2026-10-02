@@ -26,6 +26,7 @@ import {
   toGroomWorkloadResponse,
 } from '../mappers/groom-assignment.mapper';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../constants/stable-events.constants';
+import { STABLE_AUDIT_FEATURE } from '../constants/stable-audit.constants';
 import { assertAssignableGroom } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
 import type { GroomAssignmentChangedEvent } from '../types/stable-events.types';
@@ -278,7 +279,7 @@ export class GroomAssignmentsService {
         movedChecklistIds: change.movedChecklistIds,
         movedParticipantIds: change.movedParticipantIds,
       },
-      feature: 'F1.7',
+      feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
     });
   }
 

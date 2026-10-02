@@ -16,6 +16,7 @@ import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { BarnStatus } from '../constants/barn-status.enum';
+import { STABLE_AUDIT_FEATURE } from '../constants/stable-audit.constants';
 import {
   BarnListItemDto,
   BarnResponseDto,
@@ -38,7 +39,6 @@ import {
   remainingStallCount,
 } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
-import { StableSharedRepository } from '../shared/stable-shared.repository';
 
 @Injectable()
 export class BarnsService {
@@ -47,7 +47,6 @@ export class BarnsService {
     private readonly barnRepository: Repository<BarnEntity>,
     private readonly dataSource: DataSource,
     private readonly access: StableAccessService,
-    private readonly stableRepository: StableSharedRepository,
     private readonly auditService: AuditService,
   ) {}
 
@@ -68,7 +67,7 @@ export class BarnsService {
       relations: { headTrainer: true },
       order: { name: 'ASC' },
     });
-    const capacities = await this.stableRepository.countStallCapacity(
+    const capacities = await this.access.countStallCapacity(
       this.dataSource.manager,
       barns.map((barn) => barn.id),
     );
@@ -134,7 +133,7 @@ export class BarnsService {
           entityId: barn.id,
           before: null,
           after: fields,
-          feature: 'F1.6',
+          feature: STABLE_AUDIT_FEATURE.BARN,
         });
         return barn;
       });
@@ -216,7 +215,7 @@ export class BarnsService {
           entityId: barn.id,
           before: diff.before,
           after: diff.after,
-          feature: 'F1.6',
+          feature: STABLE_AUDIT_FEATURE.BARN,
         });
         return updated;
       });
@@ -262,7 +261,7 @@ export class BarnsService {
           headTrainerId: barn.headTrainerId,
         },
         after: null,
-        feature: 'F1.6',
+        feature: STABLE_AUDIT_FEATURE.BARN,
       });
     });
   }
@@ -274,7 +273,7 @@ export class BarnsService {
    * - Lock row khu trước rồi mới đếm.
    * - Khu phải tồn tại, chưa xóa, đang ACTIVE, đã có Head Trainer phụ trách và còn ít nhất một chỗ nhận ngựa.
    * - Head Trainer phụ trách phải là user chưa xóa, đang ACTIVE và còn vai trò HEAD_TRAINER.
-   * - Số chỗ còn nhận = ô trống − ngựa chờ xếp ô trong khu (xem `StableSharedRepository.countStallCapacity`).
+   * - Số chỗ còn nhận = ô trống − ngựa chờ xếp ô trong khu (xem `StableAccessService.countStallCapacity`).
    *
    * @param manager EntityManager của transaction đang chạy
    * @param barnId UUID của khu chuồng
