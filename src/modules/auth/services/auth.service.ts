@@ -4,12 +4,15 @@ import { KeycloakConfig } from '../../../common/infrastructure/keycloak/keycloak
 import { KeycloakService } from '../../../common/infrastructure/keycloak/keycloak.service';
 import { KeycloakTokenService } from '../../../common/infrastructure/keycloak/token.service';
 import type { KeycloakIdentityProvider } from '../../../common/infrastructure/keycloak/types/oidc';
-import type { KeycloakTokenResponse } from '../../../common/infrastructure/keycloak/types/token';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
 import { ProvisioningService } from '../../users/services/provisioning.service';
 import { AuthTokensResponseDto } from '../dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from '../dto/current-user.response.dto';
+import {
+  toAuthTokensResponse,
+  toCurrentUserResponse,
+} from '../mappers/auth.mapper';
 @Injectable()
 export class AuthService {
   constructor(
@@ -23,7 +26,7 @@ export class AuthService {
 
   async login(email: string, password: string): Promise<AuthTokensResponseDto> {
     return this.issueSession(
-      this.toTokenResponse(
+      toAuthTokensResponse(
         await this.keycloakTokens.exchangePasswordForToken({
           username: email,
           password,
@@ -33,7 +36,7 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string): Promise<AuthTokensResponseDto> {
-    return this.toTokenResponse(
+    return toAuthTokensResponse(
       await this.keycloakTokens.exchangeRefreshTokenForToken({ refreshToken }),
     );
   }
@@ -44,14 +47,7 @@ export class AuthService {
 
   async me(actor: Actor): Promise<CurrentUserResponseDto> {
     const user = await this.provisioning.requireProvisionedUser(actor);
-    return {
-      userId: user.id,
-      role: user.role,
-      status: user.status,
-      email: user.email,
-      fullName: user.fullName,
-      roles: actor.roles,
-    };
+    return toCurrentUserResponse(user, actor);
   }
 
   async changePassword(
@@ -89,7 +85,7 @@ export class AuthService {
     const { codeVerifier, redirectUri } =
       await this.oidcRedirect.consumePkceBundle(provider, state);
     return this.issueSession(
-      this.toTokenResponse(
+      toAuthTokensResponse(
         await this.keycloakTokens.exchangeCodeForToken({
           code,
           redirectUri,
@@ -109,16 +105,5 @@ export class AuthService {
     const claims = await this.keycloak.verifyToken(tokens.accessToken);
     await this.provisioning.requireProvisionedUser(claims);
     return tokens;
-  }
-
-  private toTokenResponse(
-    tokens: KeycloakTokenResponse,
-  ): AuthTokensResponseDto {
-    return {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in,
-      tokenType: tokens.token_type,
-    };
   }
 }
