@@ -49,7 +49,6 @@ import {
   measurementAlerts,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import type {
   ExamMeasurementInput,
   HorseMeasurementAlertEvent,
@@ -69,7 +68,6 @@ export class HorseMeasurementsService {
   constructor(
     @InjectRepository(HorseMeasurementEntity)
     private readonly measurements: Repository<HorseMeasurementEntity>,
-    private readonly horses: HorsesSharedRepository,
     private readonly access: HorseAccessService,
     private readonly dataSource: DataSource,
     private readonly events: DomainEventPublisher,
@@ -569,7 +567,7 @@ export class HorseMeasurementsService {
         ? this.access.isHorseInTrainerBarn(manager, horseId, callerId)
         : Promise.resolve(false),
       this.access.hasRole(actor, UserRole.GROOM)
-        ? this.horses.isGroomAssigned(horseId, callerId, manager)
+        ? this.access.isGroomAssigned(horseId, callerId, manager)
         : Promise.resolve(false),
     ]);
     if (

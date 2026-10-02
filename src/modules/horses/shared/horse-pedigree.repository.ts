@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager, IsNull, Not } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { PEDIGREE_LOCK_KEY } from '../constants/horse.constants';
-import { HorseEntity } from '../entities/horse.entity';
-import type { ParentUsage } from '../types/horse.types';
 
 /**
- * Các query phả hệ chạy trong transaction đang giữ khóa phả hệ. Dùng chung cho tạo/sửa hồ sơ (horse-profiles) và xóa hồ sơ (horse-deletions).
+ * Các query phả hệ phức tạp (advisory lock, CTE đệ quy) chạy trong transaction đang giữ khóa phả hệ. Dùng chung cho tạo/sửa hồ sơ (horse-profiles) và xóa hồ sơ (horse-deletions).
  */
 @Injectable()
 export class HorsePedigreeRepository {
@@ -23,48 +21,6 @@ export class HorsePedigreeRepository {
     await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
       PEDIGREE_LOCK_KEY,
     ]);
-  }
-
-  /**
-   * Kiểm tra con ngựa đang được tham chiếu làm cha hoặc mẹ của ngựa khác, tính cả ngựa con đã xóa hồ sơ
-   *
-   * @param manager EntityManager của transaction đang giữ khóa phả hệ
-   * @param horseId UUID của ngựa
-   * @returns Promise trả về cờ đang là cha (asSire) và đang là mẹ (asDam)
-   */
-  async parentUsage(
-    manager: EntityManager,
-    horseId: string,
-  ): Promise<ParentUsage> {
-    const horses = manager.getRepository(HorseEntity);
-    const [asSire, asDam] = await Promise.all([
-      horses.exists({ where: { sireId: horseId }, withDeleted: true }),
-      horses.exists({ where: { damId: horseId }, withDeleted: true }),
-    ]);
-    return { asSire, asDam };
-  }
-
-  /**
-   * Lấy ngày sinh sớm nhất trong các ngựa con của một con ngựa, tính cả con đã xóa hồ sơ
-   *
-   * @param manager EntityManager của transaction đang giữ khóa phả hệ
-   * @param horseId UUID của ngựa cha/mẹ
-   * @returns Promise trả về ngày sinh sớm nhất (YYYY-MM-DD), null nếu không có con nào có ngày sinh
-   */
-  async earliestChildBirthDate(
-    manager: EntityManager,
-    horseId: string,
-  ): Promise<string | null> {
-    const child = await manager.getRepository(HorseEntity).findOne({
-      select: { id: true, dateOfBirth: true },
-      where: [
-        { sireId: horseId, dateOfBirth: Not(IsNull()) },
-        { damId: horseId, dateOfBirth: Not(IsNull()) },
-      ],
-      order: { dateOfBirth: 'ASC' },
-      withDeleted: true,
-    });
-    return child?.dateOfBirth ?? null;
   }
 
   /**

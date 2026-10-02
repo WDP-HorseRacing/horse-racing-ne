@@ -3,7 +3,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
+import { EntityManager, IsNull, Not } from 'typeorm';
 import { HorseEntity } from '../entities/horse.entity';
 import {
   assertBornBeforeChildren,
@@ -12,8 +12,8 @@ import {
   assertParentProfiles,
 } from '../policies/horse.policy';
 import type { ChildProfile, ParentUsage } from '../types/horse.types';
+import { HorseAccessService } from './horse-access.service';
 import { HorsePedigreeRepository } from './horse-pedigree.repository';
-import { HorsesSharedRepository } from './horses-shared.repository';
 
 /**
  * Nhãn của cha trong thông báo lỗi
@@ -34,7 +34,7 @@ const DAM_LABEL = 'Dam';
 export class HorsePedigreeService {
   constructor(
     private readonly pedigree: HorsePedigreeRepository,
-    private readonly horses: HorsesSharedRepository,
+    private readonly access: HorseAccessService,
   ) {}
 
   /**
@@ -54,8 +54,16 @@ export class HorsePedigreeService {
    * @param horseId UUID của ngựa
    * @returns Promise trả về cờ đang là cha (asSire) và đang là mẹ (asDam)
    */
-  parentUsage(manager: EntityManager, horseId: string): Promise<ParentUsage> {
-    return this.pedigree.parentUsage(manager, horseId);
+  async parentUsage(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<ParentUsage> {
+    const horses = manager.getRepository(HorseEntity);
+    const [asSire, asDam] = await Promise.all([
+      horses.exists({ where: { sireId: horseId }, withDeleted: true }),
+      horses.exists({ where: { damId: horseId }, withDeleted: true }),
+    ]);
+    return { asSire, asDam };
   }
 
   /**
@@ -119,7 +127,7 @@ export class HorsePedigreeService {
   ): Promise<void> {
     if (changes.gender) {
       assertGenderKeepsPedigree(
-        await this.pedigree.parentUsage(manager, horse.id),
+        await this.parentUsage(manager, horse.id),
         changes.gender,
       );
     }
@@ -143,9 +151,32 @@ export class HorsePedigreeService {
     if (changes.dateOfBirth) {
       assertBornBeforeChildren(
         changes.dateOfBirth,
-        await this.pedigree.earliestChildBirthDate(manager, horse.id),
+        await this.earliestChildBirthDate(manager, horse.id),
       );
     }
+  }
+
+  /**
+   * Lấy ngày sinh sớm nhất trong các ngựa con của một con ngựa, tính cả con đã xóa hồ sơ
+   *
+   * @param manager EntityManager của transaction đang giữ khóa phả hệ
+   * @param horseId UUID của ngựa cha/mẹ
+   * @returns Promise trả về ngày sinh sớm nhất (YYYY-MM-DD), null nếu không có con nào có ngày sinh
+   */
+  private async earliestChildBirthDate(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<string | null> {
+    const child = await manager.getRepository(HorseEntity).findOne({
+      select: { id: true, dateOfBirth: true },
+      where: [
+        { sireId: horseId, dateOfBirth: Not(IsNull()) },
+        { damId: horseId, dateOfBirth: Not(IsNull()) },
+      ],
+      order: { dateOfBirth: 'ASC' },
+      withDeleted: true,
+    });
+    return child?.dateOfBirth ?? null;
   }
 
   /**
@@ -196,7 +227,7 @@ export class HorsePedigreeService {
     parentId: string | null,
   ): Promise<string | null> {
     if (!parentId) return null;
-    return (await this.horses.findById(parentId, manager)) ? parentId : null;
+    return (await this.access.findById(parentId, manager)) ? parentId : null;
   }
 
   /**
@@ -213,7 +244,7 @@ export class HorsePedigreeService {
     id: string,
     label: string,
   ): Promise<HorseEntity> {
-    const parent = await this.horses.findById(id, manager);
+    const parent = await this.access.findById(id, manager);
     if (!parent) {
       throw new BadRequestException(`${label} không tồn tại`);
     }

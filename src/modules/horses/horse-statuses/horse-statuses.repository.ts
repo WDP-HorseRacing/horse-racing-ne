@@ -14,7 +14,7 @@ export class HorseStatusesRepository {
    *
    * - Số lớp ngựa đang học (enrollment ACTIVE) và đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra
    * - Ô chuồng, groom và khu hiện tại
-   * - Lệnh khóa huấn luyện đang ACTIVE không đếm ở đây, nơi gọi lấy qua HorsesSharedRepository.hasActiveTrainingLock
+   * - Lệnh khóa huấn luyện đang ACTIVE không đếm ở đây, nơi gọi lấy qua HorseAccessService.hasActiveTrainingLock
    *
    * @param manager EntityManager dùng để query
    * @param horseId UUID của ngựa

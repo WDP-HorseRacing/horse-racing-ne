@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import { BarnEntity } from '../../stable/entities/barn.entity';
 import { HORSE_BUSINESS_TABLES } from '../constants/horse.constants';
 
 @Injectable()
@@ -33,24 +32,5 @@ export class HorseDeletionsRepository {
     return tables
       .filter((table) => rows[0]?.[table] === true)
       .map((table) => HORSE_BUSINESS_TABLES[table]);
-  }
-
-  /**
-   * Lấy tên khu theo id, kể cả khu đã xóa mềm
-   *
-   * @param manager EntityManager dùng để query
-   * @param barnId UUID của khu
-   * @returns Promise trả về tên khu, hoặc null nếu không có khu đó
-   */
-  async barnName(
-    manager: EntityManager,
-    barnId: string,
-  ): Promise<string | null> {
-    const barn = await manager.findOne(BarnEntity, {
-      select: { name: true },
-      where: { id: barnId },
-      withDeleted: true,
-    });
-    return barn?.name ?? null;
   }
 }

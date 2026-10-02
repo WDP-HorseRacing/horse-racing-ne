@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -18,8 +18,8 @@ import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
   ExamRequestSource,
   ExamRequestStatus,
@@ -52,7 +52,6 @@ export class ExamRequestsService {
     private readonly requests: Repository<MedicalExamRequestEntity>,
     private readonly access: MedicalAccessService,
     private readonly horseAccess: HorseAccessService,
-    private readonly horses: HorsesSharedRepository,
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
   ) {}
@@ -133,7 +132,7 @@ export class ExamRequestsService {
       qb.andWhere('request.urgent = :urgent', { urgent: query.urgent });
     }
     if (this.isGroomOnly(actor)) {
-      const horseIds = await this.horses.assignedHorseIds(caller.id);
+      const horseIds = await this.assignedHorseIds(caller.id);
       if (horseIds.length === 0) {
         return new PaginationResponseDto([], 0, query.page, query.limit);
       }
@@ -170,7 +169,7 @@ export class ExamRequestsService {
     const horse = await this.horseAccess.findReadableHorseForActor(actor, horseId);
     if (this.isGroomOnly(actor)) {
       const caller = await this.horseAccess.currentUser(actor);
-      if (!(await this.horses.isGroomAssigned(horseId, caller.id))) {
+      if (!(await this.horseAccess.isGroomAssigned(horseId, caller.id))) {
         throw new ForbiddenException(
           'Bạn chỉ xem yêu cầu khám của ngựa được phân công',
         );
@@ -483,7 +482,7 @@ export class ExamRequestsService {
         ? this.horseAccess.isHorseInTrainerBarn(manager, horseId, callerId)
         : Promise.resolve(false),
       actor.roles.includes(UserRole.GROOM)
-        ? this.horses.isGroomAssigned(horseId, callerId, manager)
+        ? this.horseAccess.isGroomAssigned(horseId, callerId, manager)
         : Promise.resolve(false),
     ]);
     return { isInTrainerBarn, isAssignedGroom };
@@ -537,6 +536,24 @@ export class ExamRequestsService {
       where: { id: requestId },
       lock: { mode: 'pessimistic_write' },
     });
+  }
+
+  /**
+   * Lấy các con ngựa groom đang được giao chăm (dòng groom_assignments còn mở, bảng của module stable, chỉ đọc)
+   *
+   * @param groomId UUID của groom
+   * @param manager EntityManager của transaction đang chạy, bỏ trống khi không ở trong transaction
+   * @returns Promise trả về danh sách UUID ngựa
+   */
+  private async assignedHorseIds(
+    groomId: string,
+    manager?: EntityManager,
+  ): Promise<string[]> {
+    const rows = await (manager ?? this.dataSource.manager).find(
+      GroomAssignmentEntity,
+      { where: { groomId, endAt: IsNull() }, select: { horseId: true } },
+    );
+    return rows.map((row) => row.horseId);
   }
 }
 

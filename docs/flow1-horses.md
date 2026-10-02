@@ -24,9 +24,8 @@ Module Horses được chia theo capability:
 - `horse-placements`: xếp và đổi khu chuồng (F1.6).
 - `horse-measurements`: ghi, xem, xóa chỉ số đo và sinh cảnh báo.
 - `shared` (`HorsesSharedModule`, module khác cũng import): phần dùng chung.
-  - `HorseAccessService`: lấy người gọi; tìm ngựa theo phạm vi xem (`findReadableHorseForActor`, `findReadableHorse`, 404); tìm/khóa ngựa trước khi ghi (`lockWritableHorse`, `findWritableHorse`: hồ sơ đã xóa trả 403 cho CM, 404 cho role khác); phạm vi HT theo khu (`isHorseInTrainerBarn`, `assertTrainerBarn`); chặn ngựa `TRANSFERRED`.
+  - `HorseAccessService`: lấy người gọi; tìm ngựa theo phạm vi xem (`findReadableHorseForActor`, `findReadableHorse`, 404); tìm/khóa ngựa trước khi ghi (`lockWritableHorse`, `findWritableHorse`: hồ sơ đã xóa trả 403 cho CM, 404 cho role khác); phạm vi HT theo khu (`isHorseInTrainerBarn`, `assertTrainerBarn`); chặn ngựa `TRANSFERRED`; các câu đọc dùng chung: tìm/khóa ngựa theo id, training lock, Groom được giao, khóa và kiểm tài khoản chủ. Chỉ ĐỌC bảng module khác; ghi bảng module khác luôn qua hàm module đó export.
   - `HorsePedigreeService` + `HorsePedigreeRepository`: khóa phả hệ, kiểm cha mẹ, vòng lặp, đổi giới tính và ngày sinh (tính cả con đã xóa hồ sơ).
-  - `HorsesSharedRepository`: tìm ngựa, row lock, training lock, Groom được giao, chủ còn hoạt động, chỉ số mới nhất. Chỉ ĐỌC bảng module khác; ghi bảng module khác luôn qua hàm module đó export.
 
 `HorsesModule` chỉ lắp ráp năm feature module, không export gì. Các rule thuần túy (bảng chuyển trạng thái, cascade, câu tóm tắt hệ quả, eligibility, permission, field được sửa, luật phả hệ, luật đo, trạng thái xếp chỗ) nằm trong `policies/horse.policy.ts` dưới dạng hàm `assert*` ném exception hoặc hàm tính trả giá trị. Hằng số nằm trong `constants/horse.constants.ts`. Response luôn qua mapper trong `mappers/`. DTO chia theo feature trong `dto/` và import qua `dto/index.ts`.
 

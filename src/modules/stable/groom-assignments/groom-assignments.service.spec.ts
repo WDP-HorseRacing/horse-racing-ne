@@ -13,7 +13,6 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { UserEntity } from '../../users/entities/user.entity';
 import { BarnStatus } from '../constants/barn-status.enum';
 import { DailyChecklistsService } from '../shared/daily-checklists.service';
@@ -23,6 +22,7 @@ import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../constants/stable-events.constants';
 import { StableAccessService } from '../shared/stable-access.service';
+import { StableSharedRepository } from '../shared/stable-shared.repository';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import { GroomAssignmentsService } from './groom-assignments.service';
 
@@ -138,15 +138,12 @@ describe('GroomAssignmentsService', () => {
       work(manager),
     );
     const dataSource = { manager, transaction } as unknown as DataSource;
-    const horseAccess = new HorseAccessService(
-      dataSource,
-      new HorsesSharedRepository(dataSource),
-    );
+    const horseAccess = new HorseAccessService(dataSource);
     service = new GroomAssignmentsService(
       dataSource,
       audit,
       events as unknown as DomainEventPublisher,
-      new StableAccessService(horseAccess),
+      new StableAccessService(horseAccess, new StableSharedRepository()),
       horseAccess,
       new DailyChecklistsService(),
       training as unknown as TrainingOperationsFacade,

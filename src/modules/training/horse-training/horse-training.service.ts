@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { DataSource, In } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
 import {
   HorseTrainingClassResponseDto,
   HorseTrainingSessionQueryDto,
   HorseTrainingSessionResponseDto,
 } from '../dto/horse-training.dto';
+import { TrialResultEntity } from '../entities/trial-result.entity';
 import {
   toHorseTrainingClassResponse,
   toHorseTrainingSessionResponse,
@@ -68,6 +71,7 @@ export class HorseTrainingService {
   constructor(
     private readonly horseAccess: HorseAccessService,
     private readonly repository: HorseTrainingRepository,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -118,8 +122,8 @@ export class HorseTrainingService {
     });
     const participantIds = rows.map((row) => row.participantId);
     const [trials, evaluations] = await Promise.all([
-      this.repository.listTrialResults(participantIds),
-      this.repository.listEvaluations(participantIds),
+      this.listTrialResults(participantIds),
+      this.listEvaluations(participantIds),
     ]);
     const trialsByParticipant = groupTrialsByParticipant(trials);
     const evaluationByParticipant = pickEvaluationByParticipant(evaluations);
@@ -135,5 +139,55 @@ export class HorseTrainingService {
       query.page,
       query.limit,
     );
+  }
+
+  /**
+   * Lấy kết quả time trial của các lượt tập, theo thứ tự lần chạy
+   *
+   * @param participantIds UUID các lượt tập cần lấy kết quả
+   * @returns Promise trả về các lần chạy, rỗng nếu không truyền lượt nào
+   */
+  private async listTrialResults(
+    participantIds: string[],
+  ): Promise<HorseTrainingTrialRow[]> {
+    if (participantIds.length === 0) return [];
+    const trials = await this.dataSource.manager.find(TrialResultEntity, {
+      where: { sessionParticipantId: In(participantIds) },
+      order: { sessionParticipantId: 'ASC', attemptNo: 'ASC' },
+    });
+    return trials.map((trial) => ({
+      participantId: trial.sessionParticipantId,
+      attemptNo: trial.attemptNo,
+      elapsedMs: trial.elapsedMs,
+      notes: trial.notes,
+      recordedAt: trial.recordedAt,
+    }));
+  }
+
+  /**
+   * Lấy đánh giá của các lượt tập
+   *
+   * @param participantIds UUID các lượt tập cần lấy đánh giá
+   * @returns Promise trả về đánh giá kèm tên người đánh giá, rỗng nếu không truyền lượt nào
+   */
+  private async listEvaluations(
+    participantIds: string[],
+  ): Promise<HorseTrainingEvaluationRow[]> {
+    if (participantIds.length === 0) return [];
+    const evaluations = await this.dataSource.manager.find(
+      PerformanceEvaluationEntity,
+      {
+        where: { sessionParticipantId: In(participantIds) },
+        relations: { evaluator: true },
+        withDeleted: true,
+      },
+    );
+    return evaluations.map((evaluation) => ({
+      participantId: evaluation.sessionParticipantId,
+      score: evaluation.score,
+      comment: evaluation.comment,
+      evaluatorName: evaluation.evaluator?.fullName ?? null,
+      createdAt: evaluation.createdAt,
+    }));
   }
 }

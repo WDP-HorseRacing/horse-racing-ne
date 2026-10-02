@@ -17,7 +17,6 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { BarnStatus } from '../constants/barn-status.enum';
 import { StallStatus } from '../constants/stall-status.enum';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -75,16 +74,15 @@ describe('BarnsService', () => {
         work(manager),
       ),
     } as unknown as DataSource;
+    const stableRepository = new StableSharedRepository();
     service = new BarnsService(
       barnRepository as unknown as Repository<BarnEntity>,
       dataSource,
       new StableAccessService(
-        new HorseAccessService(
-          dataSource,
-          new HorsesSharedRepository(dataSource),
-        ),
+        new HorseAccessService(dataSource),
+        stableRepository,
       ),
-      new StableSharedRepository(),
+      stableRepository,
       audit,
     );
   });

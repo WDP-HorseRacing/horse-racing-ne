@@ -3,7 +3,6 @@ import { Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
@@ -54,7 +53,6 @@ describe('MedicalRecordsService.listRecords', () => {
       records as unknown as Repository<MedicalRecordEntity>,
       prescriptions as unknown as Repository<PrescriptionEntity>,
       injuries as unknown as Repository<InjuryMarkerEntity>,
-      {} as HorsesSharedRepository,
     );
   });
 
@@ -169,8 +167,11 @@ describe('MedicalRecordsService.getCareInstructions', () => {
   let latest: Record<string, unknown> | null;
   let groomAssigned: boolean;
   let records: { findOne: jest.Mock };
-  let horseAccess: { findReadableHorseForActor: jest.Mock; currentUser: jest.Mock };
-  let horses: { isGroomAssigned: jest.Mock };
+  let horseAccess: {
+    findReadableHorseForActor: jest.Mock;
+    currentUser: jest.Mock;
+    isGroomAssigned: jest.Mock;
+  };
   let service: MedicalRecordsService;
 
   beforeEach(() => {
@@ -185,8 +186,6 @@ describe('MedicalRecordsService.getCareInstructions', () => {
     horseAccess = {
       findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }),
       currentUser: jest.fn().mockResolvedValue({ id: 'groom-1' }),
-    };
-    horses = {
       isGroomAssigned: jest.fn(() => Promise.resolve(groomAssigned)),
     };
     service = new MedicalRecordsService(
@@ -194,7 +193,6 @@ describe('MedicalRecordsService.getCareInstructions', () => {
       records as unknown as Repository<MedicalRecordEntity>,
       {} as Repository<PrescriptionEntity>,
       {} as Repository<InjuryMarkerEntity>,
-      horses as unknown as HorsesSharedRepository,
     );
   });
 
@@ -214,7 +212,7 @@ describe('MedicalRecordsService.getCareInstructions', () => {
       where: { horseId: 'h1', voidedAt: expect.anything() as unknown },
       order: { examDate: 'DESC' },
     });
-    expect(horses.isGroomAssigned).toHaveBeenCalledWith('h1', 'groom-1');
+    expect(horseAccess.isGroomAssigned).toHaveBeenCalledWith('h1', 'groom-1');
   });
 
   it('rejects a groom who does not look after the horse with 403', async () => {
@@ -247,6 +245,6 @@ describe('MedicalRecordsService.getCareInstructions', () => {
 
   it('does not check the groom assignment for a head trainer', async () => {
     await service.getCareInstructions(actorWith(UserRole.HEAD_TRAINER), 'h1');
-    expect(horses.isGroomAssigned).not.toHaveBeenCalled();
+    expect(horseAccess.isGroomAssigned).not.toHaveBeenCalled();
   });
 });

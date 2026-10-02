@@ -1,8 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
+import { DataSource, In } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../../common/enums/role.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
 import { HorseTrainingSessionQueryDto } from '../dto/horse-training.dto';
+import { TrialResultEntity } from '../entities/trial-result.entity';
 import { HorseTrainingSessionWhen } from '../enums/horse-training-session-when.enum';
 import { HorseTrainingRepository } from './horse-training.repository';
 import { HorseTrainingService } from './horse-training.service';
@@ -37,9 +40,10 @@ describe('HorseTrainingService', () => {
   let repository: {
     listClasses: jest.Mock;
     listSessions: jest.Mock;
-    listTrialResults: jest.Mock;
-    listEvaluations: jest.Mock;
   };
+  let trialRows: object[];
+  let evaluationRows: object[];
+  let find: jest.Mock;
   let service: HorseTrainingService;
 
   const query = (patch: Partial<HorseTrainingSessionQueryDto> = {}) =>
@@ -50,12 +54,18 @@ describe('HorseTrainingService', () => {
     repository = {
       listClasses: jest.fn().mockResolvedValue([]),
       listSessions: jest.fn().mockResolvedValue({ rows: [], total: 0 }),
-      listTrialResults: jest.fn().mockResolvedValue([]),
-      listEvaluations: jest.fn().mockResolvedValue([]),
     };
+    trialRows = [];
+    evaluationRows = [];
+    find = jest.fn((entity: unknown) =>
+      Promise.resolve(
+        entity === TrialResultEntity ? trialRows : evaluationRows,
+      ),
+    );
     service = new HorseTrainingService(
       horseAccess as unknown as HorseAccessService,
       repository as unknown as HorseTrainingRepository,
+      { manager: { find } } as unknown as DataSource,
     );
   });
 
@@ -70,6 +80,14 @@ describe('HorseTrainingService', () => {
     );
     expect(repository.listClasses).not.toHaveBeenCalled();
     expect(repository.listSessions).not.toHaveBeenCalled();
+    expect(find).not.toHaveBeenCalled();
+  });
+
+  it('skips the trial and evaluation reads when the page has no session', async () => {
+    const page = await service.listSessions(actor, 'h1', query());
+
+    expect(page.items).toEqual([]);
+    expect(find).not.toHaveBeenCalled();
   });
 
   it('checks the caller scope with the shared horse access rules', async () => {
@@ -104,19 +122,22 @@ describe('HorseTrainingService', () => {
       rows: [sessionRow('p1'), sessionRow('p2')],
       total: 25,
     });
-    repository.listTrialResults.mockResolvedValue([
+    trialRows = [
       {
-        participantId: 'p1',
+        sessionParticipantId: 'p1',
         attemptNo: 1,
         elapsedMs: '61000',
         notes: 'Xuất phát chậm',
         recordedAt: new Date('2026-10-01T08:30:00Z'),
       },
-    ]);
+    ];
 
     const page = await service.listSessions(actor, 'h1', query());
 
-    expect(repository.listTrialResults).toHaveBeenCalledWith(['p1', 'p2']);
+    expect(find).toHaveBeenCalledWith(TrialResultEntity, {
+      where: { sessionParticipantId: In(['p1', 'p2']) },
+      order: { sessionParticipantId: 'ASC', attemptNo: 'ASC' },
+    });
     expect(page.items[0].trialResults).toEqual([
       {
         attemptNo: 1,
@@ -134,19 +155,23 @@ describe('HorseTrainingService', () => {
       rows: [sessionRow('p1'), sessionRow('p2')],
       total: 2,
     });
-    repository.listEvaluations.mockResolvedValue([
+    evaluationRows = [
       {
-        participantId: 'p2',
+        sessionParticipantId: 'p2',
         score: 8,
         comment: 'Tốc độ ổn định',
-        evaluatorName: 'HT Nam',
+        evaluator: { fullName: 'HT Nam' },
         createdAt: new Date('2026-10-01T10:00:00Z'),
       },
-    ]);
+    ];
 
     const page = await service.listSessions(actor, 'h1', query());
 
-    expect(repository.listEvaluations).toHaveBeenCalledWith(['p1', 'p2']);
+    expect(find).toHaveBeenCalledWith(PerformanceEvaluationEntity, {
+      where: { sessionParticipantId: In(['p1', 'p2']) },
+      relations: { evaluator: true },
+      withDeleted: true,
+    });
     expect(page.items[0].evaluation).toBeNull();
     expect(page.items[1].evaluation).toEqual({
       score: 8,
@@ -162,29 +187,26 @@ describe('HorseTrainingService', () => {
       total: 2,
     });
     const trial = (participantId: string, attemptNo: number) => ({
-      participantId,
+      sessionParticipantId: participantId,
       attemptNo,
       elapsedMs: `${60000 + attemptNo}`,
       notes: null,
       recordedAt: new Date('2026-10-01T08:30:00Z'),
     });
-    repository.listTrialResults.mockResolvedValue([
+    trialRows = [
       trial('p2', 1),
       trial('p1', 2),
       trial('p2', 3),
       trial('p1', 1),
-    ]);
+    ];
     const evaluation = (participantId: string, score: number) => ({
-      participantId,
+      sessionParticipantId: participantId,
       score,
       comment: null,
-      evaluatorName: 'HT Nam',
+      evaluator: { fullName: 'HT Nam' },
       createdAt: new Date('2026-10-01T10:00:00Z'),
     });
-    repository.listEvaluations.mockResolvedValue([
-      evaluation('p1', 7),
-      evaluation('p1', 9),
-    ]);
+    evaluationRows = [evaluation('p1', 7), evaluation('p1', 9)];
 
     const page = await service.listSessions(actor, 'h1', query());
 
@@ -192,5 +214,25 @@ describe('HorseTrainingService', () => {
     expect(page.items[1].trialResults.map((t) => t.attemptNo)).toEqual([1, 3]);
     expect(page.items[0].evaluation?.score).toBe(7);
     expect(page.items[1].evaluation).toBeNull();
+  });
+
+  it('maps an evaluation without evaluator to a null evaluator name', async () => {
+    repository.listSessions.mockResolvedValue({
+      rows: [sessionRow('p1')],
+      total: 1,
+    });
+    evaluationRows = [
+      {
+        sessionParticipantId: 'p1',
+        score: 6,
+        comment: null,
+        evaluator: null,
+        createdAt: new Date('2026-10-01T10:00:00Z'),
+      },
+    ];
+
+    const page = await service.listSessions(actor, 'h1', query());
+
+    expect(page.items[0].evaluation?.evaluatorName).toBeNull();
   });
 });

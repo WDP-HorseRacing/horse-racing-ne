@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { StallStatus } from '../constants/stall-status.enum';
-import { StallEntity } from '../entities/stall.entity';
-import { EMPTY_CAPACITY } from '../policies/stable.policy';
 import type { BarnStallCapacity } from '../types/stable.types';
 
 /**
@@ -72,33 +70,5 @@ export class StableSharedRepository {
         },
       ]),
     );
-  }
-
-  /**
-   * Đếm số ô trống và số ngựa chờ xếp ô của một khu chuồng
-   *
-   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
-   * @param barnId UUID của khu chuồng
-   * @returns Promise trả về số ô trống và số ngựa chờ xếp ô của khu; khu không tồn tại thì trả EMPTY_CAPACITY
-   */
-  async countBarnCapacity(
-    manager: EntityManager,
-    barnId: string,
-  ): Promise<BarnStallCapacity> {
-    return (
-      (await this.countStallCapacity(manager, [barnId])).get(barnId) ??
-      EMPTY_CAPACITY
-    );
-  }
-
-  /**
-   * Đếm số ô chuồng chưa xóa của một khu, dùng để so với sức chứa khu
-   *
-   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
-   * @param barnId UUID của khu chuồng
-   * @returns Promise trả về số ô chuồng chưa xóa của khu
-   */
-  countStallsInBarn(manager: EntityManager, barnId: string): Promise<number> {
-    return manager.count(StallEntity, { where: { barnId } });
   }
 }

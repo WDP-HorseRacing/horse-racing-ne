@@ -16,6 +16,7 @@ import { BarnsService } from '../../stable/barns/barns.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import type { HorseListQueryDto, UpdateHorseDto } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
+import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseGender } from '../enums/horse-gender.enum';
 import { HorseParentRole } from '../enums/horse-parent-role.enum';
@@ -32,7 +33,6 @@ import { RaceAptitude } from '../enums/race-aptitude.enum';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeRepository } from '../shared/horse-pedigree.repository';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import type { PedigreeAncestorRow } from '../types/horse.types';
 import { HorseProfilesRepository } from './horse-profiles.repository';
 import { HorseProfilesService } from './horse-profiles.service';
@@ -169,18 +169,26 @@ describe('HorseProfilesService', () => {
     userRepository = {
       existsBy: jest.fn(() => Promise.resolve(isActiveOwner)),
     };
+    const measurementQuery: Record<string, jest.Mock> = {
+      getMany: jest.fn().mockResolvedValue([]),
+    };
+    for (const step of ['distinctOn', 'where', 'orderBy', 'addOrderBy']) {
+      measurementQuery[step] = jest.fn(() => measurementQuery);
+    }
     dataSource = {
       manager,
       transaction: jest.fn((work: (m: typeof manager) => Promise<unknown>) =>
         work(manager),
       ),
-      getRepository: jest.fn(() => userRepository),
+      getRepository: jest.fn((entity: unknown) =>
+        entity === HorseMeasurementEntity
+          ? { createQueryBuilder: jest.fn(() => measurementQuery) }
+          : userRepository,
+      ),
     };
     profiles = {
       list: jest.fn().mockResolvedValue([[], 0]),
       locationsByHorseIds: jest.fn().mockResolvedValue([]),
-      currentGroom: jest.fn().mockResolvedValue(null),
-      ownerOf: jest.fn().mockResolvedValue(null),
       findPedigreeAncestors: jest.fn().mockResolvedValue([]),
     };
     horses = {
@@ -191,7 +199,6 @@ describe('HorseProfilesService', () => {
       lockHorseWithDeleted: jest.fn(() => Promise.resolve(horse)),
       hasActiveTrainingLock: jest.fn().mockResolvedValue(false),
       activeTrainingLockHorseIds: jest.fn().mockResolvedValue(new Set()),
-      latestMeasurements: jest.fn().mockResolvedValue([]),
       isGroomAssigned: jest.fn().mockResolvedValue(false),
       isHorseInTrainerBarn: jest.fn(() => Promise.resolve(barnRows.length > 0)),
       lockActiveHorseOwner: jest.fn(() => Promise.resolve(isActiveOwner)),
@@ -206,15 +213,17 @@ describe('HorseProfilesService', () => {
     };
     events = { publish: jest.fn() };
     const typedDataSource = dataSource as unknown as DataSource;
-    const sharedRepository = horses as unknown as HorsesSharedRepository;
+    const access = Object.assign(
+      new HorseAccessService(typedDataSource),
+      horses,
+    );
     service = new HorseProfilesService(
       profiles as unknown as HorseProfilesRepository,
       {
         exists: jest.fn(() => Promise.resolve(microchipTaken)),
       } as unknown as Repository<HorseEntity>,
-      sharedRepository,
-      new HorseAccessService(typedDataSource, sharedRepository),
-      new HorsePedigreeService(new HorsePedigreeRepository(), sharedRepository),
+      access,
+      new HorsePedigreeService(new HorsePedigreeRepository(), access),
       media as unknown as MediaService,
       barnsService as unknown as BarnsService,
       events as unknown as DomainEventPublisher,
@@ -665,18 +674,17 @@ describe('HorseProfilesService', () => {
         ),
       };
       const typedDataSource = createDataSource as unknown as DataSource;
-      const sharedRepository = horses as unknown as HorsesSharedRepository;
+      const access = Object.assign(
+        new HorseAccessService(typedDataSource),
+        horses,
+      );
       service = new HorseProfilesService(
         profiles as unknown as HorseProfilesRepository,
         {
           exists: jest.fn().mockResolvedValue(false),
         } as unknown as Repository<HorseEntity>,
-        sharedRepository,
-        new HorseAccessService(typedDataSource, sharedRepository),
-        new HorsePedigreeService(
-          new HorsePedigreeRepository(),
-          sharedRepository,
-        ),
+        access,
+        new HorsePedigreeService(new HorsePedigreeRepository(), access),
         media as unknown as MediaService,
         barns as unknown as BarnsService,
         events as unknown as DomainEventPublisher,

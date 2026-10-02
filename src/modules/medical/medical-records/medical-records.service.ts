@@ -7,7 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { CareInstructionsResponseDto } from '../dto/care-instructions.response.dto';
 import { MedicalRecordResponseDto } from '../dto/medical-record.response.dto';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
@@ -29,7 +28,6 @@ export class MedicalRecordsService {
     private readonly prescriptions: Repository<PrescriptionEntity>,
     @InjectRepository(InjuryMarkerEntity)
     private readonly injuries: Repository<InjuryMarkerEntity>,
-    private readonly horses: HorsesSharedRepository,
   ) {}
 
   /**
@@ -99,7 +97,7 @@ export class MedicalRecordsService {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
     if (isGroomOnly(actor.roles)) {
       const caller = await this.horseAccess.currentUser(actor);
-      if (!(await this.horses.isGroomAssigned(horseId, caller.id))) {
+      if (!(await this.horseAccess.isGroomAssigned(horseId, caller.id))) {
         throw new ForbiddenException('Bạn không phụ trách con ngựa này');
       }
     }

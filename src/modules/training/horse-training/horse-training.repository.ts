@@ -1,18 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, In, SelectQueryBuilder } from 'typeorm';
-import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
+import { DataSource, SelectQueryBuilder } from 'typeorm';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { TrialResultEntity } from '../entities/trial-result.entity';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { HorseTrainingSessionWhen } from '../enums/horse-training-session-when.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import type {
   HorseTrainingClassRow,
-  HorseTrainingEvaluationRow,
   HorseTrainingSessionFilter,
   HorseTrainingSessionRow,
-  HorseTrainingTrialRow,
 } from '../types/horse-training.types';
 
 const HIDDEN_UPCOMING_STATUSES = [
@@ -140,54 +136,5 @@ export class HorseTrainingRepository {
       query.andWhere('session.scheduledStartAt < :now', { now: filter.now });
     }
     return query;
-  }
-
-  /**
-   * Lấy kết quả time trial của các lượt tập, theo thứ tự lần chạy
-   *
-   * @param participantIds UUID các lượt tập cần lấy kết quả
-   * @returns Promise trả về các lần chạy, rỗng nếu không truyền lượt nào
-   */
-  async listTrialResults(
-    participantIds: string[],
-  ): Promise<HorseTrainingTrialRow[]> {
-    if (participantIds.length === 0) return [];
-    const trials = await this.dataSource.getRepository(TrialResultEntity).find({
-      where: { sessionParticipantId: In(participantIds) },
-      order: { sessionParticipantId: 'ASC', attemptNo: 'ASC' },
-    });
-    return trials.map((trial) => ({
-      participantId: trial.sessionParticipantId,
-      attemptNo: trial.attemptNo,
-      elapsedMs: trial.elapsedMs,
-      notes: trial.notes,
-      recordedAt: trial.recordedAt,
-    }));
-  }
-
-  /**
-   * Lấy đánh giá của các lượt tập
-   *
-   * @param participantIds UUID các lượt tập cần lấy đánh giá
-   * @returns Promise trả về đánh giá kèm tên người đánh giá, rỗng nếu không truyền lượt nào
-   */
-  async listEvaluations(
-    participantIds: string[],
-  ): Promise<HorseTrainingEvaluationRow[]> {
-    if (participantIds.length === 0) return [];
-    const evaluations = await this.dataSource
-      .getRepository(PerformanceEvaluationEntity)
-      .find({
-        where: { sessionParticipantId: In(participantIds) },
-        relations: { evaluator: true },
-        withDeleted: true,
-      });
-    return evaluations.map((evaluation) => ({
-      participantId: evaluation.sessionParticipantId,
-      score: evaluation.score,
-      comment: evaluation.comment,
-      evaluatorName: evaluation.evaluator?.fullName ?? null,
-      createdAt: evaluation.createdAt,
-    }));
   }
 }

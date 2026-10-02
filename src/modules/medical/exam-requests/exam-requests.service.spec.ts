@@ -3,7 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -17,8 +17,8 @@ import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
   ExamRequestSource,
   ExamRequestStatus,
@@ -43,6 +43,7 @@ describe('ExamRequestsService', () => {
   let insertResult: { raw: Array<{ id: string }> };
   let insertBuilder: Record<string, jest.Mock>;
   let manager: {
+    find: jest.Mock;
     findOne: jest.Mock;
     findOneOrFail: jest.Mock;
     create: jest.Mock;
@@ -58,8 +59,8 @@ describe('ExamRequestsService', () => {
     isHorseInTrainerBarn: jest.Mock;
     lockWritableHorseInScope: jest.Mock;
     assertNotTransferred: jest.Mock;
+    isGroomAssigned: jest.Mock;
   };
-  let horses: { isGroomAssigned: jest.Mock; assignedHorseIds: jest.Mock };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
   let service: ExamRequestsService;
@@ -102,6 +103,7 @@ describe('ExamRequestsService', () => {
     }
     insertBuilder.execute = jest.fn(() => Promise.resolve(insertResult));
     manager = {
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(() => Promise.resolve(horseRow)),
       findOneOrFail: jest.fn(() => Promise.resolve({ ...requestRow })),
       create: jest.fn((_entity: unknown, row: Row) => ({ ...row })),
@@ -134,10 +136,7 @@ describe('ExamRequestsService', () => {
         horse: HORSE,
       }),
       assertNotTransferred: jest.fn(),
-    };
-    horses = {
       isGroomAssigned: jest.fn().mockResolvedValue(false),
-      assignedHorseIds: jest.fn().mockResolvedValue([]),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };
@@ -146,7 +145,6 @@ describe('ExamRequestsService', () => {
       requests as unknown as Repository<MedicalExamRequestEntity>,
       access as unknown as MedicalAccessService,
       horseAccess as unknown as HorseAccessService,
-      horses as unknown as HorsesSharedRepository,
       audit,
       events as unknown as DomainEventPublisher,
     );
@@ -167,7 +165,7 @@ describe('ExamRequestsService', () => {
       await expect(
         service.create(actorWith(UserRole.GROOM), 'h1', body),
       ).rejects.toThrow(ForbiddenException);
-      expect(horses.isGroomAssigned).toHaveBeenCalledWith(
+      expect(horseAccess.isGroomAssigned).toHaveBeenCalledWith(
         'h1',
         'user-1',
         manager,
@@ -203,7 +201,7 @@ describe('ExamRequestsService', () => {
     });
 
     it('lets an assigned groom send an urgent request and alerts veterinarians after commit', async () => {
-      horses.isGroomAssigned.mockResolvedValue(true);
+      horseAccess.isGroomAssigned.mockResolvedValue(true);
       const result = await service.create(
         actorWith(UserRole.GROOM),
         'h1',
@@ -254,7 +252,7 @@ describe('ExamRequestsService', () => {
     });
 
     it('limits a groom to the requests of assigned horses', async () => {
-      horses.assignedHorseIds.mockResolvedValue(['h1', 'h2']);
+      manager.find.mockResolvedValue([{ horseId: 'h1' }, { horseId: 'h2' }]);
       const qb = {
         innerJoinAndSelect: jest.fn().mockReturnThis(),
         withDeleted: jest.fn().mockReturnThis(),
@@ -274,6 +272,10 @@ describe('ExamRequestsService', () => {
         limit: 20,
         skip: 0,
       } as never);
+      expect(manager.find).toHaveBeenCalledWith(GroomAssignmentEntity, {
+        where: { groomId: 'user-1', endAt: IsNull() },
+        select: { horseId: true },
+      });
       expect(qb.andWhere).toHaveBeenCalledWith(
         'request.horseId IN (:...horseIds)',
         { horseIds: ['h1', 'h2'] },

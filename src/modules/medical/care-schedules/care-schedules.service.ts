@@ -12,7 +12,6 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { UserEntity } from '../../users/entities/user.entity';
 import {
   CareScheduleStatus,
@@ -51,7 +50,6 @@ export class CareSchedulesService {
     private readonly schedules: Repository<CareScheduleEntity>,
     private readonly access: MedicalAccessService,
     private readonly horseAccess: HorseAccessService,
-    private readonly horses: HorsesSharedRepository,
     private readonly audit: AuditService,
   ) {}
 
@@ -74,7 +72,10 @@ export class CareSchedulesService {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const caller = await this.horseAccess.currentUser(actor);
     const groomOnly = this.isGroomOnly(actor);
-    if (groomOnly && !(await this.horses.isGroomAssigned(horseId, caller.id))) {
+    if (
+      groomOnly &&
+      !(await this.horseAccess.isGroomAssigned(horseId, caller.id))
+    ) {
       return [];
     }
     const schedules = await this.schedules.find({
@@ -249,7 +250,11 @@ export class CareSchedulesService {
       const isActiveAssignee =
         schedule.assignedTo === caller.id &&
         (actor.roles.includes(UserRole.VETERINARIAN) ||
-          (await this.horses.isGroomAssigned(horseId, caller.id, manager)));
+          (await this.horseAccess.isGroomAssigned(
+            horseId,
+            caller.id,
+            manager,
+          )));
       assertCanCompleteCareSchedule(actor.roles, isActiveAssignee);
       assertCareScheduleOpen(schedule.status);
       const nextDueAt = body.nextDueAt ? new Date(body.nextDueAt) : null;
@@ -419,7 +424,7 @@ export class CareSchedulesService {
     });
     if (!user) return false;
     return user.role === UserRole.GROOM
-      ? this.horses.isGroomAssigned(horseId, userId, manager)
+      ? this.horseAccess.isGroomAssigned(horseId, userId, manager)
       : true;
   }
 

@@ -23,7 +23,6 @@ import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import { HORSE_MEASUREMENT_ALERT_EVENT } from '../constants/horse.constants';
 import { HorseAccessService } from '../shared/horse-access.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import { HorseMeasurementsService } from './horse-measurements.service';
 
 type Row = Record<string, unknown>;
@@ -136,11 +135,9 @@ describe('HorseMeasurementsService', () => {
     events = { publish: jest.fn() };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     const typedDataSource = dataSource as unknown as DataSource;
-    const sharedRepository = horses as unknown as HorsesSharedRepository;
     service = new HorseMeasurementsService(
       {} as unknown as Repository<HorseMeasurementEntity>,
-      sharedRepository,
-      new HorseAccessService(typedDataSource, sharedRepository),
+      Object.assign(new HorseAccessService(typedDataSource), horses),
       typedDataSource,
       events as unknown as DomainEventPublisher,
       audit,
@@ -610,7 +607,6 @@ describe('HorseMeasurementsService.listMeasurements', () => {
     access = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     service = new HorseMeasurementsService(
       repository as unknown as Repository<HorseMeasurementEntity>,
-      {} as HorsesSharedRepository,
       access as unknown as HorseAccessService,
       {} as DataSource,
       {} as DomainEventPublisher,

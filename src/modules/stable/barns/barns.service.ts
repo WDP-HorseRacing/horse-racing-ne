@@ -190,7 +190,7 @@ export class BarnsService {
         });
         if (body.capacity !== undefined) {
           assertCapacityFitsStalls(
-            await this.stableRepository.countStallsInBarn(manager, barnId),
+            await this.access.countStallsInBarn(manager, barnId),
             body.capacity,
           );
         }
@@ -301,7 +301,7 @@ export class BarnsService {
       );
     }
     assertBarnHasRoomForHorse(
-      await this.stableRepository.countBarnCapacity(manager, barnId),
+      await this.access.countBarnCapacity(manager, barnId),
     );
     return barn;
   }

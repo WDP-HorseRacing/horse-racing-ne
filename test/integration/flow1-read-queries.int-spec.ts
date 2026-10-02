@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
-import { HorseEntity } from '../../src/modules/horses/entities/horse.entity';
-import { HorseDeletionsRepository } from '../../src/modules/horses/horse-deletions/horse-deletions.repository';
-import { HorsePlacementsRepository } from '../../src/modules/horses/horse-placements/horse-placements.repository';
-import { HorseProfilesRepository } from '../../src/modules/horses/horse-profiles/horse-profiles.repository';
-import { HorsesSharedRepository } from '../../src/modules/horses/shared/horses-shared.repository';
+import { HorseDeletionsService } from '../../src/modules/horses/horse-deletions/horse-deletions.service';
+import { HorsePlacementsService } from '../../src/modules/horses/horse-placements/horse-placements.service';
+import { HorseProfilesService } from '../../src/modules/horses/horse-profiles/horse-profiles.service';
+import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { HorseTrainingSessionWhen } from '../../src/modules/training/enums/horse-training-session-when.enum';
 import { HorseTrainingRepository } from '../../src/modules/training/horse-training/horse-training.repository';
+import { HorseTrainingService } from '../../src/modules/training/horse-training/horse-training.service';
 import { fixtures } from './fixtures';
 import {
   startTestDatabase,
@@ -18,28 +18,43 @@ import {
 
 const NOW = new Date('2026-10-01T05:00:00Z');
 
+/**
+ * Tạo service chỉ gắn DataSource, dùng để gọi thẳng các hàm đọc dữ liệu private của service trên DB thật
+ *
+ * @param type Class của service
+ * @param dataSource DataSource của DB test
+ * @returns Service chưa qua constructor, chỉ có field dataSource
+ */
+function serviceWithDataSource<T>(
+  type: abstract new (...args: never[]) => T,
+  dataSource: DataSource,
+): T {
+  return Object.assign(Object.create(type.prototype as object) as T, {
+    dataSource,
+  });
+}
+
 describe('Flow 1 read queries (Postgres)', () => {
   let db: TestDatabase;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
-  let profiles: HorseProfilesRepository;
-  let deletions: HorseDeletionsRepository;
-  let placements: HorsePlacementsRepository;
-  let shared: HorsesSharedRepository;
+  let profiles: HorseProfilesService;
+  let deletions: HorseDeletionsService;
+  let placements: HorsePlacementsService;
+  let access: HorseAccessService;
   let training: HorseTrainingRepository;
+  let trainingService: HorseTrainingService;
 
   beforeAll(async () => {
     db = await startTestDatabase();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
-    profiles = new HorseProfilesRepository(
-      dataSource.getRepository(HorseEntity),
-      dataSource,
-    );
-    deletions = new HorseDeletionsRepository();
-    placements = new HorsePlacementsRepository(dataSource);
-    shared = new HorsesSharedRepository(dataSource);
+    profiles = serviceWithDataSource(HorseProfilesService, dataSource);
+    deletions = serviceWithDataSource(HorseDeletionsService, dataSource);
+    placements = serviceWithDataSource(HorsePlacementsService, dataSource);
+    access = new HorseAccessService(dataSource);
     training = new HorseTrainingRepository(dataSource);
+    trainingService = serviceWithDataSource(HorseTrainingService, dataSource);
   });
 
   afterAll(() => stopTestDatabase(db));
@@ -157,21 +172,21 @@ describe('Flow 1 read queries (Postgres)', () => {
     return id;
   };
 
-  describe('HorseProfilesRepository', () => {
+  describe('HorseProfilesService reads', () => {
     it('ownerOf returns the owner, also when the account is soft-deleted', async () => {
       const owner = await seed.user(UserRole.HORSE_OWNER);
       await setFullName(owner, 'Chủ A');
-      expect(await profiles.ownerOf(owner)).toEqual({
+      expect(await profiles['ownerOf'](owner)).toEqual({
         id: owner,
         fullName: 'Chủ A',
       });
       await softDeleteUser(owner);
-      expect(await profiles.ownerOf(owner)).toEqual({
+      expect(await profiles['ownerOf'](owner)).toEqual({
         id: owner,
         fullName: 'Chủ A',
       });
-      expect(await profiles.ownerOf(null)).toBeNull();
-      expect(await profiles.ownerOf(randomUUID())).toBeNull();
+      expect(await profiles['ownerOf'](null)).toBeNull();
+      expect(await profiles['ownerOf'](randomUUID())).toBeNull();
     });
 
     it('currentGroom returns the open assignment groom, also when the account is soft-deleted', async () => {
@@ -180,33 +195,37 @@ describe('Flow 1 read queries (Postgres)', () => {
       const groom = await seed.user(UserRole.GROOM);
       await setFullName(groom, 'Groom B');
       await groomAssignment(horse, oldGroom, new Date('2026-09-10T00:00:00Z'));
-      expect(await profiles.currentGroom(horse)).toBeNull();
+      expect(await profiles['currentGroom'](horse)).toBeNull();
       await groomAssignment(horse, groom, null);
-      expect(await profiles.currentGroom(horse)).toEqual({
+      expect(await profiles['currentGroom'](horse)).toEqual({
         id: groom,
         fullName: 'Groom B',
       });
       await softDeleteUser(groom);
-      expect(await profiles.currentGroom(horse)).toEqual({
+      expect(await profiles['currentGroom'](horse)).toEqual({
         id: groom,
         fullName: 'Groom B',
       });
     });
   });
 
-  describe('HorseDeletionsRepository.barnName', () => {
+  describe('HorseDeletionsService.barnName', () => {
     it('returns the barn name, also for a soft-deleted barn', async () => {
       const barn = await seed.barn('Khu A');
-      expect(await deletions.barnName(dataSource.manager, barn)).toBe('Khu A');
+      expect(await deletions['barnName'](dataSource.manager, barn)).toBe(
+        'Khu A',
+      );
       await softDeleteBarn(barn);
-      expect(await deletions.barnName(dataSource.manager, barn)).toBe('Khu A');
+      expect(await deletions['barnName'](dataSource.manager, barn)).toBe(
+        'Khu A',
+      );
       expect(
-        await deletions.barnName(dataSource.manager, randomUUID()),
+        await deletions['barnName'](dataSource.manager, randomUUID()),
       ).toBeNull();
     });
   });
 
-  describe('HorsePlacementsRepository.findBarnWithHeadTrainer', () => {
+  describe('HorsePlacementsService.findBarnWithHeadTrainer', () => {
     it('returns the barn with its head trainer, keeps a soft-deleted trainer name and skips a soft-deleted barn', async () => {
       const trainer = await seed.user(UserRole.HEAD_TRAINER);
       await setFullName(trainer, 'HT Nam');
@@ -217,13 +236,13 @@ describe('Flow 1 read queries (Postgres)', () => {
         [barn, trainer],
       );
 
-      expect(await placements.findBarnWithHeadTrainer(barn)).toEqual({
+      expect(await placements['findBarnWithHeadTrainer'](barn)).toEqual({
         id: barn,
         name: 'Khu A',
         headTrainerId: trainer,
         headTrainerName: 'HT Nam',
       });
-      expect(await placements.findBarnWithHeadTrainer(empty)).toEqual({
+      expect(await placements['findBarnWithHeadTrainer'](empty)).toEqual({
         id: empty,
         name: 'Khu B',
         headTrainerId: null,
@@ -231,14 +250,14 @@ describe('Flow 1 read queries (Postgres)', () => {
       });
       await softDeleteUser(trainer);
       expect(
-        (await placements.findBarnWithHeadTrainer(barn))?.headTrainerName,
+        (await placements['findBarnWithHeadTrainer'](barn))?.headTrainerName,
       ).toBe('HT Nam');
       await softDeleteBarn(barn);
-      expect(await placements.findBarnWithHeadTrainer(barn)).toBeNull();
+      expect(await placements['findBarnWithHeadTrainer'](barn)).toBeNull();
     });
   });
 
-  describe('HorsesSharedRepository', () => {
+  describe('HorseAccessService reads', () => {
     it('activeTrainingLockHorseIds returns horses with an ACTIVE lock only', async () => {
       const locked = await seed.horse('Locked');
       const released = await seed.horse('Released');
@@ -247,16 +266,16 @@ describe('Flow 1 read queries (Postgres)', () => {
       await trainingLock(locked, 'RELEASED');
       await trainingLock(released, 'RELEASED');
 
-      const ids = await shared.activeTrainingLockHorseIds([
+      const ids = await access.activeTrainingLockHorseIds([
         locked,
         released,
         free,
       ]);
 
       expect([...ids]).toEqual([locked]);
-      expect(await shared.activeTrainingLockHorseIds([])).toEqual(new Set());
-      expect(await shared.hasActiveTrainingLock(locked)).toBe(true);
-      expect(await shared.hasActiveTrainingLock(free)).toBe(false);
+      expect(await access.activeTrainingLockHorseIds([])).toEqual(new Set());
+      expect(await access.hasActiveTrainingLock(locked)).toBe(true);
+      expect(await access.hasActiveTrainingLock(free)).toBe(false);
     });
 
     it('isHorseInTrainerBarn needs a live horse in a live barn led by the trainer', async () => {
@@ -275,18 +294,18 @@ describe('Flow 1 read queries (Postgres)', () => {
       const noBarn = await seed.horse('NoBarn');
       const m = dataSource.manager;
 
-      expect(await shared.isHorseInTrainerBarn(m, inBarn, trainer)).toBe(true);
-      expect(await shared.isHorseInTrainerBarn(m, inBarn, other)).toBe(false);
-      expect(await shared.isHorseInTrainerBarn(m, deleted, trainer)).toBe(
+      expect(await access.isHorseInTrainerBarn(m, inBarn, trainer)).toBe(true);
+      expect(await access.isHorseInTrainerBarn(m, inBarn, other)).toBe(false);
+      expect(await access.isHorseInTrainerBarn(m, deleted, trainer)).toBe(
         false,
       );
-      expect(await shared.isHorseInTrainerBarn(m, noBarn, trainer)).toBe(false);
+      expect(await access.isHorseInTrainerBarn(m, noBarn, trainer)).toBe(false);
       await softDeleteBarn(barn);
-      expect(await shared.isHorseInTrainerBarn(m, inBarn, trainer)).toBe(false);
+      expect(await access.isHorseInTrainerBarn(m, inBarn, trainer)).toBe(false);
     });
   });
 
-  describe('HorseTrainingRepository', () => {
+  describe('Horse training tab reads', () => {
     it('listClasses puts active enrollments first, newest first, and keeps a soft-deleted head trainer name', async () => {
       const horse = await seed.horse('Gió');
       const trainer = await seed.user(UserRole.HEAD_TRAINER);
@@ -474,7 +493,7 @@ describe('Flow 1 read queries (Postgres)', () => {
         await trial(ids.other, 1, '59000');
         await trial(ids.soon, 1, '9007199254740993');
 
-        const rows = await training.listTrialResults([ids.soon]);
+        const rows = await trainingService['listTrialResults']([ids.soon]);
 
         expect(rows).toEqual([
           {
@@ -492,7 +511,7 @@ describe('Flow 1 read queries (Postgres)', () => {
             recordedAt: new Date('2026-10-02T02:00:00Z'),
           },
         ]);
-        expect(await training.listTrialResults([])).toEqual([]);
+        expect(await trainingService['listTrialResults']([])).toEqual([]);
       });
 
       it('lists evaluations with the evaluator name, also for a soft-deleted evaluator', async () => {
@@ -505,7 +524,10 @@ describe('Flow 1 read queries (Postgres)', () => {
         );
         await softDeleteUser(evaluator);
 
-        const rows = await training.listEvaluations([ids.past, ids.soon]);
+        const rows = await trainingService['listEvaluations']([
+          ids.past,
+          ids.soon,
+        ]);
 
         expect(rows).toEqual([
           {
@@ -516,7 +538,7 @@ describe('Flow 1 read queries (Postgres)', () => {
             createdAt: new Date('2026-10-02T03:00:00Z'),
           },
         ]);
-        expect(await training.listEvaluations([])).toEqual([]);
+        expect(await trainingService['listEvaluations']([])).toEqual([]);
       });
     });
   });

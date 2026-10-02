@@ -11,6 +11,7 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { BarnsService } from '../../stable/barns/barns.service';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../stable/constants/stable-events.constants';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
@@ -20,7 +21,6 @@ import { HorseEntity } from '../entities/horse.entity';
 import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HORSE_BARN_ASSIGNED_EVENT } from '../constants/horse.constants';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import { HorsePlacementsRepository } from './horse-placements.repository';
 import { HorsePlacementsService } from './horse-placements.service';
 
@@ -50,7 +50,14 @@ describe('HorsePlacementsService', () => {
   let training: { withdrawHorseFromClasses: jest.Mock };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
-  let placements: { findBarnWithHeadTrainer: jest.Mock; barnChangeImpact: jest.Mock };
+  let barnQuery: {
+    withDeleted: jest.Mock;
+    leftJoinAndSelect: jest.Mock;
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    getOne: jest.Mock;
+  };
+  let placements: { barnChangeImpact: jest.Mock };
   let service: HorsePlacementsService;
 
   const actor = (): Actor => ({ sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] });
@@ -93,8 +100,27 @@ describe('HorsePlacementsService', () => {
       ),
       getRepository: jest.fn(() => horseRepository),
     };
+    barnQuery = {
+      withDeleted: jest.fn(() => barnQuery),
+      leftJoinAndSelect: jest.fn(() => barnQuery),
+      where: jest.fn(() => barnQuery),
+      andWhere: jest.fn(() => barnQuery),
+      getOne: jest.fn(() =>
+        Promise.resolve({
+          id: 'b2',
+          name: 'Khu C',
+          headTrainerId: 'ht-2',
+          headTrainer: { fullName: 'Hoa' },
+        }),
+      ),
+    };
     const dataSource = {
       manager,
+      getRepository: jest.fn((entity: unknown) =>
+        entity === BarnEntity
+          ? { createQueryBuilder: jest.fn(() => barnQuery) }
+          : undefined,
+      ),
       transaction: jest.fn(
         async (work: (m: typeof manager) => Promise<unknown>) => {
           calls.push('transaction:start');
@@ -145,14 +171,6 @@ describe('HorsePlacementsService', () => {
     };
     audit = { record: jest.fn(track('audit')) };
     placements = {
-      findBarnWithHeadTrainer: jest.fn(() =>
-        Promise.resolve({
-          id: 'b2',
-          name: 'Khu C',
-          headTrainerId: 'ht-2',
-          headTrainerName: 'Hoa',
-        }),
-      ),
       barnChangeImpact: jest.fn(() =>
         Promise.resolve({
           fromBarnName: 'Khu A',
@@ -163,9 +181,8 @@ describe('HorsePlacementsService', () => {
       ),
     };
     const typedDataSource = dataSource as unknown as DataSource;
-    const sharedRepository = horses as unknown as HorsesSharedRepository;
     service = new HorsePlacementsService(
-      new HorseAccessService(typedDataSource, sharedRepository),
+      Object.assign(new HorseAccessService(typedDataSource), horses),
       barns as unknown as BarnsService,
       stalls as unknown as StallsService,
       events as unknown as DomainEventPublisher,
@@ -390,6 +407,10 @@ describe('HorsePlacementsService', () => {
     it('lists every consequence and a summary without writing anything', async () => {
       const result = await preview();
 
+      expect(barnQuery.where).toHaveBeenCalledWith('barn.id = :barnId', {
+        barnId: 'b2',
+      });
+      expect(barnQuery.andWhere).toHaveBeenCalledWith('barn.deletedAt IS NULL');
       expect(placements.barnChangeImpact).toHaveBeenCalledWith(
         HORSE_ID,
         'ht-2',
@@ -412,11 +433,11 @@ describe('HorsePlacementsService', () => {
     });
 
     it('returns allowed = false with the reason when the horse is already in that barn', async () => {
-      placements.findBarnWithHeadTrainer.mockResolvedValue({
+      barnQuery.getOne.mockResolvedValue({
         id: 'b1',
         name: 'Khu A',
         headTrainerId: 'ht-1',
-        headTrainerName: 'Nam',
+        headTrainer: { fullName: 'Nam' },
       });
 
       const result = await preview('b1');
@@ -442,7 +463,7 @@ describe('HorsePlacementsService', () => {
     });
 
     it('returns 404 when the barn is missing', async () => {
-      placements.findBarnWithHeadTrainer.mockResolvedValue(null);
+      barnQuery.getOne.mockResolvedValue(null);
 
       await expect(preview('b9')).rejects.toThrow(NotFoundException);
       expect(placements.barnChangeImpact).not.toHaveBeenCalled();
@@ -452,7 +473,7 @@ describe('HorsePlacementsService', () => {
       horse.deletedAt = new Date('2026-09-01T00:00:00Z');
 
       await expect(preview()).rejects.toThrow(ConflictException);
-      expect(placements.findBarnWithHeadTrainer).not.toHaveBeenCalled();
+      expect(barnQuery.getOne).not.toHaveBeenCalled();
     });
   });
 });

@@ -37,7 +37,6 @@ import {
   lifecycleTransitionError,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import type {
   HorseGroomReleasedEvent,
   LifecycleSideEffects,
@@ -82,7 +81,6 @@ interface LifecycleFieldChanges {
 export class HorseStatusesService {
   constructor(
     private readonly statuses: HorseStatusesRepository,
-    private readonly horses: HorsesSharedRepository,
     private readonly access: HorseAccessService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
@@ -218,9 +216,9 @@ export class HorseStatusesService {
     const [counts, hasActiveTrainingLock, invalidOwnerName, medical] =
       await Promise.all([
         this.statuses.lifecycleImpact(manager, id),
-        this.horses.hasActiveTrainingLock(id, manager),
+        this.access.hasActiveTrainingLock(id, manager),
         effects.reactivateFromTransfer && horse.ownerId
-          ? this.horses.invalidOwnerName(horse.ownerId, manager)
+          ? this.access.invalidOwnerName(horse.ownerId, manager)
           : null,
         effects.settleMedicalWork
           ? this.medicalLifecycle.transferImpact(id, manager)
@@ -284,7 +282,7 @@ export class HorseStatusesService {
     const shouldClearOwner =
       effects.reactivateFromTransfer &&
       horse.ownerId !== null &&
-      !(await this.horses.lockActiveHorseOwner(manager, horse.ownerId));
+      !(await this.access.lockActiveHorseOwner(manager, horse.ownerId));
     if (shouldClearOwner) {
       before.ownerId = horse.ownerId;
       after.ownerId = null;

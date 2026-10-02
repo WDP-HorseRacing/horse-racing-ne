@@ -5,6 +5,7 @@ import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseGender } from '../enums/horse-gender.enum';
@@ -15,7 +16,6 @@ import {
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeRepository } from '../shared/horse-pedigree.repository';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import { HorseDeletionsService } from './horse-deletions.service';
 
 type HorseRow = Partial<HorseEntity> & { id: string };
@@ -50,7 +50,7 @@ describe('HorseDeletionsService', () => {
     lockActiveHorseOwner: jest.Mock;
     invalidOwnerName: jest.Mock;
   };
-  let deletions: { businessDataLabels: jest.Mock; barnName: jest.Mock };
+  let deletions: { businessDataLabels: jest.Mock };
   let audit: { record: jest.Mock };
   let service: HorseDeletionsService;
 
@@ -94,7 +94,9 @@ describe('HorseDeletionsService', () => {
                 status: UserStatus.ACTIVE,
                 role: UserRole.CLUB_MANAGER,
               }
-            : null,
+            : entity === BarnEntity
+              ? { name: 'Khu A' }
+              : null,
         ),
       ),
       query: jest.fn().mockResolvedValue([]),
@@ -115,16 +117,17 @@ describe('HorseDeletionsService', () => {
     };
     deletions = {
       businessDataLabels: jest.fn().mockResolvedValue([]),
-      barnName: jest.fn().mockResolvedValue('Khu A'),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     const typedDataSource = dataSource as unknown as DataSource;
-    const sharedRepository = horses as unknown as HorsesSharedRepository;
+    const access = Object.assign(
+      new HorseAccessService(typedDataSource),
+      horses,
+    );
     service = new HorseDeletionsService(
       deletions,
-      sharedRepository,
-      new HorseAccessService(typedDataSource, sharedRepository),
-      new HorsePedigreeService(new HorsePedigreeRepository(), sharedRepository),
+      access,
+      new HorsePedigreeService(new HorsePedigreeRepository(), access),
       typedDataSource,
       audit,
     );
@@ -361,7 +364,11 @@ describe('HorseDeletionsService', () => {
         ownerCleared: null,
         summary: 'Nếu khôi phục, Gió sẽ rời khu "Khu A" và vào Chờ xếp khu.',
       });
-      expect(deletions.barnName).toHaveBeenCalledWith(manager, 'b1');
+      expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
+        select: { name: true },
+        where: { id: 'b1' },
+        withDeleted: true,
+      });
       expect(horseRepository.restore).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
     });

@@ -8,7 +8,6 @@ import { DataSource, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import {
   CareScheduleStatus,
   CareScheduleType,
@@ -88,10 +87,8 @@ describe('CareSchedulesService', () => {
       {
         findReadableHorseForActor,
         currentUser: jest.fn(() => Promise.resolve({ id: callerId })),
-      } as unknown as HorseAccessService,
-      {
         isGroomAssigned: jest.fn(() => Promise.resolve(groomAssigned)),
-      } as unknown as HorsesSharedRepository,
+      } as unknown as HorseAccessService,
       audit,
     );
   });

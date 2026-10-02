@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { BarnEntity } from '../../stable/entities/barn.entity';
 import { HorseEnrollmentStatus } from '../../training/enums/horse-enrollment-status.enum';
-import type {
-  BarnChangeImpactRow,
-  BarnPreviewTarget,
-} from '../types/horse.types';
+import type { BarnChangeImpactRow } from '../types/horse.types';
 
 /**
  * Các câu đọc gom nhiều bảng để xem trước việc đổi khu. Chỉ đọc.
@@ -13,32 +9,6 @@ import type {
 @Injectable()
 export class HorsePlacementsRepository {
   constructor(private readonly dataSource: DataSource) {}
-
-  /**
-   * Lấy khu chuồng chưa xóa kèm Head Trainer phụ trách
-   *
-   * @param barnId UUID của khu
-   * @returns Promise trả về khu kèm tên Head Trainer, null nếu không có khu
-   */
-  async findBarnWithHeadTrainer(
-    barnId: string,
-  ): Promise<BarnPreviewTarget | null> {
-    const barn = await this.dataSource
-      .getRepository(BarnEntity)
-      .createQueryBuilder('barn')
-      .withDeleted()
-      .leftJoinAndSelect('barn.headTrainer', 'headTrainer')
-      .where('barn.id = :barnId', { barnId })
-      .andWhere('barn.deletedAt IS NULL')
-      .getOne();
-    if (!barn) return null;
-    return {
-      id: barn.id,
-      name: barn.name,
-      headTrainerId: barn.headTrainerId,
-      headTrainerName: barn.headTrainer?.fullName ?? null,
-    };
-  }
 
   /**
    * Đếm những gì sẽ bị ảnh hưởng nếu ngựa đổi sang khu do Head Trainer đã cho phụ trách

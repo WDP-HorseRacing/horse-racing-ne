@@ -7,6 +7,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { BarnsService } from '../../stable/barns/barns.service';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../stable/constants/stable-events.constants';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
@@ -35,7 +36,10 @@ import {
   barnChangeSummary,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
-import type { HorseBarnAssignedEvent } from '../types/horse.types';
+import type {
+  BarnPreviewTarget,
+  HorseBarnAssignedEvent,
+} from '../types/horse.types';
 import { HorsePlacementsRepository } from './horse-placements.repository';
 
 /**
@@ -220,7 +224,7 @@ export class HorsePlacementsService {
   ): Promise<HorseBarnPreviewResponseDto> {
     await this.access.currentUser(actor);
     const horse = await this.access.findWritableHorse(actor, horseId);
-    const target = await this.placements.findBarnWithHeadTrainer(query.barnId);
+    const target = await this.findBarnWithHeadTrainer(query.barnId);
     if (!target) throw new NotFoundException('Không tìm thấy khu chuồng');
     const blockedReason = barnChangeBlockedReason(
       horse.lifecycleStatus,
@@ -289,5 +293,31 @@ export class HorsePlacementsService {
       this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, groom.changedEvent);
     }
     return toHorsePlacementResponse(stallAssignment, groom.response);
+  }
+
+  /**
+   * Lấy khu chuồng chưa xóa kèm Head Trainer phụ trách
+   *
+   * @param barnId UUID của khu
+   * @returns Promise trả về khu kèm tên Head Trainer, null nếu không có khu
+   */
+  private async findBarnWithHeadTrainer(
+    barnId: string,
+  ): Promise<BarnPreviewTarget | null> {
+    const barn = await this.dataSource
+      .getRepository(BarnEntity)
+      .createQueryBuilder('barn')
+      .withDeleted()
+      .leftJoinAndSelect('barn.headTrainer', 'headTrainer')
+      .where('barn.id = :barnId', { barnId })
+      .andWhere('barn.deletedAt IS NULL')
+      .getOne();
+    if (!barn) return null;
+    return {
+      id: barn.id,
+      name: barn.name,
+      headTrainerId: barn.headTrainerId,
+      headTrainerName: barn.headTrainer?.fullName ?? null,
+    };
   }
 }

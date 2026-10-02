@@ -18,7 +18,6 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { UserEntity } from '../../users/entities/user.entity';
 import { BarnStatus } from '../constants/barn-status.enum';
 import { StallStatus } from '../constants/stall-status.enum';
@@ -174,12 +173,9 @@ describe('StallsService', () => {
       dataSource,
       audit,
       new StableAccessService(
-        new HorseAccessService(
-          dataSource,
-          new HorsesSharedRepository(dataSource),
-        ),
+        new HorseAccessService(dataSource),
+        new StableSharedRepository(),
       ),
-      new StableSharedRepository(),
     );
   });
 

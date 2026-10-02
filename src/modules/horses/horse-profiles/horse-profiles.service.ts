@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -17,6 +17,8 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { MediaService } from '../../media/services/media.service';
 import { BarnsService } from '../../stable/barns/barns.service';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 import {
   CREATE_AUDIT_FIELDS,
   HORSE_AUDIT_FEATURE,
@@ -40,6 +42,7 @@ import {
   UpdateHorseDto,
 } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
+import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
 import {
   eligibilityInputOf,
   toHorseDetailResponse,
@@ -61,10 +64,10 @@ import {
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import type {
   HorseBarnAssignedEvent,
   HorseLocationRow,
+  HorsePersonRow,
 } from '../types/horse.types';
 import { clubToday } from '../utils/club-date';
 import { changedFields, pickFields } from '../utils/record-diff';
@@ -76,7 +79,6 @@ export class HorseProfilesService {
     private readonly profiles: HorseProfilesRepository,
     @InjectRepository(HorseEntity)
     private readonly horseRecords: Repository<HorseEntity>,
-    private readonly horses: HorsesSharedRepository,
     private readonly access: HorseAccessService,
     private readonly pedigree: HorsePedigreeService,
     private readonly media: MediaService,
@@ -117,7 +119,7 @@ export class HorseProfilesService {
       .filter((mediaId): mediaId is string => mediaId !== null);
     const [locations, lockedHorseIds, photoUrls] = await Promise.all([
       this.profiles.locationsByHorseIds(horseIds),
-      this.horses.activeTrainingLockHorseIds(horseIds),
+      this.access.activeTrainingLockHorseIds(horseIds),
       this.media.signDownloadUrls(mediaIds),
     ]);
     const locationByHorseId = new Map(
@@ -158,10 +160,10 @@ export class HorseProfilesService {
     const [locations, groom, owner, latestMeasurements, activeTrainingLock] =
       await Promise.all([
         this.profiles.locationsByHorseIds([id]),
-        this.profiles.currentGroom(id),
-        this.profiles.ownerOf(horse.ownerId),
-        this.horses.latestMeasurements(id),
-        this.horses.hasActiveTrainingLock(id),
+        this.currentGroom(id),
+        this.ownerOf(horse.ownerId),
+        this.latestMeasurements(id),
+        this.access.hasActiveTrainingLock(id),
       ]);
     return toHorseDetailResponse(
       horse,
@@ -405,7 +407,7 @@ export class HorseProfilesService {
     horseId: string,
   ): Promise<HorseEligibilityResponseDto> {
     const horse = await this.access.findReadableHorseForActor(actor, horseId);
-    const activeTrainingLock = await this.horses.hasActiveTrainingLock(horseId);
+    const activeTrainingLock = await this.access.hasActiveTrainingLock(horseId);
     return toHorseEligibilityResponse(
       horse,
       activeTrainingLock,
@@ -437,7 +439,7 @@ export class HorseProfilesService {
           )
         : Promise.resolve(false),
       this.access.hasRole(actor, UserRole.GROOM)
-        ? this.horses.isGroomAssigned(horseId, caller.id)
+        ? this.access.isGroomAssigned(horseId, caller.id)
         : Promise.resolve(false),
     ]);
     return toHorsePermissionsResponse(
@@ -517,7 +519,7 @@ export class HorseProfilesService {
     ownerId: string | null,
   ): Promise<void> {
     if (!ownerId) return;
-    assertAssignableOwner(await this.horses.lockOwnerAccount(manager, ownerId));
+    assertAssignableOwner(await this.access.lockOwnerAccount(manager, ownerId));
   }
 
   /**
@@ -556,6 +558,63 @@ export class HorseProfilesService {
     ) {
       throw new ConflictException(MICROCHIP_TAKEN_MESSAGE);
     }
+  }
+
+  /**
+   * Lấy Groom đang phụ trách con ngựa (dòng phân công còn mở)
+   *
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về Groom, hoặc null nếu chưa phân công
+   */
+  private async currentGroom(horseId: string): Promise<HorsePersonRow | null> {
+    const assignment = await this.dataSource.manager.findOne(
+      GroomAssignmentEntity,
+      {
+        where: { horseId, endAt: IsNull() },
+        relations: { groom: true },
+        withDeleted: true,
+      },
+    );
+    return assignment
+      ? { id: assignment.groom.id, fullName: assignment.groom.fullName }
+      : null;
+  }
+
+  /**
+   * Lấy tên hiển thị của chủ sở hữu
+   *
+   * @param ownerId UUID chủ sở hữu, null nếu ngựa chưa có chủ
+   * @returns Promise trả về chủ sở hữu, hoặc null nếu ngựa chưa có chủ
+   */
+  private async ownerOf(
+    ownerId: string | null,
+  ): Promise<HorsePersonRow | null> {
+    if (!ownerId) return null;
+    const owner = await this.dataSource.manager.findOne(UserEntity, {
+      select: { id: true, fullName: true },
+      where: { id: ownerId },
+      withDeleted: true,
+    });
+    return owner ? { id: owner.id, fullName: owner.fullName } : null;
+  }
+
+  /**
+   * Lấy giá trị mới nhất của từng loại chỉ số cơ thể của ngựa (bỏ bản ghi đã xóa)
+   *
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về tối đa một bản ghi cho mỗi loại chỉ số
+   */
+  private latestMeasurements(
+    horseId: string,
+  ): Promise<HorseMeasurementEntity[]> {
+    return this.dataSource
+      .getRepository(HorseMeasurementEntity)
+      .createQueryBuilder('m')
+      .distinctOn(['m.type'])
+      .where('m.horseId = :horseId', { horseId })
+      .orderBy('m.type', 'ASC')
+      .addOrderBy('m.measuredAt', 'DESC')
+      .getMany();
   }
 
   /**

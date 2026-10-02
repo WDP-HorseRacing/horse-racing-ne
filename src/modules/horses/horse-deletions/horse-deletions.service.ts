@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import {
   DeleteHorseDto,
   HorseDeletionPreviewResponseDto,
@@ -25,7 +26,6 @@ import {
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import { HorseDeletionsRepository } from './horse-deletions.repository';
 
 /**
@@ -35,7 +35,6 @@ import { HorseDeletionsRepository } from './horse-deletions.repository';
 export class HorseDeletionsService {
   constructor(
     private readonly deletions: HorseDeletionsRepository,
-    private readonly horses: HorsesSharedRepository,
     private readonly access: HorseAccessService,
     private readonly pedigree: HorsePedigreeService,
     private readonly dataSource: DataSource,
@@ -132,13 +131,13 @@ export class HorseDeletionsService {
     id: string,
   ): Promise<HorseRestorePreviewResponseDto> {
     await this.access.currentUser(actor);
-    const horse = await this.horses.findByIdWithDeleted(id);
+    const horse = await this.access.findByIdWithDeleted(id);
     assertDeletedHorse(horse);
     const manager = this.dataSource.manager;
     const [barnCleared, ownerCleared] = await Promise.all([
-      horse.barnId ? this.deletions.barnName(manager, horse.barnId) : null,
+      horse.barnId ? this.barnName(manager, horse.barnId) : null,
       horse.ownerId
-        ? this.horses.invalidOwnerName(horse.ownerId, manager)
+        ? this.access.invalidOwnerName(horse.ownerId, manager)
         : null,
     ]);
     return toRestorePreviewResponse(horse, barnCleared, ownerCleared);
@@ -169,12 +168,12 @@ export class HorseDeletionsService {
   ): Promise<HorseResponseDto> {
     const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
-      const horse = await this.horses.lockHorseWithDeleted(manager, id);
+      const horse = await this.access.lockHorseWithDeleted(manager, id);
       assertDeletedHorse(horse);
       const clearBarn = horse.barnId !== null;
       const shouldClearOwner =
         horse.ownerId !== null &&
-        !(await this.horses.lockActiveHorseOwner(manager, horse.ownerId));
+        !(await this.access.lockActiveHorseOwner(manager, horse.ownerId));
       const cleared = {
         ...(clearBarn ? { barnId: null } : {}),
         ...(shouldClearOwner ? { ownerId: null } : {}),
@@ -199,5 +198,24 @@ export class HorseDeletionsService {
       });
     });
     return toHorseResponse(await this.access.findNotDeletedHorse(id));
+  }
+
+  /**
+   * Lấy tên khu theo id, kể cả khu đã xóa mềm
+   *
+   * @param manager EntityManager dùng để query
+   * @param barnId UUID của khu
+   * @returns Promise trả về tên khu, hoặc null nếu không có khu đó
+   */
+  private async barnName(
+    manager: EntityManager,
+    barnId: string,
+  ): Promise<string | null> {
+    const barn = await manager.findOne(BarnEntity, {
+      select: { name: true },
+      where: { id: barnId },
+      withDeleted: true,
+    });
+    return barn?.name ?? null;
   }
 }

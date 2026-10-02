@@ -3,13 +3,19 @@ import { EntityManager } from 'typeorm';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { BarnEntity } from '../entities/barn.entity';
+import { StallEntity } from '../entities/stall.entity';
 import {
   assertBarnActive,
   assertHorseHasBarn,
   assertHorseInTrainerBarn,
   assertHorseNotTransferred,
+  EMPTY_CAPACITY,
 } from '../policies/stable.policy';
-import type { StableHorseOperation } from '../types/stable.types';
+import type {
+  BarnStallCapacity,
+  StableHorseOperation,
+} from '../types/stable.types';
+import { StableSharedRepository } from './stable-shared.repository';
 
 /**
  * Con ngựa đã lock và chắc chắn đã được xếp khu
@@ -22,10 +28,14 @@ export type HorseInBarn = HorseEntity & { barnId: string };
  * - Phạm vi Head Trainer theo khu lấy từ HorseAccessService (horses.barn_id)
  * - Luật "ngựa thao tác được": chưa xóa, chưa chuyển nhượng, đã có khu, Head Trainer phụ trách khu
  * - Lock khu chuồng (pessimistic_write) trước khi kiểm luật của khu
+ * - Đếm ô chuồng và sức chứa của một khu
  */
 @Injectable()
 export class StableAccessService {
-  constructor(private readonly horseAccess: HorseAccessService) {}
+  constructor(
+    private readonly horseAccess: HorseAccessService,
+    private readonly stableRepository: StableSharedRepository,
+  ) {}
 
   /**
    * Lock con ngựa và kiểm tra Head Trainer được thao tác trên nó (xếp ô, giao hoặc đổi groom)
@@ -124,5 +134,34 @@ export class StableAccessService {
     );
     assertBarnActive(barn, label);
     return barn;
+  }
+
+  /**
+   * Đếm số ô trống và số ngựa chờ xếp ô của một khu chuồng
+   *
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param barnId UUID của khu chuồng
+   * @returns Promise trả về số ô trống và số ngựa chờ xếp ô của khu; khu không tồn tại thì trả EMPTY_CAPACITY
+   */
+  async countBarnCapacity(
+    manager: EntityManager,
+    barnId: string,
+  ): Promise<BarnStallCapacity> {
+    return (
+      (await this.stableRepository.countStallCapacity(manager, [barnId])).get(
+        barnId,
+      ) ?? EMPTY_CAPACITY
+    );
+  }
+
+  /**
+   * Đếm số ô chuồng chưa xóa của một khu, dùng để so với sức chứa khu
+   *
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param barnId UUID của khu chuồng
+   * @returns Promise trả về số ô chuồng chưa xóa của khu
+   */
+  countStallsInBarn(manager: EntityManager, barnId: string): Promise<number> {
+    return manager.count(StallEntity, { where: { barnId } });
   }
 }

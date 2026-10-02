@@ -6,7 +6,6 @@ import type { Actor } from '../../../common/types/actor';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { DELETED_HORSE_READ_ONLY_MESSAGE } from '../../horses/constants/horse.constants';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../horses/shared/horses-shared.repository';
 import { UserEntity } from '../../users/entities/user.entity';
 import { MedicalAccessService } from './medical-access.service';
 
@@ -90,9 +89,11 @@ describe('MedicalAccessService.lockHorseForWrite on a deleted profile', () => {
       deletedAt: new Date('2026-09-01T00:00:00Z'),
     });
     service = new MedicalAccessService(
-      new HorseAccessService(
-        { manager: deletedManager } as unknown as DataSource,
-        { lockHorseWithDeleted } as unknown as HorsesSharedRepository,
+      Object.assign(
+        new HorseAccessService({
+          manager: deletedManager,
+        } as unknown as DataSource),
+        { lockHorseWithDeleted },
       ),
     );
   });

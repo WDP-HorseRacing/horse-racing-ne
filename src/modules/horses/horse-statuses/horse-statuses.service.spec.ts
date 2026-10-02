@@ -19,7 +19,6 @@ import {
   HorseLifecycleStatus,
 } from '../enums/horse-status.enum';
 import { HorseAccessService } from '../shared/horse-access.service';
-import { HorsesSharedRepository } from '../shared/horses-shared.repository';
 import type { LifecycleImpactRow } from '../types/horse.types';
 import { HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT } from '../constants/horse.constants';
 import { HorseStatusesService } from './horse-statuses.service';
@@ -41,17 +40,15 @@ describe('HorseStatusesService', () => {
     lifecycleImpact: jest.Mock;
   };
   let training: { withdrawHorseFromClasses: jest.Mock };
-  let horses: {
-    hasActiveTrainingLock: jest.Mock;
-    lockActiveHorseOwner: jest.Mock;
-    invalidOwnerName: jest.Mock;
-  };
   let access: {
     currentUser: jest.Mock;
     lockWritableHorse: jest.Mock;
     findNotDeletedHorse: jest.Mock;
     findWritableHorse: jest.Mock;
     assertNotTransferred: jest.Mock;
+    hasActiveTrainingLock: jest.Mock;
+    lockActiveHorseOwner: jest.Mock;
+    invalidOwnerName: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let stalls: { closeOpenStallAssignment: jest.Mock };
@@ -123,17 +120,15 @@ describe('HorseStatusesService', () => {
         participantsCancelled: 5,
       }),
     };
-    horses = {
-      hasActiveTrainingLock: jest.fn().mockResolvedValue(false),
-      lockActiveHorseOwner: jest.fn().mockResolvedValue(true),
-      invalidOwnerName: jest.fn().mockResolvedValue(null),
-    };
     access = {
       currentUser: jest.fn().mockResolvedValue({ id: CALLER_ID }),
       lockWritableHorse: jest.fn(() => Promise.resolve(horse)),
       findNotDeletedHorse: jest.fn(() => Promise.resolve(horse)),
       findWritableHorse: jest.fn(() => Promise.resolve(horse)),
       assertNotTransferred: jest.fn(),
+      hasActiveTrainingLock: jest.fn().mockResolvedValue(false),
+      lockActiveHorseOwner: jest.fn().mockResolvedValue(true),
+      invalidOwnerName: jest.fn().mockResolvedValue(null),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     stalls = {
@@ -164,7 +159,6 @@ describe('HorseStatusesService', () => {
     };
     service = new HorseStatusesService(
       statuses,
-      horses as unknown as HorsesSharedRepository,
       access as unknown as HorseAccessService,
       dataSource as unknown as DataSource,
       audit,
@@ -229,9 +223,9 @@ describe('HorseStatusesService', () => {
 
     it('clears an owner who is no longer an active HORSE_OWNER when reactivating a transfer, and audits it', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
-      horses.lockActiveHorseOwner.mockResolvedValue(false);
+      access.lockActiveHorseOwner.mockResolvedValue(false);
       await change(HorseLifecycleStatus.ACTIVE, 'Mua lại');
-      expect(horses.lockActiveHorseOwner).toHaveBeenCalledWith(
+      expect(access.lockActiveHorseOwner).toHaveBeenCalledWith(
         manager,
         'owner-1',
       );
@@ -261,7 +255,7 @@ describe('HorseStatusesService', () => {
     it('does not check the owner when reactivating a RETIRED horse', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
       await change(HorseLifecycleStatus.ACTIVE, 'Trở lại');
-      expect(horses.lockActiveHorseOwner).not.toHaveBeenCalled();
+      expect(access.lockActiveHorseOwner).not.toHaveBeenCalled();
     });
 
     it('clears the barn on transfer and keeps the owner', async () => {
@@ -548,11 +542,9 @@ describe('HorseStatusesService', () => {
         lockHorseWithDeleted: jest.fn(() => Promise.resolve(horse)),
       };
       const typedDataSource = dataSource as unknown as DataSource;
-      const typedHorses = sharedHorses as unknown as HorsesSharedRepository;
       service = new HorseStatusesService(
         statuses,
-        typedHorses,
-        new HorseAccessService(typedDataSource, typedHorses),
+        Object.assign(new HorseAccessService(typedDataSource), sharedHorses),
         typedDataSource,
         audit,
         stalls as unknown as StallsService,
@@ -608,7 +600,7 @@ describe('HorseStatusesService', () => {
     };
 
     beforeEach(() => {
-      horses.hasActiveTrainingLock.mockImplementation(() =>
+      access.hasActiveTrainingLock.mockImplementation(() =>
         Promise.resolve(impact.hasActiveTrainingLock),
       );
     });
@@ -616,7 +608,7 @@ describe('HorseStatusesService', () => {
     it('checks the profile with the write rules (403/404 on a deleted profile)', async () => {
       await preview(HorseLifecycleStatus.RETIRED);
       expect(access.findWritableHorse).toHaveBeenCalledWith(actor, HORSE_ID);
-      expect(horses.hasActiveTrainingLock).toHaveBeenCalledWith(
+      expect(access.hasActiveTrainingLock).toHaveBeenCalledWith(
         HORSE_ID,
         manager,
       );
@@ -699,13 +691,13 @@ describe('HorseStatusesService', () => {
         summary:
           'Nếu kích hoạt lại sẽ đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom), đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại.',
       });
-      expect(horses.invalidOwnerName).toHaveBeenCalledWith('owner-1', manager);
+      expect(access.invalidOwnerName).toHaveBeenCalledWith('owner-1', manager);
       expectNothingWritten();
     });
 
     it('warns that an owner who is no longer an active HORSE_OWNER will be cleared when reactivating a transfer', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
-      horses.invalidOwnerName.mockResolvedValue('Nguyen Van B');
+      access.invalidOwnerName.mockResolvedValue('Nguyen Van B');
       await expect(preview(HorseLifecycleStatus.ACTIVE)).resolves.toEqual(
         expect.objectContaining({
           ownerCleared: 'Nguyen Van B',
@@ -723,7 +715,7 @@ describe('HorseStatusesService', () => {
           ownerCleared: null,
         }),
       );
-      expect(horses.invalidOwnerName).not.toHaveBeenCalled();
+      expect(access.invalidOwnerName).not.toHaveBeenCalled();
     });
 
     it('blocks an invalid transition', async () => {

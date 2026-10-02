@@ -15,7 +15,6 @@ import {
   HorseLifecycleStatus,
 } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { HorsesSharedRepository } from '../../src/modules/horses/shared/horses-shared.repository';
 import type { HorseMeasurementAlertEvent } from '../../src/modules/horses/types/horse.types';
 import { ExamRequestStatus } from '../../src/modules/medical/constants/exam-request.enum';
 import { ExamRequestListQueryDto } from '../../src/modules/medical/dto';
@@ -136,7 +135,7 @@ describe('Health history and exam request queries (Postgres)', () => {
   });
 
   describe('ExamRequestsService', () => {
-    let assignedHorseIds: string[];
+    let callerId: string;
     let audit: { record: jest.Mock };
     let service: ExamRequestsService;
 
@@ -151,19 +150,16 @@ describe('Health history and exam request queries (Postgres)', () => {
         )
       ).items.map((item) => item.id);
 
-    beforeEach(() => {
-      assignedHorseIds = [];
+    beforeEach(async () => {
+      callerId = await seed.user(UserRole.GROOM);
       audit = { record: jest.fn().mockResolvedValue(undefined) };
       service = new ExamRequestsService(
         dataSource,
         dataSource.getRepository(MedicalExamRequestEntity),
         {} as MedicalAccessService,
         {
-          currentUser: jest.fn().mockResolvedValue({ id: 'caller' }),
+          currentUser: jest.fn().mockResolvedValue({ id: callerId }),
         } as unknown as HorseAccessService,
-        {
-          assignedHorseIds: jest.fn(() => Promise.resolve(assignedHorseIds)),
-        } as unknown as HorsesSharedRepository,
         audit,
         { publish: jest.fn() } as unknown as DomainEventPublisher,
       );
@@ -232,10 +228,14 @@ describe('Health history and exam request queries (Postgres)', () => {
         const other = await seed.horse('Other');
         const kept = await seed.examRequest(mine);
         await seed.examRequest(other);
-        assignedHorseIds = [mine];
+        await dataSource.query(
+          `INSERT INTO groom_assignments (id, version, horse_id, groom_id, start_at)
+           VALUES ($1, 1, $2, $3, now())`,
+          [randomUUID(), mine, callerId],
+        );
 
         await expect(listIds(groom)).resolves.toEqual([kept]);
-        assignedHorseIds = [];
+        await dataSource.query('UPDATE groom_assignments SET end_at = now()');
         await expect(listIds(groom)).resolves.toEqual([]);
       });
     });

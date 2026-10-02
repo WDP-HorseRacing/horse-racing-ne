@@ -49,7 +49,6 @@ import {
   isStallFree,
 } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
-import { StableSharedRepository } from '../shared/stable-shared.repository';
 
 /**
  * Ô chuồng vừa được trả lại khi đóng phân công ô của một con ngựa.
@@ -89,7 +88,6 @@ export class StallsService {
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly access: StableAccessService,
-    private readonly stableRepository: StableSharedRepository,
   ) {}
 
   /**
@@ -153,7 +151,7 @@ export class StallsService {
         const barn = await this.access.lockActiveBarn(manager, body.barnId);
         assertBarnHasStallRoom(
           barn,
-          await this.stableRepository.countStallsInBarn(manager, barn.id),
+          await this.access.countStallsInBarn(manager, barn.id),
         );
 
         const code = body.code.trim();
@@ -228,10 +226,7 @@ export class StallsService {
           assertBarnActive(targetBarn, 'Khu chuồng đích');
           assertBarnHasStallRoom(
             targetBarn,
-            await this.stableRepository.countStallsInBarn(
-              manager,
-              targetBarn.id,
-            ),
+            await this.access.countStallsInBarn(manager, targetBarn.id),
             'Khu chuồng đích',
           );
           if (isStallFree(stall.status, hasOpenAssignment)) {
@@ -515,10 +510,7 @@ export class StallsService {
       stall.id,
     );
     if (!isStallFree(stall.status, hasOpenAssignment)) {
-      const capacity = await this.stableRepository.countBarnCapacity(
-        manager,
-        barnId,
-      );
+      const capacity = await this.access.countBarnCapacity(manager, barnId);
       throw new ConflictException(
         capacity.freeStallCount > 0
           ? STALL_TAKEN_MESSAGE
@@ -797,10 +789,7 @@ export class StallsService {
     manager: EntityManager,
     barnId: string,
   ): Promise<void> {
-    const capacity = await this.stableRepository.countBarnCapacity(
-      manager,
-      barnId,
-    );
+    const capacity = await this.access.countBarnCapacity(manager, barnId);
     assertFreeStallRemovable(capacity);
   }
 

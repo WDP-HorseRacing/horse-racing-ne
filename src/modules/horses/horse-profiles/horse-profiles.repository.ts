@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
-import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
-import { UserEntity } from '../../users/entities/user.entity';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
 import {
@@ -14,7 +12,6 @@ import { HorseEntity } from '../entities/horse.entity';
 import { applyHorseScope } from '../utils/horse-scope';
 import type {
   HorseLocationRow,
-  HorsePersonRow,
   HorseScope,
   PedigreeAncestorRow,
 } from '../types/horse.types';
@@ -165,42 +162,6 @@ export class HorseProfilesRepository {
       [horseIds],
     );
     return rows;
-  }
-
-  /**
-   * Lấy Groom đang phụ trách con ngựa (dòng phân công còn mở).
-   *
-   * @param horseId UUID của ngựa
-   * @returns Promise trả về Groom, hoặc null nếu chưa phân công
-   */
-  async currentGroom(horseId: string): Promise<HorsePersonRow | null> {
-    const assignment = await this.dataSource.manager.findOne(
-      GroomAssignmentEntity,
-      {
-        where: { horseId, endAt: IsNull() },
-        relations: { groom: true },
-        withDeleted: true,
-      },
-    );
-    return assignment
-      ? { id: assignment.groom.id, fullName: assignment.groom.fullName }
-      : null;
-  }
-
-  /**
-   * Lấy tên hiển thị của chủ sở hữu.
-   *
-   * @param ownerId UUID chủ sở hữu, null nếu ngựa chưa có chủ
-   * @returns Promise trả về chủ sở hữu, hoặc null nếu ngựa chưa có chủ
-   */
-  async ownerOf(ownerId: string | null): Promise<HorsePersonRow | null> {
-    if (!ownerId) return null;
-    const owner = await this.dataSource.manager.findOne(UserEntity, {
-      select: { id: true, fullName: true },
-      where: { id: ownerId },
-      withDeleted: true,
-    });
-    return owner ? { id: owner.id, fullName: owner.fullName } : null;
   }
 
   /**
