@@ -6,7 +6,7 @@ import {
 import { MediaAssetEntity } from '../entities/media-asset.entity';
 
 /**
- * Chuyển bản ghi media_assets sang DTO trả về client. Cột byte_size kiểu bigint được TypeORM trả về dạng chuỗi nên đổi sang number.
+ * Chuyển bản ghi media_assets sang DTO trả về client, đổi byteSize từ chuỗi bigint sang number.
  *
  * @param asset Bản ghi media_assets
  * @returns MediaAssetResponseDto - Metadata của tệp, không lộ object key

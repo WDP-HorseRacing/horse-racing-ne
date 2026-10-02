@@ -45,7 +45,7 @@ export class SessionParticipantsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param sessionId UUID của buổi tập
-   * @returns A promise resolving to các lượt tham gia theo thứ tự tạo
+   * @returns Promise trả về các lượt tham gia theo thứ tự tạo
    */
   async list(
     actor: Actor,
@@ -85,7 +85,7 @@ export class SessionParticipantsService {
    * Lọc ra các ngựa đang có lệnh khóa huấn luyện hiệu lực, một câu truy vấn cho cả danh sách
    *
    * @param horseIds UUID các ngựa cần kiểm
-   * @returns A promise resolving to tập UUID các ngựa đang bị khóa
+   * @returns Promise trả về tập UUID các ngựa đang bị khóa
    */
   private async lockedHorseIds(horseIds: string[]): Promise<Set<string>> {
     if (horseIds.length === 0) return new Set();

@@ -45,12 +45,12 @@ export class MediaService {
    *
    * - Vai trò được xin tải lên tùy mục đích, theo MEDIA_UPLOAD_PERMISSION (ảnh ngựa: chỉ CLUB_MANAGER).
    * - Mime type và dung lượng khai báo phải đạt giới hạn của mục đích (ảnh ngựa: JPEG/PNG/WebP, tối đa 10 MB).
-   * - Presigned URL ký kèm Content-Type và Content-Length, nên storage từ chối nếu client gửi tệp khác khai báo.
+   * - Presigned URL ký kèm Content-Type và Content-Length; storage từ chối nếu client gửi tệp khác khai báo.
    * - Tệp chỉ dùng được sau khi gọi complete, hoặc khi module khác xác minh lại qua assertAttachableHorsePhoto.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Mục đích, tên tệp, mime type và dung lượng khai báo
-   * @returns A promise resolving to MediaUploadRequestResponseDto - assetId, presigned URL và header bắt buộc khi PUT
+   * @returns Promise trả về MediaUploadRequestResponseDto - assetId, presigned URL và header bắt buộc khi PUT
    * @throws ForbiddenException Nếu tài khoản không tồn tại, không hoạt động, chưa có vai trò hoặc vai trò không được tải lên cho mục đích này
    * @throws BadRequestException Nếu mime type hoặc dung lượng khai báo không đạt giới hạn của mục đích
    */
@@ -85,13 +85,13 @@ export class MediaService {
   /**
    * Xác nhận client đã tải tệp lên xong: đọc metadata thật trên storage (HEAD object) và so với số liệu đã khai báo.
    *
-   * - Chỉ người tạo yêu cầu tải lên được xác nhận; người khác nhận 404 để không lộ tệp có tồn tại.
+   * - Chỉ người tạo yêu cầu tải lên được xác nhận; người khác nhận 404.
    * - Gọi lại nhiều lần vẫn an toàn, mỗi lần đều kiểm lại trên storage.
    * - Tệp sai giới hạn vẫn nằm trên storage, không bị xóa ở bước này.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param assetId UUID của bản ghi media_assets
-   * @returns A promise resolving to MediaAssetResponseDto - Metadata của tệp đã xác nhận
+   * @returns Promise trả về MediaAssetResponseDto - Metadata của tệp đã xác nhận
    * @throws ForbiddenException Nếu tài khoản không tồn tại, không hoạt động hoặc chưa có vai trò
    * @throws NotFoundException Nếu không có tệp hoặc người gọi không phải người tải lên
    * @throws ConflictException Nếu tệp chưa có trên storage
@@ -113,11 +113,9 @@ export class MediaService {
   /**
    * Lấy metadata của tệp do chính người gọi tải lên.
    *
-   * - Module sở hữu dữ liệu tự cấp link cho người được xem (vd ảnh ngựa qua GET /horses/{id}/photo-url), media không tự quyết quyền xem theo nghiệp vụ
-   *
    * @param actor Thông tin danh tính từ Access Token
    * @param assetId UUID của bản ghi media_assets
-   * @returns A promise resolving to MediaAssetResponseDto - Metadata của tệp
+   * @returns Promise trả về MediaAssetResponseDto - Metadata của tệp
    * @throws ForbiddenException Nếu tài khoản không tồn tại, không hoạt động hoặc chưa có vai trò
    * @throws NotFoundException Nếu không có tệp hoặc người gọi không được xem
    */
@@ -134,7 +132,7 @@ export class MediaService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param assetId UUID của bản ghi media_assets
-   * @returns A promise resolving to MediaDownloadUrlResponseDto - URL tải tệp
+   * @returns Promise trả về MediaDownloadUrlResponseDto - URL tải tệp
    * @throws ForbiddenException Nếu tài khoản không tồn tại, không hoạt động hoặc chưa có vai trò
    * @throws NotFoundException Nếu không có tệp hoặc người gọi không được xem
    */
@@ -148,10 +146,10 @@ export class MediaService {
   }
 
   /**
-   * Cấp presigned GET URL có hạn dùng cho một tệp, không kiểm quyền xem. Dành cho module sở hữu dữ liệu gọi sau khi đã tự kiểm quyền (vd horses cấp link ảnh ngựa)
+   * Cấp presigned GET URL có hạn dùng cho một tệp, không kiểm quyền xem; nơi gọi phải tự kiểm quyền trước
    *
    * @param assetId UUID của bản ghi media_assets
-   * @returns A promise resolving to URL tải tệp
+   * @returns Promise trả về URL tải tệp
    * @throws NotFoundException Nếu không có tệp
    */
   async signDownloadUrl(assetId: string): Promise<string> {
@@ -165,7 +163,7 @@ export class MediaService {
    * - Đọc DB một lần cho cả danh sách; tệp không tồn tại thì bỏ qua
    *
    * @param assetIds UUID các bản ghi media_assets
-   * @returns A promise resolving to map từ UUID tệp sang URL tải tệp
+   * @returns Promise trả về map từ UUID tệp sang URL tải tệp
    */
   async signDownloadUrls(assetIds: string[]): Promise<Map<string, string>> {
     const urls = new Map<string, string>();
@@ -178,17 +176,16 @@ export class MediaService {
   }
 
   /**
-   * Kiểm tra một tệp có được gắn làm ảnh đại diện ngựa không. Dành cho module horses gọi TRƯỚC khi mở transaction tạo hoặc đổi ảnh.
+   * Kiểm tra một tệp có được gắn làm ảnh đại diện ngựa không; gọi trước khi mở transaction tạo hoặc đổi ảnh.
    *
-   * - Tệp phải do chính người gọi tải lên, để không gắn được tệp riêng của người khác vào hồ sơ ngựa.
+   * - Tệp phải do chính người gọi tải lên.
    * - Tệp phải được xin tải lên với mục đích HORSE_PHOTO.
-   * - Metadata thật trên storage phải đạt giới hạn ảnh ngựa và khớp số liệu khai báo (vì bảng media_assets chưa lưu trạng thái đã xác nhận).
-   * - Có một lần gọi HEAD tới storage, nên không gọi trong transaction để không giữ connection DB trong lúc chờ mạng.
-   * - Bản ghi media_assets không bao giờ bị sửa sau khi tạo, nên kiểm trước transaction vẫn đúng lúc ghi.
+   * - Metadata thật trên storage phải đạt giới hạn ảnh ngựa và khớp số liệu khai báo.
+   * - Có một lần gọi HEAD tới storage.
    *
    * @param callerId UUID của người gọi (users.id)
    * @param assetId UUID của bản ghi media_assets
-   * @returns A promise resolving to MediaAssetEntity - Tệp hợp lệ để gắn làm ảnh
+   * @returns Promise trả về MediaAssetEntity - Tệp hợp lệ để gắn làm ảnh
    * @throws NotFoundException Nếu không có tệp hoặc tệp không do người gọi tải lên
    * @throws BadRequestException Nếu tệp không phải ảnh ngựa, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
    * @throws ConflictException Nếu tệp chưa có trên storage
@@ -226,11 +223,11 @@ export class MediaService {
   /**
    * Lấy tệp do chính người gọi tải lên.
    *
-   * - Người khác nhận 404 để không lộ tệp có tồn tại.
+   * - Người khác nhận 404.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param assetId UUID của bản ghi media_assets
-   * @returns A promise resolving to MediaAssetEntity - Tệp người gọi được xem
+   * @returns Promise trả về MediaAssetEntity - Tệp người gọi được xem
    * @throws ForbiddenException Nếu tài khoản không tồn tại, không hoạt động hoặc chưa có vai trò
    * @throws NotFoundException Nếu không có tệp hoặc người gọi không được xem
    */

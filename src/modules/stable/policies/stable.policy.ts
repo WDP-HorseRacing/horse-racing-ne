@@ -260,7 +260,7 @@ export function assertManualStallStatusChange(
 /**
  * Chặn đưa một ô trống ra khỏi danh sách ô trống (xóa ô, chuyển ô sang MAINTENANCE) khi khu không còn đủ ô cho ngựa đang chờ xếp ô
  *
- * - Chỉ gọi khi ô đang trống (AVAILABLE, không có phân công đang mở), nên ô này đang được tính trong freeStallCount
+ * - Chỉ gọi khi ô đang trống (AVAILABLE, không có phân công đang mở); ô này đang được tính trong freeStallCount
  * - Sau khi bỏ ô này, số ô trống còn lại (freeStallCount − 1) phải lớn hơn hoặc bằng số ngựa chờ xếp ô
  *
  * @param capacity Số ô trống (tính cả ô sắp bỏ) và số ngựa chờ xếp ô của khu, đếm sau khi đã lock khu

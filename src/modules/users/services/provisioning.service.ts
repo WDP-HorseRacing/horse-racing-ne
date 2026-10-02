@@ -22,10 +22,9 @@ export class ProvisioningService {
    * Bắt buộc tài khoản Keycloak vừa đăng nhập đã được Club Manager cấp tài khoản local và đang hoạt động
    *
    * - Dùng ở cửa đăng nhập (login, OIDC callback) và GET /auth/me
-   * - Trả 401 (khác currentUserForActor trả 403) vì đây là bước xác thực phiên
    *
    * @param claims Claim đọc từ access token, cần sub là Keycloak ID
-   * @returns A promise resolving to tài khoản local đang hoạt động
+   * @returns Promise trả về tài khoản local đang hoạt động
    * @throws UnauthorizedException Nếu chưa có tài khoản local hoặc tài khoản không ở trạng thái hoạt động
    */
   async requireProvisionedUser(

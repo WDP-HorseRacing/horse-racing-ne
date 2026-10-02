@@ -1545,7 +1545,7 @@
             "bearer": []
           }
         ],
-        "summary": "List vaccination, deworming and farrier schedules (F3.11)",
+        "summary": "List vaccination, deworming and farrier schedules",
         "tags": [
           "medical"
         ]
@@ -1590,7 +1590,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a care schedule (F3.11)",
+        "summary": "Create a care schedule",
         "tags": [
           "medical"
         ]
@@ -1637,7 +1637,7 @@
             "bearer": []
           }
         ],
-        "summary": "Reschedule or reassign a care schedule (F3.11)",
+        "summary": "Reschedule or reassign a care schedule",
         "tags": [
           "medical"
         ]
@@ -1684,7 +1684,7 @@
             "bearer": []
           }
         ],
-        "summary": "Complete a care schedule (F3.11)",
+        "summary": "Complete a care schedule",
         "tags": [
           "medical"
         ]
@@ -1731,7 +1731,7 @@
             "bearer": []
           }
         ],
-        "summary": "Cancel a care schedule with a reason (F3.11)",
+        "summary": "Cancel a care schedule with a reason",
         "tags": [
           "medical"
         ]
@@ -1785,7 +1785,7 @@
             "bearer": []
           }
         ],
-        "summary": "Routine checkup schedule of the herd (F3.2)",
+        "summary": "Routine checkup schedule of the herd",
         "tags": [
           "medical"
         ]
@@ -1832,7 +1832,7 @@
             "bearer": []
           }
         ],
-        "summary": "Set or reschedule the routine checkup appointment (F3.2)",
+        "summary": "Set or reschedule the routine checkup appointment",
         "tags": [
           "medical"
         ]
@@ -1879,7 +1879,7 @@
             "bearer": []
           }
         ],
-        "summary": "Request a medical exam for a horse (F3.4)",
+        "summary": "Request a medical exam for a horse",
         "tags": [
           "medical"
         ]
@@ -1917,7 +1917,7 @@
             "bearer": []
           }
         ],
-        "summary": "List exam requests of a horse (F3.4)",
+        "summary": "List exam requests of a horse",
         "tags": [
           "medical"
         ]
@@ -2014,7 +2014,7 @@
             "bearer": []
           }
         ],
-        "summary": "Exam request queue (F3.4)",
+        "summary": "Exam request queue",
         "tags": [
           "medical"
         ]
@@ -2061,7 +2061,7 @@
             "bearer": []
           }
         ],
-        "summary": "Change the urgency of a pending exam request (F3.4)",
+        "summary": "Change the urgency of a pending exam request",
         "tags": [
           "medical"
         ]
@@ -2108,7 +2108,7 @@
             "bearer": []
           }
         ],
-        "summary": "Dismiss an exam request with a reason (F3.4)",
+        "summary": "Dismiss an exam request with a reason",
         "tags": [
           "medical"
         ]
@@ -2155,7 +2155,7 @@
             "bearer": []
           }
         ],
-        "summary": "Change horse health status with a reason (F3.7)",
+        "summary": "Change horse health status with a reason",
         "tags": [
           "medical"
         ]
@@ -2195,7 +2195,7 @@
             "bearer": []
           }
         ],
-        "summary": "Horse health status history (F3.10)",
+        "summary": "Horse health status history",
         "tags": [
           "medical"
         ]
@@ -2287,7 +2287,7 @@
             "bearer": []
           }
         ],
-        "summary": "Medical dashboard (F3.1)",
+        "summary": "Medical dashboard",
         "tags": [
           "medical"
         ]
@@ -2337,7 +2337,7 @@
             "bearer": []
           }
         ],
-        "summary": "List horse medical cases (F3.10)",
+        "summary": "List horse medical cases",
         "tags": [
           "medical"
         ]
@@ -2373,7 +2373,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get a medical case with its visits (F3.10)",
+        "summary": "Get a medical case with its visits",
         "tags": [
           "medical"
         ]
@@ -2420,7 +2420,7 @@
             "bearer": []
           }
         ],
-        "summary": "Record a follow-up visit in an open case (F3.6)",
+        "summary": "Record a follow-up visit in an open case",
         "tags": [
           "medical"
         ]
@@ -2456,7 +2456,7 @@
             "bearer": []
           }
         ],
-        "summary": "Preview what must be handled before closing a case (F3.9)",
+        "summary": "Preview what must be handled before closing a case",
         "tags": [
           "medical"
         ]
@@ -2503,7 +2503,7 @@
             "bearer": []
           }
         ],
-        "summary": "Close a case with final conclusion and total cost (F3.9)",
+        "summary": "Close a case with final conclusion and total cost",
         "tags": [
           "medical"
         ]
@@ -2550,7 +2550,7 @@
             "bearer": []
           }
         ],
-        "summary": "Adjust the cost of a closed case with a reason (F3.9)",
+        "summary": "Adjust the cost of a closed case with a reason",
         "tags": [
           "medical"
         ]
@@ -2618,7 +2618,7 @@
             "bearer": []
           }
         ],
-        "summary": "Medical cost report by closing date (F3.10)",
+        "summary": "Medical cost report by closing date",
         "tags": [
           "medical"
         ]
@@ -2664,7 +2664,7 @@
         ]
       },
       "post": {
-        "description": "Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay (F3.5). Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.",
+        "description": "Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.",
         "operationId": "MedicalController_createRecord",
         "parameters": [
           {
@@ -2703,7 +2703,7 @@
             "bearer": []
           }
         ],
-        "summary": "Record a medical visit outside a case (F3.3)",
+        "summary": "Record a medical visit outside a case",
         "tags": [
           "medical"
         ]
@@ -2711,7 +2711,7 @@
     },
     "/api/v1/horses/{horseId}/care-instructions": {
       "get": {
-        "description": "Ghi chú chăm sóc và hạn chế vận động đang hiệu lực (của buổi khám gần nhất chưa hủy), để hiện trong hồ sơ ngựa. Groom chỉ xem ngựa mình phụ trách (403 nếu không). current = null khi ngựa chưa được khám hoặc buổi gần nhất để trống ghi chú. Không trả chẩn đoán, thuốc hay chi phí.",
+        "description": "Ghi chú chăm sóc và hạn chế vận động đang hiệu lực (của buổi khám gần nhất chưa hủy). Groom chỉ xem ngựa mình phụ trách (403 nếu không). current = null khi ngựa chưa được khám hoặc buổi gần nhất để trống ghi chú. Không trả chẩn đoán, thuốc hay chi phí.",
         "operationId": "MedicalRecordsController_careInstructions",
         "parameters": [
           {
@@ -2784,7 +2784,7 @@
     },
     "/api/v1/medical-records/{id}/void": {
       "post": {
-        "description": "Bắt buộc lý do. Số đo của buổi khám bị gỡ khỏi F1.5. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.",
+        "description": "Bắt buộc lý do. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.",
         "operationId": "MedicalDetailsController_voidRecord",
         "parameters": [
           {
@@ -2823,7 +2823,7 @@
             "bearer": []
           }
         ],
-        "summary": "Void a wrongly recorded medical visit (F3.6)",
+        "summary": "Void a wrongly recorded medical visit",
         "tags": [
           "medical"
         ]
@@ -2870,13 +2870,13 @@
             "bearer": []
           }
         ],
-        "summary": "Set a veterinary training lock (F3.8)",
+        "summary": "Set a veterinary training lock",
         "tags": [
           "medical"
         ]
       },
       "get": {
-        "description": "Groom không xem chi tiết khóa, chỉ thấy nhãn trong hồ sơ ngựa (F1.3).",
+        "description": "Groom không xem chi tiết khóa, chỉ thấy nhãn trong hồ sơ ngựa.",
         "operationId": "MedicalDetailsController_locks",
         "parameters": [
           {
@@ -2908,7 +2908,7 @@
             "bearer": []
           }
         ],
-        "summary": "List current and past training locks of a horse (F3.10)",
+        "summary": "List current and past training locks of a horse",
         "tags": [
           "medical"
         ]
@@ -2955,7 +2955,7 @@
             "bearer": []
           }
         ],
-        "summary": "Release a training lock with a reason (F3.8)",
+        "summary": "Release a training lock with a reason",
         "tags": [
           "medical"
         ]
@@ -10096,7 +10096,7 @@
           "totalCost": {
             "type": "number",
             "nullable": true,
-            "description": "VND; không có key với Head Trainer (F3.10 mục 8)"
+            "description": "VND; không có key với Head Trainer"
           }
         },
         "required": [
@@ -10383,7 +10383,7 @@
           "totalCost": {
             "type": "number",
             "nullable": true,
-            "description": "VND; không có key với Head Trainer (F3.10 mục 8)"
+            "description": "VND; không có key với Head Trainer"
           },
           "visits": {
             "type": "array",
@@ -10457,7 +10457,7 @@
             ]
           },
           "position": {
-            "description": "Point on the 3D horse model, in model coordinates",
+            "description": "Điểm trên mô hình 3D của ngựa, theo tọa độ của mô hình",
             "allOf": [
               {
                 "$ref": "#/components/schemas/InjuryPositionDto"
@@ -10485,7 +10485,7 @@
               "RECOVERING",
               "HEALED"
             ],
-            "description": "Mức hồi phục tại buổi khám này (F3.6 mục 2)"
+            "description": "Mức hồi phục tại buổi khám này"
           },
           "notes": {
             "type": "string"
@@ -10551,7 +10551,7 @@
           },
           "confirmAbnormal": {
             "type": "boolean",
-            "description": "Xác nhận lưu số đo ngoài khoảng bình thường (F1.5 mục 2)"
+            "description": "Xác nhận lưu số đo ngoài khoảng bình thường"
           },
           "prescriptions": {
             "type": "array",
@@ -10569,7 +10569,7 @@
           "replacesRecordId": {
             "type": "string",
             "format": "uuid",
-            "description": "Buổi khám đã hủy mà buổi này ghi thay (F3.6 mục 8)"
+            "description": "Buổi khám đã hủy mà buổi này ghi thay"
           }
         }
       },
@@ -10618,7 +10618,7 @@
           },
           "healthWarning": {
             "type": "boolean",
-            "description": "True khi ngựa vẫn Chấn thương hoặc Cách ly (F3.9 mục 5)"
+            "description": "True khi ngựa vẫn Chấn thương hoặc Cách ly"
           },
           "pendingRequestCount": {
             "type": "number",
@@ -10794,7 +10794,7 @@
           },
           "confirmAbnormal": {
             "type": "boolean",
-            "description": "Xác nhận lưu số đo ngoài khoảng bình thường (F1.5 mục 2)"
+            "description": "Xác nhận lưu số đo ngoài khoảng bình thường"
           },
           "prescriptions": {
             "type": "array",
@@ -10812,7 +10812,7 @@
           "replacesRecordId": {
             "type": "string",
             "format": "uuid",
-            "description": "Buổi khám đã hủy mà buổi này ghi thay (F3.6 mục 8)"
+            "description": "Buổi khám đã hủy mà buổi này ghi thay"
           },
           "kind": {
             "type": "string",
@@ -11430,7 +11430,7 @@
           },
           "hasActiveHeadTrainer": {
             "type": "boolean",
-            "description": "true nếu Head Trainer phụ trách khu còn tồn tại, đang ACTIVE và còn vai trò HEAD_TRAINER. Bằng false thì không xếp ngựa vào khu được (F1.6 mục 2), kể cả khi headTrainerFullName vẫn có tên (người đó đã bị khóa, ngưng hoạt động hoặc đổi vai trò)."
+            "description": "true nếu Head Trainer phụ trách khu còn tồn tại, đang ACTIVE và còn vai trò HEAD_TRAINER. Bằng false thì không xếp ngựa vào khu được, kể cả khi headTrainerFullName vẫn có tên (người đó đã bị khóa, ngưng hoạt động hoặc đổi vai trò)."
           },
           "availableStallCount": {
             "type": "number",

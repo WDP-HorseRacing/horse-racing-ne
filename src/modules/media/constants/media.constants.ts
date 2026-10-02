@@ -1,14 +1,14 @@
 import { UserRole } from '../../../common/enums/role.enum';
 import { MediaPurpose } from '../enums/media-purpose.enum';
 
-/** Các định dạng ảnh đại diện ngựa được chấp nhận (F1.2 mục 8). */
+/** Các định dạng ảnh đại diện ngựa được chấp nhận. */
 export const HORSE_PHOTO_ALLOWED_MIME_TYPES: readonly string[] = [
   'image/jpeg',
   'image/png',
   'image/webp',
 ];
 
-/** Dung lượng tối đa của ảnh đại diện ngựa: 10 MB (F1.2 mục 8). */
+/** Dung lượng tối đa của ảnh đại diện ngựa: 10 MB. */
 export const HORSE_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 
 /** Thư mục gốc trên bucket cho từng mục đích tải lên. */
@@ -26,8 +26,7 @@ export const MEDIA_FILE_EXTENSION: Readonly<Record<string, string>> = {
 /**
  * Quyền xin tải lên theo từng mục đích: vai trò nào được tải và message 403 khi bị từ chối.
  *
- * - HORSE_PHOTO: chỉ Club Manager (BA chốt).
- * - Thêm mục đích mới (video time trial, ảnh sự cố...) thì khai báo vai trò ở đây.
+ * - HORSE_PHOTO: chỉ Club Manager.
  */
 export const MEDIA_UPLOAD_PERMISSION: Readonly<
   Record<MediaPurpose, { roles: readonly UserRole[]; deniedMessage: string }>

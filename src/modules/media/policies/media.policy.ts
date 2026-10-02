@@ -20,7 +20,7 @@ export function normalizeContentType(contentType: string): string {
 }
 
 /**
- * Kiểm tra định dạng và dung lượng của ảnh đại diện ngựa theo F1.2 mục 8.
+ * Kiểm tra định dạng và dung lượng của ảnh đại diện ngựa.
  *
  * - Định dạng: JPEG, PNG hoặc WebP.
  * - Dung lượng: lớn hơn 0 và không quá 10 MB.
@@ -69,8 +69,8 @@ export function assertMediaSpec(
 /**
  * Tạo object key trên bucket cho một tệp mới: `<thư mục của mục đích>/<assetId>.<đuôi>`.
  *
- * - Không dùng tên tệp người dùng gửi lên để tránh ký tự lạ hoặc đường dẫn `..`.
- * - Đuôi tệp suy ra từ mime type, nên chỉ gọi sau khi mime type đã qua assertMediaSpec.
+ * - Không dùng tên tệp người dùng gửi lên.
+ * - Đuôi tệp suy ra từ mime type; chỉ gọi sau khi mime type đã qua assertMediaSpec.
  *
  * @param purpose Mục đích sử dụng của tệp
  * @param assetId UUID của bản ghi media_assets
@@ -88,7 +88,7 @@ export function buildMediaObjectKey(
 }
 
 /**
- * Suy ra mục đích sử dụng từ thư mục gốc của object key (bảng media_assets chưa có cột purpose).
+ * Suy ra mục đích sử dụng từ thư mục gốc của object key.
  *
  * @param objectKey Object key đã lưu trong media_assets
  * @returns Mục đích tương ứng, hoặc undefined nếu key không thuộc thư mục nào đã biết
@@ -106,7 +106,7 @@ export function mediaPurposeOfObjectKey(
  * Kiểm tra người gọi có được xin tải lên tệp cho mục đích này không, theo bảng MEDIA_UPLOAD_PERMISSION.
  *
  * - HORSE_PHOTO: chỉ CLUB_MANAGER.
- * - Kiểm theo vai trò trong Access Token (actor.roles), giống các policy khác.
+ * - Kiểm theo vai trò trong Access Token (actor.roles).
  *
  * @param actor Thông tin danh tính từ Access Token
  * @param purpose Mục đích sử dụng của tệp

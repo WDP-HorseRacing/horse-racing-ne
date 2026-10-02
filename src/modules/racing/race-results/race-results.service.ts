@@ -8,7 +8,7 @@ import { RaceRegistrationEntity } from '../entities/race-registration.entity';
 import { toHorseRaceResultResponse } from '../mappers/racing.mapper';
 
 /**
- * Đọc kết quả thi đấu. Ghi kết quả vẫn là API hợp đồng (501).
+ * Đọc kết quả thi đấu.
  */
 @Injectable()
 export class RaceResultsService {
@@ -25,7 +25,7 @@ export class RaceResultsService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns A promise resolving to danh sách kết quả thi đấu của con ngựa
+   * @returns Promise trả về danh sách kết quả thi đấu của con ngựa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */

@@ -6,8 +6,7 @@ import { RaceResultsController } from './race-results.controller';
 import { RaceResultsService } from './race-results.service';
 
 /**
- * Owns registration/result reads, including the implemented horse race history
- * use case.
+ * Lắp ráp các use case đọc đăng ký và kết quả thi đấu, gồm lịch sử thi đấu của ngựa.
  */
 @Module({
   imports: [TypeOrmModule.forFeature([RaceRegistrationEntity]), HorsesSharedModule],

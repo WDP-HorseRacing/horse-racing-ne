@@ -54,10 +54,12 @@ export class UsersService {
   ) {}
 
   /**
-   * List users
-   * @param actor The actor resolved from the JWT
-   * @param query The query parameters
-   * @returns A promise resolving to a paginated list of users
+   * Liệt kê người dùng, lọc theo vai trò, trạng thái, từ khóa (họ tên hoặc email), sắp theo họ tên
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param query Bộ lọc và tham số phân trang
+   * @returns Promise trả về một trang người dùng
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
    */
   async list(
     actor: Actor,
@@ -88,11 +90,13 @@ export class UsersService {
   }
 
   /**
-   * Get a user
-   * @param actor The actor resolved from the JWT
-   * @param id The ID of the user
-   * @returns A promise resolving to the user
-   * @throws NotFoundException if the user is not found
+   * Lấy chi tiết một người dùng
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của user
+   * @returns Promise trả về user
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
+   * @throws NotFoundException Nếu không có user
    */
   async get(actor: Actor, id: string): Promise<UserResponseDto> {
     await currentUserForActor(this.dataSource.manager, actor);
@@ -100,11 +104,15 @@ export class UsersService {
   }
 
   /**
-   * Create a user and register them in Keycloak
-   * @param actor The actor resolved from the JWT
-   * @param body The user data to create
-   * @returns A promise resolving to the created user
-   * @throws ConflictException if the email is already used locally or in Keycloak
+   * Tạo user và đăng ký tài khoản tương ứng trên Keycloak
+   *
+   * - Gán vai trò trên Keycloak hoặc ghi DB lỗi: xóa tài khoản Keycloak vừa tạo rồi ném lại lỗi
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param body Dữ liệu user cần tạo
+   * @returns Promise trả về user vừa tạo
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
+   * @throws ConflictException Nếu email đã được dùng ở DB hoặc trên Keycloak
    */
   async create(actor: Actor, body: CreateUserDto): Promise<UserResponseDto> {
     await currentUserForActor(this.dataSource.manager, actor);
@@ -152,14 +160,18 @@ export class UsersService {
   }
 
   /**
-   * Update a user's name or role
-   * @param actor The actor resolved from the JWT
-   * @param id The ID of the user
-   * @param body The fields to update
-   * @returns A promise resolving to the updated user
-   * @throws NotFoundException if the user is not found
-   * @throws BadRequestException if the caller changes their own role
-   * @throws ConflictException if the role cannot be released or the club would lose its last active manager
+   * Sửa họ tên hoặc vai trò của user
+   *
+   * - Đổi vai trò: đồng bộ sang Keycloak sau khi commit rồi thu hồi phiên đăng nhập của user
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của user
+   * @param body Các field cần sửa
+   * @returns Promise trả về user sau khi sửa
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
+   * @throws NotFoundException Nếu không có user
+   * @throws BadRequestException Nếu người gọi tự đổi vai trò của chính mình
+   * @throws ConflictException Nếu user còn trách nhiệm của vai trò hiện tại hoặc câu lạc bộ không còn Club Manager đang hoạt động nào khác
    */
   async update(
     actor: Actor,
@@ -199,14 +211,19 @@ export class UsersService {
   }
 
   /**
-   * Change a user's status and sync it to Keycloak
-   * @param actor The actor resolved from the JWT
-   * @param id The ID of the user
-   * @param status The new status
-   * @returns A promise resolving to the updated user
-   * @throws NotFoundException if the user is not found
-   * @throws BadRequestException if the caller changes their own status
-   * @throws ConflictException if the user still holds responsibilities or the club would lose its last active manager
+   * Đổi trạng thái tài khoản của user và đồng bộ sang Keycloak
+   *
+   * - Trạng thái không đổi: trả user hiện tại, không ghi gì
+   * - Chuyển sang trạng thái khác ACTIVE: thu hồi phiên đăng nhập của user
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của user
+   * @param status Trạng thái mới
+   * @returns Promise trả về user sau khi đổi
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
+   * @throws NotFoundException Nếu không có user
+   * @throws BadRequestException Nếu người gọi tự đổi trạng thái của chính mình
+   * @throws ConflictException Nếu user còn trách nhiệm của vai trò hiện tại hoặc câu lạc bộ không còn Club Manager đang hoạt động nào khác
    */
   async setStatus(
     actor: Actor,
@@ -242,10 +259,11 @@ export class UsersService {
   }
 
   /**
-   * Khóa row user (SELECT ... FOR UPDATE) trong transaction đang chạy để kiểm tra invariant trên dữ liệu không bị request khác đổi giữa chừng
+   * Khóa row user (SELECT ... FOR UPDATE) trong transaction đang chạy
+   *
    * @param manager EntityManager của transaction đang chạy
    * @param id UUID của user cần khóa
-   * @returns A promise resolving to user đã được khóa
+   * @returns Promise trả về user đã được khóa
    * @throws NotFoundException Nếu không có user với id này (hoặc đã bị xóa mềm)
    */
   private async lockUser(
@@ -270,7 +288,7 @@ export class UsersService {
    * @param manager EntityManager của transaction đang chạy, user đã được khóa bằng manager này
    * @param user User sắp đổi vai trò hoặc sắp bị khóa
    * @param action Thao tác đang làm, quyết định cụm "trước khi ..." trong message lỗi
-   * @returns A promise resolving khi kiểm tra đạt
+   * @returns Promise hoàn tất khi kiểm tra đạt
    * @throws ConflictException Nếu user còn trách nhiệm của vai trò hiện tại
    */
   private async assertResponsibilitiesReleased(
@@ -306,11 +324,12 @@ export class UsersService {
   }
 
   /**
-   * Ensure the system keeps at least one other active club manager
-   * @param manager The entity manager to run the query with
-   * @param userId The ID of the user to exclude
-   * @returns A promise resolving once the check passes
-   * @throws ConflictException if no other active club manager exists
+   * Bắt buộc câu lạc bộ còn ít nhất một Club Manager đang hoạt động khác ngoài user này
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param userId UUID của user cần loại trừ
+   * @returns Promise hoàn tất khi kiểm tra đạt
+   * @throws ConflictException Nếu không còn Club Manager đang hoạt động nào khác
    */
   private async assertAnotherActiveManager(
     manager: EntityManager,
@@ -333,12 +352,12 @@ export class UsersService {
   /**
    * Thay vai trò realm của user trên Keycloak: gỡ vai trò cũ rồi gán vai trò mới
    *
-   * - Gán vai trò mới lỗi sau khi đã gỡ vai trò cũ: gán lại vai trò cũ để user không bị mất hết quyền, rồi ném lại lỗi gốc
-   * - Gán lại vai trò cũ cũng lỗi: chỉ ghi log error (kèm keycloakId và vai trò cần gán lại) để xử lý tay, vẫn ném lỗi gốc
+   * - Gán vai trò mới lỗi sau khi đã gỡ vai trò cũ: gán lại vai trò cũ, rồi ném lại lỗi gốc
+   * - Gán lại vai trò cũ cũng lỗi: chỉ ghi log error (kèm keycloakId và vai trò cần gán lại), vẫn ném lỗi gốc
    *
    * @param user User đang giữ vai trò cũ
    * @param role Vai trò mới
-   * @returns A promise resolving khi Keycloak đã nhận vai trò mới
+   * @returns Promise hoàn tất khi Keycloak đã nhận vai trò mới
    * @throws Error Lỗi gốc từ Keycloak khi gỡ vai trò cũ hoặc gán vai trò mới
    */
   private async syncKeycloakRole(
@@ -363,7 +382,7 @@ export class UsersService {
    *
    * @param keycloakId Id của user trên Keycloak
    * @param role Vai trò cũ cần gán lại
-   * @returns A promise resolving khi đã gán lại hoặc đã ghi log lỗi
+   * @returns Promise hoàn tất khi đã gán lại hoặc đã ghi log lỗi
    */
   private async restoreKeycloakRole(
     keycloakId: string,
@@ -386,7 +405,7 @@ export class UsersService {
    *
    * @param previous User đọc được trong transaction, còn giữ vai trò cũ
    * @param role Vai trò mới đã ghi vào DB
-   * @returns A promise resolving khi Keycloak đã nhận vai trò mới
+   * @returns Promise hoàn tất khi Keycloak đã nhận vai trò mới
    * @throws Error Lỗi gốc từ Keycloak, ném lại sau khi đã thử hoàn tác DB
    */
   private async syncRoleAfterCommit(
@@ -407,9 +426,10 @@ export class UsersService {
 
   /**
    * Bật/tắt tài khoản Keycloak theo trạng thái mới sau khi DB đã commit; Keycloak lỗi thì hoàn tác trạng thái trong DB rồi ném lại lỗi
+   *
    * @param previous User đọc được trong transaction, còn giữ trạng thái cũ
    * @param status Trạng thái mới đã ghi vào DB
-   * @returns A promise resolving khi Keycloak đã nhận trạng thái mới
+   * @returns Promise hoàn tất khi Keycloak đã nhận trạng thái mới
    * @throws Error Lỗi gốc từ Keycloak, ném lại sau khi đã thử hoàn tác DB
    */
   private async syncStatusAfterCommit(
@@ -434,14 +454,14 @@ export class UsersService {
   /**
    * Bù trừ một thay đổi vai trò/trạng thái đã commit khi Keycloak không đồng bộ được, lỗi thì chỉ log
    *
-   * - Chạy trong transaction mới vì transaction ghi ban đầu đã commit
-   * - Chỉ ghi đè khi row vẫn còn đúng giá trị vừa ghi, để không đè lên thay đổi của request khác chen vào giữa
-   * - Lỗi khi hoàn tác không được ném ra, để caller ném lỗi gốc của Keycloak
+   * - Chạy trong transaction mới
+   * - Chỉ ghi đè khi row vẫn còn đúng giá trị vừa ghi
+   * - Lỗi khi hoàn tác chỉ ghi log, không ném ra
    *
    * @param id UUID của user cần hoàn tác
    * @param applied Giá trị đã commit (dùng làm điều kiện WHERE)
    * @param original Giá trị trước khi đổi, sẽ được ghi lại
-   * @returns A promise resolving khi lần hoàn tác kết thúc (thành công hoặc đã log lỗi)
+   * @returns Promise hoàn tất khi lần hoàn tác kết thúc (thành công hoặc đã log lỗi)
    */
   private async revertCommittedChange(
     id: string,
@@ -460,9 +480,10 @@ export class UsersService {
   }
 
   /**
-   * Log a user out of all Keycloak sessions, logging a warning on failure
-   * @param user The user whose sessions are revoked
-   * @returns A promise resolving once the attempt finishes
+   * Đăng xuất user khỏi mọi phiên Keycloak, lỗi thì chỉ ghi log warning
+   *
+   * @param user User cần thu hồi phiên
+   * @returns Promise hoàn tất khi lần thu hồi kết thúc (thành công hoặc đã log lỗi)
    */
   private async revokeSessions(user: UserEntity): Promise<void> {
     try {
@@ -475,10 +496,11 @@ export class UsersService {
   }
 
   /**
-   * Find a user by id
-   * @param id The ID of the user
-   * @returns A promise resolving to the user
-   * @throws NotFoundException if the user is not found
+   * Tìm user theo id
+   *
+   * @param id UUID của user
+   * @returns Promise trả về user
+   * @throws NotFoundException Nếu không có user
    */
   private async findUser(id: string): Promise<UserEntity> {
     const user = await this.users.findOneBy({ id });
@@ -489,7 +511,7 @@ export class UsersService {
   /**
    * Kiểm tra Horse Owner còn là chủ của con ngựa nào đang ở câu lạc bộ không (theo horses.owner_id).
    *
-   * - Chỉ tính ngựa ACTIVE hoặc RETIRED. Ngựa TRANSFERRED không chặn đổi vai trò (BA chốt 2026-09-23): hồ sơ vẫn ghi người này là chủ cũ, nhưng khi không còn vai trò Horse Owner thì họ không xem được hồ sơ đó nữa.
+   * - Chỉ tính ngựa ACTIVE hoặc RETIRED; ngựa TRANSFERRED không tính.
    * - Hồ sơ đã xóa mềm không tính.
    *
    * @param manager EntityManager của transaction đang chạy
@@ -508,9 +530,10 @@ export class UsersService {
 
   /**
    * Kiểm tra Groom còn đang phụ trách con ngựa nào không (groom assignment chưa có end_at)
+   *
    * @param manager EntityManager của transaction đang chạy
    * @param userId UUID của Groom
-   * @returns A promise resolving to true nếu còn ít nhất một groom assignment đang mở
+   * @returns Promise trả về true nếu còn ít nhất một groom assignment đang mở
    */
   private async hasActiveGroomAssignment(
     manager: EntityManager,
@@ -523,9 +546,10 @@ export class UsersService {
 
   /**
    * Kiểm tra Head Trainer còn phụ trách khu chuồng nào không (barns.head_trainer_id)
+   *
    * @param manager EntityManager của transaction đang chạy
    * @param userId UUID của Head Trainer
-   * @returns A promise resolving to true nếu còn ít nhất một khu chuồng do người này phụ trách
+   * @returns Promise trả về true nếu còn ít nhất một khu chuồng do người này phụ trách
    */
   private async hasActiveBarn(
     manager: EntityManager,
@@ -545,10 +569,11 @@ export class UsersService {
   }
 
   /**
-   * Delete a Keycloak user after local creation fails, logging an error on failure
-   * @param keycloakId The Keycloak ID of the user
-   * @param email The email of the user
-   * @returns A promise resolving once the attempt finishes
+   * Xóa tài khoản Keycloak vừa tạo khi tạo user ở DB thất bại, lỗi thì chỉ ghi log error
+   *
+   * @param keycloakId Keycloak ID của tài khoản cần xóa
+   * @param email Email của tài khoản, dùng trong log
+   * @returns Promise hoàn tất khi lần xóa kết thúc (thành công hoặc đã log lỗi)
    */
   private async compensate(keycloakId: string, email: string): Promise<void> {
     try {

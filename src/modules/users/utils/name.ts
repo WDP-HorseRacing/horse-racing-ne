@@ -1,10 +1,11 @@
 /**
- * Keycloak 24 bat buoc co firstName va lastName (declarative user profile),
- * thieu thi tai khoan bi coi la "not fully set up" va khong dang nhap duoc.
- * App nay chi luu mot o fullName, nen phai cat ra.
+ * Tách họ tên đầy đủ thành firstName và lastName cho Keycloak
  *
- * "Nguyen Van A" -> { firstName: "Nguyen Van", lastName: "A" }
- * "Madonna"      -> { firstName: "Madonna",    lastName: "-" }
+ * - Từ cuối là lastName, các từ trước đó là firstName: "Nguyen Van A" -> { firstName: "Nguyen Van", lastName: "A" }
+ * - Chỉ có một từ: lastName là "-": "Madonna" -> { firstName: "Madonna", lastName: "-" }
+ *
+ * @param fullName Họ tên đầy đủ
+ * @returns firstName và lastName đã tách
  */
 export function splitFullName(fullName: string): {
   firstName: string;

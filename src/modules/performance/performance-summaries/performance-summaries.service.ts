@@ -26,7 +26,7 @@ export class PerformanceSummariesService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns HorsePerformanceResponseDto - Tổng quan chỉ số
+   * @returns Promise trả về HorsePerformanceResponseDto - Tổng quan chỉ số
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async getHorseSummary(
@@ -46,7 +46,7 @@ export class PerformanceSummariesService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns Mỗi buổi tập một dòng tổng hợp, buổi mới nhất đứng đầu
+   * @returns Promise trả về mỗi buổi tập một dòng tổng hợp, buổi mới nhất đứng đầu
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async listSessionSummaries(

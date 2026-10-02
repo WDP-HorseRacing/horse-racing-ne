@@ -87,7 +87,7 @@ export class BarnListItemDto extends BarnResponseDto {
   @Expose()
   @ApiProperty({
     description:
-      'true nếu Head Trainer phụ trách khu còn tồn tại, đang ACTIVE và còn vai trò HEAD_TRAINER. Bằng false thì không xếp ngựa vào khu được (F1.6 mục 2), kể cả khi headTrainerFullName vẫn có tên (người đó đã bị khóa, ngưng hoạt động hoặc đổi vai trò).',
+      'true nếu Head Trainer phụ trách khu còn tồn tại, đang ACTIVE và còn vai trò HEAD_TRAINER. Bằng false thì không xếp ngựa vào khu được, kể cả khi headTrainerFullName vẫn có tên (người đó đã bị khóa, ngưng hoạt động hoặc đổi vai trò).',
   })
   hasActiveHeadTrainer!: boolean;
 

@@ -13,9 +13,7 @@ import { UserRole } from '../../common/enums/role.enum';
 import { KeycloakService } from '../../common/infrastructure/keycloak/keycloak.service';
 
 /**
- * `socket.data` mac dinh la `any`, nghia la moi lan doc no deu khong duoc kiem
- * kieu. Khai bao ra day roi truyen vao tham so thu tu cua Socket<> de bien no
- * thanh du lieu co kieu that.
+ * Kiểu dữ liệu của `socket.data`, truyền vào tham số thứ tư của Socket<>
  */
 interface RealtimeSocketData {
   actor: Actor;
@@ -53,6 +51,16 @@ export class RealtimeGateway
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Xác thực socket vừa kết nối và cho vào room riêng của user
+   *
+   * - Access token lấy từ `handshake.auth.token`
+   * - Thiếu token, token không hợp lệ, tài khoản không tồn tại, không hoạt động hoặc chưa được gán vai trò: ghi log warning rồi ngắt kết nối
+   * - Hợp lệ: gắn actor và userId vào `socket.data`, join room `user:<userId>`, hẹn ngắt kết nối khi access token hết hạn
+   *
+   * @param client Socket vừa kết nối
+   * @returns Promise hoàn tất khi đã nhận hoặc đã ngắt kết nối socket
+   */
   async handleConnection(client: RealtimeSocket): Promise<void> {
     try {
       // handshake.auth chu khong phai query string: query string lot vao
@@ -100,6 +108,11 @@ export class RealtimeGateway
     }
   }
 
+  /**
+   * Hủy hẹn giờ ngắt kết nối của socket vừa ngắt
+   *
+   * @param client Socket vừa ngắt kết nối
+   */
   handleDisconnect(client: RealtimeSocket): void {
     clearTimeout(client.data.expiry);
   }
@@ -108,6 +121,13 @@ export class RealtimeGateway
     this.server.to(room).emit(event, payload);
   }
 
+  /**
+   * Phát event tới mọi socket đang mở của một user
+   *
+   * @param userId UUID của user nhận event
+   * @param event Tên event
+   * @param payload Dữ liệu gửi kèm event
+   */
   emitToUser(userId: string, event: string, payload: unknown): void {
     this.server.to(`user:${userId}`).emit(event, payload);
   }

@@ -8,7 +8,7 @@ import { PerformanceSummariesRepository } from './performance-summaries.reposito
 import { PerformanceSummariesService } from './performance-summaries.service';
 
 /**
- * Owns the implemented horse and session performance summary workflows.
+ * Lắp ráp các use case tổng hợp hiệu suất của ngựa và theo từng buổi tập.
  */
 @Module({
   imports: [

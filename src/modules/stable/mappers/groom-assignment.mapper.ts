@@ -6,9 +6,10 @@ import {
 import type { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 
 /**
- * Map a groom assignment to its response, including the groom summary when loaded
- * @param entity The groom assignment entity
- * @returns The groom assignment response
+ * Ánh xạ phân công groom sang response, kèm thông tin tóm tắt của groom nếu quan hệ đã được nạp
+ *
+ * @param entity Phân công groom cần chuyển đổi
+ * @returns GroomAssignmentResponseDto
  */
 export function toGroomAssignmentResponse(
   entity: GroomAssignmentEntity,

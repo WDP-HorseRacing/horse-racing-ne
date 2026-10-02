@@ -24,13 +24,11 @@ export type AccountLookup =
 const actorUserCache = new WeakMap<Actor, Promise<CurrentActorUser>>();
 
 /**
- * Tra tài khoản local gắn với một tài khoản Keycloak, không ném lỗi để mỗi nơi gọi tự chọn mã lỗi riêng
- *
- * - Dùng chung cho currentUser (trả 403) và ProvisioningService (trả 401)
+ * Tra tài khoản local gắn với một tài khoản Keycloak, không ném lỗi
  *
  * @param manager EntityManager dùng để query
  * @param keycloakId Keycloak ID (claim sub) của tài khoản
- * @returns A promise resolving to kết quả tra: ACTIVE, NOT_FOUND hoặc INACTIVE
+ * @returns Promise trả về kết quả tra: ACTIVE, NOT_FOUND hoặc INACTIVE
  */
 export async function lookupAccount(
   manager: EntityManager,
@@ -43,11 +41,12 @@ export async function lookupAccount(
 }
 
 /**
- * Find the active user linked to a Keycloak account
- * @param manager The entity manager to run the query with
- * @param keycloakId The Keycloak ID of the user
- * @returns A promise resolving to the active user
- * @throws ForbiddenException if the user does not exist or is not active
+ * Lấy tài khoản local đang hoạt động gắn với một tài khoản Keycloak
+ *
+ * @param manager EntityManager dùng để query
+ * @param keycloakId Keycloak ID (claim sub) của tài khoản
+ * @returns Promise trả về user đang hoạt động
+ * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không ở trạng thái hoạt động
  */
 export async function currentUser(
   manager: EntityManager,
@@ -64,11 +63,12 @@ export async function currentUser(
 }
 
 /**
- * Resolve the business user for an actor, cached per actor object
- * @param manager The entity manager to run the query with
- * @param actor The actor resolved from the JWT
- * @returns A promise resolving to the user with an assigned role
- * @throws ForbiddenException if the user is missing, inactive, or has no role
+ * Lấy user nghiệp vụ của người gọi, cache theo từng object actor
+ *
+ * @param manager EntityManager dùng để query
+ * @param actor Thông tin danh tính từ Access Token
+ * @returns Promise trả về user đang hoạt động và đã được gán vai trò
+ * @throws ForbiddenException Nếu tài khoản không tồn tại, không hoạt động hoặc chưa được gán vai trò
  */
 export function currentUserForActor(
   manager: EntityManager,
@@ -86,9 +86,10 @@ export function currentUserForActor(
 }
 
 /**
- * Assert that a user has been assigned a role
- * @param user The user to check
- * @throws ForbiddenException if the user has no role
+ * Bắt buộc user đã được gán vai trò
+ *
+ * @param user User cần kiểm
+ * @throws ForbiddenException Nếu user chưa được gán vai trò
  */
 function assertAssignedUser(
   user: UserEntity,
