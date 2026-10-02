@@ -10,10 +10,13 @@ import {
   EntityManager,
   FindOptionsWhere,
   IsNull,
-  QueryFailedError,
   Repository,
 } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import {
+  mapAnyUniqueViolation,
+  mapUniqueViolation,
+} from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
@@ -43,7 +46,6 @@ import {
   assertManualStallStatusChange,
   assertStallBarnChangeable,
   changedFieldsDiff,
-  EMPTY_CAPACITY,
   isStallFree,
 } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
@@ -58,11 +60,15 @@ export interface ReleasedStall {
 }
 
 /**
+ * Thông báo 409 khi ô được chọn vừa bị ngựa khác chiếm nhưng khu vẫn còn ô trống khác
+ */
+const STALL_TAKEN_MESSAGE = 'Ô vừa bị chiếm, vui lòng tải lại sơ đồ ô trống';
+
+/**
  * Thông báo 409 cho từng unique index mà việc xếp ô có thể vi phạm khi hai thao tác chạy cùng lúc.
  */
 const STALL_ASSIGNMENT_CONFLICT_MESSAGES: Record<string, string> = {
-  stall_assignments_active_stall_uq:
-    'Ô vừa bị chiếm, vui lòng tải lại sơ đồ ô trống',
+  stall_assignments_active_stall_uq: STALL_TAKEN_MESSAGE,
   stall_assignments_active_horse_uq:
     'Ngựa vừa được xếp vào ô khác, vui lòng tải lại',
 };
@@ -142,7 +148,7 @@ export class StallsService {
   async create(actor: Actor, body: CreateStallDto): Promise<StallResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
 
-    const saved = await this.saveUnique(() =>
+    const createStall = () =>
       this.dataSource.transaction(async (manager) => {
         const barn = await this.access.lockActiveBarn(manager, body.barnId);
         assertBarnHasStallRoom(
@@ -174,7 +180,10 @@ export class StallsService {
           feature: 'F1.7',
         });
         return stall;
-      }),
+      });
+    const saved = await mapAnyUniqueViolation(
+      createStall,
+      'Mã ô chuồng đã tồn tại',
     );
     return toStallResponse(saved);
   }
@@ -202,16 +211,17 @@ export class StallsService {
   ): Promise<StallResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
 
-    const saved = await this.saveUnique(() =>
+    const updateStall = () =>
       this.dataSource.transaction(async (manager) => {
         const { stall, targetBarn } = await this.lockStallWithBarns(
           manager,
           id,
           body.barnId,
         );
-        const hasOpenAssignment = await manager.exists(StallAssignmentEntity, {
-          where: { stallId: id, endAt: IsNull() },
-        });
+        const hasOpenAssignment = await this.hasOpenStallAssignment(
+          manager,
+          id,
+        );
 
         if (targetBarn) {
           assertStallBarnChangeable(hasOpenAssignment);
@@ -269,7 +279,10 @@ export class StallsService {
           feature: 'F1.7',
         });
         return updated;
-      }),
+      });
+    const saved = await mapAnyUniqueViolation(
+      updateStall,
+      'Mã ô chuồng đã tồn tại',
     );
     return toStallResponse(saved);
   }
@@ -295,9 +308,7 @@ export class StallsService {
     await this.dataSource.transaction(async (manager) => {
       const { stall } = await this.lockStallWithBarns(manager, id);
 
-      const hasOpenAssignment = await manager.exists(StallAssignmentEntity, {
-        where: { stallId: id, endAt: IsNull() },
-      });
+      const hasOpenAssignment = await this.hasOpenStallAssignment(manager, id);
       if (hasOpenAssignment) {
         throw new ConflictException(
           'Không thể xóa ô chuồng đang có ngựa phân công',
@@ -408,7 +419,7 @@ export class StallsService {
     horseId: string,
     stallId: string,
   ): Promise<StallAssignmentResponseDto> {
-    return this.runAssignmentUnique(async () => {
+    return mapUniqueViolation(async () => {
       const horse = await this.access.lockOperableHorse(
         manager,
         callerId,
@@ -417,53 +428,26 @@ export class StallsService {
       );
       await this.access.lockActiveBarn(manager, horse.barnId);
 
-      const current = await manager.findOne(StallAssignmentEntity, {
-        where: { horseId, endAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const current = await this.lockOpenAssignmentByHorse(manager, horseId);
       if (current?.stallId === stallId) {
         return toStallAssignmentResponse({ ...current, horse });
       }
 
-      const stall = await manager.findOne(StallEntity, {
-        where: { id: stallId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!stall) throw new NotFoundException('Không tìm thấy ô chuồng');
-      if (stall.barnId !== horse.barnId) {
-        throw new BadRequestException(
-          'Ô chuồng không thuộc khu chuồng của ngựa',
-        );
-      }
-      const hasOpenAssignment = await manager.exists(StallAssignmentEntity, {
-        where: { stallId: stall.id, endAt: IsNull() },
-      });
-      if (!isStallFree(stall.status, hasOpenAssignment)) {
-        const capacity =
-          (
-            await this.stableRepository.countStallCapacity(manager, [
-              horse.barnId,
-            ])
-          ).get(horse.barnId) ?? EMPTY_CAPACITY;
-        throw new ConflictException(
-          capacity.freeStallCount > 0
-            ? STALL_ASSIGNMENT_CONFLICT_MESSAGES.stall_assignments_active_stall_uq
-            : BARN_OUT_OF_STALLS_MESSAGE,
-        );
-      }
+      const stall = await this.lockFreeStallInBarn(
+        manager,
+        stallId,
+        horse.barnId,
+      );
 
       const now = new Date();
       if (current) {
-        await this.closeAssignmentAndFreeStall(manager, current, now);
-        await this.auditService.record(manager, {
-          actorId: callerId,
-          action: AuditAction.UPDATE,
-          entityType: AuditEntityType.STALL_ASSIGNMENT,
-          feature: 'F1.7',
-          entityId: current.id,
-          before: { horseId, stallId: current.stallId, endAt: null },
-          after: { horseId, stallId: current.stallId, endAt: now },
-        });
+        await this.closePreviousAssignmentWithAudit(
+          manager,
+          callerId,
+          horseId,
+          current,
+          now,
+        );
       }
 
       const saved = await manager.save(
@@ -496,6 +480,80 @@ export class StallsService {
       });
 
       return toStallAssignmentResponse({ ...saved, horse });
+    }, STALL_ASSIGNMENT_CONFLICT_MESSAGES);
+  }
+
+  /**
+   * Lock ô chuồng đích và kiểm ô thuộc đúng khu của ngựa, đang trống
+   *
+   * - Lock ô (pessimistic_write) trước khi kiểm
+   * - Ô không còn trống: khu còn ô trống khác thì báo ô vừa bị chiếm, khu hết ô trống thì đề nghị Club Manager đổi khu
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param stallId UUID của ô chuồng đích
+   * @param barnId UUID khu của ngựa
+   * @returns Promise trả về ô chuồng đã lock, chắc chắn đang trống
+   * @throws NotFoundException Nếu không có ô chuồng
+   * @throws BadRequestException Nếu ô không thuộc khu của ngựa
+   * @throws ConflictException Nếu ô không còn trống
+   */
+  private async lockFreeStallInBarn(
+    manager: EntityManager,
+    stallId: string,
+    barnId: string,
+  ): Promise<StallEntity> {
+    const stall = await manager.findOne(StallEntity, {
+      where: { id: stallId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!stall) throw new NotFoundException('Không tìm thấy ô chuồng');
+    if (stall.barnId !== barnId) {
+      throw new BadRequestException('Ô chuồng không thuộc khu chuồng của ngựa');
+    }
+    const hasOpenAssignment = await this.hasOpenStallAssignment(
+      manager,
+      stall.id,
+    );
+    if (!isStallFree(stall.status, hasOpenAssignment)) {
+      const capacity = await this.stableRepository.countBarnCapacity(
+        manager,
+        barnId,
+      );
+      throw new ConflictException(
+        capacity.freeStallCount > 0
+          ? STALL_TAKEN_MESSAGE
+          : BARN_OUT_OF_STALLS_MESSAGE,
+      );
+    }
+    return stall;
+  }
+
+  /**
+   * Đóng phân công ô cũ của ngựa khi chuyển sang ô khác, trả ô cũ về trống và ghi nhật ký UPDATE
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @param current Phân công ô đang mở của ngựa (đã lock)
+   * @param now Thời điểm chuyển ô
+   * @returns Promise hoàn tất khi đã đóng phân công và ghi nhật ký
+   */
+  private async closePreviousAssignmentWithAudit(
+    manager: EntityManager,
+    callerId: string,
+    horseId: string,
+    current: StallAssignmentEntity,
+    now: Date,
+  ): Promise<void> {
+    await this.closeAssignmentAndFreeStall(manager, current, now);
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.STALL_ASSIGNMENT,
+      feature: 'F1.7',
+      entityId: current.id,
+      before: { horseId, stallId: current.stallId, endAt: null },
+      after: { horseId, stallId: current.stallId, endAt: now },
     });
   }
 
@@ -514,10 +572,7 @@ export class StallsService {
     manager: EntityManager,
     horseId: string,
   ): Promise<ReleasedStall | null> {
-    const current = await manager.findOne(StallAssignmentEntity, {
-      where: { horseId, endAt: IsNull() },
-      lock: { mode: 'pessimistic_write' },
-    });
+    const current = await this.lockOpenAssignmentByHorse(manager, horseId);
     if (!current) return null;
     const stall = await this.closeAssignmentAndFreeStall(manager, current, new Date());
     return { stallId: stall.id, stallCode: stall.code };
@@ -589,10 +644,7 @@ export class StallsService {
 
     return this.dataSource.transaction(async (manager) => {
       await this.access.lockOperableHorse(manager, caller.id, horseId, 'STALL');
-      const assignment = await manager.findOne(StallAssignmentEntity, {
-        where: { horseId, endAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const assignment = await this.lockOpenAssignmentByHorse(manager, horseId);
       if (!assignment) {
         throw new NotFoundException('Ngựa chưa được xếp ô chuồng');
       }
@@ -662,9 +714,10 @@ export class StallsService {
       withDeleted: true,
       lock: { mode: 'pessimistic_write' },
     });
-    const hasOtherOpenAssignment = await manager.exists(StallAssignmentEntity, {
-      where: { stallId: stall.id, endAt: IsNull() },
-    });
+    const hasOtherOpenAssignment = await this.hasOpenStallAssignment(
+      manager,
+      stall.id,
+    );
     if (stall.status === StallStatus.OCCUPIED && !hasOtherOpenAssignment) {
       await manager.update(
         StallEntity,
@@ -744,56 +797,43 @@ export class StallsService {
     manager: EntityManager,
     barnId: string,
   ): Promise<void> {
-    const capacity =
-      (await this.stableRepository.countStallCapacity(manager, [barnId])).get(
-        barnId,
-      ) ?? EMPTY_CAPACITY;
+    const capacity = await this.stableRepository.countBarnCapacity(
+      manager,
+      barnId,
+    );
     assertFreeStallRemovable(capacity);
   }
 
   /**
-   * Chạy thao tác xếp ô và đổi lỗi unique violation thành 409 có thông báo rõ ràng.
+   * Kiểm tra ô chuồng có đang có phân công chưa kết thúc không
    *
-   * @param operation Thao tác ghi cần chạy
-   * @returns Promise chứa kết quả của thao tác
-   * @throws ConflictException Nếu ô hoặc ngựa vừa được xếp bởi thao tác khác
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param stallId UUID của ô chuồng
+   * @returns Promise trả về true nếu ô đang có phân công mở
    */
-  private async runAssignmentUnique<T>(
-    operation: () => Promise<T>,
-  ): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      const driverError =
-        error instanceof QueryFailedError
-          ? (error.driverError as { code?: string; constraint?: string })
-          : undefined;
-      if (driverError?.code === '23505') {
-        const message =
-          STALL_ASSIGNMENT_CONFLICT_MESSAGES[driverError.constraint ?? ''];
-        if (message) throw new ConflictException(message);
-      }
-      throw error;
-    }
+  private hasOpenStallAssignment(
+    manager: EntityManager,
+    stallId: string,
+  ): Promise<boolean> {
+    return manager.exists(StallAssignmentEntity, {
+      where: { stallId, endAt: IsNull() },
+    });
   }
 
   /**
-   * Run a write operation and map a unique violation to a stall code conflict
-   * @param operation The write operation to run
-   * @returns A promise resolving to the operation result
-   * @throws ConflictException if the stall code is already used
+   * Lock phân công ô đang mở của một con ngựa (pessimistic_write)
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về phân công ô đang mở đã lock, hoặc null nếu ngựa không có
    */
-  private async saveUnique<T>(operation: () => Promise<T>): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      if (
-        error instanceof QueryFailedError &&
-        (error.driverError as { code?: string } | undefined)?.code === '23505'
-      ) {
-        throw new ConflictException('Mã ô chuồng đã tồn tại');
-      }
-      throw error;
-    }
+  private lockOpenAssignmentByHorse(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<StallAssignmentEntity | null> {
+    return manager.findOne(StallAssignmentEntity, {
+      where: { horseId, endAt: IsNull() },
+      lock: { mode: 'pessimistic_write' },
+    });
   }
 }

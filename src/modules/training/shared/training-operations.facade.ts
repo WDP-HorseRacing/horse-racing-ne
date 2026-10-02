@@ -48,6 +48,22 @@ const NON_TERMINAL_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.ONGOING,
 ];
 
+/**
+ * Kiểm tra enrollment chưa bắt đầu tại một thời điểm
+ *
+ * - Chưa bắt đầu khi enrolledAt lớn hơn hẳn `at`; enrolledAt bằng `at` coi như đã bắt đầu
+ *
+ * @param enrollment Enrollment cần kiểm tra
+ * @param at Thời điểm so sánh
+ * @returns true nếu enrollment chưa bắt đầu tại `at`
+ */
+function isEnrollmentNotYetStarted(
+  enrollment: HorseEnrollmentEntity,
+  at: Date,
+): boolean {
+  return enrollment.enrolledAt > at;
+}
+
 @Injectable()
 export class TrainingOperationsFacade {
   async assertParticipantCompleted(
@@ -160,7 +176,7 @@ export class TrainingOperationsFacade {
     }
 
     for (const enrollment of enrollments) {
-      if (enrollment.enrolledAt > options.at) {
+      if (isEnrollmentNotYetStarted(enrollment, options.at)) {
         enrollment.status = HorseEnrollmentStatus.CANCELLED;
       } else {
         enrollment.status = HorseEnrollmentStatus.LEFT;
@@ -216,6 +232,26 @@ export class TrainingOperationsFacade {
       })
       .andWhere('session.scheduled_start_at >= :from', { from })
       .getMany();
+    return this.cancelLoadedParticipants(manager, participants, reason);
+  }
+
+  /**
+   * Hủy các lượt tham gia đã đọc sẵn rồi cập nhật lại trạng thái các buổi liên quan
+   *
+   * - Chuyển từng lượt sang CANCELLED kèm lý do, lưu một lần nếu có lượt nào
+   * - Sau khi lưu, cập nhật trạng thái từng buổi có lượt bị hủy theo thứ tự xuất hiện đầu tiên
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param participants Các lượt tham gia cần hủy
+   * @param reason Lý do hủy ghi vào từng lượt
+   * @returns Promise trả về số lượt tham gia đã hủy
+   * @throws NotFoundException Nếu một buổi tập của lượt bị hủy không còn tồn tại
+   */
+  private async cancelLoadedParticipants(
+    manager: EntityManager,
+    participants: SessionParticipantEntity[],
+    reason: string,
+  ): Promise<number> {
     for (const participant of participants) {
       participant.status = SessionParticipantStatus.CANCELLED;
       participant.cancelReason = reason;

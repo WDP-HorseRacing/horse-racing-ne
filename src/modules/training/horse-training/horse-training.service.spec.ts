@@ -155,4 +155,42 @@ describe('HorseTrainingService', () => {
       createdAt: new Date('2026-10-01T10:00:00Z'),
     });
   });
+
+  it('keeps the repository order of trials and the first evaluation of each participant', async () => {
+    repository.listSessions.mockResolvedValue({
+      rows: [sessionRow('p1'), sessionRow('p2')],
+      total: 2,
+    });
+    const trial = (participantId: string, attemptNo: number) => ({
+      participantId,
+      attemptNo,
+      elapsedMs: `${60000 + attemptNo}`,
+      notes: null,
+      recordedAt: new Date('2026-10-01T08:30:00Z'),
+    });
+    repository.listTrialResults.mockResolvedValue([
+      trial('p2', 1),
+      trial('p1', 2),
+      trial('p2', 3),
+      trial('p1', 1),
+    ]);
+    const evaluation = (participantId: string, score: number) => ({
+      participantId,
+      score,
+      comment: null,
+      evaluatorName: 'HT Nam',
+      createdAt: new Date('2026-10-01T10:00:00Z'),
+    });
+    repository.listEvaluations.mockResolvedValue([
+      evaluation('p1', 7),
+      evaluation('p1', 9),
+    ]);
+
+    const page = await service.listSessions(actor, 'h1', query());
+
+    expect(page.items[0].trialResults.map((t) => t.attemptNo)).toEqual([2, 1]);
+    expect(page.items[1].trialResults.map((t) => t.attemptNo)).toEqual([1, 3]);
+    expect(page.items[0].evaluation?.score).toBe(7);
+    expect(page.items[1].evaluation).toBeNull();
+  });
 });

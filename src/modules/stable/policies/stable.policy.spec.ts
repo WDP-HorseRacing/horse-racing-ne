@@ -14,6 +14,8 @@ import {
   assertAssignableHeadTrainer,
   assertBarnActive,
   assertBarnChangeKeepsHorses,
+  assertBarnHasHeadTrainer,
+  assertBarnHasRoomForHorse,
   assertBarnHasStallRoom,
   assertBarnRemovable,
   assertCapacityFitsStalls,
@@ -103,8 +105,8 @@ describe('stable.policy', () => {
   });
 
   describe('horse rules', () => {
-    it('returns the barn of a placed horse', () => {
-      expect(assertHorseHasBarn({ barnId: 'b1' })).toBe('b1');
+    it('accepts a placed horse', () => {
+      expect(() => assertHorseHasBarn({ barnId: 'b1' })).not.toThrow();
     });
 
     it('rejects a horse without a barn', () => {
@@ -298,6 +300,59 @@ describe('stable.policy', () => {
           pendingStallHorseCount: 0,
         }),
       ).not.toThrow();
+    });
+  });
+
+  describe('assertBarnHasHeadTrainer', () => {
+    it('accepts a barn with a head trainer', () => {
+      expect(() =>
+        assertBarnHasHeadTrainer({ headTrainerId: 'ht-1' }),
+      ).not.toThrow();
+    });
+
+    it('rejects a barn without a head trainer with 409', () => {
+      expect(() => assertBarnHasHeadTrainer({ headTrainerId: null })).toThrow(
+        new ConflictException(
+          'Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được',
+        ),
+      );
+    });
+  });
+
+  describe('assertBarnHasRoomForHorse', () => {
+    it('accepts a barn with more free stalls than waiting horses', () => {
+      expect(() =>
+        assertBarnHasRoomForHorse({
+          freeStallCount: 2,
+          pendingStallHorseCount: 1,
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects a barn with no free stall with 409', () => {
+      expect(() =>
+        assertBarnHasRoomForHorse({
+          freeStallCount: 0,
+          pendingStallHorseCount: 0,
+        }),
+      ).toThrow(
+        new ConflictException(
+          'Khu chuồng đã hết ô trống, vui lòng chọn khu khác',
+        ),
+      );
+    });
+
+    it('rejects a barn whose free stalls are all held for waiting horses with 409', () => {
+      expect(() =>
+        assertBarnHasRoomForHorse({
+          freeStallCount: 1,
+          pendingStallHorseCount: 1,
+        }),
+      ).toThrow(
+        new ConflictException(
+          'Khu chuồng đã hết chỗ: 1 ô trống nhưng đã có 1 ngựa chờ xếp ô, vui lòng chọn khu khác',
+        ),
+      );
     });
   });
 

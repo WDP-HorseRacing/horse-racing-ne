@@ -1,9 +1,10 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, IsNull, QueryFailedError } from 'typeorm';
+import { Injectable } from '@nestjs/common';
+import { DataSource, EntityManager, IsNull } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
+import { mapUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
@@ -134,7 +135,7 @@ export class GroomAssignmentsService {
     response: GroomAssignmentResponseDto;
     changedEvent: GroomAssignmentChangedEvent | null;
   }> {
-    return this.saveUnique(async () => {
+    return mapUniqueViolation(async () => {
       const groom = await manager.findOne(UserEntity, {
         where: { id: groomId },
         lock: { mode: 'pessimistic_write' },
@@ -158,22 +159,15 @@ export class GroomAssignmentsService {
         };
       }
       const now = new Date();
-      let movedChecklistIds: string[] = [];
-      if (current) {
-        await manager.update(
-          GroomAssignmentEntity,
-          { id: current.id },
-          { endAt: now },
-        );
-        movedChecklistIds =
-          await this.dailyChecklists.moveOpenChecklistsToGroom(
+      const movedChecklistIds = current
+        ? await this.closeCurrentAssignment(
             manager,
             horseId,
-            current.groomId,
+            current,
             groom.id,
-            clubToday(),
-          );
-      }
+            now,
+          )
+        : [];
       const movedParticipantIds =
         await this.training.moveFutureParticipantsToGroom(
           manager,
@@ -190,23 +184,14 @@ export class GroomAssignmentsService {
           endAt: null,
         }),
       );
-      await this.auditService.record(manager, {
-        actorId: callerId,
-        action: AuditAction.CREATE,
-        entityType: AuditEntityType.GROOM_ASSIGNMENT,
-        entityId: saved.id,
-        before: {
-          horseId,
-          groomId: current?.groomId ?? null,
-          endedAssignmentId: current?.id ?? null,
-        },
-        after: {
-          horseId,
-          groomId: groom.id,
-          movedChecklistIds,
-          movedParticipantIds,
-        },
-        feature: 'F1.7',
+      await this.recordGroomChangeAudit(manager, {
+        callerId,
+        horseId,
+        assignmentId: saved.id,
+        previous: current,
+        newGroomId: groom.id,
+        movedChecklistIds,
+        movedParticipantIds,
       });
       const changed: GroomAssignmentChangedEvent = {
         eventId: saved.id,
@@ -218,6 +203,82 @@ export class GroomAssignmentsService {
         response: toGroomAssignmentResponse({ ...saved, groom }),
         changedEvent: changed,
       };
+    }, GROOM_CONFLICT_MESSAGES);
+  }
+
+  /**
+   * Đóng phân công groom đang mở của ngựa khi đổi sang groom mới
+   *
+   * - Đặt endAt của phân công cũ bằng thời điểm đổi
+   * - Chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param current Phân công groom đang mở (đã lock)
+   * @param newGroomId UUID của groom mới
+   * @param now Thời điểm đổi groom
+   * @returns Promise trả về UUID các checklist vừa chuyển sang groom mới
+   */
+  private async closeCurrentAssignment(
+    manager: EntityManager,
+    horseId: string,
+    current: GroomAssignmentEntity,
+    newGroomId: string,
+    now: Date,
+  ): Promise<string[]> {
+    await manager.update(
+      GroomAssignmentEntity,
+      { id: current.id },
+      { endAt: now },
+    );
+    return this.dailyChecklists.moveOpenChecklistsToGroom(
+      manager,
+      horseId,
+      current.groomId,
+      newGroomId,
+      clubToday(),
+    );
+  }
+
+  /**
+   * Ghi nhật ký CREATE cho phân công groom vừa mở
+   *
+   * - before: groom và phân công vừa đóng (null nếu ngựa chưa có groom)
+   * - after: groom mới, các checklist và lượt tập vừa chuyển sang groom mới
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param change Người gọi, ngựa, phân công mới, phân công cũ và các bản ghi vừa chuyển
+   * @returns Promise hoàn tất khi đã ghi nhật ký
+   */
+  private async recordGroomChangeAudit(
+    manager: EntityManager,
+    change: {
+      callerId: string;
+      horseId: string;
+      assignmentId: string;
+      previous: GroomAssignmentEntity | null;
+      newGroomId: string;
+      movedChecklistIds: string[];
+      movedParticipantIds: string[];
+    },
+  ): Promise<void> {
+    await this.auditService.record(manager, {
+      actorId: change.callerId,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.GROOM_ASSIGNMENT,
+      entityId: change.assignmentId,
+      before: {
+        horseId: change.horseId,
+        groomId: change.previous?.groomId ?? null,
+        endedAssignmentId: change.previous?.id ?? null,
+      },
+      after: {
+        horseId: change.horseId,
+        groomId: change.newGroomId,
+        movedChecklistIds: change.movedChecklistIds,
+        movedParticipantIds: change.movedParticipantIds,
+      },
+      feature: 'F1.7',
     });
   }
 
@@ -280,28 +341,5 @@ export class GroomAssignmentsService {
       [UserRole.GROOM, UserStatus.ACTIVE],
     );
     return rows.map(toGroomWorkloadResponse);
-  }
-
-  /**
-   * Chạy thao tác đổi groom và đổi lỗi unique violation thành 409 có thông báo rõ ràng.
-   *
-   * @param operation Thao tác ghi cần chạy
-   * @returns Promise chứa kết quả của thao tác
-   * @throws ConflictException Nếu ngựa vừa được giao groom khác hoặc groom mới vừa có checklist trùng ngày
-   */
-  private async saveUnique<T>(operation: () => Promise<T>): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      const driverError =
-        error instanceof QueryFailedError
-          ? (error.driverError as { code?: string; constraint?: string })
-          : undefined;
-      if (driverError?.code === '23505') {
-        const message = GROOM_CONFLICT_MESSAGES[driverError.constraint ?? ''];
-        if (message) throw new ConflictException(message);
-      }
-      throw error;
-    }
   }
 }

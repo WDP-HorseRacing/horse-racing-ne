@@ -11,7 +11,54 @@ import {
   toHorseTrainingClassResponse,
   toHorseTrainingSessionResponse,
 } from '../mappers/horse-training.mapper';
+import type {
+  HorseTrainingEvaluationRow,
+  HorseTrainingTrialRow,
+} from '../types/horse-training.types';
 import { HorseTrainingRepository } from './horse-training.repository';
+
+/**
+ * Gom các lần chạy time trial theo lượt tập
+ *
+ * - Trong mỗi lượt giữ nguyên thứ tự của mảng đầu vào
+ *
+ * @param trials Kết quả time trial của cả trang
+ * @returns Map từ UUID lượt tập sang các lần chạy của lượt đó
+ */
+function groupTrialsByParticipant(
+  trials: HorseTrainingTrialRow[],
+): Map<string, HorseTrainingTrialRow[]> {
+  const byParticipant = new Map<string, HorseTrainingTrialRow[]>();
+  for (const trial of trials) {
+    const group = byParticipant.get(trial.participantId);
+    if (group) {
+      group.push(trial);
+    } else {
+      byParticipant.set(trial.participantId, [trial]);
+    }
+  }
+  return byParticipant;
+}
+
+/**
+ * Chọn một đánh giá cho mỗi lượt tập
+ *
+ * - Một lượt có nhiều đánh giá thì lấy đánh giá đứng đầu trong mảng đầu vào
+ *
+ * @param evaluations Đánh giá của cả trang
+ * @returns Map từ UUID lượt tập sang đánh giá của lượt đó
+ */
+function pickEvaluationByParticipant(
+  evaluations: HorseTrainingEvaluationRow[],
+): Map<string, HorseTrainingEvaluationRow> {
+  const byParticipant = new Map<string, HorseTrainingEvaluationRow>();
+  for (const evaluation of evaluations) {
+    if (!byParticipant.has(evaluation.participantId)) {
+      byParticipant.set(evaluation.participantId, evaluation);
+    }
+  }
+  return byParticipant;
+}
 
 /**
  * Đọc lớp và lịch buổi tập kèm kết quả của một con ngựa. Chỉ đọc.
@@ -74,9 +121,15 @@ export class HorseTrainingService {
       this.repository.listTrialResults(participantIds),
       this.repository.listEvaluations(participantIds),
     ]);
+    const trialsByParticipant = groupTrialsByParticipant(trials);
+    const evaluationByParticipant = pickEvaluationByParticipant(evaluations);
     return new PaginationResponseDto(
       rows.map((row) =>
-        toHorseTrainingSessionResponse(row, trials, evaluations),
+        toHorseTrainingSessionResponse(
+          row,
+          trialsByParticipant.get(row.participantId) ?? [],
+          evaluationByParticipant.get(row.participantId) ?? null,
+        ),
       ),
       total,
       query.page,

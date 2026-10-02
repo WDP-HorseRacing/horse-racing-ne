@@ -103,17 +103,19 @@ export function isStallFree(
 /**
  * Chặn thao tác trên ngựa chưa được Club Manager xếp khu
  *
+ * - Qua được hàm này thì TypeScript coi barnId của ngựa là string
+ *
  * @param horse Con ngựa cần kiểm
- * @returns UUID khu của ngựa
  * @throws ConflictException Nếu ngựa chưa được xếp khu
  */
-export function assertHorseHasBarn(horse: Pick<HorseEntity, 'barnId'>): string {
+export function assertHorseHasBarn<T extends Pick<HorseEntity, 'barnId'>>(
+  horse: T,
+): asserts horse is T & { barnId: string } {
   if (horse.barnId === null) {
     throw new ConflictException(
       'Ngựa chưa được xếp khu chuồng, vui lòng liên hệ Club Manager để xếp khu trước',
     );
   }
-  return horse.barnId;
 }
 
 /**
@@ -157,6 +159,39 @@ export function assertBarnActive(
 ): void {
   if (barn.status !== BarnStatus.ACTIVE) {
     throw new ConflictException(`${label} không ở trạng thái hoạt động`);
+  }
+}
+
+/**
+ * Chặn xếp ngựa vào khu chưa có Head Trainer phụ trách
+ *
+ * - Qua được hàm này thì TypeScript coi headTrainerId của khu là string
+ *
+ * @param barn Khu chuồng cần kiểm
+ * @throws ConflictException Nếu khu chưa có Head Trainer phụ trách
+ */
+export function assertBarnHasHeadTrainer<
+  T extends Pick<BarnEntity, 'headTrainerId'>,
+>(barn: T): asserts barn is T & { headTrainerId: string } {
+  if (barn.headTrainerId === null) {
+    throw new ConflictException(
+      'Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được',
+    );
+  }
+}
+
+/**
+ * Chặn xếp ngựa vào khu đã hết chỗ nhận ngựa
+ *
+ * - Số chỗ còn nhận tính theo remainingStallCount (ô trống trừ ngựa chờ xếp ô)
+ * - Câu báo lỗi dựng bằng fullBarnMessage
+ *
+ * @param capacity Số ô trống và số ngựa chờ xếp ô của khu, đếm sau khi đã lock khu
+ * @throws ConflictException Nếu khu không còn chỗ nhận ngựa
+ */
+export function assertBarnHasRoomForHorse(capacity: BarnStallCapacity): void {
+  if (remainingStallCount(capacity) < 1) {
+    throw new ConflictException(fullBarnMessage(capacity));
   }
 }
 

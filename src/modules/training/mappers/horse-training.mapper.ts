@@ -35,29 +35,25 @@ export function toHorseTrainingClassResponse(
 /**
  * Chuyển một lượt tập sang dữ liệu trả về, gắn kèm kết quả time trial và đánh giá của lượt đó
  *
- * - Chỉ lấy các lần chạy và đánh giá thuộc đúng lượt tập này; không có thì trả mảng rỗng và null
+ * - Nơi gọi chỉ truyền các lần chạy và đánh giá thuộc đúng lượt tập này
+ * - Không có lần chạy thì trả mảng rỗng; không có đánh giá thì trả null
  *
  * @param row Dòng đọc từ HorseTrainingRepository.listSessions
- * @param trials Kết quả time trial của cả trang, sẽ được lọc theo lượt tập
- * @param evaluations Đánh giá của cả trang, sẽ được lọc theo lượt tập
+ * @param trials Các lần chạy time trial của lượt tập, giữ nguyên thứ tự
+ * @param evaluation Đánh giá của lượt tập, null nếu chưa có
  * @returns Buổi tập của ngựa kèm kết quả và đánh giá
  */
 export function toHorseTrainingSessionResponse(
   row: HorseTrainingSessionRow,
   trials: HorseTrainingTrialRow[],
-  evaluations: HorseTrainingEvaluationRow[],
+  evaluation: HorseTrainingEvaluationRow | null,
 ): HorseTrainingSessionResponseDto {
-  const evaluation = evaluations.find(
-    (item) => item.participantId === row.participantId,
-  );
-  const trialResults: HorseTrainingTrialResultDto[] = trials
-    .filter((trial) => trial.participantId === row.participantId)
-    .map((trial) => ({
-      attemptNo: trial.attemptNo,
-      elapsedMs: trial.elapsedMs,
-      notes: trial.notes,
-      recordedAt: trial.recordedAt,
-    }));
+  const trialResults: HorseTrainingTrialResultDto[] = trials.map((trial) => ({
+    attemptNo: trial.attemptNo,
+    elapsedMs: trial.elapsedMs,
+    notes: trial.notes,
+    recordedAt: trial.recordedAt,
+  }));
   return {
     participantId: row.participantId,
     sessionId: row.sessionId,

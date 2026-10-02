@@ -4,15 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  EntityManager,
-  QueryFailedError,
-  Repository,
-} from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
+import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
@@ -32,11 +28,12 @@ import { toBarnListItem, toBarnResponse } from '../mappers/barn.mapper';
 import {
   assertAssignableHeadTrainer,
   assertBarnChangeKeepsHorses,
+  assertBarnHasHeadTrainer,
+  assertBarnHasRoomForHorse,
   assertCapacityFitsStalls,
   assertBarnRemovable,
   changedFieldsDiff,
   EMPTY_CAPACITY,
-  fullBarnMessage,
   isActiveHeadTrainer,
   remainingStallCount,
 } from '../policies/stable.policy';
@@ -115,7 +112,7 @@ export class BarnsService {
   async create(actor: Actor, body: CreateBarnDto): Promise<BarnResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
 
-    const saved = await this.saveUnique(() =>
+    const createBarn = () =>
       this.dataSource.transaction(async (manager) => {
         const name = body.name.trim();
         if (await manager.existsBy(BarnEntity, { name })) {
@@ -140,7 +137,10 @@ export class BarnsService {
           feature: 'F1.6',
         });
         return barn;
-      }),
+      });
+    const saved = await mapAnyUniqueViolation(
+      createBarn,
+      'Tên khu chuồng đã tồn tại',
     );
     return toBarnResponse(saved);
   }
@@ -169,7 +169,7 @@ export class BarnsService {
   ): Promise<BarnResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
 
-    const saved = await this.saveUnique(() =>
+    const updateBarn = () =>
       this.dataSource.transaction(async (manager) => {
         const barn = await this.access.lockBarn(manager, barnId);
 
@@ -219,7 +219,10 @@ export class BarnsService {
           feature: 'F1.6',
         });
         return updated;
-      }),
+      });
+    const saved = await mapAnyUniqueViolation(
+      updateBarn,
+      'Tên khu chuồng đã tồn tại',
     );
     return toBarnResponse(saved);
   }
@@ -283,15 +286,8 @@ export class BarnsService {
     manager: EntityManager,
     barnId: string,
   ): Promise<BarnEntity> {
-    const barn = await this.access.lockBarn(manager, barnId);
-    if (barn.status !== BarnStatus.ACTIVE) {
-      throw new ConflictException('Khu chuồng không ở trạng thái hoạt động');
-    }
-    if (barn.headTrainerId === null) {
-      throw new ConflictException(
-        'Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được',
-      );
-    }
+    const barn = await this.access.lockActiveBarn(manager, barnId);
+    assertBarnHasHeadTrainer(barn);
     const isHeadTrainerActive = await manager.exists(UserEntity, {
       where: {
         id: barn.headTrainerId,
@@ -304,34 +300,9 @@ export class BarnsService {
         'Khu chưa có Head Trainer đang hoạt động phụ trách',
       );
     }
-    const capacity =
-      (await this.stableRepository.countStallCapacity(manager, [barnId])).get(
-        barnId,
-      ) ?? EMPTY_CAPACITY;
-    if (remainingStallCount(capacity) < 1) {
-      throw new ConflictException(fullBarnMessage(capacity));
-    }
+    assertBarnHasRoomForHorse(
+      await this.stableRepository.countBarnCapacity(manager, barnId),
+    );
     return barn;
-  }
-
-  /**
-   * Chạy thao tác ghi và đổi lỗi unique violation thành 409 trùng tên khu
-   *
-   * @param operation Thao tác ghi cần chạy
-   * @returns Promise trả về kết quả của thao tác
-   * @throws ConflictException Nếu tên khu chuồng đã tồn tại
-   */
-  private async saveUnique<T>(operation: () => Promise<T>): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      if (
-        error instanceof QueryFailedError &&
-        (error.driverError as { code?: string } | undefined)?.code === '23505'
-      ) {
-        throw new ConflictException('Tên khu chuồng đã tồn tại');
-      }
-      throw error;
-    }
   }
 }

@@ -58,7 +58,7 @@ export class StableAccessService {
     assertHorseNotTransferred(horse, operation);
     assertHorseHasBarn(horse);
     await this.assertHorseInTrainerBarn(manager, horseId, callerId);
-    return horse as HorseInBarn;
+    return horse;
   }
 
   /**

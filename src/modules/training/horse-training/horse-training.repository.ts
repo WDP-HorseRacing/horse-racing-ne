@@ -83,10 +83,10 @@ export class HorseTrainingRepository {
           ? `s.scheduled_start_at >= $${params.length}`
           : `s.scheduled_start_at < $${params.length}`,
       );
-    }
-    if (filter.when === HorseTrainingSessionWhen.UPCOMING) {
-      params.push(HIDDEN_UPCOMING_STATUSES);
-      where.push(`sp.status <> ALL($${params.length})`);
+      if (filter.when === HorseTrainingSessionWhen.UPCOMING) {
+        params.push(HIDDEN_UPCOMING_STATUSES);
+        where.push(`sp.status <> ALL($${params.length})`);
+      }
     }
     const whereSql = `WHERE ${where.join(' AND ')}`;
     const order =
