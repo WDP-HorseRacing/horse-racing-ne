@@ -1,4 +1,8 @@
-import { MediaAssetResponseDto, MediaUploadRequestResponseDto } from '../dto';
+import {
+  MediaAssetResponseDto,
+  MediaDownloadUrlResponseDto,
+  MediaUploadRequestResponseDto,
+} from '../dto';
 import { MediaAssetEntity } from '../entities/media-asset.entity';
 
 /**
@@ -39,4 +43,16 @@ export function toMediaUploadRequestResponse(
       'Content-Length': String(asset.byteSize),
     },
   };
+}
+
+/**
+ * Tạo DTO trả về cho yêu cầu tải tệp
+ *
+ * @param url Presigned GET URL
+ * @returns MediaDownloadUrlResponseDto chứa URL tải tệp
+ */
+export function toMediaDownloadUrlResponse(
+  url: string,
+): MediaDownloadUrlResponseDto {
+  return { url };
 }

@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource, EntityManager, In } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { ObjectStorageService } from '../../../common/infrastructure/storage/object-storage.service';
 import type { Actor } from '../../../common/types/actor';
 import { currentUserForActor } from '../../users/utils/current-user';
@@ -19,6 +20,7 @@ import { MediaAssetEntity } from '../entities/media-asset.entity';
 import { MediaPurpose } from '../enums/media-purpose.enum';
 import {
   toMediaAssetResponse,
+  toMediaDownloadUrlResponse,
   toMediaUploadRequestResponse,
 } from '../mappers/media.mapper';
 import {
@@ -32,6 +34,8 @@ import {
 @Injectable()
 export class MediaService {
   constructor(
+    @InjectRepository(MediaAssetEntity)
+    private readonly assets: Repository<MediaAssetEntity>,
     private readonly dataSource: DataSource,
     private readonly storage: ObjectStorageService,
   ) {}
@@ -66,8 +70,8 @@ export class MediaService {
       mimeType,
       body.byteSize,
     );
-    const asset = await this.dataSource.manager.save(
-      this.dataSource.manager.create(MediaAssetEntity, {
+    const asset = await this.assets.save(
+      this.assets.create({
         id: assetId,
         uploadedBy: caller.id,
         objectKey,
@@ -98,7 +102,7 @@ export class MediaService {
     assetId: string,
   ): Promise<MediaAssetResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const asset = await this.findAsset(this.dataSource.manager, assetId);
+    const asset = await this.findAsset(assetId);
     if (asset.uploadedBy !== caller.id) {
       throw new NotFoundException('Không tìm thấy tệp');
     }
@@ -140,7 +144,7 @@ export class MediaService {
   ): Promise<MediaDownloadUrlResponseDto> {
     const asset = await this.findViewableAsset(actor, assetId);
     const url = await this.storage.createDownloadUrl(asset.objectKey);
-    return { url };
+    return toMediaDownloadUrlResponse(url);
   }
 
   /**
@@ -151,7 +155,7 @@ export class MediaService {
    * @throws NotFoundException Nếu không có tệp
    */
   async signDownloadUrl(assetId: string): Promise<string> {
-    const asset = await this.findAsset(this.dataSource.manager, assetId);
+    const asset = await this.findAsset(assetId);
     return this.storage.createDownloadUrl(asset.objectKey);
   }
 
@@ -166,9 +170,7 @@ export class MediaService {
   async signDownloadUrls(assetIds: string[]): Promise<Map<string, string>> {
     const urls = new Map<string, string>();
     if (assetIds.length === 0) return urls;
-    const assets = await this.dataSource.manager.findBy(MediaAssetEntity, {
-      id: In(assetIds),
-    });
+    const assets = await this.assets.findBy({ id: In(assetIds) });
     for (const asset of assets) {
       urls.set(asset.id, await this.storage.createDownloadUrl(asset.objectKey));
     }
@@ -195,7 +197,7 @@ export class MediaService {
     callerId: string,
     assetId: string,
   ): Promise<MediaAssetEntity> {
-    const asset = await this.findAsset(this.dataSource.manager, assetId);
+    const asset = await this.findAsset(assetId);
     if (asset.uploadedBy !== callerId) {
       throw new NotFoundException('Không tìm thấy tệp');
     }
@@ -209,16 +211,12 @@ export class MediaService {
   /**
    * Lấy bản ghi media_assets theo id.
    *
-   * @param manager EntityManager dùng để query
    * @param assetId UUID của bản ghi media_assets
-   * @returns A promise resolving to MediaAssetEntity
+   * @returns Promise trả về bản ghi media_assets
    * @throws NotFoundException Nếu không có tệp
    */
-  private async findAsset(
-    manager: EntityManager,
-    assetId: string,
-  ): Promise<MediaAssetEntity> {
-    const asset = await manager.findOneBy(MediaAssetEntity, { id: assetId });
+  private async findAsset(assetId: string): Promise<MediaAssetEntity> {
+    const asset = await this.assets.findOneBy({ id: assetId });
     if (!asset) {
       throw new NotFoundException('Không tìm thấy tệp');
     }
@@ -240,9 +238,8 @@ export class MediaService {
     actor: Actor,
     assetId: string,
   ): Promise<MediaAssetEntity> {
-    const manager = this.dataSource.manager;
-    const caller = await currentUserForActor(manager, actor);
-    const asset = await this.findAsset(manager, assetId);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const asset = await this.findAsset(assetId);
     if (asset.uploadedBy !== caller.id) {
       throw new NotFoundException('Không tìm thấy tệp');
     }

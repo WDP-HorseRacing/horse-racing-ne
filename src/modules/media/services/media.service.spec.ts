@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { ObjectStorageService } from '../../../common/infrastructure/storage/object-storage.service';
@@ -72,7 +72,14 @@ function setup({
     ),
   };
   const dataSource = { manager } as unknown as DataSource;
+  const assets = {
+    findOneBy: () => manager.findOneBy(),
+    findBy: () => manager.findBy(),
+    create: (data: object) => manager.create(MediaAssetEntity, data),
+    save: (entity: MediaAssetEntity) => manager.save(entity),
+  } as unknown as Repository<MediaAssetEntity>;
   const service = new MediaService(
+    assets,
     dataSource,
     storage as unknown as ObjectStorageService,
   );
