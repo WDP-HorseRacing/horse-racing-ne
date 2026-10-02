@@ -30,6 +30,7 @@ import type {
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
 } from '../types/medical-events.types';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 @Injectable()
 export class TrainingLockService {
@@ -106,7 +107,7 @@ export class TrainingLockService {
           lockEnd,
           caseId: saved.caseId,
         },
-        feature: 'F3.8',
+        feature: MEDICAL_AUDIT_FEATURE.TRAINING_LOCK,
       });
       return saved;
     });
@@ -168,7 +169,7 @@ export class TrainingLockService {
         before: { status: lock.status },
         after: { status: TrainingLockStatus.RELEASED },
         reason: body.conclusion,
-        feature: 'F3.8',
+        feature: MEDICAL_AUDIT_FEATURE.TRAINING_LOCK,
       });
       return { ...lock, ...changes };
     });

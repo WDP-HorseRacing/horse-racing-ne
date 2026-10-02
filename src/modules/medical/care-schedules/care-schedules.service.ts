@@ -33,9 +33,11 @@ import {
   assertCareDueDate,
   assertCareScheduleOpen,
   assertRescheduleReason,
+  isGroomOnly,
   toClubDate,
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 /**
  * Vai trò được giao thực hiện lịch chăm sóc (F3.11 mục 1).
@@ -71,7 +73,7 @@ export class CareSchedulesService {
   ): Promise<CareScheduleResponseDto[]> {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const caller = await this.horseAccess.currentUser(actor);
-    const groomOnly = this.isGroomOnly(actor);
+    const groomOnly = isGroomOnly(actor.roles);
     if (
       groomOnly &&
       !(await this.horseAccess.isGroomAssigned(horseId, caller.id))
@@ -110,7 +112,7 @@ export class CareSchedulesService {
     body: CreateCareScheduleDto,
   ): Promise<CareScheduleResponseDto> {
     const dueAt = new Date(body.dueAt);
-    return this.dataSource.transaction(async (manager) => {
+    const created = await this.dataSource.transaction(async (manager) => {
       const { caller } = await this.access.lockHorseForWrite(
         manager,
         actor,
@@ -143,10 +145,11 @@ export class CareSchedulesService {
           dueAt,
           assignedTo: saved.assignedTo,
         },
-        feature: 'F3.11',
+        feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
       });
-      return toCareScheduleResponse(saved);
+      return saved;
     });
+    return toCareScheduleResponse(created);
   }
 
   /**
@@ -171,7 +174,7 @@ export class CareSchedulesService {
     body: UpdateCareScheduleDto,
   ): Promise<CareScheduleResponseDto> {
     const { horseId } = await this.findSchedule(scheduleId);
-    return this.dataSource.transaction(async (manager) => {
+    const updated = await this.dataSource.transaction(async (manager) => {
       const { caller } = await this.access.lockHorseForWrite(
         manager,
         actor,
@@ -197,7 +200,7 @@ export class CareSchedulesService {
         changes.assignedTo === schedule.assignedTo &&
         changes.notes === schedule.notes
       ) {
-        return toCareScheduleResponse(schedule);
+        return schedule;
       }
       await manager.update(CareScheduleEntity, { id: scheduleId }, changes);
       await this.audit.record(manager, {
@@ -212,10 +215,11 @@ export class CareSchedulesService {
         },
         after: changes,
         reason: body.reason ?? null,
-        feature: 'F3.11',
+        feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
       });
-      return toCareScheduleResponse({ ...schedule, ...changes });
+      return { ...schedule, ...changes };
     });
+    return toCareScheduleResponse(updated);
   }
 
   /**
@@ -240,7 +244,7 @@ export class CareSchedulesService {
     body: CompleteCareScheduleDto,
   ): Promise<CompleteCareScheduleResponseDto> {
     const { horseId } = await this.findSchedule(scheduleId);
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const { caller } = await this.access.lockHorseForWrite(
         manager,
         actor,
@@ -275,16 +279,20 @@ export class CareSchedulesService {
         entityId: scheduleId,
         before: { status: schedule.status },
         after: { status: CareScheduleStatus.COMPLETED },
-        feature: 'F3.11',
+        feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
       });
       const next = nextDueAt
         ? await this.createNext(manager, schedule, nextDueAt, caller.id)
         : null;
       return {
-        completed: toCareScheduleResponse({ ...schedule, ...changes }),
-        next: next ? toCareScheduleResponse(next) : null,
+        completed: { ...schedule, ...changes },
+        next,
       };
     });
+    return {
+      completed: toCareScheduleResponse(result.completed),
+      next: result.next ? toCareScheduleResponse(result.next) : null,
+    };
   }
 
   /**
@@ -331,7 +339,7 @@ export class CareSchedulesService {
         assignedTo: next.assignedTo,
         previousScheduleId: done.id,
       },
-      feature: 'F3.11',
+      feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
     });
     return next;
   }
@@ -353,7 +361,7 @@ export class CareSchedulesService {
     body: CancelCareScheduleDto,
   ): Promise<CareScheduleResponseDto> {
     const { horseId } = await this.findSchedule(scheduleId);
-    return this.dataSource.transaction(async (manager) => {
+    const cancelled = await this.dataSource.transaction(async (manager) => {
       const { caller } = await this.access.lockHorseForWrite(
         manager,
         actor,
@@ -374,10 +382,11 @@ export class CareSchedulesService {
         before: { status: schedule.status },
         after: { status: CareScheduleStatus.CANCELLED },
         reason: body.reason,
-        feature: 'F3.11',
+        feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
       });
-      return toCareScheduleResponse({ ...schedule, ...changes });
+      return { ...schedule, ...changes };
     });
+    return toCareScheduleResponse(cancelled);
   }
 
   /**
@@ -426,24 +435,6 @@ export class CareSchedulesService {
     return user.role === UserRole.GROOM
       ? this.horseAccess.isGroomAssigned(horseId, userId, manager)
       : true;
-  }
-
-  /**
-   * Người gọi chỉ có vai trò Groom trong số các vai trò được xem lịch chăm sóc
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @returns True nếu chỉ thấy lịch được giao cho mình
-   */
-  private isGroomOnly(actor: Actor): boolean {
-    return (
-      actor.roles.includes(UserRole.GROOM) &&
-      ![
-        UserRole.VETERINARIAN,
-        UserRole.CLUB_MANAGER,
-        UserRole.HEAD_TRAINER,
-        UserRole.HORSE_OWNER,
-      ].some((role) => actor.roles.includes(role))
-    );
   }
 
   /**

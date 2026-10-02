@@ -4,8 +4,16 @@ import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { CareInstructionsResponseDto } from '../dto/care-instructions.response.dto';
 import { CareScheduleResponseDto } from '../dto/care-schedule.response.dto';
 import { CheckupAppointmentDto } from '../dto/checkup.dto';
-import { CaseActiveLockDto } from '../dto/medical-case.response.dto';
+import {
+  CaseActiveLockDto,
+  MedicalCostReportResponseDto,
+} from '../dto/medical-case.response.dto';
 import { ExamRequestResponseDto } from '../dto/exam-request.dto';
+import {
+  HealthHistoryItemDto,
+  HealthStatusChangeResponseDto,
+} from '../dto/health-status.dto';
+import { HerdBlockDto, HerdCountsDto } from '../dto/medical-dashboard.dto';
 import {
   InjuryMarkerResponseDto,
   InjuryTimelineItemDto,
@@ -21,6 +29,11 @@ import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entit
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
 import { TrainingLockEntity } from '../entities/training-lock.entity';
+import type { HealthHistoryRow } from '../health-statuses/health-statuses.repository';
+import type { MedicalCostReportRow } from '../medical-records/medical-cases.repository';
+import { healthPriority } from '../policies/medical.policy';
+import type { HorseCheckupAnchorRow } from '../types/medical-checkup.types';
+import type { HealthStatusChange } from '../../horses/shared/horse-health.service';
 
 /**
  * Chuyển đơn thuốc sang DTO, chỉ thêm liều lượng và tần suất khi người gọi được xem.
@@ -287,5 +300,105 @@ export function toCareInstructionsResponse(
             medicalRecordId: latest.id,
           }
         : null,
+  };
+}
+
+/**
+ * Ánh xạ kết quả đổi trạng thái sức khỏe sang response
+ *
+ * @param horseId UUID của ngựa
+ * @param change Trạng thái trước, sau và cờ có đổi hay không
+ * @returns HealthStatusChangeResponseDto
+ */
+export function toHealthStatusChangeResponse(
+  horseId: string,
+  change: HealthStatusChange,
+): HealthStatusChangeResponseDto {
+  return {
+    horseId,
+    changed: change.changed,
+    from: change.from,
+    to: change.to,
+  };
+}
+
+/**
+ * Ánh xạ một lần đổi trạng thái sức khỏe đọc từ nhật ký sang response
+ *
+ * @param row Một lần đổi trạng thái sức khỏe
+ * @returns HealthHistoryItemDto
+ */
+export function toHealthHistoryItem(
+  row: HealthHistoryRow,
+): HealthHistoryItemDto {
+  return {
+    changedAt: row.changedAt,
+    from: row.from,
+    to: row.to,
+    reason: row.reason,
+    feature: row.feature,
+    actorId: row.actorId,
+  };
+}
+
+/**
+ * Dựng khối đàn ngựa của bảng điều khiển y tế
+ *
+ * - Đếm số ngựa theo từng trạng thái sức khỏe
+ * - Xếp ngựa theo mức ưu tiên sức khỏe, cùng mức thì theo tên tiếng Việt
+ *
+ * @param rows Đàn ngựa kèm mốc tính hạn
+ * @returns HerdBlockDto gồm số đếm và danh sách ngựa
+ */
+export function toHerdBlock(rows: HorseCheckupAnchorRow[]): HerdBlockDto {
+  const counts: HerdCountsDto = {
+    QUARANTINED: 0,
+    INJURED: 0,
+    UNDER_OBSERVATION: 0,
+    ELIGIBLE: 0,
+  };
+  for (const row of rows) counts[row.healthStatus] += 1;
+  const horses = rows
+    .map((row) => ({
+      horseId: row.horseId,
+      horseName: row.horseName,
+      barnId: row.barnId,
+      stallId: row.stallId,
+      stallCode: row.stallCode,
+      healthStatus: row.healthStatus,
+    }))
+    .sort(
+      (a, b) =>
+        healthPriority(a.healthStatus) - healthPriority(b.healthStatus) ||
+        a.horseName.localeCompare(b.horseName, 'vi'),
+    );
+  return { counts, horses };
+}
+
+/**
+ * Dựng báo cáo chi phí y tế theo ngựa trong một khoảng ngày đóng bệnh án
+ *
+ * @param from Ngày bắt đầu (YYYY-MM-DD)
+ * @param to Ngày kết thúc (YYYY-MM-DD)
+ * @param rows Chi phí và số bệnh án đã đóng của từng ngựa
+ * @returns MedicalCostReportResponseDto kèm tổng số bệnh án và tổng chi phí
+ */
+export function toMedicalCostReport(
+  from: string,
+  to: string,
+  rows: MedicalCostReportRow[],
+): MedicalCostReportResponseDto {
+  const items = rows.map((row) => ({
+    horseId: row.horseId,
+    horseName: row.horseName,
+    caseCount: row.caseCount,
+    totalCost: Number(row.totalCost),
+  }));
+  return {
+    from,
+    to,
+    caseCount: items.reduce((sum, item) => sum + item.caseCount, 0),
+    totalCost: items.reduce((sum, item) => sum + item.totalCost, 0),
+    items,
   };
 }

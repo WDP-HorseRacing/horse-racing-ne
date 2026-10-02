@@ -24,13 +24,7 @@ import {
 } from '../dto';
 import { MedicalRecordsService } from './medical-records.service';
 import { MedicalVisitsService } from './medical-visits.service';
-
-const MEDICAL_READERS = [
-  UserRole.CLUB_MANAGER,
-  UserRole.HEAD_TRAINER,
-  UserRole.VETERINARIAN,
-  UserRole.HORSE_OWNER,
-];
+import { MEDICAL_READER_ROLES } from '../constants/medical.constants';
 
 @ApiTags('medical')
 @ApiBearerAuth()
@@ -41,7 +35,7 @@ export class MedicalRecordsController {
     private readonly visits: MedicalVisitsService,
   ) {}
 
-  @Access(MEDICAL_READERS)
+  @Access(MEDICAL_READER_ROLES)
   @Get('horses/:horseId/medical-records')
   @ApiOperation({
     summary: 'List horse medical visits',
@@ -74,7 +68,7 @@ export class MedicalRecordsController {
     return this.visits.createStandaloneVisit(actor, horseId, body);
   }
 
-  @Access([...MEDICAL_READERS, UserRole.GROOM])
+  @Access([...MEDICAL_READER_ROLES, UserRole.GROOM])
   @Get('horses/:horseId/care-instructions')
   @ApiOperation({
     summary: 'Get the current care instructions of a horse',
@@ -89,7 +83,7 @@ export class MedicalRecordsController {
     return this.medicalRecords.getCareInstructions(actor, horseId);
   }
 
-  @Access(MEDICAL_READERS)
+  @Access(MEDICAL_READER_ROLES)
   @Get('medical-records/:id')
   @ApiOperation({
     summary: 'Get a medical visit',

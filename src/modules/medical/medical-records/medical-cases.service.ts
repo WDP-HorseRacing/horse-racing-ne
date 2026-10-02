@@ -43,6 +43,7 @@ import {
   costOf,
   toCaseActiveLock,
   toMedicalCaseResponse,
+  toMedicalCostReport,
 } from '../mappers/medical.mapper';
 import {
   assertCaseOpen,
@@ -59,6 +60,7 @@ import type {
 } from '../types/medical-events.types';
 import { MedicalCasesRepository } from './medical-cases.repository';
 import { MedicalRecordsService } from './medical-records.service';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 /**
  * Kết luận ghi vào lệnh khóa khi bác sĩ chọn gỡ khóa lúc đóng bệnh án.
@@ -259,7 +261,7 @@ export class MedicalCasesService {
             before: { status: activeLock.status },
             after: { status: TrainingLockStatus.RELEASED, caseId },
             reason: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
-            feature: 'F3.9',
+            feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
           });
         }
         if (activeLock && decision === CaseLockDecision.KEEP) {
@@ -275,7 +277,7 @@ export class MedicalCasesService {
             entityId: activeLock.id,
             before: { lockEnd: activeLock.lockEnd },
             after: { lockEnd: lockExpectedEnd, caseId },
-            feature: 'F3.9',
+            feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
           });
         }
         await this.audit.record(manager, {
@@ -291,7 +293,7 @@ export class MedicalCasesService {
             lockDecision: decision,
             ...(activeLock ? { trainingLockId: activeLock.id } : {}),
           },
-          feature: 'F3.9',
+          feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
         });
         return {
           closed: { ...medicalCase, ...changes },
@@ -368,7 +370,7 @@ export class MedicalCasesService {
           before: { totalCost: previous },
           after: { totalCost: body.totalCost },
           reason: body.reason,
-          feature: 'F3.9',
+          feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
         });
         return { updated: { ...medicalCase, totalCost }, fromCost: previous };
       },
@@ -410,19 +412,7 @@ export class MedicalCasesService {
       barnId: query.barnId,
       ownerId: query.ownerId,
     });
-    const items = rows.map((row) => ({
-      horseId: row.horseId,
-      horseName: row.horseName,
-      caseCount: row.caseCount,
-      totalCost: Number(row.totalCost),
-    }));
-    return {
-      from,
-      to,
-      caseCount: items.reduce((sum, item) => sum + item.caseCount, 0),
-      totalCost: items.reduce((sum, item) => sum + item.totalCost, 0),
-      items,
-    };
+    return toMedicalCostReport(from, to, rows);
   }
 
   /**

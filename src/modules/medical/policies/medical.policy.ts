@@ -418,6 +418,23 @@ export function isGroomOnly(roles: UserRole[]): boolean {
 }
 
 /**
+ * Người gọi chỉ có vai trò Groom trong số các vai trò được xem yêu cầu khám, nên chỉ thấy yêu cầu của ngựa mình đang phụ trách
+ *
+ * - Horse Owner không xem được yêu cầu khám nên không mở rộng phạm vi của Groom
+ *
+ * @param roles Vai trò của người gọi
+ * @returns True nếu có GROOM và không có Veterinarian, Club Manager, Head Trainer
+ */
+export function isGroomOnlyForExamRequests(roles: UserRole[]): boolean {
+  return (
+    roles.includes(UserRole.GROOM) &&
+    ![UserRole.VETERINARIAN, UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER].some(
+      (role) => roles.includes(role),
+    )
+  );
+}
+
+/**
  * Người gọi có được xem liều lượng, tần suất đơn thuốc không (F3.10 mục 4): Horse Owner thì không
  *
  * @param roles Vai trò của người gọi

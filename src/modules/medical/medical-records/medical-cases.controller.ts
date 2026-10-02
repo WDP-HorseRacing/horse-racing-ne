@@ -33,13 +33,7 @@ import {
 } from '../dto';
 import { MedicalCasesService } from './medical-cases.service';
 import { MedicalVisitsService } from './medical-visits.service';
-
-const MEDICAL_READERS = [
-  UserRole.CLUB_MANAGER,
-  UserRole.HEAD_TRAINER,
-  UserRole.VETERINARIAN,
-  UserRole.HORSE_OWNER,
-];
+import { MEDICAL_READER_ROLES } from '../constants/medical.constants';
 
 @ApiTags('medical')
 @ApiBearerAuth()
@@ -50,7 +44,7 @@ export class MedicalCasesController {
     private readonly visits: MedicalVisitsService,
   ) {}
 
-  @Access(MEDICAL_READERS)
+  @Access(MEDICAL_READER_ROLES)
   @Get('horses/:horseId/medical-cases')
   @ApiOperation({
     summary: 'List horse medical cases (F3.10)',
@@ -66,7 +60,7 @@ export class MedicalCasesController {
     return this.cases.listCases(actor, horseId, query);
   }
 
-  @Access(MEDICAL_READERS)
+  @Access(MEDICAL_READER_ROLES)
   @Get('medical-cases/:caseId')
   @ApiOperation({
     summary: 'Get a medical case with its visits (F3.10)',

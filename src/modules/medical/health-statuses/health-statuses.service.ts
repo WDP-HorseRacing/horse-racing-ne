@@ -15,6 +15,11 @@ import { assertHealthChangeReason } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import type { HealthChangedEvent } from '../types/medical-events.types';
 import { HealthStatusesRepository } from './health-statuses.repository';
+import {
+  toHealthHistoryItem,
+  toHealthStatusChangeResponse,
+} from '../mappers/medical.mapper';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 @Injectable()
 export class HealthStatusesService {
@@ -65,7 +70,7 @@ export class HealthStatusesService {
         to: body.healthStatus,
         actorId: caller.id,
         reason: body.reason,
-        feature: 'F3.7',
+        feature: MEDICAL_AUDIT_FEATURE.HEALTH_STATUS,
       });
     });
     if (change.changed) {
@@ -77,7 +82,7 @@ export class HealthStatusesService {
       };
       this.events.publish(MEDICAL_HEALTH_CHANGED_EVENT, event);
     }
-    return { horseId, ...change };
+    return toHealthStatusChangeResponse(horseId, change);
   }
 
   /**
@@ -94,6 +99,6 @@ export class HealthStatusesService {
     horseId: string,
   ): Promise<HealthHistoryItemDto[]> {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
-    return this.repository.history(horseId);
+    return (await this.repository.history(horseId)).map(toHealthHistoryItem);
   }
 }

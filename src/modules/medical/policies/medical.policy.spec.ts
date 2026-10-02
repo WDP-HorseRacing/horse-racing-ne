@@ -49,6 +49,7 @@ import {
   resolveVisitVoid,
   canSeeDosage,
   isGroomOnly,
+  isGroomOnlyForExamRequests,
   canSeeMedicalCost,
   resolveLockOnClose,
   assertHealthChangeReason,
@@ -591,6 +592,18 @@ describe('medical.policy', () => {
       expect(isGroomOnly([UserRole.GROOM])).toBe(true);
       expect(isGroomOnly([UserRole.GROOM, UserRole.HEAD_TRAINER])).toBe(false);
       expect(isGroomOnly([UserRole.VETERINARIAN])).toBe(false);
+    });
+  });
+
+  describe('isGroomOnlyForExamRequests', () => {
+    it('keeps a groom who is also a horse owner limited to assigned horses', () => {
+      expect(isGroomOnlyForExamRequests([UserRole.GROOM])).toBe(true);
+      expect(
+        isGroomOnlyForExamRequests([UserRole.GROOM, UserRole.HORSE_OWNER]),
+      ).toBe(true);
+      expect(
+        isGroomOnlyForExamRequests([UserRole.GROOM, UserRole.HEAD_TRAINER]),
+      ).toBe(false);
     });
   });
 });

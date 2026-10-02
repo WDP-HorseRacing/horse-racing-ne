@@ -75,6 +75,7 @@ import type {
   MedicalCaseCancelledEvent,
   MedicalCaseOpenedEvent,
 } from '../types/medical-events.types';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 /**
  * Bối cảnh ghi một buổi khám, đã qua mọi kiểm tra.
@@ -201,7 +202,7 @@ export class MedicalVisitsService {
         requests,
         nextStatus,
         healthChanged,
-        feature: 'F3.3',
+        feature: MEDICAL_AUDIT_FEATURE.STANDALONE_VISIT,
       });
       return { ...written, openedCase };
     });
@@ -273,7 +274,7 @@ export class MedicalVisitsService {
         requests,
         nextStatus,
         healthChanged,
-        feature: 'F3.6',
+        feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
       });
       return { ...written, openedCase: null };
     });
@@ -350,7 +351,7 @@ export class MedicalVisitsService {
           medicalRecordId: recordId,
           reason: body.reason,
           actorId: caller.id,
-          feature: 'F3.6',
+          feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
         },
       );
       await this.audit.record(manager, {
@@ -361,7 +362,7 @@ export class MedicalVisitsService {
         before: { voidedAt: null },
         after: { voidedAt, measurementsVoided },
         reason: body.reason,
-        feature: 'F3.6',
+        feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
       });
       const cancelledCase =
         action === VisitVoidAction.VOID_AND_CANCEL_CASE && medicalCase
@@ -436,7 +437,7 @@ export class MedicalVisitsService {
         trainingLocksDetached: detached.affected ?? 0,
       },
       reason,
-      feature: 'F3.6',
+      feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
     });
     return { ...medicalCase, status: MedicalCaseStatus.CANCELLED };
   }
@@ -537,7 +538,7 @@ export class MedicalVisitsService {
         initialDiagnosis: input.initialDiagnosis,
         trainingLockAttached: (attached.affected ?? 0) > 0,
       },
-      feature: 'F3.5',
+      feature: MEDICAL_AUDIT_FEATURE.OPEN_CASE,
     });
     return medicalCase;
   }

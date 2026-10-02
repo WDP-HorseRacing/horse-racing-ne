@@ -39,10 +39,12 @@ import {
   assertCanRequestExam,
   assertRequestPending,
   examRequestSourceFor,
+  isGroomOnlyForExamRequests,
   isUrgentAlert,
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import type { ExamRequestUrgentEvent } from '../types/medical-events.types';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 @Injectable()
 export class ExamRequestsService {
@@ -131,7 +133,7 @@ export class ExamRequestsService {
     if (query.urgent !== undefined) {
       qb.andWhere('request.urgent = :urgent', { urgent: query.urgent });
     }
-    if (this.isGroomOnly(actor)) {
+    if (isGroomOnlyForExamRequests(actor.roles)) {
       const horseIds = await this.assignedHorseIds(caller.id);
       if (horseIds.length === 0) {
         return new PaginationResponseDto([], 0, query.page, query.limit);
@@ -167,7 +169,7 @@ export class ExamRequestsService {
     horseId: string,
   ): Promise<ExamRequestResponseDto[]> {
     const horse = await this.horseAccess.findReadableHorseForActor(actor, horseId);
-    if (this.isGroomOnly(actor)) {
+    if (isGroomOnlyForExamRequests(actor.roles)) {
       const caller = await this.horseAccess.currentUser(actor);
       if (!(await this.horseAccess.isGroomAssigned(horseId, caller.id))) {
         throw new ForbiddenException(
@@ -229,7 +231,7 @@ export class ExamRequestsService {
           before: { urgent: current.urgent },
           after: { urgent: body.urgent },
           reason: body.reason,
-          feature: 'F3.4',
+          feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
         });
         return {
           request: { ...current, urgent: body.urgent, horse },
@@ -258,7 +260,7 @@ export class ExamRequestsService {
     body: DismissExamRequestDto,
   ): Promise<ExamRequestResponseDto> {
     const horseId = await this.requestHorseId(requestId);
-    return this.dataSource.transaction(async (manager) => {
+    const dismissed = await this.dataSource.transaction(async (manager) => {
       const { caller, horse } = await this.access.lockHorseForWrite(
         manager,
         actor,
@@ -285,10 +287,11 @@ export class ExamRequestsService {
         before: { status: current.status },
         after: { status: ExamRequestStatus.DISMISSED },
         reason: body.reason,
-        feature: 'F3.4',
+        feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
       });
-      return toExamRequestResponse({ ...current, ...changes, horse });
+      return { ...current, ...changes, horse };
     });
+    return toExamRequestResponse(dismissed);
   }
 
   /**
@@ -378,7 +381,7 @@ export class ExamRequestsService {
           alertType: event.alert,
           measurementId: event.measurementId,
         },
-        feature: 'F3.4',
+        feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
       });
       return true;
     });
@@ -456,7 +459,7 @@ export class ExamRequestsService {
         urgent: input.urgent,
         ...(input.incidentId ? { incidentId: input.incidentId } : {}),
       },
-      feature: 'F3.4',
+      feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
     });
     return saved;
   }
@@ -485,23 +488,6 @@ export class ExamRequestsService {
         : Promise.resolve(false),
     ]);
     return { isInTrainerBarn, isAssignedGroom };
-  }
-
-  /**
-   * Người gọi chỉ có vai trò Groom trong số các vai trò được xem yêu cầu khám
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @returns True nếu phạm vi xem bị giới hạn theo phân công
-   */
-  private isGroomOnly(actor: Actor): boolean {
-    return (
-      actor.roles.includes(UserRole.GROOM) &&
-      ![
-        UserRole.VETERINARIAN,
-        UserRole.CLUB_MANAGER,
-        UserRole.HEAD_TRAINER,
-      ].some((role) => actor.roles.includes(role))
-    );
   }
 
   /**

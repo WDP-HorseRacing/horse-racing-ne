@@ -21,6 +21,7 @@ import {
   UpdateHealthStatusDto,
 } from '../dto';
 import { HealthStatusesService } from './health-statuses.service';
+import { MEDICAL_READER_ROLES } from '../constants/medical.constants';
 
 @ApiTags('medical')
 @ApiBearerAuth()
@@ -45,12 +46,7 @@ export class HealthStatusesController {
     return this.healthStatuses.updateHealth(actor, horseId, body);
   }
 
-  @Access([
-    UserRole.CLUB_MANAGER,
-    UserRole.HEAD_TRAINER,
-    UserRole.VETERINARIAN,
-    UserRole.HORSE_OWNER,
-  ])
+  @Access(MEDICAL_READER_ROLES)
   @Get('horses/:horseId/health-history')
   @ApiOperation({
     summary: 'Horse health status history (F3.10)',

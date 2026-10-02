@@ -1,3 +1,4 @@
+import { UserRole } from '../../../common/enums/role.enum';
 import { MEASUREMENT_BACKDATE_MAX_DAYS } from '../../horses/constants/horse.constants';
 
 /**
@@ -30,3 +31,28 @@ export const TRANSFER_CANCEL_REASON = 'Do chuyển nhượng';
  */
 export const OPEN_CASE_BLOCKS_TRANSFER_MESSAGE =
   'Ngựa còn bệnh án đang điều trị, bác sĩ cần đóng bệnh án trước khi chuyển nhượng';
+
+/**
+ * Các role được xem lịch sử y tế của ngựa: buổi khám, bệnh án, lịch sử sức khỏe
+ */
+export const MEDICAL_READER_ROLES = [
+  UserRole.CLUB_MANAGER,
+  UserRole.HEAD_TRAINER,
+  UserRole.VETERINARIAN,
+  UserRole.HORSE_OWNER,
+];
+
+/**
+ * Mã chức năng ghi vào cột feature của nhật ký thao tác, theo từng nhóm use case y tế
+ */
+export const MEDICAL_AUDIT_FEATURE = {
+  CHECKUP_SCHEDULE: 'F3.2',
+  STANDALONE_VISIT: 'F3.3',
+  EXAM_REQUEST: 'F3.4',
+  OPEN_CASE: 'F3.5',
+  CASE_VISIT: 'F3.6',
+  HEALTH_STATUS: 'F3.7',
+  TRAINING_LOCK: 'F3.8',
+  CLOSE_CASE: 'F3.9',
+  CARE_SCHEDULE: 'F3.11',
+} as const;

@@ -25,6 +25,7 @@ import {
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 @Injectable()
 export class CheckupsService {
@@ -83,7 +84,7 @@ export class CheckupsService {
     body: SetCheckupAppointmentDto,
   ): Promise<CheckupAppointmentDto> {
     const scheduledAt = new Date(body.scheduledAt);
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       const { caller } = await this.access.lockHorseForWrite(
         manager,
         actor,
@@ -139,9 +140,10 @@ export class CheckupsService {
           dueAt: scheduledAt,
         },
         reason: body.reason ?? null,
-        feature: 'F3.2',
+        feature: MEDICAL_AUDIT_FEATURE.CHECKUP_SCHEDULE,
       });
-      return toCheckupAppointment(appointment);
+      return appointment;
     });
+    return toCheckupAppointment(saved);
   }
 }

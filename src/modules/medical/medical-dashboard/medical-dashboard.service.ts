@@ -5,18 +5,10 @@ import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import { CHECKUP_DUE_SOON_DAYS } from '../constants/medical.constants';
-import {
-  HerdCountsDto,
-  MedicalDashboardQueryDto,
-  MedicalDashboardResponseDto,
-} from '../dto';
+import { MedicalDashboardQueryDto, MedicalDashboardResponseDto } from '../dto';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { toExamRequestResponse } from '../mappers/medical.mapper';
-import {
-  addDays,
-  healthPriority,
-  toClubDate,
-} from '../policies/medical.policy';
+import { toExamRequestResponse, toHerdBlock } from '../mappers/medical.mapper';
+import { addDays, toClubDate } from '../policies/medical.policy';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';
 
@@ -74,30 +66,8 @@ export class MedicalDashboardService {
         : Promise.resolve([]),
     ]);
 
-    const counts: HerdCountsDto = {
-      QUARANTINED: 0,
-      INJURED: 0,
-      UNDER_OBSERVATION: 0,
-      ELIGIBLE: 0,
-    };
-    for (const row of rows) counts[row.healthStatus] += 1;
-    const horses = rows
-      .map((row) => ({
-        horseId: row.horseId,
-        horseName: row.horseName,
-        barnId: row.barnId,
-        stallId: row.stallId,
-        stallCode: row.stallCode,
-        healthStatus: row.healthStatus,
-      }))
-      .sort(
-        (a, b) =>
-          healthPriority(a.healthStatus) - healthPriority(b.healthStatus) ||
-          a.horseName.localeCompare(b.horseName, 'vi'),
-      );
-
     return {
-      herd: { counts, horses },
+      herd: toHerdBlock(rows),
       checkups: checkups.filter(
         (item) => item.dueStatus !== CheckupDueStatus.OK,
       ),
