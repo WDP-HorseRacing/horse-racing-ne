@@ -16,6 +16,7 @@ import {
 import { toLatestMeasurement } from './horse-measurements.mapper';
 import { toHorseResponse } from './horse.mapper';
 import type {
+  EligibilityInput,
   EligibilityResult,
   HorseDetailParts,
   HorseLocationRow,
@@ -24,34 +25,57 @@ import type {
 } from '../types/horse.types';
 
 /**
+ * Dữ liệu đã tải sẵn để dựng một dòng danh sách ngựa
+ */
+export interface HorseListItemParts {
+  /** Khu và ô hiện tại của ngựa */
+  location: HorseLocationRow;
+  /** Ngựa có đang bị khóa huấn luyện không */
+  hasActiveTrainingLock: boolean;
+  /** true khi người gọi là Horse Owner: chỉ trả tên khu và mã ô, không trả id */
+  hideLocationIds: boolean;
+  /** Link tải ảnh đại diện đã ký, null nếu ngựa chưa có ảnh */
+  photoUrl: string | null;
+}
+
+/**
+ * Dựng đầu vào tính "được tập / được đua" từ hồ sơ ngựa
+ *
+ * @param horse Hồ sơ ngựa
+ * @param hasActiveTrainingLock Ngựa có đang bị khóa huấn luyện không
+ * @returns Đầu vào cho evaluateEligibility
+ */
+export function eligibilityInputOf(
+  horse: HorseEntity,
+  hasActiveTrainingLock: boolean,
+): EligibilityInput {
+  return {
+    isDeleted: horse.deletedAt !== null,
+    lifecycleStatus: horse.lifecycleStatus,
+    healthStatus: horse.healthStatus,
+    hasActiveTrainingLock,
+  };
+}
+
+/**
  * Chuyển một con ngựa thành một dòng của danh sách, kèm vị trí, cờ được đua và cờ đã xóa.
  *
  * @param horse Hồ sơ ngựa
- * @param location Khu và ô hiện tại của ngựa
- * @param hasActiveTrainingLock Ngựa có đang bị khóa huấn luyện không
- * @param hideLocationIds true khi người gọi là Horse Owner: chỉ trả tên khu và mã ô, không trả id
- * @param photoUrl Link tải ảnh đại diện đã ký, null nếu ngựa chưa có ảnh
+ * @param parts Vị trí, cờ khóa huấn luyện, cờ ẩn id vị trí và link ảnh đại diện
  * @returns Một dòng danh sách ngựa
  */
 export function toHorseListItem(
   horse: HorseEntity,
-  location: HorseLocationRow,
-  hasActiveTrainingLock: boolean,
-  hideLocationIds: boolean,
-  photoUrl: string | null,
+  parts: HorseListItemParts,
 ): HorseListItemDto {
-  const isDeleted = horse.deletedAt !== null;
   return {
     ...toHorseResponse(horse),
-    location: toLocation(horse, location, hideLocationIds),
-    photoUrl,
-    canRegisterRace: evaluateEligibility({
-      isDeleted,
-      lifecycleStatus: horse.lifecycleStatus,
-      healthStatus: horse.healthStatus,
-      hasActiveTrainingLock,
-    }).racingEligible,
-    isDeleted,
+    location: toLocation(horse, parts.location, parts.hideLocationIds),
+    photoUrl: parts.photoUrl,
+    canRegisterRace: evaluateEligibility(
+      eligibilityInputOf(horse, parts.hasActiveTrainingLock),
+    ).racingEligible,
+    isDeleted: horse.deletedAt !== null,
   };
 }
 
@@ -65,7 +89,7 @@ export function toHorseListItem(
  * @param hideLocationIds true để bỏ id của khu và ô
  * @returns Phần vị trí của hồ sơ
  */
-export function toLocation(
+function toLocation(
   horse: HorseEntity,
   location: HorseLocationRow,
   hideLocationIds: boolean,
@@ -117,12 +141,9 @@ export function toHorseDetailResponse(
     owner: parts.owner,
     latestMeasurements: parts.latestMeasurements.map(toLatestMeasurement),
     activeTrainingLock: parts.activeTrainingLock,
-    eligibility: evaluateEligibility({
-      isDeleted,
-      lifecycleStatus: horse.lifecycleStatus,
-      healthStatus: horse.healthStatus,
-      hasActiveTrainingLock: parts.activeTrainingLock,
-    }),
+    eligibility: evaluateEligibility(
+      eligibilityInputOf(horse, parts.activeTrainingLock),
+    ),
     isDeleted,
   };
 }

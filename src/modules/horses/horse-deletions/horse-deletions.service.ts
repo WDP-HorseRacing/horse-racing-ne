@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -15,6 +11,7 @@ import {
   HorseRestorePreviewResponseDto,
   RestoreHorseDto,
 } from '../dto';
+import { HORSE_AUDIT_FEATURE } from '../constants/horse.constants';
 import { HorseEntity } from '../entities/horse.entity';
 import {
   toDeletionPreviewResponse,
@@ -22,6 +19,7 @@ import {
 } from '../mappers/horse-deletions.mapper';
 import { toHorseResponse } from '../mappers/horse.mapper';
 import {
+  assertDeletedHorse,
   assertNoBusinessData,
   assertNotParent,
 } from '../policies/horse.policy';
@@ -85,7 +83,7 @@ export class HorseDeletionsService {
         },
         after: { deletedReason: body.reason },
         reason: body.reason,
-        feature: 'F1.8',
+        feature: HORSE_AUDIT_FEATURE.LIFECYCLE_AND_DELETION,
       });
     });
   }
@@ -135,10 +133,7 @@ export class HorseDeletionsService {
   ): Promise<HorseRestorePreviewResponseDto> {
     await this.access.currentUser(actor);
     const horse = await this.horses.findByIdWithDeleted(id);
-    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
-    if (horse.deletedAt === null) {
-      throw new ConflictException('Hồ sơ ngựa chưa bị xóa');
-    }
+    assertDeletedHorse(horse);
     const manager = this.dataSource.manager;
     const [barnCleared, ownerCleared] = await Promise.all([
       horse.barnId ? this.deletions.barnName(manager, horse.barnId) : null,
@@ -175,10 +170,7 @@ export class HorseDeletionsService {
     const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
       const horse = await this.horses.lockHorseWithDeleted(manager, id);
-      if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
-      if (horse.deletedAt === null) {
-        throw new ConflictException('Hồ sơ ngựa chưa bị xóa');
-      }
+      assertDeletedHorse(horse);
       const clearBarn = horse.barnId !== null;
       const shouldClearOwner =
         horse.ownerId !== null &&
@@ -203,7 +195,7 @@ export class HorseDeletionsService {
         },
         after: { deletedAt: null, deletedReason: null, ...cleared },
         reason: body.reason,
-        feature: 'F1.8',
+        feature: HORSE_AUDIT_FEATURE.LIFECYCLE_AND_DELETION,
       });
     });
     return toHorseResponse(await this.access.findNotDeletedHorse(id));

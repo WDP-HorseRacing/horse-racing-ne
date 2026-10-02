@@ -105,6 +105,14 @@ export type HorseMeasurementAlertEvent = HorseMeasurementAlertResult & {
 };
 
 /**
+ * Một bản ghi đo vừa lưu (đã load người đo) kèm các cảnh báo tính cho nó
+ */
+export interface SavedMeasurementWithAlerts {
+  measurement: HorseMeasurementEntity;
+  alerts: HorseMeasurementAlertResult[];
+}
+
+/**
  * Số đo lấy trong một buổi khám, ghi vào bảng chỉ số cơ thể với nguồn MEDICAL_EXAM.
  *
  * - feature: mã chức năng ghi vào nhật ký

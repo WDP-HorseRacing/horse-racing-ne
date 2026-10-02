@@ -1,4 +1,9 @@
-import type { HorseBarnPreviewResponseDto } from '../dto';
+import type { GroomAssignmentResponseDto } from '../../stable/dto/groom-assignment.dto';
+import type { StallAssignmentResponseDto } from '../../stable/dto/stall.dto';
+import type {
+  HorseBarnPreviewResponseDto,
+  HorsePlacementResponseDto,
+} from '../dto';
 import type {
   BarnChangeImpactRow,
   BarnPreviewTarget,
@@ -9,20 +14,17 @@ import type {
  *
  * - Không đổi được thì các hệ quả trả rỗng và không có câu tóm tắt
  *
- * @param horseId UUID của ngựa
- * @param target Khu đích kèm Head Trainer
- * @param blockedReason Lý do không đổi được, null nếu đổi được
- * @param impact Khu hiện tại, ô, Groom và số lớp sẽ bị ảnh hưởng
- * @param summary Câu tóm tắt, null nếu không đổi được
+ * @param input UUID ngựa, khu đích kèm Head Trainer, lý do không đổi được (null nếu đổi được), các hệ quả (khu hiện tại, ô, Groom, số lớp) và câu tóm tắt (null nếu không đổi được)
  * @returns Bảng xem trước hệ quả
  */
-export function toBarnPreviewResponse(
-  horseId: string,
-  target: BarnPreviewTarget,
-  blockedReason: string | null,
-  impact: BarnChangeImpactRow,
-  summary: string | null,
-): HorseBarnPreviewResponseDto {
+export function toBarnPreviewResponse(input: {
+  horseId: string;
+  target: BarnPreviewTarget;
+  blockedReason: string | null;
+  impact: BarnChangeImpactRow;
+  summary: string | null;
+}): HorseBarnPreviewResponseDto {
+  const { horseId, target, blockedReason, impact, summary } = input;
   const allowed = blockedReason === null;
   return {
     horseId,
@@ -36,4 +38,18 @@ export function toBarnPreviewResponse(
     groomKept: impact.groomName,
     summary,
   };
+}
+
+/**
+ * Dựng kết quả xếp ô kèm giao Groom
+ *
+ * @param stallAssignment Phân công ô đang mở của ngựa
+ * @param groomAssignment Phân công Groom đang mở của ngựa
+ * @returns Phân công ô và phân công Groom của ngựa
+ */
+export function toHorsePlacementResponse(
+  stallAssignment: StallAssignmentResponseDto,
+  groomAssignment: GroomAssignmentResponseDto,
+): HorsePlacementResponseDto {
+  return { stallAssignment, groomAssignment };
 }

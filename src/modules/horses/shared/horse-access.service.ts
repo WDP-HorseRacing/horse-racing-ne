@@ -11,7 +11,10 @@ import {
   type CurrentActorUser,
   currentUserForActor,
 } from '../../users/utils/current-user';
-import { DELETED_HORSE_READ_ONLY_MESSAGE } from '../constants/horse.constants';
+import {
+  DELETED_HORSE_READ_ONLY_MESSAGE,
+  HORSE_NOT_FOUND_MESSAGE,
+} from '../constants/horse.constants';
 import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import { HorseEntity } from '../entities/horse.entity';
 import { isHorseInScope } from '../policies/horse.policy';
@@ -92,7 +95,7 @@ export class HorseAccessService {
       ? await this.horses.findByIdWithDeleted(horseId, manager)
       : await this.horses.findById(horseId, manager);
     if (!horse || !isHorseInScope(horse, this.scopeOf(actor, callerId))) {
-      throw new NotFoundException('Không tìm thấy ngựa');
+      throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
     }
     return horse;
   }
@@ -116,7 +119,7 @@ export class HorseAccessService {
     const caller = await this.currentUser(actor, manager);
     const horse = await this.lockWritableHorse(manager, actor, horseId);
     if (!isHorseInScope(horse, this.scopeOf(actor, caller.id))) {
-      throw new NotFoundException('Không tìm thấy ngựa');
+      throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
     }
     return { caller, horse };
   }
@@ -176,7 +179,7 @@ export class HorseAccessService {
     manager = this.dataSource.manager,
   ): Promise<HorseEntity> {
     const horse = await this.horses.findById(id, manager);
-    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    if (!horse) throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
     return horse;
   }
 
@@ -278,11 +281,11 @@ export class HorseAccessService {
     actor: Actor,
     horse: HorseEntity | null,
   ): HorseEntity {
-    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    if (!horse) throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
     if (!horse.deletedAt) return horse;
     if (this.hasRole(actor, UserRole.CLUB_MANAGER)) {
       throw new ConflictException(DELETED_HORSE_READ_ONLY_MESSAGE);
     }
-    throw new NotFoundException('Không tìm thấy ngựa');
+    throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
   }
 }

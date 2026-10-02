@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -23,6 +23,7 @@ import {
   UpdateHorseLifecycleDto,
 } from '../dto';
 import {
+  HORSE_AUDIT_FEATURE,
   HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
   TRANSFER_LOCK_RELEASE_CONCLUSION,
 } from '../constants/horse.constants';
@@ -37,8 +38,45 @@ import {
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsesSharedRepository } from '../shared/horses-shared.repository';
-import type { HorseGroomReleasedEvent } from '../types/horse.types';
+import type {
+  HorseGroomReleasedEvent,
+  LifecycleSideEffects,
+} from '../types/horse.types';
 import { HorseStatusesRepository } from './horse-statuses.repository';
+
+/**
+ * Lý do chặn khi xem trước đổi vòng đời sang đúng trạng thái hiện tại
+ */
+const LIFECYCLE_ALREADY_IN_STATUS_MESSAGE = 'Ngựa đang ở đúng trạng thái này';
+
+/**
+ * Dữ liệu của một lần đổi vòng đời, dùng chung cho các bước trong transaction
+ */
+interface LifecycleChange {
+  id: string;
+  horse: HorseEntity;
+  body: UpdateHorseLifecycleDto;
+  effects: LifecycleSideEffects;
+  now: Date;
+}
+
+/**
+ * Kết quả các hệ quả đã chạy khi đổi vòng đời
+ */
+interface AppliedLifecycleSideEffects {
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  endedGroomId: string | null;
+  shouldClearOwner: boolean;
+}
+
+/**
+ * Giá trị trước và sau của các cột hồ sơ ngựa bị đổi theo hệ quả vòng đời
+ */
+interface LifecycleFieldChanges {
+  before: { barnId?: string | null; healthStatus?: HorseHealthStatus };
+  after: { barnId?: null; healthStatus?: HorseHealthStatus };
+}
 
 @Injectable()
 export class HorseStatusesService {
@@ -95,69 +133,24 @@ export class HorseStatusesService {
           body.lifecycleStatus,
         );
         const now = new Date();
-        const effectBefore: Record<string, unknown> = {};
-        const effectAfter: Record<string, unknown> = {};
-        if (effects.settleMedicalWork) {
-          Object.assign(
-            effectAfter,
-            await this.medicalLifecycle.settleForTransfer(manager, id),
-          );
-        }
-        if (effects.withdrawFromClasses) {
-          const withdrawn = await this.training.withdrawHorseFromClasses(
-            manager,
-            id,
-            { reason: this.lifecycleNote(body), at: now },
-          );
-          effectAfter.classesWithdrawn = withdrawn.classIds.length;
-        }
-        const shouldClearOwner =
-          effects.reactivateFromTransfer &&
-          horse.ownerId !== null &&
-          !(await this.horses.lockActiveHorseOwner(manager, horse.ownerId));
-        if (shouldClearOwner) {
-          effectBefore.ownerId = horse.ownerId;
-          effectAfter.ownerId = null;
-        }
-        if (effects.withdrawRegistrations) {
-          effectAfter.raceRegistrationsWithdrawn =
-            await this.racing.withdrawOpenRegistrationsByHorse(manager, id);
-        }
-        if (effects.releaseStall) {
-          const released = await this.stalls.closeOpenStallAssignment(manager, id);
-          if (released) {
-            effectBefore.stallCode = released.stallCode;
-            effectAfter.stallCode = null;
-          }
-        }
-        let endedGroomId: string | null = null;
-        if (effects.endGroom) {
-          endedGroomId = await this.grooms.endOpenGroomAssignment(manager, id);
-          if (endedGroomId) {
-            effectBefore.groomId = endedGroomId;
-            effectAfter.groomId = null;
-          }
-        }
-        if (effects.releaseTrainingLock) {
-          effectAfter.trainingLockReleased =
-            await this.trainingLocks.releaseActiveLockByHorse(
-              manager,
-              id,
-              TRANSFER_LOCK_RELEASE_CONCLUSION,
-            );
-        }
-
-        const changes = {
-          lifecycleStatus: body.lifecycleStatus,
-          lifecycleReason: body.reason,
-          lifecycleChangedAt: now,
-          ...(effects.clearBarn ? { barnId: null } : {}),
-          ...(effects.resetHealth
-            ? { healthStatus: HorseHealthStatus.UNDER_OBSERVATION }
-            : {}),
-          ...(shouldClearOwner ? { ownerId: null } : {}),
-        };
-        await manager.getRepository(HorseEntity).update({ id }, changes);
+        const applied = await this.applyLifecycleSideEffects(manager, {
+          id,
+          horse,
+          body,
+          effects,
+          now,
+        });
+        const fields = this.lifecycleFieldChanges(horse, effects);
+        await manager.getRepository(HorseEntity).update(
+          { id },
+          {
+            lifecycleStatus: body.lifecycleStatus,
+            lifecycleReason: body.reason,
+            lifecycleChangedAt: now,
+            ...fields.after,
+            ...(applied.shouldClearOwner ? { ownerId: null } : {}),
+          },
+        );
         await this.auditService.record(manager, {
           actorId: caller.id,
           action: AuditAction.UPDATE,
@@ -166,25 +159,19 @@ export class HorseStatusesService {
           before: {
             lifecycleStatus: horse.lifecycleStatus,
             lifecycleReason: horse.lifecycleReason,
-            ...(effects.clearBarn ? { barnId: horse.barnId } : {}),
-            ...(effects.resetHealth
-              ? { healthStatus: horse.healthStatus }
-              : {}),
-            ...effectBefore,
+            ...fields.before,
+            ...applied.before,
           },
           after: {
             lifecycleStatus: body.lifecycleStatus,
             lifecycleReason: body.reason,
-            ...(effects.clearBarn ? { barnId: null } : {}),
-            ...(effects.resetHealth
-              ? { healthStatus: HorseHealthStatus.UNDER_OBSERVATION }
-              : {}),
-            ...effectAfter,
+            ...fields.after,
+            ...applied.after,
           },
           reason: body.reason,
-          feature: 'F1.8',
+          feature: HORSE_AUDIT_FEATURE.LIFECYCLE_AND_DELETION,
         });
-        return endedGroomId;
+        return applied.endedGroomId;
       },
     );
     if (endedGroomId) {
@@ -221,26 +208,26 @@ export class HorseStatusesService {
     const horse = await this.access.findWritableHorse(actor, id);
     const to = query.lifecycleStatus;
     const effects = lifecycleSideEffects(horse.lifecycleStatus, to);
-    const blockedReason =
-      horse.lifecycleStatus === to
-        ? 'Ngựa đang ở đúng trạng thái này'
-        : (lifecycleTransitionError(horse.lifecycleStatus, to) ??
-          (effects.settleMedicalWork
-            ? await this.medicalLifecycle.transferBlockReason(id, manager)
-            : null));
+    const blockedReason = await this.lifecycleBlockedReason(
+      manager,
+      id,
+      horse.lifecycleStatus,
+      to,
+      effects,
+    );
     const [counts, hasActiveTrainingLock, invalidOwnerName, medical] =
       await Promise.all([
         this.statuses.lifecycleImpact(manager, id),
         this.horses.hasActiveTrainingLock(id, manager),
         effects.reactivateFromTransfer && horse.ownerId
           ? this.horses.invalidOwnerName(horse.ownerId, manager)
-          : Promise.resolve(null),
+          : null,
         effects.settleMedicalWork
           ? this.medicalLifecycle.transferImpact(id, manager)
-          : Promise.resolve({
+          : {
               examRequestsToDismiss: 0,
               careSchedulesToCancel: 0,
-            }),
+            },
       ]);
     const impact = {
       ...counts,
@@ -248,16 +235,144 @@ export class HorseStatusesService {
       invalidOwnerName,
       ...medical,
     };
-    return toLifecyclePreviewResponse(
+    return toLifecyclePreviewResponse({
       horse,
       to,
       blockedReason,
       effects,
       impact,
-      blockedReason === null
-        ? lifecycleImpactSummary(horse.name, to, effects, impact)
-        : null,
-    );
+      summary:
+        blockedReason === null
+          ? lifecycleImpactSummary(horse.name, to, effects, impact)
+          : null,
+    });
+  }
+
+  /**
+   * Chạy các hệ quả của việc đổi vòng đời trong transaction đang mở
+   *
+   * - Thứ tự chạy: xử lý y tế khi chuyển nhượng, rút khỏi lớp đang học, kiểm chủ khi kích hoạt lại từ chuyển nhượng (khóa chia sẻ row tài khoản chủ), rút đăng ký thi đấu chưa diễn ra, trả ô, kết thúc groom, gỡ lệnh khóa huấn luyện
+   * - Hệ quả không chạy theo effects thì bỏ qua và không có key trong before/after
+   * - Ô hoặc groom không có gì để đóng thì không ghi key tương ứng
+   *
+   * @param manager EntityManager của transaction đang mở
+   * @param change Ngựa đã khóa, trạng thái mới kèm lý do, các hệ quả cần chạy và thời điểm đổi
+   * @returns Promise trả về giá trị trước/sau của từng hệ quả đã chạy, groom vừa bị kết thúc (null nếu không có) và cờ bỏ trống chủ
+   * @throws ConflictException Nếu chuyển nhượng ngựa còn bệnh án đang mở
+   */
+  private async applyLifecycleSideEffects(
+    manager: EntityManager,
+    change: LifecycleChange,
+  ): Promise<AppliedLifecycleSideEffects> {
+    const { id, horse, body, effects, now } = change;
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    if (effects.settleMedicalWork) {
+      Object.assign(
+        after,
+        await this.medicalLifecycle.settleForTransfer(manager, id),
+      );
+    }
+    if (effects.withdrawFromClasses) {
+      const withdrawn = await this.training.withdrawHorseFromClasses(
+        manager,
+        id,
+        { reason: this.lifecycleNote(body), at: now },
+      );
+      after.classesWithdrawn = withdrawn.classIds.length;
+    }
+    const shouldClearOwner =
+      effects.reactivateFromTransfer &&
+      horse.ownerId !== null &&
+      !(await this.horses.lockActiveHorseOwner(manager, horse.ownerId));
+    if (shouldClearOwner) {
+      before.ownerId = horse.ownerId;
+      after.ownerId = null;
+    }
+    if (effects.withdrawRegistrations) {
+      after.raceRegistrationsWithdrawn =
+        await this.racing.withdrawOpenRegistrationsByHorse(manager, id);
+    }
+    if (effects.releaseStall) {
+      const released = await this.stalls.closeOpenStallAssignment(manager, id);
+      if (released) {
+        before.stallCode = released.stallCode;
+        after.stallCode = null;
+      }
+    }
+    let endedGroomId: string | null = null;
+    if (effects.endGroom) {
+      endedGroomId = await this.grooms.endOpenGroomAssignment(manager, id);
+      if (endedGroomId) {
+        before.groomId = endedGroomId;
+        after.groomId = null;
+      }
+    }
+    if (effects.releaseTrainingLock) {
+      after.trainingLockReleased =
+        await this.trainingLocks.releaseActiveLockByHorse(
+          manager,
+          id,
+          TRANSFER_LOCK_RELEASE_CONCLUSION,
+        );
+    }
+    return { before, after, endedGroomId, shouldClearOwner };
+  }
+
+  /**
+   * Tính giá trị trước và sau của khu và sức khỏe khi đổi vòng đời
+   *
+   * - clearBarn: khu về null
+   * - resetHealth: sức khỏe về UNDER_OBSERVATION
+   * - Cột nào không đổi thì không có key
+   *
+   * @param horse Hồ sơ ngựa trước khi đổi
+   * @param effects Các hệ quả sẽ chạy (từ lifecycleSideEffects)
+   * @returns Giá trị cũ (before) và giá trị mới (after) của các cột bị đổi
+   */
+  private lifecycleFieldChanges(
+    horse: HorseEntity,
+    effects: LifecycleSideEffects,
+  ): LifecycleFieldChanges {
+    return {
+      before: {
+        ...(effects.clearBarn ? { barnId: horse.barnId } : {}),
+        ...(effects.resetHealth ? { healthStatus: horse.healthStatus } : {}),
+      },
+      after: {
+        ...(effects.clearBarn ? { barnId: null } : {}),
+        ...(effects.resetHealth
+          ? { healthStatus: HorseHealthStatus.UNDER_OBSERVATION }
+          : {}),
+      },
+    };
+  }
+
+  /**
+   * Tìm lý do không được đổi vòng đời khi xem trước
+   *
+   * - Kiểm lần lượt: đang ở đúng trạng thái đích, cặp trạng thái không được chuyển, ngựa còn bệnh án đang mở khi chuyển nhượng
+   * - Chỉ đọc bệnh án khi hai bước đầu không chặn và effects có settleMedicalWork
+   *
+   * @param manager EntityManager dùng để query
+   * @param id UUID của ngựa
+   * @param from Trạng thái vòng đời hiện tại
+   * @param to Trạng thái vòng đời muốn chuyển sang
+   * @param effects Các hệ quả sẽ chạy (từ lifecycleSideEffects)
+   * @returns Promise trả về lý do chặn đầu tiên gặp, null nếu được đổi
+   */
+  private async lifecycleBlockedReason(
+    manager: EntityManager,
+    id: string,
+    from: HorseLifecycleStatus,
+    to: HorseLifecycleStatus,
+    effects: LifecycleSideEffects,
+  ): Promise<string | null> {
+    if (from === to) return LIFECYCLE_ALREADY_IN_STATUS_MESSAGE;
+    const transitionError = lifecycleTransitionError(from, to);
+    if (transitionError !== null) return transitionError;
+    if (!effects.settleMedicalWork) return null;
+    return this.medicalLifecycle.transferBlockReason(id, manager);
   }
 
   /**

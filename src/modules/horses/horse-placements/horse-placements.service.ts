@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -21,8 +21,14 @@ import {
 } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
 import { toHorseResponse } from '../mappers/horse.mapper';
-import { HORSE_BARN_ASSIGNED_EVENT } from '../constants/horse.constants';
-import { toBarnPreviewResponse } from '../mappers/horse-placements.mapper';
+import {
+  HORSE_AUDIT_FEATURE,
+  HORSE_BARN_ASSIGNED_EVENT,
+} from '../constants/horse.constants';
+import {
+  toBarnPreviewResponse,
+  toHorsePlacementResponse,
+} from '../mappers/horse-placements.mapper';
 import {
   assertBarnChangeReason,
   barnChangeBlockedReason,
@@ -31,6 +37,28 @@ import {
 import { HorseAccessService } from '../shared/horse-access.service';
 import type { HorseBarnAssignedEvent } from '../types/horse.types';
 import { HorsePlacementsRepository } from './horse-placements.repository';
+
+/**
+ * Tiền tố lý do rút lớp khi đổi khu, nối với lý do người dùng nhập
+ */
+const BARN_CHANGE_WITHDRAW_REASON_PREFIX = 'Đổi khu: ';
+
+/**
+ * Lý do rút lớp khi xếp khu lần đầu (không có lý do người dùng nhập)
+ */
+const FIRST_BARN_WITHDRAW_REASON = 'Xếp khu';
+
+/**
+ * Dựng lý do rút lớp khi xếp hoặc đổi khu
+ *
+ * @param reason Lý do người dùng nhập, bỏ trống khi xếp khu lần đầu
+ * @returns Lý do đổi khu kèm tiền tố, hoặc lý do xếp khu lần đầu khi bỏ trống
+ */
+function barnWithdrawReason(reason: string | undefined): string {
+  return reason
+    ? `${BARN_CHANGE_WITHDRAW_REASON_PREFIX}${reason}`
+    : FIRST_BARN_WITHDRAW_REASON;
+}
 
 /**
  * Xếp và đổi khu chuồng cho ngựa; xếp ô kèm giao Groom trong một lần gửi. Luật xếp ô và phân công Groom do module stable quản lý.
@@ -83,38 +111,12 @@ export class HorsePlacementsService {
       this.access.assertNotTransferred(horse);
       if (horse.barnId === body.barnId) return false;
       assertBarnChangeReason(horse.barnId, body.reason);
-      const newBarn = await this.barns.lockAssignableBarn(manager, body.barnId);
-      const released = await this.stalls.closeOpenStallAssignment(manager, horseId);
-      const withdrawn = await this.training.withdrawHorseFromClasses(
-        manager,
+      await this.applyBarnChange(manager, {
+        callerId: caller.id,
         horseId,
-        {
-          reason: body.reason ? `Đổi khu: ${body.reason}` : 'Xếp khu',
-          at: new Date(),
-          exceptHeadTrainerId: newBarn.headTrainerId ?? undefined,
-        },
-      );
-      await manager
-        .getRepository(HorseEntity)
-        .update({ id: horseId }, { barnId: body.barnId });
-      await this.auditService.record(manager, {
-        actorId: caller.id,
-        action: AuditAction.UPDATE,
-        entityType: AuditEntityType.HORSE,
-        entityId: horseId,
-        before: {
-          barnId: horse.barnId,
-          stallCode: released?.stallCode ?? null,
-        },
-        after: {
-          barnId: body.barnId,
-          stallCode: null,
-          ...(withdrawn.classIds.length
-            ? { classesWithdrawn: withdrawn.classIds.length }
-            : {}),
-        },
-        reason: body.reason ?? null,
-        feature: 'F1.6',
+        fromBarnId: horse.barnId,
+        toBarnId: body.barnId,
+        reason: body.reason,
       });
       return true;
     });
@@ -127,6 +129,73 @@ export class HorsePlacementsService {
       this.events.publish(HORSE_BARN_ASSIGNED_EVENT, event);
     }
     return toHorseResponse(await this.access.findNotDeletedHorse(horseId));
+  }
+
+  /**
+   * Chuyển ngựa sang khu mới trong transaction đang chạy, ghi một dòng nhật ký
+   *
+   * - Khóa khu mới và kiểm khu nhận được ngựa, trả ô đang giữ về trống
+   * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách
+   * - Cập nhật khu của ngựa rồi ghi nhật ký; có rút lớp thì nhật ký ghi thêm classesWithdrawn
+   * - Không phát event; nơi gọi phát sau khi commit
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param input Người gọi, ngựa, khu hiện tại (null nếu chưa có khu), khu mới và lý do (bỏ trống khi xếp khu lần đầu)
+   * @returns Promise hoàn tất khi đã đổi khu và ghi nhật ký
+   * @throws NotFoundException Nếu không có khu
+   * @throws ConflictException Nếu khu không hoạt động, chưa có Head Trainer hoặc hết ô trống
+   */
+  private async applyBarnChange(
+    manager: EntityManager,
+    input: {
+      callerId: string;
+      horseId: string;
+      fromBarnId: string | null;
+      toBarnId: string;
+      reason?: string;
+    },
+  ): Promise<void> {
+    const { callerId, horseId, reason } = input;
+    const newBarn = await this.barns.lockAssignableBarn(
+      manager,
+      input.toBarnId,
+    );
+    const released = await this.stalls.closeOpenStallAssignment(
+      manager,
+      horseId,
+    );
+    const keptHeadTrainerId = newBarn.headTrainerId ?? undefined;
+    const withdrawn = await this.training.withdrawHorseFromClasses(
+      manager,
+      horseId,
+      {
+        reason: barnWithdrawReason(reason),
+        at: new Date(),
+        exceptHeadTrainerId: keptHeadTrainerId,
+      },
+    );
+    await manager
+      .getRepository(HorseEntity)
+      .update({ id: horseId }, { barnId: input.toBarnId });
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.HORSE,
+      entityId: horseId,
+      before: {
+        barnId: input.fromBarnId,
+        stallCode: released?.stallCode ?? null,
+      },
+      after: {
+        barnId: input.toBarnId,
+        stallCode: null,
+        ...(withdrawn.classIds.length
+          ? { classesWithdrawn: withdrawn.classIds.length }
+          : {}),
+      },
+      reason: reason ?? null,
+      feature: HORSE_AUDIT_FEATURE.BARN_PLACEMENT,
+    });
   }
 
   /**
@@ -162,20 +231,21 @@ export class HorsePlacementsService {
       horseId,
       target.headTrainerId,
     );
-    return toBarnPreviewResponse(
+    return toBarnPreviewResponse({
       horseId,
       target,
       blockedReason,
       impact,
-      blockedReason === null
-        ? barnChangeSummary(
-            horse.name,
-            target.name,
-            target.headTrainerName,
-            impact,
-          )
-        : null,
-    );
+      summary:
+        blockedReason === null
+          ? barnChangeSummary(
+              horse.name,
+              target.name,
+              target.headTrainerName,
+              impact,
+            )
+          : null,
+    });
   }
 
   /**
@@ -218,6 +288,6 @@ export class HorsePlacementsService {
     if (groom.changedEvent) {
       this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, groom.changedEvent);
     }
-    return { stallAssignment, groomAssignment: groom.response };
+    return toHorsePlacementResponse(stallAssignment, groom.response);
   }
 }

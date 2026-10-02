@@ -8,7 +8,9 @@ import {
   Between,
   DataSource,
   EntityManager,
+  EntityNotFoundError,
   FindOperator,
+  In,
   LessThanOrEqual,
   MoreThanOrEqual,
   Repository,
@@ -52,10 +54,13 @@ import type {
   ExamMeasurementInput,
   HorseMeasurementAlertEvent,
   HorseMeasurementAlertResult,
+  SavedMeasurementWithAlerts,
 } from '../types/horse.types';
 import {
+  HORSE_AUDIT_FEATURE,
   HORSE_MEASUREMENT_ALERT_EVENT,
   HORSE_MEASUREMENT_SPECS,
+  MS_PER_DAY,
   WEIGHT_DROP_WINDOW_DAYS,
 } from '../constants/horse.constants';
 
@@ -92,11 +97,12 @@ export class HorseMeasurementsService {
     const to = query.to ? new Date(query.to) : undefined;
     assertTimeRange(from, to);
     await this.access.findReadableHorseForActor(actor, horseId);
+    const measuredAt = this.measuredAtRange(from, to);
     const [measurements, total] = await this.measurements.findAndCount({
       where: {
         horseId,
         ...(query.type ? { type: query.type } : {}),
-        ...(from || to ? { measuredAt: this.measuredAtRange(from, to) } : {}),
+        ...(measuredAt ? { measuredAt } : {}),
       },
       relations: { measurer: true },
       order: { measuredAt: 'DESC' },
@@ -116,12 +122,16 @@ export class HorseMeasurementsService {
    *
    * @param from Thời điểm bắt đầu, bỏ trống nếu không chặn đầu
    * @param to Thời điểm kết thúc, bỏ trống nếu không chặn cuối
-   * @returns Điều kiện TypeORM cho cột measuredAt
+   * @returns Điều kiện TypeORM cho cột measuredAt, undefined nếu bỏ trống cả from và to
    */
-  private measuredAtRange(from?: Date, to?: Date): FindOperator<Date> {
+  private measuredAtRange(
+    from?: Date,
+    to?: Date,
+  ): FindOperator<Date> | undefined {
     if (from && to) return Between(from, to);
     if (from) return MoreThanOrEqual(from);
-    return LessThanOrEqual(to as Date);
+    if (to) return LessThanOrEqual(to);
+    return undefined;
   }
 
   /**
@@ -169,8 +179,8 @@ export class HorseMeasurementsService {
           measuredBy: caller.id,
           source: HorseMeasurementSource.MANUAL,
           medicalRecordId: null,
-          abnormalConfirmed: body.confirmAbnormal === true,
-          feature: 'F1.5',
+          confirmAbnormal: body.confirmAbnormal === true,
+          feature: HORSE_AUDIT_FEATURE.MEASUREMENT,
         });
         return { callerId: caller.id, created };
       },
@@ -211,7 +221,7 @@ export class HorseMeasurementsService {
       measuredBy: input.measuredBy,
       source: HorseMeasurementSource.MEDICAL_EXAM,
       medicalRecordId: input.medicalRecordId,
-      abnormalConfirmed: input.confirmAbnormal,
+      confirmAbnormal: input.confirmAbnormal,
       feature: input.feature,
     });
     return this.toAlertEvents(
@@ -245,17 +255,10 @@ export class HorseMeasurementsService {
       lock: { mode: 'pessimistic_write' },
     });
     for (const measurement of measurements) {
-      await manager.update(
-        HorseMeasurementEntity,
-        { id: measurement.id },
-        { deleteReason: input.reason, deletedBy: input.actorId },
-      );
-      await manager.softDelete(HorseMeasurementEntity, { id: measurement.id });
-      await this.audit.record(manager, {
+      await this.softDeleteMeasurement(manager, measurement, {
         actorId: input.actorId,
-        action: AuditAction.DELETE,
-        entityType: AuditEntityType.HORSE_MEASUREMENT,
-        entityId: measurement.id,
+        reason: input.reason,
+        feature: input.feature,
         before: {
           horseId: measurement.horseId,
           type: measurement.type,
@@ -263,9 +266,6 @@ export class HorseMeasurementsService {
           measuredAt: measurement.measuredAt,
           medicalRecordId: measurement.medicalRecordId,
         },
-        after: null,
-        reason: input.reason,
-        feature: input.feature,
       });
     }
     return measurements.length;
@@ -320,17 +320,10 @@ export class HorseMeasurementsService {
         throw new NotFoundException('Không tìm thấy bản ghi đo');
       }
       assertMeasurementDeletable(measurement.source);
-      await manager.update(
-        HorseMeasurementEntity,
-        { id: measurement.id },
-        { deleteReason: body.reason, deletedBy: caller.id },
-      );
-      await manager.softDelete(HorseMeasurementEntity, { id: measurement.id });
-      await this.audit.record(manager, {
+      await this.softDeleteMeasurement(manager, measurement, {
         actorId: caller.id,
-        action: AuditAction.DELETE,
-        entityType: AuditEntityType.HORSE_MEASUREMENT,
-        entityId: measurement.id,
+        reason: body.reason,
+        feature: HORSE_AUDIT_FEATURE.MEASUREMENT,
         before: {
           horseId: measurement.horseId,
           type: measurement.type,
@@ -338,10 +331,45 @@ export class HorseMeasurementsService {
           measuredAt: measurement.measuredAt,
           measuredBy: measurement.measuredBy,
         },
-        after: null,
-        reason: body.reason,
-        feature: 'F1.5',
       });
+    });
+  }
+
+  /**
+   * Xóa mềm một bản ghi đo, lưu lý do và người xóa, rồi ghi một dòng nhật ký DELETE
+   *
+   * - Ghi lý do và người xóa trước, rồi mới xóa mềm, cuối cùng ghi nhật ký
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param measurement Bản ghi đo cần xóa, đã khóa dòng
+   * @param input Người xóa, lý do, mã chức năng ghi nhật ký và ảnh chụp bản ghi trước khi xóa
+   * @returns Promise hoàn tất khi đã xóa và ghi nhật ký
+   */
+  private async softDeleteMeasurement(
+    manager: EntityManager,
+    measurement: HorseMeasurementEntity,
+    input: {
+      actorId: string;
+      reason: string;
+      feature: string;
+      before: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    await manager.update(
+      HorseMeasurementEntity,
+      { id: measurement.id },
+      { deleteReason: input.reason, deletedBy: input.actorId },
+    );
+    await manager.softDelete(HorseMeasurementEntity, { id: measurement.id });
+    await this.audit.record(manager, {
+      actorId: input.actorId,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.HORSE_MEASUREMENT,
+      entityId: measurement.id,
+      before: input.before,
+      after: null,
+      reason: input.reason,
+      feature: input.feature,
     });
   }
 
@@ -363,20 +391,13 @@ export class HorseMeasurementsService {
       measuredBy: string;
       source: HorseMeasurementSource;
       medicalRecordId: string | null;
-      abnormalConfirmed: boolean;
+      confirmAbnormal: boolean;
       feature: string;
     },
-  ): Promise<
-    Array<{
-      measurement: HorseMeasurementEntity;
-      alerts: HorseMeasurementAlertResult[];
-    }>
-  > {
+  ): Promise<SavedMeasurementWithAlerts[]> {
     const repository = manager.getRepository(HorseMeasurementEntity);
-    const created: Array<{
-      measurement: HorseMeasurementEntity;
-      alerts: HorseMeasurementAlertResult[];
-    }> = [];
+    const saved: Array<{ id: string; alerts: HorseMeasurementAlertResult[] }> =
+      [];
     for (const item of input.values) {
       const weightBaseline = await this.weightBaseline(
         input.horseId,
@@ -385,7 +406,7 @@ export class HorseMeasurementsService {
         manager,
       );
       const isAbnormal = isAbnormalMeasurement(item.type, item.value);
-      const saved = await repository.save(
+      const row = await repository.save(
         repository.create({
           horseId: input.horseId,
           type: item.type,
@@ -401,31 +422,67 @@ export class HorseMeasurementsService {
         actorId: input.measuredBy,
         action: AuditAction.CREATE,
         entityType: AuditEntityType.HORSE_MEASUREMENT,
-        entityId: saved.id,
+        entityId: row.id,
         before: null,
         after: {
           horseId: input.horseId,
           type: item.type,
-          value: saved.value,
+          value: row.value,
           measuredAt: input.measuredAt,
           source: input.source,
           isAbnormal,
-          abnormalConfirmed: input.abnormalConfirmed,
+          abnormalConfirmed: input.confirmAbnormal,
           ...(input.medicalRecordId
             ? { medicalRecordId: input.medicalRecordId }
             : {}),
         },
         feature: input.feature,
       });
-      created.push({
-        measurement: await repository.findOneOrFail({
-          where: { id: saved.id },
-          relations: { measurer: true },
-        }),
+      saved.push({
+        id: row.id,
         alerts: measurementAlerts(item.type, item.value, weightBaseline),
       });
     }
-    return created;
+    const measurements = await this.findWithMeasurer(
+      repository,
+      saved.map(({ id }) => id),
+    );
+    return saved.map(({ alerts }, index) => ({
+      measurement: measurements[index],
+      alerts,
+    }));
+  }
+
+  /**
+   * Đọc lại các bản ghi đo kèm người đo bằng một query, giữ đúng thứ tự id truyền vào
+   *
+   * - Danh sách id rỗng thì trả rỗng, không query
+   *
+   * @param repository Repository bản ghi đo của transaction đang chạy
+   * @param ids UUID các bản ghi đo cần đọc lại
+   * @returns Promise trả về các bản ghi đo (đã load measurer) theo thứ tự của ids
+   * @throws EntityNotFoundError Nếu một id không còn bản ghi đo
+   */
+  private async findWithMeasurer(
+    repository: Repository<HorseMeasurementEntity>,
+    ids: string[],
+  ): Promise<HorseMeasurementEntity[]> {
+    if (ids.length === 0) return [];
+    const rows = await repository.find({
+      where: { id: In(ids) },
+      relations: { measurer: true },
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return ids.map((id) => {
+      const row = byId.get(id);
+      if (!row) {
+        throw new EntityNotFoundError(HorseMeasurementEntity, {
+          where: { id },
+          relations: { measurer: true },
+        });
+      }
+      return row;
+    });
   }
 
   /**
@@ -437,10 +494,7 @@ export class HorseMeasurementsService {
    * @returns Danh sách payload, mỗi cảnh báo một payload
    */
   private toAlertEvents(
-    created: Array<{
-      measurement: HorseMeasurementEntity;
-      alerts: HorseMeasurementAlertResult[];
-    }>,
+    created: SavedMeasurementWithAlerts[],
     measuredBy: string,
     source: HorseMeasurementSource,
   ): HorseMeasurementAlertEvent[] {
@@ -476,7 +530,7 @@ export class HorseMeasurementsService {
   ): Promise<number | null> {
     if (type !== HorseMeasurementType.WEIGHT) return null;
     const from = new Date(
-      measuredAt.getTime() - WEIGHT_DROP_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+      measuredAt.getTime() - WEIGHT_DROP_WINDOW_DAYS * MS_PER_DAY,
     );
     const row = await manager
       .getRepository(HorseMeasurementEntity)

@@ -10,26 +10,39 @@ import type {
 } from '../types/horse.types';
 
 /**
+ * Dữ liệu đầu vào để dựng bảng xem trước hệ quả đổi vòng đời
+ */
+export interface LifecyclePreviewInput {
+  /** Hồ sơ ngựa hiện tại */
+  horse: HorseEntity;
+  /** Trạng thái vòng đời muốn chuyển sang */
+  to: HorseLifecycleStatus;
+  /** Lý do không được đổi, null nếu được đổi */
+  blockedReason: string | null;
+  /** Các việc sẽ chạy (từ lifecycleSideEffects) */
+  effects: LifecycleSideEffects;
+  /** Số liệu hiện tại của ngựa */
+  impact: LifecycleImpactRow;
+  /** Câu tóm tắt hệ quả, null nếu không được đổi */
+  summary: string | null;
+}
+
+/**
  * Dựng bảng xem trước hệ quả đổi vòng đời
  *
  * - Hệ quả nào không chạy (theo effects) thì trả 0, null hoặc false
  *
- * @param horse Hồ sơ ngựa hiện tại
- * @param to Trạng thái vòng đời muốn chuyển sang
- * @param blockedReason Lý do không được đổi, null nếu được đổi
- * @param effects Các việc sẽ chạy (từ lifecycleSideEffects)
- * @param impact Số liệu hiện tại của ngựa
- * @param summary Câu tóm tắt hệ quả, null nếu không được đổi
+ * @param input Ngựa, trạng thái đích, lý do chặn, các việc sẽ chạy, số liệu hiện tại và câu tóm tắt
  * @returns Bảng xem trước hệ quả
  */
-export function toLifecyclePreviewResponse(
-  horse: HorseEntity,
-  to: HorseLifecycleStatus,
-  blockedReason: string | null,
-  effects: LifecycleSideEffects,
-  impact: LifecycleImpactRow,
-  summary: string | null,
-): HorseLifecyclePreviewResponseDto {
+export function toLifecyclePreviewResponse({
+  horse,
+  to,
+  blockedReason,
+  effects,
+  impact,
+  summary,
+}: LifecyclePreviewInput): HorseLifecyclePreviewResponseDto {
   return {
     horseId: horse.id,
     from: horse.lifecycleStatus,

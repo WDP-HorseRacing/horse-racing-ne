@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
+import { isActiveHorseOwner } from '../policies/horse.policy';
 
 /**
  * Các query về ngựa mà nhiều feature trong module horses cùng dùng.
@@ -216,13 +215,7 @@ export class HorsesSharedRepository {
     manager: EntityManager,
     ownerId: string,
   ): Promise<boolean> {
-    const owner = await manager.findOne(UserEntity, {
-      where: { id: ownerId },
-      lock: { mode: 'pessimistic_read' },
-    });
-    return (
-      owner?.role === UserRole.HORSE_OWNER && owner.status === UserStatus.ACTIVE
-    );
+    return isActiveHorseOwner(await this.lockOwnerAccount(manager, ownerId));
   }
 
   /**
@@ -241,9 +234,6 @@ export class HorsesSharedRepository {
       { id: ownerId },
     );
     if (!owner) return null;
-    return owner.role === UserRole.HORSE_OWNER &&
-      owner.status === UserStatus.ACTIVE
-      ? null
-      : owner.fullName;
+    return isActiveHorseOwner(owner) ? null : owner.fullName;
   }
 }

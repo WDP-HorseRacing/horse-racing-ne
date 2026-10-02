@@ -20,6 +20,7 @@ import type {
 import {
   BadRequestException,
   ConflictException,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
@@ -28,6 +29,8 @@ import {
   assertAssignableOwner,
   assertBarnChangeReason,
   assertBornBeforeChildren,
+  assertDeletedHorse,
+  isActiveHorseOwner,
   assertDateOfBirth,
   assertDistinctMeasurementTypes,
   assertGenderKeepsPedigree,
@@ -1009,6 +1012,45 @@ describe('horse.policy', () => {
       expect(restoreImpactSummary('Winx', null, null)).toBe(
         'Nếu khôi phục, Winx trở lại như trước khi xóa.',
       );
+    });
+  });
+
+  describe('isActiveHorseOwner', () => {
+    it('is true only for an active HORSE_OWNER account', () => {
+      expect(
+        isActiveHorseOwner({
+          role: UserRole.HORSE_OWNER,
+          status: UserStatus.ACTIVE,
+        }),
+      ).toBe(true);
+      expect(
+        isActiveHorseOwner({
+          role: UserRole.HORSE_OWNER,
+          status: UserStatus.INACTIVE,
+        }),
+      ).toBe(false);
+      expect(
+        isActiveHorseOwner({ role: UserRole.GROOM, status: UserStatus.ACTIVE }),
+      ).toBe(false);
+      expect(isActiveHorseOwner(null)).toBe(false);
+    });
+  });
+
+  describe('assertDeletedHorse', () => {
+    it('answers 404 when the horse does not exist', () => {
+      expect(() => assertDeletedHorse(null)).toThrow(NotFoundException);
+    });
+
+    it('answers 409 when the horse is not deleted', () => {
+      expect(() => assertDeletedHorse({ deletedAt: null })).toThrow(
+        ConflictException,
+      );
+    });
+
+    it('passes a deleted horse', () => {
+      expect(() =>
+        assertDeletedHorse({ deletedAt: new Date('2026-01-01') }),
+      ).not.toThrow();
     });
   });
 });

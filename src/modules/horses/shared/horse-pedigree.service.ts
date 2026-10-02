@@ -16,6 +16,16 @@ import { HorsePedigreeRepository } from './horse-pedigree.repository';
 import { HorsesSharedRepository } from './horses-shared.repository';
 
 /**
+ * Nhãn của cha trong thông báo lỗi
+ */
+const SIRE_LABEL = 'Sire';
+
+/**
+ * Nhãn của mẹ trong thông báo lỗi
+ */
+const DAM_LABEL = 'Dam';
+
+/**
  * Luật phả hệ dùng chung cho tạo/sửa hồ sơ (horse-profiles) và xóa hồ sơ (horse-deletions).
  *
  * - Mọi hàm kiểm tra phải chạy trong transaction đã gọi lockPedigree
@@ -70,8 +80,10 @@ export class HorsePedigreeService {
     damId: string | null,
   ): Promise<void> {
     assertParentIds(child.id, sireId, damId);
-    const sire = sireId ? await this.findParent(manager, sireId, 'Sire') : null;
-    const dam = damId ? await this.findParent(manager, damId, 'Dam') : null;
+    const sire = sireId
+      ? await this.findParent(manager, sireId, SIRE_LABEL)
+      : null;
+    const dam = damId ? await this.findParent(manager, damId, DAM_LABEL) : null;
     assertParentProfiles(child, sire, dam);
 
     const childId = child.id;
@@ -112,22 +124,21 @@ export class HorsePedigreeService {
       );
     }
     if ('sireId' in changes || 'damId' in changes || 'dateOfBirth' in changes) {
-      await this.validateParents(
+      const child: ChildProfile = {
+        id: horse.id,
+        dateOfBirth: this.nextBirthDate(horse, changes),
+      };
+      const sireId = await this.nextParentId(
         manager,
-        {
-          id: horse.id,
-          dateOfBirth:
-            changes.dateOfBirth === undefined
-              ? horse.dateOfBirth
-              : changes.dateOfBirth,
-        },
-        changes.sireId === undefined
-          ? await this.keptParentId(manager, horse.sireId)
-          : changes.sireId,
-        changes.damId === undefined
-          ? await this.keptParentId(manager, horse.damId)
-          : changes.damId,
+        changes.sireId,
+        horse.sireId,
       );
+      const damId = await this.nextParentId(
+        manager,
+        changes.damId,
+        horse.damId,
+      );
+      await this.validateParents(manager, child, sireId, damId);
     }
     if (changes.dateOfBirth) {
       assertBornBeforeChildren(
@@ -135,6 +146,42 @@ export class HorsePedigreeService {
         await this.pedigree.earliestChildBirthDate(manager, horse.id),
       );
     }
+  }
+
+  /**
+   * Lấy ngày sinh của ngựa sau khi sửa
+   *
+   * @param horse Hồ sơ ngựa trước khi sửa
+   * @param changes Các field thực sự đổi
+   * @returns Ngày sinh mới nếu có đổi, ngược lại ngày sinh hiện tại
+   */
+  private nextBirthDate(
+    horse: HorseEntity,
+    changes: Partial<HorseEntity>,
+  ): string | null {
+    return changes.dateOfBirth === undefined
+      ? horse.dateOfBirth
+      : changes.dateOfBirth;
+  }
+
+  /**
+   * Lấy cha/mẹ của ngựa sau khi sửa để kiểm lại
+   *
+   * - Có đổi thì lấy giá trị mới; giữ nguyên thì lấy giá trị hiện tại, bỏ qua cha/mẹ đã bị xóa hồ sơ
+   *
+   * @param manager EntityManager của transaction đang giữ khóa phả hệ
+   * @param changedId UUID cha/mẹ mới, undefined nếu không đổi, null nếu bỏ trống
+   * @param currentId UUID cha/mẹ hiện tại của ngựa, null nếu bỏ trống
+   * @returns Promise trả về UUID cha/mẹ cần kiểm, null nếu bỏ trống hoặc cha/mẹ giữ nguyên đã xóa hồ sơ
+   */
+  private async nextParentId(
+    manager: EntityManager,
+    changedId: string | null | undefined,
+    currentId: string | null,
+  ): Promise<string | null> {
+    return changedId === undefined
+      ? this.keptParentId(manager, currentId)
+      : changedId;
   }
 
   /**

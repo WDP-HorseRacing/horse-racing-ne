@@ -227,7 +227,7 @@ export const STALE_HORSE_MESSAGE =
   'Hồ sơ ngựa vừa được người khác cập nhật, hãy tải lại để xem bản mới nhất';
 
 /**
- * Thông báo 403 khi Club Manager thao tác ghi trên hồ sơ ngựa đã xóa mềm; hồ sơ này chỉ xem được.
+ * Thông báo 409 khi Club Manager thao tác ghi trên hồ sơ ngựa đã xóa mềm; hồ sơ này chỉ xem được.
  */
 export const DELETED_HORSE_READ_ONLY_MESSAGE =
   'Hồ sơ đã xóa, chỉ xem được. Khôi phục hồ sơ trước khi thao tác';
@@ -238,3 +238,34 @@ export const DELETED_HORSE_READ_ONLY_MESSAGE =
 export const UNIQUE_CONFLICT_MESSAGES: Record<string, string> = {
   horses_microchip_uq: MICROCHIP_TAKEN_MESSAGE,
 };
+
+/**
+ * Thông báo 404 khi không có ngựa hoặc ngựa nằm ngoài phạm vi xem của người gọi
+ */
+export const HORSE_NOT_FOUND_MESSAGE = 'Không tìm thấy ngựa';
+
+/**
+ * Thông báo 409 khi xem trước hoặc khôi phục một hồ sơ chưa bị xóa
+ */
+export const HORSE_NOT_DELETED_MESSAGE = 'Hồ sơ ngựa chưa bị xóa';
+
+/**
+ * Số mili giây trong một ngày
+ */
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Tên field sở trường cự ly trong hồ sơ ngựa, field duy nhất Head Trainer được sửa
+ */
+export const RACE_APTITUDE_FIELD = 'raceAptitude';
+
+/**
+ * Mã chức năng ghi vào cột feature của nhật ký thao tác, theo từng nhóm use case hồ sơ ngựa
+ */
+export const HORSE_AUDIT_FEATURE = {
+  CREATE_PROFILE: 'F1.2',
+  UPDATE_PROFILE: 'F1.4',
+  MEASUREMENT: 'F1.5',
+  BARN_PLACEMENT: 'F1.6',
+  LIFECYCLE_AND_DELETION: 'F1.8',
+} as const;

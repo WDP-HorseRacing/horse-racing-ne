@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
 import {
@@ -46,7 +46,27 @@ export class HorseProfilesRepository {
   ): Promise<[HorseEntity[], number]> {
     const qb = this.horses.createQueryBuilder('horse');
     applyHorseScope(qb, scope);
+    this.applyListFilters(qb, callerId, query);
+    this.applyListSort(qb, query);
 
+    return qb.skip(query.skip).take(query.limit).getManyAndCount();
+  }
+
+  /**
+   * Thêm các điều kiện lọc của danh sách ngựa vào query builder
+   *
+   * - myBarns: ngựa thuộc khu người gọi làm Head Trainer; myHorses: ngựa người gọi đang là Groom phụ trách
+   * - includeDeleted gộp thêm hồ sơ đã xóa
+   *
+   * @param qb Query builder của bảng ngựa với alias `horse`
+   * @param callerId UUID của người gọi, dùng cho myBarns và myHorses
+   * @param query Từ khóa và bộ lọc
+   */
+  private applyListFilters(
+    qb: SelectQueryBuilder<HorseEntity>,
+    callerId: string,
+    query: HorseListQueryDto,
+  ): void {
     if (query.search) {
       qb.andWhere(
         '(unaccent(horse.name) ILIKE unaccent(:search) OR horse.microchipId ILIKE :search)',
@@ -94,18 +114,28 @@ export class HorseProfilesRepository {
     if (query.includeDeleted) {
       qb.withDeleted();
     }
+  }
+
+  /**
+   * Thêm thứ tự sắp xếp của danh sách ngựa vào query builder
+   *
+   * - HEALTH_PRIORITY: chấn thương/cách ly, rồi cần theo dõi, rồi còn lại; cùng nhóm theo tên tiếng Việt tăng dần
+   * - Mặc định: theo tên tiếng Việt
+   *
+   * @param qb Query builder của bảng ngựa với alias `horse`
+   * @param query Cách sắp xếp và chiều sắp xếp
+   */
+  private applyListSort(
+    qb: SelectQueryBuilder<HorseEntity>,
+    query: HorseListQueryDto,
+  ): void {
     if (query.sortBy === HorseListSortBy.HEALTH_PRIORITY) {
-      qb.addSelect(
-        `CASE horse.health_status WHEN '${HorseHealthStatus.INJURED}' THEN 0 WHEN '${HorseHealthStatus.QUARANTINED}' THEN 0 WHEN '${HorseHealthStatus.UNDER_OBSERVATION}' THEN 1 ELSE 2 END`,
-        'health_priority',
-      )
+      qb.addSelect(HEALTH_PRIORITY_SQL, 'health_priority')
         .orderBy('health_priority', query.sortOrder)
         .addOrderBy(VIETNAMESE_NAME_ORDER, 'ASC');
     } else {
       qb.orderBy(VIETNAMESE_NAME_ORDER, query.sortOrder);
     }
-
-    return qb.skip(query.skip).take(query.limit).getManyAndCount();
   }
 
   /**
@@ -236,3 +266,9 @@ const PLACEMENT_STATUS_SQL = `CASE
   WHEN NOT EXISTS (SELECT 1 FROM stall_assignments sa WHERE sa.horse_id = horse.id AND sa.end_at IS NULL) THEN '${HorsePlacementStatus.PENDING_STALL}'
   ELSE '${HorsePlacementStatus.PLACED}'
 END`;
+
+/**
+ * Biểu thức SQL tính độ ưu tiên sức khỏe của một dòng ngựa, gắn với alias `horse` của query builder.
+ * Chấn thương/cách ly là 0, cần theo dõi là 1, còn lại là 2.
+ */
+const HEALTH_PRIORITY_SQL = `CASE horse.health_status WHEN '${HorseHealthStatus.INJURED}' THEN 0 WHEN '${HorseHealthStatus.QUARANTINED}' THEN 0 WHEN '${HorseHealthStatus.UNDER_OBSERVATION}' THEN 1 ELSE 2 END`;

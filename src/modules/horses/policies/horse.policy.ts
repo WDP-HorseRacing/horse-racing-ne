@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
@@ -26,7 +27,11 @@ import {
   HORSE_MEASUREMENT_SPECS,
   LIFECYCLE_TRANSITIONS,
   LIFECYCLE_VERBS,
+  HORSE_NOT_DELETED_MESSAGE,
+  HORSE_NOT_FOUND_MESSAGE,
   MEASUREMENT_BACKDATE_MAX_DAYS,
+  MS_PER_DAY,
+  RACE_APTITUDE_FIELD,
   WEIGHT_DROP_PERCENT,
 } from '../constants/horse.constants';
 import type {
@@ -258,6 +263,36 @@ export function assertAssignableOwner<
 }
 
 /**
+ * Kiểm tra tài khoản có đang là HORSE_OWNER hoạt động không
+ *
+ * @param user Tài khoản cần kiểm, null nếu không có
+ * @returns true nếu tài khoản tồn tại, có role HORSE_OWNER và đang ACTIVE
+ */
+export function isActiveHorseOwner(
+  user: Pick<UserEntity, 'role' | 'status'> | null,
+): boolean {
+  return (
+    user?.role === UserRole.HORSE_OWNER && user.status === UserStatus.ACTIVE
+  );
+}
+
+/**
+ * Chặn xem trước hoặc khôi phục khi hồ sơ không có hoặc chưa bị xóa
+ *
+ * @param horse Con ngựa đã tải kèm hồ sơ đã xóa, null nếu không có
+ * @throws NotFoundException Nếu không có hồ sơ ngựa
+ * @throws ConflictException Nếu hồ sơ chưa bị xóa
+ */
+export function assertDeletedHorse<T extends { deletedAt: Date | null }>(
+  horse: T | null,
+): asserts horse is T {
+  if (!horse) throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
+  if (horse.deletedAt === null) {
+    throw new ConflictException(HORSE_NOT_DELETED_MESSAGE);
+  }
+}
+
+/**
  * Tạo câu tóm tắt hệ quả khi khôi phục hồ sơ đã xóa
  *
  * @param horseName Tên ngựa
@@ -438,7 +473,9 @@ export function lifecycleImpactSummary(
  */
 export function raceAptitudeFieldsIn(fields: object): string[] {
   return Object.entries(fields)
-    .filter(([key, value]) => value !== undefined && key === 'raceAptitude')
+    .filter(
+      ([key, value]) => value !== undefined && key === RACE_APTITUDE_FIELD,
+    )
     .map(([key]) => key);
 }
 
@@ -453,7 +490,9 @@ export function raceAptitudeFieldsIn(fields: object): string[] {
  */
 export function nonRaceAptitudeFieldsIn(fields: object): string[] {
   return Object.entries(fields)
-    .filter(([key, value]) => value !== undefined && key !== 'raceAptitude')
+    .filter(
+      ([key, value]) => value !== undefined && key !== RACE_APTITUDE_FIELD,
+    )
     .map(([key]) => key);
 }
 
@@ -659,8 +698,7 @@ export function assertMeasuredAt(measuredAt: Date, now: Date): void {
   if (measuredAt.getTime() > now.getTime() + CLOCK_SKEW_MS) {
     throw new BadRequestException('Thời điểm đo không được ở tương lai');
   }
-  const earliest =
-    now.getTime() - MEASUREMENT_BACKDATE_MAX_DAYS * 24 * 60 * 60 * 1000;
+  const earliest = now.getTime() - MEASUREMENT_BACKDATE_MAX_DAYS * MS_PER_DAY;
   if (measuredAt.getTime() < earliest) {
     throw new BadRequestException(
       `Chỉ được nhập lùi tối đa ${MEASUREMENT_BACKDATE_MAX_DAYS} ngày`,

@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { Between, DataSource, MoreThanOrEqual, Repository } from 'typeorm';
+import { Between, DataSource, In, MoreThanOrEqual, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -40,7 +40,7 @@ describe('HorseMeasurementsService', () => {
   let measurementRepository: {
     create: jest.Mock;
     save: jest.Mock;
-    findOneOrFail: jest.Mock;
+    find: jest.Mock;
   };
   let manager: {
     find: jest.Mock;
@@ -91,17 +91,19 @@ describe('HorseMeasurementsService', () => {
     measurementRepository = {
       create: jest.fn((row: Row) => row),
       save: jest.fn((row: Row) => Promise.resolve({ id: 'm-new', ...row })),
-      findOneOrFail: jest.fn(() =>
-        Promise.resolve({
-          id: 'm-new',
-          horseId: HORSE_ID,
-          type: HorseMeasurementType.TEMPERATURE,
-          value: '39.00',
-          measuredAt: new Date(),
-          measuredBy: CALLER_ID,
-          measurer: { fullName: 'Bác sĩ A' },
-          source: HorseMeasurementSource.MANUAL,
-        }),
+      find: jest.fn(() =>
+        Promise.resolve([
+          {
+            id: 'm-new',
+            horseId: HORSE_ID,
+            type: HorseMeasurementType.TEMPERATURE,
+            value: '39.00',
+            measuredAt: new Date(),
+            measuredBy: CALLER_ID,
+            measurer: { fullName: 'Bác sĩ A' },
+            source: HorseMeasurementSource.MANUAL,
+          },
+        ]),
       ),
     };
     manager = {
@@ -297,6 +299,33 @@ describe('HorseMeasurementsService', () => {
       expect(measurementRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ isAbnormal: false }),
       );
+    });
+
+    it('reloads every saved row with its measurer in one query, keeping the input order', async () => {
+      let nextId = 0;
+      measurementRepository.save.mockImplementation((row: Row) =>
+        Promise.resolve({ ...row, id: `m-${++nextId}` }),
+      );
+      measurementRepository.find.mockResolvedValue([
+        { ...storedMeasurement, id: 'm-2', measurer: { fullName: 'B' } },
+        { ...storedMeasurement, id: 'm-1', measurer: { fullName: 'A' } },
+      ]);
+
+      const result = await service.addMeasurements(
+        actorWith(UserRole.VETERINARIAN),
+        HORSE_ID,
+        values([
+          [HorseMeasurementType.TEMPERATURE, 37.8],
+          [HorseMeasurementType.HEIGHT, 160],
+        ]),
+      );
+
+      expect(measurementRepository.find).toHaveBeenCalledTimes(1);
+      expect(measurementRepository.find).toHaveBeenCalledWith({
+        where: { id: In(['m-1', 'm-2']) },
+        relations: { measurer: true },
+      });
+      expect(result.map(({ id }) => id)).toEqual(['m-1', 'm-2']);
     });
 
     it('rejects a TRANSFERRED horse with 409', async () => {

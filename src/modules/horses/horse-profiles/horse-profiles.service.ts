@@ -6,17 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-import {
-  DataSource,
-  EntityManager,
-  Not,
-  QueryFailedError,
-  Repository,
-} from 'typeorm';
+import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
+import { mapUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
@@ -24,6 +19,7 @@ import { MediaService } from '../../media/services/media.service';
 import { BarnsService } from '../../stable/barns/barns.service';
 import {
   CREATE_AUDIT_FIELDS,
+  HORSE_AUDIT_FEATURE,
   HORSE_BARN_ASSIGNED_EVENT,
   MICROCHIP_TAKEN_MESSAGE,
   PEDIGREE_DEPTH,
@@ -45,6 +41,7 @@ import {
 } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
 import {
+  eligibilityInputOf,
   toHorseDetailResponse,
   toHorseEligibilityResponse,
   toHorseListItem,
@@ -128,13 +125,14 @@ export class HorseProfilesService {
     );
     return new PaginationResponseDto(
       rows.map((horse) =>
-        toHorseListItem(
-          horse,
-          locationByHorseId.get(horse.id) ?? emptyLocation(horse.id),
-          lockedHorseIds.has(horse.id),
-          scope.kind === 'OWNER',
-          horse.mediaId ? (photoUrls.get(horse.mediaId) ?? null) : null,
-        ),
+        toHorseListItem(horse, {
+          location: locationByHorseId.get(horse.id) ?? emptyLocation(horse.id),
+          hasActiveTrainingLock: lockedHorseIds.has(horse.id),
+          hideLocationIds: scope.kind === 'OWNER',
+          photoUrl: horse.mediaId
+            ? (photoUrls.get(horse.mediaId) ?? null)
+            : null,
+        }),
       ),
       total,
       query.page,
@@ -174,7 +172,7 @@ export class HorseProfilesService {
         latestMeasurements,
         activeTrainingLock,
       },
-      this.access.scopeOf(actor, caller.id).kind === 'OWNER',
+      this.isOwnerView(actor, caller.id),
     );
   }
 
@@ -222,7 +220,7 @@ export class HorseProfilesService {
   async create(actor: Actor, body: CreateHorseDto): Promise<HorseResponseDto> {
     const caller = await this.access.currentUser(actor);
     assertDateOfBirth(body.dateOfBirth, clubToday());
-    const microchipId = body.microchipId?.trim() || null;
+    const microchipId = normalizeMicrochip(body.microchipId);
     await this.assertMicrochipFree(microchipId);
     const sireId = body.sireId ?? null;
     const damId = body.damId ?? null;
@@ -231,45 +229,47 @@ export class HorseProfilesService {
       await this.media.assertAttachableHorsePhoto(caller.id, body.mediaId);
     }
 
-    const horse = await this.saveUnique(() =>
-      this.dataSource.transaction(async (manager) => {
-        await this.assertActiveOwner(manager, ownerId);
-        if (sireId || damId) {
-          await this.pedigree.lockPedigree(manager);
-          await this.pedigree.validateParents(
-            manager,
-            { dateOfBirth: body.dateOfBirth },
+    const horse = await mapUniqueViolation(
+      () =>
+        this.dataSource.transaction(async (manager) => {
+          await this.assertActiveOwner(manager, ownerId);
+          if (sireId || damId) {
+            await this.pedigree.lockPedigree(manager);
+            await this.pedigree.validateParents(
+              manager,
+              { dateOfBirth: body.dateOfBirth },
+              sireId,
+              damId,
+            );
+          }
+          if (body.barnId) {
+            await this.barns.lockAssignableBarn(manager, body.barnId);
+          }
+          const created = await manager.save(HorseEntity, {
+            name: body.name.trim(),
+            gender: body.gender,
+            breed: body.breed ?? null,
+            color: body.color ?? null,
+            microchipId,
+            dateOfBirth: body.dateOfBirth ?? null,
+            mediaId: body.mediaId ?? null,
             sireId,
             damId,
-          );
-        }
-        if (body.barnId) {
-          await this.barns.lockAssignableBarn(manager, body.barnId);
-        }
-        const created = await manager.save(HorseEntity, {
-          name: body.name.trim(),
-          gender: body.gender,
-          breed: body.breed ?? null,
-          color: body.color ?? null,
-          microchipId,
-          dateOfBirth: body.dateOfBirth ?? null,
-          mediaId: body.mediaId ?? null,
-          sireId,
-          damId,
-          ownerId,
-          barnId: body.barnId ?? null,
-        });
-        await this.auditService.record(manager, {
-          actorId: caller.id,
-          action: AuditAction.CREATE,
-          entityType: AuditEntityType.HORSE,
-          entityId: created.id,
-          before: null,
-          after: pickFields(created, CREATE_AUDIT_FIELDS),
-          feature: 'F1.2',
-        });
-        return created;
-      }),
+            ownerId,
+            barnId: body.barnId ?? null,
+          });
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.CREATE,
+            entityType: AuditEntityType.HORSE,
+            entityId: created.id,
+            before: null,
+            after: pickFields(created, CREATE_AUDIT_FIELDS),
+            feature: HORSE_AUDIT_FEATURE.CREATE_PROFILE,
+          });
+          return created;
+        }),
+      UNIQUE_CONFLICT_MESSAGES,
     );
     if (horse.barnId) {
       const event: HorseBarnAssignedEvent = {
@@ -312,48 +312,51 @@ export class HorseProfilesService {
     this.access.assertNotTransferred(horse);
     this.assertCurrentVersion(horse, version);
     assertDateOfBirth(fields.dateOfBirth, clubToday());
-    if (fields.microchipId !== undefined) {
-      await this.assertMicrochipFree(fields.microchipId?.trim() || null, id);
+    const microchipId =
+      fields.microchipId === undefined
+        ? undefined
+        : normalizeMicrochip(fields.microchipId);
+    if (microchipId !== undefined) {
+      await this.assertMicrochipFree(microchipId, id);
     }
 
     const changes = changedFields<HorseEntity>(horse, {
       ...fields,
       name: fields.name?.trim(),
-      microchipId:
-        fields.microchipId === undefined
-          ? undefined
-          : fields.microchipId?.trim() || null,
+      microchipId,
     });
     if (Object.keys(changes).length === 0) return toHorseResponse(horse);
     if (changes.mediaId) {
       await this.media.assertAttachableHorsePhoto(caller.id, changes.mediaId);
     }
 
-    await this.saveUnique(() =>
-      this.dataSource.transaction(async (manager) => {
-        if (changes.ownerId !== undefined) {
-          await this.assertActiveOwner(manager, changes.ownerId);
-        }
-        if (PEDIGREE_FIELDS.some((field) => field in changes)) {
-          await this.pedigree.lockPedigree(manager);
-          await this.pedigree.assertPedigreeChange(manager, horse, changes);
-        }
-        const result = await manager
-          .getRepository(HorseEntity)
-          .update({ id, version }, changes);
-        if (!result.affected) {
-          throw new ConflictException(STALE_HORSE_MESSAGE);
-        }
-        await this.auditService.record(manager, {
-          actorId: caller.id,
-          action: AuditAction.UPDATE,
-          entityType: AuditEntityType.HORSE,
-          entityId: id,
-          before: pickFields(horse, Object.keys(changes)),
-          after: changes,
-          feature: 'F1.4',
-        });
-      }),
+    await mapUniqueViolation(
+      () =>
+        this.dataSource.transaction(async (manager) => {
+          if (changes.ownerId !== undefined) {
+            await this.assertActiveOwner(manager, changes.ownerId);
+          }
+          if (PEDIGREE_FIELDS.some((field) => field in changes)) {
+            await this.pedigree.lockPedigree(manager);
+            await this.pedigree.assertPedigreeChange(manager, horse, changes);
+          }
+          const result = await manager
+            .getRepository(HorseEntity)
+            .update({ id, version }, changes);
+          if (!result.affected) {
+            throw new ConflictException(STALE_HORSE_MESSAGE);
+          }
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.UPDATE,
+            entityType: AuditEntityType.HORSE,
+            entityId: id,
+            before: pickFields(horse, Object.keys(changes)),
+            after: changes,
+            feature: HORSE_AUDIT_FEATURE.UPDATE_PROFILE,
+          });
+        }),
+      UNIQUE_CONFLICT_MESSAGES,
     );
     return toHorseResponse(await this.access.findNotDeletedHorse(id));
   }
@@ -375,7 +378,7 @@ export class HorseProfilesService {
   ): Promise<HorsePedigreeResponseDto> {
     const caller = await this.access.currentUser(actor);
     const horse = await this.access.findReadableHorseForActor(actor, id);
-    const ownerOnly = this.access.scopeOf(actor, caller.id).kind === 'OWNER';
+    const ownerOnly = this.isOwnerView(actor, caller.id);
     const ancestors = await this.profiles.findPedigreeAncestors(
       id,
       PEDIGREE_DEPTH,
@@ -406,12 +409,7 @@ export class HorseProfilesService {
     return toHorseEligibilityResponse(
       horse,
       activeTrainingLock,
-      evaluateEligibility({
-        isDeleted: horse.deletedAt !== null,
-        lifecycleStatus: horse.lifecycleStatus,
-        healthStatus: horse.healthStatus,
-        hasActiveTrainingLock: activeTrainingLock,
-      }),
+      evaluateEligibility(eligibilityInputOf(horse, activeTrainingLock)),
     );
   }
 
@@ -561,26 +559,28 @@ export class HorseProfilesService {
   }
 
   /**
-   * Chạy thao tác ghi, đổi lỗi trùng unique do ghi đồng thời thành 409
+   * Kiểm tra người gọi đang xem theo phạm vi Horse Owner
    *
-   * @param operation Thao tác ghi cần chạy
-   * @returns Promise trả về kết quả của thao tác
-   * @throws ConflictException Nếu số chip vừa được ngựa khác dùng
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @returns true nếu phạm vi xem của người gọi là ngựa mình sở hữu
    */
-  private async saveUnique<T>(operation: () => Promise<T>): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      const driverError = (
-        error instanceof QueryFailedError ? error.driverError : undefined
-      ) as { code?: string; constraint?: string } | undefined;
-      if (driverError?.code === '23505') {
-        const message = UNIQUE_CONFLICT_MESSAGES[driverError.constraint ?? ''];
-        if (message) throw new ConflictException(message);
-      }
-      throw error;
-    }
+  private isOwnerView(actor: Actor, callerId: string): boolean {
+    return this.access.scopeOf(actor, callerId).kind === 'OWNER';
   }
+}
+
+/**
+ * Chuẩn hóa số chip người gọi gửi lên
+ *
+ * - Cắt khoảng trắng hai đầu
+ * - undefined, null, chuỗi rỗng hoặc chỉ có khoảng trắng thành null
+ *
+ * @param value Số chip người gọi gửi lên
+ * @returns Số chip đã cắt khoảng trắng, hoặc null nếu bỏ trống
+ */
+function normalizeMicrochip(value: string | null | undefined): string | null {
+  return value?.trim() || null;
 }
 
 /**
