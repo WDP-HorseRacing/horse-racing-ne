@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, IsNull } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
@@ -42,6 +43,8 @@ const GROOM_CONFLICT_MESSAGES: Record<string, string> = {
 @Injectable()
 export class GroomAssignmentsService {
   constructor(
+    @InjectRepository(GroomAssignmentEntity)
+    private readonly groomAssignments: Repository<GroomAssignmentEntity>,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly events: DomainEventPublisher,
@@ -54,7 +57,7 @@ export class GroomAssignmentsService {
   /**
    * Liệt kê lịch sử groom phụ trách của một con ngựa, mới nhất trước
    *
-   * - Phạm vi xem theo HorseAccessService.findReadableHorseForActor: Club Manager xem được cả hồ sơ đã xóa, Horse Owner chỉ ngựa của mình, vai trò khác mọi ngựa chưa xóa
+   * - Phạm vi xem theo HorseAccessService.findReadableHorseForActor: Club Manager xem được cả hồ sơ đã xóa, vai trò khác mọi ngựa chưa xóa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -67,14 +70,11 @@ export class GroomAssignmentsService {
     horseId: string,
   ): Promise<GroomAssignmentResponseDto[]> {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
-    const assignments = await this.dataSource.manager.find(
-      GroomAssignmentEntity,
-      {
-        where: { horseId },
-        relations: { groom: true },
-        order: { startAt: 'DESC' },
-      },
-    );
+    const assignments = await this.groomAssignments.find({
+      where: { horseId },
+      relations: { groom: true },
+      order: { startAt: 'DESC' },
+    });
     return assignments.map(toGroomAssignmentResponse);
   }
 

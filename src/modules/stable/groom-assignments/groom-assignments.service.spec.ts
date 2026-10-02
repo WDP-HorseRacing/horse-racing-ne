@@ -4,7 +4,13 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -75,6 +81,7 @@ describe('GroomAssignmentsService', () => {
     save: jest.Mock;
     update: jest.Mock;
   };
+  let groomAssignments: { find: jest.Mock };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
   let training: { moveFutureParticipantsToGroom: jest.Mock };
@@ -129,6 +136,7 @@ describe('GroomAssignmentsService', () => {
       getRepository: jest.fn(),
     };
     manager.getRepository = trainerBarnRepository(manager.query);
+    groomAssignments = { find: jest.fn().mockResolvedValue([]) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn() };
     training = {
@@ -140,6 +148,7 @@ describe('GroomAssignmentsService', () => {
     const dataSource = { manager, transaction } as unknown as DataSource;
     const horseAccess = new HorseAccessService(dataSource);
     service = new GroomAssignmentsService(
+      groomAssignments as unknown as Repository<GroomAssignmentEntity>,
       dataSource,
       audit,
       events as unknown as DomainEventPublisher,
@@ -507,7 +516,7 @@ describe('GroomAssignmentsService', () => {
       await expect(service.listByHorse(actor(), 'h1')).rejects.toThrow(
         new NotFoundException('Không tìm thấy ngựa'),
       );
-      expect(manager.find).not.toHaveBeenCalled();
+      expect(groomAssignments.find).not.toHaveBeenCalled();
     });
 
     it('lets the club manager read the groom history of a deleted horse', async () => {
@@ -516,7 +525,7 @@ describe('GroomAssignmentsService', () => {
         barnId: null,
         deletedAt: new Date('2026-09-01T00:00:00Z'),
       });
-      manager.find.mockResolvedValue([
+      groomAssignments.find.mockResolvedValue([
         { id: 'ga-1', horseId: 'h1', groomId: 'g-old', startAt: new Date() },
       ]);
       await expect(
