@@ -48,9 +48,11 @@ export class KeycloakTokenService {
     } catch (error) {
       if (
         error instanceof BadGatewayException &&
-        error.getResponse() === 'Keycloak request failed with status 401'
+        error.message === 'Keycloak request failed with status 401'
       ) {
-        throw new UnauthorizedException('Invalid username or password');
+        throw new UnauthorizedException(
+          'Tài khoản hoặc mật khẩu không chính xác',
+        );
       }
       throw error;
     }

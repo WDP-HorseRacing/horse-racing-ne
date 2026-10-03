@@ -567,7 +567,11 @@ export class StallsService {
   ): Promise<ReleasedStall | null> {
     const current = await this.lockOpenAssignmentByHorse(manager, horseId);
     if (!current) return null;
-    const stall = await this.closeAssignmentAndFreeStall(manager, current, new Date());
+    const stall = await this.closeAssignmentAndFreeStall(
+      manager,
+      current,
+      new Date(),
+    );
     return { stallId: stall.id, stallCode: stall.code };
   }
 
@@ -659,7 +663,11 @@ export class StallsService {
     assignment: StallAssignmentEntity,
   ): Promise<StallAssignmentResponseDto> {
     const now = new Date();
-    const stall = await this.closeAssignmentAndFreeStall(manager, assignment, now);
+    const stall = await this.closeAssignmentAndFreeStall(
+      manager,
+      assignment,
+      now,
+    );
     const snapshot = {
       horseId: assignment.horseId,
       stallId: stall.id,

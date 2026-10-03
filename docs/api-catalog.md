@@ -164,7 +164,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/barns` | Create barn |
 | DELETE | `/api/v1/barns/{id}` | Soft-delete barn |
 | GET | `/api/v1/barns/{id}` | Get barn details |
-| PATCH | `/api/v1/barns/{id}` | Rename barn or assign its head trainer |
+| PATCH | `/api/v1/barns/{id}` | Update barn details or its head trainer |
 | PATCH | `/api/v1/checklists/{id}/complete` | Complete assigned checklist item |
 | POST | `/api/v1/feeding-plans/{id}/approve` | Approve feeding plan as Trainer or Vet |
 | GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |

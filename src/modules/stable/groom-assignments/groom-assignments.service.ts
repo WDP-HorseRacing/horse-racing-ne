@@ -30,6 +30,7 @@ import { STABLE_AUDIT_FEATURE } from '../constants/stable-audit.constants';
 import { assertAssignableGroom } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
 import type { GroomAssignmentChangedEvent } from '../types/stable-events.types';
+import { GroomAssignmentsRepository } from './groom-assignments.repository';
 
 /**
  * Thông báo 409 cho từng unique index mà việc đổi groom có thể vi phạm khi hai thao tác chạy cùng lúc.
@@ -53,6 +54,7 @@ export class GroomAssignmentsService {
     private readonly horseAccess: HorseAccessService,
     private readonly dailyChecklists: DailyChecklistsService,
     private readonly training: TrainingOperationsFacade,
+    private readonly repository: GroomAssignmentsRepository,
   ) {}
 
   /**
@@ -321,26 +323,7 @@ export class GroomAssignmentsService {
    */
   async listWorkload(actor: Actor): Promise<GroomWorkloadResponseDto[]> {
     await currentUserForActor(this.dataSource.manager, actor);
-    const rows: {
-      groomId: string;
-      fullName: string;
-      activeHorseCount: number;
-    }[] = await this.dataSource.manager.query(
-      `SELECT u.id AS "groomId",
-                u.full_name AS "fullName",
-                COUNT(h.id)::int AS "activeHorseCount"
-           FROM users u
-           LEFT JOIN groom_assignments ga
-             ON ga.groom_id = u.id AND ga.end_at IS NULL
-           LEFT JOIN horses h
-             ON h.id = ga.horse_id AND h.deleted_at IS NULL
-          WHERE u.role = $1
-            AND u.status = $2
-            AND u.deleted_at IS NULL
-          GROUP BY u.id, u.full_name
-          ORDER BY "activeHorseCount" DESC, u.full_name ASC`,
-      [UserRole.GROOM, UserStatus.ACTIVE],
-    );
+    const rows = await this.repository.getGroomWorkloads();
     return rows.map(toGroomWorkloadResponse);
   }
 }

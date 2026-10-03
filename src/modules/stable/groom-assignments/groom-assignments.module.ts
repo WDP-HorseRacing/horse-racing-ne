@@ -7,6 +7,7 @@ import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 import { StableSharedModule } from '../shared/stable-shared.module';
 import { GroomAssignmentsController } from './groom-assignments.controller';
 import { GroomAssignmentsService } from './groom-assignments.service';
+import { GroomAssignmentsRepository } from './groom-assignments.repository';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { GroomAssignmentsService } from './groom-assignments.service';
     TrainingSharedModule,
   ],
   controllers: [GroomAssignmentsController],
-  providers: [GroomAssignmentsService],
+  providers: [GroomAssignmentsService, GroomAssignmentsRepository],
   exports: [GroomAssignmentsService],
 })
 export class GroomAssignmentsModule {}

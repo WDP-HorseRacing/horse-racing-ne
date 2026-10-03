@@ -313,15 +313,15 @@ export function assertAssignableHeadTrainer<
 }
 
 /**
- * Chặn các thay đổi làm khu còn ngựa mất chỗ ở hoặc mất người phụ trách
+ * Kiểm tra thay đổi trạng thái hoặc Head Trainer của khu khi khu còn ngựa
  *
- * - Khu không còn ngựa: cho qua mọi thay đổi
- * - Chuyển status sang CLOSED hoặc MAINTENANCE: chặn
- * - Gỡ Head Trainer (null) khi khu đang có người phụ trách: chặn
- * - Không kiểm sức chứa; sức chứa kiểm ở assertCapacityFitsStalls
+ * - Khu không có ngựa: đổi gì cũng được
+ * - Khu có ngựa, đổi trạng thái sang CLOSED hoặc MAINTENANCE: 409
+ * - Khu có ngựa, gỡ Head Trainer đang phụ trách (gửi null): 409
+ * - Giữ nguyên trạng thái, đổi sang Head Trainer khác hoặc không gửi field: cho qua
  *
- * @param change Trạng thái hiện tại và giá trị mới của khu
- * @throws ConflictException Nếu khu còn ngựa và thay đổi thuộc một trong các trường hợp bị chặn
+ * @param change Trạng thái và Head Trainer hiện tại của khu, kèm giá trị mới gửi lên
+ * @throws ConflictException Nếu khu có ngựa mà bị đổi sang CLOSED/MAINTENANCE hoặc bị gỡ Head Trainer
  */
 export function assertBarnChangeKeepsHorses(change: BarnChange): void {
   if (!change.hasHorses) return;

@@ -4185,7 +4185,7 @@
     },
     "/api/v1/barns": {
       "get": {
-        "description": "Each barn carries its head trainer name, availableStallCount (free stalls minus horses of the barn still waiting for a stall, never negative; 0 means no more horse can be placed) and pendingStallHorseCount (horses of the barn, not deleted, not TRANSFERRED, without an open stall assignment).",
+        "description": "Mỗi khu kèm tên Head Trainer phụ trách, availableStallCount (số ô trống trừ số ngựa của khu đang chờ xếp ô, không âm; bằng 0 là không xếp thêm ngựa được) và pendingStallHorseCount (số ngựa của khu chưa xóa, chưa chuyển nhượng, chưa có ô).",
         "operationId": "BarnsController_list",
         "parameters": [],
         "responses": {
@@ -4285,7 +4285,7 @@
         ]
       },
       "patch": {
-        "description": "A head trainer makes decisions and reads sensitive data only for horses stabled in barns they lead.",
+        "description": "Sửa tên, mô tả, sức chứa, trạng thái và Head Trainer phụ trách; gửi headTrainerId = null để gỡ người phụ trách. Head Trainer mới phải đang hoạt động (400 nếu không có hoặc sai vai trò, 409 nếu không còn ACTIVE). Khu còn ngựa thì không chuyển được sang CLOSED hoặc MAINTENANCE và không gỡ được Head Trainer (409). Sức chứa không được nhỏ hơn số ô hiện có, tên khu không được trùng (409).",
         "operationId": "BarnsController_update",
         "parameters": [
           {
@@ -4324,7 +4324,7 @@
             "bearer": []
           }
         ],
-        "summary": "Rename barn or assign its head trainer",
+        "summary": "Update barn details or its head trainer",
         "tags": [
           "stable"
         ]
