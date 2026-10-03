@@ -80,15 +80,17 @@ export class MedicalLifecycleService {
     manager: EntityManager,
     horseId: string,
   ): Promise<MedicalTransferSettlement> {
+    // Xem có bị chặn gì không. Nếu chặn thì lấy reason (bệnh án còn mở)
     const blockReason = await this.transferBlockReason(horseId, manager);
     if (blockReason) throw new ConflictException(blockReason);
-
+    // Trả về số lượng các yêu cầu khám bị bác bỏ (PENDING → DISMISSED)
     const examRequestsDismissed =
       await this.requestWrites.dismissPendingForTransfer(
         manager,
         horseId,
         new Date(),
       );
+    // Trả về số lượng các lịch chăm sóc bị hủy (SCHEDULED → CANCELLED)
     const careSchedulesCancelled =
       await this.scheduleWrites.cancelOpenSchedulesForTransfer(
         manager,

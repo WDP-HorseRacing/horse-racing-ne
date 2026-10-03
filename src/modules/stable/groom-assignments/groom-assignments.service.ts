@@ -143,18 +143,22 @@ export class GroomAssignmentsService {
         where: { id: groomId },
         lock: { mode: 'pessimistic_write' },
       });
+      // Kiểm tra trạng thái của con ngựa (k tranfer) và quyền của người gọi
       const horse = await this.access.lockOperableHorse(
         manager,
         callerId,
         horseId,
         'GROOM',
       );
+      // Kiểm tra trạng thái của khu chuồng
       await this.access.lockActiveBarn(manager, horse.barnId);
+      // Kiểm tra groom có hợp lệ không (active và đúng role)
       assertAssignableGroom(groom);
       const current = await manager.findOne(GroomAssignmentEntity, {
         where: { horseId, endAt: IsNull() },
         lock: { mode: 'pessimistic_write' },
       });
+      // Nếu groom đã đc phân công cho ngựa này rồi thì thôi
       if (current?.groomId === groom.id) {
         return {
           response: toGroomAssignmentResponse({ ...current, groom }),
@@ -162,6 +166,7 @@ export class GroomAssignmentsService {
         };
       }
       const now = new Date();
+      // Chuyển checklist chưa hoàn thành của groom cũ sang groom mới (nếu có và groom rãnh khung giờ đó)
       const movedChecklistIds = current
         ? await this.closeCurrentAssignment(
             manager,
@@ -171,6 +176,7 @@ export class GroomAssignmentsService {
             now,
           )
         : [];
+      // Chuyển lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới
       const movedParticipantIds =
         await this.training.moveFutureParticipantsToGroom(
           manager,
@@ -179,6 +185,7 @@ export class GroomAssignmentsService {
           groom.id,
           now,
         );
+      // Lưu phân công groom mới
       const saved = await manager.save(
         manager.create(GroomAssignmentEntity, {
           horseId,
@@ -187,6 +194,7 @@ export class GroomAssignmentsService {
           endAt: null,
         }),
       );
+      // Ghi log audit
       await this.recordGroomChangeAudit(manager, {
         callerId,
         horseId,
@@ -229,11 +237,13 @@ export class GroomAssignmentsService {
     newGroomId: string,
     now: Date,
   ): Promise<string[]> {
+    // đóng phân công groom cũ
     await manager.update(
       GroomAssignmentEntity,
       { id: current.id },
       { endAt: now },
     );
+    // chuyển checklist cũ sang groom mới
     return this.dailyChecklists.moveOpenChecklistsToGroom(
       manager,
       horseId,

@@ -125,7 +125,7 @@ export class HorseStatusesService {
         const horse = await this.access.lockWritableHorse(manager, actor, id);
         if (horse.lifecycleStatus === body.lifecycleStatus) return null;
         assertLifecycleTransition(horse.lifecycleStatus, body.lifecycleStatus);
-
+        // Lấy các ảnh hưởng của việc truyển status
         const effects = lifecycleSideEffects(
           horse.lifecycleStatus,
           body.lifecycleStatus,
@@ -203,9 +203,12 @@ export class HorseStatusesService {
   ): Promise<HorseLifecyclePreviewResponseDto> {
     await this.access.currentUser(actor);
     const manager = this.dataSource.manager;
+    // Tìm ngựa có thể đc chỉnh sửa (chưa xoá)
     const horse = await this.access.findWritableHorse(actor, id);
     const to = query.lifecycleStatus;
+    // Lấy các ảnh hưởng của việc chuyển status
     const effects = lifecycleSideEffects(horse.lifecycleStatus, to);
+    // Kiểm tra lý do chặn
     const blockedReason = await this.lifecycleBlockedReason(
       manager,
       id,
@@ -220,6 +223,7 @@ export class HorseStatusesService {
         effects.reactivateFromTransfer && horse.ownerId
           ? this.access.invalidOwnerName(horse.ownerId, manager)
           : null,
+        // Lấy những yêu cầu khám đang yêu cầu và lịch đã SCEDULE về medical khi change
         effects.settleMedicalWork
           ? this.medicalLifecycle.transferImpact(id, manager)
           : {
@@ -265,12 +269,15 @@ export class HorseStatusesService {
     const { id, horse, body, effects, now } = change;
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
+    // Ghi lại những yêu cầu khám bị bác bỏ (PENDING -> DISSMED) và
+    // những lịch trình chăm sóc y tế đã lên lịch mà bị huỷ
     if (effects.settleMedicalWork) {
       Object.assign(
         after,
         await this.medicalLifecycle.settleForTransfer(manager, id),
       );
     }
+    // Rút lớp
     if (effects.withdrawFromClasses) {
       const withdrawn = await this.training.withdrawHorseFromClasses(
         manager,
@@ -291,6 +298,7 @@ export class HorseStatusesService {
       after.raceRegistrationsWithdrawn =
         await this.racing.withdrawOpenRegistrationsByHorse(manager, id);
     }
+    // thả ô 
     if (effects.releaseStall) {
       const released = await this.stalls.closeOpenStallAssignment(manager, id);
       if (released) {
@@ -298,6 +306,7 @@ export class HorseStatusesService {
         after.stallCode = null;
       }
     }
+    // kết thúc groom
     let endedGroomId: string | null = null;
     if (effects.endGroom) {
       endedGroomId = await this.grooms.endOpenGroomAssignment(manager, id);
@@ -306,6 +315,7 @@ export class HorseStatusesService {
         after.groomId = null;
       }
     }
+    // gỡ lệnh khóa huấn luyện 
     if (effects.releaseTrainingLock) {
       after.trainingLockReleased =
         await this.trainingLocks.releaseActiveLockByHorse(
@@ -369,6 +379,7 @@ export class HorseStatusesService {
     if (from === to) return LIFECYCLE_ALREADY_IN_STATUS_MESSAGE;
     const transitionError = lifecycleTransitionError(from, to);
     if (transitionError !== null) return transitionError;
+    // Nếu không phải chuyển nhượng
     if (!effects.settleMedicalWork) return null;
     return this.medicalLifecycle.transferBlockReason(id, manager);
   }

@@ -364,12 +364,23 @@ export function assertLifecycleTransition(
 }
 
 /**
- * Xác định các việc cần chạy khi ngựa đổi vòng đời, dựa vào trạng thái hiện tại và trạng thái đích.
+ * Xác định các việc cần chạy khi ngựa đổi vòng đời, dựa vào trạng thái hiện tại (from) và trạng thái đích (to).
  *
- * - Giải nghệ (ACTIVE sang RETIRED): rút khỏi lớp đang học, rút đăng ký thi đấu chưa diễn ra; giữ khu, ô, groom và y tế
- * - Chuyển nhượng: làm phần giải nghệ nếu đang ACTIVE; rút khỏi lớp (cả khi đi từ RETIRED); trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt phần y tế; giữ chủ sở hữu
- * - Kích hoạt lại (sang ACTIVE): lớp học và đăng ký thi đấu đã hủy không tự khôi phục; từ giải nghệ thì giữ nguyên sức khỏe
- * - Kích hoạt lại từ chuyển nhượng: đặt sức khỏe về UNDER_OBSERVATION; ngựa vào "Chờ xếp khu"; chủ cũ không còn hợp lệ thì bỏ trống chủ (nơi gọi kiểm chủ)
+ * Các kịch bản chính:
+ * 1. Giải nghệ (ACTIVE -> RETIRED): 
+ *    - Rút khỏi lớp đang học và giải đua chưa diễn ra.
+ *    - Các tài nguyên thực tế (khu, ô chuồng, groom và bệnh án y tế) được giữ nguyên.
+ * 2. Đang giải nghệ đem chuyển nhượng (RETIRED -> TRANSFERRED): 
+ *    - Rút khỏi lớp (để phòng hờ). 
+ *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế.
+ * 3. Đang hoạt động đem chuyển nhượng (ACTIVE -> TRANSFERRED): 
+ *    - Gộp cả (1) và (2): rút khỏi lớp, rút giải đua, và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế).
+ * 4. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE): 
+ *    - Lớp học và giải đua cũ không tự khôi phục. 
+ *    - Từ RETIRED: giữ nguyên trạng thái sức khỏe hiện tại. 
+ *    - Từ TRANSFERRED: tự động đặt sức khỏe về UNDER_OBSERVATION, đưa ngựa vào trạng thái "Chờ xếp khu".
+ *
+ * Chú ý: Thao tác chuyển nhượng không xoá trường "Chủ sở hữu" để đảm bảo lưu trữ lịch sử.
  *
  * @param from Trạng thái vòng đời hiện tại
  * @param to Trạng thái vòng đời đích (đã qua canTransitionLifecycle)

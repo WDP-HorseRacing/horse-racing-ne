@@ -61,12 +61,17 @@ export class HorseDeletionsService {
   async remove(actor: Actor, id: string, body: DeleteHorseDto): Promise<void> {
     const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
+      // Xin khoá phả hệ
       await this.pedigree.lockPedigree(manager);
+      // Khoá con ngựa nếu con ngựa cho phép sửa (chưa xoá)
       const horse = await this.access.lockWritableHorse(manager, actor, id);
+      // Ngưa chưa chuyển nhượng
       assertNotTransferred(horse);
+      // Ngưa chưa phát sinh dữ liệu nghiệp vụ
       assertNoBusinessData(
         await this.deletions.businessDataLabels(manager, id),
       );
+      // Ngưa k phải cha hay mẹ của một con ngựa khác
       assertNotParent(await this.pedigree.parentUsage(manager, id));
       const horses = manager.getRepository(HorseEntity);
       await horses.update({ id }, { deletedReason: body.reason });

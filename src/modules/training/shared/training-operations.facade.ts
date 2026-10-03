@@ -176,6 +176,7 @@ export class TrainingOperationsFacade {
     }
 
     for (const enrollment of enrollments) {
+      // Nếu lớp học chưa bắt đầu (enrolledAt(lớp khai giảng hay bắt đầu) > at)
       if (isEnrollmentNotYetStarted(enrollment, options.at)) {
         enrollment.status = HorseEnrollmentStatus.CANCELLED;
       } else {
@@ -374,21 +375,25 @@ export class TrainingOperationsFacade {
       lock: { mode: 'pessimistic_write' },
     });
     if (!session) throw new NotFoundException('Không tìm thấy buổi tập');
+    // Chỉ reset khi còn SCHEDULED hay IN_PROGRESS
     if (
       session.status !== TrainingSessionStatus.SCHEDULED &&
       session.status !== TrainingSessionStatus.IN_PROGRESS
     ) {
       return session;
     }
+    // Đếm số ngựa còn đang học
     const open = await manager.countBy(SessionParticipantEntity, {
       sessionId,
       status: In(NON_TERMINAL_PARTICIPANT_STATUSES),
     });
     if (open > 0) return session;
+    // Đếm số ngựa xong hết rồi
     const happened = await manager.countBy(SessionParticipantEntity, {
       sessionId,
       status: In(HAPPENED_PARTICIPANT_STATUSES),
     });
+    // Nếu có ít nhất 1 ngựa học xong thì
     if (happened > 0) {
       session.status = TrainingSessionStatus.COMPLETED;
     } else {

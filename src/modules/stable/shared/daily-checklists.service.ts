@@ -32,6 +32,7 @@ export class DailyChecklistsService {
     toGroomId: string,
     fromDate: string,
   ): Promise<string[]> {
+    // look các checklist của của groom cũ đc phân công từ chưa hoàn thành và có từ ngày fromDate trở đi
     const openChecklists = await manager.find(DailyChecklistEntity, {
       where: {
         horseId,
@@ -43,6 +44,7 @@ export class DailyChecklistsService {
     });
     if (openChecklists.length === 0) return [];
 
+    // Kiểm tra xem groom mới đã có checklist cùng ngày cho ngựa này thì báo lỗi, không gộp và không bỏ qua
     const clashes = await manager.find(DailyChecklistEntity, {
       where: {
         horseId,

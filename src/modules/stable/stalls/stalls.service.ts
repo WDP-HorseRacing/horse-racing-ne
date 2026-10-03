@@ -416,19 +416,23 @@ export class StallsService {
     stallId: string,
   ): Promise<StallAssignmentResponseDto> {
     return mapUniqueViolation(async () => {
+      // Kiểm tra trạng thái ngựa và người gọi có quyền thao tác trên ngựa
       const horse = await this.access.lockOperableHorse(
         manager,
         callerId,
         horseId,
         'STALL',
       );
+      // Khu phải đang hoạt động 
       await this.access.lockActiveBarn(manager, horse.barnId);
 
+      // Nếu ngựa đã được phân công ô nào rồi thì look ô đó trước
       const current = await this.lockOpenAssignmentByHorse(manager, horseId);
       if (current?.stallId === stallId) {
         return toStallAssignmentResponse({ ...current, horse });
       }
 
+      // Lock ô đích, check thuộc đúng khu, và đang trống
       const stall = await this.lockFreeStallInBarn(
         manager,
         stallId,
@@ -436,6 +440,7 @@ export class StallsService {
       );
 
       const now = new Date();
+      // Nếu ngựa đã được phân công ô nào thì đóng phân công cũ
       if (current) {
         await this.closePreviousAssignmentWithAudit(
           manager,
@@ -506,10 +511,12 @@ export class StallsService {
     if (stall.barnId !== barnId) {
       throw new BadRequestException('Ô chuồng không thuộc khu chuồng của ngựa');
     }
+    // Kiểm tra ô có đang được phân công không
     const hasOpenAssignment = await this.hasOpenStallAssignment(
       manager,
       stall.id,
     );
+    // Nếu ô không còn trống thì báo ô vừa bị chiếm, nếu khu hết ô trống thì đề nghị Club Manager đổi khu
     if (!isStallFree(stall.status, hasOpenAssignment)) {
       const capacity = await this.access.countBarnCapacity(manager, barnId);
       throw new ConflictException(
@@ -706,6 +713,7 @@ export class StallsService {
     endAt: Date,
   ): Promise<StallEntity> {
     await manager.update(
+      // Đóng phân công
       StallAssignmentEntity,
       { id: assignment.id },
       { endAt },
@@ -715,10 +723,12 @@ export class StallsService {
       withDeleted: true,
       lock: { mode: 'pessimistic_write' },
     });
+    // Kiểm tra coi có phải là ô còn đang được phân công không
     const hasOtherOpenAssignment = await this.hasOpenStallAssignment(
       manager,
       stall.id,
     );
+    // Reset lại trạng thái ô chuồng
     if (stall.status === StallStatus.OCCUPIED && !hasOtherOpenAssignment) {
       await manager.update(
         StallEntity,

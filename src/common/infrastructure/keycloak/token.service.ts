@@ -51,7 +51,7 @@ export class KeycloakTokenService {
         error.message === 'Keycloak request failed with status 401'
       ) {
         throw new UnauthorizedException(
-          'Tài khoản hoặc mật khẩu không chính xác',
+          'Tài khoản hoặc mật khẩu không chính xác!',
         );
       }
       throw error;
