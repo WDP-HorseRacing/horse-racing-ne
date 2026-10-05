@@ -1,31 +1,9 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { RealtimeModule } from '../realtime/realtime.module';
 import { NotificationsController } from './controllers/notifications.controller';
-import { NotificationEntity } from './entities/notification.entity';
-import { GroomAssignmentChangedListener } from './listeners/groom-assignment-changed.listener';
-import { HorseBarnAssignedListener } from './listeners/horse-barn-assigned.listener';
-import { HorseGroomReleasedListener } from './listeners/horse-groom-released.listener';
-import { HorseMeasurementAlertListener } from './listeners/horse-measurement-alert.listener';
-import { MedicalEventsListener } from './listeners/medical-events.listener';
-import { NotificationRecipientsRepository } from './repositories/notification-recipients.repository';
-import { HorseNotificationsService } from './services/horse-notifications.service';
-import { MedicalNotificationsService } from './services/medical-notifications.service';
-import { NotificationsService } from './services/notifications.service';
+import { NotificationDeliveryModule } from './delivery/notification-delivery.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([NotificationEntity]), RealtimeModule],
+  imports: [NotificationDeliveryModule],
   controllers: [NotificationsController],
-  providers: [
-    NotificationsService,
-    HorseNotificationsService,
-    MedicalNotificationsService,
-    NotificationRecipientsRepository,
-    HorseMeasurementAlertListener,
-    HorseBarnAssignedListener,
-    HorseGroomReleasedListener,
-    GroomAssignmentChangedListener,
-    MedicalEventsListener,
-  ],
 })
 export class NotificationsModule {}

@@ -1,10 +1,10 @@
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../../horses/enums/horse-measurement-alert.enum';
-import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
-import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
-import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
+} from '../../../horses/enums/horse-measurement-alert.enum';
+import { HorseMeasurementSource } from '../../../horses/enums/horse-measurement-source.enum';
+import { HorseMeasurementType } from '../../../horses/enums/horse-measurement-type.enum';
+import type { HorseMeasurementAlertEvent } from '../../../horses/types/horse.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';
 import { HorseMeasurementAlertListener } from './horse-measurement-alert.listener';
 

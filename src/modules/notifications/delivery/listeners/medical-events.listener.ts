@@ -11,7 +11,7 @@ import {
   MEDICAL_HEALTH_CHANGED_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
-} from '../../medical/constants/medical-events.constants';
+} from '../../../medical/constants/medical-events.constants';
 import type {
   CareScheduleDueEvent,
   CheckupOverdueEvent,
@@ -23,7 +23,7 @@ import type {
   MedicalCaseOpenedEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
-} from '../../medical/types/medical-events.types';
+} from '../../../medical/types/medical-events.types';
 import { MedicalNotificationsService } from '../services/medical-notifications.service';
 
 @Injectable()

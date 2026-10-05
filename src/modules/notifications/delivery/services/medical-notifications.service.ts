@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UserRole } from '../../../common/enums/role.enum';
-import { CLUB_TIME_ZONE } from '../../horses/constants/horse.constants';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { CLUB_TIME_ZONE } from '../../../horses/constants/horse.constants';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
 import type {
   CareScheduleDueEvent,
   CheckupOverdueEvent,
@@ -14,11 +14,15 @@ import type {
   MedicalCaseOpenedEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
-} from '../../medical/types/medical-events.types';
-import { NotificationPriority } from '../constants/notification-priority.enum';
-import { NotificationType } from '../constants/notification-type.enum';
+} from '../../../medical/types/medical-events.types';
+import { NotificationPriority } from '../../constants/notification-priority.enum';
+import { NotificationResourceType } from '../../constants/notification-resource-type.enum';
+import { NotificationType } from '../../constants/notification-type.enum';
 import { NotificationRecipientsRepository } from '../repositories/notification-recipients.repository';
-import type { HorseMedicalContact } from '../types/notification.types';
+import type {
+  HorseMedicalContact,
+  NotificationResource,
+} from '../../types/notification.types';
 import { NotificationsService } from './notifications.service';
 
 /**
@@ -71,6 +75,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      horseResource(event.horseId),
       { veterinarians: true },
       NotificationType.WARNING,
       NotificationPriority.URGENT,
@@ -94,6 +99,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      { type: NotificationResourceType.TRAINING_LOCK, id: event.lockId },
       { headTrainer: true, clubManagers: true },
       NotificationType.WARNING,
       NotificationPriority.HIGH,
@@ -114,6 +120,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      { type: NotificationResourceType.TRAINING_LOCK, id: event.lockId },
       { headTrainer: true, clubManagers: true },
       NotificationType.INFO,
       NotificationPriority.NORMAL,
@@ -139,6 +146,7 @@ export class MedicalNotificationsService {
       return this.sendForHorse(
         event.eventId,
         event.horseId,
+        horseResource(event.horseId),
         { headTrainer: true },
         NotificationType.INFO,
         NotificationPriority.NORMAL,
@@ -157,6 +165,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      horseResource(event.horseId),
       { headTrainer: true, clubManagers: true, owner: true },
       NotificationType.WARNING,
       NotificationPriority.HIGH,
@@ -177,6 +186,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
       { clubManagers: true, owner: true },
       NotificationType.INFO,
       NotificationPriority.NORMAL,
@@ -197,6 +207,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
       { clubManagers: true, owner: true },
       NotificationType.INFO,
       NotificationPriority.NORMAL,
@@ -217,6 +228,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
       { clubManagers: true, owner: true },
       NotificationType.INFO,
       NotificationPriority.NORMAL,
@@ -239,6 +251,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
       { clubManagers: true, owner: true },
       NotificationType.INFO,
       NotificationPriority.NORMAL,
@@ -259,6 +272,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      horseResource(event.horseId),
       { veterinarians: true, clubManagers: true },
       NotificationType.WARNING,
       NotificationPriority.HIGH,
@@ -279,6 +293,7 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
+      horseResource(event.horseId),
       { veterinarians: true, extraUserIds: [event.assigneeId] },
       NotificationType.INFO,
       NotificationPriority.NORMAL,
@@ -297,6 +312,7 @@ export class MedicalNotificationsService {
    *
    * @param eventId Khóa chống gửi trùng
    * @param horseId UUID của ngựa
+   * @param resource Đối tượng mà thông báo trỏ tới
    * @param audience Các nhóm người nhận
    * @param type Loại thông báo
    * @param priority Mức ưu tiên
@@ -306,6 +322,7 @@ export class MedicalNotificationsService {
   private async sendForHorse(
     eventId: string,
     horseId: string,
+    resource: NotificationResource,
     audience: MedicalAudience,
     type: NotificationType,
     priority: NotificationPriority,
@@ -328,6 +345,7 @@ export class MedicalNotificationsService {
       type,
       priority,
       ...describe(contact.horseName),
+      resource,
     });
   }
 
@@ -361,6 +379,16 @@ export class MedicalNotificationsService {
     if (audience.owner) ids.push(contact.ownerId);
     return [...new Set(ids.filter((id): id is string => id !== null))];
   }
+}
+
+/**
+ * Dựng resource trỏ tới hồ sơ ngựa
+ *
+ * @param horseId UUID của ngựa
+ * @returns Resource loại HORSE
+ */
+function horseResource(horseId: string): NotificationResource {
+  return { type: NotificationResourceType.HORSE, id: horseId };
 }
 
 /**

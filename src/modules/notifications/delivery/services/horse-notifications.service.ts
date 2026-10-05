@@ -1,21 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../../horses/enums/horse-measurement-alert.enum';
-import { WEIGHT_DROP_WINDOW_DAYS } from '../../horses/constants/horse.constants';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { formatMeasurement } from '../../horses/utils/measurement-format';
+} from '../../../horses/enums/horse-measurement-alert.enum';
+import { WEIGHT_DROP_WINDOW_DAYS } from '../../../horses/constants/horse.constants';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { formatMeasurement } from '../../../horses/utils/measurement-format';
 import type {
   HorseBarnAssignedEvent,
   HorseGroomReleasedEvent,
   HorseMeasurementAlertEvent,
-} from '../../horses/types/horse.types';
-import type { GroomAssignmentChangedEvent } from '../../stable/types/stable-events.types';
-import { NotificationPriority } from '../constants/notification-priority.enum';
-import { NotificationType } from '../constants/notification-type.enum';
+} from '../../../horses/types/horse.types';
+import type { GroomAssignmentChangedEvent } from '../../../stable/types/stable-events.types';
+import { NotificationPriority } from '../../constants/notification-priority.enum';
+import { NotificationResourceType } from '../../constants/notification-resource-type.enum';
+import { NotificationType } from '../../constants/notification-type.enum';
 import { NotificationRecipientsRepository } from '../repositories/notification-recipients.repository';
 import { NotificationsService } from './notifications.service';
 
@@ -65,6 +66,7 @@ export class HorseNotificationsService {
       type: NotificationType.WARNING,
       priority: toAlertPriority(event.severity),
       ...describeMeasurementAlert(horse.horseName, event),
+      resource: { type: NotificationResourceType.HORSE, id: event.horseId },
     });
   }
 
@@ -101,6 +103,7 @@ export class HorseNotificationsService {
       priority: NotificationPriority.NORMAL,
       title: 'Ngựa mới vào khu phụ trách',
       message: `Ngựa ${horseName} vừa được xếp vào khu "${barn.barnName}". Vui lòng xếp ô chuồng và đăng ký lớp huấn luyện nếu cần.`,
+      resource: { type: NotificationResourceType.HORSE, id: notice.horseId },
     });
   }
 
@@ -135,6 +138,10 @@ export class HorseNotificationsService {
           priority: NotificationPriority.NORMAL,
           title: 'Phân công chăm ngựa mới',
           message: `Bạn được phân công chăm sóc ngựa ${horseName}. Công việc hằng ngày của ngựa này giờ thuộc về bạn.`,
+          resource: {
+            type: NotificationResourceType.HORSE,
+            id: notice.horseId,
+          },
         })),
       );
     }
@@ -147,6 +154,10 @@ export class HorseNotificationsService {
           priority: NotificationPriority.NORMAL,
           title: 'Kết thúc phân công chăm ngựa',
           message: `Bạn không còn phụ trách ngựa ${horseName}. Bạn vẫn xem được hồ sơ nhưng không thao tác được trên con ngựa này.`,
+          resource: {
+            type: NotificationResourceType.HORSE,
+            id: notice.horseId,
+          },
         })),
       );
     }
@@ -180,6 +191,7 @@ export class HorseNotificationsService {
       priority: NotificationPriority.NORMAL,
       title: 'Ngựa đã chuyển nhượng',
       message: `Ngựa ${horseName} đã chuyển nhượng, bạn không còn phụ trách con ngựa này. Bạn vẫn xem được hồ sơ nhưng không thao tác được.`,
+      resource: { type: NotificationResourceType.HORSE, id: notice.horseId },
     });
   }
 

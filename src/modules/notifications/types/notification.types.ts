@@ -1,5 +1,14 @@
 import type { NotificationPriority } from '../constants/notification-priority.enum';
+import type { NotificationResourceType } from '../constants/notification-resource-type.enum';
 import type { NotificationType } from '../constants/notification-type.enum';
+
+/**
+ * Đối tượng mà thông báo trỏ tới để client mở đúng màn hình chi tiết.
+ */
+export interface NotificationResource {
+  type: NotificationResourceType;
+  id: string;
+}
 
 /**
  * Nội dung một thông báo cần gửi cho nhiều người nhận.
@@ -14,6 +23,7 @@ export interface NotificationDraft {
   priority: NotificationPriority;
   title: string;
   message: string;
+  resource: NotificationResource | null;
 }
 
 /**
@@ -25,6 +35,7 @@ export interface NotificationCreatedPayload {
   priority: NotificationPriority;
   title: string;
   message: string;
+  resource: NotificationResource | null;
   createdAt: Date;
 }
 

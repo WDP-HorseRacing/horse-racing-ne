@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT } from '../../horses/constants/horse.constants';
-import type { HorseGroomReleasedEvent } from '../../horses/types/horse.types';
+import { HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT } from '../../../horses/constants/horse.constants';
+import type { HorseGroomReleasedEvent } from '../../../horses/types/horse.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';
 
 @Injectable()

@@ -2,13 +2,14 @@ import { DataSource } from 'typeorm';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../../horses/enums/horse-measurement-alert.enum';
-import { HORSE_MEASUREMENT_SPECS } from '../../horses/constants/horse.constants';
-import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
-import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
-import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
-import { NotificationPriority } from '../constants/notification-priority.enum';
-import { NotificationType } from '../constants/notification-type.enum';
+} from '../../../horses/enums/horse-measurement-alert.enum';
+import { HORSE_MEASUREMENT_SPECS } from '../../../horses/constants/horse.constants';
+import { HorseMeasurementSource } from '../../../horses/enums/horse-measurement-source.enum';
+import { HorseMeasurementType } from '../../../horses/enums/horse-measurement-type.enum';
+import type { HorseMeasurementAlertEvent } from '../../../horses/types/horse.types';
+import { NotificationPriority } from '../../constants/notification-priority.enum';
+import { NotificationResourceType } from '../../constants/notification-resource-type.enum';
+import { NotificationType } from '../../constants/notification-type.enum';
 import { NotificationRecipientsRepository } from '../repositories/notification-recipients.repository';
 import { HorseNotificationsService } from './horse-notifications.service';
 import { NotificationsService } from './notifications.service';
@@ -84,6 +85,7 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
       title: 'KHẨN: Ngựa Sao Mai bị sốt',
       message:
         'Ngựa Sao Mai có thân nhiệt 39.1 °C, vượt ngưỡng sốt. Cần kiểm tra ngay.',
+      resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
     });
   });
 

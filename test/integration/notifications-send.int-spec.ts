@@ -1,41 +1,42 @@
+import type { Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
-import { DataSource } from 'typeorm';
-import { UserRole } from '../../src/common/enums/role.enum';
 import { NotificationPriority } from '../../src/modules/notifications/constants/notification-priority.enum';
+import { NotificationResourceType } from '../../src/modules/notifications/constants/notification-resource-type.enum';
 import { NotificationType } from '../../src/modules/notifications/constants/notification-type.enum';
-import { NotificationEntity } from '../../src/modules/notifications/entities/notification.entity';
-import { NotificationsService } from '../../src/modules/notifications/services/notifications.service';
-import type { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
-import { fixtures } from './fixtures';
+import { RealtimeChannel } from '../../src/modules/notifications/delivery/channels/realtime.channel';
+import { NotificationsService } from '../../src/modules/notifications/delivery/services/notifications.service';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
-} from './postgres';
+  Notification,
+  NotificationSchema,
+} from '../../src/modules/notifications/schemas/notification.schema';
+import type { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
+import {
+  clearAllCollections,
+  startTestMongo,
+  stopTestMongo,
+  type TestMongo,
+} from './mongo';
 
-describe('NotificationsService.send (Postgres)', () => {
-  let db: TestDatabase;
-  let dataSource: DataSource;
-  let seed: ReturnType<typeof fixtures>;
+describe('NotificationsService.send (MongoDB)', () => {
+  let mongo: TestMongo;
+  let model: Model<Notification>;
   let emitToUser: jest.Mock;
   let service: NotificationsService;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
-    dataSource = db.dataSource;
-    seed = fixtures(dataSource);
+    mongo = await startTestMongo();
+    model = mongo.connection.model(Notification.name, NotificationSchema);
+    await model.init();
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestMongo(mongo));
 
   beforeEach(async () => {
-    await truncateAll(dataSource);
+    await clearAllCollections(mongo.connection);
     emitToUser = jest.fn();
-    service = new NotificationsService(
-      dataSource.getRepository(NotificationEntity),
-      { emitToUser } as unknown as RealtimeGateway,
-    );
+    service = new NotificationsService(model, [
+      new RealtimeChannel({ emitToUser } as unknown as RealtimeGateway),
+    ]);
   });
 
   const draft = (eventId: string, recipientIds: string[]) => ({
@@ -45,27 +46,17 @@ describe('NotificationsService.send (Postgres)', () => {
     priority: NotificationPriority.URGENT,
     title: 'KHẨN',
     message: 'Ngựa sốt',
+    resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
   });
 
   const storedFor = (recipientId: string) =>
-    dataSource.query<
-      Array<{
-        event_id: string;
-        type: string;
-        priority: string;
-        title: string;
-        message: string;
-        read_at: Date | null;
-      }>
-    >(
-      `SELECT event_id, type, priority, title, message, read_at
-         FROM notifications WHERE recipient_id = $1`,
-      [recipientId],
-    );
+    model
+      .find({ recipientId }, { _id: 0, createdAt: 0, recipientId: 0 })
+      .lean();
 
   it('stores one unread notification per distinct recipient and pushes each one realtime', async () => {
-    const vet = await seed.user(UserRole.VETERINARIAN);
-    const trainer = await seed.user(UserRole.HEAD_TRAINER);
+    const vet = randomUUID();
+    const trainer = randomUUID();
     const eventId = randomUUID();
 
     const sent = await service.send(draft(eventId, [vet, trainer, vet]));
@@ -74,12 +65,13 @@ describe('NotificationsService.send (Postgres)', () => {
     for (const recipient of [vet, trainer]) {
       expect(await storedFor(recipient)).toEqual([
         {
-          event_id: eventId,
+          eventId,
           type: 'WARNING',
           priority: 'URGENT',
           title: 'KHẨN',
           message: 'Ngựa sốt',
-          read_at: null,
+          resource: { type: 'HORSE', id: 'horse-1' },
+          readAt: null,
         },
       ]);
     }
@@ -89,21 +81,31 @@ describe('NotificationsService.send (Postgres)', () => {
     ) as [string, string, Record<string, unknown>];
     expect([recipient, event]).toEqual([vet, 'notification.created']);
     expect(Object.keys(payload).sort()).toEqual(
-      ['createdAt', 'id', 'message', 'priority', 'title', 'type'].sort(),
+      [
+        'createdAt',
+        'id',
+        'message',
+        'priority',
+        'resource',
+        'title',
+        'type',
+      ].sort(),
     );
     expect(payload).toMatchObject({
       type: NotificationType.WARNING,
       priority: NotificationPriority.URGENT,
       title: 'KHẨN',
       message: 'Ngựa sốt',
+      resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
     });
-    expect(typeof payload.id).toBe('string');
-    expect(payload.createdAt).toBeInstanceOf(Date);
+    const stored = await model.findOne({ recipientId: vet }).lean();
+    expect(payload.id).toBe(stored!._id);
+    expect(payload.createdAt).toEqual(stored!.createdAt);
   });
 
   it('skips recipients that already have the event and pushes only the new ones', async () => {
-    const vet = await seed.user(UserRole.VETERINARIAN);
-    const trainer = await seed.user(UserRole.HEAD_TRAINER);
+    const vet = randomUUID();
+    const trainer = randomUUID();
     const eventId = randomUUID();
     await service.send(draft(eventId, [vet]));
     emitToUser.mockClear();
@@ -121,21 +123,40 @@ describe('NotificationsService.send (Postgres)', () => {
   });
 
   it('stores nothing twice when the same event is sent concurrently', async () => {
-    const vet = await seed.user(UserRole.VETERINARIAN);
+    const recipients = Array.from({ length: 30 }, () => randomUUID());
     const eventId = randomUUID();
 
-    const results = await Promise.all([
-      service.send(draft(eventId, [vet])),
-      service.send(draft(eventId, [vet])),
-    ]);
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        service.send(draft(eventId, recipients)),
+      ),
+    );
 
-    expect(results.flat()).toEqual([vet]);
-    expect(await storedFor(vet)).toHaveLength(1);
-    expect(emitToUser).toHaveBeenCalledTimes(1);
+    expect(results.flat().sort()).toEqual([...recipients].sort());
+    expect(await model.countDocuments({ eventId })).toBe(30);
+    expect(emitToUser).toHaveBeenCalledTimes(30);
+  });
+
+  it('rejects a second stored notification for the same event and recipient', async () => {
+    const vet = randomUUID();
+    const eventId = randomUUID();
+    await service.send(draft(eventId, [vet]));
+
+    await expect(
+      model.create({
+        eventId,
+        recipientId: vet,
+        type: NotificationType.INFO,
+        priority: NotificationPriority.NORMAL,
+        title: 'T',
+        message: 'M',
+        createdAt: new Date(),
+      }),
+    ).rejects.toMatchObject({ code: 11000 });
   });
 
   it('keeps a different event for the same recipient', async () => {
-    const vet = await seed.user(UserRole.VETERINARIAN);
+    const vet = randomUUID();
 
     await service.send(draft(randomUUID(), [vet]));
     await service.send(draft(randomUUID(), [vet]));
@@ -145,11 +166,12 @@ describe('NotificationsService.send (Postgres)', () => {
 
   it('writes nothing for an empty recipient list', async () => {
     await expect(service.send(draft(randomUUID(), []))).resolves.toEqual([]);
+    expect(await model.countDocuments()).toBe(0);
     expect(emitToUser).not.toHaveBeenCalled();
   });
 
   it('keeps the stored notification when the realtime push fails', async () => {
-    const vet = await seed.user(UserRole.VETERINARIAN);
+    const vet = randomUUID();
     emitToUser.mockImplementation(() => {
       throw new Error('gateway chưa sẵn sàng');
     });

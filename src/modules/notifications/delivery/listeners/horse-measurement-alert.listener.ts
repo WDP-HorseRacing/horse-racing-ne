@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { HORSE_MEASUREMENT_ALERT_EVENT } from '../../horses/constants/horse.constants';
-import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
-import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
+import { HORSE_MEASUREMENT_ALERT_EVENT } from '../../../horses/constants/horse.constants';
+import { HorseMeasurementSource } from '../../../horses/enums/horse-measurement-source.enum';
+import type { HorseMeasurementAlertEvent } from '../../../horses/types/horse.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';
 
 @Injectable()

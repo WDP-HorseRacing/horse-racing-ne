@@ -1,10 +1,11 @@
-import { UserRole } from '../../../common/enums/role.enum';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
-import { NotificationPriority } from '../constants/notification-priority.enum';
-import { NotificationType } from '../constants/notification-type.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
+import { NotificationPriority } from '../../constants/notification-priority.enum';
+import { NotificationResourceType } from '../../constants/notification-resource-type.enum';
+import { NotificationType } from '../../constants/notification-type.enum';
 import { NotificationRecipientsRepository } from '../repositories/notification-recipients.repository';
-import type { NotificationDraft } from '../types/notification.types';
+import type { NotificationDraft } from '../../types/notification.types';
 import { MedicalNotificationsService } from './medical-notifications.service';
 import { NotificationsService } from './notifications.service';
 
@@ -54,6 +55,7 @@ describe('MedicalNotificationsService', () => {
       eventId: 'e1',
       recipientIds: ['vet-1', 'vet-2'],
       priority: NotificationPriority.URGENT,
+      resource: { type: NotificationResourceType.HORSE, id: 'h1' },
     });
   });
 
@@ -68,6 +70,7 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft()).toMatchObject({
       recipientIds: ['cm-1', 'ht-1'],
       priority: NotificationPriority.HIGH,
+      resource: { type: NotificationResourceType.TRAINING_LOCK, id: 'l1' },
     });
   });
 
@@ -141,6 +144,10 @@ describe('MedicalNotificationsService', () => {
     });
     expect(sentDraft().recipientIds).toEqual(['cm-1', 'owner-1']);
     expect(sentDraft().message).toContain('1.500.000');
+    expect(sentDraft().resource).toEqual({
+      type: NotificationResourceType.MEDICAL_CASE,
+      id: 'c1',
+    });
   });
 
   it('skips the owner when the horse has no active owner', async () => {
@@ -167,6 +174,7 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft()).toMatchObject({
       recipientIds: ['vet-1', 'vet-2', 'cm-1'],
       priority: NotificationPriority.HIGH,
+      resource: { type: NotificationResourceType.HORSE, id: 'h1' },
     });
   });
 

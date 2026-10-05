@@ -1,8 +1,8 @@
 import type {
   HorseBarnAssignedEvent,
   HorseGroomReleasedEvent,
-} from '../../horses/types/horse.types';
-import type { GroomAssignmentChangedEvent } from '../../stable/types/stable-events.types';
+} from '../../../horses/types/horse.types';
+import type { GroomAssignmentChangedEvent } from '../../../stable/types/stable-events.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';
 import { GroomAssignmentChangedListener } from './groom-assignment-changed.listener';
 import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
