@@ -1,3 +1,4 @@
+import type { NotificationResponseDto } from '../dto/notification.dto';
 import type { Notification } from '../schemas/notification.schema';
 import type { NotificationCreatedPayload } from '../types/notification.types';
 
@@ -18,9 +19,44 @@ export function toNotificationCreatedPayload(
     priority: notification.priority,
     title: notification.title,
     message: notification.message,
-    resource: notification.resource
-      ? { type: notification.resource.type, id: notification.resource.id }
-      : null,
+    resource: toResource(notification),
     createdAt: notification.createdAt,
   };
+}
+
+/**
+ * Chuyển một thông báo đã lưu sang DTO trả cho người nhận
+ *
+ * - Không trả eventId hay recipientId
+ *
+ * @param notification Thông báo đã lưu
+ * @returns NotificationResponseDto - Thông báo kèm trạng thái đã đọc
+ */
+export function toNotificationResponse(
+  notification: Notification,
+): NotificationResponseDto {
+  return {
+    id: notification._id,
+    type: notification.type,
+    priority: notification.priority,
+    title: notification.title,
+    message: notification.message,
+    resource: toResource(notification),
+    readAt: notification.readAt,
+    createdAt: notification.createdAt,
+  };
+}
+
+/**
+ * Chép resource của thông báo thành object thường (bỏ dữ liệu nội bộ của Mongoose)
+ *
+ * @param notification Thông báo đã lưu
+ * @returns Resource, hoặc null nếu thông báo không trỏ tới đối tượng nào
+ */
+function toResource(
+  notification: Notification,
+): NotificationCreatedPayload['resource'] {
+  return notification.resource
+    ? { type: notification.resource.type, id: notification.resource.id }
+    : null;
 }

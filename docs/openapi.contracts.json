@@ -2999,11 +2999,63 @@
     },
     "/api/v1/notifications": {
       "get": {
-        "operationId": "NotificationsController_list",
-        "parameters": [],
+        "description": "Mới nhất trước, phân trang bằng cursor: truyền nextCursor của trang trước vào before. Cursor sai định dạng: 400.",
+        "operationId": "NotificationInboxController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "before",
+            "required": false,
+            "in": "query",
+            "description": "Giá trị nextCursor của trang trước; bỏ trống để lấy trang đầu",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "unreadOnly",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ lấy thông báo chưa đọc",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "priority",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NORMAL",
+                "HIGH",
+                "URGENT"
+              ]
+            }
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3014,17 +3066,23 @@
         "summary": "List current user notifications",
         "tags": [
           "notifications"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/notifications/unread-count": {
       "get": {
-        "operationId": "NotificationsController_unreadCount",
+        "operationId": "NotificationInboxController_unreadCount",
         "parameters": [],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationUnreadCountResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3035,13 +3093,13 @@
         "summary": "Count unread current-user notifications",
         "tags": [
           "notifications"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/notifications/{id}": {
       "get": {
-        "operationId": "NotificationsController_get",
+        "description": "Không có hoặc thuộc người khác: 404.",
+        "operationId": "NotificationInboxController_get",
         "parameters": [
           {
             "name": "id",
@@ -3053,8 +3111,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3065,13 +3130,40 @@
         "summary": "Get current-user notification",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationInboxController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationsMarkedReadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "summary": "Mark all current-user notifications as read",
+        "tags": [
+          "notifications"
+        ]
       }
     },
     "/api/v1/notifications/{id}/read": {
       "patch": {
-        "operationId": "NotificationsController_markRead",
+        "description": "Đã đọc rồi thì giữ thời điểm đọc cũ. Không có hoặc thuộc người khác: 404.",
+        "operationId": "NotificationInboxController_markRead",
         "parameters": [
           {
             "name": "id",
@@ -3083,8 +3175,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3095,29 +3194,7 @@
         "summary": "Mark notification as read",
         "tags": [
           "notifications"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/notifications/read-all": {
-      "patch": {
-        "operationId": "NotificationsController_markAllRead",
-        "parameters": [],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Mark all current-user notifications as read",
-        "tags": [
-          "notifications"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/session-participants/{id}/evaluation": {
@@ -11003,6 +11080,134 @@
         },
         "required": [
           "conclusion"
+        ]
+      },
+      "NotificationResourceDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "HORSE",
+              "MEDICAL_CASE",
+              "TRAINING_LOCK"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ]
+      },
+      "NotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SYSTEM",
+              "INFO",
+              "SUCCESS",
+              "WARNING",
+              "ERROR"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "resource": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationResourceDto"
+              }
+            ]
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "null khi chưa đọc"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "priority",
+          "title",
+          "message",
+          "resource",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "NotificationPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponseDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Truyền vào before để lấy trang tiếp; null khi đã hết"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "NotificationUnreadCountResponseDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
+      "NotificationsMarkedReadResponseDto": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Số thông báo vừa chuyển sang đã đọc"
+          }
+        },
+        "required": [
+          "updated"
         ]
       },
       "CreatePerformanceEvaluationDto": {
