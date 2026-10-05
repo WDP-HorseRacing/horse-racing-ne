@@ -1,7 +1,9 @@
 allowBuilds:
+  '@firebase/util': false
   '@parcel/watcher': false
   '@scarf/scarf': false
   cpu-features: false
+  msgpackr-extract: false
   protobufjs: false
   ssh2: false
   unrs-resolver: false

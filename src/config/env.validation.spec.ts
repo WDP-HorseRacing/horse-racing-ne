@@ -32,6 +32,22 @@ describe('validateEnvironment', () => {
     ).toThrow('MONGO_URI is required');
   });
 
+  it('accepts a configuration without Firebase', () => {
+    expect(() => validateEnvironment(validEnvironment)).not.toThrow();
+  });
+
+  it('rejects a partial Firebase service account', () => {
+    expect(() =>
+      validateEnvironment({
+        ...validEnvironment,
+        FIREBASE_PROJECT_ID: 'racehorse',
+        FIREBASE_CLIENT_EMAIL: 'fcm@racehorse.iam.gserviceaccount.com',
+      }),
+    ).toThrow(
+      'FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY must be set together',
+    );
+  });
+
   it('rejects an invalid S3 endpoint', () => {
     expect(() =>
       validateEnvironment({ ...validEnvironment, S3_ENDPOINT: 'minio' }),
