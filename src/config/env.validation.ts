@@ -8,6 +8,7 @@ export function validateEnvironment(config: Record<string, unknown>) {
     'DB_USERNAME',
     'DB_PASSWORD',
     'DB_NAME',
+    'MONGO_URI',
     'REDIS_HOST',
     'KEYCLOAK_AUTH_SERVER_URL',
     'KEYCLOAK_REALM',

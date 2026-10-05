@@ -5,6 +5,7 @@ const validEnvironment = {
   DB_USERNAME: 'racehorse',
   DB_PASSWORD: 'racehorse',
   DB_NAME: 'racehorse',
+  MONGO_URI: 'mongodb://127.0.0.1:27017/racehorse',
   REDIS_HOST: '127.0.0.1',
   KEYCLOAK_AUTH_SERVER_URL: 'http://127.0.0.1:8080',
   KEYCLOAK_REALM: 'racehorse',
@@ -23,6 +24,12 @@ describe('validateEnvironment', () => {
       S3_FORCE_PATH_STYLE: true,
       S3_PRESIGNED_URL_TTL_SECONDS: 900,
     });
+  });
+
+  it('requires the MongoDB connection string', () => {
+    expect(() =>
+      validateEnvironment({ ...validEnvironment, MONGO_URI: '' }),
+    ).toThrow('MONGO_URI is required');
   });
 
   it('rejects an invalid S3 endpoint', () => {
