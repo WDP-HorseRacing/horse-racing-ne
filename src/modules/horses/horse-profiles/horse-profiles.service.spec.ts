@@ -1,3 +1,4 @@
+import { clubToday } from '../../../common/utils/club-date';
 import {
   BadRequestException,
   ConflictException,
@@ -862,6 +863,33 @@ describe('HorseProfilesService', () => {
         }),
       ).rejects.toThrow(
         new BadRequestException('Cha/mẹ phải sinh trước ngựa con'),
+      );
+      expect(horseRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('does not recheck an unchanged date of birth of a horse under 1 year', async () => {
+      horse.dateOfBirth = clubToday();
+      await service.update(cm(), HORSE_ID, {
+        version: 3,
+        name: 'Gió Mới',
+        dateOfBirth: horse.dateOfBirth,
+      });
+      expect(horseRepository.update).toHaveBeenCalledWith(
+        { id: HORSE_ID, version: 3 },
+        { name: 'Gió Mới' },
+      );
+    });
+
+    it('rejects a changed date of birth under 1 year with 400', async () => {
+      await expect(
+        service.update(cm(), HORSE_ID, {
+          version: 3,
+          dateOfBirth: clubToday(),
+        }),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'Ngày sinh không hợp lệ: câu lạc bộ chỉ nhận ngựa đủ 1 tuổi trở lên',
+        ),
       );
       expect(horseRepository.update).not.toHaveBeenCalled();
     });

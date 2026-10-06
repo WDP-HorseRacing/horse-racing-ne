@@ -76,6 +76,16 @@ export const HORSE_MEASUREMENT_SPECS: Record<
 export const MEASUREMENT_BACKDATE_MAX_DAYS = 7;
 
 /**
+ * Tuổi nhỏ nhất (năm) của ngựa câu lạc bộ nhận quản lý
+ */
+export const MIN_HORSE_AGE_YEARS = 1;
+
+/**
+ * Tuổi lớn nhất (năm) chấp nhận khi nhập ngày sinh
+ */
+export const MAX_HORSE_AGE_YEARS = 40;
+
+/**
  * Thân nhiệt (°C) vượt quá ngưỡng này thì sinh cảnh báo sốt khẩn.
  */
 export const FEVER_THRESHOLD_CELSIUS = 38.6;

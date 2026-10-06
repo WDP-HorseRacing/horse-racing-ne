@@ -1,4 +1,4 @@
-import { clubToday, toClubDate } from './club-date';
+import { clubToday, subtractYears, toClubDate } from './club-date';
 
 describe('toClubDate', () => {
   it('converts an instant to the club calendar date', () => {
@@ -8,6 +8,18 @@ describe('toClubDate', () => {
 
   it('accepts an ISO string', () => {
     expect(toClubDate('2026-10-04T17:00:00.000Z')).toBe('2026-10-05');
+  });
+});
+
+describe('subtractYears', () => {
+  it('moves the date back by whole years', () => {
+    expect(subtractYears('2026-10-06', 1)).toBe('2025-10-06');
+    expect(subtractYears('2026-10-06', 40)).toBe('1986-10-06');
+  });
+
+  it('turns 29 February into 28 February in a non-leap year', () => {
+    expect(subtractYears('2028-02-29', 1)).toBe('2027-02-28');
+    expect(subtractYears('2028-02-29', 4)).toBe('2024-02-29');
   });
 });
 

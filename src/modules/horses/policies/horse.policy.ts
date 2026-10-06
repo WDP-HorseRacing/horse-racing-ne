@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
+import { subtractYears } from '../../../common/utils/club-date';
+import { fieldBadRequest } from '../../../common/utils/field-errors';
 import type { UserEntity } from '../../users/entities/user.entity';
 import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseGender } from '../enums/horse-gender.enum';
@@ -29,7 +31,9 @@ import {
   LIFECYCLE_VERBS,
   HORSE_NOT_DELETED_MESSAGE,
   HORSE_NOT_FOUND_MESSAGE,
+  MAX_HORSE_AGE_YEARS,
   MEASUREMENT_BACKDATE_MAX_DAYS,
+  MIN_HORSE_AGE_YEARS,
   MS_PER_DAY,
   RACE_APTITUDE_FIELD,
   WEIGHT_DROP_PERCENT,
@@ -125,18 +129,32 @@ export function assertParentProfiles(
 }
 
 /**
- * Chặn ngày sinh ở tương lai
+ * Kiểm tra ngày sinh nằm trong khoảng tuổi câu lạc bộ nhận
+ *
+ * - Muộn hơn ngày này MIN_HORSE_AGE_YEARS năm trước: 400, chưa đủ tuổi
+ * - Sớm hơn ngày này MAX_HORSE_AGE_YEARS năm trước: 400, quá tuổi
+ * - Không có ngày sinh: bỏ qua
  *
  * @param dateOfBirth Ngày sinh (YYYY-MM-DD), null hoặc undefined nếu không có
  * @param today Ngày hôm nay theo giờ câu lạc bộ (YYYY-MM-DD)
- * @throws BadRequestException Nếu ngày sinh sau hôm nay
+ * @throws BadRequestException Nếu ngựa chưa đủ tuổi hoặc quá tuổi, lỗi gắn ô `dateOfBirth`
  */
 export function assertDateOfBirth(
   dateOfBirth: string | null | undefined,
   today: string,
 ): void {
-  if (dateOfBirth && dateOfBirth > today) {
-    throw new BadRequestException('Ngày sinh không được ở tương lai');
+  if (!dateOfBirth) return;
+  if (dateOfBirth > subtractYears(today, MIN_HORSE_AGE_YEARS)) {
+    throw fieldBadRequest(
+      'dateOfBirth',
+      `Ngày sinh không hợp lệ: câu lạc bộ chỉ nhận ngựa đủ ${MIN_HORSE_AGE_YEARS} tuổi trở lên`,
+    );
+  }
+  if (dateOfBirth < subtractYears(today, MAX_HORSE_AGE_YEARS)) {
+    throw fieldBadRequest(
+      'dateOfBirth',
+      `Ngày sinh không hợp lệ: ngựa không thể quá ${MAX_HORSE_AGE_YEARS} tuổi`,
+    );
   }
 }
 

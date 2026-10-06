@@ -222,7 +222,7 @@ export class HorseProfilesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin hồ sơ ngựa
    * @returns Promise trả về hồ sơ vừa tạo
-   * @throws BadRequestException Nếu ngày sinh ở tương lai, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ
+   * @throws BadRequestException Nếu ngày sinh ngoài khoảng tuổi câu lạc bộ nhận, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ
    * @throws NotFoundException Nếu không tìm thấy tệp ảnh của người gọi
    * @throws ConflictException Nếu số chip đã được dùng (kể cả hồ sơ đã xóa), ảnh chưa được tải lên xong, khu không xếp được, hoặc chủ sở hữu không còn hoạt động
    */
@@ -324,7 +324,6 @@ export class HorseProfilesService {
     await this.assertEditableFields(actor, caller.id, horse.id, fields);
     assertNotTransferred(horse);
     this.assertCurrentVersion(horse, version);
-    assertDateOfBirth(fields.dateOfBirth, clubToday());
     const microchipId =
       fields.microchipId === undefined
         ? undefined
@@ -339,6 +338,7 @@ export class HorseProfilesService {
       microchipId,
     });
     if (Object.keys(changes).length === 0) return toHorseResponse(horse);
+    assertDateOfBirth(changes.dateOfBirth, clubToday());
     if (changes.mediaId) {
       await this.media.assertAttachableHorsePhoto(caller.id, changes.mediaId);
     }

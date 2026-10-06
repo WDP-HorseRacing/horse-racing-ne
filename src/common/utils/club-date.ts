@@ -20,3 +20,20 @@ export function toClubDate(date: Date | string): string {
 export function clubToday(): string {
   return toClubDate(new Date());
 }
+
+/**
+ * Lùi một ngày đi số năm cho trước theo lịch
+ *
+ * - Ngày 29/02 lùi về năm không nhuận thì thành 28/02
+ *
+ * @param date Ngày dạng YYYY-MM-DD
+ * @param years Số năm cần lùi
+ * @returns Ngày dạng YYYY-MM-DD
+ */
+export function subtractYears(date: string, years: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  const target = year - years;
+  const lastDay = new Date(Date.UTC(target, month, 0)).getUTCDate();
+  const shifted = new Date(Date.UTC(target, month - 1, Math.min(day, lastDay)));
+  return shifted.toISOString().slice(0, 10);
+}

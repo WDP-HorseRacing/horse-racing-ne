@@ -608,16 +608,45 @@ describe('horse.policy', () => {
   });
 
   describe('assertDateOfBirth', () => {
-    it('accepts today, the past and a missing date', () => {
-      expect(() => assertDateOfBirth('2026-09-23', '2026-09-23')).not.toThrow();
-      expect(() => assertDateOfBirth('2020-01-01', '2026-09-23')).not.toThrow();
-      expect(() => assertDateOfBirth(null, '2026-09-23')).not.toThrow();
-      expect(() => assertDateOfBirth(undefined, '2026-09-23')).not.toThrow();
+    const today = '2026-10-06';
+    const tooYoung =
+      'Ngày sinh không hợp lệ: câu lạc bộ chỉ nhận ngựa đủ 1 tuổi trở lên';
+    const tooOld = 'Ngày sinh không hợp lệ: ngựa không thể quá 40 tuổi';
+
+    it('accepts both age bounds and a missing date', () => {
+      expect(() => assertDateOfBirth('2025-10-06', today)).not.toThrow();
+      expect(() => assertDateOfBirth('1986-10-06', today)).not.toThrow();
+      expect(() => assertDateOfBirth(null, today)).not.toThrow();
+      expect(() => assertDateOfBirth(undefined, today)).not.toThrow();
     });
 
-    it('rejects a date after today with 400', () => {
-      expect(() => assertDateOfBirth('2026-09-24', '2026-09-23')).toThrow(
-        new BadRequestException('Ngày sinh không được ở tương lai'),
+    it('rejects a horse younger than 1 year on the dateOfBirth field', () => {
+      expect(() => assertDateOfBirth('2025-10-07', today)).toThrow(
+        new BadRequestException(tooYoung),
+      );
+      expect(() => assertDateOfBirth('2026-10-07', today)).toThrow(
+        new BadRequestException(tooYoung),
+      );
+      try {
+        assertDateOfBirth('2025-10-07', today);
+      } catch (error) {
+        expect((error as BadRequestException).getResponse()).toEqual({
+          message: tooYoung,
+          errors: [{ field: 'dateOfBirth', message: tooYoung }],
+        });
+      }
+    });
+
+    it('rejects a horse older than 40 years', () => {
+      expect(() => assertDateOfBirth('1986-10-05', today)).toThrow(
+        new BadRequestException(tooOld),
+      );
+    });
+
+    it('uses 28 February a year earlier when today is 29 February', () => {
+      expect(() => assertDateOfBirth('2027-02-28', '2028-02-29')).not.toThrow();
+      expect(() => assertDateOfBirth('2027-03-01', '2028-02-29')).toThrow(
+        new BadRequestException(tooYoung),
       );
     });
   });
