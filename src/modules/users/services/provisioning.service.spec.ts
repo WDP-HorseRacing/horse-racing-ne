@@ -34,7 +34,7 @@ describe('ProvisioningService.requireProvisionedUser', () => {
       service.requireProvisionedUser({ sub: 'kc-1' }),
     ).rejects.toThrow(
       new UnauthorizedException(
-        'Tài khoản chưa được cấp. Vui lòng liên hệ Club Manager.',
+        'Tài khoản chưa được cấp. Vui lòng liên hệ Quản lý câu lạc bộ.',
       ),
     );
   });
@@ -48,7 +48,7 @@ describe('ProvisioningService.requireProvisionedUser', () => {
         service.requireProvisionedUser({ sub: 'kc-1' }),
       ).rejects.toThrow(
         new UnauthorizedException(
-          'Tài khoản không ở trạng thái hoạt động. Vui lòng liên hệ Club Manager.',
+          'Tài khoản không ở trạng thái hoạt động. Vui lòng liên hệ Quản lý câu lạc bộ.',
         ),
       );
     },

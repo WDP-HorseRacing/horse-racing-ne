@@ -406,7 +406,7 @@ export class CareSchedulesService {
     if (!userId) return;
     if (!(await this.isValidAssignee(manager, horseId, userId))) {
       throw new BadRequestException(
-        'Người được giao phải là Veterinarian đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa',
+        'Người được giao phải là Bác sĩ thú y đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa',
       );
     }
   }

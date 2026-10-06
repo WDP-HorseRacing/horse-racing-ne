@@ -113,7 +113,7 @@ export function assertHorseHasBarn<T extends Pick<HorseEntity, 'barnId'>>(
 ): asserts horse is T & { barnId: string } {
   if (horse.barnId === null) {
     throw new ConflictException(
-      'Ngựa chưa được xếp khu chuồng, vui lòng liên hệ Club Manager để xếp khu trước',
+      'Ngựa chưa được xếp khu chuồng, vui lòng liên hệ Quản lý câu lạc bộ để xếp khu trước',
     );
   }
 }

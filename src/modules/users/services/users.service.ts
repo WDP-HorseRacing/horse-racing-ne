@@ -344,7 +344,7 @@ export class UsersService {
     });
     if (others === 0) {
       throw new ConflictException(
-        'Câu lạc bộ phải còn ít nhất một Club Manager đang hoạt động',
+        'Câu lạc bộ phải còn ít nhất một Quản lý câu lạc bộ đang hoạt động',
       );
     }
   }

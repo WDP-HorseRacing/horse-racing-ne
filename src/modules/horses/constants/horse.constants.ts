@@ -86,6 +86,11 @@ export const MIN_HORSE_AGE_YEARS = 1;
 export const MAX_HORSE_AGE_YEARS = 40;
 
 /**
+ * Số năm tối thiểu cha hoặc mẹ phải sinh trước ngựa con
+ */
+export const MIN_PARENT_AGE_GAP_YEARS = 2;
+
+/**
  * Thân nhiệt (°C) vượt quá ngưỡng này thì sinh cảnh báo sốt khẩn.
  */
 export const FEVER_THRESHOLD_CELSIUS = 38.6;

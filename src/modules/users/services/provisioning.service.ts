@@ -33,12 +33,12 @@ export class ProvisioningService {
     const account = await lookupAccount(this.users.manager, claims.sub);
     if (account.kind === 'NOT_FOUND') {
       throw new UnauthorizedException(
-        'Tài khoản chưa được cấp. Vui lòng liên hệ Club Manager.',
+        'Tài khoản chưa được cấp. Vui lòng liên hệ Quản lý câu lạc bộ.',
       );
     }
     if (account.kind === 'INACTIVE') {
       throw new UnauthorizedException(
-        'Tài khoản không ở trạng thái hoạt động. Vui lòng liên hệ Club Manager.',
+        'Tài khoản không ở trạng thái hoạt động. Vui lòng liên hệ Quản lý câu lạc bộ.',
       );
     }
     return account.user;

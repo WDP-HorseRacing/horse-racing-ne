@@ -190,7 +190,7 @@ describe('StallsService', () => {
       rows.set(HorseEntity, { id: 'h1', barnId: null });
       await expect(move()).rejects.toThrow(
         new ConflictException(
-          'Ngựa chưa được xếp khu chuồng, vui lòng liên hệ Club Manager để xếp khu trước',
+          'Ngựa chưa được xếp khu chuồng, vui lòng liên hệ Quản lý câu lạc bộ để xếp khu trước',
         ),
       );
       expect(manager.save).not.toHaveBeenCalled();

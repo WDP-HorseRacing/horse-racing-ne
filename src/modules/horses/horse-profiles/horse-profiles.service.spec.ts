@@ -809,7 +809,7 @@ describe('HorseProfilesService', () => {
   describe('update pedigree and photo', () => {
     const cm = () => actorWith(UserRole.CLUB_MANAGER);
 
-    it('rejects a date of birth on or after a soft-deleted child with 400', async () => {
+    it('rejects a date of birth less than 2 years before a soft-deleted child with 400', async () => {
       children = [
         {
           id: 'foal',
@@ -824,7 +824,9 @@ describe('HorseProfilesService', () => {
           dateOfBirth: '2024-06-01',
         }),
       ).rejects.toThrow(
-        new BadRequestException('Cha/mẹ phải sinh trước ngựa con'),
+        new BadRequestException(
+          'Ngày sinh này phải trước ngày sinh của ngựa con sớm nhất ít nhất 2 năm',
+        ),
       );
       expect(horseRepository.update).not.toHaveBeenCalled();
     });
@@ -841,7 +843,7 @@ describe('HorseProfilesService', () => {
       );
     });
 
-    it('still requires a kept live dam to be born before the horse', async () => {
+    it('still requires a kept live dam to be 2 years older than the horse', async () => {
       horse.damId = 'live-dam';
       horses.findById.mockImplementation((id: string) =>
         Promise.resolve(
@@ -862,7 +864,7 @@ describe('HorseProfilesService', () => {
           dateOfBirth: '2020-03-01',
         }),
       ).rejects.toThrow(
-        new BadRequestException('Cha/mẹ phải sinh trước ngựa con'),
+        new BadRequestException('Ngựa mẹ phải lớn hơn ngựa con ít nhất 2 tuổi'),
       );
       expect(horseRepository.update).not.toHaveBeenCalled();
     });

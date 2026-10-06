@@ -34,6 +34,7 @@ import {
   MAX_HORSE_AGE_YEARS,
   MEASUREMENT_BACKDATE_MAX_DAYS,
   MIN_HORSE_AGE_YEARS,
+  MIN_PARENT_AGE_GAP_YEARS,
   MS_PER_DAY,
   RACE_APTITUDE_FIELD,
   WEIGHT_DROP_PERCENT,
@@ -87,7 +88,7 @@ export function assertParentIds(
     throw new BadRequestException('Ngựa không thể là cha/mẹ của chính nó');
   }
   if (sireId && damId && sireId === damId) {
-    throw new BadRequestException('Sire và dam không được trùng nhau');
+    throw new BadRequestException('Ngựa cha và ngựa mẹ không được trùng nhau');
   }
 }
 
@@ -95,12 +96,13 @@ export function assertParentIds(
  * Kiểm tra giới tính và ngày sinh của cha mẹ so với ngựa con
  *
  * - Cha phải là ngựa đực (MALE hoặc GELDING), mẹ phải là ngựa cái
- * - Cha mẹ phải sinh trước ngựa con; thiếu ngày sinh ở một bên thì bỏ qua
+ * - Cha mẹ phải sinh trước ngựa con ít nhất MIN_PARENT_AGE_GAP_YEARS năm, đúng bằng thì qua
+ * - Thiếu ngày sinh ở một bên thì bỏ qua khoảng cách tuổi
  *
  * @param child Ngày sinh (và id nếu có) của ngựa con
  * @param sire Hồ sơ cha, null nếu bỏ trống
  * @param dam Hồ sơ mẹ, null nếu bỏ trống
- * @throws BadRequestException Nếu cha không phải ngựa đực, mẹ không phải ngựa cái, hoặc cha/mẹ không sinh trước ngựa con
+ * @throws BadRequestException Nếu cha không phải ngựa đực hoặc chưa đủ khoảng cách tuổi (lỗi gắn ô `sireId`), mẹ không phải ngựa cái hoặc chưa đủ khoảng cách tuổi (lỗi gắn ô `damId`)
  */
 export function assertParentProfiles(
   child: ChildProfile,
@@ -112,19 +114,27 @@ export function assertParentProfiles(
     sire.gender !== HorseGender.MALE &&
     sire.gender !== HorseGender.GELDING
   ) {
-    throw new BadRequestException('Ngựa cha phải là ngựa đực');
+    throw fieldBadRequest('sireId', 'Ngựa cha phải là ngựa đực');
   }
   if (dam && dam.gender !== HorseGender.FEMALE) {
-    throw new BadRequestException('Ngựa mẹ phải là ngựa cái');
+    throw fieldBadRequest('damId', 'Ngựa mẹ phải là ngựa cái');
   }
-  for (const parent of [sire, dam]) {
-    if (
-      parent?.dateOfBirth &&
-      child.dateOfBirth &&
-      parent.dateOfBirth >= child.dateOfBirth
-    ) {
-      throw new BadRequestException('Cha/mẹ phải sinh trước ngựa con');
-    }
+  if (!child.dateOfBirth) return;
+  const latestParentBirthDate = subtractYears(
+    child.dateOfBirth,
+    MIN_PARENT_AGE_GAP_YEARS,
+  );
+  if (sire?.dateOfBirth && sire.dateOfBirth > latestParentBirthDate) {
+    throw fieldBadRequest(
+      'sireId',
+      `Ngựa cha phải lớn hơn ngựa con ít nhất ${MIN_PARENT_AGE_GAP_YEARS} tuổi`,
+    );
+  }
+  if (dam?.dateOfBirth && dam.dateOfBirth > latestParentBirthDate) {
+    throw fieldBadRequest(
+      'damId',
+      `Ngựa mẹ phải lớn hơn ngựa con ít nhất ${MIN_PARENT_AGE_GAP_YEARS} tuổi`,
+    );
   }
 }
 
@@ -159,14 +169,15 @@ export function assertDateOfBirth(
 }
 
 /**
- * Kiểm tra ngày sinh mới của một con ngựa đang làm cha/mẹ vẫn trước ngày sinh của các con
+ * Kiểm tra ngày sinh mới của một con ngựa đang làm cha/mẹ vẫn trước ngày sinh của các con ít nhất MIN_PARENT_AGE_GAP_YEARS năm
  *
  * - Chỉ cần so với con sinh sớm nhất (nơi gọi tính cả con đã xóa hồ sơ)
+ * - Đúng bằng khoảng cách tối thiểu thì qua
  * - Thiếu ngày sinh ở một bên thì bỏ qua, giống luật cha/mẹ khi tạo ngựa
  *
  * @param dateOfBirth Ngày sinh mới của ngựa (YYYY-MM-DD), null nếu không có
  * @param earliestChildBirthDate Ngày sinh sớm nhất trong các ngựa con (YYYY-MM-DD), null nếu không có
- * @throws BadRequestException Nếu ngày sinh mới không trước con sinh sớm nhất
+ * @throws BadRequestException Nếu ngày sinh mới chưa đủ khoảng cách với con sinh sớm nhất, lỗi gắn ô `dateOfBirth`
  */
 export function assertBornBeforeChildren(
   dateOfBirth: string | null,
@@ -175,9 +186,13 @@ export function assertBornBeforeChildren(
   if (
     dateOfBirth &&
     earliestChildBirthDate &&
-    dateOfBirth >= earliestChildBirthDate
+    dateOfBirth >
+      subtractYears(earliestChildBirthDate, MIN_PARENT_AGE_GAP_YEARS)
   ) {
-    throw new BadRequestException('Cha/mẹ phải sinh trước ngựa con');
+    throw fieldBadRequest(
+      'dateOfBirth',
+      `Ngày sinh này phải trước ngày sinh của ngựa con sớm nhất ít nhất ${MIN_PARENT_AGE_GAP_YEARS} năm`,
+    );
   }
 }
 
@@ -186,7 +201,7 @@ export function assertBornBeforeChildren(
  *
  * @param usage Ngựa đang là cha (asSire) hoặc mẹ (asDam) của ngựa khác, tính cả con đã xóa hồ sơ
  * @param gender Giới tính mới
- * @throws ConflictException Nếu ngựa đang là cha mà đổi thành FEMALE, hoặc đang là mẹ mà đổi khỏi FEMALE
+ * @throws ConflictException Nếu ngựa đang là cha mà đổi thành ngựa cái, hoặc đang là mẹ mà đổi khỏi ngựa cái
  */
 export function assertGenderKeepsPedigree(
   usage: ParentUsage,
@@ -194,12 +209,12 @@ export function assertGenderKeepsPedigree(
 ): void {
   if (usage.asSire && gender === HorseGender.FEMALE) {
     throw new ConflictException(
-      'Ngựa đang là sire của ngựa khác, không thể đổi thành FEMALE',
+      'Ngựa đang là cha của ngựa khác, không thể đổi thành ngựa cái',
     );
   }
   if (usage.asDam && gender !== HorseGender.FEMALE) {
     throw new ConflictException(
-      'Ngựa đang là dam của ngựa khác, phải giữ giới tính FEMALE',
+      'Ngựa đang là mẹ của ngựa khác, phải giữ giới tính ngựa cái',
     );
   }
 }

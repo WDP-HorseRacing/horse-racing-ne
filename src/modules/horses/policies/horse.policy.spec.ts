@@ -542,7 +542,7 @@ describe('horse.policy', () => {
 
     it('rejects the same horse as sire and dam with 400', () => {
       expect(() => assertParentIds(undefined, 'x', 'x')).toThrow(
-        new BadRequestException('Sire và dam không được trùng nhau'),
+        new BadRequestException('Ngựa cha và ngựa mẹ không được trùng nhau'),
       );
     });
   });
@@ -590,14 +590,54 @@ describe('horse.policy', () => {
       ).toThrow(new BadRequestException('Ngựa mẹ phải là ngựa cái'));
     });
 
-    it('rejects a parent born on or after the child', () => {
+    it('accepts a parent born exactly 2 years before the child', () => {
+      expect(() =>
+        assertParentProfiles({ dateOfBirth: '2024-05-10' }, null, {
+          ...mare,
+          dateOfBirth: '2022-05-10',
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects a dam less than 2 years older on the damId field', () => {
+      const message = 'Ngựa mẹ phải lớn hơn ngựa con ít nhất 2 tuổi';
+      expect(() =>
+        assertParentProfiles({ dateOfBirth: '2024-05-10' }, null, {
+          ...mare,
+          dateOfBirth: '2022-05-11',
+        }),
+      ).toThrow(new BadRequestException(message));
+      try {
+        assertParentProfiles({ dateOfBirth: '2024-05-10' }, null, {
+          ...mare,
+          dateOfBirth: '2022-05-11',
+        });
+      } catch (error) {
+        expect((error as BadRequestException).getResponse()).toEqual({
+          message,
+          errors: [{ field: 'damId', message }],
+        });
+      }
+    });
+
+    it('rejects a sire less than 2 years older', () => {
       expect(() =>
         assertParentProfiles(
           child,
-          { ...stallion, dateOfBirth: '2022-01-01' },
+          { ...stallion, dateOfBirth: '2020-06-01' },
           null,
         ),
-      ).toThrow(new BadRequestException('Cha/mẹ phải sinh trước ngựa con'));
+      ).toThrow(
+        new BadRequestException(
+          'Ngựa cha phải lớn hơn ngựa con ít nhất 2 tuổi',
+        ),
+      );
+    });
+
+    it('skips the sire age gap when the sire has no date of birth', () => {
+      expect(() =>
+        assertParentProfiles(child, { ...stallion, dateOfBirth: null }, mare),
+      ).not.toThrow();
     });
 
     it('skips the birth-date check when a date is missing', () => {
@@ -660,10 +700,20 @@ describe('horse.policy', () => {
       expect(() => assertBornBeforeChildren('2015-01-01', null)).not.toThrow();
     });
 
-    it('rejects a date on or after the earliest child with 400', () => {
+    it('accepts a date exactly 2 years before the earliest child', () => {
       expect(() =>
-        assertBornBeforeChildren('2020-01-01', '2020-01-01'),
-      ).toThrow(new BadRequestException('Cha/mẹ phải sinh trước ngựa con'));
+        assertBornBeforeChildren('2022-05-10', '2024-05-10'),
+      ).not.toThrow();
+    });
+
+    it('rejects a date less than 2 years before the earliest child with 400', () => {
+      expect(() =>
+        assertBornBeforeChildren('2023-01-01', '2024-05-10'),
+      ).toThrow(
+        new BadRequestException(
+          'Ngày sinh này phải trước ngày sinh của ngựa con sớm nhất ít nhất 2 năm',
+        ),
+      );
     });
   });
 
