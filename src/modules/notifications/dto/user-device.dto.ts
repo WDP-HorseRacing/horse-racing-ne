@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
-import { DevicePlatform } from '../constants/device-platform.enum';
+import { DevicePlatform } from '../enums/device-platform.enum';
 
 /**
  * Đăng ký thiết bị nhận push FCM cho người gọi.
@@ -19,4 +19,15 @@ export class RegisterDeviceDto {
   @ApiProperty({ enum: DevicePlatform })
   @IsEnum(DevicePlatform)
   platform!: DevicePlatform;
+}
+
+/**
+ * Token FCM trên đường dẫn khi gỡ thiết bị.
+ */
+export class DeviceTokenParamDto {
+  @ApiProperty({ minLength: 1, maxLength: 4096 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(4096)
+  token!: string;
 }

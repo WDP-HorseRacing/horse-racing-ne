@@ -10,9 +10,9 @@ import {
   Min,
 } from 'class-validator';
 import { toQueryBoolean } from '../../../common/utils/query-boolean';
-import { NotificationPriority } from '../constants/notification-priority.enum';
-import { NotificationResourceType } from '../constants/notification-resource-type.enum';
-import { NotificationType } from '../constants/notification-type.enum';
+import { NotificationCategory } from '../enums/notification-category.enum';
+import { NotificationPriority } from '../enums/notification-priority.enum';
+import { NotificationResourceType } from '../enums/notification-resource-type.enum';
 
 /**
  * Lọc và phân trang danh sách thông báo của người gọi (cursor, mới nhất trước).
@@ -32,7 +32,7 @@ export class NotificationListQueryDto {
   })
   @IsOptional()
   @IsString()
-  before?: string;
+  cursor?: string;
 
   @ApiPropertyOptional({
     default: false,
@@ -67,8 +67,8 @@ export class NotificationResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ enum: NotificationType })
-  type!: NotificationType;
+  @ApiProperty({ enum: NotificationCategory })
+  category!: NotificationCategory;
 
   @ApiProperty({ enum: NotificationPriority })
   priority!: NotificationPriority;
@@ -103,7 +103,7 @@ export class NotificationPageResponseDto {
   @ApiProperty({
     type: String,
     nullable: true,
-    description: 'Truyền vào before để lấy trang tiếp; null khi đã hết',
+    description: 'Cursor của trang tiếp theo; null khi đã hết',
   })
   nextCursor!: string | null;
 }
@@ -119,10 +119,10 @@ export class NotificationUnreadCountResponseDto {
 /**
  * Kết quả đánh dấu đã đọc toàn bộ.
  */
-export class NotificationsMarkedReadResponseDto {
+export class NotificationMarkAllReadResponseDto {
   @ApiProperty({
     minimum: 0,
     description: 'Số thông báo vừa chuyển sang đã đọc',
   })
-  updated!: number;
+  count!: number;
 }

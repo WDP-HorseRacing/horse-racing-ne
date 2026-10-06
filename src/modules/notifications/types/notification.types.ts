@@ -1,14 +1,10 @@
-import type { NotificationPriority } from '../constants/notification-priority.enum';
-import type { NotificationResourceType } from '../constants/notification-resource-type.enum';
-import type { NotificationType } from '../constants/notification-type.enum';
-
-/**
- * Đối tượng mà thông báo trỏ tới để client mở đúng màn hình chi tiết.
- */
-export interface NotificationResource {
-  type: NotificationResourceType;
-  id: string;
-}
+import type { NotificationResponseDto } from '../dto/notification.dto';
+import type { NotificationCategory } from '../enums/notification-category.enum';
+import type { NotificationPriority } from '../enums/notification-priority.enum';
+import type {
+  NotificationRecord,
+  NotificationResource,
+} from '../schemas/notification.schema';
 
 /**
  * Nội dung một thông báo cần gửi cho nhiều người nhận.
@@ -19,7 +15,7 @@ export interface NotificationResource {
 export interface NotificationDraft {
   eventId: string;
   recipientIds: string[];
-  type: NotificationType;
+  category: NotificationCategory;
   priority: NotificationPriority;
   title: string;
   message: string;
@@ -29,14 +25,45 @@ export interface NotificationDraft {
 /**
  * Payload đẩy realtime tới client qua sự kiện NOTIFICATION_CREATED_SOCKET_EVENT.
  */
-export interface NotificationCreatedPayload {
-  id: string;
-  type: NotificationType;
-  priority: NotificationPriority;
-  title: string;
-  message: string;
-  resource: NotificationResource | null;
-  createdAt: Date;
+export type NotificationCreatedPayload = Omit<
+  NotificationResponseDto,
+  'readAt'
+>;
+
+/**
+ * Một kênh giao thông báo đã lưu tới người nhận (socket, push mobile...).
+ */
+export interface NotificationChannel {
+  /**
+   * Giao các thông báo vừa lưu tới người nhận của từng thông báo
+   *
+   * @param notifications Các thông báo vừa được lưu mới
+   * @returns Promise hoàn tất khi kênh đã giao xong hoặc đã chuyển cho hàng đợi
+   */
+  deliver(notifications: NotificationRecord[]): Promise<void>;
+}
+
+/**
+ * Dữ liệu một job gửi push trong hàng đợi NOTIFICATION_PUSH_QUEUE.
+ *
+ * - retryTokens: chỉ có khi gửi lại; là các token lần trước gặp lỗi tạm thời. Không có thì gửi tới mọi thiết bị của người nhận
+ */
+export interface NotificationPushJob {
+  notificationId: string;
+  retryTokens?: string[];
+}
+
+/**
+ * Kết quả phân loại các token gửi push lỗi.
+ *
+ * - dead: token không còn hiệu lực, cần xóa
+ * - retry: token gặp lỗi tạm thời, cần gửi lại
+ * - failed: token lỗi vì lý do khác, chỉ cần ghi log (kèm mã lỗi và thông báo lỗi)
+ */
+export interface PushFailureClassification {
+  dead: string[];
+  retry: string[];
+  failed: Array<{ token: string; code: string; message: string }>;
 }
 
 /**

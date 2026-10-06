@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { DevicePlatform } from '../constants/device-platform.enum';
+import { DevicePlatform } from '../enums/device-platform.enum';
 
 /**
  * Thiết bị nhận push FCM của người dùng, lưu ở collection `user_devices`.

@@ -10,15 +10,16 @@ import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { UserStatus } from '../../src/common/enums/user-status.enum';
 import type { Actor } from '../../src/common/types/actor';
-import { DevicePlatform } from '../../src/modules/notifications/constants/device-platform.enum';
-import { NotificationPriority } from '../../src/modules/notifications/constants/notification-priority.enum';
-import { NotificationType } from '../../src/modules/notifications/constants/notification-type.enum';
-import { FcmChannel } from '../../src/modules/notifications/delivery/channels/fcm.channel';
-import { NotificationPushProcessor } from '../../src/modules/notifications/delivery/push/notification-push.processor';
-import type { NotificationPushJob } from '../../src/modules/notifications/delivery/push/notification-push.types';
-import { UserDevicesService } from '../../src/modules/notifications/devices/user-devices.service';
+import { DevicePlatform } from '../../src/modules/notifications/enums/device-platform.enum';
+import { NotificationPriority } from '../../src/modules/notifications/enums/notification-priority.enum';
+import { NotificationCategory } from '../../src/modules/notifications/enums/notification-category.enum';
+import { PushChannel } from '../../src/modules/notifications/delivery/push.channel';
+import { NotificationPushProcessor } from '../../src/modules/notifications/delivery/notification-push.processor';
+import type { NotificationPushJob } from '../../src/modules/notifications/types/notification.types';
+import { NotificationAccessService } from '../../src/modules/notifications/shared/notification-access.service';
+import { UserDevicesService } from '../../src/modules/notifications/user-devices/user-devices.service';
 import {
-  Notification,
+  NotificationRecord,
   NotificationSchema,
 } from '../../src/modules/notifications/schemas/notification.schema';
 import {
@@ -39,12 +40,12 @@ describe('FCM push (MongoDB + Redis)', () => {
   let mongo: TestMongo;
   let redis: StartedTestContainer;
   let connection: ConnectionOptions;
-  let notifications: Model<Notification>;
+  let notifications: Model<NotificationRecord>;
   let devices: Model<UserDevice>;
   let queue: Queue<NotificationPushJob>;
   let queueEvents: QueueEvents;
   let worker: Worker<NotificationPushJob>;
-  let channel: FcmChannel;
+  let channel: PushChannel;
   let outcomes: Array<Record<string, string>>;
   let sent: MulticastMessage[];
 
@@ -69,7 +70,7 @@ describe('FCM push (MongoDB + Redis)', () => {
   beforeAll(async () => {
     mongo = await startTestMongo();
     notifications = mongo.connection.model(
-      Notification.name,
+      NotificationRecord.name,
       NotificationSchema,
     );
     devices = mongo.connection.model(UserDevice.name, UserDeviceSchema);
@@ -82,7 +83,7 @@ describe('FCM push (MongoDB + Redis)', () => {
     queue = new Queue(QUEUE, { connection });
     queueEvents = new QueueEvents(QUEUE, { connection });
     await queueEvents.waitUntilReady();
-    channel = new FcmChannel(queue);
+    channel = new PushChannel(queue);
     const processor = new NotificationPushProcessor(
       notifications,
       devices,
@@ -116,7 +117,7 @@ describe('FCM push (MongoDB + Redis)', () => {
         _id: randomUUID(),
         eventId: randomUUID(),
         recipientId,
-        type: NotificationType.WARNING,
+        category: NotificationCategory.MEASUREMENT_ALERT,
         priority: NotificationPriority.URGENT,
         title: 'KHẨN',
         message: 'Ngựa sốt',
@@ -124,7 +125,7 @@ describe('FCM push (MongoDB + Redis)', () => {
         readAt: null,
         createdAt: new Date(),
       })
-    ).toObject<Notification>();
+    ).toObject<NotificationRecord>();
 
   const device = (token: string, userId: string) =>
     devices.create({
@@ -134,7 +135,7 @@ describe('FCM push (MongoDB + Redis)', () => {
       updatedAt: new Date(),
     });
 
-  const deliverAndWait = async (notification: Notification) => {
+  const deliverAndWait = async (notification: NotificationRecord) => {
     await channel.deliver([notification]);
     const job = await queue.getJob(notification._id);
     await job!.waitUntilFinished(queueEvents, 30_000);
@@ -195,6 +196,18 @@ describe('FCM push (MongoDB + Redis)', () => {
     expect(sent).toHaveLength(1);
   });
 
+  it('does not push again when the same notification is delivered after its job finished', async () => {
+    const vet = randomUUID();
+    await device('t-ok', vet);
+    const notification = await storedNotification(vet);
+
+    await deliverAndWait(notification);
+    await channel.deliver([notification]);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(sent).toHaveLength(1);
+  });
+
   describe('UserDevicesService', () => {
     const users = new Map<string, string>();
     let service: UserDevicesService;
@@ -213,7 +226,10 @@ describe('FCM push (MongoDB + Redis)', () => {
             }),
         },
       } as unknown as DataSource;
-      service = new UserDevicesService(devices, dataSource);
+      service = new UserDevicesService(
+        devices,
+        new NotificationAccessService(notifications, dataSource),
+      );
     });
 
     const user = () => {

@@ -2997,70 +2997,9 @@
         ]
       }
     },
-    "/api/v1/me/devices": {
-      "put": {
-        "description": "Gọi sau khi đăng nhập và mỗi khi FCM cấp token mới. Token đang gắn với tài khoản khác sẽ chuyển sang người gọi.",
-        "operationId": "UserDevicesController_register",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterDeviceDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Register the current device for push notifications",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/v1/me/devices/{token}": {
-      "delete": {
-        "description": "Gọi khi đăng xuất. Token không có hoặc thuộc người khác thì không đổi gì.",
-        "operationId": "UserDevicesController_unregister",
-        "parameters": [
-          {
-            "name": "token",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Unregister a device of the current user",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
     "/api/v1/notifications": {
       "get": {
-        "description": "Mới nhất trước, phân trang bằng cursor: truyền nextCursor của trang trước vào before. Cursor sai định dạng: 400.",
+        "description": "Mới nhất trước, phân trang bằng cursor (nextCursor của trang trước). Cursor sai định dạng: 400.",
         "operationId": "NotificationInboxController_list",
         "parameters": [
           {
@@ -3075,7 +3014,7 @@
             }
           },
           {
-            "name": "before",
+            "name": "cursor",
             "required": false,
             "in": "query",
             "description": "Giá trị nextCursor của trang trước; bỏ trống để lấy trang đầu",
@@ -3204,7 +3143,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationsMarkedReadResponseDto"
+                  "$ref": "#/components/schemas/NotificationMarkAllReadResponseDto"
                 }
               }
             }
@@ -3253,6 +3192,69 @@
           }
         ],
         "summary": "Mark notification as read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/devices": {
+      "put": {
+        "description": "Lưu token FCM của thiết bị cho người gọi. Token đang gắn với tài khoản khác sẽ chuyển sang người gọi.",
+        "operationId": "UserDevicesController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register the current device for push notifications",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/me/devices/{token}": {
+      "delete": {
+        "description": "Token không có hoặc thuộc người khác thì không đổi gì.",
+        "operationId": "UserDevicesController_unregister",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 4096,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unregister a device of the current user",
         "tags": [
           "notifications"
         ]
@@ -11143,29 +11145,6 @@
           "conclusion"
         ]
       },
-      "RegisterDeviceDto": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4096,
-            "description": "FCM registration token của app trên thiết bị"
-          },
-          "platform": {
-            "type": "string",
-            "enum": [
-              "ANDROID",
-              "IOS",
-              "WEB"
-            ]
-          }
-        },
-        "required": [
-          "token",
-          "platform"
-        ]
-      },
       "NotificationResourceDto": {
         "type": "object",
         "properties": {
@@ -11194,14 +11173,17 @@
             "type": "string",
             "format": "uuid"
           },
-          "type": {
+          "category": {
             "type": "string",
             "enum": [
-              "SYSTEM",
-              "INFO",
-              "SUCCESS",
-              "WARNING",
-              "ERROR"
+              "MEASUREMENT_ALERT",
+              "BARN_ASSIGNED",
+              "GROOM_ASSIGNMENT",
+              "MEDICAL_CASE",
+              "TRAINING_LOCK",
+              "HEALTH_STATUS",
+              "EXAM_REQUEST",
+              "CARE_REMINDER"
             ]
           },
           "priority": {
@@ -11240,7 +11222,7 @@
         },
         "required": [
           "id",
-          "type",
+          "category",
           "priority",
           "title",
           "message",
@@ -11261,7 +11243,7 @@
           "nextCursor": {
             "type": "string",
             "nullable": true,
-            "description": "Truyền vào before để lấy trang tiếp; null khi đã hết"
+            "description": "Cursor của trang tiếp theo; null khi đã hết"
           }
         },
         "required": [
@@ -11281,17 +11263,40 @@
           "count"
         ]
       },
-      "NotificationsMarkedReadResponseDto": {
+      "NotificationMarkAllReadResponseDto": {
         "type": "object",
         "properties": {
-          "updated": {
+          "count": {
             "type": "number",
             "minimum": 0,
             "description": "Số thông báo vừa chuyển sang đã đọc"
           }
         },
         "required": [
-          "updated"
+          "count"
+        ]
+      },
+      "RegisterDeviceDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "FCM registration token của app trên thiết bị"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "ANDROID",
+              "IOS",
+              "WEB"
+            ]
+          }
+        },
+        "required": [
+          "token",
+          "platform"
         ]
       },
       "CreatePerformanceEvaluationDto": {

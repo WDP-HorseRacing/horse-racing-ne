@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { NotificationDeliveryModule } from './delivery/notification-delivery.module';
-import { UserDevicesModule } from './devices/user-devices.module';
-import { NotificationInboxModule } from './inbox/notification-inbox.module';
+import { NotificationDeliveryModule } from './delivery/delivery.module';
+import { UserDevicesModule } from './user-devices/user-devices.module';
+import { NotificationInboxModule } from './inbox/inbox.module';
 
 @Module({
   imports: [

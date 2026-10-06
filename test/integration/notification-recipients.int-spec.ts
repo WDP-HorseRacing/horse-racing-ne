@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { UserStatus } from '../../src/common/enums/user-status.enum';
-import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/repositories/notification-recipients.repository';
-import { HorseNotificationsService } from '../../src/modules/notifications/delivery/services/horse-notifications.service';
-import { NotificationsService } from '../../src/modules/notifications/delivery/services/notifications.service';
+import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/notification-recipients.repository';
+import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horse-notifications.service';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
 import { fixtures } from './fixtures';
 import {
   startTestDatabase,
@@ -131,7 +131,7 @@ describe('NotificationRecipientsRepository (Postgres)', () => {
 
     const service = new HorseNotificationsService(
       recipients,
-      {} as NotificationsService,
+      {} as NotificationDeliveryService,
       dataSource,
     );
 

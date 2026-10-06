@@ -5,12 +5,13 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { UserStatus } from '../../src/common/enums/user-status.enum';
 import type { Actor } from '../../src/common/types/actor';
-import { NotificationPriority } from '../../src/modules/notifications/constants/notification-priority.enum';
-import { NotificationType } from '../../src/modules/notifications/constants/notification-type.enum';
+import { NotificationPriority } from '../../src/modules/notifications/enums/notification-priority.enum';
+import { NotificationCategory } from '../../src/modules/notifications/enums/notification-category.enum';
 import { NotificationListQueryDto } from '../../src/modules/notifications/dto';
-import { NotificationInboxService } from '../../src/modules/notifications/inbox/notification-inbox.service';
+import { NotificationInboxService } from '../../src/modules/notifications/inbox/inbox.service';
+import { NotificationAccessService } from '../../src/modules/notifications/shared/notification-access.service';
 import {
-  Notification,
+  NotificationRecord,
   NotificationSchema,
 } from '../../src/modules/notifications/schemas/notification.schema';
 import {
@@ -22,13 +23,13 @@ import {
 
 describe('NotificationInboxService (MongoDB)', () => {
   let mongo: TestMongo;
-  let model: Model<Notification>;
+  let model: Model<NotificationRecord>;
   let inbox: NotificationInboxService;
   const users = new Map<string, string>();
 
   beforeAll(async () => {
     mongo = await startTestMongo();
-    model = mongo.connection.model(Notification.name, NotificationSchema);
+    model = mongo.connection.model(NotificationRecord.name, NotificationSchema);
     await model.init();
     const dataSource = {
       manager: {
@@ -43,7 +44,10 @@ describe('NotificationInboxService (MongoDB)', () => {
           }),
       },
     } as unknown as DataSource;
-    inbox = new NotificationInboxService(model, dataSource);
+    inbox = new NotificationInboxService(
+      model,
+      new NotificationAccessService(model, dataSource),
+    );
   });
 
   afterAll(() => stopTestMongo(mongo));
@@ -67,13 +71,13 @@ describe('NotificationInboxService (MongoDB)', () => {
   const stored = (
     recipientId: string,
     createdAt: string,
-    overrides: Partial<Notification> = {},
+    overrides: Partial<NotificationRecord> = {},
   ) =>
     model.create({
       _id: randomUUID(),
       eventId: randomUUID(),
       recipientId,
-      type: NotificationType.INFO,
+      category: NotificationCategory.BARN_ASSIGNED,
       priority: NotificationPriority.NORMAL,
       title: `T ${createdAt}`,
       message: 'M',
@@ -98,11 +102,11 @@ describe('NotificationInboxService (MongoDB)', () => {
       await stored(me.id, '2026-10-05T01:01:00Z');
       const second = await inbox.list(
         me.actor,
-        query({ limit: 2, before: first.nextCursor! }),
+        query({ limit: 2, cursor: first.nextCursor! }),
       );
       const third = await inbox.list(
         me.actor,
-        query({ limit: 2, before: second.nextCursor! }),
+        query({ limit: 2, cursor: second.nextCursor! }),
       );
 
       expect(first.items.map((n) => n.title)).toEqual([
@@ -127,12 +131,12 @@ describe('NotificationInboxService (MongoDB)', () => {
       }
 
       const seen: string[] = [];
-      let before: string | undefined;
+      let cursor: string | undefined;
       do {
-        const page = await inbox.list(me.actor, query({ limit: 2, before }));
+        const page = await inbox.list(me.actor, query({ limit: 2, cursor }));
         seen.push(...page.items.map((n) => n.id));
-        before = page.nextCursor ?? undefined;
-      } while (before);
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
 
       expect(seen).toHaveLength(5);
       expect([...seen].sort()).toEqual([...ids].sort());
@@ -169,7 +173,7 @@ describe('NotificationInboxService (MongoDB)', () => {
     it('returns the response shape without internal fields', async () => {
       const me = user();
       const created = await stored(me.id, '2026-10-05T00:00:00Z', {
-        resource: { type: 'HORSE', id: 'h1' } as Notification['resource'],
+        resource: { type: 'HORSE', id: 'h1' } as NotificationRecord['resource'],
       });
 
       const page = await inbox.list(me.actor, query());
@@ -177,7 +181,7 @@ describe('NotificationInboxService (MongoDB)', () => {
       expect(page.items).toEqual([
         {
           id: created._id,
-          type: NotificationType.INFO,
+          category: NotificationCategory.BARN_ASSIGNED,
           priority: NotificationPriority.NORMAL,
           title: 'T 2026-10-05T00:00:00Z',
           message: 'M',
@@ -192,7 +196,7 @@ describe('NotificationInboxService (MongoDB)', () => {
       const me = user();
 
       await expect(
-        inbox.list(me.actor, query({ before: 'not-a-cursor' })),
+        inbox.list(me.actor, query({ cursor: 'not-a-cursor' })),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -290,7 +294,7 @@ describe('NotificationInboxService (MongoDB)', () => {
       const theirs = await stored(other.id, '2026-10-05T00:03:00Z');
 
       await expect(inbox.markAllRead(me.actor)).resolves.toEqual({
-        updated: 2,
+        count: 2,
       });
       await expect(inbox.unreadCount(me.actor)).resolves.toEqual({ count: 0 });
       expect((await model.findById(alreadyRead._id).lean())!.readAt).toEqual(

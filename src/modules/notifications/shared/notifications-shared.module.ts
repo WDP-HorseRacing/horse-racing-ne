@@ -1,18 +1,18 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
-  Notification,
+  NotificationRecord,
   NotificationSchema,
 } from '../schemas/notification.schema';
-import { UserDevice, UserDeviceSchema } from '../schemas/user-device.schema';
+import { NotificationAccessService } from './notification-access.service';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Notification.name, schema: NotificationSchema },
-      { name: UserDevice.name, schema: UserDeviceSchema },
+      { name: NotificationRecord.name, schema: NotificationSchema },
     ]),
   ],
-  exports: [MongooseModule],
+  providers: [NotificationAccessService],
+  exports: [NotificationAccessService],
 })
 export class NotificationsSharedModule {}

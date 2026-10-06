@@ -1,15 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import type { HydratedDocument } from 'mongoose';
 import { randomUUID } from 'node:crypto';
-import { NotificationPriority } from '../constants/notification-priority.enum';
-import { NotificationResourceType } from '../constants/notification-resource-type.enum';
-import { NotificationType } from '../constants/notification-type.enum';
+import { NotificationCategory } from '../enums/notification-category.enum';
+import { NotificationPriority } from '../enums/notification-priority.enum';
+import { NotificationResourceType } from '../enums/notification-resource-type.enum';
 
 /**
  * Đối tượng mà thông báo trỏ tới (subdocument, không có _id riêng).
  */
 @Schema({ _id: false })
-export class NotificationResourceRef {
+export class NotificationResource {
   @Prop({ type: String, required: true, enum: NotificationResourceType })
   type!: NotificationResourceType;
 
@@ -21,10 +20,10 @@ export class NotificationResourceRef {
  * Thông báo gửi tới một người nhận, lưu ở collection `notifications`.
  *
  * - Mỗi người nhận một document; `readAt` null là chưa đọc
- * - (eventId, recipientId) là duy nhất để gửi lại cùng sự kiện không sinh trùng
+ * - (eventId, recipientId) là duy nhất: gửi lại cùng sự kiện không sinh thông báo trùng
  */
 @Schema({ collection: 'notifications', versionKey: false })
-export class Notification {
+export class NotificationRecord {
   @Prop({ type: String, default: () => randomUUID() })
   _id!: string;
 
@@ -34,8 +33,8 @@ export class Notification {
   @Prop({ type: String, required: true })
   recipientId!: string;
 
-  @Prop({ type: String, required: true, enum: NotificationType })
-  type!: NotificationType;
+  @Prop({ type: String, required: true, enum: NotificationCategory })
+  category!: NotificationCategory;
 
   @Prop({ type: String, required: true, enum: NotificationPriority })
   priority!: NotificationPriority;
@@ -46,8 +45,8 @@ export class Notification {
   @Prop({ type: String, required: true })
   message!: string;
 
-  @Prop({ type: NotificationResourceRef, default: null })
-  resource!: NotificationResourceRef | null;
+  @Prop({ type: NotificationResource, default: null })
+  resource!: NotificationResource | null;
 
   @Prop({ type: Date, default: null })
   readAt!: Date | null;
@@ -56,9 +55,8 @@ export class Notification {
   createdAt!: Date;
 }
 
-export type NotificationDocument = HydratedDocument<Notification>;
-
-export const NotificationSchema = SchemaFactory.createForClass(Notification);
+export const NotificationSchema =
+  SchemaFactory.createForClass(NotificationRecord);
 
 NotificationSchema.index(
   { eventId: 1, recipientId: 1 },

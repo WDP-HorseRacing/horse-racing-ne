@@ -4,6 +4,16 @@
 export const NOTIFICATION_CREATED_SOCKET_EVENT = 'notification.created';
 
 /**
- * Tên hàng đợi BullMQ chứa việc gửi push FCM cho từng thông báo.
+ * Tên hàng đợi BullMQ chứa việc gửi push cho từng thông báo.
  */
 export const NOTIFICATION_PUSH_QUEUE = 'notification-push';
+
+/**
+ * Tên job gửi push trong NOTIFICATION_PUSH_QUEUE.
+ */
+export const NOTIFICATION_PUSH_JOB = 'push';
+
+/**
+ * Token inject danh sách kênh giao thông báo (NotificationChannel[]).
+ */
+export const NOTIFICATION_CHANNELS = Symbol('NOTIFICATION_CHANNELS');
