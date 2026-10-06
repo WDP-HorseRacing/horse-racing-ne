@@ -1,5 +1,5 @@
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
-import { PerformanceMetricEntity } from '../entities/performance-metric.entity';
+import type { PerformanceMetricPoint } from '../types/performance.types';
 import {
   toHorsePerformanceResponse,
   toSessionPerformanceSummary,
@@ -31,14 +31,16 @@ describe('toSessionPerformanceSummary', () => {
 
 describe('toHorsePerformanceResponse', () => {
   it('counts tracked sessions and keeps the newest point and evaluation first', () => {
-    const point = (sessionId: string, heartRateBpm: number) =>
-      Object.assign(new PerformanceMetricEntity(), {
-        sessionId,
-        recordedAt: new Date('2026-09-18T06:00:00Z'),
-        heartRateBpm,
-        speedMps: '12.000',
-        alertLevel: 'NORMAL',
-      });
+    const point = (
+      sessionParticipantId: string,
+      heartRateBpm: number,
+    ): PerformanceMetricPoint => ({
+      sessionParticipantId,
+      recordedAt: new Date('2026-09-18T06:00:00Z'),
+      heartRateBpm,
+      speedMps: '12.000',
+      alertLevel: 'NORMAL',
+    });
     const evaluation = Object.assign(new PerformanceEvaluationEntity(), {
       createdAt: new Date('2026-09-18T08:00:00Z'),
       score: 8,

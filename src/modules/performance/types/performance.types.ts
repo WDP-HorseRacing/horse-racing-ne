@@ -11,3 +11,14 @@ export interface SessionPerformanceRow {
   maxSpeedMps: string;
   alertCount: number;
 }
+
+/**
+ * Một điểm đo thô của con ngựa, tốc độ đã định dạng 3 chữ số thập phân.
+ */
+export interface PerformanceMetricPoint {
+  sessionParticipantId: string;
+  recordedAt: Date;
+  heartRateBpm: number;
+  speedMps: string;
+  alertLevel: string;
+}

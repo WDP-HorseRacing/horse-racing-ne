@@ -1,8 +1,12 @@
 import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
-import { PerformanceMetricEntity } from '../entities/performance-metric.entity';
+import {
+  PerformanceMetric,
+  PerformanceMetricSchema,
+} from '../schemas/performance-metric.schema';
 import { PerformanceSummariesController } from './performance-summaries.controller';
 import { PerformanceSummariesRepository } from './performance-summaries.repository';
 import { PerformanceSummariesService } from './performance-summaries.service';
@@ -12,9 +16,9 @@ import { PerformanceSummariesService } from './performance-summaries.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      PerformanceMetricEntity,
-      PerformanceEvaluationEntity,
+    TypeOrmModule.forFeature([PerformanceEvaluationEntity]),
+    MongooseModule.forFeature([
+      { name: PerformanceMetric.name, schema: PerformanceMetricSchema },
     ]),
     HorsesSharedModule,
   ],

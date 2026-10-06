@@ -1,3 +1,4 @@
+import { Types, type Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
@@ -6,9 +7,18 @@ import {
   toSessionPerformanceSummary,
 } from '../../src/modules/performance/mappers/performance.mapper';
 import { PerformanceEvaluationEntity } from '../../src/modules/performance/entities/performance-evaluation.entity';
-import { PerformanceMetricEntity } from '../../src/modules/performance/entities/performance-metric.entity';
 import { PerformanceSummariesRepository } from '../../src/modules/performance/performance-summaries/performance-summaries.repository';
+import {
+  PerformanceMetric,
+  PerformanceMetricSchema,
+} from '../../src/modules/performance/schemas/performance-metric.schema';
 import { fixtures } from './fixtures';
+import {
+  clearAllCollections,
+  startTestMongo,
+  stopTestMongo,
+  type TestMongo,
+} from './mongo';
 import {
   startTestDatabase,
   stopTestDatabase,
@@ -16,8 +26,10 @@ import {
   type TestDatabase,
 } from './postgres';
 
-describe('PerformanceSummariesRepository (Postgres)', () => {
+describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () => {
   let db: TestDatabase;
+  let mongo: TestMongo;
+  let metrics: Model<PerformanceMetric>;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let repository: PerformanceSummariesRepository;
@@ -26,15 +38,28 @@ describe('PerformanceSummariesRepository (Postgres)', () => {
     db = await startTestDatabase();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
+    mongo = await startTestMongo();
+    metrics = mongo.connection.model(
+      PerformanceMetric.name,
+      PerformanceMetricSchema,
+    );
+    await metrics.init();
     repository = new PerformanceSummariesRepository(
-      dataSource.getRepository(PerformanceMetricEntity),
+      metrics,
       dataSource.getRepository(PerformanceEvaluationEntity),
+      dataSource,
     );
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(async () => {
+    await stopTestMongo(mongo);
+    await stopTestDatabase(db);
+  });
 
-  beforeEach(() => truncateAll(dataSource));
+  beforeEach(async () => {
+    await truncateAll(dataSource);
+    await clearAllCollections(mongo.connection);
+  });
 
   /**
    * Tạo lớp, giáo án và ghi danh cho một con ngựa, trả về hàm tạo lượt tập theo giờ bắt đầu
@@ -74,24 +99,48 @@ describe('PerformanceSummariesRepository (Postgres)', () => {
          VALUES ($1, 1, $2, $3, $4, 'COMPLETED')`,
         [participantId, sessionId, horseId, enrollmentId],
       );
-      return { sessionId, participantId };
+      return { sessionId, participantId, horseId };
     };
 
     return { horseId, participant };
   };
 
   const metric = (
-    participantId: string,
+    participant: { participantId: string; sessionId: string; horseId: string },
     recordedAt: string,
     heartRateBpm: number,
     speedMps: string,
     alertLevel = 'NORMAL',
   ) =>
-    dataSource.query(
-      `INSERT INTO performance_metrics (session_participant_id, recorded_at, source_id, heart_rate_bpm, speed_mps, alert_level)
-       VALUES ($1, $2, 'sensor-1', $3, $4, $5)`,
-      [participantId, recordedAt, heartRateBpm, speedMps, alertLevel],
-    );
+    metrics.create({
+      recordedAt: new Date(recordedAt),
+      series: {
+        horseId: participant.horseId,
+        sessionParticipantId: participant.participantId,
+        sessionId: participant.sessionId,
+        sourceId: 'sensor-1',
+      },
+      heartRateBpm,
+      speedMps: Types.Decimal128.fromString(speedMps),
+      alertLevel,
+    });
+
+  it('stores metrics in a time-series collection keyed by recordedAt and series', async () => {
+    const [info] = await mongo.connection
+      .db!.listCollections({ name: 'performance_metrics' })
+      .toArray();
+
+    expect(info).toMatchObject({
+      type: 'timeseries',
+      options: {
+        timeseries: {
+          timeField: 'recordedAt',
+          metaField: 'series',
+          granularity: 'seconds',
+        },
+      },
+    });
+  });
 
   describe('sessionSummaries', () => {
     it('aggregates each session of the horse, newest session first, with rounding and alert count', async () => {
@@ -101,23 +150,11 @@ describe('PerformanceSummariesRepository (Postgres)', () => {
       const newer = await winx.participant('2026-10-03T01:00:00Z');
       const foreign = await other.participant('2026-10-04T01:00:00Z');
 
-      await metric(older.participantId, '2026-10-01T01:00:00Z', 100, '10.000');
-      await metric(
-        older.participantId,
-        '2026-10-01T01:00:01Z',
-        101,
-        '10.001',
-        'HIGH',
-      );
-      await metric(
-        older.participantId,
-        '2026-10-01T01:00:02Z',
-        101,
-        '10.001',
-        'CRITICAL',
-      );
-      await metric(newer.participantId, '2026-10-03T01:00:00Z', 150, '12.5');
-      await metric(foreign.participantId, '2026-10-04T01:00:00Z', 200, '20');
+      await metric(older, '2026-10-01T01:00:00Z', 100, '10.000');
+      await metric(older, '2026-10-01T01:00:01Z', 101, '10.001', 'HIGH');
+      await metric(older, '2026-10-01T01:00:02Z', 101, '10.001', 'CRITICAL');
+      await metric(newer, '2026-10-03T01:00:00Z', 150, '12.5');
+      await metric(foreign, '2026-10-04T01:00:00Z', 200, '20');
 
       const rows = await repository.sessionSummaries(winx.horseId);
 
@@ -145,9 +182,9 @@ describe('PerformanceSummariesRepository (Postgres)', () => {
 
     it('rounds the average heart rate half up', async () => {
       const winx = await enrolledHorse('Winx');
-      const { participantId } = await winx.participant('2026-10-01T01:00:00Z');
-      await metric(participantId, '2026-10-01T01:00:00Z', 100, '1');
-      await metric(participantId, '2026-10-01T01:00:01Z', 101, '2');
+      const participant = await winx.participant('2026-10-01T01:00:00Z');
+      await metric(participant, '2026-10-01T01:00:00Z', 100, '1');
+      await metric(participant, '2026-10-01T01:00:01Z', 101, '2');
 
       const [row] = await repository.sessionSummaries(winx.horseId);
 
@@ -162,11 +199,10 @@ describe('PerformanceSummariesRepository (Postgres)', () => {
       const winx = await enrolledHorse('Winx');
       await winx.participant('2026-09-01T00:00:00Z');
       const first = await winx.participant('2026-09-02T00:00:00Z');
-      await metric(first.participantId, '2026-09-02T00:00:00Z', 90, '9');
+      await metric(first, '2026-09-02T00:00:00Z', 90, '9');
       for (let day = 0; day < 100; day++) {
         const at = new Date(Date.UTC(2026, 9, 1, 0, 0, day)).toISOString();
-        const { participantId } = await winx.participant(at);
-        await metric(participantId, at, 100, '10');
+        await metric(await winx.participant(at), at, 100, '10');
       }
 
       const rows = await repository.sessionSummaries(winx.horseId);
@@ -183,16 +219,16 @@ describe('PerformanceSummariesRepository (Postgres)', () => {
       const a = await winx.participant('2026-10-01T01:00:00Z');
       const b = await winx.participant('2026-10-02T01:00:00Z');
       const foreign = await other.participant('2026-10-02T01:00:00Z');
-      await metric(foreign.participantId, '2026-12-01T00:00:00Z', 200, '20');
+      await metric(foreign, '2026-12-01T00:00:00Z', 200, '20');
       for (let second = 0; second < 60; second++) {
         await metric(
-          a.participantId,
+          a,
           new Date(Date.UTC(2026, 9, 1, 1, 0, second)).toISOString(),
           100 + second,
           '10',
         );
         await metric(
-          b.participantId,
+          b,
           new Date(Date.UTC(2026, 9, 2, 1, 0, second)).toISOString(),
           150,
           '12.25',

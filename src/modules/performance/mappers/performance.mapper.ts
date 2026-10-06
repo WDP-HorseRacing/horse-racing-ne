@@ -5,8 +5,10 @@ import {
   SessionPerformanceSummaryDto,
 } from '../dto/horse-performance.response.dto';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
-import { PerformanceMetricEntity } from '../entities/performance-metric.entity';
-import type { SessionPerformanceRow } from '../types/performance.types';
+import type {
+  PerformanceMetricPoint,
+  SessionPerformanceRow,
+} from '../types/performance.types';
 
 /**
  * Chuyển dòng tổng hợp chỉ số của một buổi tập sang DTO.
@@ -31,11 +33,11 @@ export function toSessionPerformanceSummary(
 /**
  * Chuyển một điểm đo thô sang DTO.
  *
- * @param metric Thực thể điểm đo
+ * @param metric Điểm đo
  * @returns PerformanceMetricPointDto - Điểm đo
  */
 export function toMetricPoint(
-  metric: PerformanceMetricEntity,
+  metric: PerformanceMetricPoint,
 ): PerformanceMetricPointDto {
   return {
     recordedAt: metric.recordedAt,
@@ -71,14 +73,14 @@ export function toPerformanceEvaluation(
  */
 export function toHorsePerformanceResponse(
   horseId: string,
-  metrics: PerformanceMetricEntity[],
+  metrics: PerformanceMetricPoint[],
   evaluations: PerformanceEvaluationEntity[],
 ): HorsePerformanceResponseDto {
   const recentMetrics = metrics.map(toMetricPoint);
   return {
     horseId,
     sessionsTracked: new Set(
-      metrics.map((metric) => metric.sessionParticipantId ?? (metric as any).sessionId),
+      metrics.map((metric) => metric.sessionParticipantId),
     ).size,
     latestMetric: recentMetrics[0] ?? null,
     recentMetrics,
