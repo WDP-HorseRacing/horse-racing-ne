@@ -51,6 +51,7 @@ describe('HorseProfilesService', () => {
   let ownerships: {
     recordOwnerChange: jest.Mock;
     currentOwnerSince: jest.Mock;
+    periodsOfHorse: jest.Mock;
   };
 
   let horse: HorseRow;
@@ -100,6 +101,7 @@ describe('HorseProfilesService', () => {
     ownerships = {
       recordOwnerChange: jest.fn().mockResolvedValue(undefined),
       currentOwnerSince: jest.fn().mockResolvedValue(null),
+      periodsOfHorse: jest.fn().mockResolvedValue([]),
     };
     horse = {
       id: HORSE_ID,

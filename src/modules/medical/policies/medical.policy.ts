@@ -7,6 +7,8 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { toClubDate } from '../../../common/utils/club-date';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
+import type { OwnershipPeriod } from '../../horses/types/horse.types';
 import { CareScheduleStatus } from '../constants/care-schedule.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import {
@@ -383,6 +385,31 @@ export function assertCostAdjustable(status: MedicalCaseStatus): void {
   if (status !== MedicalCaseStatus.CLOSED) {
     throw new ConflictException('Chỉ điều chỉnh chi phí của bệnh án đã đóng');
   }
+}
+
+/**
+ * Kiểm tra chi phí của bệnh án có thuộc về một chủ không
+ *
+ * - Bệnh án chưa đóng (chưa có chi phí chốt): luôn thuộc
+ * - Bệnh án đã đóng: thuộc chủ của giai đoạn sở hữu chứa thời điểm đóng
+ *
+ * @param medicalCase Trạng thái và thời điểm đóng của bệnh án
+ * @param periods Các giai đoạn sở hữu của con ngựa
+ * @param ownerId UUID của chủ cần kiểm
+ * @returns True nếu chi phí bệnh án thuộc về chủ này
+ */
+export function isCaseCostOfOwner(
+  medicalCase: { status: MedicalCaseStatus; closedAt: Date | null },
+  periods: OwnershipPeriod[],
+  ownerId: string,
+): boolean {
+  if (
+    medicalCase.status !== MedicalCaseStatus.CLOSED ||
+    !medicalCase.closedAt
+  ) {
+    return true;
+  }
+  return ownershipAt(periods, medicalCase.closedAt)?.ownerId === ownerId;
 }
 
 /**

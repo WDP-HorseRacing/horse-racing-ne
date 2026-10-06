@@ -21,7 +21,8 @@ export class MedicalCasesRepository {
    * Tổng chi phí các bệnh án đã đóng theo từng con ngựa, lọc theo khoảng ngày đóng
    *
    * - Ngày đóng tính theo lịch câu lạc bộ, lấy cả hai đầu khoảng
-   * - Lọc khu và chủ theo hồ sơ ngựa hiện tại; tính cả hồ sơ đã xóa
+   * - Lọc khu theo hồ sơ ngựa hiện tại; tính cả hồ sơ đã xóa
+   * - Lọc chủ theo giai đoạn sở hữu: bệnh án thuộc chủ đang sở hữu ngựa lúc bệnh án được đóng (started_at <= closed_at < ended_at)
    *
    * @param filter Khoảng ngày (YYYY-MM-DD), khu và chủ ngựa (tùy chọn)
    * @returns Promise trả về mỗi con ngựa một dòng, chi phí cao nhất lên trên
@@ -45,7 +46,13 @@ export class MedicalCasesRepository {
     }
     if (filter.ownerId) {
       params.push(filter.ownerId);
-      conditions.push(`AND h.owner_id = $${params.length}`);
+      conditions.push(
+        `AND EXISTS (SELECT 1 FROM horse_ownerships o
+                      WHERE o.horse_id = c.horse_id
+                        AND o.owner_id = $${params.length}
+                        AND o.started_at <= c.closed_at
+                        AND (o.ended_at IS NULL OR c.closed_at < o.ended_at))`,
+      );
     }
     return this.dataSource.query(
       `SELECT h.id AS "horseId",

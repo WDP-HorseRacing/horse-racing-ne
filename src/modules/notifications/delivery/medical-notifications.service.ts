@@ -259,30 +259,69 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo chủ ngựa và Club Manager khi chi phí bệnh án đã đóng được điều chỉnh
+   * Báo Club Manager và chủ chịu khoản chi phí khi chi phí bệnh án đã đóng được điều chỉnh
+   *
+   * - Chủ chịu chi phí là chủ của giai đoạn sở hữu chứa thời điểm đóng bệnh án (event.costOwnerId), không phải chủ hiện tại
+   * - Chủ đó vẫn là chủ hiện tại: nhận cùng thông báo trỏ tới bệnh án
+   * - Chủ đó không còn là chủ hiện tại: nhận thông báo không trỏ tới đâu (resource null), chỉ khi còn là HORSE_OWNER đang ACTIVE
+   * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
    * @param event Payload của MEDICAL_CASE_COST_ADJUSTED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
    */
-  notifyCaseCostAdjusted(
+  async notifyCaseCostAdjusted(
     event: MedicalCaseCostAdjustedEvent,
   ): Promise<string[]> {
-    return this.sendForHorse(
-      event.eventId,
+    const contact = await this.recipients.findHorseMedicalContact(
       event.horseId,
-      {
+    );
+    if (!contact) {
+      this.logger.warn(
+        `Bỏ qua thông báo y tế ${event.eventId}: không tìm thấy ngựa ${event.horseId}`,
+      );
+      return [];
+    }
+    const draft = {
+      eventId: event.eventId,
+      category: NotificationCategory.MEDICAL_CASE,
+      priority: NotificationPriority.NORMAL,
+      title: `Điều chỉnh chi phí bệnh án ngựa ${contact.horseName}`,
+      message: `Chi phí bệnh án của ngựa ${contact.horseName} được điều chỉnh từ ${formatVnd(event.fromCost)} thành ${formatVnd(event.toCost)}.`,
+    };
+    const ownerIsCurrent =
+      event.costOwnerId !== null && event.costOwnerId === contact.ownerId;
+    const sent = await this.notifications.send({
+      ...draft,
+      recipientIds: [
+        ...new Set([
+          ...(await this.recipients.findActiveUserIdsByRole(
+            UserRole.CLUB_MANAGER,
+          )),
+          ...(ownerIsCurrent && event.costOwnerId ? [event.costOwnerId] : []),
+        ]),
+      ],
+      resource: {
         type: NotificationResourceType.MEDICAL_CASE,
         id: event.caseId,
         horseId: event.horseId,
       },
-      { clubManagers: true, owner: true },
-      NotificationCategory.MEDICAL_CASE,
-      NotificationPriority.NORMAL,
-      (horse) => ({
-        title: `Điều chỉnh chi phí bệnh án ngựa ${horse}`,
-        message: `Chi phí bệnh án của ngựa ${horse} được điều chỉnh từ ${formatVnd(event.fromCost)} thành ${formatVnd(event.toCost)}.`,
-      }),
-    );
+    });
+    if (
+      event.costOwnerId === null ||
+      ownerIsCurrent ||
+      !(await this.recipients.isActiveUserWithRole(
+        event.costOwnerId,
+        UserRole.HORSE_OWNER,
+      ))
+    ) {
+      return sent;
+    }
+    const toPastOwner = await this.notifications.send({
+      ...draft,
+      recipientIds: [event.costOwnerId],
+      resource: null,
+    });
+    return [...sent, ...toPastOwner];
   }
 
   /**

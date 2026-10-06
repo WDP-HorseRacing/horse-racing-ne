@@ -13,6 +13,9 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
+import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
+import type { OwnershipPeriod } from '../../horses/types/horse.types';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import {
   CaseLockDecision,
@@ -50,6 +53,7 @@ import {
   assertCostAdjustable,
   canSeeDosage,
   canSeeMedicalCost,
+  isCaseCostOfOwner,
   resolveLockOnClose,
 } from '../policies/medical.policy';
 import { MedicalAccessService } from '../shared/medical-access.service';
@@ -83,6 +87,7 @@ export class MedicalCasesService {
     private readonly medicalRecords: Repository<MedicalRecordEntity>,
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
+    private readonly ownerships: HorseOwnershipService,
   ) {}
 
   /**
@@ -90,6 +95,7 @@ export class MedicalCasesService {
    *
    * - Head Trainer không có key chi phí; người khác chỉ thấy chi phí của bệnh án đã đóng
    * - totalCost tính trên mọi bệnh án đã đóng của ngựa, không theo bộ lọc trạng thái
+   * - Horse Owner: bệnh án đóng trong thời gian chủ khác sở hữu có totalCost null và costHidden true, nội dung vẫn trả đủ; totalCost của ngựa chỉ cộng bệnh án thuộc mọi giai đoạn người gọi sở hữu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -103,24 +109,32 @@ export class MedicalCasesService {
     horseId: string,
     query: MedicalCaseListQueryDto,
   ): Promise<MedicalCaseListResponseDto> {
-    await this.horseAccess.findReadableHorseForActor(actor, horseId);
+    const costOwner = await this.readableCostOwner(actor, horseId);
     const cases = await this.cases.find({
       where: { horseId, ...(query.status ? { status: query.status } : {}) },
       order: { openedAt: 'DESC' },
     });
     const seesCost = canSeeMedicalCost(actor.roles);
     const items = cases.map((medicalCase) =>
-      toMedicalCaseResponse(medicalCase, seesCost),
+      toMedicalCaseResponse(
+        medicalCase,
+        seesCost,
+        isCostHidden(medicalCase, costOwner),
+      ),
     );
     if (!seesCost) return { items };
     return {
       items,
-      totalCost: await this.closedCostOfHorse(horseId),
+      totalCost: costOwner
+        ? await this.closedCostOfOwner(horseId, costOwner)
+        : await this.closedCostOfHorse(horseId),
     };
   }
 
   /**
    * Lấy bệnh án kèm toàn bộ buổi khám, mới nhất lên trên
+   *
+   * - Horse Owner: bệnh án đóng trong thời gian chủ khác sở hữu có totalCost null và costHidden true
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -133,13 +147,17 @@ export class MedicalCasesService {
     caseId: string,
   ): Promise<MedicalCaseDetailResponseDto> {
     const medicalCase = await this.findCase(caseId);
-    await this.horseAccess.findReadableHorseForActor(actor, medicalCase.horseId);
+    const costOwner = await this.readableCostOwner(actor, medicalCase.horseId);
     const visits = await this.medicalRecords.find({
       where: { caseId },
       order: { examDate: 'DESC' },
     });
     return {
-      ...toMedicalCaseResponse(medicalCase, canSeeMedicalCost(actor.roles)),
+      ...toMedicalCaseResponse(
+        medicalCase,
+        canSeeMedicalCost(actor.roles),
+        isCostHidden(medicalCase, costOwner),
+      ),
       visits: await this.records.toResponses(visits, canSeeDosage(actor.roles)),
     };
   }
@@ -317,14 +335,14 @@ export class MedicalCasesService {
       }
       return { ...medicalCase, ...changes };
     });
-    return toMedicalCaseResponse(closed, true);
+    return toMedicalCaseResponse(closed, true, false);
   }
 
   /**
    * Điều chỉnh chi phí của bệnh án đã đóng, bắt buộc lý do
    *
    * - Số mới trùng số cũ thì không ghi gì và không báo
-   * - Ghi nhật ký giá trị trước, sau và lý do; event báo lại chủ ngựa và Club Manager ghi vào outbox trong cùng transaction
+   * - Ghi nhật ký giá trị trước, sau và lý do; event báo lại Club Manager và chủ của giai đoạn sở hữu chứa thời điểm đóng bệnh án, ghi vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -367,12 +385,19 @@ export class MedicalCasesService {
         reason: body.reason,
         feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
       });
+      const costOwner = medicalCase.closedAt
+        ? ownershipAt(
+            await this.ownerships.periodsOfHorse(manager, horseId),
+            medicalCase.closedAt,
+          )
+        : null;
       const event: MedicalCaseCostAdjustedEvent = {
         eventId: randomUUID(),
         horseId,
         caseId,
         fromCost: previous,
         toCost: body.totalCost,
+        costOwnerId: costOwner?.ownerId ?? null,
       };
       await this.events.publish(
         manager,
@@ -381,7 +406,7 @@ export class MedicalCasesService {
       );
       return { ...medicalCase, totalCost };
     });
-    return toMedicalCaseResponse(updated, true);
+    return toMedicalCaseResponse(updated, true, false);
   }
 
   /**
@@ -425,6 +450,55 @@ export class MedicalCasesService {
   }
 
   /**
+   * Kiểm quyền xem ngựa và lấy chủ cần lọc chi phí theo giai đoạn sở hữu
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về người gọi kèm giai đoạn sở hữu của ngựa nếu người gọi xem theo phạm vi Horse Owner, null nếu không cần lọc
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
+  private async readableCostOwner(
+    actor: Actor,
+    horseId: string,
+  ): Promise<CostOwner | null> {
+    const manager = this.dataSource.manager;
+    const caller = await this.horseAccess.currentUser(actor);
+    await this.horseAccess.findReadableHorse(
+      manager,
+      actor,
+      caller.id,
+      horseId,
+    );
+    if (this.horseAccess.scopeOf(actor, caller.id).kind !== 'OWNER') {
+      return null;
+    }
+    return {
+      ownerId: caller.id,
+      periods: await this.ownerships.periodsOfHorse(manager, horseId),
+    };
+  }
+
+  /**
+   * Cộng chi phí các bệnh án đã đóng của một con ngựa thuộc mọi giai đoạn một chủ sở hữu
+   *
+   * @param horseId UUID của ngựa
+   * @param costOwner Chủ cần cộng kèm giai đoạn sở hữu của ngựa
+   * @returns Promise trả về tổng chi phí (VND), 0 nếu không có bệnh án nào thuộc chủ này
+   */
+  private async closedCostOfOwner(
+    horseId: string,
+    costOwner: CostOwner,
+  ): Promise<number> {
+    const closed = await this.cases.find({
+      where: { horseId, status: MedicalCaseStatus.CLOSED },
+    });
+    return closed
+      .filter((medicalCase) => !isCostHidden(medicalCase, costOwner))
+      .reduce((sum, medicalCase) => sum + (costOf(medicalCase) ?? 0), 0);
+  }
+
+  /**
    * Cộng chi phí mọi bệnh án đã đóng của một con ngựa
    *
    * @param horseId UUID của ngựa
@@ -441,4 +515,29 @@ export class MedicalCasesService {
       .getRawOne<{ totalCost: string }>();
     return Number(row?.totalCost ?? 0);
   }
+}
+
+/**
+ * Chủ cần lọc chi phí theo giai đoạn sở hữu, kèm các giai đoạn sở hữu của con ngựa
+ */
+interface CostOwner {
+  ownerId: string;
+  periods: OwnershipPeriod[];
+}
+
+/**
+ * Kiểm tra chi phí bệnh án có phải ẩn với người gọi không
+ *
+ * @param medicalCase Bệnh án
+ * @param costOwner Chủ cần lọc chi phí, null nếu người gọi không xem theo phạm vi Horse Owner
+ * @returns True nếu chi phí thuộc giai đoạn sở hữu của chủ khác
+ */
+function isCostHidden(
+  medicalCase: MedicalCaseEntity,
+  costOwner: CostOwner | null,
+): boolean {
+  return (
+    costOwner !== null &&
+    !isCaseCostOfOwner(medicalCase, costOwner.periods, costOwner.ownerId)
+  );
 }

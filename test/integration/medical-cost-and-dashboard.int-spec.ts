@@ -39,6 +39,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       unused,
       unused,
       unused,
+      unused,
     );
     dashboard = new MedicalDashboardRepository(dataSource);
   });
@@ -110,7 +111,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       ]);
     });
 
-    it('filters by barn and owner on the current profile, keeping deleted profiles', async () => {
+    it('filters by barn on the current profile and by owner period, keeping deleted profiles', async () => {
       const barn = await seed.barn('Khu Đông');
       const owner = await seed.user(UserRole.HORSE_OWNER);
       const inBarn = await seed.horse('In barn', { barnId: barn });
@@ -118,6 +119,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
         ownerId: owner,
         deleted: true,
       });
+      await seed.ownership(deletedOwned, owner, '2026-01-01T03:00:00Z');
       const other = await seed.horse('Other');
       for (const horseId of [inBarn, deletedOwned, other]) {
         await closed(horseId, '2026-09-10T02:00:00Z', 100);
@@ -129,6 +131,43 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
 
       expect(byBarn.map((row) => row.horseId)).toEqual([inBarn]);
       expect(byOwner.map((row) => row.horseId)).toEqual([deletedOwned]);
+    });
+
+    it('charges each case to the owner of the period it was closed in', async () => {
+      const a = await seed.user(UserRole.HORSE_OWNER);
+      const b = await seed.user(UserRole.HORSE_OWNER);
+      const winx = await seed.horse('Winx', { ownerId: b });
+      await seed.ownership(
+        winx,
+        a,
+        '2026-01-01T03:00:00Z',
+        '2026-06-01T03:00:00Z',
+      );
+      await seed.ownership(winx, b, '2026-06-01T03:00:00Z');
+      await closed(winx, '2026-03-10T03:00:00Z', 5_000_000);
+      await closed(winx, '2026-08-10T03:00:00Z', 3_000_000);
+      await closed(winx, '2026-06-01T03:00:00Z', 7);
+      const range = { from: '2026-01-01', to: '2026-12-31' };
+
+      const byA = await cases.costByHorse({ ...range, ownerId: a });
+      const byB = await cases.costByHorse({ ...range, ownerId: b });
+
+      expect(byA).toEqual([
+        {
+          horseId: winx,
+          horseName: 'Winx',
+          caseCount: 1,
+          totalCost: '5000000',
+        },
+      ]);
+      expect(byB).toEqual([
+        {
+          horseId: winx,
+          horseName: 'Winx',
+          caseCount: 2,
+          totalCost: '3000007',
+        },
+      ]);
     });
   });
 

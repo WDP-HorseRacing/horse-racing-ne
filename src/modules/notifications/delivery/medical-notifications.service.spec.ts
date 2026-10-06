@@ -13,6 +13,7 @@ describe('MedicalNotificationsService', () => {
   let recipients: {
     findHorseMedicalContact: jest.Mock;
     findActiveUserIdsByRole: jest.Mock;
+    isActiveUserWithRole: jest.Mock;
   };
   let notifications: { send: jest.Mock };
   let service: MedicalNotificationsService;
@@ -32,6 +33,7 @@ describe('MedicalNotificationsService', () => {
           role === UserRole.VETERINARIAN ? ['vet-1', 'vet-2'] : ['cm-1'],
         ),
       ),
+      isActiveUserWithRole: jest.fn().mockResolvedValue(true),
     };
     notifications = {
       send: jest.fn((draft: { recipientIds: string[] }) =>
@@ -213,9 +215,74 @@ describe('MedicalNotificationsService', () => {
         caseId: 'c1',
         fromCost: 15000000,
         toCost: 1500000,
+        costOwnerId: 'owner-1',
       }),
     ).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();
+  });
+
+  describe('notifyCaseCostAdjusted', () => {
+    const adjusted = (costOwnerId: string | null) =>
+      service.notifyCaseCostAdjusted({
+        eventId: 'e20',
+        horseId: 'h1',
+        caseId: 'c1',
+        fromCost: 15000000,
+        toCost: 1500000,
+        costOwnerId,
+      });
+    const caseResource = {
+      type: NotificationResourceType.MEDICAL_CASE,
+      id: 'c1',
+      horseId: 'h1',
+    };
+
+    it('tells club managers and the current owner when the case is in their period', async () => {
+      await expect(adjusted('owner-1')).resolves.toEqual(['cm-1', 'owner-1']);
+      expect(notifications.send).toHaveBeenCalledTimes(1);
+      expect(sentDraft()).toMatchObject({
+        recipientIds: ['cm-1', 'owner-1'],
+        resource: caseResource,
+      });
+    });
+
+    it('tells the past owner who bears the cost without a link, not the current owner', async () => {
+      await expect(adjusted('owner-old')).resolves.toEqual([
+        'cm-1',
+        'owner-old',
+      ]);
+      expect(notifications.send).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          recipientIds: ['cm-1'],
+          resource: caseResource,
+        }),
+      );
+      expect(notifications.send).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          recipientIds: ['owner-old'],
+          resource: null,
+          title: 'Điều chỉnh chi phí bệnh án ngựa Winx',
+        }),
+      );
+      expect(recipients.isActiveUserWithRole).toHaveBeenCalledWith(
+        'owner-old',
+        UserRole.HORSE_OWNER,
+      );
+    });
+
+    it('skips a past owner who is no longer active, and a case closed without an owner', async () => {
+      recipients.isActiveUserWithRole.mockResolvedValue(false);
+      await adjusted('owner-old');
+      await adjusted(null);
+      expect(notifications.send).toHaveBeenCalledTimes(2);
+      for (const [draft] of notifications.send.mock.calls as Array<
+        [NotificationDraft]
+      >) {
+        expect(draft.recipientIds).toEqual(['cm-1']);
+      }
+    });
   });
 
   it('tells club managers and the owner that a case opened by mistake was cancelled', async () => {

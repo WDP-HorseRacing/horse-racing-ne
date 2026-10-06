@@ -166,6 +166,17 @@ export interface HorseOwnershipTransferredEvent {
 }
 
 /**
+ * Một giai đoạn sở hữu: chủ và khoảng thời gian ghi nhận trên hệ thống
+ *
+ * - endedAt null: giai đoạn đang mở
+ */
+export interface OwnershipPeriod {
+  ownerId: string;
+  startedAt: Date;
+  endedAt: Date | null;
+}
+
+/**
  * Dữ liệu cần để kiểm tra một lần chuyển nhượng nội bộ
  */
 export interface OwnershipTransferInput {

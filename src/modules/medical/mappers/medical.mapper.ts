@@ -99,11 +99,13 @@ export function toMedicalRecordResponse(
  *
  * @param medicalCase Thực thể bệnh án
  * @param seesCost Người gọi có được xem chi phí không (Head Trainer thì không)
- * @returns MedicalCaseResponseDto - không có key totalCost khi seesCost là false; totalCost null khi bệnh án chưa đóng
+ * @param costHidden Chi phí thuộc giai đoạn sở hữu của chủ khác, phải ẩn với người gọi
+ * @returns MedicalCaseResponseDto - không có key totalCost, costHidden khi seesCost là false; totalCost null khi bệnh án chưa đóng hoặc costHidden là true
  */
 export function toMedicalCaseResponse(
   medicalCase: MedicalCaseEntity,
   seesCost: boolean,
+  costHidden: boolean,
 ): MedicalCaseResponseDto {
   return {
     id: medicalCase.id,
@@ -114,7 +116,9 @@ export function toMedicalCaseResponse(
     initialDiagnosis: medicalCase.initialDiagnosis,
     closedAt: medicalCase.closedAt,
     finalConclusion: medicalCase.finalConclusion,
-    ...(seesCost ? { totalCost: costOf(medicalCase) } : {}),
+    ...(seesCost
+      ? { totalCost: costHidden ? null : costOf(medicalCase), costHidden }
+      : {}),
   };
 }
 

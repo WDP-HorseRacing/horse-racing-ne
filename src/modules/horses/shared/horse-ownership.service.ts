@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager, IsNull } from 'typeorm';
 import { toClubDate } from '../../../common/utils/club-date';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
+import type { OwnershipPeriod } from '../types/horse.types';
 
 /**
  * Một lần đổi chủ sở hữu của ngựa
@@ -45,6 +46,24 @@ export class HorseOwnershipService {
       startedAt: change.at,
       reason: change.reason ?? null,
       recordedBy: change.recordedBy,
+    });
+  }
+
+  /**
+   * Lấy mọi giai đoạn sở hữu của một con ngựa, cũ nhất lên trên
+   *
+   * @param manager EntityManager dùng để query
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về các giai đoạn (chủ, lúc bắt đầu, lúc kết thúc)
+   */
+  async periodsOfHorse(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<OwnershipPeriod[]> {
+    return manager.find(HorseOwnershipEntity, {
+      where: { horseId },
+      select: { id: true, ownerId: true, startedAt: true, endedAt: true },
+      order: { startedAt: 'ASC' },
     });
   }
 

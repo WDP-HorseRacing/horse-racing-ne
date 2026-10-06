@@ -293,10 +293,35 @@ export function fixtures(dataSource: DataSource) {
     return id;
   };
 
+  /**
+   * Tạo một giai đoạn sở hữu
+   *
+   * @param horseId Id ngựa
+   * @param ownerId Id chủ
+   * @param startedAt Thời điểm bắt đầu (ISO)
+   * @param endedAt Thời điểm kết thúc (ISO), bỏ trống nếu là giai đoạn đang mở
+   * @returns A promise resolving to id giai đoạn
+   */
+  const ownership = async (
+    horseId: string,
+    ownerId: string,
+    startedAt: string,
+    endedAt?: string,
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO horse_ownerships (id, version, horse_id, owner_id, effective_date, started_at, ended_at)
+       VALUES ($1, 1, $2, $3, ($4::timestamptz AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, $4, $5)`,
+      [id, horseId, ownerId, startedAt, endedAt ?? null],
+    );
+    return id;
+  };
+
   return {
     user,
     barn,
     horse,
+    ownership,
     schedule,
     medicalCase,
     visit,

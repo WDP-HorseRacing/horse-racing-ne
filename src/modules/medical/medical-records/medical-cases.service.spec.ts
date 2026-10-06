@@ -6,6 +6,7 @@ import {
 import { DataSource, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -59,7 +60,13 @@ describe('MedicalCasesService', () => {
     andWhere: jest.Mock;
     getRawOne: jest.Mock;
   };
-  let horseAccess: { findReadableHorseForActor: jest.Mock; currentUser: jest.Mock };
+  let horseAccess: {
+    findReadableHorseForActor: jest.Mock;
+    findReadableHorse: jest.Mock;
+    scopeOf: jest.Mock;
+    currentUser: jest.Mock;
+  };
+  let ownerships: { periodsOfHorse: jest.Mock };
   let access: { lockHorseForWrite: jest.Mock };
   let casesRepository: {
     costByHorse: jest.Mock;
@@ -116,8 +123,21 @@ describe('MedicalCasesService', () => {
     };
     horseAccess = {
       findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }),
+      findReadableHorse: jest.fn(
+        (_manager: unknown, actor: Actor, _callerId: string, horseId: string) =>
+          horseAccess.findReadableHorseForActor(
+            actor,
+            horseId,
+          ) as Promise<unknown>,
+      ),
+      scopeOf: jest.fn((actor: Actor, userId: string) =>
+        actor.roles.length === 1 && actor.roles[0] === UserRole.HORSE_OWNER
+          ? { kind: 'OWNER', userId }
+          : { kind: 'ALL' },
+      ),
       currentUser: jest.fn().mockResolvedValue({ id: 'cm-1' }),
     };
+    ownerships = { periodsOfHorse: jest.fn().mockResolvedValue([]) };
     access = {
       lockHorseForWrite: jest.fn().mockResolvedValue({
         caller: { id: 'vet-1' },
@@ -144,7 +164,80 @@ describe('MedicalCasesService', () => {
       } as unknown as Repository<MedicalRecordEntity>,
       audit,
       events,
+      ownerships as unknown as HorseOwnershipService,
     );
+  });
+
+  describe('owner cost by ownership period', () => {
+    const marchCase = () => ({
+      ...closedCase,
+      id: 'case-march',
+      closedAt: new Date('2026-03-10T03:00:00Z'),
+      totalCost: '5000000',
+    });
+    const augustCase = () => ({
+      ...closedCase,
+      id: 'case-august',
+      closedAt: new Date('2026-08-10T03:00:00Z'),
+      totalCost: '3000000',
+    });
+
+    beforeEach(() => {
+      horseAccess.currentUser.mockResolvedValue({ id: 'owner-b' });
+      ownerships.periodsOfHorse.mockResolvedValue([
+        {
+          ownerId: 'owner-a',
+          startedAt: new Date('2026-01-01T03:00:00Z'),
+          endedAt: new Date('2026-06-01T03:00:00Z'),
+        },
+        {
+          ownerId: 'owner-b',
+          startedAt: new Date('2026-06-01T03:00:00Z'),
+          endedAt: null,
+        },
+      ]);
+      cases.find.mockImplementation(() =>
+        Promise.resolve([augustCase(), marchCase()]),
+      );
+    });
+
+    it('hides the cost of cases closed before the owner bought the horse and sums only theirs', async () => {
+      const result = await service.listCases(
+        actorWith(UserRole.HORSE_OWNER),
+        'h1',
+        {},
+      );
+      expect(
+        result.items.map((item) => [item.id, item.totalCost, item.costHidden]),
+      ).toEqual([
+        ['case-august', 3000000, false],
+        ['case-march', null, true],
+      ]);
+      expect(result.totalCost).toBe(3000000);
+      expect(cases.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('hides the cost on the case detail too', async () => {
+      cases.findOne.mockResolvedValue(marchCase());
+      const result = await service.getCase(
+        actorWith(UserRole.HORSE_OWNER),
+        'case-march',
+      );
+      expect(result).toMatchObject({ totalCost: null, costHidden: true });
+    });
+
+    it('keeps the full cost for a club manager', async () => {
+      const result = await service.listCases(
+        actorWith(UserRole.CLUB_MANAGER),
+        'h1',
+        {},
+      );
+      expect(result.items.map((item) => item.costHidden)).toEqual([
+        false,
+        false,
+      ]);
+      expect(ownerships.periodsOfHorse).not.toHaveBeenCalled();
+    });
   });
 
   describe('listCases', () => {
@@ -420,6 +513,32 @@ describe('MedicalCasesService', () => {
         expect.objectContaining({ fromCost: 1500000, toCost: 150000 }),
       );
       expect(result.totalCost).toBe(150000);
+    });
+
+    it('names the owner of the period the case was closed in', async () => {
+      caseRow = { ...closedCase, closedAt: new Date('2026-03-10T03:00:00Z') };
+      ownerships.periodsOfHorse.mockResolvedValue([
+        {
+          ownerId: 'owner-a',
+          startedAt: new Date('2026-01-01T03:00:00Z'),
+          endedAt: new Date('2026-06-01T03:00:00Z'),
+        },
+        {
+          ownerId: 'owner-b',
+          startedAt: new Date('2026-06-01T03:00:00Z'),
+          endedAt: null,
+        },
+      ]);
+      await service.adjustCost(vet, 'case-2', {
+        totalCost: 150000,
+        reason: 'Gõ thừa một số 0',
+      });
+      expect(ownerships.periodsOfHorse).toHaveBeenCalledWith(manager, 'h1');
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_CASE_COST_ADJUSTED_EVENT,
+        expect.objectContaining({ costOwnerId: 'owner-a' }),
+      );
     });
   });
 

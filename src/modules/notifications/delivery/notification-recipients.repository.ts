@@ -33,6 +33,21 @@ export class NotificationRecipientsRepository {
   }
 
   /**
+   * Kiểm tra một người dùng có đang ACTIVE (chưa bị xóa mềm) với đúng vai trò không
+   *
+   * @param userId UUID của người dùng
+   * @param role Vai trò cần có
+   * @returns Promise trả về true nếu người dùng tồn tại, đang ACTIVE và có vai trò này
+   */
+  isActiveUserWithRole(userId: string, role: UserRole): Promise<boolean> {
+    return this.dataSource.getRepository(UserEntity).existsBy({
+      id: userId,
+      role,
+      status: UserStatus.ACTIVE,
+    });
+  }
+
+  /**
    * Lấy tên ngựa và Head Trainer phụ trách khu hiện tại của ngựa (horses.barn_id → barns.head_trainer_id).
    *
    * - Đọc cả ngựa đã xóa mềm

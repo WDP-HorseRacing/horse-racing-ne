@@ -1,7 +1,10 @@
 import { ConflictException } from '@nestjs/common';
 import { toDisplayDate } from '../../../common/utils/club-date';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
-import type { OwnershipTransferInput } from '../types/horse.types';
+import type {
+  OwnershipPeriod,
+  OwnershipTransferInput,
+} from '../types/horse.types';
 import { isReadOnlyLifecycle } from './horse.policy';
 
 /**
@@ -45,4 +48,26 @@ export function assertOwnershipTransfer(input: OwnershipTransferInput): void {
       `Ngày hiệu lực không được trước ngày bắt đầu sở hữu của chủ hiện tại (${toDisplayDate(input.currentOwnerSince)})`,
     );
   }
+}
+
+/**
+ * Tìm giai đoạn sở hữu chứa một thời điểm
+ *
+ * - Giai đoạn chứa thời điểm `at` khi bắt đầu không sau `at` và chưa kết thúc tại `at` (kết thúc đúng lúc `at` thì thuộc giai đoạn sau)
+ *
+ * @param periods Các giai đoạn sở hữu của một con ngựa
+ * @param at Thời điểm cần tra
+ * @returns Giai đoạn chứa thời điểm, null nếu lúc đó ngựa không có chủ
+ */
+export function ownershipAt(
+  periods: OwnershipPeriod[],
+  at: Date,
+): OwnershipPeriod | null {
+  return (
+    periods.find(
+      (period) =>
+        period.startedAt <= at &&
+        (period.endedAt === null || at < period.endedAt),
+    ) ?? null
+  );
 }

@@ -75,6 +75,8 @@ export interface MedicalCaseCostAdjustedEvent extends MedicalEventBase {
   caseId: string;
   fromCost: number;
   toCost: number;
+  /** Chủ của giai đoạn sở hữu chứa thời điểm đóng bệnh án, null nếu lúc đó ngựa không có chủ */
+  costOwnerId: string | null;
 }
 
 /**
