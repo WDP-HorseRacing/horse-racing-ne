@@ -18,12 +18,12 @@ import { HorsePedigreeRepository } from './horse-pedigree.repository';
 /**
  * Nhãn của cha trong thông báo lỗi
  */
-const SIRE_LABEL = 'Sire';
+const SIRE_LABEL = 'Ngựa cha';
 
 /**
  * Nhãn của mẹ trong thông báo lỗi
  */
-const DAM_LABEL = 'Dam';
+const DAM_LABEL = 'Ngựa mẹ';
 
 /**
  * Kiểm tra luật phả hệ khi tạo, sửa và xóa hồ sơ ngựa.
@@ -238,7 +238,7 @@ export class HorsePedigreeService {
    *
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param id UUID của ngựa được chọn
-   * @param label Nhãn Sire/Dam dùng trong thông báo lỗi
+   * @param label Nhãn ngựa cha/ngựa mẹ dùng trong thông báo lỗi
    * @returns Promise trả về hồ sơ cha/mẹ
    * @throws BadRequestException Nếu ngựa được chọn không tồn tại hoặc đã xóa
    */

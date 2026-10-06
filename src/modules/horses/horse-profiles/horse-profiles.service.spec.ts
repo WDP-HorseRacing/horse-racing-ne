@@ -771,6 +771,23 @@ describe('HorseProfilesService', () => {
       );
     });
 
+    it.each([
+      ['sireId', 'Ngựa cha không tồn tại'],
+      ['damId', 'Ngựa mẹ không tồn tại'],
+    ])(
+      'rejects a missing parent in %s with a Vietnamese message',
+      async (field, message) => {
+        horses.findById.mockResolvedValue(null);
+        await expect(
+          service.create(actorWith(UserRole.CLUB_MANAGER), {
+            name: 'Gió',
+            gender: HorseGender.MALE,
+            [field]: 'missing-parent',
+          }),
+        ).rejects.toThrow(new BadRequestException(message));
+      },
+    );
+
     it('opens the first ownership period when the horse is created with an owner', async () => {
       await service.create(actorWith(UserRole.CLUB_MANAGER), {
         name: 'Gió',

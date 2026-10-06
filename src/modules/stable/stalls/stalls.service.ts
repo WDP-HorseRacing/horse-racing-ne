@@ -77,7 +77,7 @@ const STALL_ASSIGNMENT_CONFLICT_MESSAGES: Record<string, string> = {
  * Thông báo 409 khi ô được chọn không còn trống và cả khu của ngựa cũng không còn ô trống nào.
  */
 const BARN_OUT_OF_STALLS_MESSAGE =
-  'Khu đã hết ô trống, đề nghị Club Manager đổi khu cho ngựa';
+  'Khu đã hết ô trống, đề nghị Quản lý câu lạc bộ đổi khu cho ngựa';
 
 @Injectable()
 export class StallsService {
@@ -376,7 +376,7 @@ export class StallsService {
    * @param body Ô chuồng đích
    * @returns Promise chứa phân công ô đang mở của ngựa sau thao tác
    * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô chuồng
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, ô đích không còn trống (khu hết ô trống thì báo đề nghị Club Manager đổi khu) hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, ô đích không còn trống (khu hết ô trống thì báo đề nghị Quản lý câu lạc bộ đổi khu) hoặc có thao tác khác chạy cùng lúc
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    * @throws BadRequestException Nếu ô đích không thuộc khu của ngựa
    */
@@ -488,7 +488,7 @@ export class StallsService {
    * Lock ô chuồng đích và kiểm ô thuộc đúng khu của ngựa, đang trống
    *
    * - Lock ô (pessimistic_write) trước khi kiểm
-   * - Ô không còn trống: khu còn ô trống khác thì báo ô vừa bị chiếm, khu hết ô trống thì đề nghị Club Manager đổi khu
+   * - Ô không còn trống: khu còn ô trống khác thì báo ô vừa bị chiếm, khu hết ô trống thì đề nghị Quản lý câu lạc bộ đổi khu
    *
    * @param manager EntityManager của transaction đang chạy
    * @param stallId UUID của ô chuồng đích

@@ -253,9 +253,11 @@ BE đổi luôn tên vai trò sang tiếng Việt ở các câu lỗi khác. **F
 | `Sire phải là ngựa đực` | `Ngựa cha phải là ngựa đực` |
 | `Dam phải là ngựa cái` | `Ngựa mẹ phải là ngựa cái` |
 | `Sire và dam không được trùng nhau` | `Ngựa cha và ngựa mẹ không được trùng nhau` |
+| `Sire không tồn tại` / `Dam không tồn tại` | `Ngựa cha không tồn tại` / `Ngựa mẹ không tồn tại` |
 | `Ngựa đang là sire của ngựa khác, không thể đổi thành FEMALE` | `Ngựa đang là cha của ngựa khác, không thể đổi thành ngựa cái` |
 | `Ngựa đang là dam của ngựa khác, phải giữ giới tính FEMALE` | `Ngựa đang là mẹ của ngựa khác, phải giữ giới tính ngựa cái` |
 | `...vui lòng liên hệ Club Manager để xếp khu trước` | `...vui lòng liên hệ Quản lý câu lạc bộ để xếp khu trước` |
+| `Khu đã hết ô trống, đề nghị Club Manager đổi khu cho ngựa` | `Khu đã hết ô trống, đề nghị Quản lý câu lạc bộ đổi khu cho ngựa` |
 | `Câu lạc bộ phải còn ít nhất một Club Manager đang hoạt động` | `Câu lạc bộ phải còn ít nhất một Quản lý câu lạc bộ đang hoạt động` |
 | `...Vui lòng liên hệ Club Manager.` (2 câu khi đăng nhập) | `...Vui lòng liên hệ Quản lý câu lạc bộ.` |
 | `Người được giao phải là Veterinarian đang hoạt động, ...` | `Người được giao phải là Bác sĩ thú y đang hoạt động, ...` |

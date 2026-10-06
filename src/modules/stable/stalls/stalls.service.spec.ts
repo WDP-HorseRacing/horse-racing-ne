@@ -270,7 +270,7 @@ describe('StallsService', () => {
       );
       await expect(move()).rejects.toThrow(
         new ConflictException(
-          'Khu đã hết ô trống, đề nghị Club Manager đổi khu cho ngựa',
+          'Khu đã hết ô trống, đề nghị Quản lý câu lạc bộ đổi khu cho ngựa',
         ),
       );
       expect(manager.save).not.toHaveBeenCalled();
