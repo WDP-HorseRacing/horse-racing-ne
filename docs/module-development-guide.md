@@ -373,7 +373,7 @@ await this.dataSource.transaction(async (manager) => {
 `emitAsync` cho các listener `@OnEvent`:
 
 - Listener lỗi thì event được giao lại, lùi thời gian theo cấp số nhân; đủ
-  `OUTBOX_MAX_ATTEMPTS` lần thì đánh dấu `failed_at` và dừng.
+  `OUTBOX_MAX_ATTEMPTS` lần thì đánh dấu `dead_at` và dừng.
 - Event giao xong được dọn sau 7 ngày.
 
 Quy tắc:
