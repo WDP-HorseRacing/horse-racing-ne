@@ -9,6 +9,7 @@
  * - HEALTH_STATUS: trạng thái sức khỏe thay đổi
  * - EXAM_REQUEST: yêu cầu khám khẩn
  * - CARE_REMINDER: nhắc khám định kỳ, lịch chăm sóc đến hạn
+ * - HORSE_LIFECYCLE: vòng đời ngựa thay đổi (ngựa đã mất)
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -19,4 +20,5 @@ export enum NotificationCategory {
   HEALTH_STATUS = 'HEALTH_STATUS',
   EXAM_REQUEST = 'EXAM_REQUEST',
   CARE_REMINDER = 'CARE_REMINDER',
+  HORSE_LIFECYCLE = 'HORSE_LIFECYCLE',
 }

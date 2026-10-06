@@ -32,7 +32,7 @@ import {
 } from '../mappers/horse-placements.mapper';
 import {
   assertBarnChangeReason,
-  assertNotTransferred,
+  assertLifecycleWritable,
   barnChangeBlockedReason,
   barnChangeSummary,
 } from '../policies/horse.policy';
@@ -85,7 +85,7 @@ export class HorsePlacementsService {
   /**
    * Xếp hoặc đổi khu chuồng cho ngựa. Chỉ Club Manager (kiểm ở controller).
    *
-   * - Chỉ ngựa ACTIVE hoặc RETIRED; ngựa đã chuyển nhượng hoặc hồ sơ đã xóa thì không thao tác được
+   * - Chỉ ngựa ACTIVE hoặc RETIRED; ngựa đã chuyển nhượng hoặc đã mất hoặc hồ sơ đã xóa thì không thao tác được
    * - Khu mới phải đang hoạt động, có Head Trainer phụ trách và còn ít nhất một ô trống (khóa row khu trước khi kiểm)
    * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom
    * - Chọn đúng khu đang ở thì không đổi gì
@@ -99,7 +99,7 @@ export class HorsePlacementsService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
    * @throws BadRequestException Nếu đổi khu (ngựa đã có khu) mà không có lý do
-   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), ngựa đã chuyển nhượng, hoặc khu không hoạt động, chưa có Head Trainer, hết ô trống
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), ngựa đã chuyển nhượng hoặc đã mất, hoặc khu không hoạt động, chưa có Head Trainer, hết ô trống
    */
   async assignBarn(
     actor: Actor,
@@ -113,7 +113,7 @@ export class HorsePlacementsService {
         actor,
         horseId,
       );
-      assertNotTransferred(horse);
+      assertLifecycleWritable(horse);
       if (horse.barnId === body.barnId) return;
       assertBarnChangeReason(horse.barnId, body.reason);
       await this.applyBarnChange(manager, {
@@ -204,7 +204,7 @@ export class HorsePlacementsService {
    * Xem trước hệ quả của việc đổi khu. Không ghi gì
    *
    * - Dùng cùng luật rút lớp như assignBarn: mọi lớp không do Head Trainer khu mới phụ trách
-   * - Ngựa đã chuyển nhượng hoặc đang ở đúng khu này thì trả allowed = false kèm lý do
+   * - Ngựa đã chuyển nhượng hoặc đã mất hoặc đang ở đúng khu này thì trả allowed = false kèm lý do
    * - Không kiểm sức chứa, trạng thái khu; các điều kiện đó kiểm lúc đổi thật
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -263,7 +263,7 @@ export class HorsePlacementsService {
    * @throws BadRequestException Nếu ô không thuộc khu của ngựa, hoặc groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phụ trách khu của ngựa
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, ô không còn trống, groom không còn hoạt động hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng hoặc đã mất, khu không hoạt động, ô không còn trống, groom không còn hoạt động hoặc có thao tác khác chạy cùng lúc
    */
   async placeHorse(
     actor: Actor,

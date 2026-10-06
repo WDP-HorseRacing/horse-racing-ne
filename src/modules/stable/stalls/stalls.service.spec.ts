@@ -287,7 +287,7 @@ describe('StallsService', () => {
       expect(freeStallCall?.[1]).toEqual([
         ['b1'],
         StallStatus.AVAILABLE,
-        HorseLifecycleStatus.TRANSFERRED,
+        [HorseLifecycleStatus.TRANSFERRED, HorseLifecycleStatus.DECEASED],
       ]);
       expect(freeStallCall?.[0]).toMatch(/s\.deleted_at IS NULL/);
       expect(freeStallCall?.[0]).toMatch(/sa\.end_at IS NULL/);
@@ -943,7 +943,7 @@ describe('StallsService', () => {
         expect(capacityCall?.[1]).toEqual([
           ['b1'],
           StallStatus.AVAILABLE,
-          HorseLifecycleStatus.TRANSFERRED,
+          [HorseLifecycleStatus.TRANSFERRED, HorseLifecycleStatus.DECEASED],
         ]);
       });
 

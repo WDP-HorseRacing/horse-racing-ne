@@ -105,6 +105,9 @@ export class HorseEntity extends SoftDeletableRecordEntity {
   })
   lifecycleChangedAt!: Date | null;
 
+  @Column({ name: 'date_of_death', type: 'date', nullable: true })
+  dateOfDeath!: string | null;
+
   @Column({ name: 'deleted_reason', type: 'text', nullable: true })
   deletedReason!: string | null;
 }

@@ -167,6 +167,10 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
       barnId: barn,
       lifecycle: HorseLifecycleStatus.TRANSFERRED,
     });
+    await seed.horse('Đã mất', {
+      barnId: barn,
+      lifecycle: HorseLifecycleStatus.DECEASED,
+    });
 
     await expect(
       names({ placementStatus: HorsePlacementStatus.PENDING_BARN }),
@@ -176,7 +180,7 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
     ).resolves.toEqual(['Chờ ô']);
     await expect(
       names({ placementStatus: HorsePlacementStatus.NOT_APPLICABLE }),
-    ).resolves.toEqual(['Đã đi']);
+    ).resolves.toEqual(['Đã đi', 'Đã mất']);
   });
 
   it('sorts by health priority then Vietnamese name, and pages with a total', async () => {

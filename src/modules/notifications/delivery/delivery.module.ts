@@ -16,6 +16,7 @@ import { UserDevice, UserDeviceSchema } from '../schemas/user-device.schema';
 import type { NotificationChannel } from '../types/notification.types';
 import { GroomAssignmentChangedListener } from './groom-assignment-changed.listener';
 import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
+import { HorseDeceasedListener } from './horse-deceased.listener';
 import { HorseGroomReleasedListener } from './horse-groom-released.listener';
 import { HorseMeasurementAlertListener } from './horse-measurement-alert.listener';
 import { HorseNotificationsService } from './horse-notifications.service';
@@ -56,6 +57,7 @@ import { RealtimeChannel } from './realtime.channel';
     HorseMeasurementAlertListener,
     HorseBarnAssignedListener,
     HorseGroomReleasedListener,
+    HorseDeceasedListener,
     GroomAssignmentChangedListener,
     MedicalEventsListener,
   ],

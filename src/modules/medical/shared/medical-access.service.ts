@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { assertNotTransferred } from '../../horses/policies/horse.policy';
+import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import type { CurrentActorUser } from '../../users/utils/current-user';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
@@ -19,7 +19,7 @@ export class MedicalAccessService {
    * Khóa row con ngựa trước mọi thao tác ghi y tế trong transaction
    *
    * - Kiểm tài khoản đang ACTIVE, ngựa tồn tại, chưa xóa và nằm trong phạm vi xem
-   * - Chặn ngựa đã chuyển nhượng (hồ sơ chỉ đọc)
+   * - Chặn ngựa đã chuyển nhượng hoặc đã mất (hồ sơ chỉ đọc)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
@@ -27,7 +27,7 @@ export class MedicalAccessService {
    * @returns Promise trả về user hiện tại và con ngựa đã khóa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
-   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa, hoặc ngựa đã chuyển nhượng
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa, hoặc ngựa đã chuyển nhượng hoặc đã mất
    */
   async lockHorseForWrite(
     manager: EntityManager,
@@ -39,7 +39,7 @@ export class MedicalAccessService {
       actor,
       horseId,
     );
-    assertNotTransferred(locked.horse);
+    assertLifecycleWritable(locked.horse);
     return locked;
   }
 

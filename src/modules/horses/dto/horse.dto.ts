@@ -89,6 +89,15 @@ export class HorseResponseDto {
   lifecycleChangedAt!: Date | null;
 
   @Expose()
+  @ApiPropertyOptional({
+    format: 'date',
+    nullable: true,
+    type: String,
+    description: 'Ngày mất, chỉ có khi lifecycleStatus = DECEASED',
+  })
+  dateOfDeath!: string | null;
+
+  @Expose()
   @ApiProperty({ description: 'Gửi lại khi PATCH /horses/{id}' })
   version!: number;
 }

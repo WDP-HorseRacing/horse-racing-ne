@@ -30,9 +30,10 @@ import {
   assertBarnChangeReason,
   assertBornBeforeChildren,
   assertDeletedHorse,
-  assertNotTransferred,
+  assertLifecycleWritable,
   isActiveHorseOwner,
   assertDateOfBirth,
+  assertDateOfDeath,
   assertDistinctMeasurementTypes,
   assertGenderKeepsPedigree,
   assertLifecycleTransition,
@@ -1162,10 +1163,10 @@ describe('horse.policy', () => {
     });
   });
 
-  describe('assertNotTransferred', () => {
+  describe('assertLifecycleWritable', () => {
     it('answers 409 for a transferred horse', () => {
       expect(() =>
-        assertNotTransferred({
+        assertLifecycleWritable({
           lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
         }),
       ).toThrow(
@@ -1173,9 +1174,211 @@ describe('horse.policy', () => {
       );
     });
 
-    it('passes a horse still in the club', () => {
+    it('answers 409 for a deceased horse', () => {
       expect(() =>
-        assertNotTransferred({ lifecycleStatus: HorseLifecycleStatus.ACTIVE }),
+        assertLifecycleWritable({
+          lifecycleStatus: HorseLifecycleStatus.DECEASED,
+        }),
+      ).toThrow(new ConflictException('Ngựa đã mất, hồ sơ chỉ được xem'));
+    });
+
+    it('passes a horse whose profile is writable', () => {
+      expect(() =>
+        assertLifecycleWritable({
+          lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+        }),
+      ).not.toThrow();
+    });
+  });
+
+  describe('DECEASED lifecycle', () => {
+    it('can be reached from ACTIVE and RETIRED only', () => {
+      expect(
+        lifecycleTransitionError(
+          HorseLifecycleStatus.ACTIVE,
+          HorseLifecycleStatus.DECEASED,
+        ),
+      ).toBeNull();
+      expect(
+        lifecycleTransitionError(
+          HorseLifecycleStatus.RETIRED,
+          HorseLifecycleStatus.DECEASED,
+        ),
+      ).toBeNull();
+      expect(
+        lifecycleTransitionError(
+          HorseLifecycleStatus.TRANSFERRED,
+          HorseLifecycleStatus.DECEASED,
+        ),
+      ).toBe('Không thể chuyển vòng đời từ TRANSFERRED sang DECEASED');
+    });
+
+    it('is final', () => {
+      for (const to of [
+        HorseLifecycleStatus.ACTIVE,
+        HorseLifecycleStatus.RETIRED,
+        HorseLifecycleStatus.TRANSFERRED,
+      ]) {
+        expect(
+          lifecycleTransitionError(HorseLifecycleStatus.DECEASED, to),
+        ).toBe('Ngựa đã mất, hồ sơ chỉ được xem');
+      }
+    });
+
+    it('cleans up like a transfer without resetting health', () => {
+      expect(
+        lifecycleSideEffects(
+          HorseLifecycleStatus.ACTIVE,
+          HorseLifecycleStatus.DECEASED,
+        ),
+      ).toEqual(
+        lifecycleSideEffects(
+          HorseLifecycleStatus.ACTIVE,
+          HorseLifecycleStatus.TRANSFERRED,
+        ),
+      );
+      expect(
+        lifecycleSideEffects(
+          HorseLifecycleStatus.RETIRED,
+          HorseLifecycleStatus.DECEASED,
+        ),
+      ).toEqual(
+        lifecycleSideEffects(
+          HorseLifecycleStatus.RETIRED,
+          HorseLifecycleStatus.TRANSFERRED,
+        ),
+      );
+      expect(
+        lifecycleSideEffects(
+          HorseLifecycleStatus.ACTIVE,
+          HorseLifecycleStatus.DECEASED,
+        ).resetHealth,
+      ).toBe(false);
+    });
+
+    it('is not eligible, not placed and read-only', () => {
+      expect(
+        evaluateEligibility({
+          isDeleted: false,
+          lifecycleStatus: HorseLifecycleStatus.DECEASED,
+          healthStatus: HorseHealthStatus.ELIGIBLE,
+          hasActiveTrainingLock: false,
+        }),
+      ).toMatchObject({
+        trainingEligible: false,
+        racingEligible: false,
+        reasons: [EligibilityReason.LIFECYCLE_DECEASED],
+      });
+      expect(placementStatusOf(HorseLifecycleStatus.DECEASED, null, null)).toBe(
+        HorsePlacementStatus.NOT_APPLICABLE,
+      );
+      expect(
+        barnChangeBlockedReason(HorseLifecycleStatus.DECEASED, null, 'b1'),
+      ).toBe('Ngựa đã mất, hồ sơ chỉ đọc');
+      const permissions = evaluateHorsePermissions({
+        roles: [
+          UserRole.CLUB_MANAGER,
+          UserRole.VETERINARIAN,
+          UserRole.HEAD_TRAINER,
+        ],
+        isDeleted: false,
+        hasBarn: false,
+        lifecycleStatus: HorseLifecycleStatus.DECEASED,
+        isInTrainerBarn: true,
+        isAssignedGroom: false,
+      });
+      expect(permissions).toMatchObject({
+        canEditProfile: false,
+        canEditRaceAptitude: false,
+        canAssignBarn: false,
+        canAssignStallAndGroom: false,
+        canChangeLifecycle: false,
+        canDelete: false,
+        canChangeHealth: false,
+        canRecordMeasurement: false,
+      });
+    });
+  });
+
+  describe('assertDateOfDeath', () => {
+    const today = '2026-10-06';
+    const expectFieldError = (fn: () => void, message: string) => {
+      expect(fn).toThrow(new BadRequestException(message));
+      try {
+        fn();
+      } catch (error) {
+        expect((error as BadRequestException).getResponse()).toEqual({
+          message,
+          errors: [{ field: 'dateOfDeath', message }],
+        });
+      }
+    };
+
+    it('accepts today, a past date and the date of birth', () => {
+      for (const date of ['2026-10-06', '2026-01-01', '2020-05-01']) {
+        expect(() =>
+          assertDateOfDeath(
+            HorseLifecycleStatus.DECEASED,
+            date,
+            '2020-05-01',
+            today,
+          ),
+        ).not.toThrow();
+      }
+    });
+
+    it('requires the date when recording a death', () => {
+      expectFieldError(
+        () =>
+          assertDateOfDeath(
+            HorseLifecycleStatus.DECEASED,
+            undefined,
+            null,
+            today,
+          ),
+        'Cần nhập ngày mất',
+      );
+    });
+
+    it('rejects a future date', () => {
+      expectFieldError(
+        () =>
+          assertDateOfDeath(
+            HorseLifecycleStatus.DECEASED,
+            '2026-10-07',
+            null,
+            today,
+          ),
+        'Ngày mất không được ở tương lai',
+      );
+    });
+
+    it('rejects a date before the date of birth', () => {
+      expectFieldError(
+        () =>
+          assertDateOfDeath(
+            HorseLifecycleStatus.DECEASED,
+            '2020-04-30',
+            '2020-05-01',
+            today,
+          ),
+        'Ngày mất không được trước ngày sinh',
+      );
+    });
+
+    it('rejects a date on another status and ignores a missing one', () => {
+      expectFieldError(
+        () =>
+          assertDateOfDeath(
+            HorseLifecycleStatus.RETIRED,
+            '2026-10-01',
+            null,
+            today,
+          ),
+        'Chỉ nhập ngày mất khi ghi nhận ngựa mất',
+      );
+      expect(() =>
+        assertDateOfDeath(HorseLifecycleStatus.RETIRED, undefined, null, today),
       ).not.toThrow();
     });
   });

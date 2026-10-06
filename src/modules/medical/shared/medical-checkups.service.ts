@@ -4,6 +4,7 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { CLUB_TIME_ZONE } from '../../../common/constants';
+import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import {
   CareScheduleStatus,
@@ -164,7 +165,7 @@ export class MedicalCheckupsService {
   /**
    * Lấy lịch tiêm phòng, tẩy giun, kiểm tra móng còn Đã lên lịch và đến hạn tới một ngày
    *
-   * - Không gồm ngày hẹn khám định kỳ; bỏ ngựa đã chuyển nhượng và hồ sơ đã xóa
+   * - Không gồm ngày hẹn khám định kỳ; bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
    * - Ngày đến hạn tính theo lịch câu lạc bộ
    * - assignedTo chỉ giữ khi người được giao còn hoạt động và còn hợp lệ (Veterinarian, hoặc Groom đang phụ trách ngựa); không thì null
    *
@@ -181,7 +182,7 @@ export class MedicalCheckupsService {
       untilDate,
       CareScheduleStatus.SCHEDULED,
       CareScheduleType.ROUTINE_CHECKUP,
-      HorseLifecycleStatus.TRANSFERRED,
+      READ_ONLY_LIFECYCLE_STATUSES,
       UserStatus.ACTIVE,
       UserRole.VETERINARIAN,
       UserRole.GROOM,
@@ -215,7 +216,7 @@ export class MedicalCheckupsService {
         WHERE s.status = $3
           AND s.type <> $4
           AND h.deleted_at IS NULL
-          AND h.lifecycle_status <> $5
+          AND h.lifecycle_status <> ALL($5::varchar[])
           AND (s.due_at AT TIME ZONE $1)::date <= $2::date
           ${horseFilter}
         ORDER BY s.due_at ASC`,

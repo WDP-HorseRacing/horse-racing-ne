@@ -23,7 +23,7 @@ import {
   assertDeletedHorse,
   assertNoBusinessData,
   assertNotParent,
-  assertNotTransferred,
+  assertLifecycleWritable,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
@@ -56,7 +56,7 @@ export class HorseDeletionsService {
    * @returns Promise hoàn tất khi đã xóa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
-   * @throws ConflictException Nếu hồ sơ đã bị xóa trước đó, ngựa đã chuyển nhượng (hồ sơ chỉ đọc), đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ trong phả hệ
+   * @throws ConflictException Nếu hồ sơ đã bị xóa trước đó, ngựa đã chuyển nhượng hoặc đã mất (hồ sơ chỉ đọc), đã có dữ liệu nghiệp vụ hoặc đang là cha/mẹ trong phả hệ
    */
   async remove(actor: Actor, id: string, body: DeleteHorseDto): Promise<void> {
     const caller = await this.access.currentUser(actor);
@@ -66,7 +66,7 @@ export class HorseDeletionsService {
       // Khoá con ngựa nếu con ngựa cho phép sửa (chưa xoá)
       const horse = await this.access.lockWritableHorse(manager, actor, id);
       // Ngưa chưa chuyển nhượng
-      assertNotTransferred(horse);
+      assertLifecycleWritable(horse);
       // Ngưa chưa phát sinh dữ liệu nghiệp vụ
       assertNoBusinessData(
         await this.deletions.businessDataLabels(manager, id),
@@ -96,7 +96,7 @@ export class HorseDeletionsService {
   /**
    * Xem trước việc xóa hồ sơ ngựa: xóa được không và đang vướng gì. Không ghi gì
    *
-   * - Dùng cùng các luật chặn như remove: đã chuyển nhượng, đã có dữ liệu nghiệp vụ, đang là cha/mẹ
+   * - Dùng cùng các luật chặn như remove: đã chuyển nhượng hoặc đã mất, đã có dữ liệu nghiệp vụ, đang là cha/mẹ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa

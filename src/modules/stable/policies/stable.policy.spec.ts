@@ -22,7 +22,7 @@ import {
   assertFreeStallRemovable,
   assertHorseHasBarn,
   assertHorseInTrainerBarn,
-  assertHorseNotTransferred,
+  assertHorseLifecycleWritable,
   assertManualStallStatusChange,
   assertStallBarnChangeable,
   changedFieldsDiff,
@@ -125,7 +125,7 @@ describe('stable.policy', () => {
       ['GROOM', 'Ngựa đã chuyển nhượng, không giao groom được'],
     ] as const)('rejects a transferred horse for %s', (operation, message) => {
       expect(() =>
-        assertHorseNotTransferred(
+        assertHorseLifecycleWritable(
           { lifecycleStatus: HorseLifecycleStatus.TRANSFERRED },
           operation,
         ),
@@ -134,7 +134,7 @@ describe('stable.policy', () => {
 
     it('lets a retired horse through', () => {
       expect(() =>
-        assertHorseNotTransferred(
+        assertHorseLifecycleWritable(
           { lifecycleStatus: HorseLifecycleStatus.RETIRED },
           'STALL',
         ),

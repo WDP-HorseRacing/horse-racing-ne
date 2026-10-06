@@ -212,7 +212,11 @@ describe('Medical shared writes (Postgres)', () => {
 
       await expect(
         dataSource.transaction((m) =>
-          schedules.cancelOpenSchedulesForTransfer(m, winx),
+          schedules.cancelOpenSchedulesBeforeReadOnly(
+            m,
+            winx,
+            TRANSFER_CANCEL_REASON,
+          ),
         ),
       ).resolves.toBe(1);
       expect(await row('care_schedules', open)).toMatchObject({
@@ -259,7 +263,12 @@ describe('Medical shared writes (Postgres)', () => {
 
       await expect(
         dataSource.transaction((m) =>
-          requests.dismissPendingForTransfer(m, winx, at),
+          requests.dismissPendingBeforeReadOnly(
+            m,
+            winx,
+            at,
+            TRANSFER_CANCEL_REASON,
+          ),
         ),
       ).resolves.toBe(1);
       expect(await row('medical_exam_requests', pending)).toMatchObject({

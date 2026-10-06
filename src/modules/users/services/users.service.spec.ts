@@ -4,11 +4,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, IsNull, Not, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { BarnEntity } from '../../stable/entities/barn.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { UserEntity } from '../entities/user.entity';
@@ -151,7 +151,7 @@ describe('UsersService', () => {
       expect(userRepository.update).not.toHaveBeenCalled();
     });
 
-    it('returns 409 while the owner still owns a horse that is not transferred', async () => {
+    it('returns 409 while the owner still owns a horse whose profile is writable', async () => {
       horseRepository.existsBy.mockResolvedValue(true);
 
       await expect(
@@ -159,7 +159,7 @@ describe('UsersService', () => {
       ).rejects.toThrow(ConflictException);
       expect(horseRepository.existsBy).toHaveBeenCalledWith({
         ownerId: owner.id,
-        lifecycleStatus: Not(HorseLifecycleStatus.TRANSFERRED),
+        lifecycleStatus: Not(In([...READ_ONLY_LIFECYCLE_STATUSES])),
       });
       expect(userRepository.update).not.toHaveBeenCalled();
       expect(keycloakUsers.assignRealmRole).not.toHaveBeenCalled();
@@ -342,7 +342,7 @@ describe('UsersService', () => {
     });
 
     it.each([UserStatus.LOCKED, UserStatus.INACTIVE])(
-      'returns 409 when setting %s on an owner who still owns a horse that is not transferred',
+      'returns 409 when setting %s on an owner who still owns a horse whose profile is writable',
       async (status) => {
         horseRepository.existsBy.mockResolvedValue(true);
 
@@ -355,7 +355,7 @@ describe('UsersService', () => {
         );
         expect(horseRepository.existsBy).toHaveBeenCalledWith({
           ownerId: owner.id,
-          lifecycleStatus: Not(HorseLifecycleStatus.TRANSFERRED),
+          lifecycleStatus: Not(In([...READ_ONLY_LIFECYCLE_STATUSES])),
         });
         expect(userRepository.update).not.toHaveBeenCalled();
         expect(keycloakUsers.setUserEnabled).not.toHaveBeenCalled();

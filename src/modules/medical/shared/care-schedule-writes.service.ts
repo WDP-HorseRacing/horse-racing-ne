@@ -4,7 +4,6 @@ import {
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
-import { TRANSFER_CANCEL_REASON } from '../constants/medical.constants';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 
 /**
@@ -42,15 +41,17 @@ export class CareScheduleWritesService {
   }
 
   /**
-   * Hủy mọi lịch chăm sóc còn Đã lên lịch của con ngựa khi chuyển nhượng
+   * Hủy mọi lịch chăm sóc còn Đã lên lịch của con ngựa khi hồ sơ ngựa chuyển sang chỉ được xem (chuyển nhượng hoặc đã mất)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
+   * @param cancelReason Lý do hủy ghi vào lịch
    * @returns Promise trả về số lịch đã hủy
    */
-  async cancelOpenSchedulesForTransfer(
+  async cancelOpenSchedulesBeforeReadOnly(
     manager: EntityManager,
     horseId: string,
+    cancelReason: string,
   ): Promise<number> {
     const result = await manager.getRepository(CareScheduleEntity).update(
       {
@@ -59,7 +60,7 @@ export class CareScheduleWritesService {
       },
       {
         status: CareScheduleStatus.CANCELLED,
-        cancelReason: TRANSFER_CANCEL_REASON,
+        cancelReason,
       },
     );
     return result.affected ?? 0;

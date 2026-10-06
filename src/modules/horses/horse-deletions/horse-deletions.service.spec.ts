@@ -223,6 +223,7 @@ describe('HorseDeletionsService', () => {
         horseId: HORSE_ID,
         allowed: true,
         transferred: false,
+        deceased: false,
         businessData: [],
         isParent: false,
       });
@@ -241,6 +242,7 @@ describe('HorseDeletionsService', () => {
         horseId: HORSE_ID,
         allowed: false,
         transferred: true,
+        deceased: false,
         businessData: ['chỉ số cơ thể', 'lớp học'],
         isParent: true,
       });

@@ -45,7 +45,7 @@ import {
   assertMeasurementValue,
   assertMeasurementDeletable,
   assertTimeRange,
-  assertNotTransferred,
+  assertLifecycleWritable,
   canRecordMeasurement,
   measurementAlerts,
 } from '../policies/horse.policy';
@@ -138,7 +138,7 @@ export class HorseMeasurementsService {
    * Ghi một lần đo chỉ số cơ thể của con ngựa, gồm một hoặc nhiều loại chỉ số.
    *
    * - Veterinarian ghi cho mọi ngựa; Head Trainer chỉ ngựa thuộc khu mình; Groom chỉ ngựa được phân công. Ai được ghi thì ghi được cả bốn loại
-   * - Không ghi cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
+   * - Không ghi cho ngựa đã chuyển nhượng hoặc đã mất hoặc hồ sơ đã xóa
    * - Giá trị phải trong khoảng hợp lệ; thời điểm đo không ở tương lai, lùi tối đa 7 ngày; mỗi loại chỉ một giá trị
    * - Có giá trị ngoài khoảng bình thường mà chưa gửi confirmAbnormal = true thì trả 422, chưa lưu gì
    * - Bản ghi lưu với nguồn MANUAL; mỗi bản ghi một dòng nhật ký
@@ -152,7 +152,7 @@ export class HorseMeasurementsService {
    * @throws ForbiddenException Nếu người gọi không được ghi chỉ số cho con ngựa này
    * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ, trùng loại hoặc thời điểm đo không hợp lệ
    * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà chưa xác nhận
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
    */
   async addMeasurements(
     actor: Actor,
@@ -168,7 +168,7 @@ export class HorseMeasurementsService {
         horseId,
       );
       await this.assertCanRecord(actor, caller.id, horseId, manager);
-      assertNotTransferred(horse);
+      assertLifecycleWritable(horse);
       this.assertValidValues(body, measuredAt);
 
       const created = await this.saveMeasurements(manager, {
@@ -293,7 +293,7 @@ export class HorseMeasurementsService {
    * Xóa mềm một bản ghi đo sai. Bản ghi không được sửa, ghi sai thì xóa rồi đo lại.
    *
    * - Chỉ Veterinarian (kiểm ở controller), bắt buộc nhập lý do
-   * - Ngựa đã chuyển nhượng vẫn xóa được bản ghi sai (chỉ cấm ghi mới)
+   * - Ngựa đã chuyển nhượng hoặc đã mất vẫn xóa được bản ghi sai (chỉ cấm ghi mới)
    * - Bản ghi có nguồn từ buổi khám (MEDICAL_EXAM) không xóa ở đây, phải xử lý bên hồ sơ y tế
    * - Khóa ngựa rồi khóa dòng bản ghi trong transaction; lưu lý do, người xóa và ghi nhật ký kèm lý do
    * - Bản đã xóa bị ẩn khỏi lịch sử, biểu đồ, chỉ số mới nhất và mốc cảnh báo giảm cân

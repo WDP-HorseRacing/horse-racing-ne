@@ -24,6 +24,8 @@ import {
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
 import {
   CLOCK_SKEW_MS,
+  READ_ONLY_LIFECYCLE_STATUSES,
+  DECEASED_HORSE_READ_ONLY_MESSAGE,
   FEVER_THRESHOLD_CELSIUS,
   HEALTH_REASONS,
   HORSE_MEASUREMENT_SPECS,
@@ -37,10 +39,12 @@ import {
   MIN_PARENT_AGE_GAP_YEARS,
   MS_PER_DAY,
   RACE_APTITUDE_FIELD,
+  TRANSFERRED_HORSE_READ_ONLY_MESSAGE,
   WEIGHT_DROP_PERCENT,
 } from '../constants/horse.constants';
 import type {
   ChildProfile,
+  ReadOnlyLifecycleStatus,
   EligibilityInput,
   EligibilityResult,
   HorseMeasurementAlertResult,
@@ -264,6 +268,8 @@ export function canTransitionLifecycle(
 /**
  * Tìm lý do không được đổi vòng đời theo bảng chuyển trạng thái; trả về lý do thay vì ném lỗi
  *
+ * - Ngựa đã mất: lý do là DECEASED_HORSE_READ_ONLY_MESSAGE
+ *
  * @param from Trạng thái vòng đời hiện tại
  * @param to Trạng thái vòng đời muốn chuyển sang
  * @returns Lý do chặn, hoặc null nếu được chuyển
@@ -272,9 +278,93 @@ export function lifecycleTransitionError(
   from: HorseLifecycleStatus,
   to: HorseLifecycleStatus,
 ): string | null {
-  return canTransitionLifecycle(from, to)
-    ? null
-    : `Không thể chuyển vòng đời từ ${from} sang ${to}`;
+  if (canTransitionLifecycle(from, to)) return null;
+  if (from === HorseLifecycleStatus.DECEASED) {
+    return DECEASED_HORSE_READ_ONLY_MESSAGE;
+  }
+  return `Không thể chuyển vòng đời từ ${from} sang ${to}`;
+}
+
+/**
+ * Kiểm tra ngày mất gửi kèm khi đổi vòng đời
+ *
+ * - Sang DECEASED: bắt buộc ngày mất, không ở tương lai, không trước ngày sinh (nếu biết)
+ * - Sang trạng thái khác: không được gửi ngày mất
+ *
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @param dateOfDeath Ngày mất (YYYY-MM-DD), undefined nếu không gửi
+ * @param dateOfBirth Ngày sinh của ngựa (YYYY-MM-DD), null nếu không biết
+ * @param today Ngày hôm nay theo giờ câu lạc bộ (YYYY-MM-DD)
+ * @throws BadRequestException Nếu thiếu, thừa hoặc sai ngày mất, lỗi gắn ô `dateOfDeath`
+ */
+export function assertDateOfDeath(
+  to: HorseLifecycleStatus,
+  dateOfDeath: string | undefined,
+  dateOfBirth: string | null,
+  today: string,
+): void {
+  if (to !== HorseLifecycleStatus.DECEASED) {
+    if (dateOfDeath !== undefined) {
+      throw fieldBadRequest(
+        'dateOfDeath',
+        'Chỉ nhập ngày mất khi ghi nhận ngựa mất',
+      );
+    }
+    return;
+  }
+  if (dateOfDeath === undefined) {
+    throw fieldBadRequest('dateOfDeath', 'Cần nhập ngày mất');
+  }
+  if (dateOfDeath > today) {
+    throw fieldBadRequest('dateOfDeath', 'Ngày mất không được ở tương lai');
+  }
+  if (dateOfBirth && dateOfDeath < dateOfBirth) {
+    throw fieldBadRequest('dateOfDeath', 'Ngày mất không được trước ngày sinh');
+  }
+}
+
+/**
+ * Câu chặn thao tác ghi trên hồ sơ chỉ được xem, theo trạng thái
+ */
+const READ_ONLY_LIFECYCLE_MESSAGES: Record<ReadOnlyLifecycleStatus, string> = {
+  [HorseLifecycleStatus.TRANSFERRED]: TRANSFERRED_HORSE_READ_ONLY_MESSAGE,
+  [HorseLifecycleStatus.DECEASED]: DECEASED_HORSE_READ_ONLY_MESSAGE,
+};
+
+/**
+ * Lý do không đổi được khu khi hồ sơ chỉ được xem, theo trạng thái
+ */
+const BARN_CHANGE_READ_ONLY_REASONS: Record<ReadOnlyLifecycleStatus, string> = {
+  [HorseLifecycleStatus.TRANSFERRED]: 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc',
+  [HorseLifecycleStatus.DECEASED]: 'Ngựa đã mất, hồ sơ chỉ đọc',
+};
+
+/**
+ * Kiểm tra vòng đời làm hồ sơ chỉ được xem (trạng thái thuộc READ_ONLY_LIFECYCLE_STATUSES)
+ *
+ * @param lifecycleStatus Vòng đời của ngựa
+ * @returns true nếu ngựa đã chuyển nhượng hoặc đã mất
+ */
+export function isReadOnlyLifecycle(
+  lifecycleStatus: HorseLifecycleStatus,
+): lifecycleStatus is ReadOnlyLifecycleStatus {
+  return (
+    READ_ONLY_LIFECYCLE_STATUSES as readonly HorseLifecycleStatus[]
+  ).includes(lifecycleStatus);
+}
+
+/**
+ * Lấy câu chặn thao tác ghi khi hồ sơ chỉ được xem
+ *
+ * @param lifecycleStatus Vòng đời của ngựa
+ * @returns Câu chặn, null nếu ngựa còn ở câu lạc bộ
+ */
+export function readOnlyLifecycleMessage(
+  lifecycleStatus: HorseLifecycleStatus,
+): string | null {
+  return isReadOnlyLifecycle(lifecycleStatus)
+    ? READ_ONLY_LIFECYCLE_MESSAGES[lifecycleStatus]
+    : null;
 }
 
 /**
@@ -326,17 +416,19 @@ export function assertDeletedHorse<T extends { deletedAt: Date | null }>(
 }
 
 /**
- * Chặn thao tác trên ngựa đã chuyển nhượng
+ * Chặn thao tác ghi khi hồ sơ ngựa chỉ được xem
+ *
+ * - Đã chuyển nhượng: 409 TRANSFERRED_HORSE_READ_ONLY_MESSAGE
+ * - Đã mất: 409 DECEASED_HORSE_READ_ONLY_MESSAGE
  *
  * @param horse Con ngựa cần kiểm
- * @throws ConflictException Nếu ngựa đã chuyển nhượng
+ * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
  */
-export function assertNotTransferred(horse: {
+export function assertLifecycleWritable(horse: {
   lifecycleStatus: HorseLifecycleStatus;
 }): void {
-  if (horse.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
-    throw new ConflictException('Ngựa đã chuyển nhượng, hồ sơ chỉ được xem');
-  }
+  const message = readOnlyLifecycleMessage(horse.lifecycleStatus);
+  if (message) throw new ConflictException(message);
 }
 
 /**
@@ -408,7 +500,8 @@ export function assertLifecycleTransition(
  *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế.
  * 3. Đang hoạt động đem chuyển nhượng (ACTIVE -> TRANSFERRED): 
  *    - Gộp cả (1) và (2): rút khỏi lớp, rút giải đua, và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế).
- * 4. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE): 
+ * 4. Ghi nhận ngựa mất (ACTIVE/RETIRED -> DECEASED): làm như chuyển nhượng từ trạng thái đó.
+ * 5. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE): 
  *    - Lớp học và giải đua cũ không tự khôi phục. 
  *    - Từ RETIRED: giữ nguyên trạng thái sức khỏe hiện tại. 
  *    - Từ TRANSFERRED: tự động đặt sức khỏe về UNDER_OBSERVATION, đưa ngựa vào trạng thái "Chờ xếp khu".
@@ -423,22 +516,21 @@ export function lifecycleSideEffects(
   from: HorseLifecycleStatus,
   to: HorseLifecycleStatus,
 ): LifecycleSideEffects {
+  const becomesReadOnly = isReadOnlyLifecycle(to);
   const retiringFromActive =
     from === HorseLifecycleStatus.ACTIVE &&
-    (to === HorseLifecycleStatus.RETIRED ||
-      to === HorseLifecycleStatus.TRANSFERRED);
-  const transferred = to === HorseLifecycleStatus.TRANSFERRED;
+    (to === HorseLifecycleStatus.RETIRED || becomesReadOnly);
   const reactivateFromTransfer =
     from === HorseLifecycleStatus.TRANSFERRED &&
     to === HorseLifecycleStatus.ACTIVE;
   return {
-    withdrawFromClasses: retiringFromActive || transferred,
+    withdrawFromClasses: retiringFromActive || becomesReadOnly,
     withdrawRegistrations: retiringFromActive,
-    releaseStall: transferred,
-    endGroom: transferred,
-    clearBarn: transferred,
-    releaseTrainingLock: transferred,
-    settleMedicalWork: transferred,
+    releaseStall: becomesReadOnly,
+    endGroom: becomesReadOnly,
+    clearBarn: becomesReadOnly,
+    releaseTrainingLock: becomesReadOnly,
+    settleMedicalWork: becomesReadOnly,
     resetHealth: reactivateFromTransfer,
     reactivateFromTransfer,
   };
@@ -559,7 +651,7 @@ export function nonRaceAptitudeFieldsIn(fields: object): string[] {
  *
  * - Được tập: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, không có lệnh khóa huấn luyện
  * - Được đua: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE, không có lệnh khóa huấn luyện
- * - Lý do vòng đời tách riêng Đã giải nghệ (LIFECYCLE_RETIRED) và Đã chuyển nhượng (LIFECYCLE_TRANSFERRED)
+ * - Lý do vòng đời tách riêng Đã giải nghệ (LIFECYCLE_RETIRED), Đã chuyển nhượng (LIFECYCLE_TRANSFERRED) và Đã mất (LIFECYCLE_DECEASED)
  * - trainingReasons: lý do không được tập, rỗng khi được tập
  * - racingReasons: lý do không được đua, rỗng khi được đua
  * - reasons: mọi lý do, bằng racingReasons
@@ -577,6 +669,9 @@ export function evaluateEligibility(
   }
   if (input.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
     reasons.push(EligibilityReason.LIFECYCLE_TRANSFERRED);
+  }
+  if (input.lifecycleStatus === HorseLifecycleStatus.DECEASED) {
+    reasons.push(EligibilityReason.LIFECYCLE_DECEASED);
   }
   const active =
     !input.isDeleted && input.lifecycleStatus === HorseLifecycleStatus.ACTIVE;
@@ -796,14 +891,14 @@ export function canRecordMeasurement(
  * @param lifecycleStatus Vòng đời của ngựa
  * @param barnId Khu của ngựa, null nếu chưa xếp
  * @param stallId Ô đang mở của ngựa, null nếu chưa xếp
- * @returns Tình trạng xếp chỗ; ngựa đã chuyển nhượng luôn là NOT_APPLICABLE
+ * @returns Tình trạng xếp chỗ; ngựa đã chuyển nhượng hoặc đã mất luôn là NOT_APPLICABLE
  */
 export function placementStatusOf(
   lifecycleStatus: HorseLifecycleStatus,
   barnId: string | null,
   stallId: string | null,
 ): HorsePlacementStatus {
-  if (lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
+  if (isReadOnlyLifecycle(lifecycleStatus)) {
     return HorsePlacementStatus.NOT_APPLICABLE;
   }
   if (!barnId) return HorsePlacementStatus.PENDING_BARN;
@@ -816,6 +911,7 @@ export function placementStatusOf(
  *
  * - Hồ sơ đã xóa: chỉ còn Club Manager khôi phục được, mọi thao tác khác tắt.
  * - Ngựa đã chuyển nhượng: hồ sơ chỉ đọc, chỉ còn Club Manager đổi được vòng đời để kích hoạt lại.
+ * - Ngựa đã mất: hồ sơ chỉ đọc, không đổi được vòng đời.
  * - Head Trainer chỉ thao tác ngựa thuộc khu mình; ngựa chưa có khu thì Head Trainer không thao tác được.
  * - Xem bệnh án, huấn luyện: mọi vai trò trừ Groom. Xem thành tích: Club Manager, Head Trainer, Horse Owner.
  * - Người có nhiều role: chỉ cần một role được phép là cờ bật.
@@ -829,8 +925,7 @@ export function evaluateHorsePermissions(
   const has = (...roles: UserRole[]) =>
     roles.some((role) => input.roles.includes(role));
   const live = !input.isDeleted;
-  const writable =
-    live && input.lifecycleStatus !== HorseLifecycleStatus.TRANSFERRED;
+  const writable = live && !isReadOnlyLifecycle(input.lifecycleStatus);
   const trainerInBarn = has(UserRole.HEAD_TRAINER) && input.isInTrainerBarn;
 
   return {
@@ -838,7 +933,10 @@ export function evaluateHorsePermissions(
     canEditRaceAptitude: trainerInBarn && writable,
     canAssignBarn: has(UserRole.CLUB_MANAGER) && writable,
     canAssignStallAndGroom: trainerInBarn && input.hasBarn && writable,
-    canChangeLifecycle: has(UserRole.CLUB_MANAGER) && live,
+    canChangeLifecycle:
+      has(UserRole.CLUB_MANAGER) &&
+      live &&
+      input.lifecycleStatus !== HorseLifecycleStatus.DECEASED,
     canDelete: has(UserRole.CLUB_MANAGER) && writable,
     canRestore: has(UserRole.CLUB_MANAGER) && input.isDeleted,
     canChangeHealth: has(UserRole.VETERINARIAN) && writable,
@@ -890,8 +988,8 @@ export function barnChangeBlockedReason(
   currentBarnId: string | null,
   targetBarnId: string,
 ): string | null {
-  if (lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
-    return 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc';
+  if (isReadOnlyLifecycle(lifecycleStatus)) {
+    return BARN_CHANGE_READ_ONLY_REASONS[lifecycleStatus];
   }
   if (currentBarnId === targetBarnId) return 'Ngựa đang ở khu này';
   return null;

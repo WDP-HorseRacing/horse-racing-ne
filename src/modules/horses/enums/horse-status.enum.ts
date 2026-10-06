@@ -16,4 +16,6 @@ export enum HorseLifecycleStatus {
   RETIRED = 'RETIRED',
   /** Ngựa đã được chuyển nhượng sang câu lạc bộ khác */
   TRANSFERRED = 'TRANSFERRED',
+  /** Ngựa đã mất, trạng thái cuối */
+  DECEASED = 'DECEASED',
 }

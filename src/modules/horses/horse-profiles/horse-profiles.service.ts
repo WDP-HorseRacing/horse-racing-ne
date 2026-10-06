@@ -57,7 +57,7 @@ import { toHorseResponse } from '../mappers/horse.mapper';
 import {
   assertAssignableOwner,
   assertDateOfBirth,
-  assertNotTransferred,
+  assertLifecycleWritable,
   evaluateEligibility,
   evaluateHorsePermissions,
   nonRaceAptitudeFieldsIn,
@@ -311,7 +311,7 @@ export class HorseProfilesService {
    * @throws NotFoundException Nếu không có ngựa (Head Trainer: kể cả hồ sơ đã xóa) hoặc không tìm thấy tệp ảnh của người gọi
    * @throws ForbiddenException Nếu người gọi gửi field ngoài quyền, hoặc Head Trainer sửa ngựa ngoài khu
    * @throws BadRequestException Nếu ngày sinh, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ
-   * @throws ConflictException Nếu Club Manager sửa hồ sơ đã xóa, ngựa đã chuyển nhượng, chủ sở hữu không còn hoạt động, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
+   * @throws ConflictException Nếu Club Manager sửa hồ sơ đã xóa, ngựa đã chuyển nhượng hoặc đã mất, chủ sở hữu không còn hoạt động, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
    */
   async update(
     actor: Actor,
@@ -322,7 +322,7 @@ export class HorseProfilesService {
     const horse = await this.access.findWritableHorse(actor, id);
     const { version, ...fields } = body;
     await this.assertEditableFields(actor, caller.id, horse.id, fields);
-    assertNotTransferred(horse);
+    assertLifecycleWritable(horse);
     this.assertCurrentVersion(horse, version);
     const microchipId =
       fields.microchipId === undefined
@@ -569,7 +569,7 @@ export class HorseProfilesService {
   }
 
   /**
-   * Kiểm tra số chip chưa được ngựa khác dùng, tính cả hồ sơ đã xóa mềm và ngựa đã chuyển nhượng
+   * Kiểm tra số chip chưa được ngựa khác dùng, tính cả hồ sơ đã xóa mềm và ngựa đã chuyển nhượng hoặc đã mất
    *
    * @param microchipId Số chip đã cắt khoảng trắng, null nếu bỏ trống
    * @param excludeHorseId UUID của ngựa đang sửa, bỏ trống khi tạo mới

@@ -41,6 +41,9 @@ export class HorseDeletionPreviewResponseDto {
   @ApiProperty({ description: 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc' })
   transferred!: boolean;
 
+  @ApiProperty({ description: 'Ngựa đã mất, hồ sơ chỉ đọc' })
+  deceased!: boolean;
+
   @ApiProperty({
     type: [String],
     description:

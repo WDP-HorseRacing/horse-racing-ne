@@ -15,8 +15,10 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { formatMeasurement } from '../../horses/utils/measurement-format';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import { assertNotTransferred } from '../../horses/policies/horse.policy';
+import {
+  assertLifecycleWritable,
+  isReadOnlyLifecycle,
+} from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
@@ -62,8 +64,8 @@ export class ExamRequestsService {
    * Gửi yêu cầu khám cho con ngựa
    *
    * - Veterinarian, Club Manager: mọi ngựa; Head Trainer: ngựa thuộc khu mình; Groom: ngựa được phân công
-   * - Khóa row ngựa; kiểm phạm vi người gửi trước, rồi mới chặn ngựa đã chuyển nhượng (ngoài phạm vi luôn là 403)
-   * - Không tạo cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
+   * - Khóa row ngựa; kiểm phạm vi người gửi trước, rồi mới chặn ngựa đã chuyển nhượng hoặc đã mất (ngoài phạm vi luôn là 403)
+   * - Không tạo cho ngựa đã chuyển nhượng hoặc đã mất hoặc hồ sơ đã xóa
    * - Nguồn gốc theo vai trò người gửi; ghi nhật ký
    * - Yêu cầu Khẩn: ghi event báo mọi Veterinarian vào outbox trong cùng transaction
    *
@@ -73,7 +75,7 @@ export class ExamRequestsService {
    * @returns Promise trả về yêu cầu vừa tạo
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws ForbiddenException Nếu người gọi không được gửi yêu cầu cho con ngựa này
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
    */
   async create(
     actor: Actor,
@@ -90,7 +92,7 @@ export class ExamRequestsService {
         roles: actor.roles,
         ...(await this.scopeFlags(manager, actor, caller.id, horseId)),
       });
-      assertNotTransferred(horse);
+      assertLifecycleWritable(horse);
       const saved = await this.insert(manager, {
         horseId,
         requestedBy: caller.id,
@@ -199,7 +201,7 @@ export class ExamRequestsService {
    * @returns Promise trả về yêu cầu sau khi đổi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có yêu cầu, hoặc ngựa ngoài phạm vi
-   * @throws ConflictException Nếu yêu cầu không còn chờ, hoặc ngựa đã chuyển nhượng
+   * @throws ConflictException Nếu yêu cầu không còn chờ, hoặc ngựa đã chuyển nhượng hoặc đã mất
    */
   async updateUrgency(
     actor: Actor,
@@ -249,7 +251,7 @@ export class ExamRequestsService {
    * @returns Promise trả về yêu cầu sau khi bỏ qua
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có yêu cầu, hoặc ngựa ngoài phạm vi
-   * @throws ConflictException Nếu yêu cầu không còn chờ, hoặc ngựa đã chuyển nhượng
+   * @throws ConflictException Nếu yêu cầu không còn chờ, hoặc ngựa đã chuyển nhượng hoặc đã mất
    */
   async dismiss(
     actor: Actor,
@@ -294,7 +296,7 @@ export class ExamRequestsService {
   /**
    * Tạo yêu cầu khám từ báo cáo sự cố của Groom trong transaction đang mở
    *
-   * - Không khóa row ngựa, không kiểm Groom được phân công và ngựa đã chuyển nhượng
+   * - Không khóa row ngựa, không kiểm Groom được phân công và ngựa đã chuyển nhượng hoặc đã mất
    * - Không publish event; báo Veterinarian khi Khẩn bằng announceCreated trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
@@ -326,7 +328,7 @@ export class ExamRequestsService {
    * Tự sinh yêu cầu khám từ cảnh báo chỉ số cơ thể
    *
    * - Khóa row ngựa trước khi kiểm
-   * - Bỏ qua ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
+   * - Bỏ qua ngựa đã chuyển nhượng hoặc đã mất hoặc hồ sơ đã xóa
    * - Sốt là Khẩn, sụt cân là Bình thường; người gửi là Hệ thống (requestedBy null)
    * - Mỗi ngựa chỉ một yêu cầu tự động PENDING cho mỗi loại cảnh báo: trùng thì bỏ qua (ON CONFLICT DO NOTHING)
    * - Mỗi lần đo chỉ sinh một yêu cầu cho mỗi loại cảnh báo: nhận lại cùng cảnh báo (kể cả khi yêu cầu cũ đã xử lý) thì bỏ qua
@@ -344,7 +346,7 @@ export class ExamRequestsService {
       if (
         !horse ||
         horse.deletedAt ||
-        horse.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED
+        isReadOnlyLifecycle(horse.lifecycleStatus)
       ) {
         return false;
       }

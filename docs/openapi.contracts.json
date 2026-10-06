@@ -974,7 +974,8 @@
               "enum": [
                 "ACTIVE",
                 "RETIRED",
-                "TRANSFERRED"
+                "TRANSFERRED",
+                "DECEASED"
               ]
             }
           },
@@ -1288,7 +1289,8 @@
               "enum": [
                 "ACTIVE",
                 "RETIRED",
-                "TRANSFERRED"
+                "TRANSFERRED",
+                "DECEASED"
               ]
             }
           }
@@ -7481,6 +7483,10 @@
             "type": "boolean",
             "description": "Ngựa đã chuyển nhượng, hồ sơ chỉ đọc"
           },
+          "deceased": {
+            "type": "boolean",
+            "description": "Ngựa đã mất, hồ sơ chỉ đọc"
+          },
           "businessData": {
             "description": "Các loại dữ liệu nghiệp vụ ngựa đã phát sinh (vd \"chỉ số cơ thể\", \"lớp học\"), rỗng nếu chưa có",
             "type": "array",
@@ -7497,6 +7503,7 @@
           "horseId",
           "allowed",
           "transferred",
+          "deceased",
           "businessData",
           "isParent"
         ]
@@ -7636,7 +7643,8 @@
             "enum": [
               "ACTIVE",
               "RETIRED",
-              "TRANSFERRED"
+              "TRANSFERRED",
+              "DECEASED"
             ]
           },
           "lifecycleReason": {
@@ -7649,6 +7657,12 @@
             "format": "date-time",
             "nullable": true,
             "description": "Thời điểm đổi vòng đời gần nhất"
+          },
+          "dateOfDeath": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Ngày mất, chỉ có khi lifecycleStatus = DECEASED"
           },
           "version": {
             "type": "number",
@@ -8316,7 +8330,8 @@
             "enum": [
               "ACTIVE",
               "RETIRED",
-              "TRANSFERRED"
+              "TRANSFERRED",
+              "DECEASED"
             ]
           },
           "lifecycleReason": {
@@ -8329,6 +8344,12 @@
             "format": "date-time",
             "nullable": true,
             "description": "Thời điểm đổi vòng đời gần nhất"
+          },
+          "dateOfDeath": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Ngày mất, chỉ có khi lifecycleStatus = DECEASED"
           },
           "version": {
             "type": "number",
@@ -8519,6 +8540,7 @@
                 "PROFILE_DELETED",
                 "LIFECYCLE_RETIRED",
                 "LIFECYCLE_TRANSFERRED",
+                "LIFECYCLE_DECEASED",
                 "HEALTH_UNDER_OBSERVATION",
                 "HEALTH_INJURED",
                 "HEALTH_QUARANTINED",
@@ -8535,6 +8557,7 @@
                 "PROFILE_DELETED",
                 "LIFECYCLE_RETIRED",
                 "LIFECYCLE_TRANSFERRED",
+                "LIFECYCLE_DECEASED",
                 "HEALTH_UNDER_OBSERVATION",
                 "HEALTH_INJURED",
                 "HEALTH_QUARANTINED",
@@ -8551,6 +8574,7 @@
                 "PROFILE_DELETED",
                 "LIFECYCLE_RETIRED",
                 "LIFECYCLE_TRANSFERRED",
+                "LIFECYCLE_DECEASED",
                 "HEALTH_UNDER_OBSERVATION",
                 "HEALTH_INJURED",
                 "HEALTH_QUARANTINED",
@@ -8647,7 +8671,8 @@
             "enum": [
               "ACTIVE",
               "RETIRED",
-              "TRANSFERRED"
+              "TRANSFERRED",
+              "DECEASED"
             ]
           },
           "lifecycleReason": {
@@ -8660,6 +8685,12 @@
             "format": "date-time",
             "nullable": true,
             "description": "Thời điểm đổi vòng đời gần nhất"
+          },
+          "dateOfDeath": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Ngày mất, chỉ có khi lifecycleStatus = DECEASED"
           },
           "version": {
             "type": "number",
@@ -9019,7 +9050,8 @@
             "enum": [
               "ACTIVE",
               "RETIRED",
-              "TRANSFERRED"
+              "TRANSFERRED",
+              "DECEASED"
             ]
           },
           "activeTrainingLock": {
@@ -9034,6 +9066,7 @@
                 "PROFILE_DELETED",
                 "LIFECYCLE_RETIRED",
                 "LIFECYCLE_TRANSFERRED",
+                "LIFECYCLE_DECEASED",
                 "HEALTH_UNDER_OBSERVATION",
                 "HEALTH_INJURED",
                 "HEALTH_QUARANTINED",
@@ -9050,6 +9083,7 @@
                 "PROFILE_DELETED",
                 "LIFECYCLE_RETIRED",
                 "LIFECYCLE_TRANSFERRED",
+                "LIFECYCLE_DECEASED",
                 "HEALTH_UNDER_OBSERVATION",
                 "HEALTH_INJURED",
                 "HEALTH_QUARANTINED",
@@ -9066,6 +9100,7 @@
                 "PROFILE_DELETED",
                 "LIFECYCLE_RETIRED",
                 "LIFECYCLE_TRANSFERRED",
+                "LIFECYCLE_DECEASED",
                 "HEALTH_UNDER_OBSERVATION",
                 "HEALTH_INJURED",
                 "HEALTH_QUARANTINED",
@@ -9098,7 +9133,8 @@
             "enum": [
               "ACTIVE",
               "RETIRED",
-              "TRANSFERRED"
+              "TRANSFERRED",
+              "DECEASED"
             ]
           },
           "to": {
@@ -9106,7 +9142,8 @@
             "enum": [
               "ACTIVE",
               "RETIRED",
-              "TRANSFERRED"
+              "TRANSFERRED",
+              "DECEASED"
             ]
           },
           "allowed": {
@@ -9200,14 +9237,20 @@
             "enum": [
               "ACTIVE",
               "RETIRED",
-              "TRANSFERRED"
+              "TRANSFERRED",
+              "DECEASED"
             ]
           },
           "reason": {
             "type": "string",
             "minLength": 1,
             "maxLength": 500,
-            "description": "Lý do đổi vòng đời, bắt buộc"
+            "description": "Lý do đổi vòng đời, bắt buộc. Với DECEASED là nguyên nhân mất"
+          },
+          "dateOfDeath": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày mất. Bắt buộc khi lifecycleStatus = DECEASED, không gửi với trạng thái khác (400). Không ở tương lai, không trước ngày sinh"
           }
         },
         "required": [
@@ -11189,7 +11232,8 @@
               "TRAINING_LOCK",
               "HEALTH_STATUS",
               "EXAM_REQUEST",
-              "CARE_REMINDER"
+              "CARE_REMINDER",
+              "HORSE_LIFECYCLE"
             ]
           },
           "priority": {

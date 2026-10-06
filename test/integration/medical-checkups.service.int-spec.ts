@@ -56,7 +56,7 @@ describe('MedicalCheckupsService (Postgres)', () => {
       expect(rows[1]).toMatchObject({ horseName: 'Winx', dueDate: TODAY });
     });
 
-    it('skips deleted and transferred horses but keeps retired ones', async () => {
+    it('skips deleted, transferred and deceased horses but keeps retired ones', async () => {
       const retired = await seed.horse('Retired', {
         lifecycle: HorseLifecycleStatus.RETIRED,
       });
@@ -64,9 +64,13 @@ describe('MedicalCheckupsService (Postgres)', () => {
       const transferred = await seed.horse('Transferred', {
         lifecycle: HorseLifecycleStatus.TRANSFERRED,
       });
+      const deceased = await seed.horse('Deceased', {
+        lifecycle: HorseLifecycleStatus.DECEASED,
+      });
       const kept = await seed.schedule(retired, '2026-09-26T02:00:00Z');
       await seed.schedule(deleted, '2026-09-26T02:00:00Z');
       await seed.schedule(transferred, '2026-09-26T02:00:00Z');
+      await seed.schedule(deceased, '2026-09-26T02:00:00Z');
 
       await expect(scheduleIds()).resolves.toEqual([kept]);
     });

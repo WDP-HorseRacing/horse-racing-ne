@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { BarnEntity } from '../entities/barn.entity';
 import { StallEntity } from '../entities/stall.entity';
@@ -10,7 +10,7 @@ import {
   assertBarnActive,
   assertHorseHasBarn,
   assertHorseInTrainerBarn,
-  assertHorseNotTransferred,
+  assertHorseLifecycleWritable,
   EMPTY_CAPACITY,
 } from '../policies/stable.policy';
 import type {
@@ -22,7 +22,7 @@ import type {
  * Đếm ô trống và ngựa chờ xếp ô của nhiều khu trong một câu query.
  *
  * - Ô trống: ô thuộc khu, chưa xóa, đang AVAILABLE và không có phân công đang mở
- * - Ngựa chờ xếp ô: horses.barn_id = khu, chưa xóa, khác TRANSFERRED và không có phân công ô đang mở
+ * - Ngựa chờ xếp ô: horses.barn_id = khu, chưa xóa, không TRANSFERRED hay DECEASED và không có phân công ô đang mở
  */
 const BARN_STALL_CAPACITY_SQL = `SELECT b.id AS "barnId",
        (SELECT COUNT(*)::int
@@ -40,7 +40,7 @@ const BARN_STALL_CAPACITY_SQL = `SELECT b.id AS "barnId",
           FROM horses h
          WHERE h.barn_id = b.id
            AND h.deleted_at IS NULL
-           AND h.lifecycle_status <> $3
+           AND h.lifecycle_status <> ALL($3::varchar[])
            AND NOT EXISTS (
                  SELECT 1
                    FROM stall_assignments sa
@@ -78,10 +78,10 @@ export class StableAccessService {
    * @param manager EntityManager của transaction đang chạy
    * @param callerId UUID của người gọi (users.id)
    * @param horseId UUID của ngựa
-   * @param operation Thao tác đang làm, để chọn câu báo lỗi khi ngựa đã chuyển nhượng
+   * @param operation Thao tác đang làm, để chọn câu báo lỗi khi ngựa đã chuyển nhượng hoặc đã mất
    * @returns Promise trả về con ngựa đã lock, chắc chắn đã có khu
    * @throws NotFoundException Nếu không có ngựa hoặc hồ sơ đã xóa
-   * @throws ConflictException Nếu ngựa chưa được xếp khu hoặc đã chuyển nhượng
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng hoặc đã mất
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    */
   async lockOperableHorse(
@@ -95,7 +95,7 @@ export class StableAccessService {
       lock: { mode: 'pessimistic_write' },
     });
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
-    assertHorseNotTransferred(horse, operation);
+    assertHorseLifecycleWritable(horse, operation);
     assertHorseHasBarn(horse);
     await this.assertHorseInTrainerBarn(manager, horseId, callerId);
     return horse;
@@ -182,7 +182,7 @@ export class StableAccessService {
       await manager.query(BARN_STALL_CAPACITY_SQL, [
         barnIds,
         StallStatus.AVAILABLE,
-        HorseLifecycleStatus.TRANSFERRED,
+        READ_ONLY_LIFECYCLE_STATUSES,
       ]);
     return new Map(
       rows.map((row) => [

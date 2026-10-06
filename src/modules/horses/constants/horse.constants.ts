@@ -1,5 +1,8 @@
 import { UserRole } from '../../../common/enums/role.enum';
-import type { HorseMeasurementSpec } from '../types/horse.types';
+import type {
+  ReadOnlyLifecycleStatus,
+  HorseMeasurementSpec,
+} from '../types/horse.types';
 import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import {
@@ -125,9 +128,38 @@ export const HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT =
   'horse.groom.released-by-transfer';
 
 /**
+ * Tên domain event phát ra khi ghi nhận ngựa đã mất, ghi vào outbox trong cùng transaction.
+ * Payload là HorseDeceasedEvent.
+ */
+export const HORSE_DECEASED_EVENT = 'horse.deceased';
+
+/**
  * Kết luận ghi vào lệnh khóa huấn luyện khi hệ thống tự gỡ do ngựa chuyển nhượng.
  */
 export const TRANSFER_LOCK_RELEASE_CONCLUSION = 'Gỡ do chuyển nhượng';
+
+/**
+ * Các trạng thái vòng đời làm hồ sơ ngựa chỉ được xem; nơi duy nhất quy định luật này
+ */
+export const READ_ONLY_LIFECYCLE_STATUSES: readonly ReadOnlyLifecycleStatus[] =
+  [HorseLifecycleStatus.TRANSFERRED, HorseLifecycleStatus.DECEASED];
+
+/**
+ * Kết luận ghi vào lệnh khóa huấn luyện khi hệ thống tự gỡ do ngựa mất.
+ */
+export const DECEASED_LOCK_RELEASE_CONCLUSION = 'Gỡ do ngựa mất';
+
+/**
+ * Câu chặn thao tác ghi trên ngựa đã chuyển nhượng.
+ */
+export const TRANSFERRED_HORSE_READ_ONLY_MESSAGE =
+  'Ngựa đã chuyển nhượng, hồ sơ chỉ được xem';
+
+/**
+ * Câu chặn thao tác ghi trên ngựa đã mất.
+ */
+export const DECEASED_HORSE_READ_ONLY_MESSAGE =
+  'Ngựa đã mất, hồ sơ chỉ được xem';
 
 /**
  * Các field hồ sơ ghi vào nhật ký khi tạo ngựa mới.
@@ -150,7 +182,11 @@ export const CREATE_AUDIT_FIELDS = [
 ];
 
 /**
- * Các bước chuyển vòng đời được phép từ mỗi trạng thái; ngựa RETIRED được quay lại ACTIVE hoặc chuyển nhượng, ngựa TRANSFERRED chỉ quay lại ACTIVE khi câu lạc bộ mua lại
+ * Các bước chuyển vòng đời được phép từ mỗi trạng thái
+ *
+ * - ACTIVE, RETIRED: sang mọi trạng thái khác (RETIRED không quay về chính nó)
+ * - TRANSFERRED: chỉ quay lại ACTIVE khi câu lạc bộ mua lại
+ * - DECEASED: trạng thái cuối, không chuyển đi đâu
  */
 export const LIFECYCLE_TRANSITIONS: Record<
   HorseLifecycleStatus,
@@ -159,12 +195,15 @@ export const LIFECYCLE_TRANSITIONS: Record<
   [HorseLifecycleStatus.ACTIVE]: [
     HorseLifecycleStatus.RETIRED,
     HorseLifecycleStatus.TRANSFERRED,
+    HorseLifecycleStatus.DECEASED,
   ],
   [HorseLifecycleStatus.RETIRED]: [
     HorseLifecycleStatus.ACTIVE,
     HorseLifecycleStatus.TRANSFERRED,
+    HorseLifecycleStatus.DECEASED,
   ],
   [HorseLifecycleStatus.TRANSFERRED]: [HorseLifecycleStatus.ACTIVE],
+  [HorseLifecycleStatus.DECEASED]: [],
 };
 
 /**
@@ -174,6 +213,7 @@ export const LIFECYCLE_VERBS: Record<HorseLifecycleStatus, string> = {
   [HorseLifecycleStatus.ACTIVE]: 'kích hoạt lại',
   [HorseLifecycleStatus.RETIRED]: 'giải nghệ',
   [HorseLifecycleStatus.TRANSFERRED]: 'chuyển nhượng',
+  [HorseLifecycleStatus.DECEASED]: 'ghi nhận đã mất',
 };
 
 /**

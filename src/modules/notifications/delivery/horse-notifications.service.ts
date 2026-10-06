@@ -10,6 +10,7 @@ import { HorseEntity } from '../../horses/entities/horse.entity';
 import { formatMeasurement } from '../../horses/utils/measurement-format';
 import type {
   HorseBarnAssignedEvent,
+  HorseDeceasedEvent,
   HorseGroomReleasedEvent,
   HorseMeasurementAlertEvent,
 } from '../../horses/types/horse.types';
@@ -186,6 +187,47 @@ export class HorseNotificationsService {
       title: 'Ngựa đã chuyển nhượng',
       message: `Ngựa ${horseName} đã chuyển nhượng, bạn không còn phụ trách con ngựa này. Bạn vẫn xem được hồ sơ nhưng không thao tác được.`,
       resource: horseResource(notice.horseId),
+    });
+  }
+
+  /**
+   * Báo chủ ngựa, Huấn luyện viên trưởng của khu cũ và Groom cũ khi ngựa được ghi nhận đã mất.
+   *
+   * - Khu và Groom lấy từ payload (trước khi bị dọn); chủ ngựa chỉ nhận khi còn là HORSE_OWNER đang ACTIVE
+   * - Huấn luyện viên trưởng chỉ nhận khi khu còn và người đó còn ACTIVE, còn vai trò HEAD_TRAINER
+   * - Ghi bằng connection riêng, không nhận EntityManager; idempotent theo event.eventId
+   * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
+   *
+   * @param event Payload của HORSE_DECEASED_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  async notifyHorseDeceased(event: HorseDeceasedEvent): Promise<string[]> {
+    const contact = await this.recipients.findHorseMedicalContact(
+      event.horseId,
+    );
+    if (!contact) {
+      this.logger.warn(
+        `Bỏ qua thông báo ngựa mất ${event.eventId}: không tìm thấy ngựa ${event.horseId}`,
+      );
+      return [];
+    }
+    const barn = event.barnId
+      ? await this.recipients.findBarnContact(event.barnId)
+      : null;
+    const recipientIds = [
+      contact.ownerId,
+      barn?.headTrainerId ?? null,
+      event.groomId,
+    ].filter((id): id is string => id !== null);
+    const dateOfDeath = event.dateOfDeath.split('-').reverse().join('/');
+    return this.notifications.send({
+      eventId: event.eventId,
+      recipientIds,
+      category: NotificationCategory.HORSE_LIFECYCLE,
+      priority: NotificationPriority.HIGH,
+      title: `Ngựa ${contact.horseName} đã mất`,
+      message: `Ngày mất ${dateOfDeath}. Nguyên nhân: ${event.reason}`,
+      resource: horseResource(event.horseId),
     });
   }
 

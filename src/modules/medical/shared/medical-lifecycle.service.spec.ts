@@ -1,8 +1,11 @@
 import { ConflictException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleStatus } from '../constants/care-schedule.enum';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import {
+  DECEASED_CANCEL_REASON,
+  OPEN_CASE_BLOCKS_DECEASED_MESSAGE,
   OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
   TRANSFER_CANCEL_REASON,
 } from '../constants/medical.constants';
@@ -50,11 +53,17 @@ describe('MedicalLifecycleService', () => {
     jest.useRealTimers();
   });
 
-  describe('settleForTransfer', () => {
+  describe('settleBeforeReadOnly', () => {
     it('answers conflict while the horse has an open case, without writing', async () => {
       shared.findOpenCase.mockResolvedValue({ id: 'case-1' });
 
-      await expect(service.settleForTransfer(manager, 'h1')).rejects.toThrow(
+      await expect(
+        service.settleBeforeReadOnly(
+          manager,
+          'h1',
+          HorseLifecycleStatus.TRANSFERRED,
+        ),
+      ).rejects.toThrow(
         new ConflictException(OPEN_CASE_BLOCKS_TRANSFER_MESSAGE),
       );
       expect(requestsUpdate).not.toHaveBeenCalled();
@@ -62,7 +71,11 @@ describe('MedicalLifecycleService', () => {
     });
 
     it('dismisses pending exam requests and cancels open schedules through the given manager', async () => {
-      const result = await service.settleForTransfer(manager, 'h1');
+      const result = await service.settleBeforeReadOnly(
+        manager,
+        'h1',
+        HorseLifecycleStatus.TRANSFERRED,
+      );
 
       expect(shared.findOpenCase).toHaveBeenCalledWith('h1', manager);
       expect(requestsUpdate).toHaveBeenCalledWith(
@@ -88,23 +101,50 @@ describe('MedicalLifecycleService', () => {
     });
   });
 
-  describe('transferBlockReason', () => {
+  describe('readOnlyBlockReason', () => {
     it('returns null when the horse has no open case', async () => {
-      await expect(service.transferBlockReason('h1')).resolves.toBeNull();
+      await expect(
+        service.readOnlyBlockReason('h1', HorseLifecycleStatus.TRANSFERRED),
+      ).resolves.toBeNull();
     });
 
     it('returns the blocking message when the horse has an open case', async () => {
       shared.findOpenCase.mockResolvedValue({ id: 'case-1' });
 
-      await expect(service.transferBlockReason('h1')).resolves.toBe(
-        OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
-      );
+      await expect(
+        service.readOnlyBlockReason('h1', HorseLifecycleStatus.TRANSFERRED),
+      ).resolves.toBe(OPEN_CASE_BLOCKS_TRANSFER_MESSAGE);
     });
   });
 
-  describe('transferImpact', () => {
+  describe('recording a death', () => {
+    it('uses the death message and cancel reason', async () => {
+      await service.settleBeforeReadOnly(
+        manager,
+        'h1',
+        HorseLifecycleStatus.DECEASED,
+      );
+      expect(requestsUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ dismissReason: DECEASED_CANCEL_REASON }),
+      );
+      expect(schedulesUpdate).toHaveBeenCalledWith(expect.anything(), {
+        status: CareScheduleStatus.CANCELLED,
+        cancelReason: DECEASED_CANCEL_REASON,
+      });
+    });
+
+    it('blocks with the death message while a case is open', async () => {
+      shared.findOpenCase.mockResolvedValue({ id: 'case-1' });
+      await expect(
+        service.readOnlyBlockReason('h1', HorseLifecycleStatus.DECEASED),
+      ).resolves.toBe(OPEN_CASE_BLOCKS_DECEASED_MESSAGE);
+    });
+  });
+
+  describe('readOnlyImpact', () => {
     it('counts pending exam requests and scheduled care tasks', async () => {
-      await expect(service.transferImpact('h1', manager)).resolves.toEqual({
+      await expect(service.readOnlyImpact('h1', manager)).resolves.toEqual({
         examRequestsToDismiss: 3,
         careSchedulesToCancel: 2,
       });

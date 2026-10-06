@@ -5,12 +5,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { BarnEntity } from '../../stable/entities/barn.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
@@ -511,7 +518,7 @@ export class UsersService {
   /**
    * Kiểm tra Horse Owner còn là chủ của con ngựa nào đang ở câu lạc bộ không (theo horses.owner_id).
    *
-   * - Chỉ tính ngựa ACTIVE hoặc RETIRED; ngựa TRANSFERRED không tính.
+   * - Chỉ tính ngựa ACTIVE hoặc RETIRED; ngựa TRANSFERRED hoặc DECEASED không tính.
    * - Hồ sơ đã xóa mềm không tính.
    *
    * @param manager EntityManager của transaction đang chạy
@@ -524,7 +531,7 @@ export class UsersService {
   ): Promise<boolean> {
     return manager.getRepository(HorseEntity).existsBy({
       ownerId: userId,
-      lifecycleStatus: Not(HorseLifecycleStatus.TRANSFERRED),
+      lifecycleStatus: Not(In([...READ_ONLY_LIFECYCLE_STATUSES])),
     });
   }
 

@@ -6,6 +6,8 @@ import {
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
+import type { ReadOnlyLifecycleStatus } from '../../horses/types/horse.types';
 import type { HorseEntity } from '../../horses/entities/horse.entity';
 import type { UserEntity } from '../../users/entities/user.entity';
 import { BarnStatus } from '../constants/barn-status.enum';
@@ -29,11 +31,20 @@ export const EMPTY_CAPACITY: BarnStallCapacity = {
 };
 
 /**
- * Câu báo 409 khi ngựa đã chuyển nhượng, theo từng thao tác của Head Trainer
+ * Câu báo 409 khi hồ sơ ngựa chỉ được xem (đã chuyển nhượng hoặc đã mất), theo trạng thái và từng thao tác của Head Trainer
  */
-const TRANSFERRED_HORSE_MESSAGES: Record<StableHorseOperation, string> = {
-  STALL: 'Ngựa đã chuyển nhượng, không xếp ô chuồng được',
-  GROOM: 'Ngựa đã chuyển nhượng, không giao groom được',
+const READ_ONLY_HORSE_MESSAGES: Record<
+  ReadOnlyLifecycleStatus,
+  Record<StableHorseOperation, string>
+> = {
+  [HorseLifecycleStatus.TRANSFERRED]: {
+    STALL: 'Ngựa đã chuyển nhượng, không xếp ô chuồng được',
+    GROOM: 'Ngựa đã chuyển nhượng, không giao groom được',
+  },
+  [HorseLifecycleStatus.DECEASED]: {
+    STALL: 'Ngựa đã mất, không xếp ô chuồng được',
+    GROOM: 'Ngựa đã mất, không giao groom được',
+  },
 };
 
 /**
@@ -131,18 +142,20 @@ export function assertHorseInTrainerBarn(isInTrainerBarn: boolean): void {
 }
 
 /**
- * Chặn xếp ô hoặc giao groom cho ngựa đã chuyển nhượng. Ngựa đã giải nghệ vẫn được
+ * Chặn xếp ô hoặc giao groom khi hồ sơ ngựa chỉ được xem (đã chuyển nhượng hoặc đã mất). Ngựa đã giải nghệ vẫn được
  *
  * @param horse Con ngựa cần kiểm
  * @param operation Thao tác đang làm, để chọn câu báo lỗi
- * @throws ConflictException Nếu ngựa đã chuyển nhượng
+ * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
  */
-export function assertHorseNotTransferred(
+export function assertHorseLifecycleWritable(
   horse: Pick<HorseEntity, 'lifecycleStatus'>,
   operation: StableHorseOperation,
 ): void {
-  if (horse.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
-    throw new ConflictException(TRANSFERRED_HORSE_MESSAGES[operation]);
+  if (isReadOnlyLifecycle(horse.lifecycleStatus)) {
+    throw new ConflictException(
+      READ_ONLY_HORSE_MESSAGES[horse.lifecycleStatus][operation],
+    );
   }
 }
 

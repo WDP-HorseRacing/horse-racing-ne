@@ -19,6 +19,7 @@ function setup() {
     findActiveUserIdsByRole: jest.fn().mockResolvedValue(['vet-1', 'vet-2']),
     findHorseBarnContact: jest.fn(),
     findBarnContact: jest.fn(),
+    findHorseMedicalContact: jest.fn(),
     findHorseName: jest.fn(),
   };
   const notifications = { send: jest.fn().mockResolvedValue([]) };
@@ -298,6 +299,75 @@ describe('HorseNotificationsService.notifyGroomReleasedByTransfer', () => {
         groomId: 'groom-old',
       }),
     ).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
+describe('HorseNotificationsService.notifyHorseDeceased', () => {
+  const event = {
+    eventId: 'event-9',
+    horseId: 'horse-1',
+    barnId: 'barn-1',
+    groomId: 'groom-1',
+    dateOfDeath: '2026-10-01',
+    reason: 'Đau bụng cấp',
+  };
+
+  it('tells the active owner, the old barn head trainer and the old groom', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: 'owner-1',
+    });
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: 'ht-1',
+    });
+
+    await service.notifyHorseDeceased(event);
+
+    expect(recipients.findBarnContact).toHaveBeenCalledWith('barn-1');
+    expect(notifications.send).toHaveBeenCalledWith({
+      eventId: 'event-9',
+      recipientIds: ['owner-1', 'ht-1', 'groom-1'],
+      category: NotificationCategory.HORSE_LIFECYCLE,
+      priority: NotificationPriority.HIGH,
+      title: 'Ngựa Sao Mai đã mất',
+      message: 'Ngày mất 01/10/2026. Nguyên nhân: Đau bụng cấp',
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
+    });
+  });
+
+  it('skips the people that are missing or no longer active', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+    });
+
+    await service.notifyHorseDeceased({
+      ...event,
+      barnId: null,
+      groomId: null,
+    });
+
+    expect(recipients.findBarnContact).not.toHaveBeenCalled();
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientIds: [] }),
+    );
+  });
+
+  it('skips a horse that no longer exists', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(null);
+
+    await expect(service.notifyHorseDeceased(event)).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,
@@ -14,7 +22,8 @@ export class UpdateHorseLifecycleDto {
   @ApiProperty({
     minLength: 1,
     maxLength: 500,
-    description: 'Lý do đổi vòng đời, bắt buộc',
+    description:
+      'Lý do đổi vòng đời, bắt buộc. Với DECEASED là nguyên nhân mất',
   })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
@@ -23,6 +32,19 @@ export class UpdateHorseLifecycleDto {
   @MinLength(1)
   @MaxLength(500)
   reason!: string;
+
+  @ApiPropertyOptional({
+    format: 'date',
+    type: String,
+    description:
+      'Ngày mất. Bắt buộc khi lifecycleStatus = DECEASED, không gửi với trạng thái khác (400). Không ở tương lai, không trước ngày sinh',
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'dateOfDeath must be in YYYY-MM-DD format',
+  })
+  @IsDateString({ strict: true })
+  dateOfDeath?: string;
 }
 export class LifecyclePreviewQueryDto {
   @ApiProperty({ enum: HorseLifecycleStatus })

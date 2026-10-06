@@ -1,5 +1,7 @@
 import { UserRole } from '../../../common/enums/role.enum';
 import { MEASUREMENT_BACKDATE_MAX_DAYS } from '../../horses/constants/horse.constants';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import type { ReadOnlyLifecycleStatus } from '../../horses/types/horse.types';
 
 /**
  * Chu kỳ khám định kỳ cố định cho toàn câu lạc bộ, tính bằng ngày.
@@ -31,6 +33,37 @@ export const TRANSFER_CANCEL_REASON = 'Do chuyển nhượng';
  */
 export const OPEN_CASE_BLOCKS_TRANSFER_MESSAGE =
   'Ngựa còn bệnh án đang điều trị, bác sĩ cần đóng bệnh án trước khi chuyển nhượng';
+
+/**
+ * Lý do ghi vào yêu cầu khám và lịch chăm sóc bị hệ thống tự hủy khi ghi nhận ngựa mất.
+ */
+export const DECEASED_CANCEL_REASON = 'Do ngựa mất';
+
+/**
+ * Thông báo 409 khi ghi nhận ngựa mất mà còn bệnh án đang mở.
+ */
+export const OPEN_CASE_BLOCKS_DECEASED_MESSAGE =
+  'Ngựa còn bệnh án đang điều trị, bác sĩ cần đóng bệnh án trước khi ghi nhận ngựa mất';
+
+/**
+ * Câu chặn khi còn bệnh án đang mở, theo trạng thái làm hồ sơ chỉ được xem
+ */
+export const OPEN_CASE_BLOCKS_READ_ONLY_MESSAGES: Record<
+  ReadOnlyLifecycleStatus,
+  string
+> = {
+  [HorseLifecycleStatus.TRANSFERRED]: OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
+  [HorseLifecycleStatus.DECEASED]: OPEN_CASE_BLOCKS_DECEASED_MESSAGE,
+};
+
+/**
+ * Lý do tự hủy yêu cầu khám và lịch chăm sóc, theo trạng thái làm hồ sơ chỉ được xem
+ */
+export const READ_ONLY_CANCEL_REASONS: Record<ReadOnlyLifecycleStatus, string> =
+  {
+    [HorseLifecycleStatus.TRANSFERRED]: TRANSFER_CANCEL_REASON,
+    [HorseLifecycleStatus.DECEASED]: DECEASED_CANCEL_REASON,
+  };
 
 /**
  * Các role được xem lịch sử y tế của ngựa: buổi khám, bệnh án, lịch sử sức khỏe

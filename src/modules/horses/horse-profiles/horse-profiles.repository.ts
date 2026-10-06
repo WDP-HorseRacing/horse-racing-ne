@@ -6,10 +6,7 @@ import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.en
 import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
-import {
-  HorseHealthStatus,
-  HorseLifecycleStatus,
-} from '../enums/horse-status.enum';
+import { HorseHealthStatus } from '../enums/horse-status.enum';
 import { HorseListQueryDto } from '../dto';
 import { HorseEntity } from '../entities/horse.entity';
 import { applyHorseScope } from '../utils/horse-scope';
@@ -18,7 +15,10 @@ import type {
   HorseScope,
   PedigreeAncestorRow,
 } from '../types/horse.types';
-import { VIETNAMESE_NAME_ORDER } from '../constants/horse.constants';
+import {
+  READ_ONLY_LIFECYCLE_STATUSES,
+  VIETNAMESE_NAME_ORDER,
+} from '../constants/horse.constants';
 
 @Injectable()
 export class HorseProfilesRepository {
@@ -243,7 +243,7 @@ export class HorseProfilesRepository {
  * Biểu thức SQL tính HorsePlacementStatus của một dòng ngựa, gắn với alias `horse` của query builder.
  */
 const PLACEMENT_STATUS_SQL = `CASE
-  WHEN horse.lifecycle_status = '${HorseLifecycleStatus.TRANSFERRED}' THEN '${HorsePlacementStatus.NOT_APPLICABLE}'
+  WHEN horse.lifecycle_status IN (${READ_ONLY_LIFECYCLE_STATUSES.map((status) => `'${status}'`).join(', ')}) THEN '${HorsePlacementStatus.NOT_APPLICABLE}'
   WHEN horse.barn_id IS NULL THEN '${HorsePlacementStatus.PENDING_BARN}'
   WHEN NOT EXISTS (SELECT 1 FROM stall_assignments sa WHERE sa.horse_id = horse.id AND sa.end_at IS NULL) THEN '${HorsePlacementStatus.PENDING_STALL}'
   ELSE '${HorsePlacementStatus.PLACED}'

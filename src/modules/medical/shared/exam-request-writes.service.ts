@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, In } from 'typeorm';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { TRANSFER_CANCEL_REASON } from '../constants/medical.constants';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 
 /**
@@ -37,23 +36,25 @@ export class ExamRequestWritesService {
   }
 
   /**
-   * Bác mọi yêu cầu khám còn chờ của con ngựa khi chuyển nhượng
+   * Bác mọi yêu cầu khám còn chờ của con ngựa khi hồ sơ ngựa chuyển sang chỉ được xem (chuyển nhượng hoặc đã mất)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param handledAt Thời điểm bác
+   * @param dismissReason Lý do bác ghi vào yêu cầu
    * @returns Promise trả về số yêu cầu đã bác
    */
-  async dismissPendingForTransfer(
+  async dismissPendingBeforeReadOnly(
     manager: EntityManager,
     horseId: string,
     handledAt: Date,
+    dismissReason: string,
   ): Promise<number> {
     const result = await manager.getRepository(MedicalExamRequestEntity).update(
       { horseId, status: ExamRequestStatus.PENDING },
       {
         status: ExamRequestStatus.DISMISSED,
-        dismissReason: TRANSFER_CANCEL_REASON,
+        dismissReason,
         handledBy: null,
         handledAt,
       },

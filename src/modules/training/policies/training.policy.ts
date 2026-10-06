@@ -1,6 +1,18 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import type { EligibilityResult } from '../../horses/types/horse.types';
+import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
+import type {
+  ReadOnlyLifecycleStatus,
+  EligibilityResult,
+} from '../../horses/types/horse.types';
+
+/**
+ * Câu báo 409 khi ghi danh vào lớp ngựa có hồ sơ chỉ được xem, theo trạng thái
+ */
+const READ_ONLY_ENROLL_MESSAGES: Record<ReadOnlyLifecycleStatus, string> = {
+  [HorseLifecycleStatus.TRANSFERRED]: 'Ngựa đã chuyển nhượng, không học lớp',
+  [HorseLifecycleStatus.DECEASED]: 'Ngựa đã mất, không học lớp',
+};
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
@@ -216,7 +228,7 @@ export function assertHorseEnrollable(
   if (lifecycleStatus === HorseLifecycleStatus.RETIRED) {
     throw new ConflictException('Ngựa đã giải nghệ, không học lớp');
   }
-  if (lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
-    throw new ConflictException('Ngựa đã chuyển nhượng, không học lớp');
+  if (isReadOnlyLifecycle(lifecycleStatus)) {
+    throw new ConflictException(READ_ONLY_ENROLL_MESSAGES[lifecycleStatus]);
   }
 }

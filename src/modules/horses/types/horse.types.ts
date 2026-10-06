@@ -151,6 +151,28 @@ export interface HorseGroomReleasedEvent {
 }
 
 /**
+ * Trạng thái vòng đời làm hồ sơ ngựa chỉ được xem (đã chuyển nhượng hoặc đã mất)
+ */
+export type ReadOnlyLifecycleStatus =
+  HorseLifecycleStatus.TRANSFERRED | HorseLifecycleStatus.DECEASED;
+
+/**
+ * Payload của domain event HORSE_DECEASED_EVENT, ghi vào outbox trong transaction ghi nhận ngựa mất.
+ *
+ * - eventId: sinh mới cho mỗi lần ghi nhận, dùng để chống gửi trùng thông báo
+ * - barnId, groomId: khu và Groom của ngựa trước khi bị dọn, null nếu không có
+ * - dateOfDeath: ngày mất (YYYY-MM-DD); reason: nguyên nhân mất
+ */
+export interface HorseDeceasedEvent {
+  eventId: string;
+  horseId: string;
+  barnId: string | null;
+  groomId: string | null;
+  dateOfDeath: string;
+  reason: string;
+}
+
+/**
  * Các field của ngựa cần để kiểm tra cha hoặc mẹ
  */
 export interface ParentCandidate {

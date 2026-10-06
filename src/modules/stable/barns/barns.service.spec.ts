@@ -107,7 +107,7 @@ describe('BarnsService', () => {
       expect(manager.query).toHaveBeenCalledWith(expect.any(String), [
         ['b1'],
         StallStatus.AVAILABLE,
-        HorseLifecycleStatus.TRANSFERRED,
+        [HorseLifecycleStatus.TRANSFERRED, HorseLifecycleStatus.DECEASED],
       ]);
       expect(manager.findOne.mock.invocationCallOrder[0]).toBeLessThan(
         manager.query.mock.invocationCallOrder[0],
@@ -128,13 +128,16 @@ describe('BarnsService', () => {
       await expect(lock()).resolves.toMatchObject({ id: 'b1' });
     });
 
-    it('counts only waiting horses that are not deleted and not transferred', async () => {
+    it('counts only waiting horses that are not deleted, transferred or deceased', async () => {
       await lock();
       const [sql, params] = manager.query.mock.calls[0] as [string, unknown[]];
       expect(sql).toMatch(/FROM horses h[\s\S]*h\.deleted_at IS NULL/);
-      expect(sql).toMatch(/h\.lifecycle_status <> \$3/);
+      expect(sql).toMatch(/h\.lifecycle_status <> ALL\(\$3::varchar\[\]\)/);
       expect(sql).toMatch(/sa\.horse_id = h\.id\s+AND sa\.end_at IS NULL/);
-      expect(params[2]).toBe(HorseLifecycleStatus.TRANSFERRED);
+      expect(params[2]).toEqual([
+        HorseLifecycleStatus.TRANSFERRED,
+        HorseLifecycleStatus.DECEASED,
+      ]);
     });
 
     it('rejects a missing or deleted barn', async () => {
