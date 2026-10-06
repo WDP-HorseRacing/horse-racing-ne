@@ -138,7 +138,7 @@ export class SessionParticipantsService {
         ].includes(participant.status)
       ) {
         throw new ConflictException(
-          'Không thể assign Groom cho participant kết thúc',
+          'Không thể giao Groom cho participant đã kết thúc',
         );
       }
       if (body.groomId) await this.access.assertGroom(manager, body.groomId);
