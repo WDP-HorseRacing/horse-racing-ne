@@ -40,6 +40,11 @@ const HORSE_ID = 'h1';
 const CALLER_ID = 'cm-1';
 
 describe('HorseStatusesService', () => {
+  let ownerships: {
+    recordOwnerChange: jest.Mock;
+    currentOwnerSince: jest.Mock;
+  };
+
   let horse: HorseRow;
   let impact: LifecycleImpactRow;
   let horseRepository: { update: jest.Mock };
@@ -91,6 +96,10 @@ describe('HorseStatusesService', () => {
   };
 
   beforeEach(() => {
+    ownerships = {
+      recordOwnerChange: jest.fn().mockResolvedValue(undefined),
+      currentOwnerSince: jest.fn().mockResolvedValue(null),
+    };
     horse = {
       id: HORSE_ID,
       name: 'Winx',
@@ -176,6 +185,7 @@ describe('HorseStatusesService', () => {
       racing,
       events,
       training as unknown as TrainingOperationsFacade,
+      ownerships,
     );
   });
 
@@ -376,6 +386,12 @@ describe('HorseStatusesService', () => {
           after: expect.objectContaining({ ownerId: null }) as unknown,
         }),
       );
+      expect(ownerships.recordOwnerChange).toHaveBeenCalledWith(manager, {
+        horseId: HORSE_ID,
+        ownerId: null,
+        at: anyDate,
+        recordedBy: CALLER_ID,
+      });
     });
 
     it('keeps a valid owner when reactivating a transfer', async () => {
@@ -691,6 +707,7 @@ describe('HorseStatusesService', () => {
         racing,
         events,
         training as unknown as TrainingOperationsFacade,
+        ownerships,
       );
     });
 

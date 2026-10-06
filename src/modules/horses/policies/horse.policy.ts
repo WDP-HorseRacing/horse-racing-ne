@@ -386,6 +386,35 @@ export function assertAssignableOwner<
 }
 
 /**
+ * Kiểm tra việc gán chủ sở hữu khi sửa hồ sơ
+ *
+ * - Bỏ trống chủ (null): 400
+ * - Ngựa đã có chủ và gửi chủ khác: 409, phải dùng chuyển nhượng nội bộ
+ * - Gửi lại đúng chủ hiện tại hoặc gán chủ cho ngựa chưa có chủ: qua
+ *
+ * @param currentOwnerId Chủ hiện tại, null nếu ngựa chưa có chủ
+ * @param ownerId Chủ gửi lên
+ * @throws BadRequestException Nếu bỏ trống chủ, lỗi gắn ô `ownerId`
+ * @throws ConflictException Nếu ngựa đã có chủ khác
+ */
+export function assertOwnerAssignment(
+  currentOwnerId: string | null,
+  ownerId: string | null,
+): void {
+  if (ownerId === null) {
+    throw fieldBadRequest(
+      'ownerId',
+      'Không bỏ trống chủ sở hữu được, đổi chủ bằng chức năng chuyển nhượng nội bộ',
+    );
+  }
+  if (currentOwnerId !== null && currentOwnerId !== ownerId) {
+    throw new ConflictException(
+      'Ngựa đã có chủ sở hữu, đổi chủ bằng chức năng chuyển nhượng nội bộ',
+    );
+  }
+}
+
+/**
  * Kiểm tra tài khoản có đang là HORSE_OWNER hoạt động không
  *
  * @param user Tài khoản cần kiểm, null nếu không có

@@ -48,6 +48,11 @@ const matchesParent = (child: HorseRow, where: Partial<HorseEntity>): boolean =>
   ('damId' in where && child.damId === where.damId);
 
 describe('HorseProfilesService', () => {
+  let ownerships: {
+    recordOwnerChange: jest.Mock;
+    currentOwnerSince: jest.Mock;
+  };
+
   let horse: HorseRow;
   let callerRole: UserRole;
   let barnRows: unknown[];
@@ -92,6 +97,10 @@ describe('HorseProfilesService', () => {
   };
 
   beforeEach(() => {
+    ownerships = {
+      recordOwnerChange: jest.fn().mockResolvedValue(undefined),
+      currentOwnerSince: jest.fn().mockResolvedValue(null),
+    };
     horse = {
       id: HORSE_ID,
       name: 'Gió',
@@ -229,6 +238,7 @@ describe('HorseProfilesService', () => {
       events,
       typedDataSource,
       audit,
+      ownerships,
     );
   });
 
@@ -366,6 +376,7 @@ describe('HorseProfilesService', () => {
         { role: UserRole.GROOM, status: UserStatus.ACTIVE },
       ],
     ])('rejects %s as owner with 400', async (_label, account) => {
+      horse.ownerId = null;
       ownerAccount = account;
       await expect(
         service.update(
@@ -378,6 +389,7 @@ describe('HorseProfilesService', () => {
     });
 
     it('rejects an owner account that is no longer active with 409', async () => {
+      horse.ownerId = null;
       ownerAccount = { role: UserRole.HORSE_OWNER, status: UserStatus.LOCKED };
       await expect(
         service.update(
@@ -392,6 +404,7 @@ describe('HorseProfilesService', () => {
     });
 
     it('checks the new owner inside the transaction with a lock on the account', async () => {
+      horse.ownerId = null;
       await service.update(
         actorWith(UserRole.CLUB_MANAGER),
         HORSE_ID,
@@ -402,6 +415,67 @@ describe('HorseProfilesService', () => {
       expect(
         horses.lockOwnerAccount.mock.invocationCallOrder[0],
       ).toBeGreaterThan(dataSource.transaction.mock.invocationCallOrder[0]);
+    });
+
+    it('opens an ownership period when assigning an owner to a horse without one', async () => {
+      horse.ownerId = null;
+      await service.update(
+        actorWith(UserRole.CLUB_MANAGER),
+        HORSE_ID,
+        body({ ownerId: 'owner-2' }),
+      );
+      expect(ownerships.recordOwnerChange).toHaveBeenCalledWith(manager, {
+        horseId: HORSE_ID,
+        ownerId: 'owner-2',
+        at: expect.any(Date) as unknown,
+        recordedBy: CALLER_ID,
+      });
+      expect(
+        ownerships.recordOwnerChange.mock.invocationCallOrder[0],
+      ).toBeGreaterThan(horseRepository.update.mock.invocationCallOrder[0]);
+    });
+
+    it('rejects changing the owner of a horse that already has one with 409', async () => {
+      await expect(
+        service.update(
+          actorWith(UserRole.CLUB_MANAGER),
+          HORSE_ID,
+          body({ ownerId: 'owner-2' }),
+        ),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Ngựa đã có chủ sở hữu, đổi chủ bằng chức năng chuyển nhượng nội bộ',
+        ),
+      );
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+      expect(ownerships.recordOwnerChange).not.toHaveBeenCalled();
+    });
+
+    it('rejects clearing the owner with 400', async () => {
+      await expect(
+        service.update(
+          actorWith(UserRole.CLUB_MANAGER),
+          HORSE_ID,
+          body({ ownerId: null }),
+        ),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'Không bỏ trống chủ sở hữu được, đổi chủ bằng chức năng chuyển nhượng nội bộ',
+        ),
+      );
+    });
+
+    it('accepts the current owner sent again without recording a change', async () => {
+      await service.update(
+        actorWith(UserRole.CLUB_MANAGER),
+        HORSE_ID,
+        body({ ownerId: 'owner-1', name: 'Gió Mới' }),
+      );
+      expect(horseRepository.update).toHaveBeenCalledWith(
+        { id: HORSE_ID, version: 3 },
+        { name: 'Gió Mới' },
+      );
+      expect(ownerships.recordOwnerChange).not.toHaveBeenCalled();
     });
 
     it('rejects a HEAD_TRAINER outside the barn with 403 even when sending no field', async () => {
@@ -691,7 +765,30 @@ describe('HorseProfilesService', () => {
         events,
         typedDataSource,
         audit,
+        ownerships,
       );
+    });
+
+    it('opens the first ownership period when the horse is created with an owner', async () => {
+      await service.create(actorWith(UserRole.CLUB_MANAGER), {
+        name: 'Gió',
+        gender: HorseGender.MALE,
+        ownerId: 'owner-1',
+      });
+      expect(ownerships.recordOwnerChange).toHaveBeenCalledWith(createManager, {
+        horseId: 'h-new',
+        ownerId: 'owner-1',
+        at: expect.any(Date) as unknown,
+        recordedBy: CALLER_ID,
+      });
+    });
+
+    it('records no ownership period for a horse created without an owner', async () => {
+      await service.create(actorWith(UserRole.CLUB_MANAGER), {
+        name: 'Gió',
+        gender: HorseGender.MALE,
+      });
+      expect(ownerships.recordOwnerChange).not.toHaveBeenCalled();
     });
 
     it('locks the chosen barn and writes the notification event inside the transaction', async () => {

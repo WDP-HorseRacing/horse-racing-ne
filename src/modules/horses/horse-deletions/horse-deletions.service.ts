@@ -26,6 +26,7 @@ import {
   assertLifecycleWritable,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
+import { HorseOwnershipService } from '../shared/horse-ownership.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
 import { HorseDeletionsRepository } from './horse-deletions.repository';
 
@@ -40,6 +41,7 @@ export class HorseDeletionsService {
     private readonly pedigree: HorsePedigreeService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly ownerships: HorseOwnershipService,
   ) {}
 
   /**
@@ -154,7 +156,7 @@ export class HorseDeletionsService {
    *
    * - Bỏ dấu đã xóa và lý do xóa; vòng đời, sức khỏe, phả hệ giữ nguyên
    * - Ngựa có khu: luôn bỏ khu, ngựa vào "Chờ xếp khu"
-   * - Ngựa có chủ: chủ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ, Club Manager chọn chủ mới sau
+   * - Ngựa có chủ: chủ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ và đóng giai đoạn sở hữu của chủ cũ, Club Manager chọn chủ mới sau
    * - Không kiểm lại phả hệ
    * - Không kiểm lại số chip (hồ sơ đã xóa vẫn giữ số chip của nó)
    * - Ghi nhật ký RESTORE kèm lý do; khu hoặc chủ bị bỏ trống thì ghi cả giá trị cũ
@@ -187,6 +189,14 @@ export class HorseDeletionsService {
       const horses = manager.getRepository(HorseEntity);
       await horses.restore({ id });
       await horses.update({ id }, { deletedReason: null, ...cleared });
+      if (shouldClearOwner) {
+        await this.ownerships.recordOwnerChange(manager, {
+          horseId: id,
+          ownerId: null,
+          at: new Date(),
+          recordedBy: caller.id,
+        });
+      }
       await this.auditService.record(manager, {
         actorId: caller.id,
         action: AuditAction.RESTORE,

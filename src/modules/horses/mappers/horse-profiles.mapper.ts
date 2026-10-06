@@ -139,6 +139,7 @@ export function toHorseDetailResponse(
     location: toLocation(horse, parts.location, hideLocationIds),
     groom: parts.groom,
     owner: parts.owner,
+    ownerSince: parts.ownerSince,
     latestMeasurements: parts.latestMeasurements.map(toLatestMeasurement),
     activeTrainingLock: parts.activeTrainingLock,
     eligibility: evaluateEligibility(

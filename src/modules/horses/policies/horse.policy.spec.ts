@@ -42,6 +42,7 @@ import {
   assertMeasurementValue,
   assertNoBusinessData,
   assertNotParent,
+  assertOwnerAssignment,
   assertParentIds,
   assertParentProfiles,
   barnChangeBlockedReason,
@@ -1297,6 +1298,37 @@ describe('horse.policy', () => {
         canChangeHealth: false,
         canRecordMeasurement: false,
       });
+    });
+  });
+
+  describe('assertOwnerAssignment', () => {
+    it('lets an owner be assigned to a horse without one, or the same owner be sent again', () => {
+      expect(() => assertOwnerAssignment(null, 'o1')).not.toThrow();
+      expect(() => assertOwnerAssignment('o1', 'o1')).not.toThrow();
+    });
+
+    it('rejects changing the owner of a horse that has one with 409', () => {
+      expect(() => assertOwnerAssignment('o1', 'o2')).toThrow(
+        new ConflictException(
+          'Ngựa đã có chủ sở hữu, đổi chủ bằng chức năng chuyển nhượng nội bộ',
+        ),
+      );
+    });
+
+    it('rejects clearing the owner with 400 on the ownerId field', () => {
+      const message =
+        'Không bỏ trống chủ sở hữu được, đổi chủ bằng chức năng chuyển nhượng nội bộ';
+      expect(() => assertOwnerAssignment('o1', null)).toThrow(
+        new BadRequestException(message),
+      );
+      try {
+        assertOwnerAssignment(null, null);
+      } catch (error) {
+        expect((error as BadRequestException).getResponse()).toEqual({
+          message,
+          errors: [{ field: 'ownerId', message }],
+        });
+      }
     });
   });
 

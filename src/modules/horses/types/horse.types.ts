@@ -274,6 +274,7 @@ export interface HorseDetailParts {
   location: HorseLocationRow;
   groom: HorsePersonRow | null;
   owner: HorsePersonRow | null;
+  ownerSince: string | null;
   latestMeasurements: HorseMeasurementEntity[];
   activeTrainingLock: boolean;
 }

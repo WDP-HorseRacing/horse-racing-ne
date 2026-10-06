@@ -30,6 +30,11 @@ const matchesParent = (child: HorseRow, where: Partial<HorseEntity>): boolean =>
   ('damId' in where && child.damId === where.damId);
 
 describe('HorseDeletionsService', () => {
+  let ownerships: {
+    recordOwnerChange: jest.Mock;
+    currentOwnerSince: jest.Mock;
+  };
+
   let horse: HorseRow;
   let children: HorseRow[];
   let horseRepository: {
@@ -57,6 +62,10 @@ describe('HorseDeletionsService', () => {
   const actor = (): Actor => ({ sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] });
 
   beforeEach(() => {
+    ownerships = {
+      recordOwnerChange: jest.fn().mockResolvedValue(undefined),
+      currentOwnerSince: jest.fn().mockResolvedValue(null),
+    };
     horse = {
       id: HORSE_ID,
       name: 'Gió',
@@ -130,6 +139,7 @@ describe('HorseDeletionsService', () => {
       new HorsePedigreeService(new HorsePedigreeRepository(), access),
       typedDataSource,
       audit,
+      ownerships,
     );
   });
 
@@ -305,6 +315,7 @@ describe('HorseDeletionsService', () => {
         reason: 'Xóa nhầm',
         feature: 'F1.8',
       });
+      expect(ownerships.recordOwnerChange).not.toHaveBeenCalled();
     });
 
     it('changes no barn for a horse that had none', async () => {
@@ -330,6 +341,12 @@ describe('HorseDeletionsService', () => {
           after: expect.objectContaining({ ownerId: null }) as unknown,
         }),
       );
+      expect(ownerships.recordOwnerChange).toHaveBeenCalledWith(manager, {
+        horseId: HORSE_ID,
+        ownerId: null,
+        at: expect.any(Date) as unknown,
+        recordedBy: CALLER_ID,
+      });
     });
 
     it('does not check an owner for a horse that had none', async () => {

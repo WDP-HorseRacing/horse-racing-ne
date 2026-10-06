@@ -292,6 +292,15 @@ export class HorseDetailResponseDto extends HorseResponseDto {
   })
   owner!: HorsePersonDto | null;
 
+  @ApiPropertyOptional({
+    format: 'date',
+    nullable: true,
+    type: String,
+    description:
+      'Ngày hiệu lực của giai đoạn sở hữu hiện tại, null nếu chưa có chủ',
+  })
+  ownerSince!: string | null;
+
   @ApiProperty({
     type: [HorseLatestMeasurementDto],
     description: 'Giá trị mới nhất của từng loại chỉ số',

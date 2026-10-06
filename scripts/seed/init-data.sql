@@ -151,4 +151,15 @@ BEGIN
     ('f0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000005', vet_id, 'Tổn thương gân chân trước trái', now() - interval '20 days', NULL, 'ACTIVE', NULL, NULL, NULL, 1),
     ('f0000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000013', vet_id, 'Sưng khớp nhẹ', now() - interval '30 days', now() - interval '10 days', 'RELEASED', vet_id, now() - interval '10 days', 'Hồi phục hoàn toàn', 1)
   ON CONFLICT (id) DO NOTHING;
+
+  -- ── Giai đoạn sở hữu ────────────────────────────────────────
+  -- Mỗi ngựa đang có chủ có đúng một giai đoạn mở, bắt đầu từ lúc tạo hồ sơ.
+  INSERT INTO horse_ownerships (horse_id, owner_id, effective_date, started_at, version)
+  SELECT h.id, h.owner_id, (h.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, h.created_at, 1
+    FROM horses h
+   WHERE h.owner_id IS NOT NULL
+     AND NOT EXISTS (
+           SELECT 1 FROM horse_ownerships o
+            WHERE o.horse_id = h.id AND o.ended_at IS NULL
+         );
 END $$;

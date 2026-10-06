@@ -106,7 +106,7 @@ export class HorseProfilesController {
   @ApiOperation({
     summary: 'Update horse profile, parents and owner',
     description:
-      'Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId, null để bỏ trống). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 409 (phải khôi phục trước), Head Trainer nhận 404.',
+      'Club Manager sửa định danh, ảnh, cha mẹ, chủ sở hữu (ownerId chỉ gán được cho ngựa chưa có chủ; ngựa đã có chủ khác trả 409, gửi null trả 400, đổi chủ dùng chuyển nhượng nội bộ). Head Trainer chỉ gửi được raceAptitude cho ngựa ở khu mình phụ trách. Gửi field ngoài quyền trả 403. Bắt buộc gửi version lấy từ GET; người khác đã lưu trước trả 409. Ngựa đã chuyển nhượng trả 409. Hồ sơ đã xóa: Club Manager nhận 409 (phải khôi phục trước), Head Trainer nhận 404.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   updateHorse(

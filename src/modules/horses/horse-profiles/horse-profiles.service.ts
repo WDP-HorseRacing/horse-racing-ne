@@ -58,12 +58,14 @@ import {
   assertAssignableOwner,
   assertDateOfBirth,
   assertLifecycleWritable,
+  assertOwnerAssignment,
   evaluateEligibility,
   evaluateHorsePermissions,
   nonRaceAptitudeFieldsIn,
   raceAptitudeFieldsIn,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
+import { HorseOwnershipService } from '../shared/horse-ownership.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
 import type {
   HorseBarnAssignedEvent,
@@ -87,6 +89,7 @@ export class HorseProfilesService {
     private readonly events: DomainEventPublisher,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly ownerships: HorseOwnershipService,
   ) {}
 
   /**
@@ -144,7 +147,7 @@ export class HorseProfilesService {
   }
 
   /**
-   * Lấy thông tin chi tiết hồ sơ ngựa: định danh, trạng thái, được tập/được đua, vị trí, groom, chủ và chỉ số mới nhất.
+   * Lấy thông tin chi tiết hồ sơ ngựa: định danh, trạng thái, được tập/được đua, vị trí, groom, chủ (kèm ngày bắt đầu sở hữu) và chỉ số mới nhất.
    *
    * - Mọi vai trò trong phạm vi xem đều nhận cùng nhóm thông tin này
    * - Horse Owner không nhận id khu và ô
@@ -164,20 +167,28 @@ export class HorseProfilesService {
       caller.id,
       id,
     );
-    const [locations, groom, owner, latestMeasurements, activeTrainingLock] =
-      await Promise.all([
-        this.profiles.locationsByHorseIds([id]),
-        this.currentGroom(id),
-        this.ownerOf(horse.ownerId),
-        this.latestMeasurements(id),
-        this.access.hasActiveTrainingLock(id),
-      ]);
+    const [
+      locations,
+      groom,
+      owner,
+      ownerSince,
+      latestMeasurements,
+      activeTrainingLock,
+    ] = await Promise.all([
+      this.profiles.locationsByHorseIds([id]),
+      this.currentGroom(id),
+      this.ownerOf(horse.ownerId),
+      this.ownerships.currentOwnerSince(this.dataSource.manager, id),
+      this.latestMeasurements(id),
+      this.access.hasActiveTrainingLock(id),
+    ]);
     return toHorseDetailResponse(
       horse,
       {
         location: locations[0] ?? emptyLocation(id),
         groom,
         owner,
+        ownerSince,
         latestMeasurements,
         activeTrainingLock,
       },
@@ -212,7 +223,7 @@ export class HorseProfilesService {
   /**
    * Tạo hồ sơ ngựa mới. Sức khỏe luôn ELIGIBLE, vòng đời luôn ACTIVE.
    *
-   * - Chủ sở hữu (nếu có) phải là tài khoản HORSE_OWNER đang hoạt động
+   * - Chủ sở hữu (nếu có) phải là tài khoản HORSE_OWNER đang hoạt động; có chủ thì mở giai đoạn sở hữu đầu tiên trong cùng transaction
    * - Ảnh (nếu có) phải là ảnh ngựa người gọi đã tải lên: JPEG/PNG/WebP, tối đa 10 MB
    * - Cha mẹ phải là ngựa có hồ sơ tại câu lạc bộ, đúng giới tính, sinh trước con
    * - Khu (nếu có) phải đang hoạt động, có Head Trainer và còn ô trống; không chọn thì ngựa vào "Chờ xếp khu"
@@ -267,6 +278,14 @@ export class HorseProfilesService {
             ownerId,
             barnId: body.barnId ?? null,
           });
+          if (ownerId) {
+            await this.ownerships.recordOwnerChange(manager, {
+              horseId: created.id,
+              ownerId,
+              at: new Date(),
+              recordedBy: caller.id,
+            });
+          }
           await this.auditService.record(manager, {
             actorId: caller.id,
             action: AuditAction.CREATE,
@@ -302,7 +321,8 @@ export class HorseProfilesService {
    * - Head Trainer: chỉ sở trường cự ly, chỉ ngựa thuộc khu mình phụ trách
    * - Gửi field ngoài quyền thì trả 403, không âm thầm bỏ qua
    * - Bắt buộc gửi version lấy từ lần GET gần nhất; người khác đã lưu trước thì trả 409
-   * - Đổi chủ: chủ cũ mất quyền xem ngay khi lưu, chủ mới thấy toàn bộ lịch sử; nhật ký ghi từ ai sang ai
+   * - Chủ sở hữu: chỉ gán được cho ngựa chưa có chủ, mở giai đoạn sở hữu mới; ngựa đã có chủ khác trả 409, bỏ trống chủ (null) trả 400
+   * - Gán chủ: chủ mới thấy toàn bộ lịch sử; nhật ký ghi từ ai sang ai
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
@@ -310,8 +330,8 @@ export class HorseProfilesService {
    * @returns Promise trả về hồ sơ sau khi sửa
    * @throws NotFoundException Nếu không có ngựa (Head Trainer: kể cả hồ sơ đã xóa) hoặc không tìm thấy tệp ảnh của người gọi
    * @throws ForbiddenException Nếu người gọi gửi field ngoài quyền, hoặc Head Trainer sửa ngựa ngoài khu
-   * @throws BadRequestException Nếu ngày sinh, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ
-   * @throws ConflictException Nếu Club Manager sửa hồ sơ đã xóa, ngựa đã chuyển nhượng hoặc đã mất, chủ sở hữu không còn hoạt động, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
+   * @throws BadRequestException Nếu ngày sinh, cha mẹ, chủ sở hữu hoặc ảnh không hợp lệ, hoặc bỏ trống chủ sở hữu
+   * @throws ConflictException Nếu Club Manager sửa hồ sơ đã xóa, ngựa đã chuyển nhượng hoặc đã mất, ngựa đã có chủ khác, chủ sở hữu không còn hoạt động, version đã cũ, số chip đã dùng, đổi giới tính làm sai phả hệ hoặc tạo vòng lặp phả hệ
    */
   async update(
     actor: Actor,
@@ -324,6 +344,9 @@ export class HorseProfilesService {
     await this.assertEditableFields(actor, caller.id, horse.id, fields);
     assertLifecycleWritable(horse);
     this.assertCurrentVersion(horse, version);
+    if (fields.ownerId !== undefined) {
+      assertOwnerAssignment(horse.ownerId, fields.ownerId);
+    }
     const microchipId =
       fields.microchipId === undefined
         ? undefined
@@ -359,6 +382,14 @@ export class HorseProfilesService {
             .update({ id, version }, changes);
           if (!result.affected) {
             throw new ConflictException(STALE_HORSE_MESSAGE);
+          }
+          if (changes.ownerId) {
+            await this.ownerships.recordOwnerChange(manager, {
+              horseId: id,
+              ownerId: changes.ownerId,
+              at: new Date(),
+              recordedBy: caller.id,
+            });
           }
           await this.auditService.record(manager, {
             actorId: caller.id,
