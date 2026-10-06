@@ -1,11 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { EntityManager } from 'typeorm';
 
 @Injectable()
 export class DomainEventPublisher {
-  constructor(private readonly emitter: EventEmitter2) {}
-
-  publish(name: string, payload: unknown): void {
-    this.emitter.emit(name, payload);
+  /**
+   * Ghi một domain event vào bảng outbox_events trong transaction của nghiệp vụ
+   *
+   * - Transaction commit thì event chắc chắn được OutboxRelay giao cho các listener (ít nhất một lần); rollback thì event mất theo
+   * - Payload lưu dạng JSON: chỉ dùng kiểu JSON được (chuỗi, số, boolean, null, mảng, object); thời điểm truyền dạng chuỗi ISO
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param name Tên event
+   * @param payload Dữ liệu của event
+   * @returns Promise hoàn tất khi đã ghi vào outbox
+   */
+  async publish(
+    manager: EntityManager,
+    name: string,
+    payload: object,
+  ): Promise<void> {
+    await manager.query(
+      `INSERT INTO outbox_events (name, payload) VALUES ($1, $2::jsonb)`,
+      [name, JSON.stringify(payload)],
+    );
   }
 }

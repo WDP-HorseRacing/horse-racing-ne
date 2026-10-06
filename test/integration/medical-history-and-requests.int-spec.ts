@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
-import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
@@ -161,7 +160,7 @@ describe('Health history and exam request queries (Postgres)', () => {
           currentUser: jest.fn().mockResolvedValue({ id: callerId }),
         }),
         audit,
-        { publish: jest.fn() } as unknown as DomainEventPublisher,
+        { publish: jest.fn() },
       );
     });
 
@@ -250,7 +249,7 @@ describe('Health history and exam request queries (Postgres)', () => {
         type: HorseMeasurementType.TEMPERATURE,
         value: 39.5,
         unit: '°C',
-        measuredAt: new Date(),
+        measuredAt: new Date().toISOString(),
         source: HorseMeasurementSource.MANUAL,
       });
 
@@ -284,6 +283,23 @@ describe('Health history and exam request queries (Postgres)', () => {
 
         await expect(service.createFromAlert(fever(winx))).resolves.toBe(true);
         await expect(pending(winx)).resolves.toHaveLength(1);
+      });
+
+      it('ignores the same alert delivered again after its request was handled', async () => {
+        const winx = await seed.horse('Winx');
+        const alert = fever(winx);
+        await service.createFromAlert(alert);
+        await dataSource
+          .getRepository(MedicalExamRequestEntity)
+          .update({ horseId: winx }, { status: ExamRequestStatus.EXAMINED });
+
+        await expect(service.createFromAlert(alert)).resolves.toBe(false);
+        await expect(
+          dataSource
+            .getRepository(MedicalExamRequestEntity)
+            .countBy({ horseId: winx }),
+        ).resolves.toBe(1);
+        expect(audit.record).toHaveBeenCalledTimes(1);
       });
 
       it('skips deleted and transferred horses', async () => {

@@ -98,7 +98,7 @@ export class HorseStatusesService {
    *
    * - Khóa row ngựa trước khi kiểm tra
    * - Giải nghệ: rút khỏi lớp đang học (training), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
-   * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical); sau khi commit phát HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT báo Groom vừa bị kết thúc phân công; rút khỏi lớp đang học (training), đang ACTIVE thì rút thêm đăng ký thi đấu chưa diễn ra (racing); trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); bỏ khu; giữ chủ sở hữu
+   * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical); ghi HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT vào outbox trong cùng transaction để báo Groom vừa bị kết thúc phân công; rút khỏi lớp đang học (training), đang ACTIVE thì rút thêm đăng ký thi đấu chưa diễn ra (racing); trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); bỏ khu; giữ chủ sở hữu
    * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe; từ chuyển nhượng thì sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ (khóa chia sẻ row tài khoản chủ khi kiểm)
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
    * - Ngựa đang tập hoặc đang đua vẫn đổi được
@@ -119,67 +119,68 @@ export class HorseStatusesService {
     id: string,
     body: UpdateHorseLifecycleDto,
   ): Promise<HorseResponseDto> {
-    const endedGroomId = await this.dataSource.transaction(
-      async (manager) => {
-        const caller = await this.access.currentUser(actor, manager);
-        const horse = await this.access.lockWritableHorse(manager, actor, id);
-        if (horse.lifecycleStatus === body.lifecycleStatus) return null;
-        assertLifecycleTransition(horse.lifecycleStatus, body.lifecycleStatus);
-        // Lấy các ảnh hưởng của việc truyển status
-        const effects = lifecycleSideEffects(
-          horse.lifecycleStatus,
-          body.lifecycleStatus,
+    await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const horse = await this.access.lockWritableHorse(manager, actor, id);
+      if (horse.lifecycleStatus === body.lifecycleStatus) return;
+      assertLifecycleTransition(horse.lifecycleStatus, body.lifecycleStatus);
+      // Lấy các ảnh hưởng của việc truyển status
+      const effects = lifecycleSideEffects(
+        horse.lifecycleStatus,
+        body.lifecycleStatus,
+      );
+      const now = new Date();
+      const applied = await this.applyLifecycleSideEffects(manager, {
+        id,
+        horse,
+        body,
+        effects,
+        now,
+      });
+      const fields = this.lifecycleFieldChanges(horse, effects);
+      await manager.getRepository(HorseEntity).update(
+        { id },
+        {
+          lifecycleStatus: body.lifecycleStatus,
+          lifecycleReason: body.reason,
+          lifecycleChangedAt: now,
+          ...fields.after,
+          ...(applied.shouldClearOwner ? { ownerId: null } : {}),
+        },
+      );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.HORSE,
+        entityId: id,
+        before: {
+          lifecycleStatus: horse.lifecycleStatus,
+          lifecycleReason: horse.lifecycleReason,
+          ...fields.before,
+          ...applied.before,
+        },
+        after: {
+          lifecycleStatus: body.lifecycleStatus,
+          lifecycleReason: body.reason,
+          ...fields.after,
+          ...applied.after,
+        },
+        reason: body.reason,
+        feature: HORSE_AUDIT_FEATURE.LIFECYCLE_AND_DELETION,
+      });
+      if (applied.endedGroomId) {
+        const event: HorseGroomReleasedEvent = {
+          eventId: randomUUID(),
+          horseId: id,
+          groomId: applied.endedGroomId,
+        };
+        await this.events.publish(
+          manager,
+          HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
+          event,
         );
-        const now = new Date();
-        const applied = await this.applyLifecycleSideEffects(manager, {
-          id,
-          horse,
-          body,
-          effects,
-          now,
-        });
-        const fields = this.lifecycleFieldChanges(horse, effects);
-        await manager.getRepository(HorseEntity).update(
-          { id },
-          {
-            lifecycleStatus: body.lifecycleStatus,
-            lifecycleReason: body.reason,
-            lifecycleChangedAt: now,
-            ...fields.after,
-            ...(applied.shouldClearOwner ? { ownerId: null } : {}),
-          },
-        );
-        await this.auditService.record(manager, {
-          actorId: caller.id,
-          action: AuditAction.UPDATE,
-          entityType: AuditEntityType.HORSE,
-          entityId: id,
-          before: {
-            lifecycleStatus: horse.lifecycleStatus,
-            lifecycleReason: horse.lifecycleReason,
-            ...fields.before,
-            ...applied.before,
-          },
-          after: {
-            lifecycleStatus: body.lifecycleStatus,
-            lifecycleReason: body.reason,
-            ...fields.after,
-            ...applied.after,
-          },
-          reason: body.reason,
-          feature: HORSE_AUDIT_FEATURE.LIFECYCLE_AND_DELETION,
-        });
-        return applied.endedGroomId;
-      },
-    );
-    if (endedGroomId) {
-      const event: HorseGroomReleasedEvent = {
-        eventId: randomUUID(),
-        horseId: id,
-        groomId: endedGroomId,
-      };
-      this.events.publish(HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT, event);
-    }
+      }
+    });
     return toHorseResponse(await this.access.findNotDeletedHorse(id));
   }
 

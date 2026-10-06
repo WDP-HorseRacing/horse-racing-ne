@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -145,11 +144,17 @@ describe('MedicalVisitsService', () => {
     measurements = {
       recordExamMeasurements: jest.fn().mockResolvedValue([]),
       voidExamMeasurements: jest.fn().mockResolvedValue(2),
-      publishAlerts: jest.fn(() => steps.push('alerts')),
+      publishAlerts: jest.fn((tx: unknown) => {
+        steps.push(tx === manager ? 'alerts' : 'alerts outside tx');
+        return Promise.resolve();
+      }),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = {
-      publish: jest.fn((name: string) => steps.push(name)),
+      publish: jest.fn((tx: unknown, name: string) => {
+        steps.push(tx === manager ? name : `${name} outside tx`);
+        return Promise.resolve();
+      }),
     };
     service = new MedicalVisitsService(
       dataSource as unknown as DataSource,
@@ -168,7 +173,7 @@ describe('MedicalVisitsService', () => {
       horseHealth as unknown as HorseHealthService,
       measurements as unknown as HorseMeasurementsService,
       audit,
-      events as unknown as DomainEventPublisher,
+      events,
     );
   });
 
@@ -295,7 +300,7 @@ describe('MedicalVisitsService', () => {
       expect(events.publish).not.toHaveBeenCalled();
     });
 
-    it('opens a case in the same transaction for an ISSUE, attaches the active lock and publishes after commit', async () => {
+    it('opens a case in the same transaction for an ISSUE, attaches the active lock and publishes in the transaction', async () => {
       const result = await service.createStandaloneVisit(
         vet,
         HORSE_ID,
@@ -331,10 +336,10 @@ describe('MedicalVisitsService', () => {
         expect.objectContaining({ entityType: AuditEntityType.MEDICAL_CASE }),
       );
       expect(steps).toEqual([
-        'commit',
         'alerts',
         MEDICAL_CASE_OPENED_EVENT,
         MEDICAL_HEALTH_CHANGED_EVENT,
+        'commit',
       ]);
     });
 
@@ -635,7 +640,7 @@ describe('MedicalVisitsService', () => {
         { caseId: 'case-1' },
         { caseId: null },
       ]);
-      expect(steps).toEqual(['commit', MEDICAL_CASE_CANCELLED_EVENT]);
+      expect(steps).toEqual([MEDICAL_CASE_CANCELLED_EVENT, 'commit']);
     });
 
     it('voids a follow-up visit of a closed case', async () => {

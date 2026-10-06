@@ -394,10 +394,10 @@ function horseResource(horseId: string): NotificationResource {
 /**
  * Định dạng ngày theo lịch câu lạc bộ (Asia/Ho_Chi_Minh), dạng YYYY-MM-DD
  *
- * @param date Thời điểm cần hiển thị
+ * @param date Thời điểm cần hiển thị, dạng chuỗi ISO
  * @returns Ngày theo giờ Việt Nam
  */
-function formatClubDate(date: Date): string {
+function formatClubDate(date: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: CLUB_TIME_ZONE }).format(
     new Date(date),
   );

@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -159,6 +158,7 @@ describe('HorsePlacementsService', () => {
     events = {
       publish: jest.fn(() => {
         calls.push('publish');
+        return Promise.resolve();
       }),
     };
     training = {
@@ -185,7 +185,7 @@ describe('HorsePlacementsService', () => {
       Object.assign(new HorseAccessService(typedDataSource), horses),
       barns as unknown as BarnsService,
       stalls as unknown as StallsService,
-      events as unknown as DomainEventPublisher,
+      events,
       typedDataSource,
       audit,
       training as unknown as TrainingOperationsFacade,
@@ -225,7 +225,7 @@ describe('HorsePlacementsService', () => {
     expectNoWrite();
   });
 
-  it('moves the horse to the new barn and notifies after the commit', async () => {
+  it('moves the horse to the new barn and writes the notification event inside the transaction', async () => {
     await assign('b2');
     expect(barns.lockAssignableBarn).toHaveBeenCalledWith(manager, 'b2');
     expect(stalls.closeOpenStallAssignment).toHaveBeenCalledWith(manager, HORSE_ID);
@@ -243,11 +243,15 @@ describe('HorsePlacementsService', () => {
       reason: 'Cân bằng khu',
       feature: 'F1.6',
     });
-    expect(events.publish).toHaveBeenCalledWith(HORSE_BARN_ASSIGNED_EVENT, {
-      eventId: anyString,
-      horseId: HORSE_ID,
-      barnId: 'b2',
-    });
+    expect(events.publish).toHaveBeenCalledWith(
+      manager,
+      HORSE_BARN_ASSIGNED_EVENT,
+      {
+        eventId: anyString,
+        horseId: HORSE_ID,
+        barnId: 'b2',
+      },
+    );
     expect(calls).toEqual([
       'transaction:start',
       'lockAssignableBarn',
@@ -255,8 +259,8 @@ describe('HorsePlacementsService', () => {
       'withdrawHorseFromClasses',
       'update',
       'audit',
-      'transaction:commit',
       'publish',
+      'transaction:commit',
     ]);
   });
 
@@ -279,6 +283,7 @@ describe('HorsePlacementsService', () => {
       { barnId: 'b2' },
     );
     expect(events.publish).toHaveBeenCalledWith(
+      manager,
       HORSE_BARN_ASSIGNED_EVENT,
       expect.objectContaining({ horseId: HORSE_ID, barnId: 'b2' }),
     );
@@ -353,7 +358,7 @@ describe('HorsePlacementsService', () => {
         groomId: 'g-1',
       });
 
-    it('places the stall and the groom in one transaction and notifies after the commit', async () => {
+    it('places the stall and the groom and writes the notification event in one transaction', async () => {
       const result = await place();
 
       expect(stalls.moveHorseToStallInTransaction).toHaveBeenCalledWith(
@@ -372,10 +377,11 @@ describe('HorsePlacementsService', () => {
         'transaction:start',
         'moveHorseToStallInTransaction',
         'assignInTransaction',
-        'transaction:commit',
         'publish',
+        'transaction:commit',
       ]);
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         GROOM_ASSIGNMENT_CHANGED_EVENT,
         { eventId: 'ga-1', horseId: HORSE_ID },
       );
@@ -393,6 +399,18 @@ describe('HorsePlacementsService', () => {
       await expect(place()).rejects.toThrow(ConflictException);
       expect(calls).not.toContain('transaction:commit');
       expect(events.publish).not.toHaveBeenCalled();
+    });
+
+    it('fails as a whole when the outbox write fails', async () => {
+      events.publish.mockRejectedValueOnce(new Error('outbox down'));
+
+      await expect(place()).rejects.toThrow('outbox down');
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        GROOM_ASSIGNMENT_CHANGED_EVENT,
+        expect.anything(),
+      );
+      expect(calls).not.toContain('transaction:commit');
     });
   });
 

@@ -100,7 +100,7 @@ export type HorseMeasurementAlertEvent = HorseMeasurementAlertResult & {
   type: HorseMeasurementType;
   value: number;
   unit: string;
-  measuredAt: Date;
+  measuredAt: string;
   source: HorseMeasurementSource;
 };
 

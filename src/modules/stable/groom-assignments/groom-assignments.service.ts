@@ -90,7 +90,7 @@ export class GroomAssignmentsService {
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
    * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); nhật ký ghi thêm movedParticipantIds.
-   * - Sau khi commit: phát GROOM_ASSIGNMENT_CHANGED_EVENT để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách.
+   * - Ghi GROOM_ASSIGNMENT_CHANGED_EVENT vào outbox trong cùng transaction để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -107,17 +107,28 @@ export class GroomAssignmentsService {
     body: AssignGroomDto,
   ): Promise<GroomAssignmentResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    const { response, changedEvent } = await this.dataSource.transaction((manager) =>
-      this.assignInTransaction(manager, caller.id, horseId, body.groomId),
-    );
-    if (changedEvent) this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, changedEvent);
-    return response;
+    return this.dataSource.transaction(async (manager) => {
+      const { response, changedEvent } = await this.assignInTransaction(
+        manager,
+        caller.id,
+        horseId,
+        body.groomId,
+      );
+      if (changedEvent) {
+        await this.events.publish(
+          manager,
+          GROOM_ASSIGNMENT_CHANGED_EVENT,
+          changedEvent,
+        );
+      }
+      return response;
+    });
   }
 
   /**
    * Giao hoặc đổi groom cho ngựa, chạy trong transaction của nơi gọi (luật như assign)
    *
-   * - Không phát event; nơi gọi phát GROOM_ASSIGNMENT_CHANGED_EVENT với changedEvent trả về sau khi commit
+   * - Không ghi event; nơi gọi ghi GROOM_ASSIGNMENT_CHANGED_EVENT với changedEvent trả về vào outbox trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param callerId UUID của người gọi (users.id)

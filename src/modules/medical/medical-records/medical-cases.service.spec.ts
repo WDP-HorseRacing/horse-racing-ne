@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -129,7 +128,7 @@ describe('MedicalCasesService', () => {
       costByHorse: jest.fn().mockResolvedValue([]),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new MedicalCasesService(
       dataSource as unknown as DataSource,
       horseAccess as unknown as HorseAccessService,
@@ -144,7 +143,7 @@ describe('MedicalCasesService', () => {
         find: (options: unknown) => manager.find(MedicalRecordEntity, options),
       } as unknown as Repository<MedicalRecordEntity>,
       audit,
-      events as unknown as DomainEventPublisher,
+      events,
     );
   });
 
@@ -309,7 +308,7 @@ describe('MedicalCasesService', () => {
       expect(manager.update).not.toHaveBeenCalled();
     });
 
-    it('closes the case, releases the lock and publishes both events after commit', async () => {
+    it('closes the case, releases the lock and publishes both events in the transaction', async () => {
       lockRow = { id: 'lock-1', status: TrainingLockStatus.ACTIVE };
       const result = await close({ lockDecision: CaseLockDecision.RELEASE });
 
@@ -338,10 +337,12 @@ describe('MedicalCasesService', () => {
         }),
       );
       expect(
-        (events.publish.mock.calls as Array<[string]>).map(([name]) => name),
+        (events.publish.mock.calls as Array<[unknown, string]>).map(
+          ([tx, name]) => [tx, name],
+        ),
       ).toEqual([
-        MEDICAL_CASE_CLOSED_EVENT,
-        MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
+        [manager, MEDICAL_CASE_CLOSED_EVENT],
+        [manager, MEDICAL_TRAINING_LOCK_RELEASED_EVENT],
       ]);
     });
 
@@ -356,7 +357,9 @@ describe('MedicalCasesService', () => {
         lockEnd: new Date(expectedEnd),
       });
       expect(
-        (events.publish.mock.calls as Array<[string]>).map(([name]) => name),
+        (events.publish.mock.calls as Array<[unknown, string]>).map(
+          ([, name]) => name,
+        ),
       ).toEqual([MEDICAL_CASE_CLOSED_EVENT]);
     });
   });
@@ -412,6 +415,7 @@ describe('MedicalCasesService', () => {
         }),
       );
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         MEDICAL_CASE_COST_ADJUSTED_EVENT,
         expect.objectContaining({ fromCost: 1500000, toCost: 150000 }),
       );

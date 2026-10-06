@@ -15,6 +15,7 @@ import { MedicalRecordEntity } from './medical-record.entity';
  *
  * - requestedBy null khi hệ thống tự sinh từ cảnh báo chỉ số (source MEASUREMENT_ALERT)
  * - alertType chỉ có với yêu cầu tự động, dùng để chặn trùng: mỗi ngựa một yêu cầu PENDING cho mỗi loại cảnh báo
+ * - measurementId chỉ có với yêu cầu tự động: mỗi lần đo chỉ sinh một yêu cầu cho mỗi loại cảnh báo, kể cả khi cảnh báo được giao lại
  */
 @Entity({ name: 'medical_exam_requests' })
 @Index('medical_exam_requests_horse_status_idx', ['horseId', 'status'])
@@ -22,6 +23,14 @@ import { MedicalRecordEntity } from './medical-record.entity';
   unique: true,
   where: `status = '${ExamRequestStatus.PENDING}' AND alert_type IS NOT NULL`,
 })
+@Index(
+  'medical_exam_requests_measurement_alert_uq',
+  ['measurementId', 'alertType'],
+  {
+    unique: true,
+    where: 'measurement_id IS NOT NULL',
+  },
+)
 export class MedicalExamRequestEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -81,4 +90,7 @@ export class MedicalExamRequestEntity extends MutableRecordEntity {
 
   @Column({ name: 'alert_type', type: 'varchar', length: 16, nullable: true })
   alertType!: HorseMeasurementAlert | null;
+
+  @Column({ name: 'measurement_id', type: 'uuid', nullable: true })
+  measurementId!: string | null;
 }

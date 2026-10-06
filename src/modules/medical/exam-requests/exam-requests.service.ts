@@ -65,7 +65,7 @@ export class ExamRequestsService {
    * - Khóa row ngựa; kiểm phạm vi người gửi trước, rồi mới chặn ngựa đã chuyển nhượng (ngoài phạm vi luôn là 403)
    * - Không tạo cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
    * - Nguồn gốc theo vai trò người gửi; ghi nhật ký
-   * - Yêu cầu Khẩn: sau commit báo mọi Veterinarian
+   * - Yêu cầu Khẩn: ghi event báo mọi Veterinarian vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -100,9 +100,10 @@ export class ExamRequestsService {
         incidentId: null,
         alertType: null,
       });
-      return { ...saved, horse };
+      const created = { ...saved, horse };
+      await this.announceCreated(manager, created);
+      return created;
     });
-    this.announceCreated(request);
     return toExamRequestResponse(request);
   }
 
@@ -190,7 +191,7 @@ export class ExamRequestsService {
    * Bác sĩ đổi mức độ của yêu cầu đang chờ, bắt buộc lý do
    *
    * - Mức mới trùng mức cũ thì không ghi gì
-   * - Nâng lên Khẩn thì sau commit báo mọi Veterinarian, kể cả yêu cầu tự sinh từ cảnh báo
+   * - Nâng lên Khẩn thì ghi event báo mọi Veterinarian vào outbox trong cùng transaction, kể cả yêu cầu tự sinh từ cảnh báo
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param requestId UUID của yêu cầu khám
@@ -206,40 +207,36 @@ export class ExamRequestsService {
     body: UpdateExamRequestUrgencyDto,
   ): Promise<ExamRequestResponseDto> {
     const horseId = await this.requestHorseId(requestId);
-    const { request, raised } = await this.dataSource.transaction(
-      async (manager) => {
-        const { caller, horse } = await this.access.lockHorseForWrite(
-          manager,
-          actor,
-          horseId,
-        );
-        const current = await this.lockRequest(manager, requestId);
-        assertRequestPending(current.status);
-        if (current.urgent === body.urgent) {
-          return { request: { ...current, horse }, raised: false };
-        }
-        await manager.update(
-          MedicalExamRequestEntity,
-          { id: requestId },
-          { urgent: body.urgent },
-        );
-        await this.audit.record(manager, {
-          actorId: caller.id,
-          action: AuditAction.UPDATE,
-          entityType: AuditEntityType.MEDICAL_EXAM_REQUEST,
-          entityId: requestId,
-          before: { urgent: current.urgent },
-          after: { urgent: body.urgent },
-          reason: body.reason,
-          feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
-        });
-        return {
-          request: { ...current, urgent: body.urgent, horse },
-          raised: body.urgent,
-        };
-      },
-    );
-    if (raised) this.publishUrgent(request);
+    const request = await this.dataSource.transaction(async (manager) => {
+      const { caller, horse } = await this.access.lockHorseForWrite(
+        manager,
+        actor,
+        horseId,
+      );
+      const current = await this.lockRequest(manager, requestId);
+      assertRequestPending(current.status);
+      if (current.urgent === body.urgent) {
+        return { ...current, horse };
+      }
+      await manager.update(
+        MedicalExamRequestEntity,
+        { id: requestId },
+        { urgent: body.urgent },
+      );
+      await this.audit.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.MEDICAL_EXAM_REQUEST,
+        entityId: requestId,
+        before: { urgent: current.urgent },
+        after: { urgent: body.urgent },
+        reason: body.reason,
+        feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
+      });
+      const updated = { ...current, urgent: body.urgent, horse };
+      if (body.urgent) await this.publishUrgent(manager, updated);
+      return updated;
+    });
     return toExamRequestResponse(request);
   }
 
@@ -298,7 +295,7 @@ export class ExamRequestsService {
    * Tạo yêu cầu khám từ báo cáo sự cố của Groom trong transaction đang mở
    *
    * - Không khóa row ngựa, không kiểm Groom được phân công và ngựa đã chuyển nhượng
-   * - Không publish event; báo Veterinarian khi Khẩn bằng announceCreated sau commit
+   * - Không publish event; báo Veterinarian khi Khẩn bằng announceCreated trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Ngựa, báo cáo sự cố, người báo, mô tả và mức độ
@@ -332,6 +329,7 @@ export class ExamRequestsService {
    * - Bỏ qua ngựa đã chuyển nhượng hoặc hồ sơ đã xóa
    * - Sốt là Khẩn, sụt cân là Bình thường; người gửi là Hệ thống (requestedBy null)
    * - Mỗi ngựa chỉ một yêu cầu tự động PENDING cho mỗi loại cảnh báo: trùng thì bỏ qua (ON CONFLICT DO NOTHING)
+   * - Mỗi lần đo chỉ sinh một yêu cầu cho mỗi loại cảnh báo: nhận lại cùng cảnh báo (kể cả khi yêu cầu cũ đã xử lý) thì bỏ qua
    * - Không gửi thêm thông báo
    *
    * @param event Payload của HORSE_MEASUREMENT_ALERT_EVENT
@@ -362,6 +360,7 @@ export class ExamRequestsService {
           description: describeAlert(event),
           status: ExamRequestStatus.PENDING,
           alertType: event.alert,
+          measurementId: event.measurementId,
           version: 1,
         })
         .orIgnore()
@@ -388,33 +387,50 @@ export class ExamRequestsService {
   }
 
   /**
-   * Báo mọi Veterinarian khi có yêu cầu khám Khẩn do người dùng tạo hoặc vừa nâng lên Khẩn. Gọi sau khi commit
+   * Báo mọi Veterinarian khi có yêu cầu khám Khẩn do người dùng tạo
    *
-   * @param request Yêu cầu khám
+   * - Yêu cầu không Khẩn hoặc tự sinh từ cảnh báo chỉ số: không ghi gì
+   * - Còn lại: ghi MEDICAL_EXAM_REQUEST_URGENT_EVENT vào outbox trong cùng transaction
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param request Yêu cầu khám vừa tạo
+   * @returns Promise hoàn tất khi đã xử lý xong
    */
-  announceCreated(request: MedicalExamRequestEntity): void {
+  async announceCreated(
+    manager: EntityManager,
+    request: MedicalExamRequestEntity,
+  ): Promise<void> {
     if (
       !request.urgent ||
       request.source === ExamRequestSource.MEASUREMENT_ALERT
     ) {
       return;
     }
-    this.publishUrgent(request);
+    await this.publishUrgent(manager, request);
   }
 
   /**
-   * Phát MEDICAL_EXAM_REQUEST_URGENT_EVENT để báo mọi Veterinarian. Gọi sau khi commit
+   * Ghi MEDICAL_EXAM_REQUEST_URGENT_EVENT báo mọi Veterinarian vào outbox trong cùng transaction
    *
+   * @param manager EntityManager của transaction đang chạy
    * @param request Yêu cầu khám mức Khẩn
+   * @returns Promise hoàn tất khi đã ghi vào outbox
    */
-  private publishUrgent(request: MedicalExamRequestEntity): void {
+  private async publishUrgent(
+    manager: EntityManager,
+    request: MedicalExamRequestEntity,
+  ): Promise<void> {
     const event: ExamRequestUrgentEvent = {
       eventId: randomUUID(),
       horseId: request.horseId,
       requestId: request.id,
       description: request.description,
     };
-    this.events.publish(MEDICAL_EXAM_REQUEST_URGENT_EVENT, event);
+    await this.events.publish(
+      manager,
+      MEDICAL_EXAM_REQUEST_URGENT_EVENT,
+      event,
+    );
   }
 
   /**

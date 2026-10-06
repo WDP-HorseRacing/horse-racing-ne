@@ -38,7 +38,7 @@ export class HealthStatusesService {
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa; ngựa đã chuyển nhượng: 409
    * - Bắt buộc lý do; trạng thái mới trùng trạng thái cũ thì không ghi gì và trả changed = false
    * - Được đặt Đủ điều kiện cả khi đang có lệnh khóa; không tự gỡ khóa
-   * - Chuyển sang Chấn thương hoặc Cách ly: sau commit báo Head Trainer của khu, Club Manager và Horse Owner
+   * - Chuyển sang Chấn thương hoặc Cách ly: ghi event báo Head Trainer của khu, Club Manager và Horse Owner vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -65,23 +65,24 @@ export class HealthStatusesService {
         body.healthStatus,
         body.reason,
       );
-      return this.horseHealth.applyHealthStatus(manager, {
+      const applied = await this.horseHealth.applyHealthStatus(manager, {
         horseId,
         to: body.healthStatus,
         actorId: caller.id,
         reason: body.reason,
         feature: MEDICAL_AUDIT_FEATURE.HEALTH_STATUS,
       });
+      if (applied.changed) {
+        const event: HealthChangedEvent = {
+          eventId: randomUUID(),
+          horseId,
+          from: applied.from,
+          to: applied.to,
+        };
+        await this.events.publish(manager, MEDICAL_HEALTH_CHANGED_EVENT, event);
+      }
+      return applied;
     });
-    if (change.changed) {
-      const event: HealthChangedEvent = {
-        eventId: randomUUID(),
-        horseId,
-        from: change.from,
-        to: change.to,
-      };
-      this.events.publish(MEDICAL_HEALTH_CHANGED_EVENT, event);
-    }
     return toHealthStatusChangeResponse(horseId, change);
   }
 

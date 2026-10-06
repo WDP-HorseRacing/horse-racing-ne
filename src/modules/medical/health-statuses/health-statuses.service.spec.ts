@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
@@ -24,9 +23,10 @@ describe('HealthStatusesService', () => {
   let repository: { history: jest.Mock };
   let events: { publish: jest.Mock };
   let service: HealthStatusesService;
+  let manager: object;
 
   beforeEach(() => {
-    const manager = {};
+    manager = {};
     access = {
       lockHorseForWrite: jest.fn().mockResolvedValue({
         caller: { id: 'vet-1' },
@@ -45,7 +45,7 @@ describe('HealthStatusesService', () => {
       ),
     };
     repository = { history: jest.fn().mockResolvedValue([]) };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new HealthStatusesService(
       {
         transaction: jest.fn((work: (m: unknown) => unknown) => work(manager)),
@@ -54,7 +54,7 @@ describe('HealthStatusesService', () => {
       horseAccess as unknown as HorseAccessService,
       horseHealth as unknown as HorseHealthService,
       repository as unknown as HealthStatusesRepository,
-      events as unknown as DomainEventPublisher,
+      events,
     );
   });
 
@@ -90,7 +90,7 @@ describe('HealthStatusesService', () => {
     expect(events.publish).not.toHaveBeenCalled();
   });
 
-  it('writes the new status with feature F3.7 and publishes after commit', async () => {
+  it('writes the new status with feature F3.7 and publishes in the transaction', async () => {
     const result = await service.updateHealth(vet, 'h1', {
       healthStatus: HorseHealthStatus.QUARANTINED,
       reason: 'Nghi cúm ngựa',
@@ -110,6 +110,7 @@ describe('HealthStatusesService', () => {
       to: HorseHealthStatus.QUARANTINED,
     });
     expect(events.publish).toHaveBeenCalledWith(
+      manager,
       MEDICAL_HEALTH_CHANGED_EVENT,
       expect.objectContaining({ to: HorseHealthStatus.QUARANTINED }),
     );

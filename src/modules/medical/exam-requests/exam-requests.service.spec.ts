@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, IsNull, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
@@ -145,14 +144,14 @@ describe('ExamRequestsService', () => {
       ),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new ExamRequestsService(
       dataSource as unknown as DataSource,
       requests as unknown as Repository<MedicalExamRequestEntity>,
       access as unknown as MedicalAccessService,
       horseAccess as unknown as HorseAccessService,
       audit,
-      events as unknown as DomainEventPublisher,
+      events,
     );
   });
 
@@ -208,7 +207,7 @@ describe('ExamRequestsService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('lets an assigned groom send an urgent request and alerts veterinarians after commit', async () => {
+    it('lets an assigned groom send an urgent request and alerts veterinarians in the transaction', async () => {
       horseAccess.isGroomAssigned.mockResolvedValue(true);
       const result = await service.create(
         actorWith(UserRole.GROOM),
@@ -222,6 +221,7 @@ describe('ExamRequestsService', () => {
         urgent: true,
       });
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         MEDICAL_EXAM_REQUEST_URGENT_EVENT,
         expect.objectContaining({ requestId: 'req-new', horseId: 'h1' }),
       );
@@ -400,6 +400,7 @@ describe('ExamRequestsService', () => {
         reason: 'Sụt cân nhanh',
       });
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         MEDICAL_EXAM_REQUEST_URGENT_EVENT,
         expect.objectContaining({ requestId: 'req-1' }),
       );
@@ -420,6 +421,7 @@ describe('ExamRequestsService', () => {
         }),
       );
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         MEDICAL_EXAM_REQUEST_URGENT_EVENT,
         expect.objectContaining({ requestId: 'req-1' }),
       );
@@ -495,13 +497,13 @@ describe('ExamRequestsService', () => {
       expect(spy).not.toHaveBeenCalled();
     });
 
-    it('swallows a failure because the measurement is already committed', async () => {
+    it('rethrows a failure so the outbox relay delivers the event again', async () => {
       jest
         .spyOn(service, 'createFromAlert')
         .mockRejectedValue(new Error('db down'));
       await expect(
         new MeasurementAlertExamRequestListener(service).handle(alertEvent()),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow('db down');
     });
   });
 });

@@ -89,7 +89,7 @@ export class HorsePlacementsService {
    * - Khu mới phải đang hoạt động, có Head Trainer phụ trách và còn ít nhất một ô trống (khóa row khu trước khi kiểm)
    * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom
    * - Chọn đúng khu đang ở thì không đổi gì
-   * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT báo Head Trainer khu mới
+   * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; ghi HORSE_BARN_ASSIGNED_EVENT vào outbox trong cùng transaction để báo Head Trainer khu mới
    * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách; có rút thì nhật ký ghi thêm classesWithdrawn
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -107,14 +107,14 @@ export class HorsePlacementsService {
     body: AssignHorseBarnDto,
   ): Promise<HorseResponseDto> {
     const caller = await this.access.currentUser(actor);
-    const changed = await this.dataSource.transaction(async (manager) => {
+    await this.dataSource.transaction(async (manager) => {
       const horse = await this.access.lockWritableHorse(
         manager,
         actor,
         horseId,
       );
       assertNotTransferred(horse);
-      if (horse.barnId === body.barnId) return false;
+      if (horse.barnId === body.barnId) return;
       assertBarnChangeReason(horse.barnId, body.reason);
       await this.applyBarnChange(manager, {
         callerId: caller.id,
@@ -123,16 +123,13 @@ export class HorsePlacementsService {
         toBarnId: body.barnId,
         reason: body.reason,
       });
-      return true;
-    });
-    if (changed) {
       const event: HorseBarnAssignedEvent = {
         eventId: randomUUID(),
         horseId,
         barnId: body.barnId,
       };
-      this.events.publish(HORSE_BARN_ASSIGNED_EVENT, event);
-    }
+      await this.events.publish(manager, HORSE_BARN_ASSIGNED_EVENT, event);
+    });
     return toHorseResponse(await this.access.findNotDeletedHorse(horseId));
   }
 
@@ -257,7 +254,7 @@ export class HorsePlacementsService {
    * Xếp ô và giao groom cho ngựa trong một lần gửi, thành công cả hai hoặc không lưu gì
    *
    * - Luật xếp ô như StallsService.moveHorseToStall, luật giao groom như GroomAssignmentsService.assign
-   * - Chạy cả hai trong cùng một transaction; sau khi commit mới phát GROOM_ASSIGNMENT_CHANGED_EVENT
+   * - Chạy cả hai trong cùng một transaction; GROOM_ASSIGNMENT_CHANGED_EVENT ghi vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -275,24 +272,29 @@ export class HorsePlacementsService {
   ): Promise<HorsePlacementResponseDto> {
     const caller = await this.access.currentUser(actor);
     const { stallAssignment, groom } = await this.dataSource.transaction(
-      async (manager) => ({
-        stallAssignment: await this.stalls.moveHorseToStallInTransaction(
+      async (manager) => {
+        const stallAssignment = await this.stalls.moveHorseToStallInTransaction(
           manager,
           caller.id,
           horseId,
           body.stallId,
-        ),
-        groom: await this.grooms.assignInTransaction(
+        );
+        const groom = await this.grooms.assignInTransaction(
           manager,
           caller.id,
           horseId,
           body.groomId,
-        ),
-      }),
+        );
+        if (groom.changedEvent) {
+          await this.events.publish(
+            manager,
+            GROOM_ASSIGNMENT_CHANGED_EVENT,
+            groom.changedEvent,
+          );
+        }
+        return { stallAssignment, groom };
+      },
     );
-    if (groom.changedEvent) {
-      this.events.publish(GROOM_ASSIGNMENT_CHANGED_EVENT, groom.changedEvent);
-    }
     return toHorsePlacementResponse(stallAssignment, groom.response);
   }
 

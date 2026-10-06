@@ -20,7 +20,7 @@ describe('MedicalEventsListener', () => {
     expect(medical.notifyLockSet).toHaveBeenCalledWith(event);
   });
 
-  it('swallows a failure because the medical data is already committed', async () => {
+  it('rethrows a failure so the outbox relay retries the event', async () => {
     const medical = {
       notifyCaseClosed: jest.fn().mockRejectedValue(new Error('db down')),
     };
@@ -35,6 +35,6 @@ describe('MedicalEventsListener', () => {
         caseId: 'c1',
         totalCost: 0,
       }),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow('db down');
   });
 });

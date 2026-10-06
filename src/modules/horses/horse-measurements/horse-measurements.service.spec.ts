@@ -23,6 +23,7 @@ import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
 import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import { HORSE_MEASUREMENT_ALERT_EVENT } from '../constants/horse.constants';
 import { HorseAccessService } from '../shared/horse-access.service';
+import type { HorseMeasurementAlertEvent } from '../types/horse.types';
 import { HorseMeasurementsService } from './horse-measurements.service';
 
 type Row = Record<string, unknown>;
@@ -132,14 +133,14 @@ describe('HorseMeasurementsService', () => {
       isGroomAssigned: jest.fn().mockResolvedValue(false),
       isHorseInTrainerBarn: jest.fn(() => Promise.resolve(barnRows.length > 0)),
     };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     const typedDataSource = dataSource as unknown as DataSource;
     service = new HorseMeasurementsService(
       {} as unknown as Repository<HorseMeasurementEntity>,
       Object.assign(new HorseAccessService(typedDataSource), horses),
       typedDataSource,
-      events as unknown as DomainEventPublisher,
+      events,
       audit,
     );
   });
@@ -274,6 +275,7 @@ describe('HorseMeasurementsService', () => {
         feature: 'F1.5',
       });
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         HORSE_MEASUREMENT_ALERT_EVENT,
         expect.objectContaining({
           alert: HorseMeasurementAlert.FEVER,
@@ -282,9 +284,28 @@ describe('HorseMeasurementsService', () => {
           source: HorseMeasurementSource.MANUAL,
         }),
       );
+      expect(events.publish.mock.invocationCallOrder[0]).toBeGreaterThan(
+        audit.record.mock.invocationCallOrder[0],
+      );
       expect(result[0].alerts).toEqual([
         expect.objectContaining({ alert: HorseMeasurementAlert.FEVER }),
       ]);
+    });
+
+    it('fails the transaction when the alert cannot be written to the outbox', async () => {
+      events.publish.mockRejectedValueOnce(new Error('outbox down'));
+      await expect(
+        service.addMeasurements(
+          actorWith(UserRole.VETERINARIAN),
+          HORSE_ID,
+          values([[HorseMeasurementType.TEMPERATURE, 39]], true),
+        ),
+      ).rejects.toThrow('outbox down');
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        HORSE_MEASUREMENT_ALERT_EVENT,
+        expect.anything(),
+      );
     });
 
     it('stores a value inside the normal range as not abnormal', async () => {
@@ -552,6 +573,36 @@ describe('HorseMeasurementsService', () => {
         }),
       ).resolves.toEqual([]);
       expect(measurementRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('publishAlerts', () => {
+    it('writes every alert to the outbox with the caller transaction manager, in order', async () => {
+      const first = {
+        measurementId: 'm-1',
+      } as unknown as HorseMeasurementAlertEvent;
+      const second = {
+        measurementId: 'm-2',
+      } as unknown as HorseMeasurementAlertEvent;
+      await service.publishAlerts(manager as never, [first, second]);
+      expect(events.publish).toHaveBeenCalledTimes(2);
+      expect(events.publish).toHaveBeenNthCalledWith(
+        1,
+        manager,
+        HORSE_MEASUREMENT_ALERT_EVENT,
+        first,
+      );
+      expect(events.publish).toHaveBeenNthCalledWith(
+        2,
+        manager,
+        HORSE_MEASUREMENT_ALERT_EVENT,
+        second,
+      );
+    });
+
+    it('writes nothing for an empty list', async () => {
+      await service.publishAlerts(manager as never, []);
+      expect(events.publish).not.toHaveBeenCalled();
     });
   });
 

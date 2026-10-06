@@ -25,7 +25,6 @@ import { DailyChecklistsService } from '../shared/daily-checklists.service';
 import { BarnEntity } from '../entities/barn.entity';
 import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
 import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../constants/stable-events.constants';
 import { StableAccessService } from '../shared/stable-access.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
@@ -137,7 +136,7 @@ describe('GroomAssignmentsService', () => {
     manager.getRepository = trainerBarnRepository(manager.query);
     groomAssignments = { find: jest.fn().mockResolvedValue([]) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     training = {
       moveFutureParticipantsToGroom: jest.fn().mockResolvedValue(['p1', 'p2']),
     };
@@ -150,7 +149,7 @@ describe('GroomAssignmentsService', () => {
       groomAssignments as unknown as Repository<GroomAssignmentEntity>,
       dataSource,
       audit,
-      events as unknown as DomainEventPublisher,
+      events,
       new StableAccessService(horseAccess),
       horseAccess,
       new DailyChecklistsService(),
@@ -308,9 +307,10 @@ describe('GroomAssignmentsService', () => {
       );
     });
 
-    it('publishes the groom change after the transaction commits', async () => {
+    it('writes the groom change to the outbox inside the transaction', async () => {
       await assign();
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         GROOM_ASSIGNMENT_CHANGED_EVENT,
         {
           eventId: 'ga-new',
@@ -320,7 +320,17 @@ describe('GroomAssignmentsService', () => {
         },
       );
       expect(events.publish.mock.invocationCallOrder[0]).toBeGreaterThan(
-        transaction.mock.invocationCallOrder[0],
+        audit.record.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('fails the transaction when the outbox write fails', async () => {
+      events.publish.mockRejectedValueOnce(new Error('outbox down'));
+      await expect(assign()).rejects.toThrow('outbox down');
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        GROOM_ASSIGNMENT_CHANGED_EVENT,
+        expect.anything(),
       );
     });
 
@@ -425,6 +435,7 @@ describe('GroomAssignmentsService', () => {
       it('publishes the change with both the new and the old groom', async () => {
         await assign();
         expect(events.publish).toHaveBeenCalledWith(
+          manager,
           GROOM_ASSIGNMENT_CHANGED_EVENT,
           {
             eventId: 'ga-new',

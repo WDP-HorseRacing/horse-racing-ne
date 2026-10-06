@@ -359,25 +359,43 @@ thể unit test nhanh mà không cần khởi động Nest hoặc database.
 
 ## 9. Domain event và side effect
 
-Nếu workflow làm thay đổi trạng thái nghiệp vụ quan trọng, có thể publish event
-qua `DomainEventPublisher` sau khi transaction hoàn tất:
+Domain event đi qua transactional outbox: `DomainEventPublisher.publish(manager, name, payload)`
+ghi event vào bảng `outbox_events` **trong cùng transaction** với dữ liệu nghiệp vụ.
+Commit thì event chắc chắn được giao; rollback thì event mất theo.
 
 ```ts
-const plan = await this.dataSource.transaction(async (manager) => {
-  // update và save trong transaction
-  return manager.save(current);
-});
-
-this.events.publish('training.plan.completed', {
-  planId: plan.id,
-  horseId: plan.horseId,
+await this.dataSource.transaction(async (manager) => {
+  const plan = await manager.save(current);
+  await this.events.publish(manager, 'training.plan.completed', {
+    eventId: randomUUID(),
+    planId: plan.id,
+    horseId: plan.horseId,
+  });
 });
 ```
 
-Không publish event trước commit. Event handler không nên được dùng để thay thế
-việc ghi dữ liệu bắt buộc trong transaction. Với Keycloak, email, S3 hoặc HTTP
-external call, cân nhắc cơ chế retry/outbox nếu side effect cần đảm bảo không
-bị mất.
+`OutboxRelay` mỗi giây nhận các event đến hạn (`FOR UPDATE SKIP LOCKED`) và gọi
+`emitAsync` cho các listener `@OnEvent`:
+
+- Listener lỗi thì event được giao lại, lùi thời gian theo cấp số nhân; đủ
+  `OUTBOX_MAX_ATTEMPTS` lần thì đánh dấu `failed_at` và dừng.
+- Event giao xong được dọn sau 7 ngày.
+
+Quy tắc:
+
+- Gọi `publish` bên trong callback của transaction, sau khi ghi dữ liệu. Việc chạy
+  theo lịch (cron) không có transaction thì truyền `this.dataSource.manager`.
+- Payload là JSON: chỉ chuỗi, số, boolean, null, mảng, object. Thời điểm truyền dạng
+  chuỗi ISO (`toISOString()`), không truyền `Date`.
+- Mỗi payload có `eventId` ổn định (sinh một lần khi publish, hoặc id có sẵn như id
+  bản ghi). Listener dùng nó để chống xử lý trùng.
+- Listener dùng `@OnEvent(NAME, OUTBOX_LISTENER_OPTIONS)` và **ném lỗi** ra ngoài,
+  không tự nuốt lỗi.
+- Relay giao **ít nhất một lần**: cùng một event có thể tới listener nhiều lần.
+  Listener phải idempotent, ví dụ unique index trên khóa của event rồi
+  `ON CONFLICT DO NOTHING` (yêu cầu khám tự sinh dùng `measurement_id`, thông báo dùng
+  `(eventId, recipientId)`).
+- Không dùng event thay cho việc ghi dữ liệu bắt buộc trong transaction.
 
 ## 10. Quy trình tạo feature mới
 

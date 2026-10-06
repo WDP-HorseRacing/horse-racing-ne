@@ -217,7 +217,7 @@ export class HorseProfilesService {
    * - Cha mẹ phải là ngựa có hồ sơ tại câu lạc bộ, đúng giới tính, sinh trước con
    * - Khu (nếu có) phải đang hoạt động, có Head Trainer và còn ô trống; không chọn thì ngựa vào "Chờ xếp khu"
    * - Kiểm ảnh trên storage trước khi mở transaction (có gọi mạng tới storage)
-   * - Tạo hồ sơ, xếp khu và ghi nhật ký trong cùng một transaction; sau khi commit phát HORSE_BARN_ASSIGNED_EVENT báo Head Trainer của khu
+   * - Tạo hồ sơ, xếp khu và ghi nhật ký trong cùng một transaction; có khu thì ghi HORSE_BARN_ASSIGNED_EVENT vào outbox trong cùng transaction để báo Head Trainer của khu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin hồ sơ ngựa
@@ -276,18 +276,22 @@ export class HorseProfilesService {
             after: pickFields(created, CREATE_AUDIT_FIELDS),
             feature: HORSE_AUDIT_FEATURE.CREATE_PROFILE,
           });
+          if (created.barnId) {
+            const event: HorseBarnAssignedEvent = {
+              eventId: randomUUID(),
+              horseId: created.id,
+              barnId: created.barnId,
+            };
+            await this.events.publish(
+              manager,
+              HORSE_BARN_ASSIGNED_EVENT,
+              event,
+            );
+          }
           return created;
         }),
       UNIQUE_CONFLICT_MESSAGES,
     );
-    if (horse.barnId) {
-      const event: HorseBarnAssignedEvent = {
-        eventId: randomUUID(),
-        horseId: horse.id,
-        barnId: horse.barnId,
-      };
-      this.events.publish(HORSE_BARN_ASSIGNED_EVENT, event);
-    }
     return toHorseResponse(horse);
   }
 

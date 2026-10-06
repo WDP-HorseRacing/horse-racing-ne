@@ -7,7 +7,6 @@ import {
 import { DataSource, QueryFailedError, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -211,7 +210,7 @@ describe('HorseProfilesService', () => {
       signDownloadUrl: jest.fn().mockResolvedValue('https://s3/get'),
       signDownloadUrls: jest.fn().mockResolvedValue(new Map()),
     };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     const typedDataSource = dataSource as unknown as DataSource;
     const access = Object.assign(
       new HorseAccessService(typedDataSource),
@@ -226,7 +225,7 @@ describe('HorseProfilesService', () => {
       new HorsePedigreeService(new HorsePedigreeRepository(), access),
       media as unknown as MediaService,
       barnsService as unknown as BarnsService,
-      events as unknown as DomainEventPublisher,
+      events,
       typedDataSource,
       audit,
     );
@@ -650,6 +649,7 @@ describe('HorseProfilesService', () => {
       };
       events.publish.mockImplementation(() => {
         calls.push('publish');
+        return Promise.resolve();
       });
       media.assertAttachableHorsePhoto.mockImplementation(() => {
         calls.push('assertAttachableHorsePhoto');
@@ -687,13 +687,13 @@ describe('HorseProfilesService', () => {
         new HorsePedigreeService(new HorsePedigreeRepository(), access),
         media as unknown as MediaService,
         barns as unknown as BarnsService,
-        events as unknown as DomainEventPublisher,
+        events,
         typedDataSource,
         audit,
       );
     });
 
-    it('locks the chosen barn inside the transaction and notifies after commit', async () => {
+    it('locks the chosen barn and writes the notification event inside the transaction', async () => {
       const result = await service.create(actorWith(UserRole.CLUB_MANAGER), {
         name: 'Gió',
         gender: HorseGender.MALE,
@@ -707,18 +707,42 @@ describe('HorseProfilesService', () => {
         HorseEntity,
         expect.objectContaining({ barnId: 'b2' }),
       );
-      expect(events.publish).toHaveBeenCalledWith(HORSE_BARN_ASSIGNED_EVENT, {
-        eventId: anyString,
-        horseId: 'h-new',
-        barnId: 'b2',
-      });
+      expect(events.publish).toHaveBeenCalledWith(
+        createManager,
+        HORSE_BARN_ASSIGNED_EVENT,
+        {
+          eventId: anyString,
+          horseId: 'h-new',
+          barnId: 'b2',
+        },
+      );
       expect(calls).toEqual([
         'transaction:start',
         'lockAssignableBarn',
-        'transaction:commit',
         'publish',
+        'transaction:commit',
       ]);
       expect(result).toMatchObject({ id: 'h-new' });
+    });
+
+    it('fails the creation when the outbox write fails', async () => {
+      events.publish.mockImplementation(() => {
+        calls.push('publish');
+        return Promise.reject(new Error('outbox down'));
+      });
+      await expect(
+        service.create(actorWith(UserRole.CLUB_MANAGER), {
+          name: 'Gió',
+          gender: HorseGender.MALE,
+          barnId: 'b2',
+        }),
+      ).rejects.toThrow('outbox down');
+      expect(events.publish).toHaveBeenCalledWith(
+        createManager,
+        HORSE_BARN_ASSIGNED_EVENT,
+        expect.anything(),
+      );
+      expect(calls).not.toContain('transaction:commit');
     });
 
     it('does not save or notify when the barn cannot take the horse', async () => {

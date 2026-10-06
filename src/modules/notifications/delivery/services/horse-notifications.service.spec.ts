@@ -47,7 +47,7 @@ const feverEvent: HorseMeasurementAlertEvent = {
   type: HorseMeasurementType.TEMPERATURE,
   value: 39.1,
   unit: HORSE_MEASUREMENT_SPECS[HorseMeasurementType.TEMPERATURE].unit,
-  measuredAt: new Date('2026-09-23T00:00:00Z'),
+  measuredAt: '2026-09-23T00:00:00.000Z',
   source: HorseMeasurementSource.MANUAL,
 };
 
@@ -62,7 +62,7 @@ const weightDropEvent: HorseMeasurementAlertEvent = {
   type: HorseMeasurementType.WEIGHT,
   value: 470,
   unit: 'kg',
-  measuredAt: new Date('2026-09-23T00:00:00Z'),
+  measuredAt: '2026-09-23T00:00:00.000Z',
   source: HorseMeasurementSource.MANUAL,
 };
 

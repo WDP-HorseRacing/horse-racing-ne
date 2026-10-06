@@ -222,7 +222,7 @@ describe('MedicalNotificationsService', () => {
       horseId: 'h1',
       lockId: 'l1',
       reason: 'Nghỉ',
-      expectedEnd: new Date('2026-10-04T17:00:00Z'),
+      expectedEnd: '2026-10-04T17:00:00.000Z',
     });
     expect(sentDraft().message).toContain('Dự kiến gỡ: 2026-10-05');
   });

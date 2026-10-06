@@ -192,7 +192,7 @@ export class MedicalCasesService {
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row bệnh án
    * - Lệnh khóa gắn bệnh án còn hiệu lực: bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
    * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
-   * - Sau commit: báo chủ ngựa và Club Manager; gỡ khóa thì báo Head Trainer và Club Manager
+   * - Ghi event vào outbox trong cùng transaction: báo chủ ngựa và Club Manager; gỡ khóa thì báo Head Trainer và Club Manager
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -210,114 +210,113 @@ export class MedicalCasesService {
   ): Promise<MedicalCaseResponseDto> {
     const { horseId } = await this.findCase(caseId);
     const now = new Date();
-    const { closed, releasedLockId } = await this.dataSource.transaction(
-      async (manager) => {
-        const { caller } = await this.access.lockHorseForWrite(
-          manager,
-          actor,
-          horseId,
-        );
-        const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
-          where: { id: caseId },
-          lock: { mode: 'pessimistic_write' },
-        });
-        assertCaseOpen(medicalCase.status);
-        const activeLock = await manager.findOne(TrainingLockEntity, {
-          where: { caseId, status: TrainingLockStatus.ACTIVE },
-          lock: { mode: 'pessimistic_write' },
-        });
-        const lockExpectedEnd = body.lockExpectedEnd
-          ? new Date(body.lockExpectedEnd)
-          : undefined;
-        const decision = resolveLockOnClose(
-          activeLock !== null,
-          body.lockDecision,
-          lockExpectedEnd,
-          now,
-        );
+    const closed = await this.dataSource.transaction(async (manager) => {
+      const { caller } = await this.access.lockHorseForWrite(
+        manager,
+        actor,
+        horseId,
+      );
+      const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
+        where: { id: caseId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      assertCaseOpen(medicalCase.status);
+      const activeLock = await manager.findOne(TrainingLockEntity, {
+        where: { caseId, status: TrainingLockStatus.ACTIVE },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const lockExpectedEnd = body.lockExpectedEnd
+        ? new Date(body.lockExpectedEnd)
+        : undefined;
+      const decision = resolveLockOnClose(
+        activeLock !== null,
+        body.lockDecision,
+        lockExpectedEnd,
+        now,
+      );
 
-        const changes = {
-          status: MedicalCaseStatus.CLOSED,
-          closedAt: now,
-          closedBy: caller.id,
-          finalConclusion: body.finalConclusion,
-          totalCost: String(body.totalCost),
-        };
-        await manager.update(MedicalCaseEntity, { id: caseId }, changes);
-        if (activeLock && decision === CaseLockDecision.RELEASE) {
-          await this.lockWrites.releaseLock(manager, activeLock.id, {
-            releasedBy: caller.id,
-            releasedAt: now,
-            releaseConclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
-          });
-          await this.audit.record(manager, {
-            actorId: caller.id,
-            action: AuditAction.UPDATE,
-            entityType: AuditEntityType.TRAINING_LOCK,
-            entityId: activeLock.id,
-            before: { status: activeLock.status },
-            after: { status: TrainingLockStatus.RELEASED, caseId },
-            reason: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
-            feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
-          });
-        }
-        if (activeLock && decision === CaseLockDecision.KEEP) {
-          await this.lockWrites.extendLockEnd(
-            manager,
-            activeLock.id,
-            lockExpectedEnd,
-          );
-          await this.audit.record(manager, {
-            actorId: caller.id,
-            action: AuditAction.UPDATE,
-            entityType: AuditEntityType.TRAINING_LOCK,
-            entityId: activeLock.id,
-            before: { lockEnd: activeLock.lockEnd },
-            after: { lockEnd: lockExpectedEnd, caseId },
-            feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
-          });
-        }
+      const changes = {
+        status: MedicalCaseStatus.CLOSED,
+        closedAt: now,
+        closedBy: caller.id,
+        finalConclusion: body.finalConclusion,
+        totalCost: String(body.totalCost),
+      };
+      await manager.update(MedicalCaseEntity, { id: caseId }, changes);
+      if (activeLock && decision === CaseLockDecision.RELEASE) {
+        await this.lockWrites.releaseLock(manager, activeLock.id, {
+          releasedBy: caller.id,
+          releasedAt: now,
+          releaseConclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+        });
         await this.audit.record(manager, {
           actorId: caller.id,
           action: AuditAction.UPDATE,
-          entityType: AuditEntityType.MEDICAL_CASE,
-          entityId: caseId,
-          before: { status: MedicalCaseStatus.OPEN },
-          after: {
-            status: MedicalCaseStatus.CLOSED,
-            finalConclusion: body.finalConclusion,
-            totalCost: body.totalCost,
-            lockDecision: decision,
-            ...(activeLock ? { trainingLockId: activeLock.id } : {}),
-          },
+          entityType: AuditEntityType.TRAINING_LOCK,
+          entityId: activeLock.id,
+          before: { status: activeLock.status },
+          after: { status: TrainingLockStatus.RELEASED, caseId },
+          reason: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
           feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
         });
-        return {
-          closed: { ...medicalCase, ...changes },
-          releasedLockId:
-            activeLock && decision === CaseLockDecision.RELEASE
-              ? activeLock.id
-              : null,
-        };
-      },
-    );
-
-    const closedEvent: MedicalCaseClosedEvent = {
-      eventId: randomUUID(),
-      horseId,
-      caseId,
-      totalCost: body.totalCost,
-    };
-    this.events.publish(MEDICAL_CASE_CLOSED_EVENT, closedEvent);
-    if (releasedLockId) {
-      const lockEvent: TrainingLockReleasedEvent = {
+      }
+      if (activeLock && decision === CaseLockDecision.KEEP) {
+        await this.lockWrites.extendLockEnd(
+          manager,
+          activeLock.id,
+          lockExpectedEnd,
+        );
+        await this.audit.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.TRAINING_LOCK,
+          entityId: activeLock.id,
+          before: { lockEnd: activeLock.lockEnd },
+          after: { lockEnd: lockExpectedEnd, caseId },
+          feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
+        });
+      }
+      await this.audit.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.MEDICAL_CASE,
+        entityId: caseId,
+        before: { status: MedicalCaseStatus.OPEN },
+        after: {
+          status: MedicalCaseStatus.CLOSED,
+          finalConclusion: body.finalConclusion,
+          totalCost: body.totalCost,
+          lockDecision: decision,
+          ...(activeLock ? { trainingLockId: activeLock.id } : {}),
+        },
+        feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
+      });
+      const closedEvent: MedicalCaseClosedEvent = {
         eventId: randomUUID(),
         horseId,
-        lockId: releasedLockId,
-        conclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+        caseId,
+        totalCost: body.totalCost,
       };
-      this.events.publish(MEDICAL_TRAINING_LOCK_RELEASED_EVENT, lockEvent);
-    }
+      await this.events.publish(
+        manager,
+        MEDICAL_CASE_CLOSED_EVENT,
+        closedEvent,
+      );
+      if (activeLock && decision === CaseLockDecision.RELEASE) {
+        const lockEvent: TrainingLockReleasedEvent = {
+          eventId: randomUUID(),
+          horseId,
+          lockId: activeLock.id,
+          conclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+        };
+        await this.events.publish(
+          manager,
+          MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
+          lockEvent,
+        );
+      }
+      return { ...medicalCase, ...changes };
+    });
     return toMedicalCaseResponse(closed, true);
   }
 
@@ -325,7 +324,7 @@ export class MedicalCasesService {
    * Điều chỉnh chi phí của bệnh án đã đóng, bắt buộc lý do
    *
    * - Số mới trùng số cũ thì không ghi gì và không báo
-   * - Ghi nhật ký giá trị trước, sau và lý do; sau commit báo lại chủ ngựa và Club Manager
+   * - Ghi nhật ký giá trị trước, sau và lý do; event báo lại chủ ngựa và Club Manager ghi vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -341,47 +340,47 @@ export class MedicalCasesService {
     body: AdjustCaseCostDto,
   ): Promise<MedicalCaseResponseDto> {
     const { horseId } = await this.findCase(caseId);
-    const { updated, fromCost } = await this.dataSource.transaction(
-      async (manager) => {
-        const { caller } = await this.access.lockHorseForWrite(
-          manager,
-          actor,
-          horseId,
-        );
-        const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
-          where: { id: caseId },
-          lock: { mode: 'pessimistic_write' },
-        });
-        assertCostAdjustable(medicalCase.status);
-        const previous = costOf(medicalCase) ?? 0;
-        if (previous === body.totalCost) {
-          return { updated: medicalCase, fromCost: null };
-        }
-        const totalCost = String(body.totalCost);
-        await manager.update(MedicalCaseEntity, { id: caseId }, { totalCost });
-        await this.audit.record(manager, {
-          actorId: caller.id,
-          action: AuditAction.UPDATE,
-          entityType: AuditEntityType.MEDICAL_CASE,
-          entityId: caseId,
-          before: { totalCost: previous },
-          after: { totalCost: body.totalCost },
-          reason: body.reason,
-          feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
-        });
-        return { updated: { ...medicalCase, totalCost }, fromCost: previous };
-      },
-    );
-    if (fromCost !== null) {
+    const updated = await this.dataSource.transaction(async (manager) => {
+      const { caller } = await this.access.lockHorseForWrite(
+        manager,
+        actor,
+        horseId,
+      );
+      const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
+        where: { id: caseId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      assertCostAdjustable(medicalCase.status);
+      const previous = costOf(medicalCase) ?? 0;
+      if (previous === body.totalCost) {
+        return medicalCase;
+      }
+      const totalCost = String(body.totalCost);
+      await manager.update(MedicalCaseEntity, { id: caseId }, { totalCost });
+      await this.audit.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.MEDICAL_CASE,
+        entityId: caseId,
+        before: { totalCost: previous },
+        after: { totalCost: body.totalCost },
+        reason: body.reason,
+        feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
+      });
       const event: MedicalCaseCostAdjustedEvent = {
         eventId: randomUUID(),
         horseId,
         caseId,
-        fromCost,
+        fromCost: previous,
         toCost: body.totalCost,
       };
-      this.events.publish(MEDICAL_CASE_COST_ADJUSTED_EVENT, event);
-    }
+      await this.events.publish(
+        manager,
+        MEDICAL_CASE_COST_ADJUSTED_EVENT,
+        event,
+      );
+      return { ...medicalCase, totalCost };
+    });
     return toMedicalCaseResponse(updated, true);
   }
 

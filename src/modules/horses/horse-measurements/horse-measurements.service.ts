@@ -142,7 +142,7 @@ export class HorseMeasurementsService {
    * - Giá trị phải trong khoảng hợp lệ; thời điểm đo không ở tương lai, lùi tối đa 7 ngày; mỗi loại chỉ một giá trị
    * - Có giá trị ngoài khoảng bình thường mà chưa gửi confirmAbnormal = true thì trả 422, chưa lưu gì
    * - Bản ghi lưu với nguồn MANUAL; mỗi bản ghi một dòng nhật ký
-   * - Tự sinh cảnh báo (sốt, giảm cân trong 14 ngày), trả trong response và phát HORSE_MEASUREMENT_ALERT_EVENT sau khi commit
+   * - Tự sinh cảnh báo (sốt, giảm cân trong 14 ngày), trả trong response và ghi HORSE_MEASUREMENT_ALERT_EVENT vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -161,34 +161,33 @@ export class HorseMeasurementsService {
   ): Promise<CreatedHorseMeasurementResponseDto[]> {
     const measuredAt = body.measuredAt ? new Date(body.measuredAt) : new Date();
 
-    const { callerId, created } = await this.dataSource.transaction(
-      async (manager) => {
-        const { caller, horse } = await this.access.lockWritableHorseInScope(
-          manager,
-          actor,
-          horseId,
-        );
-        await this.assertCanRecord(actor, caller.id, horseId, manager);
-        assertNotTransferred(horse);
-        this.assertValidValues(body, measuredAt);
+    const created = await this.dataSource.transaction(async (manager) => {
+      const { caller, horse } = await this.access.lockWritableHorseInScope(
+        manager,
+        actor,
+        horseId,
+      );
+      await this.assertCanRecord(actor, caller.id, horseId, manager);
+      assertNotTransferred(horse);
+      this.assertValidValues(body, measuredAt);
 
-        const created = await this.saveMeasurements(manager, {
-          horseId,
-          values: body.values,
-          measuredAt,
-          measuredBy: caller.id,
-          source: HorseMeasurementSource.MANUAL,
-          medicalRecordId: null,
-          confirmAbnormal: body.confirmAbnormal === true,
-          feature: HORSE_AUDIT_FEATURE.MEASUREMENT,
-        });
-        return { callerId: caller.id, created };
-      },
-    );
+      const created = await this.saveMeasurements(manager, {
+        horseId,
+        values: body.values,
+        measuredAt,
+        measuredBy: caller.id,
+        source: HorseMeasurementSource.MANUAL,
+        medicalRecordId: null,
+        confirmAbnormal: body.confirmAbnormal === true,
+        feature: HORSE_AUDIT_FEATURE.MEASUREMENT,
+      });
+      await this.publishAlerts(
+        manager,
+        this.toAlertEvents(created, caller.id, HorseMeasurementSource.MANUAL),
+      );
+      return created;
+    });
 
-    this.publishAlerts(
-      this.toAlertEvents(created, callerId, HorseMeasurementSource.MANUAL),
-    );
     return created.map(({ measurement, alerts }) =>
       toCreatedMeasurementResponse(measurement, alerts),
     );
@@ -199,7 +198,7 @@ export class HorseMeasurementsService {
    *
    * - Cùng luật giá trị, thời điểm đo và xác nhận giá trị bất thường như addMeasurements
    * - Bản ghi lưu với nguồn MEDICAL_EXAM và medicalRecordId của buổi khám; mỗi bản ghi một dòng nhật ký
-   * - Không tự mở transaction, không publish event: trả về các cảnh báo; nơi gọi phát bằng publishAlerts sau khi commit
+   * - Không tự mở transaction, không publish event: trả về các cảnh báo; nơi gọi ghi vào outbox bằng publishAlerts trong cùng transaction
    * - Nơi gọi đã khóa row ngựa và kiểm quyền ghi y tế
    *
    * @param manager EntityManager của transaction đang chạy
@@ -272,13 +271,21 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Phát các cảnh báo chỉ số đã sinh ra, gọi sau khi transaction ghi số đo đã commit
+   * Ghi các cảnh báo chỉ số đã sinh ra vào outbox, chạy trong transaction ghi số đo của nơi gọi
    *
-   * @param events Các cảnh báo cần phát
+   * - Mỗi cảnh báo ghi một HORSE_MEASUREMENT_ALERT_EVENT, theo đúng thứ tự trong danh sách
+   * - Danh sách rỗng thì không ghi gì
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param events Các cảnh báo cần ghi
+   * @returns Promise hoàn tất khi mọi cảnh báo đã ghi vào outbox
    */
-  publishAlerts(events: HorseMeasurementAlertEvent[]): void {
+  async publishAlerts(
+    manager: EntityManager,
+    events: HorseMeasurementAlertEvent[],
+  ): Promise<void> {
     for (const event of events) {
-      this.events.publish(HORSE_MEASUREMENT_ALERT_EVENT, event);
+      await this.events.publish(manager, HORSE_MEASUREMENT_ALERT_EVENT, event);
     }
   }
 
@@ -508,7 +515,7 @@ export class HorseMeasurementsService {
         type: measurement.type,
         value: Number(measurement.value),
         unit: HORSE_MEASUREMENT_SPECS[measurement.type].unit,
-        measuredAt: measurement.measuredAt,
+        measuredAt: measurement.measuredAt.toISOString(),
         source,
       })),
     );

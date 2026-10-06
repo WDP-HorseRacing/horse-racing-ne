@@ -1,6 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -135,7 +134,7 @@ describe('HorseStatusesService', () => {
         .mockResolvedValue({ stallId: 's1', stallCode: 'A-01' }),
     };
     grooms = { endOpenGroomAssignment: jest.fn().mockResolvedValue('g1') };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     trainingLocks = {
       releaseActiveLockByHorse: jest.fn().mockResolvedValue(true),
     };
@@ -165,7 +164,7 @@ describe('HorseStatusesService', () => {
       trainingLocks as unknown as TrainingLockService,
       medicalLifecycle as unknown as MedicalLifecycleService,
       racing,
-      events as unknown as DomainEventPublisher,
+      events,
       training as unknown as TrainingOperationsFacade,
     );
   });
@@ -174,14 +173,27 @@ describe('HorseStatusesService', () => {
     const change = (lifecycleStatus: HorseLifecycleStatus, reason = 'Bán') =>
       service.updateLifecycle(actor, HORSE_ID, { lifecycleStatus, reason });
 
-    it('publishes the released groom after the transfer commits (BA 2026-09-23)', async () => {
+    it('writes the released groom event to the outbox inside the transfer transaction', async () => {
       await change(HorseLifecycleStatus.TRANSFERRED);
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
         { eventId: anyString, horseId: HORSE_ID, groomId: 'g1' },
       );
       expect(events.publish.mock.invocationCallOrder[0]).toBeGreaterThan(
-        dataSource.transaction.mock.invocationCallOrder[0],
+        horseRepository.update.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('fails the transfer when the outbox write fails', async () => {
+      events.publish.mockRejectedValueOnce(new Error('outbox down'));
+      await expect(change(HorseLifecycleStatus.TRANSFERRED)).rejects.toThrow(
+        'outbox down',
+      );
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
+        expect.anything(),
       );
     });
 
@@ -550,7 +562,7 @@ describe('HorseStatusesService', () => {
         trainingLocks as unknown as TrainingLockService,
         medicalLifecycle as unknown as MedicalLifecycleService,
         racing,
-        events as unknown as DomainEventPublisher,
+        events,
         training as unknown as TrainingOperationsFacade,
       );
     });

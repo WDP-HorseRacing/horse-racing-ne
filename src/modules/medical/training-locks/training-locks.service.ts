@@ -53,7 +53,7 @@ export class TrainingLockService {
    * - Mỗi ngựa tối đa một lệnh khóa hiệu lực: 409; ngựa đã chuyển nhượng: 409
    * - Thời điểm bắt đầu là lúc đặt; ngày dự kiến gỡ (nếu có) không ở quá khứ
    * - Ngựa đang có bệnh án mở thì lệnh khóa gắn vào bệnh án đó
-   * - Sau commit báo Head Trainer của khu và Club Manager (HIGH)
+   * - Ghi event báo Head Trainer của khu và Club Manager (HIGH) vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -111,16 +111,20 @@ export class TrainingLockService {
         },
         feature: MEDICAL_AUDIT_FEATURE.TRAINING_LOCK,
       });
+      const event: TrainingLockSetEvent = {
+        eventId: randomUUID(),
+        horseId,
+        lockId: saved.id,
+        reason: saved.reason,
+        expectedEnd: saved.lockEnd?.toISOString() ?? null,
+      };
+      await this.events.publish(
+        manager,
+        MEDICAL_TRAINING_LOCK_SET_EVENT,
+        event,
+      );
       return saved;
     });
-    const event: TrainingLockSetEvent = {
-      eventId: randomUUID(),
-      horseId,
-      lockId: lock.id,
-      reason: lock.reason,
-      expectedEnd: lock.lockEnd,
-    };
-    this.events.publish(MEDICAL_TRAINING_LOCK_SET_EVENT, event);
     return toTrainingLockResponse(lock);
   }
 
@@ -129,7 +133,7 @@ export class TrainingLockService {
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row lệnh khóa
    * - Lệnh khóa đã gỡ: 409
-   * - Sau commit báo Head Trainer của khu và Club Manager (NORMAL)
+   * - Ghi event báo Head Trainer của khu và Club Manager (NORMAL) vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param lockId UUID của lệnh khóa
@@ -171,15 +175,19 @@ export class TrainingLockService {
         reason: body.conclusion,
         feature: MEDICAL_AUDIT_FEATURE.TRAINING_LOCK,
       });
+      const event: TrainingLockReleasedEvent = {
+        eventId: randomUUID(),
+        horseId,
+        lockId,
+        conclusion: body.conclusion,
+      };
+      await this.events.publish(
+        manager,
+        MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
+        event,
+      );
       return { ...lock, ...changes };
     });
-    const event: TrainingLockReleasedEvent = {
-      eventId: randomUUID(),
-      horseId,
-      lockId,
-      conclusion: body.conclusion,
-    };
-    this.events.publish(MEDICAL_TRAINING_LOCK_RELEASED_EVENT, event);
     return toTrainingLockResponse(released);
   }
 

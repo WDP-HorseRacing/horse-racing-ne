@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -77,7 +76,7 @@ describe('TrainingLockService set and release', () => {
     };
     horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    events = { publish: jest.fn() };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new TrainingLockService(
       dataSource as unknown as DataSource,
       locks as unknown as Repository<TrainingLockEntity>,
@@ -85,7 +84,7 @@ describe('TrainingLockService set and release', () => {
       new TrainingLockWritesService(),
       horseAccess as unknown as HorseAccessService,
       audit,
-      events as unknown as DomainEventPublisher,
+      events,
     );
   });
 
@@ -125,7 +124,7 @@ describe('TrainingLockService set and release', () => {
       expect(events.publish).not.toHaveBeenCalled();
     });
 
-    it('starts now, attaches the open case, audits and publishes after commit', async () => {
+    it('starts now, attaches the open case, audits and publishes in the transaction', async () => {
       shared.findOpenCase.mockResolvedValue({ id: 'case-1' });
       const result = await service.setLock(vet, 'h1', {
         reason: 'Hồi phục sau viêm gân',
@@ -144,6 +143,7 @@ describe('TrainingLockService set and release', () => {
         expect.objectContaining({ entityType: AuditEntityType.TRAINING_LOCK }),
       );
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         MEDICAL_TRAINING_LOCK_SET_EVENT,
         expect.objectContaining({ lockId: 'lock-new', horseId: 'h1' }),
       );
@@ -194,6 +194,7 @@ describe('TrainingLockService set and release', () => {
         }),
       );
       expect(events.publish).toHaveBeenCalledWith(
+        manager,
         MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
         expect.objectContaining({ lockId: 'lock-1' }),
       );

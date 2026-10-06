@@ -17,7 +17,7 @@ const event: HorseMeasurementAlertEvent = {
   type: HorseMeasurementType.TEMPERATURE,
   value: 39.1,
   unit: '°C',
-  measuredAt: new Date('2026-09-23T00:00:00Z'),
+  measuredAt: '2026-09-23T00:00:00.000Z',
   source: HorseMeasurementSource.MANUAL,
 };
 
@@ -47,11 +47,11 @@ describe('HorseMeasurementAlertListener', () => {
     expect(notifyMeasurementAlert).not.toHaveBeenCalled();
   });
 
-  it('logs and swallows errors instead of throwing back to the publisher', async () => {
+  it('rethrows errors so the outbox relay retries the event', async () => {
     const listener = new HorseMeasurementAlertListener({
       notifyMeasurementAlert: jest.fn().mockRejectedValue(new Error('db down')),
     } as unknown as HorseNotificationsService);
 
-    await expect(listener.handle(event)).resolves.toBeUndefined();
+    await expect(listener.handle(event)).rejects.toThrow('db down');
   });
 });

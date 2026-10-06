@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
 import { CLUB_TIME_ZONE } from '../../horses/constants/horse.constants';
@@ -23,6 +24,7 @@ export class MedicalRemindersService {
   private readonly logger = new Logger(MedicalRemindersService.name);
 
   constructor(
+    private readonly dataSource: DataSource,
     private readonly checkups: MedicalCheckupsService,
     private readonly events: DomainEventPublisher,
   ) {}
@@ -94,7 +96,11 @@ export class MedicalRemindersService {
         horseId: row.horseId,
         dueDate,
       };
-      this.events.publish(MEDICAL_CHECKUP_OVERDUE_EVENT, event);
+      await this.events.publish(
+        this.dataSource.manager,
+        MEDICAL_CHECKUP_OVERDUE_EVENT,
+        event,
+      );
       sent += 1;
     }
     return sent;
@@ -121,7 +127,11 @@ export class MedicalRemindersService {
         dueDate: row.dueDate,
         assigneeId: row.assignedTo,
       };
-      this.events.publish(MEDICAL_CARE_SCHEDULE_DUE_EVENT, event);
+      await this.events.publish(
+        this.dataSource.manager,
+        MEDICAL_CARE_SCHEDULE_DUE_EVENT,
+        event,
+      );
     }
     return rows.length;
   }

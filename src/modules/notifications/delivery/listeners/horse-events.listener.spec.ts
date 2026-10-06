@@ -61,11 +61,11 @@ describe.each(cases)('$name', ({ method, make, event }) => {
     expect(send).toHaveBeenCalledWith(event);
   });
 
-  it('logs and swallows errors instead of throwing back to the publisher', async () => {
+  it('rethrows errors so the outbox relay retries the event', async () => {
     const listener = make({
       [method]: jest.fn().mockRejectedValue(new Error('db down')),
     } as unknown as HorseNotificationsService);
 
-    await expect(listener.handle(event as never)).resolves.toBeUndefined();
+    await expect(listener.handle(event as never)).rejects.toThrow('db down');
   });
 });

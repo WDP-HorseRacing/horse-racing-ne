@@ -25,7 +25,7 @@ export interface ExamRequestUrgentEvent extends MedicalEventBase {
 export interface TrainingLockSetEvent extends MedicalEventBase {
   lockId: string;
   reason: string;
-  expectedEnd: Date | null;
+  expectedEnd: string | null;
 }
 
 /**
