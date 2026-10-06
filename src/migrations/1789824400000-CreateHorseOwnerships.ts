@@ -5,7 +5,7 @@ export class CreateHorseOwnerships1789824400000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "horse_ownerships" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "version" integer NOT NULL, "horse_id" uuid NOT NULL, "owner_id" uuid NOT NULL, "effective_date" date NOT NULL, "started_at" TIMESTAMP WITH TIME ZONE NOT NULL, "ended_at" TIMESTAMP WITH TIME ZONE, "reason" text, "recorded_by" uuid, CONSTRAINT "PK_horse_ownerships" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "horse_ownerships" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "version" integer NOT NULL, "horse_id" uuid NOT NULL, "owner_id" uuid NOT NULL, "started_at" TIMESTAMP WITH TIME ZONE NOT NULL, "ended_at" TIMESTAMP WITH TIME ZONE, "reason" text, "recorded_by" uuid, CONSTRAINT "PK_horse_ownerships" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE UNIQUE INDEX "horse_ownerships_open_horse_uq" ON "horse_ownerships" ("horse_id") WHERE ended_at IS NULL`,
@@ -23,8 +23,8 @@ export class CreateHorseOwnerships1789824400000 implements MigrationInterface {
       `ALTER TABLE "horse_ownerships" ADD CONSTRAINT "FK_c1d17159b7edf9b45f626276ab4" FOREIGN KEY ("recorded_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
-      `INSERT INTO "horse_ownerships" ("horse_id", "owner_id", "effective_date", "started_at", "version")
-       SELECT "id", "owner_id", ("created_at" AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, "created_at", 1
+      `INSERT INTO "horse_ownerships" ("horse_id", "owner_id", "started_at", "version")
+       SELECT "id", "owner_id", "created_at", 1
          FROM "horses"
         WHERE "owner_id" IS NOT NULL`,
     );

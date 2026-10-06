@@ -8051,16 +8051,11 @@
             "format": "uuid",
             "description": "Chủ mới, là tài khoản HORSE_OWNER đang hoạt động"
           },
-          "effectiveDate": {
-            "type": "string",
-            "format": "date",
-            "description": "Ngày hiệu lực trên hợp đồng. Không ở tương lai, không trước ngày bắt đầu sở hữu của chủ hiện tại"
-          },
           "reason": {
             "type": "string",
             "minLength": 1,
             "maxLength": 500,
-            "description": "Lý do hoặc số hợp đồng, bắt buộc"
+            "description": "Lý do, số hợp đồng hoặc ngày ký hợp đồng, bắt buộc"
           },
           "version": {
             "type": "number",
@@ -8070,7 +8065,6 @@
         },
         "required": [
           "newOwnerId",
-          "effectiveDate",
           "reason",
           "version"
         ]
@@ -8101,16 +8095,16 @@
           "owner": {
             "$ref": "#/components/schemas/HorsePersonDto"
           },
-          "effectiveDate": {
+          "startedAt": {
+            "format": "date-time",
             "type": "string",
-            "format": "date",
-            "description": "Ngày bắt đầu sở hữu"
+            "description": "Thời điểm bắt đầu sở hữu, là lúc Club Manager ghi nhận gán chủ hoặc chuyển chủ"
           },
-          "endDate": {
+          "endedAt": {
+            "format": "date-time",
             "type": "string",
-            "format": "date",
             "nullable": true,
-            "description": "Ngày kết thúc: ngày hiệu lực của giai đoạn kế tiếp, hoặc ngày bị bỏ trống chủ; null nếu là giai đoạn hiện tại"
+            "description": "Thời điểm kết thúc (chuyển sang chủ khác hoặc bị bỏ trống chủ), null nếu là giai đoạn hiện tại"
           },
           "reason": {
             "type": "string",
@@ -8126,18 +8120,12 @@
                 "$ref": "#/components/schemas/HorsePersonDto"
               }
             ]
-          },
-          "recordedAt": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Thời điểm ghi nhận trên hệ thống"
           }
         },
         "required": [
           "id",
           "owner",
-          "effectiveDate",
-          "recordedAt"
+          "startedAt"
         ]
       },
       "HorseBarnPreviewResponseDto": {

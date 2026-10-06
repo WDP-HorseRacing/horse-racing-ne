@@ -155,14 +155,14 @@ export interface HorseGroomReleasedEvent {
  *
  * - eventId: sinh mới cho mỗi lần chuyển, dùng để chống gửi trùng thông báo
  * - fromOwnerId, toOwnerId: chủ cũ và chủ mới
- * - effectiveDate: ngày hiệu lực (YYYY-MM-DD)
+ * - transferredAt: thời điểm ghi nhận chuyển chủ (chuỗi ISO), cũng là lúc chủ mới bắt đầu sở hữu
  */
 export interface HorseOwnershipTransferredEvent {
   eventId: string;
   horseId: string;
   fromOwnerId: string;
   toOwnerId: string;
-  effectiveDate: string;
+  transferredAt: string;
 }
 
 /**
@@ -182,10 +182,7 @@ export interface OwnershipPeriod {
 export interface OwnershipTransferInput {
   lifecycleStatus: HorseLifecycleStatus;
   currentOwnerId: string | null;
-  currentOwnerSince: string | null;
   newOwnerId: string;
-  effectiveDate: string;
-  today: string;
 }
 
 /**

@@ -378,7 +378,7 @@ describe('HorseNotificationsService.notifyOwnershipTransferred', () => {
     horseId: 'horse-1',
     fromOwnerId: 'owner-a',
     toOwnerId: 'owner-b',
-    effectiveDate: '2026-06-01',
+    transferredAt: '2026-06-01T03:00:00.000Z',
   };
 
   it('tells the new owner with a link to the horse and the old owner without one', async () => {

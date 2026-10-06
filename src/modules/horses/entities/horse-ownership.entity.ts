@@ -28,9 +28,6 @@ export class HorseOwnershipEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'owner_id' })
   owner!: UserEntity;
 
-  @Column({ name: 'effective_date', type: 'date' })
-  effectiveDate!: string;
-
   @Column({ name: 'started_at', type: 'timestamptz' })
   startedAt!: Date;
 

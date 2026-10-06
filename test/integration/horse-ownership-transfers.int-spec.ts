@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
@@ -14,7 +14,6 @@ import { HorseAccessService } from '../../src/modules/horses/shared/horse-access
 import { HorseOwnershipService } from '../../src/modules/horses/shared/horse-ownership.service';
 import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
 import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
-import { clubToday } from '../../src/common/utils/club-date';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -76,8 +75,8 @@ describe('HorseOwnershipsService (Postgres)', () => {
     const b = await seed.user(UserRole.HORSE_OWNER);
     const horse = await seed.horse('Winx', { ownerId: a });
     await dataSource.query(
-      `INSERT INTO horse_ownerships (horse_id, owner_id, effective_date, started_at, version)
-       VALUES ($1, $2, '2026-01-01', '2026-01-01T03:00:00Z', 1)`,
+      `INSERT INTO horse_ownerships (horse_id, owner_id, started_at, version)
+       VALUES ($1, $2, '2026-01-01T03:00:00Z', 1)`,
       [horse, a],
     );
     return { cm, a, b, horse, actor: await actorOf(cm, UserRole.CLUB_MANAGER) };
@@ -86,9 +85,9 @@ describe('HorseOwnershipsService (Postgres)', () => {
   it('moves the owner, closes the old period, opens the new one and writes the event', async () => {
     const { cm, a, b, horse, actor } = await setupHorse();
 
+    const before = new Date();
     const result = await service.transfer(actor, horse, {
       newOwnerId: b,
-      effectiveDate: '2026-06-01',
       reason: 'HĐ 12',
       version: 1,
     });
@@ -99,18 +98,20 @@ describe('HorseOwnershipsService (Postgres)', () => {
     expect(history).toEqual([
       expect.objectContaining({
         owner: expect.objectContaining({ id: b }) as unknown,
-        effectiveDate: '2026-06-01',
-        endDate: null,
+        endedAt: null,
         reason: 'HĐ 12',
         recordedBy: expect.objectContaining({ id: cm }) as unknown,
       }),
       expect.objectContaining({
         owner: expect.objectContaining({ id: a }) as unknown,
-        effectiveDate: '2026-01-01',
-        endDate: '2026-06-01',
+        startedAt: new Date('2026-01-01T03:00:00Z'),
         recordedBy: null,
       }),
     ]);
+    expect(history[0].startedAt.getTime()).toBeGreaterThanOrEqual(
+      before.getTime(),
+    );
+    expect(history[1].endedAt).toEqual(history[0].startedAt);
     expect(publish).toHaveBeenCalledWith(
       expect.anything(),
       HORSE_OWNERSHIP_TRANSFERRED_EVENT,
@@ -118,7 +119,7 @@ describe('HorseOwnershipsService (Postgres)', () => {
         horseId: horse,
         fromOwnerId: a,
         toOwnerId: b,
-        effectiveDate: '2026-06-01',
+        transferredAt: history[0].startedAt.toISOString(),
       }),
     );
     const audit = await dataSource.query<unknown[]>(
@@ -128,7 +129,7 @@ describe('HorseOwnershipsService (Postgres)', () => {
     expect(audit).toEqual([
       {
         before: { ownerId: a },
-        after: { ownerId: b, effectiveDate: '2026-06-01' },
+        after: { ownerId: b },
         reason: 'HĐ 12',
         feature: 'F1.4',
       },
@@ -139,7 +140,6 @@ describe('HorseOwnershipsService (Postgres)', () => {
     const { a, b, horse, actor } = await setupHorse();
     await service.transfer(actor, horse, {
       newOwnerId: b,
-      effectiveDate: '2026-06-01',
       reason: 'HĐ 12',
       version: 1,
     });
@@ -162,7 +162,6 @@ describe('HorseOwnershipsService (Postgres)', () => {
     await expect(
       service.transfer(actor, horse, {
         newOwnerId: b,
-        effectiveDate: '2026-06-01',
         reason: 'HĐ 12',
         version: 1,
       }),
@@ -181,13 +180,11 @@ describe('HorseOwnershipsService (Postgres)', () => {
     const results = await Promise.allSettled([
       service.transfer(actor, horse, {
         newOwnerId: b,
-        effectiveDate: '2026-06-01',
         reason: 'Lần 1',
         version: 1,
       }),
       service.transfer(actor, horse, {
         newOwnerId: c,
-        effectiveDate: '2026-06-01',
         reason: 'Lần 2',
         version: 1,
       }),
@@ -208,18 +205,8 @@ describe('HorseOwnershipsService (Postgres)', () => {
     expect(open[0].n).toBe(1);
   });
 
-  it('rejects a deceased horse, a horse without owner and a future date', async () => {
+  it('rejects a deceased horse and a horse without owner', async () => {
     const { b, horse, actor } = await setupHorse();
-    await expect(
-      service.transfer(actor, horse, {
-        newOwnerId: b,
-        effectiveDate: '2999-01-01',
-        reason: 'HĐ',
-        version: 1,
-      }),
-    ).rejects.toThrow(
-      new BadRequestException('Ngày hiệu lực không được ở tương lai'),
-    );
     await dataSource.query(
       'UPDATE horses SET lifecycle_status = $2 WHERE id = $1',
       [horse, HorseLifecycleStatus.DECEASED],
@@ -227,7 +214,6 @@ describe('HorseOwnershipsService (Postgres)', () => {
     await expect(
       service.transfer(actor, horse, {
         newOwnerId: b,
-        effectiveDate: clubToday(),
         reason: 'HĐ',
         version: 1,
       }),
@@ -238,7 +224,6 @@ describe('HorseOwnershipsService (Postgres)', () => {
     await expect(
       service.transfer(actor, ownerless, {
         newOwnerId: b,
-        effectiveDate: clubToday(),
         reason: 'HĐ',
         version: 1,
       }),

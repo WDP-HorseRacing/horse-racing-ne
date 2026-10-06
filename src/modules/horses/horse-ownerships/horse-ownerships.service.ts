@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { DataSource, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import { clubToday } from '../../../common/utils/club-date';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
@@ -48,17 +47,17 @@ export class HorseOwnershipsService {
    *
    * - Khóa row ngựa; hồ sơ đã xóa: Club Manager nhận 409, phải khôi phục trước
    * - Kiểm lần lượt: version, luật chuyển nhượng (assertOwnershipTransfer), chủ mới là HORSE_OWNER đang hoạt động (khóa chia sẻ row tài khoản), ngựa không còn bệnh án đang mở
-   * - Đóng giai đoạn sở hữu hiện tại và mở giai đoạn mới cùng một thời điểm ghi nhận; cập nhật horses.owner_id và tăng version
+   * - Đóng giai đoạn sở hữu hiện tại và mở giai đoạn mới tại thời điểm ghi nhận (chủ mới bắt đầu sở hữu từ lúc này); cập nhật horses.owner_id và tăng version
    * - Không đổi vòng đời, khu, ô, Groom, lớp
    * - Ghi nhật ký kèm lý do và ghi HORSE_OWNERSHIP_TRANSFERRED_EVENT vào outbox để báo chủ cũ và chủ mới
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @param body Chủ mới, ngày hiệu lực, lý do và version
+   * @param body Chủ mới, lý do và version
    * @returns Promise trả về hồ sơ ngựa sau khi chuyển
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
-   * @throws BadRequestException Nếu chủ mới trùng chủ hiện tại hoặc không phải HORSE_OWNER, hoặc ngày hiệu lực không hợp lệ
+   * @throws BadRequestException Nếu chủ mới trùng chủ hiện tại hoặc không phải HORSE_OWNER
    * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa, version đã cũ, ngựa đã chuyển nhượng hoặc đã mất, ngựa chưa có chủ, chủ mới không còn hoạt động, hoặc ngựa còn bệnh án đang mở
    */
   async transfer(
@@ -79,13 +78,7 @@ export class HorseOwnershipsService {
       assertOwnershipTransfer({
         lifecycleStatus: horse.lifecycleStatus,
         currentOwnerId: horse.ownerId,
-        currentOwnerSince: await this.ownerships.currentOwnerSince(
-          manager,
-          horseId,
-        ),
         newOwnerId: body.newOwnerId,
-        effectiveDate: body.effectiveDate,
-        today: clubToday(),
       });
       const fromOwnerId = horse.ownerId as string;
       assertAssignableOwner(
@@ -105,11 +98,11 @@ export class HorseOwnershipsService {
       if (!result.affected) {
         throw new ConflictException(STALE_HORSE_MESSAGE);
       }
+      const transferredAt = new Date();
       await this.ownerships.recordOwnerChange(manager, {
         horseId,
         ownerId: body.newOwnerId,
-        at: new Date(),
-        effectiveDate: body.effectiveDate,
+        at: transferredAt,
         reason: body.reason,
         recordedBy: caller.id,
       });
@@ -119,7 +112,7 @@ export class HorseOwnershipsService {
         entityType: AuditEntityType.HORSE,
         entityId: horseId,
         before: { ownerId: fromOwnerId },
-        after: { ownerId: body.newOwnerId, effectiveDate: body.effectiveDate },
+        after: { ownerId: body.newOwnerId },
         reason: body.reason,
         feature: HORSE_AUDIT_FEATURE.UPDATE_PROFILE,
       });
@@ -128,7 +121,7 @@ export class HorseOwnershipsService {
         horseId,
         fromOwnerId,
         toOwnerId: body.newOwnerId,
-        effectiveDate: body.effectiveDate,
+        transferredAt: transferredAt.toISOString(),
       };
       await this.events.publish(
         manager,

@@ -56,7 +56,6 @@ Các lỗi mới có `field`:
 | Ngày mất (thiếu, ở tương lai, trước ngày sinh, gửi kèm trạng thái khác) | `dateOfDeath` |
 | PATCH gửi `ownerId: null` | `ownerId` |
 | Chuyển nhượng: chủ mới trùng chủ cũ | `newOwnerId` |
-| Chuyển nhượng: ngày hiệu lực sai | `effectiveDate` |
 
 ---
 
@@ -112,19 +111,19 @@ Làm đúng file. Bảng `horse_ownerships` mới đã có sẵn dữ liệu chu
 `POST /horses/:horseId/ownership-transfers` (chỉ Quản lý CLB)
 
 ```json
-{ "newOwnerId": "uuid", "effectiveDate": "2026-06-01", "reason": "HĐ 12/2026", "version": 3 }
+{ "newOwnerId": "uuid", "reason": "HĐ 12/2026, ký 01/06/2026", "version": 3 }
 ```
 
+- **Khác file FE: không có `effectiveDate`.** Chủ mới bắt đầu sở hữu từ lúc Quản lý bấm lưu, cũng là mốc chia chi phí y tế. Một ngày duy nhất nên không có chuyện ngày hiển thị và ngày tính chi phí lệch nhau. Ngày ký hợp đồng (nếu cần) ghi vào `reason`. **[FE sửa]** bỏ ô ngày hiệu lực khỏi form.
 - Trả 201 kèm hồ sơ ngựa mới, đã tăng `version`.
-- Câu lỗi và mã lỗi đúng bảng trong file.
+- Câu lỗi và mã lỗi đúng bảng trong file, trừ 2 câu về ngày hiệu lực (đã bỏ).
 - Thứ tự kiểm:
   1. sai version
   2. ngựa không còn ở CLB
   3. chưa có chủ
   4. trùng chủ
-  5. ngày hiệu lực sai
-  6. chủ mới không hợp lệ
-  7. còn bệnh án mở
+  5. chủ mới không hợp lệ
+  6. còn bệnh án mở
 
 `GET /horses/:horseId/ownerships` (mọi vai trò xem được hồ sơ). Trả về mới nhất lên trên:
 
@@ -133,20 +132,19 @@ Làm đúng file. Bảng `horse_ownerships` mới đã có sẵn dữ liệu chu
   {
     "id": "uuid",
     "owner": { "id": "uuid", "fullName": "Nguyễn B" },
-    "effectiveDate": "2026-06-01",
-    "endDate": null,
-    "reason": "HĐ 12/2026",
-    "recordedBy": { "id": "uuid", "fullName": "Quản lý A" },
-    "recordedAt": "2026-06-02T03:00:00.000Z"
+    "startedAt": "2026-06-02T03:00:00.000Z",
+    "endedAt": null,
+    "reason": "HĐ 12/2026, ký 01/06/2026",
+    "recordedBy": { "id": "uuid", "fullName": "Quản lý A" }
   }
 ]
 ```
 
-- `endDate` là ngày hiệu lực của giai đoạn kế tiếp. Giai đoạn kết thúc vì chủ bị bỏ trống thì `endDate` là ngày bị bỏ trống. Giai đoạn hiện tại có `endDate: null`.
+- `startedAt` / `endedAt` là thời điểm bắt đầu và kết thúc sở hữu (khác file FE: thay cho `effectiveDate`, `endDate`, `recordedAt`). Giai đoạn hiện tại có `endedAt: null`.
 - Chủ ngựa chỉ thấy các giai đoạn của chính mình.
 - `recordedBy: null` với dữ liệu chuyển đổi.
 
-Hồ sơ chi tiết (`GET /horses/:horseId`) có thêm `ownerSince`: ngày hiệu lực của giai đoạn hiện tại, null nếu chưa có chủ.
+Hồ sơ chi tiết (`GET /horses/:horseId`) có thêm `ownerSince`: ngày bắt đầu (`YYYY-MM-DD`) của giai đoạn hiện tại, null nếu chưa có chủ.
 
 **5.2. Đổi API cũ [FE sửa]**
 
@@ -156,7 +154,7 @@ Hồ sơ chi tiết (`GET /horses/:horseId`) có thêm `ownerSince`: ngày hiệ
 |---|---|
 | Không gửi `ownerId` | Không đổi chủ |
 | Đúng chủ hiện tại | Không đổi gì |
-| Chủ mới, ngựa chưa có chủ | Gán chủ, mở giai đoạn mới với ngày hiệu lực là hôm nay |
+| Chủ mới, ngựa chưa có chủ | Gán chủ, mở giai đoạn mới bắt đầu từ lúc lưu |
 | Chủ mới, ngựa đã có chủ khác | 409 `Ngựa đã có chủ sở hữu, đổi chủ bằng chức năng chuyển nhượng nội bộ` |
 | `null` | 400 `Không bỏ trống chủ sở hữu được, đổi chủ bằng chức năng chuyển nhượng nội bộ` |
 

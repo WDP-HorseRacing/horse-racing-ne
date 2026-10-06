@@ -7,21 +7,16 @@ describe('assertOwnershipTransfer', () => {
   const valid: OwnershipTransferInput = {
     lifecycleStatus: HorseLifecycleStatus.ACTIVE,
     currentOwnerId: 'a',
-    currentOwnerSince: '2026-03-01',
     newOwnerId: 'b',
-    effectiveDate: '2026-06-01',
-    today: '2026-10-06',
   };
   const check = (input: Partial<OwnershipTransferInput>) => () =>
     assertOwnershipTransfer({ ...valid, ...input });
 
-  it('accepts an active or retired horse, today and the current owner start date', () => {
+  it('accepts an active or retired horse with an owner', () => {
     expect(check({})).not.toThrow();
     expect(
       check({ lifecycleStatus: HorseLifecycleStatus.RETIRED }),
     ).not.toThrow();
-    expect(check({ effectiveDate: '2026-10-06' })).not.toThrow();
-    expect(check({ effectiveDate: '2026-03-01' })).not.toThrow();
   });
 
   it('rejects a transferred or deceased horse with 409', () => {
@@ -36,7 +31,7 @@ describe('assertOwnershipTransfer', () => {
   });
 
   it('rejects a horse without an owner with 409', () => {
-    expect(check({ currentOwnerId: null, currentOwnerSince: null })).toThrow(
+    expect(check({ currentOwnerId: null })).toThrow(
       new ConflictException(
         'Ngựa chưa có chủ sở hữu, dùng Gán chủ thay cho chuyển nhượng',
       ),
@@ -56,19 +51,5 @@ describe('assertOwnershipTransfer', () => {
         errors: [{ field: 'newOwnerId', message }],
       });
     }
-  });
-
-  it('rejects a future effective date', () => {
-    expect(check({ effectiveDate: '2026-10-07' })).toThrow(
-      new BadRequestException('Ngày hiệu lực không được ở tương lai'),
-    );
-  });
-
-  it('rejects an effective date before the current owner started, with that date', () => {
-    expect(check({ effectiveDate: '2026-02-28' })).toThrow(
-      new BadRequestException(
-        'Ngày hiệu lực không được trước ngày bắt đầu sở hữu của chủ hiện tại (01/03/2026)',
-      ),
-    );
   });
 });

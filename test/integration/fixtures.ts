@@ -310,8 +310,8 @@ export function fixtures(dataSource: DataSource) {
   ): Promise<string> => {
     const id = randomUUID();
     await dataSource.query(
-      `INSERT INTO horse_ownerships (id, version, horse_id, owner_id, effective_date, started_at, ended_at)
-       VALUES ($1, 1, $2, $3, ($4::timestamptz AT TIME ZONE 'Asia/Ho_Chi_Minh')::date, $4, $5)`,
+      `INSERT INTO horse_ownerships (id, version, horse_id, owner_id, started_at, ended_at)
+       VALUES ($1, 1, $2, $3, $4, $5)`,
       [id, horseId, ownerId, startedAt, endedAt ?? null],
     );
     return id;

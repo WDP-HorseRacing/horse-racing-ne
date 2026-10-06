@@ -1,11 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsDateString,
   IsInt,
   IsString,
   IsUUID,
-  Matches,
   MaxLength,
   Min,
   MinLength,
@@ -21,20 +19,9 @@ export class CreateOwnershipTransferDto {
   newOwnerId!: string;
 
   @ApiProperty({
-    format: 'date',
-    description:
-      'Ngày hiệu lực trên hợp đồng. Không ở tương lai, không trước ngày bắt đầu sở hữu của chủ hiện tại',
-  })
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'effectiveDate must be in YYYY-MM-DD format',
-  })
-  @IsDateString({ strict: true })
-  effectiveDate!: string;
-
-  @ApiProperty({
     minLength: 1,
     maxLength: 500,
-    description: 'Lý do hoặc số hợp đồng, bắt buộc',
+    description: 'Lý do, số hợp đồng hoặc ngày ký hợp đồng, bắt buộc',
   })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
@@ -61,17 +48,19 @@ export class HorseOwnershipResponseDto {
   @ApiProperty({ type: HorsePersonDto })
   owner!: HorsePersonDto;
 
-  @ApiProperty({ format: 'date', description: 'Ngày bắt đầu sở hữu' })
-  effectiveDate!: string;
+  @ApiProperty({
+    description:
+      'Thời điểm bắt đầu sở hữu, là lúc Club Manager ghi nhận gán chủ hoặc chuyển chủ',
+  })
+  startedAt!: Date;
 
   @ApiPropertyOptional({
-    format: 'date',
     nullable: true,
-    type: String,
+    type: Date,
     description:
-      'Ngày kết thúc: ngày hiệu lực của giai đoạn kế tiếp, hoặc ngày bị bỏ trống chủ; null nếu là giai đoạn hiện tại',
+      'Thời điểm kết thúc (chuyển sang chủ khác hoặc bị bỏ trống chủ), null nếu là giai đoạn hiện tại',
   })
-  endDate!: string | null;
+  endedAt!: Date | null;
 
   @ApiPropertyOptional({
     nullable: true,
@@ -86,7 +75,4 @@ export class HorseOwnershipResponseDto {
     description: 'Người ghi nhận, null với dữ liệu chuyển đổi',
   })
   recordedBy!: HorsePersonDto | null;
-
-  @ApiProperty({ description: 'Thời điểm ghi nhận trên hệ thống' })
-  recordedAt!: Date;
 }

@@ -11,7 +11,6 @@ import {
 
 interface OwnershipRow {
   owner_id: string;
-  effective_date: string;
   started_at: Date;
   ended_at: Date | null;
   reason: string | null;
@@ -26,8 +25,7 @@ describe('HorseOwnershipService (Postgres)', () => {
 
   const periods = (horseId: string): Promise<OwnershipRow[]> =>
     dataSource.query(
-      `SELECT owner_id, to_char(effective_date, 'YYYY-MM-DD') AS effective_date,
-              started_at, ended_at, reason, recorded_by
+      `SELECT owner_id, started_at, ended_at, reason, recorded_by
          FROM horse_ownerships WHERE horse_id = $1 ORDER BY started_at`,
       [horseId],
     );
@@ -62,7 +60,6 @@ describe('HorseOwnershipService (Postgres)', () => {
         horseId: horse,
         ownerId: b,
         at: second,
-        effectiveDate: '2026-05-30',
         reason: 'HĐ 12',
         recordedBy: cm,
       });
@@ -71,7 +68,6 @@ describe('HorseOwnershipService (Postgres)', () => {
     expect(await periods(horse)).toEqual([
       {
         owner_id: a,
-        effective_date: '2026-03-01',
         started_at: first,
         ended_at: second,
         reason: null,
@@ -79,7 +75,6 @@ describe('HorseOwnershipService (Postgres)', () => {
       },
       {
         owner_id: b,
-        effective_date: '2026-05-30',
         started_at: second,
         ended_at: null,
         reason: 'HĐ 12',
@@ -88,7 +83,7 @@ describe('HorseOwnershipService (Postgres)', () => {
     ]);
     await expect(
       ownerships.currentOwnerSince(dataSource.manager, horse),
-    ).resolves.toBe('2026-05-30');
+    ).resolves.toBe('2026-06-01');
   });
 
   it('only closes the period when the owner is cleared', async () => {
@@ -122,8 +117,8 @@ describe('HorseOwnershipService (Postgres)', () => {
     const horse = await seed.horse('Winx', { ownerId: a });
     const insertOpen = () =>
       dataSource.query(
-        `INSERT INTO horse_ownerships (horse_id, owner_id, effective_date, started_at, version)
-         VALUES ($1, $2, '2026-01-01', now(), 1)`,
+        `INSERT INTO horse_ownerships (horse_id, owner_id, started_at, version)
+         VALUES ($1, $2, now(), 1)`,
         [horse, a],
       );
     await insertOpen();
@@ -154,7 +149,6 @@ describe('HorseOwnershipService (Postgres)', () => {
     expect(await periods(owned)).toEqual([
       expect.objectContaining({
         owner_id: a,
-        effective_date: '2026-01-02',
         started_at: new Date('2026-01-01T18:00:00Z'),
         ended_at: null,
         recorded_by: null,

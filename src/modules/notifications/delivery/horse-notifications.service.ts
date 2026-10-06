@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { toDisplayDate } from '../../../common/utils/club-date';
+import { toClubDate, toDisplayDate } from '../../../common/utils/club-date';
 import { UserRole } from '../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
@@ -253,7 +253,7 @@ export class HorseNotificationsService {
       );
       return [];
     }
-    const since = `Hiệu lực từ ${toDisplayDate(event.effectiveDate)}`;
+    const since = `Hiệu lực từ ${toDisplayDate(toClubDate(event.transferredAt))}`;
     const toNewOwner = await this.notifications.send({
       eventId: event.eventId,
       recipientIds: [event.toOwnerId],
