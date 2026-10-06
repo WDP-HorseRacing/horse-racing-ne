@@ -1,5 +1,6 @@
 import {
   ArgumentsHost,
+  BadRequestException,
   Catch,
   ExceptionFilter,
   HttpException,
@@ -39,6 +40,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       code: status,
       message,
       details: Array.isArray(rawMessage) ? rawMessage : null,
+      ...(exception instanceof BadRequestException && {
+        errors:
+          typeof body === 'object' && body !== null && 'errors' in body
+            ? body.errors
+            : [],
+      }),
       correlationId: request.correlationId ?? null,
       timestamp: new Date().toISOString(),
     });
