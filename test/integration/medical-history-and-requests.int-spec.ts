@@ -23,29 +23,29 @@ import { HealthStatusesRepository } from '../../src/modules/medical/health-statu
 import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 const vet: Actor = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
 const groom: Actor = { sub: 'kc-groom', roles: [UserRole.GROOM] };
 
 describe('Health history and exam request queries (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
-  beforeEach(() => truncateAll(dataSource));
+  beforeEach(() => truncateAllTables(dataSource));
 
   describe('HealthStatusesRepository.history', () => {
     it('keeps only real health changes of the horse, newest first', async () => {

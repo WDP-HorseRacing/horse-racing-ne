@@ -14,20 +14,20 @@ import {
 } from '../../src/modules/performance/schemas/performance-metric.schema';
 import { fixtures } from './fixtures';
 import {
-  clearAllCollections,
+  clearAllMongoCollections,
   startTestMongo,
   stopTestMongo,
   type TestMongo,
 } from './mongo';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let mongo: TestMongo;
   let metrics: Model<PerformanceMetric>;
   let dataSource: DataSource;
@@ -35,7 +35,7 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
   let repository: PerformanceSummariesRepository;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     mongo = await startTestMongo();
@@ -53,12 +53,12 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
 
   afterAll(async () => {
     await stopTestMongo(mongo);
-    await stopTestDatabase(db);
+    await stopTestPostgres(db);
   });
 
   beforeEach(async () => {
-    await truncateAll(dataSource);
-    await clearAllCollections(mongo.connection);
+    await truncateAllTables(dataSource);
+    await clearAllMongoCollections(mongo.connection);
   });
 
   /**

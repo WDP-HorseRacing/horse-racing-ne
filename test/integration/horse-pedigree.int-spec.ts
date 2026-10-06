@@ -4,21 +4,21 @@ import { HorseProfilesRepository } from '../../src/modules/horses/horse-profiles
 import { HorsePedigreeRepository } from '../../src/modules/horses/shared/horse-pedigree.repository';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 describe('Pedigree recursive queries (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let pedigree: HorsePedigreeRepository;
   let profiles: HorseProfilesRepository;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     pedigree = new HorsePedigreeRepository();
@@ -28,9 +28,9 @@ describe('Pedigree recursive queries (Postgres)', () => {
     );
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
-  beforeEach(() => truncateAll(dataSource));
+  beforeEach(() => truncateAllTables(dataSource));
 
   const setParents = (
     horseId: string,

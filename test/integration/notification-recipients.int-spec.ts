@@ -6,28 +6,28 @@ import { HorseNotificationsService } from '../../src/modules/notifications/deliv
 import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 describe('NotificationRecipientsRepository (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let recipients: NotificationRecipientsRepository;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     recipients = new NotificationRecipientsRepository(dataSource);
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
-  beforeEach(() => truncateAll(dataSource));
+  beforeEach(() => truncateAllTables(dataSource));
 
   const barnLedBy = async (name: string, trainerId: string | null) => {
     const barn = await seed.barn(name);

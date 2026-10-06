@@ -9,7 +9,7 @@ import { DataSource } from 'typeorm';
 /**
  * Postgres dùng riêng cho một file integration test: container Docker mới, đã chạy đủ migration
  */
-export interface TestDatabase {
+export interface TestPostgres {
   dataSource: DataSource;
   container: StartedPostgreSqlContainer;
 }
@@ -20,11 +20,11 @@ const SRC = join(__dirname, '../../src');
  * Bật một container Postgres 16 trống ở port ngẫu nhiên và chạy toàn bộ migration của repo
  *
  * - Không đụng DB dev hay port 5432; mỗi file test có DB riêng
- * - Gọi trong beforeAll, nhớ gọi stopTestDatabase trong afterAll
+ * - Gọi trong beforeAll, nhớ gọi stopTestPostgres trong afterAll
  *
  * @returns A promise resolving to DataSource đã kết nối và container đang chạy
  */
-export async function startTestDatabase(): Promise<TestDatabase> {
+export async function startTestPostgres(): Promise<TestPostgres> {
   const container = await new PostgreSqlContainer('postgres:16-alpine').start();
   const dataSource = new DataSource({
     type: 'postgres',
@@ -42,12 +42,12 @@ export async function startTestDatabase(): Promise<TestDatabase> {
 }
 
 /**
- * Đóng kết nối và xóa container của startTestDatabase
+ * Đóng kết nối và xóa container của startTestPostgres
  *
- * @param db DB đã bật bằng startTestDatabase, bỏ qua nếu chưa bật được
+ * @param db DB đã bật bằng startTestPostgres, bỏ qua nếu chưa bật được
  * @returns A promise resolving khi đã dọn xong
  */
-export async function stopTestDatabase(db?: TestDatabase): Promise<void> {
+export async function stopTestPostgres(db?: TestPostgres): Promise<void> {
   if (!db) return;
   await db.dataSource.destroy();
   await db.container.stop();
@@ -59,7 +59,7 @@ export async function stopTestDatabase(db?: TestDatabase): Promise<void> {
  * @param dataSource DataSource của DB test
  * @returns A promise resolving khi đã xóa xong
  */
-export async function truncateAll(dataSource: DataSource): Promise<void> {
+export async function truncateAllTables(dataSource: DataSource): Promise<void> {
   const rows: Array<{ tablename: string }> = await dataSource.query(
     `SELECT tablename FROM pg_tables
       WHERE schemaname = 'public' AND tablename <> 'migrations'`,

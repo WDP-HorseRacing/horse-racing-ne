@@ -10,10 +10,10 @@ import { HorseTrainingRepository } from '../../src/modules/training/horse-traini
 import { HorseTrainingService } from '../../src/modules/training/horse-training/horse-training.service';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 const NOW = new Date('2026-10-01T05:00:00Z');
@@ -35,7 +35,7 @@ function serviceWithDataSource<T>(
 }
 
 describe('Flow 1 read queries (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let profiles: HorseProfilesService;
@@ -46,7 +46,7 @@ describe('Flow 1 read queries (Postgres)', () => {
   let trainingService: HorseTrainingService;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     profiles = serviceWithDataSource(HorseProfilesService, dataSource);
@@ -57,9 +57,9 @@ describe('Flow 1 read queries (Postgres)', () => {
     trainingService = serviceWithDataSource(HorseTrainingService, dataSource);
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
-  beforeEach(() => truncateAll(dataSource));
+  beforeEach(() => truncateAllTables(dataSource));
 
   const softDeleteUser = (id: string) =>
     dataSource.query('UPDATE users SET deleted_at = now() WHERE id = $1', [id]);

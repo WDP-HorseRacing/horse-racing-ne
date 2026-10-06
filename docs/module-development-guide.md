@@ -31,11 +31,15 @@ dùng chung của domain:
 src/modules/<domain>/
 ├── <domain>.module.ts             # Module cha, chỉ ghép các feature
 ├── enums/                         # Enum/trạng thái chỉ thuộc domain
+├── constants/                     # Hằng số, tên event, injection token
+├── types/                         # Interface/type nội bộ của domain
 ├── dto/                           # Request DTO và response DTO
 │   └── index.ts
 ├── entities/                      # TypeORM entities của domain
-├── mappers/                       # Entity -> response DTO
+├── schemas/                       # Mongoose schemas của domain (mục 14)
+├── mappers/                       # Entity/document -> response DTO
 ├── policies/                      # Rule thuần, không gọi DB/HTTP
+├── utils/                         # Hàm thuần chỉ dùng trong domain
 ├── shared/                        # Access service, module dùng chung
 │   ├── <domain>-access.service.ts
 │   └── <domain>-shared.module.ts
@@ -253,7 +257,7 @@ Trình tự nên theo mẫu:
 4. Lock row cần bảo vệ trước khi kiểm tra invariant.
 5. Chạy policy thuần để kiểm tra trạng thái/input.
 6. Ghi dữ liệu bằng `EntityManager` của transaction.
-7. Commit xong mới publish domain event.
+7. Ghi domain event vào outbox bằng `manager` trước khi commit (mục 9).
 8. Map entity thành response DTO.
 
 Trong transaction phải dùng `manager` cho toàn bộ query có liên quan. Không dùng
@@ -264,35 +268,26 @@ không được lock/rollback cùng transaction.
 
 Repository riêng (`<feature>.repository.ts`) là **tùy chọn**, chỉ nên tạo khi có câu query phức tạp: dùng `QueryBuilder` nhiều dòng, join nhiều bảng, raw SQL tổng hợp (`GROUP BY`, `FILTER`), CTE đệ quy (`WITH RECURSIVE`), advisory lock (`pg_advisory_xact_lock`), hoặc transaction nhiều bảng liên kết.
 
-Ví dụ dưới đây là query tổng hợp chỉ số hiệu suất buổi tập bằng raw SQL với `GROUP BY`, `FILTER`, `ROUND(AVG(...))` và join 3 bảng:
+Ví dụ dưới đây là báo cáo chi phí bệnh án bằng raw SQL với `GROUP BY`, `SUM`, join 2 bảng và điều kiện lọc tùy chọn:
 
 ```ts
 @Injectable()
-export class PerformanceSummariesRepository {
-  constructor(
-    @InjectRepository(PerformanceMetricEntity)
-    private readonly metrics: Repository<PerformanceMetricEntity>,
-    @InjectRepository(PerformanceEvaluationEntity)
-    private readonly evaluations: Repository<PerformanceEvaluationEntity>,
-  ) {}
+export class MedicalCasesRepository {
+  constructor(private readonly dataSource: DataSource) {}
 
-  sessionSummaries(horseId: string): Promise<SessionPerformanceRow[]> {
-    return this.metrics.query(
-      `SELECT s.id AS "sessionId",
-              s.scheduled_at AS "scheduledAt",
-              ROUND(AVG(m.heart_rate_bpm))::int AS "avgHeartRateBpm",
-              MAX(m.heart_rate_bpm)::int AS "maxHeartRateBpm",
-              ROUND(AVG(m.speed_mps), 3)::text AS "avgSpeedMps",
-              MAX(m.speed_mps)::text AS "maxSpeedMps",
-              (COUNT(*) FILTER (WHERE m.alert_level <> $2))::int AS "alertCount"
-         FROM performance_metrics m
-         JOIN training_sessions s ON s.id = m.session_id
-         JOIN training_plans p ON p.id = s.plan_id
-        WHERE p.horse_id = $1
-        GROUP BY s.id, s.scheduled_at
-        ORDER BY s.scheduled_at DESC
-        LIMIT $3`,
-      [horseId, NORMAL_ALERT_LEVEL, PERFORMANCE_SESSION_LIMIT],
+  costByHorse(filter: CostReportFilter): Promise<MedicalCostReportRow[]> {
+    return this.dataSource.query(
+      `SELECT h.id AS "horseId",
+              h.name AS "horseName",
+              COUNT(c.id)::int AS "caseCount",
+              SUM(c.total_cost)::text AS "totalCost"
+         FROM medical_cases c
+         JOIN horses h ON h.id = c.horse_id
+        WHERE c.status = $1
+          AND (c.closed_at AT TIME ZONE $2)::date BETWEEN $3::date AND $4::date
+        GROUP BY h.id, h.name
+        ORDER BY SUM(c.total_cost) DESC, h.name`,
+      [MedicalCaseStatus.CLOSED, CLUB_TIME_ZONE, filter.from, filter.to],
     );
   }
 }
@@ -461,8 +456,11 @@ và không nhận controller, provider hay đăng ký entity trực tiếp.
 - Transaction và cascade update:
   `src/modules/training/training-plans/training-plans.service.ts`
 - Query phức tạp gom trong repository:
-  `src/modules/performance/performance-summaries/performance-summaries.repository.ts` hoặc
+  `src/modules/medical/medical-records/medical-cases.repository.ts` hoặc
   `src/modules/horses/horse-profiles/horse-profiles.repository.ts`
+- Aggregate MongoDB ghép dữ liệu Postgres:
+  `src/modules/performance/performance-summaries/performance-summaries.repository.ts`
+- Feature dùng MongoDB, outbox listener, BullMQ: `src/modules/notifications/`
 - DTO và mapper: `src/modules/training/dto/`,
   `src/modules/training/mappers/`
 
@@ -495,12 +493,13 @@ Hiện ở MongoDB:
 | --- | --- | --- |
 | `notifications` | notifications | Mỗi người nhận một document; unique `(eventId, recipientId)` |
 | `user_devices` | notifications | `_id` là FCM token |
-| `performance_metrics` | performance | Time-series, `timeField` `recordedAt`, `metaField` `series` |
+| `performance_metrics` | performance | Time-series, `timeField` `recordedAt`, `metaField` `meta` |
 
 Quy tắc:
 
-- Schema đặt ở `src/modules/<domain>/schemas/*.schema.ts`; khai báo
-  `MongooseModule.forFeature` ở module sở hữu (hoặc `shared/` của domain).
+- Schema đặt ở `src/modules/<domain>/schemas/*.schema.ts`. Mỗi feature module tự
+  khai báo `MongooseModule.forFeature` cho đúng model nó dùng; `shared/` chỉ export
+  access service, không export model.
 - Dùng công cụ gốc của MongoDB: unique/partial index, cập nhật có điều kiện
   (`findOneAndUpdate` với điều kiện trạng thái), `$setOnInsert` + `upsert` để
   idempotent, time-series cho dữ liệu cảm biến, TTL index để tự xóa.

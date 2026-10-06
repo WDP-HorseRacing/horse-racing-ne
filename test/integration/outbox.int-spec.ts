@@ -15,10 +15,10 @@ import {
 import { OutboxEventEntity } from '../../src/common/infrastructure/events/outbox-event.entity';
 import { OutboxRelayService } from '../../src/common/infrastructure/events/outbox-relay.service';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 const TEST_EVENT = 'test.outbox.happened';
@@ -54,7 +54,7 @@ interface OutboxRow {
 }
 
 describe('Outbox (Postgres + Nest event emitter)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let moduleRef: TestingModule;
   let publisher: DomainEventPublisher;
@@ -62,7 +62,7 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
   let listener: RecordingListener;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     moduleRef = await Test.createTestingModule({
       imports: [EventEmitterModule.forRoot()],
@@ -85,11 +85,11 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
 
   afterAll(async () => {
     await moduleRef?.close();
-    await stopTestDatabase(db);
+    await stopTestPostgres(db);
   });
 
   beforeEach(async () => {
-    await truncateAll(dataSource);
+    await truncateAllTables(dataSource);
     listener.received = [];
     listener.failuresLeft = 0;
     listener.delayMs = 0;

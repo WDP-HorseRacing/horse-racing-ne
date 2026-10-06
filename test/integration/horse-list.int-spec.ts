@@ -14,23 +14,23 @@ import { HorseProfilesRepository } from '../../src/modules/horses/horse-profiles
 import type { HorseScope } from '../../src/modules/horses/types/horse.types';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 const ALL: HorseScope = { kind: 'ALL' };
 
 describe('HorseProfilesRepository.list (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let repository: HorseProfilesRepository;
   let caller: string;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     repository = new HorseProfilesRepository(
@@ -39,10 +39,10 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
     );
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
   beforeEach(async () => {
-    await truncateAll(dataSource);
+    await truncateAllTables(dataSource);
     caller = await seed.user(UserRole.HEAD_TRAINER);
   });
 

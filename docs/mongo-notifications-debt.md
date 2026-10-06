@@ -1,6 +1,6 @@
 # Nợ kỹ thuật: MongoDB, thông báo, outbox
 
-Cập nhật: 2026-10-06.
+Cập nhật: 2026-10-06 (sau đợt dọn kiến trúc).
 
 ## 1. Tự xóa thông báo cũ (TTL)
 
@@ -46,6 +46,23 @@ Client gọi lại `GET /notifications/unread-count` khi mở app. Khi cần: ph
 
 ## 6. Event outbox thất bại hẳn
 
-Event lỗi đủ 10 lần có `failed_at` và dừng thử. Chưa có màn hình hay cảnh báo. Xem bằng:
-`SELECT name, attempts, last_error FROM outbox_events WHERE failed_at IS NOT NULL`.
-Giao lại: `UPDATE outbox_events SET failed_at = NULL, attempts = 0, available_at = now() WHERE id = ...`.
+Event lỗi đủ 10 lần có `dead_at` và dừng thử. Chưa có màn hình hay cảnh báo. Xem bằng:
+`SELECT event_name, attempts, last_error FROM outbox_events WHERE dead_at IS NOT NULL`.
+Giao lại: `UPDATE outbox_events SET dead_at = NULL, attempts = 0, next_attempt_at = now() WHERE id = ...`.
+
+## 7. Dọn token FCM cũ
+
+Firebase khuyến nghị coi token không cập nhật khoảng 1–2 tháng là cũ (token Android hết hạn sau 270 ngày).
+Khi cần: cron xóa `user_devices` có `updatedAt` cũ hơn 60 ngày, và app gọi lại `PUT /me/devices` mỗi lần mở.
+Nguồn: https://firebase.google.com/docs/cloud-messaging/manage-tokens
+
+## 8. Mức cảnh báo của điểm đo
+
+Hiện chỉ có hằng `NORMAL_ALERT_LEVEL = 'NORMAL'` (`performance/constants`). Khi làm API ingest,
+chốt danh sách mức cảnh báo rồi đổi thành enum trong `performance/enums/`.
+
+## 9. Integration test thỉnh thoảng hết giờ chờ container
+
+Lỗi `Timed out after 10000ms while waiting for container ports to be bound to the host`: Jest chạy song song
+nhiều suite, mỗi suite bật container riêng (Postgres, Mongo, Redis). Hướng sửa: giới hạn `maxWorkers`
+trong `test/jest-integration.json` hoặc tăng thời gian chờ khởi động container.

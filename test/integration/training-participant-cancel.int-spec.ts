@@ -4,27 +4,27 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   const facade = new TrainingOperationsFacade();
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
-  beforeEach(() => truncateAll(dataSource));
+  beforeEach(() => truncateAllTables(dataSource));
 
   const seedParticipant = async () => {
     const trainer = await seed.user(UserRole.HEAD_TRAINER);

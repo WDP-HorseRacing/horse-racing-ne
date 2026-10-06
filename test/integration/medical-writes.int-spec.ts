@@ -13,14 +13,14 @@ import { ExamRequestWritesService } from '../../src/modules/medical/shared/exam-
 import { TrainingLockWritesService } from '../../src/modules/medical/shared/training-lock-writes.service';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 describe('Medical shared writes (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let vet: string;
@@ -29,15 +29,15 @@ describe('Medical shared writes (Postgres)', () => {
   const requests = new ExamRequestWritesService();
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
   beforeEach(async () => {
-    await truncateAll(dataSource);
+    await truncateAllTables(dataSource);
     vet = await seed.user(UserRole.VETERINARIAN);
   });
 

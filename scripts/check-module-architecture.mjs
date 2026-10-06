@@ -33,6 +33,7 @@ const NON_FEATURE_DIRS = new Set([
   'mappers',
   'policies',
   'repositories',
+  'schemas',
   'services',
   'types',
   'utils',

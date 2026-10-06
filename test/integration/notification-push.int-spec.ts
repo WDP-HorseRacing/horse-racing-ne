@@ -28,7 +28,7 @@ import {
 } from '../../src/modules/notifications/schemas/user-device.schema';
 import type { DataSource } from 'typeorm';
 import {
-  clearAllCollections,
+  clearAllMongoCollections,
   startTestMongo,
   stopTestMongo,
   type TestMongo,
@@ -105,7 +105,7 @@ describe('FCM push (MongoDB + Redis)', () => {
   });
 
   beforeEach(async () => {
-    await clearAllCollections(mongo.connection);
+    await clearAllMongoCollections(mongo.connection);
     await queue.obliterate({ force: true });
     outcomes = [];
     sent = [];

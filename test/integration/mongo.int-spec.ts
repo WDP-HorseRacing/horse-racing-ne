@@ -1,5 +1,5 @@
 import {
-  clearAllCollections,
+  clearAllMongoCollections,
   startTestMongo,
   stopTestMongo,
   type TestMongo,
@@ -19,7 +19,7 @@ describe('test Mongo helper', () => {
     await items.createIndex({ key: 1 }, { unique: true, name: 'key_uq' });
     await items.insertOne({ key: 'a' });
 
-    await clearAllCollections(mongo.connection);
+    await clearAllMongoCollections(mongo.connection);
 
     expect(await items.countDocuments()).toBe(0);
     const indexNames = (await items.indexes()).map((index) => index.name);

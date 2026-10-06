@@ -11,7 +11,7 @@ import {
 } from '../../src/modules/notifications/schemas/notification.schema';
 import type { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 import {
-  clearAllCollections,
+  clearAllMongoCollections,
   startTestMongo,
   stopTestMongo,
   type TestMongo,
@@ -32,7 +32,7 @@ describe('NotificationDeliveryService.send (MongoDB)', () => {
   afterAll(() => stopTestMongo(mongo));
 
   beforeEach(async () => {
-    await clearAllCollections(mongo.connection);
+    await clearAllMongoCollections(mongo.connection);
     emitToUser = jest.fn();
     service = new NotificationDeliveryService(model, [
       new RealtimeChannel({ emitToUser } as unknown as RealtimeGateway),

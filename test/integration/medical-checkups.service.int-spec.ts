@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
 import { fixtures } from './fixtures';
@@ -22,21 +22,21 @@ import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical
 const TODAY = '2026-09-27';
 
 describe('MedicalCheckupsService (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let repository: MedicalCheckupsService;
   let seed: ReturnType<typeof fixtures>;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     repository = new MedicalCheckupsService(dataSource);
     seed = fixtures(dataSource);
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
-  beforeEach(() => truncateAll(dataSource));
+  beforeEach(() => truncateAllTables(dataSource));
 
   describe('dueCareSchedules', () => {
     const scheduleIds = async (horseIds?: string[]) =>

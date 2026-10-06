@@ -7,14 +7,14 @@ import { MedicalCasesRepository } from '../../src/modules/medical/medical-record
 import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
 import { fixtures } from './fixtures';
 import {
-  startTestDatabase,
-  stopTestDatabase,
-  truncateAll,
-  type TestDatabase,
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
 } from './postgres';
 
 describe('Medical cost report and dashboard queries (Postgres)', () => {
-  let db: TestDatabase;
+  let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let cases: MedicalCasesRepository;
@@ -23,7 +23,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
   let vet: string;
 
   beforeAll(async () => {
-    db = await startTestDatabase();
+    db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     cases = new MedicalCasesRepository(dataSource);
@@ -43,10 +43,10 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
     dashboard = new MedicalDashboardRepository(dataSource);
   });
 
-  afterAll(() => stopTestDatabase(db));
+  afterAll(() => stopTestPostgres(db));
 
   beforeEach(async () => {
-    await truncateAll(dataSource);
+    await truncateAllTables(dataSource);
     vet = await seed.user(UserRole.VETERINARIAN);
   });
 

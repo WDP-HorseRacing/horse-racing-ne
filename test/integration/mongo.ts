@@ -52,7 +52,7 @@ export async function stopTestMongo(mongo?: TestMongo): Promise<void> {
  * @param connection Kết nối Mongoose của DB test
  * @returns Promise hoàn tất khi đã xóa xong
  */
-export async function clearAllCollections(
+export async function clearAllMongoCollections(
   connection: Connection,
 ): Promise<void> {
   const collections = await connection.db!.listCollections().toArray();

@@ -15,7 +15,7 @@ import {
   NotificationSchema,
 } from '../../src/modules/notifications/schemas/notification.schema';
 import {
-  clearAllCollections,
+  clearAllMongoCollections,
   startTestMongo,
   stopTestMongo,
   type TestMongo,
@@ -53,7 +53,7 @@ describe('NotificationInboxService (MongoDB)', () => {
   afterAll(() => stopTestMongo(mongo));
 
   beforeEach(async () => {
-    await clearAllCollections(mongo.connection);
+    await clearAllMongoCollections(mongo.connection);
     users.clear();
   });
 
