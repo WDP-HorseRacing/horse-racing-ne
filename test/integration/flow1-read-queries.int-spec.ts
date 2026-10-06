@@ -29,9 +29,9 @@ function serviceWithDataSource<T>(
   type: abstract new (...args: never[]) => T,
   dataSource: DataSource,
 ): T {
-  return Object.assign(Object.create(type.prototype as object) as T, {
-    dataSource,
-  });
+  const service = Object.create(type.prototype as object) as T;
+  Object.assign(service as object, { dataSource });
+  return service;
 }
 
 describe('Flow 1 read queries (Postgres)', () => {

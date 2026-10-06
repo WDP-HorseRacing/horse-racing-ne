@@ -135,12 +135,13 @@ describe('ExamRequestsService', () => {
         horse: HORSE,
       }),
       isGroomAssigned: jest.fn().mockResolvedValue(false),
-      lockHorseWithDeleted: jest.fn((m: typeof manager, horseId: string) =>
-        m.findOne(HorseEntity, {
-          where: { id: horseId },
-          withDeleted: true,
-          lock: { mode: 'pessimistic_write' },
-        }),
+      lockHorseWithDeleted: jest.fn(
+        (m: typeof manager, horseId: string) =>
+          m.findOne(HorseEntity, {
+            where: { id: horseId },
+            withDeleted: true,
+            lock: { mode: 'pessimistic_write' },
+          }) as Promise<unknown>,
       ),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };

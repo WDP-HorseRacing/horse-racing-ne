@@ -28,6 +28,7 @@ import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../constants/stable-events.constants';
 import { StableAccessService } from '../shared/stable-access.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
+import { GroomAssignmentsRepository } from './groom-assignments.repository';
 import { GroomAssignmentsService } from './groom-assignments.service';
 
 type Row = Record<string, unknown> | null;
@@ -80,6 +81,7 @@ describe('GroomAssignmentsService', () => {
     update: jest.Mock;
   };
   let groomAssignments: { find: jest.Mock };
+  let workloads: { getGroomWorkloads: jest.Mock };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
   let training: { moveFutureParticipantsToGroom: jest.Mock };
@@ -135,6 +137,7 @@ describe('GroomAssignmentsService', () => {
     };
     manager.getRepository = trainerBarnRepository(manager.query);
     groomAssignments = { find: jest.fn().mockResolvedValue([]) };
+    workloads = { getGroomWorkloads: jest.fn().mockResolvedValue([]) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn().mockResolvedValue(undefined) };
     training = {
@@ -154,6 +157,7 @@ describe('GroomAssignmentsService', () => {
       horseAccess,
       new DailyChecklistsService(),
       training as unknown as TrainingOperationsFacade,
+      workloads as unknown as GroomAssignmentsRepository,
     );
   });
 
@@ -505,7 +509,7 @@ describe('GroomAssignmentsService', () => {
 
   describe('listWorkload', () => {
     it('maps the counted rows', async () => {
-      manager.query.mockResolvedValue([
+      workloads.getGroomWorkloads.mockResolvedValue([
         { groomId: 'g1', fullName: 'A', activeHorseCount: 3 },
         { groomId: 'g2', fullName: 'B', activeHorseCount: 0 },
       ]);
@@ -513,10 +517,6 @@ describe('GroomAssignmentsService', () => {
         { groomId: 'g1', fullName: 'A', activeHorseCount: 3 },
         { groomId: 'g2', fullName: 'B', activeHorseCount: 0 },
       ]);
-      expect(manager.query).toHaveBeenCalledWith(
-        expect.stringContaining('h.deleted_at IS NULL'),
-        [UserRole.GROOM, UserStatus.ACTIVE],
-      );
     });
   });
 

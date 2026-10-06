@@ -160,7 +160,8 @@ describe('MedicalCasesService', () => {
       casesRepository as unknown as MedicalCasesRepository,
       cases as unknown as Repository<MedicalCaseEntity>,
       {
-        find: (options: unknown) => manager.find(MedicalRecordEntity, options),
+        find: (options: unknown) =>
+          manager.find(MedicalRecordEntity, options) as Promise<unknown>,
       } as unknown as Repository<MedicalRecordEntity>,
       audit,
       events,

@@ -19,7 +19,6 @@ import {
   DELETED_HORSE_READ_ONLY_MESSAGE,
   HORSE_NOT_FOUND_MESSAGE,
 } from '../constants/horse.constants';
-import { HorseLifecycleStatus } from '../enums/horse-status.enum';
 import { HorseEntity } from '../entities/horse.entity';
 import { isActiveHorseOwner, isHorseInScope } from '../policies/horse.policy';
 import type { HorseScope } from '../types/horse.types';
