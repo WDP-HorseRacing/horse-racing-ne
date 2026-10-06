@@ -16,23 +16,23 @@ Ví dụ: Winx đang Cần theo dõi. Lớp của Winx có buổi chạy tốc �
 - A. Hệ thống tự đánh lượt của con ngựa đó là `INELIGIBLE` cho riêng buổi đó, lý do "Cần theo dõi". Các ngựa khác tập bình thường.
 - B. Hệ thống chỉ cảnh báo, để Head Trainer tự loại ngựa ra bằng tay.
 
-## 2. Bàn giao phần thông báo
+## 2. Phần thông báo (bên mình đã làm, 2026-10-06)
 
-Đã thống nhất: phần thông báo do Flow 2 làm.
+Phần này không còn bàn giao cho Flow 2. Bên mình đã làm xong trên nhánh `truong-mongo`:
 
-Hiện trạng:
+- Thông báo lưu ở MongoDB (collection `notifications`), chống trùng theo `eventId` + người nhận.
+- 5 route đọc đã chạy: `GET /notifications` (phân trang cursor: truyền `nextCursor` vào `before`), `GET /notifications/unread-count`, `GET /notifications/:id`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`.
+- Mỗi thông báo có `resource { type, id }` (`HORSE`, `MEDICAL_CASE`, `TRAINING_LOCK`) để mở đúng màn hình.
+- Push FCM: app đăng ký token qua `PUT /me/devices`, gỡ qua `DELETE /me/devices/:token`; gửi qua BullMQ có retry.
+- Event nghiệp vụ đi qua outbox (Postgres) nên không mất khi restart.
 
-- Flow 1 và Flow 3 đã ghi thông báo vào bảng `notifications` (chống trùng theo `event_id` + người nhận) và bắn socket `notification.created` (namespace `/events`, token gửi ở `auth.token`). Chỗ ghi nằm ở `NotificationsService.send()`.
-- 5 route đọc vẫn trả 501: `GET /notifications`, `GET /notifications/unread-count`, `GET /notifications/:id`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`. Ai offline lúc có thông báo thì không xem lại được.
-- Bảng `notifications` chưa có index theo người nhận. Nên thêm `(recipient_id, created_at DESC)` và một index riêng cho phần chưa đọc (`WHERE read_at IS NULL`).
-- Chưa thử client socket thật.
+Nếu Flow 2 cần phát thông báo mới:
 
-Đề xuất bên mình đã bàn (tham khảo, bạn chốt):
+1. Trong transaction của nghiệp vụ: `await this.events.publish(manager, TÊN_EVENT, { eventId: randomUUID(), ... })`.
+2. Thêm listener ở `src/modules/notifications/delivery/listeners/` với `@OnEvent(TÊN_EVENT, OUTBOX_LISTENER_OPTIONS)`, gọi `NotificationsService.send()`.
+3. Listener phải chịu được việc nhận lặp một event (xem guide mục 9).
 
-- Bảng `notifications` là nguồn chuẩn. Socket.IO chỉ giao "tối đa một lần" và không gửi bù khi client kết nối lại, nên bắt buộc có API đọc.
-- Tách interface `NotificationChannel` (`deliver(rows)`). Có `RealtimeChannel` trước. Sau này thêm `FcmChannel` cho mobile khi app chạy nền hoặc đã tắt: bảng `user_devices`, gửi qua BullMQ để có retry, xóa token khi FCM báo `UNREGISTERED` / `INVALID_ARGUMENT`. Làm vậy thì không phải sửa `send()`.
-- Danh sách sắp mới nhất trước, lọc `unreadOnly` và `priority`.
-- Có liên kết tới dữ liệu gốc để bấm vào mở đúng màn hình (ví dụ `resourceType` + `resourceId`). Thiết kế sao cho thêm loại thông báo mới không cần migration.
+Nợ còn lại: `docs/mongo-notifications-debt.md`.
 
 ## 3. Lỗi trong module training (phát hiện khi rà Flow 3)
 

@@ -23,6 +23,7 @@
     "db:revert": "typeorm-ts-node-commonjs -d src/common/database/data-source.ts migration:revert",
     "db:generate": "typeorm-ts-node-commonjs -d src/common/database/data-source.ts migration:generate",
     "db:seed": "node scripts/seed/run-seed.mjs",
+    "db:seed:mongo": "node scripts/seed/run-mongo-seed.mjs",
     "docs:api": "node scripts/generate-api-catalog.cjs",
     "postman:gen": "node scripts/generate-postman.cjs",
     "check:module-architecture": "node scripts/check-module-architecture.mjs",

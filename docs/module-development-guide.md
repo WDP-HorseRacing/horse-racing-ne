@@ -474,3 +474,46 @@ controller/service/repository của mình và không import trực tiếp featur
 Domain mới có ít nhất 20 file TypeScript không phải test mà chưa có feature
 module, hoặc có service vượt 1.000 dòng, sẽ bị kiểm tra báo lỗi cho đến khi
 được tách theo use case.
+
+## 14. Dữ liệu ở MongoDB
+
+Hệ thống dùng hai DB. Postgres (TypeORM) là nơi lưu chính; MongoDB (Mongoose) chỉ
+nhận những dữ liệu hợp với nó. Không có transaction chung giữa hai DB.
+
+Chọn DB cho dữ liệu mới bằng ba câu hỏi:
+
+1. Có phải ghi cùng thành, cùng hỏng với dữ liệu lõi (một transaction) không?
+   Có thì để Postgres.
+2. Có quan hệ chặt, ràng buộc khóa ngoại, query chéo nhiều bảng không?
+   Có thì để Postgres.
+3. Dữ liệu tự đứng một cục, đọc theo một khóa, schema hay đổi, hoặc ghi dày theo
+   thời gian? Thì để MongoDB.
+
+Hiện ở MongoDB:
+
+| Collection | Module | Ghi chú |
+| --- | --- | --- |
+| `notifications` | notifications | Mỗi người nhận một document; unique `(eventId, recipientId)` |
+| `user_devices` | notifications | `_id` là FCM token |
+| `performance_metrics` | performance | Time-series, `timeField` `recordedAt`, `metaField` `series` |
+
+Quy tắc:
+
+- Schema đặt ở `src/modules/<domain>/schemas/*.schema.ts`; khai báo
+  `MongooseModule.forFeature` ở module sở hữu (hoặc `shared/` của domain).
+- Dùng công cụ gốc của MongoDB: unique/partial index, cập nhật có điều kiện
+  (`findOneAndUpdate` với điều kiện trạng thái), `$setOnInsert` + `upsert` để
+  idempotent, time-series cho dữ liệu cảm biến, TTL index để tự xóa.
+  Không giả lập cơ chế Postgres (khóa giả, khóa ngoại giả).
+- `_id` của document trả ra API dùng UUID dạng chuỗi để giữ cùng dạng id với
+  Postgres.
+- Số thập phân cần chính xác (tiền, tốc độ) lưu `Decimal128`; làm tròn trong app
+  nếu phải khớp cách làm tròn của Postgres (`$round` làm tròn nửa về số chẵn).
+- Đọc dữ liệu Postgres để ghép (vd giờ của buổi tập) qua `this.dataSource.manager`,
+  không ghi chéo DB.
+- Time-series không có unique index và không ghi được trong transaction; chống
+  trùng phải làm ở tầng ghi.
+- Integration test dùng `test/integration/mongo.ts` (testcontainers). Driver cần
+  `runtimeAdapters: { os }` khi chạy trong Jest.
+- Mongo chưa có migration: index tạo khi app khởi động (`autoIndex`). Đổi TTL
+  hay granularity dùng lệnh `collMod`.
