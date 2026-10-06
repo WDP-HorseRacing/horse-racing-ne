@@ -9,21 +9,10 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { toQueryBoolean } from '../../../common/utils/query-boolean';
 import { NotificationPriority } from '../constants/notification-priority.enum';
 import { NotificationResourceType } from '../constants/notification-resource-type.enum';
 import { NotificationType } from '../constants/notification-type.enum';
-
-/**
- * Chuyển chuỗi query "true"/"false" thành boolean
- *
- * @param params Tham số của class-transformer
- * @returns Boolean, hoặc giá trị gốc nếu không phải chuỗi true/false
- */
-function toBoolean({ value }: { value: unknown }): unknown {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return value;
-}
 
 /**
  * Lọc và phân trang danh sách thông báo của người gọi (cursor, mới nhất trước).
@@ -50,7 +39,7 @@ export class NotificationListQueryDto {
     description: 'Chỉ lấy thông báo chưa đọc',
   })
   @IsOptional()
-  @Transform(toBoolean)
+  @Transform(toQueryBoolean)
   @IsBoolean()
   unreadOnly: boolean = false;
 

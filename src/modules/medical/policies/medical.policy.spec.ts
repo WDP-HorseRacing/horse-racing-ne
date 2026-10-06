@@ -31,7 +31,6 @@ import {
   assertRescheduleReason,
   checkupStateOf,
   healthPriority,
-  toClubDate,
   assertLockActive,
   assertLockEnd,
   assertNoActiveLock,
@@ -494,11 +493,6 @@ describe('medical.policy', () => {
   });
 
   describe('checkups and dashboard', () => {
-    it('converts an instant to the club calendar date', () => {
-      expect(toClubDate(new Date('2026-09-26T18:30:00Z'))).toBe('2026-09-27');
-      expect(toClubDate(new Date('2026-09-26T16:59:59Z'))).toBe('2026-09-26');
-    });
-
     it('computes the due state of a horse', () => {
       expect(
         checkupStateOf(

@@ -4,7 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
-import { CLUB_TIME_ZONE } from '../../horses/constants/horse.constants';
+import { toClubDate } from '../../../common/utils/club-date';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleStatus } from '../constants/care-schedule.enum';
@@ -549,18 +549,6 @@ export function assertLockEnd(lockEnd: Date, now: Date): void {
   if (toClubDate(lockEnd) < toClubDate(now)) {
     throw new BadRequestException('Ngày dự kiến gỡ khóa không được ở quá khứ');
   }
-}
-
-/**
- * Đổi một thời điểm sang ngày theo lịch câu lạc bộ (Asia/Ho_Chi_Minh)
- *
- * @param date Thời điểm cần đổi
- * @returns Ngày dạng YYYY-MM-DD
- */
-export function toClubDate(date: Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: CLUB_TIME_ZONE }).format(
-    date,
-  );
 }
 
 /**

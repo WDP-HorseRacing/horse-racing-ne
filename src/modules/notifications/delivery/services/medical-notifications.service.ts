@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UserRole } from '../../../../common/enums/role.enum';
-import { CLUB_TIME_ZONE } from '../../../horses/constants/horse.constants';
+import { toClubDate } from '../../../../common/utils/club-date';
 import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
 import type {
@@ -94,7 +94,7 @@ export class MedicalNotificationsService {
    */
   notifyLockSet(event: TrainingLockSetEvent): Promise<string[]> {
     const until = event.expectedEnd
-      ? ` Dự kiến gỡ: ${formatClubDate(event.expectedEnd)}.`
+      ? ` Dự kiến gỡ: ${toClubDate(event.expectedEnd)}.`
       : '';
     return this.sendForHorse(
       event.eventId,
@@ -389,18 +389,6 @@ export class MedicalNotificationsService {
  */
 function horseResource(horseId: string): NotificationResource {
   return { type: NotificationResourceType.HORSE, id: horseId };
-}
-
-/**
- * Định dạng ngày theo lịch câu lạc bộ (Asia/Ho_Chi_Minh), dạng YYYY-MM-DD
- *
- * @param date Thời điểm cần hiển thị, dạng chuỗi ISO
- * @returns Ngày theo giờ Việt Nam
- */
-function formatClubDate(date: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: CLUB_TIME_ZONE }).format(
-    new Date(date),
-  );
 }
 
 /**

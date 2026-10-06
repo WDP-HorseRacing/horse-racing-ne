@@ -3,7 +3,7 @@ import { DataSource, EntityManager, In } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { CLUB_TIME_ZONE } from '../../horses/constants/horse.constants';
+import { CLUB_TIME_ZONE } from '../../../common/constants';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import {
   CareScheduleStatus,
@@ -12,7 +12,8 @@ import {
 import { CheckupItemDto } from '../dto/checkup.dto';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { toCheckupAppointment } from '../mappers/medical.mapper';
-import { checkupStateOf, toClubDate } from '../policies/medical.policy';
+import { checkupStateOf } from '../policies/medical.policy';
+import { toClubDate } from '../../../common/utils/club-date';
 import type {
   DueCareScheduleRow,
   HerdFilter,

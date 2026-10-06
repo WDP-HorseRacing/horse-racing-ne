@@ -8,7 +8,8 @@ import { CHECKUP_DUE_SOON_DAYS } from '../constants/medical.constants';
 import { MedicalDashboardQueryDto, MedicalDashboardResponseDto } from '../dto';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import { toExamRequestResponse, toHerdBlock } from '../mappers/medical.mapper';
-import { addDays, toClubDate } from '../policies/medical.policy';
+import { addDays } from '../policies/medical.policy';
+import { toClubDate } from '../../../common/utils/club-date';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';
 

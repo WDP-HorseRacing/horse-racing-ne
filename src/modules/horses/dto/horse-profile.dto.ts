@@ -22,6 +22,7 @@ import {
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { SortOrder } from '../../../common/enums/sort-order.enum';
+import { toQueryBoolean } from '../../../common/utils/query-boolean';
 import { HorseGender } from '../enums/horse-gender.enum';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
@@ -206,7 +207,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
       '"Khu của tôi": chỉ ngựa thuộc các khu người gọi làm Head Trainer',
   })
   @IsOptional()
-  @Transform(({ value }) => parseQueryBoolean(value))
+  @Transform(toQueryBoolean)
   @IsBoolean()
   myBarns: boolean = false;
 
@@ -216,7 +217,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
       '"Ngựa tôi phụ trách": chỉ ngựa người gọi đang là Groom phụ trách',
   })
   @IsOptional()
-  @Transform(({ value }) => parseQueryBoolean(value))
+  @Transform(toQueryBoolean)
   @IsBoolean()
   myHorses: boolean = false;
 
@@ -226,7 +227,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
       'true thì trả thêm hồ sơ đã xóa, kèm isDeleted = true (chỉ Club Manager)',
   })
   @IsOptional()
-  @Transform(({ value }) => parseQueryBoolean(value))
+  @Transform(toQueryBoolean)
   @IsBoolean()
   includeDeleted: boolean = false;
 
@@ -249,17 +250,6 @@ export class HorseListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder: SortOrder = SortOrder.ASC;
-}
-/**
- * Đổi chuỗi 'true'/'false' của query thành boolean; giá trị khác giữ nguyên, class-validator sẽ từ chối
- *
- * @param value Giá trị query thô
- * @returns true, false hoặc chính giá trị ban đầu nếu không nhận ra
- */
-function parseQueryBoolean(value: unknown): unknown {
-  if (value === true || value === 'true') return true;
-  if (value === false || value === 'false') return false;
-  return value;
 }
 export class HorseListItemDto extends HorseResponseDto {
   @ApiProperty({ type: HorseLocationDto })

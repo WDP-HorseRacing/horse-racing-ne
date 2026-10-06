@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
-import { CLUB_TIME_ZONE } from '../../horses/constants/horse.constants';
+import { CLUB_TIME_ZONE } from '../../../common/constants';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
@@ -11,8 +11,8 @@ import {
 import {
   checkupDueDate,
   isOverdueNotifiable,
-  toClubDate,
 } from '../policies/medical.policy';
+import { toClubDate } from '../../../common/utils/club-date';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import type {
   CareScheduleDueEvent,

@@ -3,6 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model, QueryFilter } from 'mongoose';
 import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import {
+  decodeKeysetCursor,
+  encodeKeysetCursor,
+} from '../../../common/utils/keyset-cursor';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
   NotificationListQueryDto,
@@ -13,10 +17,6 @@ import {
 } from '../dto';
 import { toNotificationResponse } from '../mappers/notification.mapper';
 import { Notification } from '../schemas/notification.schema';
-import {
-  decodeNotificationCursor,
-  encodeNotificationCursor,
-} from './notification-cursor';
 
 @Injectable()
 export class NotificationInboxService {
@@ -47,7 +47,7 @@ export class NotificationInboxService {
     if (query.unreadOnly) filter.readAt = null;
     if (query.priority) filter.priority = query.priority;
     if (query.before) {
-      const cursor = decodeNotificationCursor(query.before);
+      const cursor = decodeKeysetCursor(query.before);
       filter.$or = [
         { createdAt: { $lt: cursor.createdAt } },
         { createdAt: cursor.createdAt, _id: { $lt: cursor.id } },
@@ -66,7 +66,7 @@ export class NotificationInboxService {
       items: items.map(toNotificationResponse),
       nextCursor:
         rows.length > query.limit
-          ? encodeNotificationCursor({
+          ? encodeKeysetCursor({
               createdAt: last.createdAt,
               id: last._id,
             })

@@ -21,8 +21,8 @@ import {
   assertAppointmentDate,
   assertRescheduleReason,
   checkupStateOf,
-  toClubDate,
 } from '../policies/medical.policy';
+import { toClubDate } from '../../../common/utils/club-date';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';

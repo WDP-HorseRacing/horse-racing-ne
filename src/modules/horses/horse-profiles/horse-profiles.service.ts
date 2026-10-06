@@ -70,7 +70,7 @@ import type {
   HorseLocationRow,
   HorsePersonRow,
 } from '../types/horse.types';
-import { clubToday } from '../utils/club-date';
+import { clubToday } from '../../../common/utils/club-date';
 import { changedFields, pickFields } from '../utils/record-diff';
 import { HorseProfilesRepository } from './horse-profiles.repository';
 

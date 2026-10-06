@@ -9,6 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { toQueryBoolean } from '../../../common/utils/query-boolean';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import {
@@ -16,18 +17,6 @@ import {
   ExamRequestStatus,
 } from '../constants/exam-request.enum';
 import { trimValue } from './medical-visit.dto';
-
-/**
- * Chuyển chuỗi query "true"/"false" thành boolean
- *
- * @param params Tham số của class-transformer
- * @returns Boolean, hoặc giá trị gốc nếu không phải chuỗi true/false
- */
-function toBoolean({ value }: { value: unknown }): unknown {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return value;
-}
 
 /**
  * Gửi yêu cầu khám khi ngựa có vấn đề.
@@ -88,7 +77,7 @@ export class ExamRequestListQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @Transform(toBoolean)
+  @Transform(toQueryBoolean)
   @IsBoolean()
   urgent?: boolean;
 }

@@ -1,19 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
-import {
-  decodeNotificationCursor,
-  encodeNotificationCursor,
-} from './notification-cursor';
+import { decodeKeysetCursor, encodeKeysetCursor } from './keyset-cursor';
 
-describe('notification cursor', () => {
+describe('keyset cursor', () => {
   it('decodes what it encodes', () => {
     const cursor = {
       createdAt: new Date('2026-10-05T01:02:03.456Z'),
       id: '3f0c7c1e-8a52-4b54-9b1e-2f4f1b0a9c11',
     };
 
-    expect(decodeNotificationCursor(encodeNotificationCursor(cursor))).toEqual(
-      cursor,
-    );
+    expect(decodeKeysetCursor(encodeKeysetCursor(cursor))).toEqual(cursor);
   });
 
   it.each([
@@ -25,6 +20,6 @@ describe('notification cursor', () => {
     ['missing time', Buffer.from('|some-id').toString('base64url')],
     ['invalid time', Buffer.from('yesterday|some-id').toString('base64url')],
   ])('rejects a cursor with %s', (_case, value) => {
-    expect(() => decodeNotificationCursor(value)).toThrow(BadRequestException);
+    expect(() => decodeKeysetCursor(value)).toThrow(BadRequestException);
   });
 });

@@ -29,11 +29,6 @@ export const PEDIGREE_DEPTH = 2;
 export const CLOCK_SKEW_MS = 60_000;
 
 /**
- * Múi giờ quyết định "hôm nay" là ngày nào theo lịch câu lạc bộ
- */
-export const CLUB_TIME_ZONE = 'Asia/Ho_Chi_Minh';
-
-/**
  * Biểu thức ORDER BY sắp tên ngựa theo bảng chữ cái tiếng Việt, gắn với alias `horse` của query
  */
 export const VIETNAMESE_NAME_ORDER = 'horse.name COLLATE "vi-x-icu"';
