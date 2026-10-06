@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { Messaging } from 'firebase-admin/messaging';
+import { FIREBASE_MESSAGING } from '../../../common/infrastructure/firebase/firebase.token';
 import { NOTIFICATION_PUSH_QUEUE } from '../constants/notification.constants';
 import { RealtimeModule } from '../../realtime/realtime.module';
 import { NotificationsSharedModule } from '../shared/notifications-shared.module';
@@ -15,10 +16,6 @@ import { HorseBarnAssignedListener } from './listeners/horse-barn-assigned.liste
 import { HorseGroomReleasedListener } from './listeners/horse-groom-released.listener';
 import { HorseMeasurementAlertListener } from './listeners/horse-measurement-alert.listener';
 import { MedicalEventsListener } from './listeners/medical-events.listener';
-import {
-  FIREBASE_MESSAGING,
-  firebaseMessagingProvider,
-} from './push/firebase-messaging.provider';
 import { NotificationPushProcessor } from './push/notification-push.processor';
 import { NotificationRecipientsRepository } from './repositories/notification-recipients.repository';
 import { HorseNotificationsService } from './services/horse-notifications.service';
@@ -32,7 +29,6 @@ import { NotificationsService } from './services/notifications.service';
     BullModule.registerQueue({ name: NOTIFICATION_PUSH_QUEUE }),
   ],
   providers: [
-    firebaseMessagingProvider,
     RealtimeChannel,
     FcmChannel,
     NotificationPushProcessor,

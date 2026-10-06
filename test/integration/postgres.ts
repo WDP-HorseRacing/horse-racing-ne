@@ -29,7 +29,10 @@ export async function startTestDatabase(): Promise<TestDatabase> {
   const dataSource = new DataSource({
     type: 'postgres',
     url: container.getConnectionUri(),
-    entities: [join(SRC, 'modules/**/*.entity.ts')],
+    entities: [
+      join(SRC, 'modules/**/*.entity.ts'),
+      join(SRC, 'common/infrastructure/**/*.entity.ts'),
+    ],
     migrations: [join(SRC, 'migrations/*.ts')],
     synchronize: false,
   });

@@ -1,17 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, Interval } from '@nestjs/schedule';
-import { DataSource } from 'typeorm';
-
-/**
- * Một event đã được relay nhận để giao.
- */
-interface ClaimedOutboxEvent {
-  id: string;
-  name: string;
-  payload: unknown;
-  attempts: number;
-}
+import { InjectRepository } from '@nestjs/typeorm';
+import { LessThan, Repository } from 'typeorm';
+import { OutboxEventEntity } from './outbox-event.entity';
+import { OUTBOX_MAX_ATTEMPTS } from './outbox.constants';
+import type { ClaimedOutboxEvent } from './types/outbox.types';
 
 /**
  * Số event tối đa nhận trong một lượt.
@@ -19,12 +13,7 @@ interface ClaimedOutboxEvent {
 const BATCH_SIZE = 20;
 
 /**
- * Số lần giao tối đa trước khi đánh dấu thất bại hẳn.
- */
-export const OUTBOX_MAX_ATTEMPTS = 10;
-
-/**
- * Thời gian (giây) một event bị giữ cho relay đã nhận nó; relay chết giữa chừng thì sau khoảng này relay khác nhận lại.
+ * Thời gian (giây) một event được giữ cho relay đã nhận nó; hết khoảng này relay khác được nhận lại.
  */
 const LEASE_SECONDS = 300;
 
@@ -39,22 +28,26 @@ const MAX_BACKOFF_SECONDS = 3600;
 const PROCESSED_RETENTION_DAYS = 7;
 
 @Injectable()
-export class OutboxRelay {
-  private readonly logger = new Logger(OutboxRelay.name);
+export class OutboxRelayService {
+  private readonly logger = new Logger(OutboxRelayService.name);
   private running = false;
 
   constructor(
-    private readonly dataSource: DataSource,
+    @InjectRepository(OutboxEventEntity)
+    private readonly outbox: Repository<OutboxEventEntity>,
     private readonly emitter: EventEmitter2,
   ) {}
 
   /**
    * Mỗi giây giao các event đến hạn; lượt trước chưa xong thì bỏ qua lượt này
    *
+   * - Lô vừa nhận đầy BATCH_SIZE thì nhận tiếp ngay trong cùng lượt
+   * - Lỗi của cả lượt chỉ được log
+   *
    * @returns Promise hoàn tất khi lượt giao kết thúc
    */
   @Interval(1000)
-  async tick(): Promise<void> {
+  async relayDueEvents(): Promise<void> {
     if (this.running) return;
     this.running = true;
     try {
@@ -75,16 +68,16 @@ export class OutboxRelay {
   /**
    * Nhận một lô event đến hạn rồi giao từng event cho các listener
    *
-   * - Nhận bằng FOR UPDATE SKIP LOCKED và giữ chỗ LEASE_SECONDS: nhiều relay chạy song song không nhận trùng
-   * - Mọi listener chạy xong không lỗi: đánh dấu processed_at
-   * - Có listener lỗi: lùi lần giao sau theo cấp số nhân (tối đa MAX_BACKOFF_SECONDS); đủ OUTBOX_MAX_ATTEMPTS lần thì đánh dấu failed_at
+   * - Nhiều relay chạy song song không nhận trùng event
+   * - Mọi listener chạy xong không lỗi: đánh dấu processedAt
+   * - Có listener lỗi: lùi lần giao sau theo cấp số nhân (tối đa MAX_BACKOFF_SECONDS); đủ OUTBOX_MAX_ATTEMPTS lần thì đánh dấu deadAt
    *
    * @returns Promise trả về số event đã nhận trong lô
    */
   async relayBatch(): Promise<number> {
-    const claimed = await this.claim();
+    const claimed = await this.claimDueEvents();
     for (const event of claimed) {
-      await this.dispatch(event);
+      await this.deliver(event);
     }
     return claimed.length;
   }
@@ -95,32 +88,35 @@ export class OutboxRelay {
    * @returns Promise hoàn tất khi đã dọn
    */
   @Cron('0 3 * * *')
-  async purgeProcessed(): Promise<void> {
-    await this.dataSource.query(
-      `DELETE FROM outbox_events
-        WHERE processed_at < now() - make_interval(days => $1)`,
-      [PROCESSED_RETENTION_DAYS],
-    );
+  async purgeProcessedEvents(): Promise<void> {
+    await this.outbox.delete({
+      processedAt: LessThan(
+        new Date(Date.now() - PROCESSED_RETENTION_DAYS * 86_400_000),
+      ),
+    });
   }
 
   /**
-   * Nhận tối đa BATCH_SIZE event đến hạn, cũ nhất trước, và giữ chỗ cho relay này
+   * Nhận tối đa BATCH_SIZE event đến hạn, cũ nhất trước, và giữ chỗ LEASE_SECONDS cho relay này
+   *
+   * - Dùng FOR UPDATE SKIP LOCKED: event relay khác đang nhận thì bỏ qua
+   * - Mỗi lần nhận tăng attempts thêm 1
    *
    * @returns Promise trả về các event đã nhận
    */
-  private async claim(): Promise<ClaimedOutboxEvent[]> {
-    const [rows] = await this.dataSource.query<[ClaimedOutboxEvent[], number]>(
+  private async claimDueEvents(): Promise<ClaimedOutboxEvent[]> {
+    const [rows] = await this.outbox.query<[ClaimedOutboxEvent[], number]>(
       `UPDATE outbox_events
-          SET available_at = now() + make_interval(secs => $2),
+          SET next_attempt_at = now() + make_interval(secs => $2),
               attempts = attempts + 1
         WHERE id IN (
           SELECT id FROM outbox_events
-           WHERE processed_at IS NULL AND failed_at IS NULL
-             AND available_at <= now()
-           ORDER BY available_at, created_at
+           WHERE processed_at IS NULL AND dead_at IS NULL
+             AND next_attempt_at <= now()
+           ORDER BY next_attempt_at, created_at
            LIMIT $1
            FOR UPDATE SKIP LOCKED)
-      RETURNING id, name, payload, attempts`,
+      RETURNING id, event_name AS "eventName", payload, attempts`,
       [BATCH_SIZE, LEASE_SECONDS],
     );
     return rows;
@@ -132,37 +128,30 @@ export class OutboxRelay {
    * @param event Event đã nhận
    * @returns Promise hoàn tất khi đã ghi kết quả giao
    */
-  private async dispatch(event: ClaimedOutboxEvent): Promise<void> {
+  private async deliver(event: ClaimedOutboxEvent): Promise<void> {
     try {
-      await this.emitter.emitAsync(event.name, event.payload);
-      await this.dataSource.query(
-        `UPDATE outbox_events SET processed_at = now(), last_error = NULL WHERE id = $1`,
-        [event.id],
-      );
+      await this.emitter.emitAsync(event.eventName, event.payload);
+      await this.outbox.update(event.id, {
+        processedAt: () => 'now()',
+        lastError: null,
+      });
     } catch (error) {
       const message =
         error instanceof Error ? (error.stack ?? error.message) : String(error);
       const exhausted = event.attempts >= OUTBOX_MAX_ATTEMPTS;
-      await this.dataSource.query(
-        `UPDATE outbox_events
-            SET last_error = $2,
-                failed_at = CASE WHEN $3 THEN now() ELSE NULL END,
-                available_at = now() + make_interval(secs => $4)
-          WHERE id = $1`,
-        [
-          event.id,
-          message,
-          exhausted,
-          Math.min(2 ** event.attempts, MAX_BACKOFF_SECONDS),
-        ],
-      );
+      const backoffSeconds = Math.min(2 ** event.attempts, MAX_BACKOFF_SECONDS);
+      await this.outbox.update(event.id, {
+        lastError: message,
+        deadAt: exhausted ? () => 'now()' : null,
+        nextAttemptAt: () => `now() + make_interval(secs => ${backoffSeconds})`,
+      });
       if (exhausted) {
         this.logger.error(
-          `Event ${event.name} (${event.id}) giao thất bại ${event.attempts} lần, ngừng thử: ${message}`,
+          `Event ${event.eventName} (${event.id}) giao thất bại ${event.attempts} lần, ngừng thử: ${message}`,
         );
       } else {
         this.logger.warn(
-          `Event ${event.name} (${event.id}) giao thất bại lần ${event.attempts}, sẽ thử lại: ${message}`,
+          `Event ${event.eventName} (${event.id}) giao thất bại lần ${event.attempts}, sẽ thử lại: ${message}`,
         );
       }
     }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox-listener.options';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
   MEDICAL_CASE_CANCELLED_EVENT,

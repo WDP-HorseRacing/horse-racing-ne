@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox-listener.options';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
 import { HORSE_MEASUREMENT_ALERT_EVENT } from '../../../horses/constants/horse.constants';
 import { HorseMeasurementSource } from '../../../horses/enums/horse-measurement-source.enum';
 import type { HorseMeasurementAlertEvent } from '../../../horses/types/horse.types';

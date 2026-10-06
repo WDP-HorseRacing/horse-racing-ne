@@ -17,7 +17,10 @@ export function typeOrmOptions(database: DatabaseConfig): TypeOrmModuleOptions {
     username: database.username,
     password: database.password,
     database: database.database,
-    entities: [join(__dirname, '../../modules/**/*.entity{.ts,.js}')],
+    entities: [
+      join(__dirname, '../../modules/**/*.entity{.ts,.js}'),
+      join(__dirname, '../infrastructure/**/*.entity{.ts,.js}'),
+    ],
     migrations: [join(__dirname, '../../migrations/*{.ts,.js}')],
     synchronize: false,
     migrationsRun: false,

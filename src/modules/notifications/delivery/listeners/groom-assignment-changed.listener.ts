@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox-listener.options';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../../stable/constants/stable-events.constants';
 import type { GroomAssignmentChangedEvent } from '../../../stable/types/stable-events.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';

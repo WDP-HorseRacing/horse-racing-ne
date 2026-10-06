@@ -7,7 +7,7 @@ import type { Model } from 'mongoose';
 import { NOTIFICATION_PUSH_QUEUE } from '../../constants/notification.constants';
 import { Notification } from '../../schemas/notification.schema';
 import { UserDevice } from '../../schemas/user-device.schema';
-import { FIREBASE_MESSAGING } from './firebase-messaging.provider';
+import { FIREBASE_MESSAGING } from '../../../../common/infrastructure/firebase/firebase.token';
 import type { NotificationPushJob } from './notification-push.types';
 import { toPushMessage } from './push-message.mapper';
 

@@ -1,21 +1,28 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { redisConnectionOptions } from './redis-connection';
 import { RedisService } from './redis.service';
 import { REDIS_CLIENT } from './redis.token';
 
 @Global()
 @Module({
+  imports: [
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: redisConnectionOptions(config),
+      }),
+    }),
+  ],
   providers: [
     {
       provide: REDIS_CLIENT,
       inject: [ConfigService],
       useFactory: (config: ConfigService) =>
         new Redis({
-          host: config.getOrThrow<string>('REDIS_HOST'),
-          port: config.getOrThrow<number>('REDIS_PORT'),
-          username: config.get<string>('REDIS_USERNAME'),
-          password: config.get<string>('REDIS_PASSWORD'),
+          ...redisConnectionOptions(config),
           lazyConnect: true,
           maxRetriesPerRequest: 1,
         }),

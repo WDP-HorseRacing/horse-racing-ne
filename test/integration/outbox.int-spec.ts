@@ -5,13 +5,15 @@ import {
   OnEvent,
 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
-import { OUTBOX_LISTENER_OPTIONS } from '../../src/common/infrastructure/events/outbox-listener.options';
 import {
+  OUTBOX_LISTENER_OPTIONS,
   OUTBOX_MAX_ATTEMPTS,
-  OutboxRelay,
-} from '../../src/common/infrastructure/events/outbox-relay.service';
+} from '../../src/common/infrastructure/events/outbox.constants';
+import { OutboxEventEntity } from '../../src/common/infrastructure/events/outbox-event.entity';
+import { OutboxRelayService } from '../../src/common/infrastructure/events/outbox-relay.service';
 import {
   startTestDatabase,
   stopTestDatabase,
@@ -46,9 +48,9 @@ class RecordingListener {
 interface OutboxRow {
   attempts: number;
   processed_at: Date | null;
-  failed_at: Date | null;
+  dead_at: Date | null;
   last_error: string | null;
-  available_at: Date;
+  next_attempt_at: Date;
 }
 
 describe('Outbox (Postgres + Nest event emitter)', () => {
@@ -56,7 +58,7 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
   let dataSource: DataSource;
   let moduleRef: TestingModule;
   let publisher: DomainEventPublisher;
-  let relay: OutboxRelay;
+  let relay: OutboxRelayService;
   let listener: RecordingListener;
 
   beforeAll(async () => {
@@ -66,14 +68,18 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
       imports: [EventEmitterModule.forRoot()],
       providers: [
         { provide: DataSource, useValue: dataSource },
+        {
+          provide: getRepositoryToken(OutboxEventEntity),
+          useValue: dataSource.getRepository(OutboxEventEntity),
+        },
         DomainEventPublisher,
-        OutboxRelay,
+        OutboxRelayService,
         RecordingListener,
       ],
     }).compile();
     await moduleRef.init();
     publisher = moduleRef.get(DomainEventPublisher);
-    relay = moduleRef.get(OutboxRelay);
+    relay = moduleRef.get(OutboxRelayService);
     listener = moduleRef.get(RecordingListener);
   });
 
@@ -91,12 +97,12 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
 
   const rows = () =>
     dataSource.query<OutboxRow[]>(
-      `SELECT attempts, processed_at, failed_at, last_error, available_at
+      `SELECT attempts, processed_at, dead_at, last_error, next_attempt_at
          FROM outbox_events ORDER BY created_at`,
     );
 
   const makeDue = () =>
-    dataSource.query(`UPDATE outbox_events SET available_at = now()`);
+    dataSource.query(`UPDATE outbox_events SET next_attempt_at = now()`);
 
   it('stores nothing when the business transaction rolls back', async () => {
     await expect(
@@ -138,7 +144,7 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
     const [failed] = await rows();
     expect(failed).toMatchObject({ attempts: 1, processed_at: null });
     expect(failed.last_error).toContain('listener down');
-    expect(failed.available_at.getTime()).toBeGreaterThan(Date.now());
+    expect(failed.next_attempt_at.getTime()).toBeGreaterThan(Date.now());
     await expect(relay.relayBatch()).resolves.toBe(0);
 
     await makeDue();
@@ -165,7 +171,7 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
     await expect(relay.relayBatch()).resolves.toBe(0);
     const [row] = await rows();
     expect(row.attempts).toBe(OUTBOX_MAX_ATTEMPTS);
-    expect(row.failed_at).toBeInstanceOf(Date);
+    expect(row.dead_at).toBeInstanceOf(Date);
     expect(row.processed_at).toBeNull();
   });
 
@@ -187,9 +193,12 @@ describe('Outbox (Postgres + Nest event emitter)', () => {
         await publisher.publish(manager, TEST_EVENT, { n });
       }
     });
-    const second = new OutboxRelay(dataSource, moduleRef.get(EventEmitter2));
+    const second = new OutboxRelayService(
+      dataSource.getRepository(OutboxEventEntity),
+      moduleRef.get(EventEmitter2),
+    );
 
-    await Promise.all([relay.tick(), second.tick()]);
+    await Promise.all([relay.relayDueEvents(), second.relayDueEvents()]);
 
     const delivered = listener.received
       .map((payload) => payload.n)

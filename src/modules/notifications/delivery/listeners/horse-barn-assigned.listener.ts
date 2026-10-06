@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox-listener.options';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
 import { HORSE_BARN_ASSIGNED_EVENT } from '../../../horses/constants/horse.constants';
 import type { HorseBarnAssignedEvent } from '../../../horses/types/horse.types';
 import { HorseNotificationsService } from '../services/horse-notifications.service';

@@ -1,4 +1,3 @@
-import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -13,6 +12,7 @@ import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.i
 import { AxiosModule } from './common/infrastructure/axios/axios.module';
 import { KeycloakGuard } from './common/guards/keycloak.guard';
 import { KeycloakModule } from './common/infrastructure/keycloak/keycloak.module';
+import { FirebaseModule } from './common/infrastructure/firebase/firebase.module';
 import { RedisModule } from './common/infrastructure/redis/redis.module';
 import { ObjectStorageModule } from './common/infrastructure/storage/object-storage.module';
 import { validateEnvironment } from './config/env.validation';
@@ -52,21 +52,11 @@ import { UsersModule } from './modules/users/users.module';
         uri: config.getOrThrow<string>('MONGO_URI'),
       }),
     }),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.getOrThrow<string>('REDIS_HOST'),
-          port: config.getOrThrow<number>('REDIS_PORT'),
-          username: config.get<string>('REDIS_USERNAME'),
-          password: config.get<string>('REDIS_PASSWORD'),
-        },
-      }),
-    }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     DomainEventsModule,
     RedisModule,
+    FirebaseModule,
     AxiosModule,
     KeycloakModule,
     ObjectStorageModule,
