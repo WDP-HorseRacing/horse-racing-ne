@@ -393,7 +393,7 @@ Quy tắc:
   không tự nuốt lỗi.
 - Relay giao **ít nhất một lần**: cùng một event có thể tới listener nhiều lần.
   Listener phải idempotent, ví dụ unique index trên khóa của event rồi
-  `ON CONFLICT DO NOTHING` (yêu cầu khám tự sinh dùng `measurement_id`, thông báo dùng
+  `ON CONFLICT DO NOTHING` (yêu cầu khám tự sinh dùng `(source, source_ref_id, alert_type)`, thông báo dùng
   `(eventId, recipientId)`).
 - Không dùng event thay cho việc ghi dữ liệu bắt buộc trong transaction.
 

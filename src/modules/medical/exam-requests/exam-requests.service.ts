@@ -360,7 +360,7 @@ export class ExamRequestsService {
           description: describeAlert(event),
           status: ExamRequestStatus.PENDING,
           alertType: event.alert,
-          measurementId: event.measurementId,
+          sourceRefId: event.measurementId,
           version: 1,
         })
         .orIgnore()
