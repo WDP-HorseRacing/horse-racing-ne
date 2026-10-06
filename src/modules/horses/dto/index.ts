@@ -7,3 +7,4 @@ export * from './horse-status.dto';
 export * from './horse-placement.dto';
 export * from './horse-deletion.dto';
 export * from './horse-measure.dto';
+export * from './horse-ownership.dto';

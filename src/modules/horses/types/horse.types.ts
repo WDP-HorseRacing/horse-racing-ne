@@ -151,6 +151,33 @@ export interface HorseGroomReleasedEvent {
 }
 
 /**
+ * Payload của domain event HORSE_OWNERSHIP_TRANSFERRED_EVENT, ghi vào outbox trong transaction chuyển nhượng nội bộ.
+ *
+ * - eventId: sinh mới cho mỗi lần chuyển, dùng để chống gửi trùng thông báo
+ * - fromOwnerId, toOwnerId: chủ cũ và chủ mới
+ * - effectiveDate: ngày hiệu lực (YYYY-MM-DD)
+ */
+export interface HorseOwnershipTransferredEvent {
+  eventId: string;
+  horseId: string;
+  fromOwnerId: string;
+  toOwnerId: string;
+  effectiveDate: string;
+}
+
+/**
+ * Dữ liệu cần để kiểm tra một lần chuyển nhượng nội bộ
+ */
+export interface OwnershipTransferInput {
+  lifecycleStatus: HorseLifecycleStatus;
+  currentOwnerId: string | null;
+  currentOwnerSince: string | null;
+  newOwnerId: string;
+  effectiveDate: string;
+  today: string;
+}
+
+/**
  * Trạng thái vòng đời làm hồ sơ ngựa chỉ được xem (đã chuyển nhượng hoặc đã mất)
  */
 export type ReadOnlyLifecycleStatus =

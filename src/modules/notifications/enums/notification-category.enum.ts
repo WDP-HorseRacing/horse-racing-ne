@@ -10,6 +10,7 @@
  * - EXAM_REQUEST: yêu cầu khám khẩn
  * - CARE_REMINDER: nhắc khám định kỳ, lịch chăm sóc đến hạn
  * - HORSE_LIFECYCLE: vòng đời ngựa thay đổi (ngựa đã mất)
+ * - OWNERSHIP: chủ sở hữu ngựa thay đổi do chuyển nhượng nội bộ
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -21,4 +22,5 @@ export enum NotificationCategory {
   EXAM_REQUEST = 'EXAM_REQUEST',
   CARE_REMINDER = 'CARE_REMINDER',
   HORSE_LIFECYCLE = 'HORSE_LIFECYCLE',
+  OWNERSHIP = 'OWNERSHIP',
 }

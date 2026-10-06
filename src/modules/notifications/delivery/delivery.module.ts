@@ -17,6 +17,7 @@ import type { NotificationChannel } from '../types/notification.types';
 import { GroomAssignmentChangedListener } from './groom-assignment-changed.listener';
 import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
 import { HorseDeceasedListener } from './horse-deceased.listener';
+import { HorseOwnershipTransferredListener } from './horse-ownership-transferred.listener';
 import { HorseGroomReleasedListener } from './horse-groom-released.listener';
 import { HorseMeasurementAlertListener } from './horse-measurement-alert.listener';
 import { HorseNotificationsService } from './horse-notifications.service';
@@ -58,6 +59,7 @@ import { RealtimeChannel } from './realtime.channel';
     HorseBarnAssignedListener,
     HorseGroomReleasedListener,
     HorseDeceasedListener,
+    HorseOwnershipTransferredListener,
     GroomAssignmentChangedListener,
     MedicalEventsListener,
   ],

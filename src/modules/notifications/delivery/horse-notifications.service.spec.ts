@@ -371,3 +371,60 @@ describe('HorseNotificationsService.notifyHorseDeceased', () => {
     expect(notifications.send).not.toHaveBeenCalled();
   });
 });
+
+describe('HorseNotificationsService.notifyOwnershipTransferred', () => {
+  const event = {
+    eventId: 'event-7',
+    horseId: 'horse-1',
+    fromOwnerId: 'owner-a',
+    toOwnerId: 'owner-b',
+    effectiveDate: '2026-06-01',
+  };
+
+  it('tells the new owner with a link to the horse and the old owner without one', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseName.mockResolvedValue('Sao Mai');
+    notifications.send
+      .mockResolvedValueOnce(['owner-b'])
+      .mockResolvedValueOnce(['owner-a']);
+
+    await expect(service.notifyOwnershipTransferred(event)).resolves.toEqual([
+      'owner-b',
+      'owner-a',
+    ]);
+
+    expect(notifications.send).toHaveBeenNthCalledWith(1, {
+      eventId: 'event-7',
+      recipientIds: ['owner-b'],
+      category: NotificationCategory.OWNERSHIP,
+      priority: NotificationPriority.NORMAL,
+      title: 'Bạn đã trở thành chủ sở hữu ngựa Sao Mai',
+      message: 'Hiệu lực từ 01/06/2026',
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
+    });
+    expect(notifications.send).toHaveBeenNthCalledWith(2, {
+      eventId: 'event-7',
+      recipientIds: ['owner-a'],
+      category: NotificationCategory.OWNERSHIP,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Sao Mai đã chuyển sang chủ khác',
+      message:
+        'Hiệu lực từ 01/06/2026. Chi phí y tế trong thời gian bạn sở hữu vẫn được giữ trong báo cáo',
+      resource: null,
+    });
+  });
+
+  it('skips a horse that no longer exists', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseName.mockResolvedValue(null);
+
+    await expect(service.notifyOwnershipTransferred(event)).resolves.toEqual(
+      [],
+    );
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});

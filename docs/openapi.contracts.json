@@ -745,6 +745,93 @@
         ]
       }
     },
+    "/api/v1/horses/{horseId}/ownership-transfers": {
+      "post": {
+        "description": "Chỉ Club Manager, ghi nhận sau khi hai bên đã thỏa thuận. Ngựa phải ACTIVE hoặc RETIRED và đang có chủ (409 nếu không). Chủ mới phải khác chủ hiện tại (400) và là Horse Owner đang hoạt động (400 sai vai trò, 409 không hoạt động). Ngày hiệu lực không ở tương lai, không trước ngày bắt đầu sở hữu của chủ hiện tại (400). Còn bệnh án đang mở trả 409. Sai version trả 409. Không đổi vòng đời, khu, ô, Groom, lớp. Báo cho chủ cũ và chủ mới.",
+        "operationId": "HorseOwnershipsController_transfer",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOwnershipTransferDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Transfer the horse to another owner in the club",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/ownerships": {
+      "get": {
+        "description": "Mới nhất lên trên. Club Manager, Head Trainer, Veterinarian, Groom xem toàn bộ. Horse Owner chỉ thấy các giai đoạn của chính mình trên ngựa mình đang sở hữu.",
+        "operationId": "HorseOwnershipsController_history",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseOwnershipResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the ownership history of a horse",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/barn-preview": {
       "get": {
         "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt.",
@@ -1320,7 +1407,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status": {
       "patch": {
-        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe.",
+        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Ghi nhận đã mất (DECEASED, từ ACTIVE hoặc RETIRED): bắt buộc dateOfDeath (không ở tương lai, không trước ngày sinh), dọn như chuyển nhượng, giữ chủ sở hữu, không đặt lại sức khỏe; ngựa đã mất không đổi được vòng đời (409). Chuyển nhượng hoặc ghi nhận mất khi còn bệnh án đang mở trả 409. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe.",
         "operationId": "HorseStatusesController_updateLifecycle",
         "parameters": [
           {
@@ -7956,6 +8043,103 @@
           "reason"
         ]
       },
+      "CreateOwnershipTransferDto": {
+        "type": "object",
+        "properties": {
+          "newOwnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chủ mới, là tài khoản HORSE_OWNER đang hoạt động"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày hiệu lực trên hợp đồng. Không ở tương lai, không trước ngày bắt đầu sở hữu của chủ hiện tại"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do hoặc số hợp đồng, bắt buộc"
+          },
+          "version": {
+            "type": "number",
+            "minimum": 1,
+            "description": "version của hồ sơ lấy từ lần GET gần nhất. Người khác đã lưu trước thì trả 409, cần GET lại"
+          }
+        },
+        "required": [
+          "newOwnerId",
+          "effectiveDate",
+          "reason",
+          "version"
+        ]
+      },
+      "HorsePersonDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName"
+        ]
+      },
+      "HorseOwnershipResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/HorsePersonDto"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày bắt đầu sở hữu"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Ngày kết thúc: ngày hiệu lực của giai đoạn kế tiếp, hoặc ngày bị bỏ trống chủ; null nếu là giai đoạn hiện tại"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do hoặc số hợp đồng, null với giai đoạn tạo tự động"
+          },
+          "recordedBy": {
+            "nullable": true,
+            "description": "Người ghi nhận, null với dữ liệu chuyển đổi",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorsePersonDto"
+              }
+            ]
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Thời điểm ghi nhận trên hệ thống"
+          }
+        },
+        "required": [
+          "id",
+          "owner",
+          "effectiveDate",
+          "recordedAt"
+        ]
+      },
       "HorseBarnPreviewResponseDto": {
         "type": "object",
         "properties": {
@@ -8467,22 +8651,6 @@
         "required": [
           "name",
           "gender"
-        ]
-      },
-      "HorsePersonDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fullName": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "fullName"
         ]
       },
       "HorseLatestMeasurementDto": {
@@ -11239,7 +11407,8 @@
               "HEALTH_STATUS",
               "EXAM_REQUEST",
               "CARE_REMINDER",
-              "HORSE_LIFECYCLE"
+              "HORSE_LIFECYCLE",
+              "OWNERSHIP"
             ]
           },
           "priority": {

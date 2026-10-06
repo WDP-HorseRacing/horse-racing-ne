@@ -22,6 +22,16 @@ export function clubToday(): string {
 }
 
 /**
+ * Đổi ngày YYYY-MM-DD sang dạng hiển thị dd/mm/yyyy
+ *
+ * @param date Ngày dạng YYYY-MM-DD
+ * @returns Ngày dạng dd/mm/yyyy
+ */
+export function toDisplayDate(date: string): string {
+  return date.split('-').reverse().join('/');
+}
+
+/**
  * Lùi một ngày đi số năm cho trước theo lịch
  *
  * - Ngày 29/02 lùi về năm không nhuận thì thành 28/02

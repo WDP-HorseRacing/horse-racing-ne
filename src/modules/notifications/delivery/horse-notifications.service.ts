@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { toDisplayDate } from '../../../common/utils/club-date';
 import { UserRole } from '../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
@@ -12,6 +13,7 @@ import type {
   HorseBarnAssignedEvent,
   HorseDeceasedEvent,
   HorseGroomReleasedEvent,
+  HorseOwnershipTransferredEvent,
   HorseMeasurementAlertEvent,
 } from '../../horses/types/horse.types';
 import type { GroomAssignmentChangedEvent } from '../../stable/types/stable-events.types';
@@ -219,16 +221,58 @@ export class HorseNotificationsService {
       barn?.headTrainerId ?? null,
       event.groomId,
     ].filter((id): id is string => id !== null);
-    const dateOfDeath = event.dateOfDeath.split('-').reverse().join('/');
     return this.notifications.send({
       eventId: event.eventId,
       recipientIds,
       category: NotificationCategory.HORSE_LIFECYCLE,
       priority: NotificationPriority.HIGH,
       title: `Ngựa ${contact.horseName} đã mất`,
-      message: `Ngày mất ${dateOfDeath}. Nguyên nhân: ${event.reason}`,
+      message: `Ngày mất ${toDisplayDate(event.dateOfDeath)}. Nguyên nhân: ${event.reason}`,
       resource: horseResource(event.horseId),
     });
+  }
+
+  /**
+   * Báo chủ mới và chủ cũ khi ngựa được chuyển nhượng nội bộ.
+   *
+   * - Chủ mới: thông báo trỏ tới hồ sơ ngựa
+   * - Chủ cũ: không còn quyền xem ngựa nên thông báo không trỏ tới đâu (resource null)
+   * - Ghi bằng connection riêng, không nhận EntityManager; idempotent theo event.eventId
+   * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
+   *
+   * @param event Payload của HORSE_OWNERSHIP_TRANSFERRED_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  async notifyOwnershipTransferred(
+    event: HorseOwnershipTransferredEvent,
+  ): Promise<string[]> {
+    const horseName = await this.horseName(event.horseId);
+    if (!horseName) {
+      this.logger.warn(
+        `Bỏ qua thông báo chuyển chủ ${event.eventId}: không tìm thấy ngựa ${event.horseId}`,
+      );
+      return [];
+    }
+    const since = `Hiệu lực từ ${toDisplayDate(event.effectiveDate)}`;
+    const toNewOwner = await this.notifications.send({
+      eventId: event.eventId,
+      recipientIds: [event.toOwnerId],
+      category: NotificationCategory.OWNERSHIP,
+      priority: NotificationPriority.NORMAL,
+      title: `Bạn đã trở thành chủ sở hữu ngựa ${horseName}`,
+      message: since,
+      resource: horseResource(event.horseId),
+    });
+    const toOldOwner = await this.notifications.send({
+      eventId: event.eventId,
+      recipientIds: [event.fromOwnerId],
+      category: NotificationCategory.OWNERSHIP,
+      priority: NotificationPriority.NORMAL,
+      title: `Ngựa ${horseName} đã chuyển sang chủ khác`,
+      message: `${since}. Chi phí y tế trong thời gian bạn sở hữu vẫn được giữ trong báo cáo`,
+      resource: null,
+    });
+    return [...toNewOwner, ...toOldOwner];
   }
 
   /**

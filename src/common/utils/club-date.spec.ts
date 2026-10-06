@@ -1,4 +1,9 @@
-import { clubToday, subtractYears, toClubDate } from './club-date';
+import {
+  clubToday,
+  subtractYears,
+  toClubDate,
+  toDisplayDate,
+} from './club-date';
 
 describe('toClubDate', () => {
   it('converts an instant to the club calendar date', () => {
@@ -8,6 +13,12 @@ describe('toClubDate', () => {
 
   it('accepts an ISO string', () => {
     expect(toClubDate('2026-10-04T17:00:00.000Z')).toBe('2026-10-05');
+  });
+});
+
+describe('toDisplayDate', () => {
+  it('formats a date as dd/mm/yyyy', () => {
+    expect(toDisplayDate('2026-06-01')).toBe('01/06/2026');
   });
 });
 
