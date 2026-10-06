@@ -160,11 +160,11 @@ describe('MedicalVisitsService', () => {
       dataSource as unknown as DataSource,
       {
         findOne: (options: unknown) =>
-          manager.findOne(MedicalRecordEntity, options),
+          manager.findOne(MedicalRecordEntity, options) as unknown,
       } as unknown as Repository<MedicalRecordEntity>,
       {
         findOne: (options: unknown) =>
-          manager.findOne(MedicalCaseEntity, options),
+          manager.findOne(MedicalCaseEntity, options) as unknown,
       } as unknown as Repository<MedicalCaseEntity>,
       access as unknown as MedicalAccessService,
       new TrainingLockWritesService(),
