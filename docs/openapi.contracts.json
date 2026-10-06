@@ -11159,11 +11159,17 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ngựa liên quan; với type HORSE thì bằng id"
           }
         },
         "required": [
           "type",
-          "id"
+          "id",
+          "horseId"
         ]
       },
       "NotificationResponseDto": {

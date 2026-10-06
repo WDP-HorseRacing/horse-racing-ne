@@ -55,7 +55,11 @@ describe('MedicalNotificationsService', () => {
       eventId: 'e1',
       recipientIds: ['vet-1', 'vet-2'],
       priority: NotificationPriority.URGENT,
-      resource: { type: NotificationResourceType.HORSE, id: 'h1' },
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'h1',
+        horseId: 'h1',
+      },
     });
   });
 
@@ -70,7 +74,11 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft()).toMatchObject({
       recipientIds: ['cm-1', 'ht-1'],
       priority: NotificationPriority.HIGH,
-      resource: { type: NotificationResourceType.TRAINING_LOCK, id: 'l1' },
+      resource: {
+        type: NotificationResourceType.TRAINING_LOCK,
+        id: 'l1',
+        horseId: 'h1',
+      },
     });
   });
 
@@ -147,6 +155,7 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft().resource).toEqual({
       type: NotificationResourceType.MEDICAL_CASE,
       id: 'c1',
+      horseId: 'h1',
     });
   });
 
@@ -174,7 +183,11 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft()).toMatchObject({
       recipientIds: ['vet-1', 'vet-2', 'cm-1'],
       priority: NotificationPriority.HIGH,
-      resource: { type: NotificationResourceType.HORSE, id: 'h1' },
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'h1',
+        horseId: 'h1',
+      },
     });
   });
 

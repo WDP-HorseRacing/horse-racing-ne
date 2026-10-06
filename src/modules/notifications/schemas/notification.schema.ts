@@ -14,6 +14,9 @@ export class NotificationResource {
 
   @Prop({ type: String, required: true })
   id!: string;
+
+  @Prop({ type: String, required: true })
+  horseId!: string;
 }
 
 /**

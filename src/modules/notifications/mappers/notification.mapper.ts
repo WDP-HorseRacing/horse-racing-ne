@@ -19,7 +19,7 @@ import type { NotificationCreatedPayload } from '../types/notification.types';
  * @returns Resource loại HORSE
  */
 export function horseResource(horseId: string): NotificationResource {
-  return { type: NotificationResourceType.HORSE, id: horseId };
+  return { type: NotificationResourceType.HORSE, id: horseId, horseId };
 }
 
 /**
@@ -90,7 +90,7 @@ export function toNotificationPage(
  * Dựng tin nhắn push gửi một thông báo tới nhiều thiết bị
  *
  * - notification: tiêu đề và nội dung để hệ điều hành hiển thị khi app chạy nền
- * - data: id, category, priority và resourceType/resourceId (nếu có); mọi giá trị là chuỗi
+ * - data: id, category, priority và resourceType/resourceId/horseId (nếu có); mọi giá trị là chuỗi
  * - Thông báo HIGH, URGENT gửi với ưu tiên cao trên Android và APNs
  *
  * @param notification Thông báo đã lưu
@@ -113,6 +113,7 @@ export function toPushMessage(
         ? {
             resourceType: notification.resource.type,
             resourceId: notification.resource.id,
+            horseId: notification.resource.horseId,
           }
         : {}),
     },
@@ -131,6 +132,10 @@ function toResource(
   notification: NotificationRecord,
 ): NotificationResource | null {
   return notification.resource
-    ? { type: notification.resource.type, id: notification.resource.id }
+    ? {
+        type: notification.resource.type,
+        id: notification.resource.id,
+        horseId: notification.resource.horseId,
+      }
     : null;
 }

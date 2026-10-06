@@ -24,7 +24,11 @@ const draft = {
   priority: NotificationPriority.URGENT,
   title: 'KHẨN',
   message: 'Ngựa sốt',
-  resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
+  resource: {
+    type: NotificationResourceType.HORSE,
+    id: 'horse-1',
+    horseId: 'horse-1',
+  },
 };
 
 type UpsertOperation = {
@@ -58,7 +62,11 @@ describe('NotificationDeliveryService.send', () => {
       priority: NotificationPriority.URGENT,
       title: 'KHẨN',
       message: 'Ngựa sốt',
-      resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
       readAt: null,
     });
   });

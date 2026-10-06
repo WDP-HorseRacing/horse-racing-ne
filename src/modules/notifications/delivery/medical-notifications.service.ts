@@ -98,7 +98,11 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
-      { type: NotificationResourceType.TRAINING_LOCK, id: event.lockId },
+      {
+        type: NotificationResourceType.TRAINING_LOCK,
+        id: event.lockId,
+        horseId: event.horseId,
+      },
       { headTrainer: true, clubManagers: true },
       NotificationCategory.TRAINING_LOCK,
       NotificationPriority.HIGH,
@@ -119,7 +123,11 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
-      { type: NotificationResourceType.TRAINING_LOCK, id: event.lockId },
+      {
+        type: NotificationResourceType.TRAINING_LOCK,
+        id: event.lockId,
+        horseId: event.horseId,
+      },
       { headTrainer: true, clubManagers: true },
       NotificationCategory.TRAINING_LOCK,
       NotificationPriority.NORMAL,
@@ -185,7 +193,11 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
-      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
+      {
+        type: NotificationResourceType.MEDICAL_CASE,
+        id: event.caseId,
+        horseId: event.horseId,
+      },
       { clubManagers: true, owner: true },
       NotificationCategory.MEDICAL_CASE,
       NotificationPriority.NORMAL,
@@ -206,7 +218,11 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
-      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
+      {
+        type: NotificationResourceType.MEDICAL_CASE,
+        id: event.caseId,
+        horseId: event.horseId,
+      },
       { clubManagers: true, owner: true },
       NotificationCategory.MEDICAL_CASE,
       NotificationPriority.NORMAL,
@@ -227,7 +243,11 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
-      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
+      {
+        type: NotificationResourceType.MEDICAL_CASE,
+        id: event.caseId,
+        horseId: event.horseId,
+      },
       { clubManagers: true, owner: true },
       NotificationCategory.MEDICAL_CASE,
       NotificationPriority.NORMAL,
@@ -250,7 +270,11 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event.eventId,
       event.horseId,
-      { type: NotificationResourceType.MEDICAL_CASE, id: event.caseId },
+      {
+        type: NotificationResourceType.MEDICAL_CASE,
+        id: event.caseId,
+        horseId: event.horseId,
+      },
       { clubManagers: true, owner: true },
       NotificationCategory.MEDICAL_CASE,
       NotificationPriority.NORMAL,

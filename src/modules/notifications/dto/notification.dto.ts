@@ -58,6 +58,12 @@ export class NotificationResourceDto {
 
   @ApiProperty({ format: 'uuid' })
   id!: string;
+
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Ngựa liên quan; với type HORSE thì bằng id',
+  })
+  horseId!: string;
 }
 
 /**

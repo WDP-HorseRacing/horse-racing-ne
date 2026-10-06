@@ -46,7 +46,11 @@ describe('NotificationDeliveryService.send (MongoDB)', () => {
     priority: NotificationPriority.URGENT,
     title: 'KHẨN',
     message: 'Ngựa sốt',
-    resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
+    resource: {
+      type: NotificationResourceType.HORSE,
+      id: 'horse-1',
+      horseId: 'horse-1',
+    },
   });
 
   const storedFor = (recipientId: string) =>
@@ -70,7 +74,7 @@ describe('NotificationDeliveryService.send (MongoDB)', () => {
           priority: 'URGENT',
           title: 'KHẨN',
           message: 'Ngựa sốt',
-          resource: { type: 'HORSE', id: 'horse-1' },
+          resource: { type: 'HORSE', id: 'horse-1', horseId: 'horse-1' },
           readAt: null,
         },
       ]);
@@ -96,7 +100,11 @@ describe('NotificationDeliveryService.send (MongoDB)', () => {
       priority: NotificationPriority.URGENT,
       title: 'KHẨN',
       message: 'Ngựa sốt',
-      resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
     });
     const stored = await model.findOne({ recipientId: vet }).lean();
     expect(payload.id).toBe(stored!._id);

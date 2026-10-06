@@ -19,7 +19,11 @@ const deterministicUuid = (key) => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 };
 
-const horseResource = { type: 'HORSE', id: SAO_MAI_HORSE_ID };
+const horseResource = {
+  type: 'HORSE',
+  id: SAO_MAI_HORSE_ID,
+  horseId: SAO_MAI_HORSE_ID,
+};
 const samples = [
   {
     recipients: [USERS.vet, USERS.headTrainer],

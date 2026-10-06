@@ -173,7 +173,11 @@ describe('NotificationInboxService (MongoDB)', () => {
     it('returns the response shape without internal fields', async () => {
       const me = user();
       const created = await stored(me.id, '2026-10-05T00:00:00Z', {
-        resource: { type: 'HORSE', id: 'h1' } as NotificationRecord['resource'],
+        resource: {
+          type: 'HORSE',
+          id: 'h1',
+          horseId: 'h1',
+        } as NotificationRecord['resource'],
       });
 
       const page = await inbox.list(me.actor, query());
@@ -185,7 +189,7 @@ describe('NotificationInboxService (MongoDB)', () => {
           priority: NotificationPriority.NORMAL,
           title: 'T 2026-10-05T00:00:00Z',
           message: 'M',
-          resource: { type: 'HORSE', id: 'h1' },
+          resource: { type: 'HORSE', id: 'h1', horseId: 'h1' },
           readAt: null,
           createdAt: new Date('2026-10-05T00:00:00Z'),
         },

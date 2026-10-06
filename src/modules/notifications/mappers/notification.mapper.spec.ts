@@ -23,7 +23,7 @@ const notification = (
   priority: NotificationPriority.URGENT,
   title: 'KHẨN: Ngựa Winx bị sốt',
   message: 'Thân nhiệt 39.5 °C',
-  resource: { type: NotificationResourceType.HORSE, id: 'h1' },
+  resource: { type: NotificationResourceType.HORSE, id: 'h1', horseId: 'h1' },
   readAt: null,
   createdAt,
   ...overrides,
@@ -34,6 +34,7 @@ describe('horseResource', () => {
     expect(horseResource('h1')).toEqual({
       type: NotificationResourceType.HORSE,
       id: 'h1',
+      horseId: 'h1',
     });
   });
 });
@@ -46,7 +47,11 @@ describe('toNotificationCreatedPayload', () => {
       priority: NotificationPriority.URGENT,
       title: 'KHẨN: Ngựa Winx bị sốt',
       message: 'Thân nhiệt 39.5 °C',
-      resource: { type: NotificationResourceType.HORSE, id: 'h1' },
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'h1',
+        horseId: 'h1',
+      },
       createdAt,
     });
   });
@@ -99,6 +104,7 @@ describe('toPushMessage', () => {
         priority: 'URGENT',
         resourceType: 'HORSE',
         resourceId: 'h1',
+        horseId: 'h1',
       },
       android: { priority: 'high' },
       apns: { headers: { 'apns-priority': '10' } },

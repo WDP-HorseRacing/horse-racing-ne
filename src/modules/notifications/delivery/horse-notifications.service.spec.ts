@@ -85,7 +85,11 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
       title: 'KHẨN: Ngựa Sao Mai bị sốt',
       message:
         'Ngựa Sao Mai có thân nhiệt 39.1 °C, vượt ngưỡng sốt. Cần kiểm tra ngay.',
-      resource: { type: NotificationResourceType.HORSE, id: 'horse-1' },
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
     });
   });
 
