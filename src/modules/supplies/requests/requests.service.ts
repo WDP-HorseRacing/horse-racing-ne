@@ -187,7 +187,7 @@ export class SupplyRequestsService {
       request.requestedBy !== callerId
     ) {
       throw new ForbiddenException(
-        'Chỉ người tạo yêu cầu hoặc Club Manager mới được chỉnh sửa',
+        'Chỉ người tạo yêu cầu hoặc Quản lý câu lạc bộ mới được chỉnh sửa',
       );
     }
   }
