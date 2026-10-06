@@ -52,6 +52,7 @@ export class NotificationDeliveryService {
       }),
     );
 
+    // Gom thành một lần gọi
     const result = await this.notifications.bulkWrite(
       candidates.map((notification) => ({
         updateOne: {
@@ -59,10 +60,12 @@ export class NotificationDeliveryService {
             eventId: notification.eventId,
             recipientId: notification.recipientId,
           },
+          // Nếu đã có thông báo rồi thì bỏ qua, không update gì cả; nếu chưa có thì insert
           update: { $setOnInsert: notification },
           upsert: true,
         },
       })),
+      // Nếu một thao tác lỗi thì mấy hằng khác vẫn chạy được (các thao tác không phụ thuộc nhau)
       { ordered: false },
     );
 
