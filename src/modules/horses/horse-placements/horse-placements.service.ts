@@ -134,73 +134,6 @@ export class HorsePlacementsService {
   }
 
   /**
-   * Chuyển ngựa sang khu mới trong transaction đang chạy, ghi một dòng nhật ký
-   *
-   * - Khóa khu mới và kiểm khu nhận được ngựa, trả ô đang giữ về trống
-   * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách
-   * - Cập nhật khu của ngựa rồi ghi nhật ký; có rút lớp thì nhật ký ghi thêm classesWithdrawn
-   * - Không phát event; nơi gọi phát sau khi commit
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param input Người gọi, ngựa, khu hiện tại (null nếu chưa có khu), khu mới và lý do (bỏ trống khi xếp khu lần đầu)
-   * @returns Promise hoàn tất khi đã đổi khu và ghi nhật ký
-   * @throws NotFoundException Nếu không có khu
-   * @throws ConflictException Nếu khu không hoạt động, chưa có Head Trainer hoặc hết ô trống
-   */
-  private async applyBarnChange(
-    manager: EntityManager,
-    input: {
-      callerId: string;
-      horseId: string;
-      fromBarnId: string | null;
-      toBarnId: string;
-      reason?: string;
-    },
-  ): Promise<void> {
-    const { callerId, horseId, reason } = input;
-    const newBarn = await this.barns.lockAssignableBarn(
-      manager,
-      input.toBarnId,
-    );
-    const released = await this.stalls.closeOpenStallAssignment(
-      manager,
-      horseId,
-    );
-    const keptHeadTrainerId = newBarn.headTrainerId ?? undefined;
-    const withdrawn = await this.training.withdrawHorseFromClasses(
-      manager,
-      horseId,
-      {
-        reason: barnWithdrawReason(reason),
-        at: new Date(),
-        exceptHeadTrainerId: keptHeadTrainerId,
-      },
-    );
-    await manager
-      .getRepository(HorseEntity)
-      .update({ id: horseId }, { barnId: input.toBarnId });
-    await this.auditService.record(manager, {
-      actorId: callerId,
-      action: AuditAction.UPDATE,
-      entityType: AuditEntityType.HORSE,
-      entityId: horseId,
-      before: {
-        barnId: input.fromBarnId,
-        stallCode: released?.stallCode ?? null,
-      },
-      after: {
-        barnId: input.toBarnId,
-        stallCode: null,
-        ...(withdrawn.classIds.length
-          ? { classesWithdrawn: withdrawn.classIds.length }
-          : {}),
-      },
-      reason: reason ?? null,
-      feature: HORSE_AUDIT_FEATURE.BARN_PLACEMENT,
-    });
-  }
-
-  /**
    * Xem trước hệ quả của việc đổi khu. Không ghi gì
    *
    * - Dùng cùng luật rút lớp như assignBarn: mọi lớp không do Head Trainer khu mới phụ trách
@@ -296,6 +229,73 @@ export class HorsePlacementsService {
       },
     );
     return toHorsePlacementResponse(stallAssignment, groom.response);
+  }
+
+  /**
+   * Chuyển ngựa sang khu mới trong transaction đang chạy, ghi một dòng nhật ký
+   *
+   * - Khóa khu mới và kiểm khu nhận được ngựa, trả ô đang giữ về trống
+   * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách
+   * - Cập nhật khu của ngựa rồi ghi nhật ký; có rút lớp thì nhật ký ghi thêm classesWithdrawn
+   * - Không phát event; nơi gọi phát sau khi commit
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param input Người gọi, ngựa, khu hiện tại (null nếu chưa có khu), khu mới và lý do (bỏ trống khi xếp khu lần đầu)
+   * @returns Promise hoàn tất khi đã đổi khu và ghi nhật ký
+   * @throws NotFoundException Nếu không có khu
+   * @throws ConflictException Nếu khu không hoạt động, chưa có Head Trainer hoặc hết ô trống
+   */
+  private async applyBarnChange(
+    manager: EntityManager,
+    input: {
+      callerId: string;
+      horseId: string;
+      fromBarnId: string | null;
+      toBarnId: string;
+      reason?: string;
+    },
+  ): Promise<void> {
+    const { callerId, horseId, reason } = input;
+    const newBarn = await this.barns.lockAssignableBarn(
+      manager,
+      input.toBarnId,
+    );
+    const released = await this.stalls.closeOpenStallAssignment(
+      manager,
+      horseId,
+    );
+    const keptHeadTrainerId = newBarn.headTrainerId ?? undefined;
+    const withdrawn = await this.training.withdrawHorseFromClasses(
+      manager,
+      horseId,
+      {
+        reason: barnWithdrawReason(reason),
+        at: new Date(),
+        exceptHeadTrainerId: keptHeadTrainerId,
+      },
+    );
+    await manager
+      .getRepository(HorseEntity)
+      .update({ id: horseId }, { barnId: input.toBarnId });
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.HORSE,
+      entityId: horseId,
+      before: {
+        barnId: input.fromBarnId,
+        stallCode: released?.stallCode ?? null,
+      },
+      after: {
+        barnId: input.toBarnId,
+        stallCode: null,
+        ...(withdrawn.classIds.length
+          ? { classesWithdrawn: withdrawn.classIds.length }
+          : {}),
+      },
+      reason: reason ?? null,
+      feature: HORSE_AUDIT_FEATURE.BARN_PLACEMENT,
+    });
   }
 
   /**

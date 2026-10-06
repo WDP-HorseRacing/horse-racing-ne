@@ -118,23 +118,6 @@ export class HorseMeasurementsService {
   }
 
   /**
-   * Dựng điều kiện lọc thời điểm đo theo from, to
-   *
-   * @param from Thời điểm bắt đầu, bỏ trống nếu không chặn đầu
-   * @param to Thời điểm kết thúc, bỏ trống nếu không chặn cuối
-   * @returns Điều kiện TypeORM cho cột measuredAt, undefined nếu bỏ trống cả from và to
-   */
-  private measuredAtRange(
-    from?: Date,
-    to?: Date,
-  ): FindOperator<Date> | undefined {
-    if (from && to) return Between(from, to);
-    if (from) return MoreThanOrEqual(from);
-    if (to) return LessThanOrEqual(to);
-    return undefined;
-  }
-
-  /**
    * Ghi một lần đo chỉ số cơ thể của con ngựa, gồm một hoặc nhiều loại chỉ số.
    *
    * - Veterinarian ghi cho mọi ngựa; Head Trainer chỉ ngựa thuộc khu mình; Groom chỉ ngựa được phân công. Ai được ghi thì ghi được cả bốn loại
@@ -341,6 +324,23 @@ export class HorseMeasurementsService {
         },
       });
     });
+  }
+
+  /**
+   * Dựng điều kiện lọc thời điểm đo theo from, to
+   *
+   * @param from Thời điểm bắt đầu, bỏ trống nếu không chặn đầu
+   * @param to Thời điểm kết thúc, bỏ trống nếu không chặn cuối
+   * @returns Điều kiện TypeORM cho cột measuredAt, undefined nếu bỏ trống cả from và to
+   */
+  private measuredAtRange(
+    from?: Date,
+    to?: Date,
+  ): FindOperator<Date> | undefined {
+    if (from && to) return Between(from, to);
+    if (from) return MoreThanOrEqual(from);
+    if (to) return LessThanOrEqual(to);
+    return undefined;
   }
 
   /**

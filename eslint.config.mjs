@@ -34,6 +34,18 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_' },
       ],
+      '@typescript-eslint/member-ordering': [
+        'warn',
+        {
+          default: [
+            'field',
+            'constructor',
+            'public-method',
+            'protected-method',
+            'private-method',
+          ],
+        },
+      ],
     },
   },
 );

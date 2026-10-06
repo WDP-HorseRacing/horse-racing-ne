@@ -59,6 +59,22 @@ import type {
 } from '../types/horse.types';
 
 /**
+ * Câu chặn thao tác ghi trên hồ sơ chỉ được xem, theo trạng thái
+ */
+const READ_ONLY_LIFECYCLE_MESSAGES: Record<ReadOnlyLifecycleStatus, string> = {
+  [HorseLifecycleStatus.TRANSFERRED]: TRANSFERRED_HORSE_READ_ONLY_MESSAGE,
+  [HorseLifecycleStatus.DECEASED]: DECEASED_HORSE_READ_ONLY_MESSAGE,
+};
+
+/**
+ * Lý do không đổi được khu khi hồ sơ chỉ được xem, theo trạng thái
+ */
+const BARN_CHANGE_READ_ONLY_REASONS: Record<ReadOnlyLifecycleStatus, string> = {
+  [HorseLifecycleStatus.TRANSFERRED]: 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc',
+  [HorseLifecycleStatus.DECEASED]: 'Ngựa đã mất, hồ sơ chỉ đọc',
+};
+
+/**
  * Kiểm tra con ngựa có nằm trong phạm vi xem của người gọi không
  *
  * - Phạm vi ALL: mọi con ngựa
@@ -322,22 +338,6 @@ export function assertDateOfDeath(
     throw fieldBadRequest('dateOfDeath', 'Ngày mất không được trước ngày sinh');
   }
 }
-
-/**
- * Câu chặn thao tác ghi trên hồ sơ chỉ được xem, theo trạng thái
- */
-const READ_ONLY_LIFECYCLE_MESSAGES: Record<ReadOnlyLifecycleStatus, string> = {
-  [HorseLifecycleStatus.TRANSFERRED]: TRANSFERRED_HORSE_READ_ONLY_MESSAGE,
-  [HorseLifecycleStatus.DECEASED]: DECEASED_HORSE_READ_ONLY_MESSAGE,
-};
-
-/**
- * Lý do không đổi được khu khi hồ sơ chỉ được xem, theo trạng thái
- */
-const BARN_CHANGE_READ_ONLY_REASONS: Record<ReadOnlyLifecycleStatus, string> = {
-  [HorseLifecycleStatus.TRANSFERRED]: 'Ngựa đã chuyển nhượng, hồ sơ chỉ đọc',
-  [HorseLifecycleStatus.DECEASED]: 'Ngựa đã mất, hồ sơ chỉ đọc',
-};
 
 /**
  * Kiểm tra vòng đời làm hồ sơ chỉ được xem (trạng thái thuộc READ_ONLY_LIFECYCLE_STATUSES)

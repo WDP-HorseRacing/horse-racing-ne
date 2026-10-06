@@ -485,79 +485,6 @@ export class StallsService {
   }
 
   /**
-   * Lock ô chuồng đích và kiểm ô thuộc đúng khu của ngựa, đang trống
-   *
-   * - Lock ô (pessimistic_write) trước khi kiểm
-   * - Ô không còn trống: khu còn ô trống khác thì báo ô vừa bị chiếm, khu hết ô trống thì đề nghị Quản lý câu lạc bộ đổi khu
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param stallId UUID của ô chuồng đích
-   * @param barnId UUID khu của ngựa
-   * @returns Promise trả về ô chuồng đã lock, chắc chắn đang trống
-   * @throws NotFoundException Nếu không có ô chuồng
-   * @throws BadRequestException Nếu ô không thuộc khu của ngựa
-   * @throws ConflictException Nếu ô không còn trống
-   */
-  private async lockFreeStallInBarn(
-    manager: EntityManager,
-    stallId: string,
-    barnId: string,
-  ): Promise<StallEntity> {
-    const stall = await manager.findOne(StallEntity, {
-      where: { id: stallId },
-      lock: { mode: 'pessimistic_write' },
-    });
-    if (!stall) throw new NotFoundException('Không tìm thấy ô chuồng');
-    if (stall.barnId !== barnId) {
-      throw new BadRequestException('Ô chuồng không thuộc khu chuồng của ngựa');
-    }
-    // Kiểm tra ô có đang được phân công không
-    const hasOpenAssignment = await this.hasOpenStallAssignment(
-      manager,
-      stall.id,
-    );
-    // Nếu ô không còn trống thì báo ô vừa bị chiếm, nếu khu hết ô trống thì đề nghị Club Manager đổi khu
-    if (!isStallFree(stall.status, hasOpenAssignment)) {
-      const capacity = await this.access.countBarnCapacity(manager, barnId);
-      throw new ConflictException(
-        capacity.freeStallCount > 0
-          ? STALL_TAKEN_MESSAGE
-          : BARN_OUT_OF_STALLS_MESSAGE,
-      );
-    }
-    return stall;
-  }
-
-  /**
-   * Đóng phân công ô cũ của ngựa khi chuyển sang ô khác, trả ô cũ về trống và ghi nhật ký UPDATE
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param callerId UUID của người gọi (users.id)
-   * @param horseId UUID của ngựa
-   * @param current Phân công ô đang mở của ngựa (đã lock)
-   * @param now Thời điểm chuyển ô
-   * @returns Promise hoàn tất khi đã đóng phân công và ghi nhật ký
-   */
-  private async closePreviousAssignmentWithAudit(
-    manager: EntityManager,
-    callerId: string,
-    horseId: string,
-    current: StallAssignmentEntity,
-    now: Date,
-  ): Promise<void> {
-    await this.closeAssignmentAndFreeStall(manager, current, now);
-    await this.auditService.record(manager, {
-      actorId: callerId,
-      action: AuditAction.UPDATE,
-      entityType: AuditEntityType.STALL_ASSIGNMENT,
-      feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
-      entityId: current.id,
-      before: { horseId, stallId: current.stallId, endAt: null },
-      after: { horseId, stallId: current.stallId, endAt: now },
-    });
-  }
-
-  /**
    * Đóng phân công ô đang mở của một con ngựa và trả ô về trống. Dùng cho module horses khi đổi khu, chuyển nhượng hoặc xóa hồ sơ.
    *
    * - Chạy trong transaction của nơi gọi, không tự mở transaction và không ghi nhật ký (nơi gọi tự ghi cho thao tác chính).
@@ -653,6 +580,79 @@ export class StallsService {
         throw new NotFoundException('Ngựa chưa được xếp ô chuồng');
       }
       return this.closeAssignmentWithAudit(manager, caller.id, assignment);
+    });
+  }
+
+  /**
+   * Lock ô chuồng đích và kiểm ô thuộc đúng khu của ngựa, đang trống
+   *
+   * - Lock ô (pessimistic_write) trước khi kiểm
+   * - Ô không còn trống: khu còn ô trống khác thì báo ô vừa bị chiếm, khu hết ô trống thì đề nghị Quản lý câu lạc bộ đổi khu
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param stallId UUID của ô chuồng đích
+   * @param barnId UUID khu của ngựa
+   * @returns Promise trả về ô chuồng đã lock, chắc chắn đang trống
+   * @throws NotFoundException Nếu không có ô chuồng
+   * @throws BadRequestException Nếu ô không thuộc khu của ngựa
+   * @throws ConflictException Nếu ô không còn trống
+   */
+  private async lockFreeStallInBarn(
+    manager: EntityManager,
+    stallId: string,
+    barnId: string,
+  ): Promise<StallEntity> {
+    const stall = await manager.findOne(StallEntity, {
+      where: { id: stallId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!stall) throw new NotFoundException('Không tìm thấy ô chuồng');
+    if (stall.barnId !== barnId) {
+      throw new BadRequestException('Ô chuồng không thuộc khu chuồng của ngựa');
+    }
+    // Kiểm tra ô có đang được phân công không
+    const hasOpenAssignment = await this.hasOpenStallAssignment(
+      manager,
+      stall.id,
+    );
+    // Nếu ô không còn trống thì báo ô vừa bị chiếm, nếu khu hết ô trống thì đề nghị Club Manager đổi khu
+    if (!isStallFree(stall.status, hasOpenAssignment)) {
+      const capacity = await this.access.countBarnCapacity(manager, barnId);
+      throw new ConflictException(
+        capacity.freeStallCount > 0
+          ? STALL_TAKEN_MESSAGE
+          : BARN_OUT_OF_STALLS_MESSAGE,
+      );
+    }
+    return stall;
+  }
+
+  /**
+   * Đóng phân công ô cũ của ngựa khi chuyển sang ô khác, trả ô cũ về trống và ghi nhật ký UPDATE
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @param current Phân công ô đang mở của ngựa (đã lock)
+   * @param now Thời điểm chuyển ô
+   * @returns Promise hoàn tất khi đã đóng phân công và ghi nhật ký
+   */
+  private async closePreviousAssignmentWithAudit(
+    manager: EntityManager,
+    callerId: string,
+    horseId: string,
+    current: StallAssignmentEntity,
+    now: Date,
+  ): Promise<void> {
+    await this.closeAssignmentAndFreeStall(manager, current, now);
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.STALL_ASSIGNMENT,
+      feature: STABLE_AUDIT_FEATURE.STALL_AND_GROOM,
+      entityId: current.id,
+      before: { horseId, stallId: current.stallId, endAt: null },
+      after: { horseId, stallId: current.stallId, endAt: now },
     });
   }
 

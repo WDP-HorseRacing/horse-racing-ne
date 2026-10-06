@@ -55,6 +55,89 @@ export class HorseProfilesRepository {
   }
 
   /**
+   * Lấy khu (theo horses.barn_id) và ô đang mở của từng con ngựa, kể cả hồ sơ đã xóa.
+   *
+   * - Khu hoặc ô đã bị xóa mềm thì coi như không có
+   * - Ngựa nào cũng có đúng một dòng, thiếu khu hoặc ô thì cột tương ứng là null
+   *
+   * @param horseIds UUID các con ngựa
+   * @returns Promise trả về vị trí của từng con ngựa
+   */
+  async locationsByHorseIds(horseIds: string[]): Promise<HorseLocationRow[]> {
+    if (horseIds.length === 0) return [];
+    return this.horses
+      .createQueryBuilder('horse')
+      .withDeleted()
+      .leftJoin('horse.barn', 'barn', 'barn.deletedAt IS NULL')
+      .leftJoin(
+        StallAssignmentEntity,
+        'assignment',
+        'assignment.horseId = horse.id AND assignment.endAt IS NULL',
+      )
+      .leftJoin('assignment.stall', 'stall', 'stall.deletedAt IS NULL')
+      .select('horse.id', 'horseId')
+      .addSelect('barn.id', 'barnId')
+      .addSelect('barn.name', 'barnName')
+      .addSelect('stall.id', 'stallId')
+      .addSelect('stall.code', 'stallCode')
+      .where('horse.id IN (:...horseIds)', { horseIds })
+      .getRawMany<HorseLocationRow>();
+  }
+
+  /**
+   * Lấy tổ tiên của ngựa tới số đời cho trước, bỏ tổ tiên đã xóa hồ sơ
+   *
+   * @param horseId UUID của ngựa
+   * @param depth Số đời tối đa cần lấy
+   * @returns Promise trả về các dòng tổ tiên, xếp theo đời
+   */
+  findPedigreeAncestors(
+    horseId: string,
+    depth: number,
+  ): Promise<PedigreeAncestorRow[]> {
+    return this.dataSource.query(
+      `
+        WITH RECURSIVE pedigree (id, child_id, parent_role, generation, path) AS (
+          SELECT $1::uuid, NULL::uuid, NULL::text, 0, ARRAY[$1::uuid]
+
+          UNION ALL
+
+          SELECT parent.id,
+                 child.id,
+                 CASE WHEN child.sire_id = parent.id THEN 'SIRE' ELSE 'DAM' END,
+                 pedigree.generation + 1,
+                 pedigree.path || parent.id
+          FROM pedigree
+          JOIN horses child ON child.id = pedigree.id
+          JOIN horses parent ON parent.id IN (child.sire_id, child.dam_id)
+          WHERE pedigree.generation < $2::integer
+            AND parent.deleted_at IS NULL
+            AND NOT parent.id = ANY(pedigree.path)
+        )
+        SELECT ancestor.id,
+               ancestor.name,
+               ancestor.gender,
+               ancestor.breed,
+               ancestor.color,
+               to_char(ancestor.date_of_birth, 'YYYY-MM-DD') AS "dateOfBirth",
+               ancestor.race_aptitude AS "raceAptitude",
+               ancestor.owner_id AS "ownerId",
+               pedigree.generation,
+               pedigree.parent_role AS "parentRole",
+               pedigree.child_id AS "childId"
+        FROM pedigree
+        JOIN horses ancestor ON ancestor.id = pedigree.id
+        WHERE pedigree.generation > 0
+        ORDER BY pedigree.generation,
+                 (pedigree.parent_role = 'SIRE') DESC,
+                 ancestor.name,
+                 pedigree.child_id
+      `,
+      [horseId, depth],
+    );
+  }
+
+  /**
    * Thêm các điều kiện lọc của danh sách ngựa vào query builder
    *
    * - myBarns: ngựa thuộc khu người gọi làm Head Trainer; myHorses: ngựa người gọi đang là Groom phụ trách
@@ -153,89 +236,6 @@ export class HorseProfilesRepository {
     } else {
       qb.orderBy(VIETNAMESE_NAME_ORDER, query.sortOrder);
     }
-  }
-
-  /**
-   * Lấy khu (theo horses.barn_id) và ô đang mở của từng con ngựa, kể cả hồ sơ đã xóa.
-   *
-   * - Khu hoặc ô đã bị xóa mềm thì coi như không có
-   * - Ngựa nào cũng có đúng một dòng, thiếu khu hoặc ô thì cột tương ứng là null
-   *
-   * @param horseIds UUID các con ngựa
-   * @returns Promise trả về vị trí của từng con ngựa
-   */
-  async locationsByHorseIds(horseIds: string[]): Promise<HorseLocationRow[]> {
-    if (horseIds.length === 0) return [];
-    return this.horses
-      .createQueryBuilder('horse')
-      .withDeleted()
-      .leftJoin('horse.barn', 'barn', 'barn.deletedAt IS NULL')
-      .leftJoin(
-        StallAssignmentEntity,
-        'assignment',
-        'assignment.horseId = horse.id AND assignment.endAt IS NULL',
-      )
-      .leftJoin('assignment.stall', 'stall', 'stall.deletedAt IS NULL')
-      .select('horse.id', 'horseId')
-      .addSelect('barn.id', 'barnId')
-      .addSelect('barn.name', 'barnName')
-      .addSelect('stall.id', 'stallId')
-      .addSelect('stall.code', 'stallCode')
-      .where('horse.id IN (:...horseIds)', { horseIds })
-      .getRawMany<HorseLocationRow>();
-  }
-
-  /**
-   * Lấy tổ tiên của ngựa tới số đời cho trước, bỏ tổ tiên đã xóa hồ sơ
-   *
-   * @param horseId UUID của ngựa
-   * @param depth Số đời tối đa cần lấy
-   * @returns Promise trả về các dòng tổ tiên, xếp theo đời
-   */
-  findPedigreeAncestors(
-    horseId: string,
-    depth: number,
-  ): Promise<PedigreeAncestorRow[]> {
-    return this.dataSource.query(
-      `
-        WITH RECURSIVE pedigree (id, child_id, parent_role, generation, path) AS (
-          SELECT $1::uuid, NULL::uuid, NULL::text, 0, ARRAY[$1::uuid]
-
-          UNION ALL
-
-          SELECT parent.id,
-                 child.id,
-                 CASE WHEN child.sire_id = parent.id THEN 'SIRE' ELSE 'DAM' END,
-                 pedigree.generation + 1,
-                 pedigree.path || parent.id
-          FROM pedigree
-          JOIN horses child ON child.id = pedigree.id
-          JOIN horses parent ON parent.id IN (child.sire_id, child.dam_id)
-          WHERE pedigree.generation < $2::integer
-            AND parent.deleted_at IS NULL
-            AND NOT parent.id = ANY(pedigree.path)
-        )
-        SELECT ancestor.id,
-               ancestor.name,
-               ancestor.gender,
-               ancestor.breed,
-               ancestor.color,
-               to_char(ancestor.date_of_birth, 'YYYY-MM-DD') AS "dateOfBirth",
-               ancestor.race_aptitude AS "raceAptitude",
-               ancestor.owner_id AS "ownerId",
-               pedigree.generation,
-               pedigree.parent_role AS "parentRole",
-               pedigree.child_id AS "childId"
-        FROM pedigree
-        JOIN horses ancestor ON ancestor.id = pedigree.id
-        WHERE pedigree.generation > 0
-        ORDER BY pedigree.generation,
-                 (pedigree.parent_role = 'SIRE') DESC,
-                 ancestor.name,
-                 pedigree.child_id
-      `,
-      [horseId, depth],
-    );
   }
 }
 

@@ -296,6 +296,51 @@ export class CareSchedulesService {
   }
 
   /**
+   * Bác sĩ hủy lịch chăm sóc, bắt buộc lý do
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param scheduleId UUID của lịch chăm sóc
+   * @param body Lý do hủy
+   * @returns Promise trả về lịch sau khi hủy
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
+   * @throws ConflictException Nếu lịch đã hoàn tất hoặc đã hủy, hoặc ngựa đã chuyển nhượng
+   */
+  async cancel(
+    actor: Actor,
+    scheduleId: string,
+    body: CancelCareScheduleDto,
+  ): Promise<CareScheduleResponseDto> {
+    const { horseId } = await this.findSchedule(scheduleId);
+    const cancelled = await this.dataSource.transaction(async (manager) => {
+      const { caller } = await this.access.lockHorseForWrite(
+        manager,
+        actor,
+        horseId,
+      );
+      const schedule = await this.lockSchedule(manager, scheduleId);
+      assertCareScheduleOpen(schedule.status);
+      const changes = {
+        status: CareScheduleStatus.CANCELLED,
+        cancelReason: body.reason,
+      };
+      await manager.update(CareScheduleEntity, { id: scheduleId }, changes);
+      await this.audit.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.CARE_SCHEDULE,
+        entityId: scheduleId,
+        before: { status: schedule.status },
+        after: { status: CareScheduleStatus.CANCELLED },
+        reason: body.reason,
+        feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
+      });
+      return { ...schedule, ...changes };
+    });
+    return toCareScheduleResponse(cancelled);
+  }
+
+  /**
    * Tạo lịch lần tới cùng loại sau khi hoàn tất, giữ người được giao nếu vẫn hợp lệ
    *
    * @param manager EntityManager của transaction đang chạy
@@ -342,51 +387,6 @@ export class CareSchedulesService {
       feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
     });
     return next;
-  }
-
-  /**
-   * Bác sĩ hủy lịch chăm sóc, bắt buộc lý do
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param scheduleId UUID của lịch chăm sóc
-   * @param body Lý do hủy
-   * @returns Promise trả về lịch sau khi hủy
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
-   * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
-   * @throws ConflictException Nếu lịch đã hoàn tất hoặc đã hủy, hoặc ngựa đã chuyển nhượng
-   */
-  async cancel(
-    actor: Actor,
-    scheduleId: string,
-    body: CancelCareScheduleDto,
-  ): Promise<CareScheduleResponseDto> {
-    const { horseId } = await this.findSchedule(scheduleId);
-    const cancelled = await this.dataSource.transaction(async (manager) => {
-      const { caller } = await this.access.lockHorseForWrite(
-        manager,
-        actor,
-        horseId,
-      );
-      const schedule = await this.lockSchedule(manager, scheduleId);
-      assertCareScheduleOpen(schedule.status);
-      const changes = {
-        status: CareScheduleStatus.CANCELLED,
-        cancelReason: body.reason,
-      };
-      await manager.update(CareScheduleEntity, { id: scheduleId }, changes);
-      await this.audit.record(manager, {
-        actorId: caller.id,
-        action: AuditAction.UPDATE,
-        entityType: AuditEntityType.CARE_SCHEDULE,
-        entityId: scheduleId,
-        before: { status: schedule.status },
-        after: { status: CareScheduleStatus.CANCELLED },
-        reason: body.reason,
-        feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
-      });
-      return { ...schedule, ...changes };
-    });
-    return toCareScheduleResponse(cancelled);
   }
 
   /**

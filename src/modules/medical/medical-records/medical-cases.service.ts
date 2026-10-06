@@ -68,6 +68,14 @@ import { MedicalRecordsService } from './medical-records.service';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 /**
+ * Chủ cần lọc chi phí theo giai đoạn sở hữu, kèm các giai đoạn sở hữu của con ngựa
+ */
+interface CostOwner {
+  ownerId: string;
+  periods: OwnershipPeriod[];
+}
+
+/**
  * Kết luận ghi vào lệnh khóa khi bác sĩ chọn gỡ khóa lúc đóng bệnh án.
  */
 const CLOSE_CASE_LOCK_RELEASE_CONCLUSION = 'Gỡ khi đóng bệnh án';
@@ -515,14 +523,6 @@ export class MedicalCasesService {
       .getRawOne<{ totalCost: string }>();
     return Number(row?.totalCost ?? 0);
   }
-}
-
-/**
- * Chủ cần lọc chi phí theo giai đoạn sở hữu, kèm các giai đoạn sở hữu của con ngựa
- */
-interface CostOwner {
-  ownerId: string;
-  periods: OwnershipPeriod[];
 }
 
 /**

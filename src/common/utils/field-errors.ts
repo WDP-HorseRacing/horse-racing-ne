@@ -23,24 +23,6 @@ export function fieldBadRequest(
 }
 
 /**
- * Đổi các constraint của một lỗi class-validator thành lỗi theo ô
- *
- * @param error Lỗi class-validator của một ô
- * @param parentPath Đường dẫn của object cha, rỗng ở cấp ngoài cùng
- * @returns Mỗi constraint một lỗi, câu lỗi có tiền tố đường dẫn cha như ValidationPipe mặc định
- */
-function constraintErrors(
-  error: ValidationError,
-  parentPath: string,
-): FieldError[] {
-  const field = parentPath ? `${parentPath}.${error.property}` : error.property;
-  return Object.values(error.constraints ?? {}).map((constraint) => ({
-    field,
-    message: parentPath ? `${parentPath}.${constraint}` : constraint,
-  }));
-}
-
-/**
  * Trải phẳng lỗi class-validator thành danh sách lỗi theo ô
  *
  * - Ô lồng nhau: `field` nối bằng dấu chấm (vd `items.0.code`)
@@ -80,4 +62,22 @@ export function validationExceptionFactory(
     message: fieldErrors.map((error) => error.message),
     errors: fieldErrors,
   });
+}
+
+/**
+ * Đổi các constraint của một lỗi class-validator thành lỗi theo ô
+ *
+ * @param error Lỗi class-validator của một ô
+ * @param parentPath Đường dẫn của object cha, rỗng ở cấp ngoài cùng
+ * @returns Mỗi constraint một lỗi, câu lỗi có tiền tố đường dẫn cha như ValidationPipe mặc định
+ */
+function constraintErrors(
+  error: ValidationError,
+  parentPath: string,
+): FieldError[] {
+  const field = parentPath ? `${parentPath}.${error.property}` : error.property;
+  return Object.values(error.constraints ?? {}).map((constraint) => ({
+    field,
+    message: parentPath ? `${parentPath}.${constraint}` : constraint,
+  }));
 }

@@ -516,3 +516,26 @@ Quy tắc:
   `runtimeAdapters: { os }` khi chạy trong Jest.
 - Mongo chưa có migration: index tạo khi app khởi động (`autoIndex`). Đổi TTL
   hay granularity dùng lệnh `collMod`.
+
+## 15. Thứ tự khai báo trong một file
+
+Cấp file (policy, mapper, util, constants, phần ngoài class của service):
+
+1. `import`
+2. `type`/`interface` chỉ dùng trong file
+3. Hằng không export
+4. Hằng export
+5. Hàm export, gom theo nhóm nghiệp vụ, theo luồng tạo → sửa → đổi trạng thái → xóa
+6. Hàm phụ không export, theo thứ tự lần đầu được gọi
+
+Trong class (service, repository, listener):
+
+1. Field
+2. `constructor`
+3. Method `public`, theo thứ tự route trong controller
+4. Method `protected`
+5. Method `private`, theo thứ tự lần đầu được gọi
+
+ESLint `@typescript-eslint/member-ordering` (mức warn) canh thứ tự nhóm trong
+class. Thứ tự bên trong mỗi nhóm và thứ tự cấp file kiểm khi review. Sắp lại
+file cũ thì để riêng một commit, chỉ di chuyển code, không sửa nội dung.
