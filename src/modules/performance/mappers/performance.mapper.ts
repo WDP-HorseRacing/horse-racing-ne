@@ -4,45 +4,56 @@ import {
   PerformanceMetricPointDto,
   SessionPerformanceSummaryDto,
 } from '../dto/horse-performance.response.dto';
+import { averageDecimal, roundDecimal } from '../../../common/utils/decimal';
+import { SPEED_SCALE } from '../constants/performance.constants';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
-import type {
-  PerformanceMetricPoint,
-  SessionPerformanceRow,
-} from '../types/performance.types';
+import type { PerformanceMetric } from '../schemas/performance-metric.schema';
+import type { SessionMetricAggregate } from '../types/performance.types';
 
 /**
- * Chuyển dòng tổng hợp chỉ số của một buổi tập sang DTO.
+ * Chuyển chỉ số gom theo một lượt tập sang DTO
  *
- * @param row Dòng tổng hợp của một buổi tập
+ * - Nhịp tim trung bình làm tròn tới số nguyên; tốc độ trung bình và cao nhất làm tròn SPEED_SCALE chữ số thập phân
+ * - Làm tròn nửa xa số 0
+ *
+ * @param aggregate Chỉ số gom của một lượt tập
  * @returns SessionPerformanceSummaryDto - Chỉ số tổng hợp của buổi tập
  */
 export function toSessionPerformanceSummary(
-  row: SessionPerformanceRow,
+  aggregate: SessionMetricAggregate,
 ): SessionPerformanceSummaryDto {
   return {
-    sessionId: row.sessionId,
-    scheduledAt: row.scheduledAt,
-    avgHeartRateBpm: row.avgHeartRateBpm,
-    maxHeartRateBpm: row.maxHeartRateBpm,
-    avgSpeedMps: row.avgSpeedMps,
-    maxSpeedMps: row.maxSpeedMps,
-    alertCount: row.alertCount,
+    sessionId: aggregate.sessionId,
+    scheduledAt: aggregate.scheduledAt,
+    avgHeartRateBpm: Number(
+      averageDecimal(String(aggregate.sumHeartRateBpm), aggregate.count, 0),
+    ),
+    maxHeartRateBpm: aggregate.maxHeartRateBpm,
+    avgSpeedMps: averageDecimal(
+      aggregate.sumSpeedMps,
+      aggregate.count,
+      SPEED_SCALE,
+    ),
+    maxSpeedMps: roundDecimal(aggregate.maxSpeedMps, SPEED_SCALE),
+    alertCount: aggregate.alertCount,
   };
 }
 
 /**
- * Chuyển một điểm đo thô sang DTO.
+ * Chuyển một điểm đo thô sang DTO
  *
- * @param metric Điểm đo
+ * - Tốc độ định dạng đúng SPEED_SCALE chữ số thập phân
+ *
+ * @param metric Điểm đo đã lưu
  * @returns PerformanceMetricPointDto - Điểm đo
  */
 export function toMetricPoint(
-  metric: PerformanceMetricPoint,
+  metric: PerformanceMetric,
 ): PerformanceMetricPointDto {
   return {
     recordedAt: metric.recordedAt,
     heartRateBpm: metric.heartRateBpm,
-    speedMps: metric.speedMps,
+    speedMps: roundDecimal(metric.speedMps.toString(), SPEED_SCALE),
     alertLevel: metric.alertLevel,
   };
 }
@@ -73,14 +84,14 @@ export function toPerformanceEvaluation(
  */
 export function toHorsePerformanceResponse(
   horseId: string,
-  metrics: PerformanceMetricPoint[],
+  metrics: PerformanceMetric[],
   evaluations: PerformanceEvaluationEntity[],
 ): HorsePerformanceResponseDto {
   const recentMetrics = metrics.map(toMetricPoint);
   return {
     horseId,
     sessionsTracked: new Set(
-      metrics.map((metric) => metric.sessionParticipantId),
+      metrics.map((metric) => metric.meta.sessionParticipantId),
     ).size,
     latestMetric: recentMetrics[0] ?? null,
     recentMetrics,

@@ -17,12 +17,14 @@ describe('PerformanceSummariesService', () => {
     repository = {
       sessionSummaries: jest.fn().mockResolvedValue([
         {
+          sessionParticipantId: 'participant-1',
           sessionId: 'session-1',
           scheduledAt: new Date('2026-09-18T06:00:00Z'),
-          avgHeartRateBpm: 142,
+          count: 2,
+          sumHeartRateBpm: 284,
           maxHeartRateBpm: 198,
-          avgSpeedMps: '11.250',
-          maxSpeedMps: '16.800',
+          sumSpeedMps: '22.5',
+          maxSpeedMps: '16.8',
           alertCount: 2,
         },
       ]),

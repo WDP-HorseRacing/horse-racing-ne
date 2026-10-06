@@ -114,7 +114,7 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
   ) =>
     metrics.create({
       recordedAt: new Date(recordedAt),
-      series: {
+      meta: {
         horseId: participant.horseId,
         sessionParticipantId: participant.participantId,
         sessionId: participant.sessionId,
@@ -125,7 +125,7 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
       alertLevel,
     });
 
-  it('stores metrics in a time-series collection keyed by recordedAt and series', async () => {
+  it('stores metrics in a time-series collection keyed by recordedAt and meta', async () => {
     const [info] = await mongo.connection
       .db!.listCollections({ name: 'performance_metrics' })
       .toArray();
@@ -135,7 +135,7 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
       options: {
         timeseries: {
           timeField: 'recordedAt',
-          metaField: 'series',
+          metaField: 'meta',
           granularity: 'seconds',
         },
       },

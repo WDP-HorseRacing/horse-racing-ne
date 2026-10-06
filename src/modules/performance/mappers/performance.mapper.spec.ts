@@ -1,26 +1,28 @@
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
-import type { PerformanceMetricPoint } from '../types/performance.types';
+import { Types } from 'mongoose';
+import type { PerformanceMetric } from '../schemas/performance-metric.schema';
 import {
   toHorsePerformanceResponse,
   toSessionPerformanceSummary,
 } from './performance.mapper';
 
 describe('toSessionPerformanceSummary', () => {
-  it('keeps only the summary fields of a session row', () => {
-    const row = {
+  it('averages and rounds half away from zero, keeping only the summary fields', () => {
+    const aggregate = {
+      sessionParticipantId: 'participant-1',
       sessionId: 'session-1',
       scheduledAt: new Date('2026-09-18T06:00:00Z'),
-      avgHeartRateBpm: 150,
+      count: 2,
+      sumHeartRateBpm: 301,
       maxHeartRateBpm: 180,
-      avgSpeedMps: '12.583',
-      maxSpeedMps: '15.250',
+      sumSpeedMps: '25.165',
+      maxSpeedMps: '15.25',
       alertCount: 1,
-      horseId: 'h1',
     };
-    expect(toSessionPerformanceSummary(row)).toEqual({
+    expect(toSessionPerformanceSummary(aggregate)).toEqual({
       sessionId: 'session-1',
-      scheduledAt: row.scheduledAt,
-      avgHeartRateBpm: 150,
+      scheduledAt: aggregate.scheduledAt,
+      avgHeartRateBpm: 151,
       maxHeartRateBpm: 180,
       avgSpeedMps: '12.583',
       maxSpeedMps: '15.250',
@@ -34,11 +36,16 @@ describe('toHorsePerformanceResponse', () => {
     const point = (
       sessionParticipantId: string,
       heartRateBpm: number,
-    ): PerformanceMetricPoint => ({
-      sessionParticipantId,
+    ): PerformanceMetric => ({
       recordedAt: new Date('2026-09-18T06:00:00Z'),
+      meta: {
+        horseId: 'h1',
+        sessionParticipantId,
+        sessionId: `session-of-${sessionParticipantId}`,
+        sourceId: 'sensor-1',
+      },
       heartRateBpm,
-      speedMps: '12.000',
+      speedMps: Types.Decimal128.fromString('12'),
       alertLevel: 'NORMAL',
     });
     const evaluation = Object.assign(new PerformanceEvaluationEntity(), {

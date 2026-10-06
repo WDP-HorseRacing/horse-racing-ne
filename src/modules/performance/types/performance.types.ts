@@ -1,24 +1,17 @@
 /**
- * Một dòng kết quả của câu query tổng hợp chỉ số theo từng buổi tập.
+ * Chỉ số gom theo một lượt tập của con ngựa, chưa làm tròn.
+ *
+ * - sumSpeedMps, maxSpeedMps là số thập phân dạng chuỗi
+ * - scheduledAt là giờ bắt đầu dự kiến của buổi tập
  */
-export interface SessionPerformanceRow {
-  sessionParticipantId?: string;
+export interface SessionMetricAggregate {
+  sessionParticipantId: string;
   sessionId: string;
   scheduledAt: Date;
-  avgHeartRateBpm: number;
+  count: number;
+  sumHeartRateBpm: number;
   maxHeartRateBpm: number;
-  avgSpeedMps: string;
+  sumSpeedMps: string;
   maxSpeedMps: string;
   alertCount: number;
-}
-
-/**
- * Một điểm đo thô của con ngựa, tốc độ đã định dạng 3 chữ số thập phân.
- */
-export interface PerformanceMetricPoint {
-  sessionParticipantId: string;
-  recordedAt: Date;
-  heartRateBpm: number;
-  speedMps: string;
-  alertLevel: string;
 }

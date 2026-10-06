@@ -1,6 +1,6 @@
-import { roundedAverage, toFixedDecimal } from './decimal';
+import { averageDecimal, roundDecimal } from './decimal';
 
-describe('roundedAverage', () => {
+describe('averageDecimal', () => {
   it.each([
     ['201', 2, 0, '101'],
     ['200', 2, 0, '100'],
@@ -14,22 +14,22 @@ describe('roundedAverage', () => {
   ])(
     'averages %s over %d to %d decimals as %s',
     (sum, count, scale, expected) => {
-      expect(roundedAverage(sum, count, scale)).toBe(expected);
+      expect(averageDecimal(sum, count, scale)).toBe(expected);
     },
   );
 
   it('rejects a value that is not a number', () => {
-    expect(() => roundedAverage('abc', 1, 3)).toThrow();
+    expect(() => averageDecimal('abc', 1, 3)).toThrow();
   });
 });
 
-describe('toFixedDecimal', () => {
+describe('roundDecimal', () => {
   it.each([
     ['12.25', '12.250'],
     ['20', '20.000'],
     ['0.0004', '0.000'],
     ['0.0005', '0.001'],
   ])('formats %s as %s', (value, expected) => {
-    expect(toFixedDecimal(value, 3)).toBe(expected);
+    expect(roundDecimal(value, 3)).toBe(expected);
   });
 });
