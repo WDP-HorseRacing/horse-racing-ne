@@ -159,7 +159,7 @@ describe('BarnsService', () => {
       });
       await expect(lock()).rejects.toThrow(
         new ConflictException(
-          'Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được',
+          'Khu chuồng chưa có Huấn luyện viên trưởng phụ trách, không xếp ngựa vào được',
         ),
       );
     });
@@ -179,7 +179,7 @@ describe('BarnsService', () => {
       manager.exists.mockResolvedValue(false);
       await expect(lock()).rejects.toThrow(
         new ConflictException(
-          'Khu chưa có Head Trainer đang hoạt động phụ trách',
+          'Khu chưa có Huấn luyện viên trưởng đang hoạt động phụ trách',
         ),
       );
       expect(manager.query).not.toHaveBeenCalled();
@@ -423,7 +423,9 @@ describe('BarnsService', () => {
         await expect(
           service.update(actor, 'b1', { headTrainerId: 'u-9' }),
         ).rejects.toThrow(
-          new BadRequestException('Head Trainer phụ trách không hợp lệ'),
+          new BadRequestException(
+            'Huấn luyện viên trưởng phụ trách không hợp lệ',
+          ),
         );
         expect(manager.save).not.toHaveBeenCalled();
       });
@@ -434,7 +436,7 @@ describe('BarnsService', () => {
           service.update(actor, 'b1', { headTrainerId: 'u-9' }),
         ).rejects.toThrow(
           new ConflictException(
-            'Head Trainer phụ trách không ở trạng thái hoạt động',
+            'Huấn luyện viên trưởng phụ trách không ở trạng thái hoạt động',
           ),
         );
         expect(manager.save).not.toHaveBeenCalled();
@@ -472,7 +474,7 @@ describe('BarnsService', () => {
             service.update(actor, 'b1', { headTrainerId: null }),
           ).rejects.toThrow(
             new ConflictException(
-              'Khu chuồng còn ngựa, không gỡ Head Trainer phụ trách được',
+              'Khu chuồng còn ngựa, không gỡ Huấn luyện viên trưởng phụ trách được',
             ),
           );
           expect(manager.save).not.toHaveBeenCalled();

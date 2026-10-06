@@ -385,7 +385,7 @@ describe('UsersService', () => {
         service.setStatus(actor, owner.id, UserStatus.LOCKED),
       ).rejects.toThrow(
         new ConflictException(
-          'Người này đang phụ trách khu chuồng, cần giao khu cho Head Trainer khác trước khi khóa tài khoản',
+          'Người này đang phụ trách khu chuồng, cần giao khu cho Huấn luyện viên trưởng khác trước khi khóa tài khoản',
         ),
       );
       expect(userRepository.update).not.toHaveBeenCalled();

@@ -318,7 +318,7 @@ export class UsersService {
       (await this.hasActiveBarn(manager, user.id))
     ) {
       throw new ConflictException(
-        `Người này đang phụ trách khu chuồng, cần giao khu cho Head Trainer khác trước khi ${label}`,
+        `Người này đang phụ trách khu chuồng, cần giao khu cho Huấn luyện viên trưởng khác trước khi ${label}`,
       );
     }
   }

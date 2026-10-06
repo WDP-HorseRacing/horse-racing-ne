@@ -296,7 +296,7 @@ export class BarnsService {
     });
     if (!isHeadTrainerActive) {
       throw new ConflictException(
-        'Khu chưa có Head Trainer đang hoạt động phụ trách',
+        'Khu chưa có Huấn luyện viên trưởng đang hoạt động phụ trách',
       );
     }
     assertBarnHasRoomForHorse(

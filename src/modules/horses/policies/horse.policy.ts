@@ -108,10 +108,10 @@ export function assertParentProfiles(
     sire.gender !== HorseGender.MALE &&
     sire.gender !== HorseGender.GELDING
   ) {
-    throw new BadRequestException('Sire phải là ngựa đực');
+    throw new BadRequestException('Ngựa cha phải là ngựa đực');
   }
   if (dam && dam.gender !== HorseGender.FEMALE) {
-    throw new BadRequestException('Dam phải là ngựa cái');
+    throw new BadRequestException('Ngựa mẹ phải là ngựa cái');
   }
   for (const parent of [sire, dam]) {
     if (
@@ -868,11 +868,12 @@ export function barnChangeBlockedReason(
  * Tạo câu tóm tắt hệ quả khi đổi khu
  *
  * - Chỉ nhắc mục thật sự có dữ liệu; Groom luôn được giữ nguyên
- * - Ví dụ: "Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 2 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa."
+ * - Có ô phải trả hoặc lớp phải rút: "Nếu chuyển Winx sang Khu C sẽ trả ô A-01 và rút khỏi 2 lớp. Groom Lan giữ nguyên. Ngựa vào danh sách Chờ xếp ô của Huấn luyện viên trưởng Hoa."
+ * - Không có: "Nếu chuyển Winx sang Khu C, ngựa vào danh sách Chờ xếp ô của khu mới."
  *
  * @param horseName Tên ngựa
  * @param barnName Tên khu đích
- * @param headTrainerName Tên Head Trainer khu đích, null nếu chưa có
+ * @param headTrainerName Tên Huấn luyện viên trưởng khu đích, null nếu chưa có
  * @param impact Ô, Groom và số lớp sẽ bị ảnh hưởng
  * @returns Câu tóm tắt tiếng Việt
  */
@@ -888,12 +889,12 @@ export function barnChangeSummary(
     actions.push(`rút khỏi ${impact.classesToWithdraw} lớp`);
   }
   const head = `Nếu chuyển ${horseName} sang ${barnName}`;
-  const effect = actions.length > 0 ? ` sẽ ${actions.join(', ')}` : '';
+  const pending = headTrainerName
+    ? `danh sách Chờ xếp ô của Huấn luyện viên trưởng ${headTrainerName}`
+    : 'danh sách Chờ xếp ô của khu mới';
   const groom = impact.groomName
-    ? `; Groom ${impact.groomName} giữ nguyên`
+    ? ` Groom ${impact.groomName} giữ nguyên.`
     : '';
-  const trainer = headTrainerName
-    ? `; ngựa vào Chờ xếp ô của Head Trainer ${headTrainerName}`
-    : '; ngựa vào Chờ xếp ô của khu mới';
-  return `${head}${effect}${groom}${trainer}.`;
+  if (actions.length === 0) return `${head}, ngựa vào ${pending}.${groom}`;
+  return `${head} sẽ ${actions.join(' và ')}.${groom} Ngựa vào ${pending}.`;
 }

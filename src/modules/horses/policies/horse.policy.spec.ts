@@ -578,7 +578,7 @@ describe('horse.policy', () => {
           { ...stallion, gender: HorseGender.FEMALE },
           null,
         ),
-      ).toThrow(new BadRequestException('Sire phải là ngựa đực'));
+      ).toThrow(new BadRequestException('Ngựa cha phải là ngựa đực'));
     });
 
     it('rejects a non-female dam', () => {
@@ -587,7 +587,7 @@ describe('horse.policy', () => {
           ...mare,
           gender: HorseGender.MALE,
         }),
-      ).toThrow(new BadRequestException('Dam phải là ngựa cái'));
+      ).toThrow(new BadRequestException('Ngựa mẹ phải là ngựa cái'));
     });
 
     it('rejects a parent born on or after the child', () => {
@@ -955,7 +955,35 @@ describe('horse.policy', () => {
           groomName: null,
           classesToWithdraw: 0,
         }),
-      ).toBe('Nếu chuyển Winx sang Khu C; ngựa vào Chờ xếp ô của khu mới.');
+      ).toBe(
+        'Nếu chuyển Winx sang Khu C, ngựa vào danh sách Chờ xếp ô của khu mới.',
+      );
+    });
+
+    it('splits the consequences into separate sentences', () => {
+      expect(
+        barnChangeSummary('Winx', 'Khu C', 'Hoa', {
+          fromBarnName: 'Khu A',
+          stallCode: 'A-01',
+          groomName: 'Lan',
+          classesToWithdraw: 2,
+        }),
+      ).toBe(
+        'Nếu chuyển Winx sang Khu C sẽ trả ô A-01 và rút khỏi 2 lớp. Groom Lan giữ nguyên. Ngựa vào danh sách Chờ xếp ô của Huấn luyện viên trưởng Hoa.',
+      );
+    });
+
+    it('keeps the groom sentence when nothing else changes', () => {
+      expect(
+        barnChangeSummary('Winx', 'Khu C', 'Hoa', {
+          fromBarnName: 'Khu A',
+          stallCode: null,
+          groomName: 'Lan',
+          classesToWithdraw: 0,
+        }),
+      ).toBe(
+        'Nếu chuyển Winx sang Khu C, ngựa vào danh sách Chờ xếp ô của Huấn luyện viên trưởng Hoa. Groom Lan giữ nguyên.',
+      );
     });
   });
 

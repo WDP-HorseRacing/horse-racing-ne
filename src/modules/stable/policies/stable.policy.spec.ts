@@ -313,7 +313,7 @@ describe('stable.policy', () => {
     it('rejects a barn without a head trainer with 409', () => {
       expect(() => assertBarnHasHeadTrainer({ headTrainerId: null })).toThrow(
         new ConflictException(
-          'Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được',
+          'Khu chuồng chưa có Huấn luyện viên trưởng phụ trách, không xếp ngựa vào được',
         ),
       );
     });

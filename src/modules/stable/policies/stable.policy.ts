@@ -175,7 +175,7 @@ export function assertBarnHasHeadTrainer<
 >(barn: T): asserts barn is T & { headTrainerId: string } {
   if (barn.headTrainerId === null) {
     throw new ConflictException(
-      'Khu chuồng chưa có Head Trainer phụ trách, không xếp ngựa vào được',
+      'Khu chuồng chưa có Huấn luyện viên trưởng phụ trách, không xếp ngựa vào được',
     );
   }
 }
@@ -303,11 +303,13 @@ export function assertAssignableHeadTrainer<
   T extends Pick<UserEntity, 'role' | 'status'>,
 >(user: T | null): asserts user is T {
   if (user === null || user.role !== UserRole.HEAD_TRAINER) {
-    throw new BadRequestException('Head Trainer phụ trách không hợp lệ');
+    throw new BadRequestException(
+      'Huấn luyện viên trưởng phụ trách không hợp lệ',
+    );
   }
   if (user.status !== UserStatus.ACTIVE) {
     throw new ConflictException(
-      'Head Trainer phụ trách không ở trạng thái hoạt động',
+      'Huấn luyện viên trưởng phụ trách không ở trạng thái hoạt động',
     );
   }
 }
@@ -339,7 +341,7 @@ export function assertBarnChangeKeepsHorses(change: BarnChange): void {
     change.currentHeadTrainerId !== null
   ) {
     throw new ConflictException(
-      'Khu chuồng còn ngựa, không gỡ Head Trainer phụ trách được',
+      'Khu chuồng còn ngựa, không gỡ Huấn luyện viên trưởng phụ trách được',
     );
   }
 }

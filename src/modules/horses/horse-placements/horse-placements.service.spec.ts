@@ -444,7 +444,7 @@ describe('HorsePlacementsService', () => {
         classesWithdrawn: 2,
         groomKept: 'Lan',
         summary:
-          'Nếu chuyển Winx sang Khu C sẽ trả ô A-01, rút khỏi 2 lớp; Groom Lan giữ nguyên; ngựa vào Chờ xếp ô của Head Trainer Hoa.',
+          'Nếu chuyển Winx sang Khu C sẽ trả ô A-01 và rút khỏi 2 lớp. Groom Lan giữ nguyên. Ngựa vào danh sách Chờ xếp ô của Huấn luyện viên trưởng Hoa.',
       });
       expect(calls).not.toContain('transaction:start');
       expectNoWrite();
