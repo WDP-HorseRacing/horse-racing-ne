@@ -26,7 +26,7 @@ export class TrainingSessionsController {
     return this.sessions.listSessions(actor, classId);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('classes/:classId/sessions')
   @ApiCreatedResponse({ type: TrainingSessionResponseDto })
   create(
@@ -43,7 +43,7 @@ export class TrainingSessionsController {
     return this.sessions.getSessionById(actor, sessionId);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('training-sessions/:sessionId')
   @ApiOkResponse({ type: TrainingSessionResponseDto })
   update(
@@ -54,14 +54,14 @@ export class TrainingSessionsController {
     return this.sessions.updateSession(actor, sessionId, body);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('training-sessions/:sessionId/publish')
   @ApiOkResponse({ type: TrainingSessionResponseDto })
   publish(@CurrentUser() actor: Actor, @Param('sessionId', ParseUUIDPipe) sessionId: string) {
     return this.sessions.publishSession(actor, sessionId);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('training-sessions/:sessionId/cancel')
   @ApiOkResponse({ type: TrainingSessionResponseDto })
   cancel(

@@ -19,6 +19,9 @@ import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { BarnEntity } from '../../stable/entities/barn.entity';
+import { TrainingClassEntity } from '../../training/entities/training-class.entity';
+import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
+import { TrainingClassStatus } from '../../training/enums/training-class-status.enum';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
   CreateUserDto,
@@ -290,7 +293,7 @@ export class UsersService {
    *
    * - Horse Owner: không còn là chủ của ngựa nào đang ở câu lạc bộ
    * - Groom: không còn phụ trách ngựa nào (groom assignment chưa kết thúc)
-   * - Head Trainer: không còn phụ trách khu chuồng nào
+   * - Head Trainer: không còn phụ trách khu chuồng nào, không còn giáo án và lớp huấn luyện nháp hoặc đang chạy
    *
    * @param manager EntityManager của transaction đang chạy, user đã được khóa bằng manager này
    * @param user User sắp đổi vai trò hoặc sắp bị khóa
@@ -326,6 +329,14 @@ export class UsersService {
     ) {
       throw new ConflictException(
         `Người này đang phụ trách khu chuồng, cần giao khu cho Huấn luyện viên trưởng khác trước khi ${label}`,
+      );
+    }
+    if (
+      user.role === UserRole.HEAD_TRAINER &&
+      (await this.hasTrainingResponsibilities(manager, user.id))
+    ) {
+      throw new ConflictException(
+        `Người này còn giáo án hoặc lớp huấn luyện chưa kết thúc, cần bàn giao cho Huấn luyện viên trưởng khác trước khi ${label}`,
       );
     }
   }
@@ -565,6 +576,28 @@ export class UsersService {
     return manager
       .getRepository(BarnEntity)
       .existsBy({ headTrainerId: userId });
+  }
+
+  /**
+   * Kiểm tra Head Trainer còn giáo án hoặc lớp huấn luyện nháp/đang chạy nào không
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param userId UUID của Head Trainer
+   * @returns Promise trả về true nếu còn giáo án, hoặc còn lớp DRAFT/ACTIVE do người này phụ trách
+   */
+  private async hasTrainingResponsibilities(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<boolean> {
+    return (
+      (await manager
+        .getRepository(TrainingPlanEntity)
+        .existsBy({ headTrainerId: userId })) ||
+      (await manager.getRepository(TrainingClassEntity).existsBy({
+        headTrainerId: userId,
+        status: In([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE]),
+      }))
+    );
   }
 
   private async lockActiveManagers(manager: EntityManager): Promise<void> {

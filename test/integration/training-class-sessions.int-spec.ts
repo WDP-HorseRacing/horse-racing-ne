@@ -26,7 +26,6 @@ describe('Training class queries over its sessions (Postgres)', () => {
   let access: TrainingAccessService;
   let classes: TrainingClassesService;
   let enrollments: TrainingClassEnrollmentsService;
-  let manager: Actor;
 
   beforeAll(async () => {
     db = await startTestPostgres();
@@ -53,7 +52,6 @@ describe('Training class queries over its sessions (Postgres)', () => {
 
   beforeEach(async () => {
     await truncateAllTables(dataSource);
-    manager = await actorOf(UserRole.CLUB_MANAGER);
   });
 
   async function actorOf(role: UserRole, id?: string): Promise<Actor> {
@@ -66,12 +64,22 @@ describe('Training class queries over its sessions (Postgres)', () => {
   }
 
   async function seedClass(code: string) {
-    const trainer = await seed.user(UserRole.HEAD_TRAINER);
-    return seed.trainingClass(trainer, {
+    const trainerId = await seed.user(UserRole.HEAD_TRAINER);
+    const barnId = await seed.barn(`Khu ${code}`);
+    await dataSource.query(
+      'UPDATE barns SET head_trainer_id = $1 WHERE id = $2',
+      [trainerId, barnId],
+    );
+    const created = await seed.trainingClass(trainerId, {
       code,
       startDate: '2026-01-01',
       endDate: '2099-12-31',
     });
+    return {
+      ...created,
+      barnId,
+      trainer: await actorOf(UserRole.HEAD_TRAINER, trainerId),
+    };
   }
 
   async function seedSession(
@@ -126,7 +134,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
     const sessionB = await seedSession(b, 'SCHEDULED');
     const participantB = await seedParticipant(b, sessionB, 'PLANNED');
 
-    await classes.updateStatus(manager, a.classId, {
+    await classes.updateStatus(a.trainer, a.classId, {
       status: TrainingClassStatus.CANCELLED,
       cancelReason: 'Thôi',
     });
@@ -147,7 +155,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
     await seedParticipant(a, session, 'ONGOING');
 
     await expect(
-      classes.updateStatus(manager, a.classId, {
+      classes.updateStatus(a.trainer, a.classId, {
         status: TrainingClassStatus.CANCELLED,
         cancelReason: 'Thôi',
       }),
@@ -162,13 +170,13 @@ describe('Training class queries over its sessions (Postgres)', () => {
     await seedSession(b, 'DRAFT');
 
     await expect(
-      classes.updateStatus(manager, a.classId, {
+      classes.updateStatus(a.trainer, a.classId, {
         status: TrainingClassStatus.COMPLETED,
       }),
     ).resolves.toMatchObject({ status: TrainingClassStatus.COMPLETED });
 
     await expect(
-      classes.updateStatus(manager, b.classId, {
+      classes.updateStatus(b.trainer, b.classId, {
         status: TrainingClassStatus.COMPLETED,
       }),
     ).rejects.toThrow(
@@ -182,9 +190,9 @@ describe('Training class queries over its sessions (Postgres)', () => {
     const futureA = await seedSession(a, 'SCHEDULED');
     await seedSession(a, 'DRAFT');
     await seedSession(b, 'SCHEDULED');
-    const horse = await seed.horse('Winx');
+    const horse = await seed.horse('Winx', { barnId: a.barnId });
 
-    await enrollments.create(manager, a.classId, {
+    await enrollments.create(a.trainer, a.classId, {
       horseId: horse,
       enrolledAt: '2026-06-01T00:00:00Z',
     });
@@ -223,13 +231,13 @@ describe('Training class queries over its sessions (Postgres)', () => {
     await seedSession(a, 'DRAFT', '2026-12-01T01:00:00Z');
 
     await expect(
-      classes.update(manager, b.classId, { startDate: '2026-03-02' }),
+      classes.update(b.trainer, b.classId, { startDate: '2026-03-02' }),
     ).resolves.toMatchObject({
       startDate: '2026-03-02',
       endDate: '2026-03-29',
     });
     await expect(
-      classes.update(manager, a.classId, { startDate: '2026-03-02' }),
+      classes.update(a.trainer, a.classId, { startDate: '2026-03-02' }),
     ).rejects.toThrow(
       new ConflictException(
         'Khoảng ngày mới không bao phủ các session hiện có',

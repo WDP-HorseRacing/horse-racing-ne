@@ -11,9 +11,11 @@ describe('training access service', () => {
     {} as HorseAccessService,
   );
 
-  it('allows a club manager to manage any class', () => {
+  it('forbids a club manager from managing a class', () => {
     const actor: Actor = { sub: 'manager', roles: [UserRole.CLUB_MANAGER] };
-    expect(() => service.assertCanManageClass(actor, 'manager', null)).not.toThrow();
+    expect(() =>
+      service.assertCanManageClass(actor, 'manager', 'trainer'),
+    ).toThrow(ForbiddenException);
   });
 
   it('restricts a head trainer to their assigned class', () => {

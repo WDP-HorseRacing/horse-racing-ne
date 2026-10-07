@@ -34,7 +34,7 @@ export class SessionParticipantsController {
     return this.participants.list(actor, sessionId);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('session-participants/:id/groom')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   assignGroom(
@@ -45,14 +45,14 @@ export class SessionParticipantsController {
     return this.participants.assignGroom(actor, id, body);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/check-in')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   checkIn(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.participants.checkIn(actor, id);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/absent')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   absent(
@@ -63,21 +63,21 @@ export class SessionParticipantsController {
     return this.participants.absent(actor, id, body);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/ready')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   ready(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.participants.ready(actor, id);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/start')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   start(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.participants.start(actor, id);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/complete')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   complete(

@@ -10,6 +10,9 @@ import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { BarnEntity } from '../../stable/entities/barn.entity';
+import { TrainingClassEntity } from '../../training/entities/training-class.entity';
+import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
+import { TrainingClassStatus } from '../../training/enums/training-class-status.enum';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { UserEntity } from '../entities/user.entity';
 import { UserRole, UserStatus } from '../user.enums';
@@ -45,6 +48,8 @@ describe('UsersService', () => {
   let horseRepository: { existsBy: jest.Mock };
   let groomRepository: { existsBy: jest.Mock };
   let barnRepository: { existsBy: jest.Mock };
+  let planRepository: { existsBy: jest.Mock };
+  let classRepository: { existsBy: jest.Mock };
   let userRepository: {
     findOne: jest.Mock;
     find: jest.Mock;
@@ -74,6 +79,8 @@ describe('UsersService', () => {
     horseRepository = { existsBy: exists('horse') };
     groomRepository = { existsBy: exists('groom') };
     barnRepository = { existsBy: exists('barn') };
+    planRepository = { existsBy: exists('plan') };
+    classRepository = { existsBy: exists('class') };
     userRepository = {
       findOne: jest.fn(() => {
         events.push('lock:user');
@@ -93,6 +100,8 @@ describe('UsersService', () => {
       if (entity === HorseEntity) return horseRepository;
       if (entity === GroomAssignmentEntity) return groomRepository;
       if (entity === BarnEntity) return barnRepository;
+      if (entity === TrainingPlanEntity) return planRepository;
+      if (entity === TrainingClassEntity) return classRepository;
       if (entity === UserEntity) return userRepository;
       throw new Error('Unexpected repository');
     });
@@ -375,6 +384,44 @@ describe('UsersService', () => {
       );
       expect(userRepository.update).not.toHaveBeenCalled();
       expect(keycloakUsers.setUserEnabled).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when locking a head trainer who still owns a training plan', async () => {
+      target = { ...owner, role: UserRole.HEAD_TRAINER };
+      planRepository.existsBy.mockResolvedValue(true);
+
+      await expect(
+        service.setStatus(actor, owner.id, UserStatus.LOCKED),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Người này còn giáo án hoặc lớp huấn luyện chưa kết thúc, cần bàn giao cho Huấn luyện viên trưởng khác trước khi khóa tài khoản',
+        ),
+      );
+      expect(planRepository.existsBy).toHaveBeenCalledWith({
+        headTrainerId: owner.id,
+      });
+      expect(keycloakUsers.setUserEnabled).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when locking a head trainer who still runs a draft or active class', async () => {
+      target = { ...owner, role: UserRole.HEAD_TRAINER };
+      classRepository.existsBy.mockResolvedValue(true);
+
+      await expect(
+        service.setStatus(actor, owner.id, UserStatus.LOCKED),
+      ).rejects.toThrow(ConflictException);
+      expect(classRepository.existsBy).toHaveBeenCalledWith({
+        headTrainerId: owner.id,
+        status: In([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE]),
+      });
+    });
+
+    it('locks a head trainer with no barn, plan or open class', async () => {
+      target = { ...owner, role: UserRole.HEAD_TRAINER };
+
+      await service.setStatus(actor, owner.id, UserStatus.LOCKED);
+
+      expect(keycloakUsers.setUserEnabled).toHaveBeenCalled();
     });
 
     it('returns 409 when locking a head trainer who still runs a barn', async () => {

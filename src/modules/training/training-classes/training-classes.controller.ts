@@ -69,7 +69,7 @@ export class TrainingClassesController {
   }
 
   // create class
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('classes')
   @ApiCreatedResponse({ type: TrainingClassResponseDto })
   create(@CurrentUser() actor: Actor, @Body() body: CreateTrainingClassDto) {
@@ -87,7 +87,7 @@ export class TrainingClassesController {
   }
 
   // update class
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('classes/:classId')
   @ApiOkResponse({ type: TrainingClassResponseDto })
   update(
@@ -99,7 +99,7 @@ export class TrainingClassesController {
   }
 
   // update class status
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('classes/:classId/status')
   @ApiOkResponse({ type: TrainingClassResponseDto })
   updateStatus(
@@ -121,7 +121,7 @@ export class TrainingClassesController {
   }
 
   // create enrollment
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('classes/:classId/enrollments')
   @ApiCreatedResponse({ type: HorseEnrollmentResponseDto })
   createEnrollment(
@@ -133,7 +133,7 @@ export class TrainingClassesController {
   }
 
   // leave enrollment
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('enrollments/:id/leave')
   @ApiOkResponse({ type: HorseEnrollmentResponseDto })
   leaveEnrollment(

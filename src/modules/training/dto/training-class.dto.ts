@@ -58,11 +58,6 @@ export class CreateTrainingClassDto {
   @Min(1)
   maxHorses?: number;
 
-  @ApiPropertyOptional({ format: 'uuid' })
-  @IsOptional()
-  @IsUUID()
-  headTrainerId?: string;
-
   @ApiProperty({
     format: 'uuid',
     description: 'Giáo án của Head Trainer phụ trách lớp',
@@ -93,11 +88,7 @@ export class CreateTrainingClassDto {
 }
 
 export class UpdateTrainingClassDto extends PartialType(
-  OmitType(CreateTrainingClassDto, [
-    'planId',
-    'headTrainerId',
-    'sessions',
-  ] as const),
+  OmitType(CreateTrainingClassDto, ['planId', 'sessions'] as const),
 ) {}
 
 export class UpdateTrainingClassStatusDto {

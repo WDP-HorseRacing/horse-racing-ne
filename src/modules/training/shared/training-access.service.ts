@@ -445,7 +445,6 @@ export class TrainingAccessService {
     callerId: string,
     headTrainerId: string | null,
   ): void {
-    if (actor.roles.includes(UserRole.CLUB_MANAGER)) return;
     if (!actor.roles.includes(UserRole.HEAD_TRAINER)) {
       throw new ForbiddenException('Không có quyền quản lý training class');
     }
@@ -465,7 +464,6 @@ export class TrainingAccessService {
     callerId: string,
     participant: SessionParticipantEntity,
   ): Promise<void> {
-    if (actor.roles.includes(UserRole.CLUB_MANAGER)) return;
     if (actor.roles.includes(UserRole.GROOM)) {
       if (participant.assignedGroomId !== callerId) {
         throw new ForbiddenException('Bạn không được assign participant này');

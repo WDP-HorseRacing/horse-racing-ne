@@ -40,13 +40,16 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
 
   beforeEach(() => truncateAllTables(dataSource));
 
-  const managerActor = async (): Promise<Actor> => {
-    const id = await seed.user(UserRole.CLUB_MANAGER);
+  let groomId: string;
+
+  const groomActor = async (): Promise<Actor> => {
+    const id = await seed.user(UserRole.GROOM);
+    groomId = id;
     const [row] = await dataSource.query<Array<{ keycloak_id: string }>>(
       'SELECT keycloak_id FROM users WHERE id = $1',
       [id],
     );
-    return { sub: row.keycloak_id, roles: [UserRole.CLUB_MANAGER] };
+    return { sub: row.keycloak_id, roles: [UserRole.GROOM] };
   };
 
   const seedParticipant = async (
@@ -77,9 +80,16 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     );
     const participantId = randomUUID();
     await dataSource.query(
-      `INSERT INTO session_participants (id, version, session_id, horse_id, horse_enrollment_id, status)
-       VALUES ($1, 1, $2, $3, $4, $5)`,
-      [participantId, sessionId, horse, enrollmentId, participantStatus],
+      `INSERT INTO session_participants (id, version, session_id, horse_id, horse_enrollment_id, status, assigned_groom_id)
+       VALUES ($1, 1, $2, $3, $4, $5, $6)`,
+      [
+        participantId,
+        sessionId,
+        horse,
+        enrollmentId,
+        participantStatus,
+        groomId,
+      ],
     );
     if (options.locked) {
       const vet = await seed.user(UserRole.VETERINARIAN);
@@ -112,7 +122,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
 
   describe('start', () => {
     it('keeps CANCELLED_BY_LOCK after rejecting a locked horse with 409', async () => {
-      const actor = await managerActor();
+      const actor = await groomActor();
       const { participantId, sessionId } = await seedParticipant('READY', {
         locked: true,
       });
@@ -128,7 +138,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     });
 
     it('keeps INELIGIBLE after rejecting an UNDER_OBSERVATION horse in a HEAVY session', async () => {
-      const actor = await managerActor();
+      const actor = await groomActor();
       const { participantId } = await seedParticipant('READY', {
         health: HorseHealthStatus.UNDER_OBSERVATION,
         intensity: TrainingIntensity.HEAVY,
@@ -145,7 +155,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     });
 
     it('keeps INELIGIBLE after rejecting an injured horse with 409', async () => {
-      const actor = await managerActor();
+      const actor = await groomActor();
       const { participantId } = await seedParticipant('READY', {
         health: HorseHealthStatus.INJURED,
       });
@@ -160,7 +170,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
 
   describe('checkIn', () => {
     it('keeps CANCELLED_BY_LOCK after rejecting a locked horse with 409', async () => {
-      const actor = await managerActor();
+      const actor = await groomActor();
       const { participantId, sessionId } = await seedParticipant('PLANNED', {
         locked: true,
       });
@@ -176,7 +186,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     });
 
     it('keeps INELIGIBLE after rejecting a quarantined horse with 409', async () => {
-      const actor = await managerActor();
+      const actor = await groomActor();
       const { participantId } = await seedParticipant('PLANNED', {
         health: HorseHealthStatus.QUARANTINED,
       });
@@ -189,7 +199,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     });
 
     it('keeps INELIGIBLE after rejecting an UNDER_OBSERVATION horse in a HEAVY session', async () => {
-      const actor = await managerActor();
+      const actor = await groomActor();
       const { participantId } = await seedParticipant('PLANNED', {
         health: HorseHealthStatus.UNDER_OBSERVATION,
         intensity: TrainingIntensity.HEAVY,
@@ -203,7 +213,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     });
 
     it('checks in an eligible horse', async () => {
-      const actor = await managerActor();
+      const actor = await groomActor();
       const { participantId } = await seedParticipant('PLANNED', {
         health: HorseHealthStatus.UNDER_OBSERVATION,
       });

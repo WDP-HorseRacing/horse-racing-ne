@@ -267,6 +267,46 @@ export class BarnsService {
   }
 
   /**
+   * Chuyển mọi khu chuồng đang do một Head Trainer phụ trách sang Head Trainer khác, chạy trong transaction của nơi gọi
+   *
+   * - Khóa từng khu trước khi đổi; khu đã xóa mềm không tính
+   * - Mỗi khu ghi một dòng nhật ký UPDATE headTrainerId
+   * - Không kiểm quyền và không kiểm người nhận, nơi gọi tự kiểm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actorId UUID người thực hiện bàn giao
+   * @param fromHeadTrainerId UUID Head Trainer bàn giao
+   * @param toHeadTrainerId UUID Head Trainer nhận
+   * @returns Promise trả về số khu đã chuyển
+   */
+  async reassignHeadTrainerBarns(
+    manager: EntityManager,
+    actorId: string,
+    fromHeadTrainerId: string,
+    toHeadTrainerId: string,
+  ): Promise<number> {
+    const barns = await manager.find(BarnEntity, {
+      where: { headTrainerId: fromHeadTrainerId },
+      order: { name: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    for (const barn of barns) {
+      barn.headTrainerId = toHeadTrainerId;
+      await manager.save(barn);
+      await this.auditService.record(manager, {
+        actorId,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.BARN,
+        entityId: barn.id,
+        before: { headTrainerId: fromHeadTrainerId },
+        after: { headTrainerId: toHeadTrainerId },
+        feature: STABLE_AUDIT_FEATURE.BARN,
+      });
+    }
+    return barns.length;
+  }
+
+  /**
    * Lock một khu chuồng và kiểm tra khu đủ điều kiện để Club Manager xếp ngựa vào. Dùng cho module horses.
    *
    * - Chạy trong transaction của nơi gọi, không tự mở transaction.

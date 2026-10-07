@@ -33,7 +33,7 @@ export class TimeTrialsController {
     return this.timeTrials.getBySession(actor, id);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('training-sessions/:id/time-trial')
   @ApiCreatedResponse({ type: TimeTrialResponseDto })
   create(
@@ -44,7 +44,7 @@ export class TimeTrialsController {
     return this.timeTrials.create(actor, id, body);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('training-sessions/:id/time-trial')
   @ApiOkResponse({ type: TimeTrialResponseDto })
   update(

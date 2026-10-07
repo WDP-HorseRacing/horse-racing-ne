@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -12,6 +13,7 @@ import { TrainingPlanEntity } from '../../src/modules/training/entities/training
 import { TrainingSubjectEntity } from '../../src/modules/training/entities/training-subject.entity';
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingSessionType } from '../../src/modules/training/enums/training-session-type.enum';
+import { TrainingClassStatus } from '../../src/modules/training/enums/training-class-status.enum';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingClassesService } from '../../src/modules/training/training-classes/services/training-classes.service';
 import { TrainingPlansService } from '../../src/modules/training/training-plans/training-plans.service';
@@ -412,5 +414,22 @@ describe('Training plans and classes built from them (Postgres)', () => {
     await expect(
       timeTrials.update(trainer, sessionId, { distanceM: 800 }),
     ).rejects.toThrow(ConflictException);
+  });
+
+  it('forbids the club manager from managing a class', async () => {
+    const plan = await plans.create(trainer, twoPhases());
+    const created = await classes.create(trainer, {
+      code: 'K1',
+      name: 'K1',
+      planId: plan.id,
+      startDate: '2026-10-05',
+      sessions: [oneSession()],
+    });
+
+    await expect(
+      classes.updateStatus(manager, created.id, {
+        status: TrainingClassStatus.ACTIVE,
+      }),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

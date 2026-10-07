@@ -2,9 +2,12 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { EntityManager, In } from 'typeorm';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
+import { TrainingClassEntity } from '../entities/training-class.entity';
+import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 
 /**
@@ -403,6 +406,42 @@ export class TrainingOperationsFacade {
     }
     await manager.save(session);
     return session;
+  }
+
+  /**
+   * Chuyển mọi giáo án và các lớp chưa kết thúc của một Head Trainer sang Head Trainer khác, chạy trong transaction của nơi gọi
+   *
+   * - Giáo án: mọi giáo án của người bàn giao
+   * - Lớp: DRAFT hoặc ACTIVE; lớp COMPLETED hoặc CANCELLED giữ người cũ
+   * - Không kiểm quyền và không kiểm người nhận, nơi gọi tự kiểm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param fromHeadTrainerId UUID Head Trainer bàn giao
+   * @param toHeadTrainerId UUID Head Trainer nhận
+   * @returns Promise trả về số giáo án và số lớp đã chuyển
+   */
+  async handOverHeadTrainerWork(
+    manager: EntityManager,
+    fromHeadTrainerId: string,
+    toHeadTrainerId: string,
+  ): Promise<{ plansMoved: number; classesMoved: number }> {
+    const plans = await manager.update(
+      TrainingPlanEntity,
+      { headTrainerId: fromHeadTrainerId },
+      { headTrainerId: toHeadTrainerId },
+    );
+    const classes = await manager.update(
+      TrainingClassEntity,
+      {
+        headTrainerId: fromHeadTrainerId,
+        status: In([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE]),
+      },
+      { headTrainerId: toHeadTrainerId },
+    );
+    return {
+      plansMoved: plans.affected ?? 0,
+      classesMoved: classes.affected ?? 0,
+    };
   }
 }
 

@@ -15,7 +15,7 @@ import { PerformanceEvaluationsService } from './performance-evaluations.service
 export class PerformanceEvaluationsController {
   constructor(private readonly evaluations: PerformanceEvaluationsService) {}
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/evaluation')
   @ApiCreatedResponse({ type: PerformanceEvaluationResponseDto })
   create(

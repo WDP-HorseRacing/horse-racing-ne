@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -25,6 +26,11 @@ import {
   UserListQueryDto,
   UserResponseDto,
 } from './dto/user.dto';
+import {
+  HeadTrainerHandoverDto,
+  HeadTrainerHandoverResultDto,
+} from './dto/head-trainer-handover.dto';
+import { HeadTrainerHandoverService } from './services/head-trainer-handover.service';
 import { UsersService } from './services/users.service';
 import { UserRole } from './user.enums';
 
@@ -32,7 +38,10 @@ import { UserRole } from './user.enums';
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly handovers: HeadTrainerHandoverService,
+  ) {}
 
   @Access([UserRole.CLUB_MANAGER])
   @Get()
@@ -89,5 +98,21 @@ export class UsersController {
     @Body() body: UpdateUserDto,
   ): Promise<UserResponseDto> {
     return this.usersService.update(actor, id, body);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Post(':id/head-trainer-handover')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Bàn giao khu chuồng, giáo án và lớp chưa kết thúc của Head Trainer sang Head Trainer khác',
+  })
+  @ApiOkResponse({ type: HeadTrainerHandoverResultDto })
+  handover(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: HeadTrainerHandoverDto,
+  ): Promise<HeadTrainerHandoverResultDto> {
+    return this.handovers.handover(actor, id, body);
   }
 }

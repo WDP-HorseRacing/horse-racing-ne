@@ -1,14 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
 import type { Actor } from '../../../../common/types/actor';
-import { UserRole } from '../../../users/user.enums';
 import {
   ClassSchedulePreviewDto,
   ClassScheduleInputDto,
@@ -101,7 +99,7 @@ export class TrainingClassesService {
   }
 
   /**
-   * Tạo lớp nháp theo giáo án kèm các buổi tập đã chỉnh từ xem trước, trong một transaction
+   * Head Trainer tạo lớp nháp do mình phụ trách theo giáo án của mình, kèm các buổi tập đã chỉnh từ xem trước, trong một transaction
    *
    * - Ngày kết thúc = ngày bắt đầu + tổng số tuần của giáo án
    * - Loại buổi lấy theo môn của từng buổi; buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly, thời gian mục tiêu)
@@ -110,9 +108,9 @@ export class TrainingClassesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin lớp, giáo án, ngày bắt đầu và các buổi tập
    * @returns Promise trả về lớp vừa tạo
-   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc Head Trainer tạo lớp cho người khác
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws ConflictException Nếu mã lớp đã tồn tại
-   * @throws BadRequestException Nếu lớp không có Head Trainer, giáo án không thuộc Head Trainer phụ trách lớp, môn học không tồn tại, buổi nằm ngoài thời gian của lớp hoặc nội dung buổi sai theo loại môn
+   * @throws BadRequestException Nếu giáo án không thuộc Head Trainer gọi, môn học không tồn tại, buổi nằm ngoài thời gian của lớp hoặc nội dung buổi sai theo loại môn
    */
   async create(
     actor: Actor,
@@ -124,23 +122,7 @@ export class TrainingClassesService {
     if (existing) {
       throw new ConflictException(`Mã lớp ${code} đã tồn tại`);
     }
-    if (body.headTrainerId) {
-      await this.access.assertHeadTrainer(
-        this.dataSource.manager,
-        body.headTrainerId,
-      );
-    }
-    const headTrainerId =
-      body.headTrainerId ??
-      (caller.role === UserRole.HEAD_TRAINER ? caller.id : null);
-    if (caller.role === UserRole.HEAD_TRAINER && headTrainerId !== caller.id) {
-      throw new ForbiddenException(
-        'Head trainer chỉ được tạo class cho chính mình',
-      );
-    }
-    if (!headTrainerId) {
-      throw new BadRequestException('Lớp phải có Head Trainer phụ trách');
-    }
+    const headTrainerId = caller.id;
     const row = await this.dataSource.transaction(async (manager) => {
       const items = await this.ownedPlanItems(
         manager,
