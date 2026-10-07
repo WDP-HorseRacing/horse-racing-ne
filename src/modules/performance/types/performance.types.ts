@@ -1,3 +1,4 @@
+import type { TrainingIntensity } from '../../training/enums/training-intensity.enum';
 import type { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import type { ThresholdSource } from '../enums/threshold-source.enum';
 
@@ -89,4 +90,16 @@ export interface ParticipantMetricAggregate {
   criticalCount: number;
   firstRecordedAt: Date;
   lastRecordedAt: Date;
+}
+
+/**
+ * Một lượt tập đã hoàn thành dùng để tính khối lượng tập.
+ *
+ * - durationSeconds là số giây từ lúc bắt đầu tới lúc hoàn thành
+ */
+export interface CompletedParticipantLoad {
+  participantId: string;
+  intensity: TrainingIntensity;
+  plannedDistanceM: number;
+  durationSeconds: number;
 }

@@ -3468,11 +3468,38 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch CLB); bỏ trống là 6 ngày trước `to`",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới ngày (lịch CLB); bỏ trống là hôm nay",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseWorkloadDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3480,11 +3507,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get configured training workload summary",
+        "summary": "Khối lượng tập của ngựa trong một khoảng ngày (lượt đã hoàn thành)",
         "tags": [
           "performance"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/session-participants/{id}/metrics": {
@@ -11873,6 +11899,76 @@
           "score",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "WorkloadByIntensityDto": {
+        "type": "object",
+        "properties": {
+          "LIGHT": {
+            "type": "number"
+          },
+          "MODERATE": {
+            "type": "number"
+          },
+          "HEAVY": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "LIGHT",
+          "MODERATE",
+          "HEAVY"
+        ]
+      },
+      "HorseWorkloadDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "sessionsCompleted": {
+            "type": "number",
+            "description": "Số lượt tập đã hoàn thành"
+          },
+          "byIntensity": {
+            "description": "Số lượt hoàn thành theo cường độ buổi",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WorkloadByIntensityDto"
+              }
+            ]
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "description": "Tổng cự ly dự kiến (mét)"
+          },
+          "actualDurationSeconds": {
+            "type": "number",
+            "description": "Tổng thời lượng thực, từ bắt đầu tới hoàn thành (giây)"
+          },
+          "actualDistanceM": {
+            "type": "number",
+            "description": "Tổng cự ly thực tính từ tốc độ cảm biến (mét)"
+          }
+        },
+        "required": [
+          "horseId",
+          "from",
+          "to",
+          "sessionsCompleted",
+          "byIntensity",
+          "plannedDistanceM",
+          "actualDurationSeconds",
+          "actualDistanceM"
         ]
       },
       "IngestMetricDto": {

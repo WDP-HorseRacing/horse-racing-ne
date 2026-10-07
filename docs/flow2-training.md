@@ -94,6 +94,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 4. Mức cảnh báo mỗi điểm: vượt ngưỡng nguy hiểm là `CRITICAL`; vượt ngưỡng cảnh báo nhịp tim hoặc tốc độ tối đa là `WARNING`; còn lại `NORMAL`.
 5. Head Trainer của lớp nhận điểm đo realtime qua socket, sự kiện `performance.metrics`.
 6. Có điểm `CRITICAL`: thông báo KHẨN cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần.
+7. Khối lượng tập của ngựa (`GET /horses/:id/workload?from&to`, mặc định 7 ngày gần nhất theo lịch CLB): chỉ tính lượt đã hoàn thành có buổi trong khoảng ngày; trả số lượt, số lượt theo cường độ, tổng cự ly dự kiến, tổng thời lượng thực (bắt đầu tới hoàn thành) và cự ly thực tính từ tốc độ cảm biến (khoảng giữa hai điểm đo tính tối đa 5 giây). Ai xem được hồ sơ ngựa thì xem được.
 
 ### 7. Bàn giao khi Head Trainer nghỉ
 
@@ -141,6 +142,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | POST | `/session-participants/:id/metrics`, `/metrics/batch` | Không cần đăng nhập | Nhận điểm đo (giả lập) |
 | GET | `/session-participants/:id/metrics` | CM, VET, HT, GROOM | Điểm đo của lượt theo thời gian |
 | GET | `/session-participants/:id/performance-summary` | Ai xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |
+| GET | `/horses/:id/workload` | Ai xem được hồ sơ ngựa | Khối lượng tập `?from&to` |
 | GET/PUT | `/horses/:id/thresholds` | Xem: HT, CM, VET; đặt: HT, CM | Ngưỡng của ngựa |
 | POST | `/users/:id/head-trainer-handover` | CM | Bàn giao Head Trainer `{ toHeadTrainerId }` |
 
@@ -154,9 +156,9 @@ Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 4. Buổi tập: bắt buộc `intensity` (`LIGHT` / `MODERATE` / `HEAVY`) và `plannedDistanceM`; có `subjectId`; response có `classId`, `subjectId`, bỏ `planId`. Danh sách và thêm buổi qua `/classes/:classId/sessions`.
 5. Tab Huấn luyện của ngựa: `phaseName` đổi thành `subjectName` (có thể `null`).
 6. Club Manager không còn gọi được các thao tác ghi của lớp, buổi, lượt tập, kết quả chạy thử, đánh giá (nhận 403).
-7. API mới: môn học, xem trước lịch, publish nhiều buổi, sửa chạy thử, ngưỡng, điểm đo, tổng kết lượt, bàn giao Head Trainer; sự kiện socket `performance.metrics`; loại thông báo `PERFORMANCE_ALERT`, đích `SESSION_PARTICIPANT`.
+7. API mới: môn học, xem trước lịch, publish nhiều buổi, sửa chạy thử, khối lượng tập, ngưỡng, điểm đo, tổng kết lượt, bàn giao Head Trainer; sự kiện socket `performance.metrics`; loại thông báo `PERFORMANCE_ALERT`, đích `SESSION_PARTICIPANT`.
 
 ## Phụ lục 2: Việc còn lại
 
-- `GET /horses/:id/alerts` (lịch sử cảnh báo thể lực của ngựa) và `GET /horses/:id/workload` (khối lượng tập) còn trả 501.
+- `GET /horses/:id/alerts` (lịch sử cảnh báo thể lực của ngựa) còn trả 501.
 - Route nhận điểm đo đang public: nợ mục 10 ở `docs/mongo-notifications-debt.md`.
