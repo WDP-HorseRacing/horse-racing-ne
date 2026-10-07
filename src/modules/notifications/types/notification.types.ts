@@ -31,6 +31,13 @@ export type NotificationCreatedPayload = Omit<
 >;
 
 /**
+ * Payload đẩy realtime tới client qua sự kiện NOTIFICATION_READ_SOCKET_EVENT.
+ */
+export interface NotificationReadPayload {
+  id: string;
+}
+
+/**
  * Một kênh giao thông báo đã lưu tới người nhận (socket, push mobile...).
  */
 export interface NotificationChannel {

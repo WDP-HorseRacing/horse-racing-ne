@@ -10,6 +10,7 @@ import { NotificationCategory } from '../../src/modules/notifications/enums/noti
 import { NotificationListQueryDto } from '../../src/modules/notifications/dto';
 import { NotificationInboxService } from '../../src/modules/notifications/inbox/inbox.service';
 import { NotificationAccessService } from '../../src/modules/notifications/shared/notification-access.service';
+import type { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 import {
   NotificationRecord,
   NotificationSchema,
@@ -25,6 +26,7 @@ describe('NotificationInboxService (MongoDB)', () => {
   let mongo: TestMongo;
   let model: Model<NotificationRecord>;
   let inbox: NotificationInboxService;
+  const emitToUser = jest.fn();
   const users = new Map<string, string>();
 
   beforeAll(async () => {
@@ -47,6 +49,7 @@ describe('NotificationInboxService (MongoDB)', () => {
     inbox = new NotificationInboxService(
       model,
       new NotificationAccessService(model, dataSource),
+      { emitToUser } as unknown as RealtimeGateway,
     );
   });
 
@@ -55,6 +58,7 @@ describe('NotificationInboxService (MongoDB)', () => {
   beforeEach(async () => {
     await clearAllMongoCollections(mongo.connection);
     users.clear();
+    emitToUser.mockReset();
   });
 
   /**
@@ -265,6 +269,33 @@ describe('NotificationInboxService (MongoDB)', () => {
       expect(second.readAt).toEqual(first.readAt);
     });
 
+    it('tells every device of the caller only when the notification changes to read', async () => {
+      const me = user();
+      const mine = await stored(me.id, '2026-10-05T00:00:00Z');
+
+      await inbox.markRead(me.actor, mine._id);
+      await inbox.markRead(me.actor, mine._id);
+
+      expect(emitToUser.mock.calls).toEqual([
+        [me.id, 'notification.read', { id: mine._id }],
+      ]);
+    });
+
+    it('still marks as read when the realtime push fails', async () => {
+      const me = user();
+      const mine = await stored(me.id, '2026-10-05T00:00:00Z');
+      emitToUser.mockImplementation(() => {
+        throw new Error('gateway chưa sẵn sàng');
+      });
+
+      await expect(inbox.markRead(me.actor, mine._id)).resolves.toMatchObject({
+        id: mine._id,
+      });
+      expect((await model.findById(mine._id).lean())!.readAt).toBeInstanceOf(
+        Date,
+      );
+    });
+
     it('returns 404 and changes nothing for a notification of another user', async () => {
       const me = user();
       const other = user();
@@ -274,6 +305,7 @@ describe('NotificationInboxService (MongoDB)', () => {
         NotFoundException,
       );
       expect((await model.findById(theirs._id).lean())!.readAt).toBeNull();
+      expect(emitToUser).not.toHaveBeenCalled();
     });
 
     it('returns 404 for an unknown id', async () => {
@@ -305,6 +337,17 @@ describe('NotificationInboxService (MongoDB)', () => {
         readAt,
       );
       expect((await model.findById(theirs._id).lean())!.readAt).toBeNull();
+      expect(emitToUser.mock.calls).toEqual([
+        [me.id, 'notification.all-read', {}],
+      ]);
+    });
+
+    it('tells no device when nothing was unread', async () => {
+      const me = user();
+      await stored(me.id, '2026-10-05T00:00:00Z', { readAt: new Date() });
+
+      await expect(inbox.markAllRead(me.actor)).resolves.toEqual({ count: 0 });
+      expect(emitToUser).not.toHaveBeenCalled();
     });
   });
 });

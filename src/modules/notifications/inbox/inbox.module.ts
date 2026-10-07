@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { RealtimeModule } from '../../realtime/realtime.module';
 import {
   NotificationRecord,
   NotificationSchema,
@@ -14,6 +15,7 @@ import { NotificationInboxService } from './inbox.service';
       { name: NotificationRecord.name, schema: NotificationSchema },
     ]),
     NotificationsSharedModule,
+    RealtimeModule,
   ],
   controllers: [NotificationInboxController],
   providers: [NotificationInboxService],
