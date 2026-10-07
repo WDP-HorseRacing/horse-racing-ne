@@ -40,6 +40,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       unused,
       unused,
       unused,
+      unused,
     );
     dashboard = new MedicalDashboardRepository(dataSource);
   });

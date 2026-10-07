@@ -51,6 +51,7 @@ import {
   isGroomOnlyForExamRequests,
   canSeeMedicalCost,
   resolveLockOnClose,
+  assertNoLockChoiceOnDeath,
   assertHealthChangeReason,
   assertVisitExamDate,
   checkupDueDate,
@@ -375,6 +376,26 @@ describe('medical.policy', () => {
           now,
         ),
       ).toBe(CaseLockDecision.KEEP);
+    });
+
+    it('rejects a lock choice when the case closes with a death', () => {
+      expect(() =>
+        assertNoLockChoiceOnDeath(undefined, undefined),
+      ).not.toThrow();
+      for (const [decision, expectedEnd, field] of [
+        [CaseLockDecision.RELEASE, undefined, 'lockDecision'],
+        [undefined, '2026-10-10T00:00:00Z', 'lockExpectedEnd'],
+      ] as const) {
+        try {
+          assertNoLockChoiceOnDeath(decision, expectedEnd);
+          fail('expected BadRequestException');
+        } catch (error) {
+          expect(error).toBeInstanceOf(BadRequestException);
+          expect((error as BadRequestException).getResponse()).toMatchObject({
+            errors: [{ field }],
+          });
+        }
+      }
     });
 
     it('only adjusts the cost of a closed case', () => {

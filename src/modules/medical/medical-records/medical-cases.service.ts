@@ -12,6 +12,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import { HorseStatusesService } from '../../horses/horse-statuses/horse-statuses.service';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
@@ -51,6 +52,7 @@ import {
 import {
   assertCaseOpen,
   assertCostAdjustable,
+  assertNoLockChoiceOnDeath,
   canSeeDosage,
   canSeeMedicalCost,
   isCaseCostOfOwner,
@@ -96,6 +98,7 @@ export class MedicalCasesService {
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
     private readonly ownerships: HorseOwnershipService,
+    private readonly horseStatuses: HorseStatusesService,
   ) {}
 
   /**
@@ -219,15 +222,16 @@ export class MedicalCasesService {
    * - Lệnh khóa gắn bệnh án còn hiệu lực: bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
    * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
    * - Ghi event vào outbox trong cùng transaction: báo chủ ngựa và Club Manager; gỡ khóa thì báo Head Trainer và Club Manager
+   * - Có ngày mất: không nhận lựa chọn gỡ hay giữ khóa; sau khi đóng thì ghi nhận ngựa mất trong cùng transaction (HorseStatusesService.recordDeathInTransaction), lấy kết luận cuối làm nguyên nhân mất; một bước lỗi thì hủy toàn bộ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
-   * @param body Kết luận cuối, chi phí và cách xử lý lệnh khóa
+   * @param body Kết luận cuối, chi phí, cách xử lý lệnh khóa và ngày mất nếu ngựa mất
    * @returns Promise trả về bệnh án sau khi đóng
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
-   * @throws BadRequestException Nếu còn khóa mà không chọn cách xử lý, hoặc ngày dự kiến gỡ không hợp lệ
-   * @throws ConflictException Nếu bệnh án đã đóng, hoặc ngựa đã chuyển nhượng
+   * @throws BadRequestException Nếu còn khóa mà không chọn cách xử lý, ngày dự kiến gỡ không hợp lệ, có ngày mất mà vẫn chọn gỡ hay giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh
+   * @throws ConflictException Nếu bệnh án đã đóng, hoặc ngựa đã chuyển nhượng hay đã mất
    */
   async closeCase(
     actor: Actor,
@@ -237,7 +241,7 @@ export class MedicalCasesService {
     const { horseId } = await this.findCase(caseId);
     const now = new Date();
     const closed = await this.dataSource.transaction(async (manager) => {
-      const { caller } = await this.access.lockHorseForWrite(
+      const { caller, horse } = await this.access.lockHorseForWrite(
         manager,
         actor,
         horseId,
@@ -254,12 +258,18 @@ export class MedicalCasesService {
       const lockExpectedEnd = body.lockExpectedEnd
         ? new Date(body.lockExpectedEnd)
         : undefined;
-      const decision = resolveLockOnClose(
-        activeLock !== null,
-        body.lockDecision,
-        lockExpectedEnd,
-        now,
-      );
+      if (body.dateOfDeath !== undefined) {
+        assertNoLockChoiceOnDeath(body.lockDecision, body.lockExpectedEnd);
+      }
+      const decision =
+        body.dateOfDeath === undefined
+          ? resolveLockOnClose(
+              activeLock !== null,
+              body.lockDecision,
+              lockExpectedEnd,
+              now,
+            )
+          : undefined;
 
       const changes = {
         status: MedicalCaseStatus.CLOSED,
@@ -312,7 +322,10 @@ export class MedicalCasesService {
           status: MedicalCaseStatus.CLOSED,
           finalConclusion: body.finalConclusion,
           totalCost: body.totalCost,
-          lockDecision: decision,
+          ...(decision !== undefined ? { lockDecision: decision } : {}),
+          ...(body.dateOfDeath !== undefined
+            ? { dateOfDeath: body.dateOfDeath }
+            : {}),
           ...(activeLock ? { trainingLockId: activeLock.id } : {}),
         },
         feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
@@ -340,6 +353,14 @@ export class MedicalCasesService {
           MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
           lockEvent,
         );
+      }
+      if (body.dateOfDeath !== undefined) {
+        await this.horseStatuses.recordDeathInTransaction(manager, {
+          horse,
+          recordedBy: caller.id,
+          dateOfDeath: body.dateOfDeath,
+          reason: body.finalConclusion,
+        });
       }
       return { ...medicalCase, ...changes };
     });

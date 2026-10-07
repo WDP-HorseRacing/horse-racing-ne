@@ -14,6 +14,7 @@ import type {
 import type { RaceAptitude } from '../enums/race-aptitude.enum';
 import type { UserRole } from '../../../common/enums/role.enum';
 import type { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
+import type { HorseEntity } from '../entities/horse.entity';
 
 /**
  * Phạm vi ngựa mà người gọi được xem.
@@ -190,6 +191,20 @@ export interface OwnershipTransferInput {
  */
 export type ReadOnlyLifecycleStatus =
   HorseLifecycleStatus.TRANSFERRED | HorseLifecycleStatus.DECEASED;
+
+/**
+ * Dữ liệu ghi nhận ngựa mất từ module khác trong transaction đang mở
+ *
+ * - horse: ngựa đã khóa row
+ * - recordedBy: UUID người ghi nhận
+ * - dateOfDeath: ngày mất (YYYY-MM-DD); reason: nguyên nhân mất
+ */
+export interface HorseDeath {
+  horse: HorseEntity;
+  recordedBy: string;
+  dateOfDeath: string;
+  reason: string;
+}
 
 /**
  * Payload của domain event HORSE_DECEASED_EVENT, ghi vào outbox trong transaction ghi nhận ngựa mất.

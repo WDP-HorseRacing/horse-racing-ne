@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../../audit/audit.module';
 import { HorseMeasurementsModule } from '../../horses/horse-measurements/horse-measurements.module';
+import { HorseStatusesModule } from '../../horses/horse-statuses/horse-statuses.module';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
@@ -28,6 +29,7 @@ import { MedicalVisitsService } from './medical-visits.service';
     ]),
     HorsesSharedModule,
     HorseMeasurementsModule,
+    HorseStatusesModule,
     MedicalSharedModule,
     AuditModule,
   ],

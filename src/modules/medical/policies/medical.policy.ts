@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { toClubDate } from '../../../common/utils/club-date';
+import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
@@ -29,6 +30,7 @@ import {
   CHECKUP_DUE_SOON_DAYS,
   CHECKUP_OVERDUE_NOTIFY_DAYS,
   MEDICAL_CHECKUP_CYCLE_DAYS,
+  NO_LOCK_CHOICE_ON_DEATH_MESSAGE,
   VISIT_BACKDATE_MAX_DAYS,
 } from '../constants/medical.constants';
 
@@ -373,6 +375,27 @@ export function resolveLockOnClose(
     );
   }
   return decision;
+}
+
+/**
+ * Chặn chọn cách xử lý lệnh khóa khi đóng bệnh án kèm ghi nhận ngựa mất
+ *
+ * - Lệnh khóa của ngựa mất được gỡ theo luồng ghi nhận mất, bác sĩ không chọn gỡ hay giữ
+ *
+ * @param decision Lựa chọn gỡ hoặc giữ khóa trong request
+ * @param expectedEnd Ngày dự kiến gỡ trong request
+ * @throws BadRequestException Nếu có gửi lockDecision hoặc lockExpectedEnd, lỗi gắn ô tương ứng
+ */
+export function assertNoLockChoiceOnDeath(
+  decision: CaseLockDecision | undefined,
+  expectedEnd: string | undefined,
+): void {
+  if (decision !== undefined) {
+    throw fieldBadRequest('lockDecision', NO_LOCK_CHOICE_ON_DEATH_MESSAGE);
+  }
+  if (expectedEnd !== undefined) {
+    throw fieldBadRequest('lockExpectedEnd', NO_LOCK_CHOICE_ON_DEATH_MESSAGE);
+  }
 }
 
 /**

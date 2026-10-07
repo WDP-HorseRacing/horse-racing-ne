@@ -7,6 +7,7 @@ import { DataSource, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
+import type { HorseStatusesService } from '../../horses/horse-statuses/horse-statuses.service';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -166,6 +167,7 @@ describe('MedicalCasesService', () => {
       audit,
       events,
       ownerships as unknown as HorseOwnershipService,
+      {} as HorseStatusesService,
     );
   });
 

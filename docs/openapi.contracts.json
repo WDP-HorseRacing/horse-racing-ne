@@ -11011,6 +11011,11 @@
             "type": "string",
             "format": "date-time",
             "description": "Ngày dự kiến gỡ khóa; bắt buộc khi lockDecision là KEEP"
+          },
+          "dateOfDeath": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày mất (YYYY-MM-DD). Có giá trị thì đóng bệnh án và ghi nhận ngựa mất cùng lúc, lấy kết luận cuối làm lý do; không gửi kèm lockDecision, lockExpectedEnd. Không ở tương lai, không trước ngày sinh"
           }
         },
         "required": [

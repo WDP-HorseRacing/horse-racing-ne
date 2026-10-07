@@ -24,5 +24,6 @@ import { HorseStatusesService } from './horse-statuses.service';
   ],
   controllers: [HorseStatusesController],
   providers: [HorseStatusesRepository, HorseStatusesService],
+  exports: [HorseStatusesService],
 })
 export class HorseStatusesModule {}
