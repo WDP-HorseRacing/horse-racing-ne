@@ -17,6 +17,7 @@ const READ_ONLY_ENROLL_MESSAGES: Record<ReadOnlyLifecycleStatus, string> = {
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
+import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 
@@ -262,5 +263,29 @@ export function assertHorseEnrollable(
   }
   if (isReadOnlyLifecycle(lifecycleStatus)) {
     throw new ConflictException(READ_ONLY_ENROLL_MESSAGES[lifecycleStatus]);
+  }
+}
+
+/**
+ * Kiểm nội dung bài tập của môn học theo loại buổi
+ *
+ * - Môn chạy thử: cự ly phải lớn hơn 0
+ * - Môn thường: không có thời gian mục tiêu
+ *
+ * @param sessionType Loại buổi của môn
+ * @param plannedDistanceM Cự ly dự kiến (mét)
+ * @param targetTimeMs Thời gian mục tiêu (ms), null nếu không có
+ * @throws BadRequestException Nếu môn chạy thử có cự ly 0, hoặc môn thường có thời gian mục tiêu
+ */
+export function assertSubjectExercise(
+  sessionType: TrainingSessionType,
+  plannedDistanceM: number,
+  targetTimeMs: number | null,
+): void {
+  if (sessionType === TrainingSessionType.TIME_TRIAL && plannedDistanceM <= 0) {
+    throw new BadRequestException('Môn chạy thử phải có cự ly lớn hơn 0');
+  }
+  if (sessionType === TrainingSessionType.REGULAR && targetTimeMs !== null) {
+    throw new BadRequestException('Chỉ môn chạy thử mới có thời gian mục tiêu');
   }
 }

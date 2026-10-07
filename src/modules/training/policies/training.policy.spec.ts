@@ -7,6 +7,7 @@ import { evaluateEligibility } from '../../horses/policies/horse.policy';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
+import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   assertClassActivatable,
@@ -15,6 +16,7 @@ import {
   assertSessionWindowInPlan,
   assertTrainableHorse,
   assertHorseEnrollable,
+  assertSubjectExercise,
   eligibilityForSession,
   initialParticipantEligibility,
 } from './training.policy';
@@ -198,5 +200,31 @@ describe('eligibilityForSession', () => {
 
     expect(result.trainingEligible).toBe(false);
     expect(result.trainingReasons).toContain('ACTIVE_TRAINING_LOCK');
+  });
+});
+
+describe('assertSubjectExercise', () => {
+  it('accepts a time trial with a distance and a target time', () => {
+    expect(() =>
+      assertSubjectExercise(TrainingSessionType.TIME_TRIAL, 1200, 75000),
+    ).not.toThrow();
+  });
+
+  it('rejects a time trial without a distance', () => {
+    expect(() =>
+      assertSubjectExercise(TrainingSessionType.TIME_TRIAL, 0, null),
+    ).toThrow(new BadRequestException('Môn chạy thử phải có cự ly lớn hơn 0'));
+  });
+
+  it('accepts a regular subject with zero distance', () => {
+    expect(() =>
+      assertSubjectExercise(TrainingSessionType.REGULAR, 0, null),
+    ).not.toThrow();
+  });
+
+  it('rejects a target time on a regular subject', () => {
+    expect(() =>
+      assertSubjectExercise(TrainingSessionType.REGULAR, 3000, 75000),
+    ).toThrow(BadRequestException);
   });
 });
