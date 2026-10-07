@@ -737,7 +737,7 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 
 | # | Câu hỏi | Liên quan | Hệ thống đang chạy |
 |---|---|---|---|
-| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Được tập, không được đua. Giữ luật Flow 1 (chỉ Nhẹ và Trung bình) nhưng chưa chặn được vì lớp học của Flow 2 không có cường độ; chờ Flow 2 và BA |
+| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Đã chốt: được tập buổi Nhẹ và Trung bình, không được đua. Buổi tập có cường độ; gặp buổi Nặng thì lượt tự đánh Không đủ điều kiện, chặn ở publish buổi, ghi danh, điểm danh, bắt đầu |
 | Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt: không hủy lượt đã xếp; chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh; gỡ trước giờ tập thì tập bình thường |
 | Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | GROOM gửi yêu cầu khám trực tiếp (ngựa được phân công) |
 | Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Đã chốt: trong hồ sơ ngựa; GROOM chỉ thấy ghi chú mới nhất của ngựa mình được giao |

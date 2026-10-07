@@ -1,20 +1,16 @@
-# Câu hỏi và bàn giao cho Flow 2 (2026-09-30)
+# Câu hỏi và bàn giao cho Flow 2
 
-## 1. Cường độ buổi tập cho ngựa "Cần theo dõi"
+> Cập nhật: 07/10/2026
 
-Bối cảnh: đặc tả Flow 1 (mục III.4) có ghi: ngựa đang "Cần theo dõi" (có dấu hiệu bất thường nhưng chưa xác định bệnh) chỉ được tập cường độ Nhẹ và Trung bình, và không được đua. Mô hình cũ có cột `training_sessions.intensity`. Khi chuyển sang mô hình lớp học thì cột này không còn dùng nữa (entity đã bỏ field; cột vẫn còn trong DB và cho phép null). Vì vậy hiện ngựa Cần theo dõi tập được mọi buổi.
+## 1. Cường độ buổi tập cho ngựa "Cần theo dõi" (đã chốt, đã làm)
 
-Ví dụ: Winx đang Cần theo dõi. Lớp của Winx có buổi chạy tốc độ (Nặng) vào thứ 5. Hiện tại Winx vẫn được xếp vào buổi đó.
+Câu hỏi: ngựa "Cần theo dõi" chỉ được tập Nhẹ và Trung bình (Flow 1 mục III.2), nhưng mô hình lớp học không còn cường độ buổi tập nên không chặn được.
 
-1.1. Có thêm lại cường độ cho buổi tập không?
+Đã chốt và đã làm:
 
-- A. Có. Mỗi buổi có `intensity` (LIGHT / MODERATE / HEAVY), áp cho cả lớp.
-- B. Không. Bỏ luật cường độ, Cần theo dõi chỉ còn nghĩa là "không được đua" (khi đó bên mình sẽ sửa lại docs Flow 1).
-
-1.2. Nếu chọn A: ngựa Cần theo dõi gặp buổi Nặng thì xử lý thế nào?
-
-- A. Hệ thống tự đánh lượt của con ngựa đó là `INELIGIBLE` cho riêng buổi đó, lý do "Cần theo dõi". Các ngựa khác tập bình thường.
-- B. Hệ thống chỉ cảnh báo, để Head Trainer tự loại ngựa ra bằng tay.
+- 1.1 chọn A: mỗi buổi có `intensity` bắt buộc (`LIGHT` / `MODERATE` / `HEAVY`), áp cho cả lớp. Thiếu khi tạo buổi trả 400. Cột cũ `training_sessions.intensity` dùng lại, đặt `NOT NULL`; dòng cũ điền `MODERATE`.
+- 1.2 chọn A: ngựa Cần theo dõi gặp buổi `HEAVY` thì lượt tự đánh `INELIGIBLE`, lý do `HEALTH_UNDER_OBSERVATION`. Các ngựa khác tập bình thường.
+- Chặn ở cùng các bước như khóa huấn luyện: publish buổi, ghi danh vào lớp, điểm danh, bắt đầu.
 
 ## 2. Phần thông báo (bên mình đã làm, 2026-10-06)
 
@@ -34,9 +30,7 @@ Nếu Flow 2 cần phát thông báo mới:
 
 Nợ còn lại: `docs/mongo-notifications-debt.md`.
 
-## 3. Lỗi trong module training (phát hiện khi rà Flow 3)
+## 3. Lỗi trong module training (đã sửa)
 
-1. `session-participants.service.ts` (bắt đầu lượt tập): khi ngựa bị khóa hoặc không đủ điều kiện, code gán `CANCELLED_BY_LOCK` / `INELIGIBLE`, gọi `manager.save(participant)` rồi `throw ConflictException` trong **cùng transaction**. Transaction rollback nên trạng thái mới không được lưu; lượt tập vẫn ở trạng thái cũ.
-   - A. Lưu trạng thái rồi trả 200 kèm lượt tập đã chuyển trạng thái (không throw).
-   - B. Giữ 409 nhưng lưu trạng thái ở transaction riêng trước khi throw.
-2. Điểm danh (check-in) không kiểm khóa huấn luyện hay sức khỏe; chỉ lúc bắt đầu mới kiểm. Có cần kiểm ở check-in không?
+1. Bắt đầu lượt tập: code đánh `CANCELLED_BY_LOCK` / `INELIGIBLE` rồi ném 409 trong cùng transaction nên trạng thái bị rollback. Đã sửa: lưu trạng thái, commit, rồi mới trả 409 (câu báo lỗi giữ nguyên).
+2. Điểm danh chưa kiểm khóa và sức khỏe. Đã sửa theo Q2 Flow 3: điểm danh kiểm giống lúc bắt đầu; không đủ điều kiện thì lưu trạng thái và trả 409 "Ngựa không còn đủ điều kiện để điểm danh".

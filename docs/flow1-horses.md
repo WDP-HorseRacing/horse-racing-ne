@@ -148,6 +148,7 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 ### 4. Quy tắc "được tập" và "được đua"
 
 1. **Được tập:** vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, và không có lệnh khóa huấn luyện của bác sĩ.
+   - Riêng từng buổi tập: ngựa UNDER_OBSERVATION không được tập buổi cường độ Nặng; lượt của ngựa ở buổi đó bị đánh "Không đủ điều kiện".
 2. **Được đua:** vòng đời ACTIVE, sức khỏe ELIGIBLE, và không có lệnh khóa huấn luyện.
 3. Hai giá trị này được tính lại mỗi lần hiển thị, không lưu vào cơ sở dữ liệu.
 4. Khi kết quả là không được phép, hệ thống phải hiện lý do cụ thể.
@@ -680,7 +681,7 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 - ~~Nhận xét sau buổi tập (F1.3)~~ Đã làm: mỗi buổi trong `GET /horses/:horseId/training/sessions` có `evaluation { score, comment, evaluatorName, createdAt }` hoặc `null`.
 - ~~Giao Groom lần đầu~~ Đã làm: giao hoặc đổi Groom (`PUT /horses/:id/groom`) điền Groom mới vào các lượt tập tương lai chưa ai dắt, cùng với lượt của Groom cũ; lượt HT đã giao tay cho người khác giữ nguyên.
 - **Khóa huấn luyện và lượt tập đã xếp** (đã chốt, Q2 ở Phụ lục 2 Flow 3; áp dụng cả khi sức khỏe chuyển Chấn thương / Cách ly): đặt khóa **không** hủy lượt tập đã xếp. Ngựa bị chặn lúc publish buổi và lúc bắt đầu/điểm danh (Flow 2 đánh `CANCELLED_BY_LOCK`); gỡ khóa trước giờ tập thì ngựa tập bình thường. Lý do: khóa là tạm thời, hủy sớm không khôi phục được lượt (có khi mất cả buổi). `cancelFutureParticipationsByTrainingLock` và `assertNoOngoingParticipant` chưa có nơi gọi, giữ lại chưa dùng. Danh sách lượt tập (`GET /training-sessions/:sessionId/participants`) có cờ `trainingLocked` tính lúc đọc để FE hiện nhãn "Đang bị khóa" trước giờ tập.
-- **Cần theo dõi chỉ tập Nhẹ và Trung bình (III.4) chưa chặn được**: mô hình lớp của Flow 2 không còn cường độ buổi tập (cột `training_sessions.intensity` cũ không còn dùng), nên ngựa Cần theo dõi đang tập được mọi buổi. Giữ luật của Flow 1; chờ Flow 2 và BA chốt cách thêm cường độ (Q1 ở Phụ lục 2 Flow 3).
+- ~~Cần theo dõi chỉ tập Nhẹ và Trung bình (III.4) chưa chặn được~~ Đã làm: mỗi buổi tập có cường độ bắt buộc (`intensity`: `LIGHT` / `MODERATE` / `HEAVY`). Ngựa Cần theo dõi gặp buổi `HEAVY` thì lượt tự đánh `INELIGIBLE` (lý do `HEALTH_UNDER_OBSERVATION`), chặn ở cùng các bước như khóa huấn luyện: publish buổi, ghi danh, điểm danh, bắt đầu.
 - ~~Đánh giá buổi tập bị bỏ~~ Sai, đính chính: chức năng vẫn có ở nhánh Flow 2, chỉ bị merge làm rơi; đã gộp lại, tab hiệu suất đọc lại được đánh giá mới nhất.
 - ~~Lỗi schema của Flow 2~~ Đã sửa (migration `RelaxLegacyTrainingColumns`): bỏ `NOT NULL` cho 8 cột cũ, giữ dữ liệu; đã lưu thử giáo án, buổi tập, time trial, chỉ số, đánh giá trên DB migrate mới. Cùng đợt: buổi bị rút hết ngựa chuyển `CANCELLED` (không còn `COMPLETED`), khóa huấn luyện hủy lượt từ đúng thời điểm khóa (`>=`).
 

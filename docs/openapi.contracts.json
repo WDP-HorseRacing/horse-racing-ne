@@ -13482,6 +13482,15 @@
               "TIME_TRIAL"
             ]
           },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ],
+            "description": "Cường độ buổi tập"
+          },
           "scheduledStartAt": {
             "format": "date-time",
             "type": "string"
@@ -13526,6 +13535,7 @@
           "planId",
           "name",
           "sessionType",
+          "intensity",
           "scheduledStartAt",
           "scheduledEndAt",
           "status"
@@ -13543,6 +13553,15 @@
               "REGULAR",
               "TIME_TRIAL"
             ]
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ],
+            "description": "Cường độ buổi tập"
           },
           "scheduledStartAt": {
             "type": "string",
@@ -13565,6 +13584,7 @@
         "required": [
           "name",
           "sessionType",
+          "intensity",
           "scheduledStartAt",
           "scheduledEndAt"
         ]
@@ -13581,6 +13601,15 @@
               "REGULAR",
               "TIME_TRIAL"
             ]
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ],
+            "description": "Cường độ buổi tập"
           },
           "scheduledStartAt": {
             "type": "string",
