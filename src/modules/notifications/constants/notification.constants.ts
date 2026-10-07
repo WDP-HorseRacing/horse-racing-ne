@@ -27,3 +27,8 @@ export const NOTIFICATION_PUSH_JOB = 'push';
  * Token inject danh sách kênh giao thông báo (NotificationChannel[]).
  */
 export const NOTIFICATION_CHANNELS = Symbol('NOTIFICATION_CHANNELS');
+
+/**
+ * Số giây kể từ lần cập nhật gần nhất mà thiết bị nhận push bị coi là cũ và tự xóa khỏi `user_devices` (60 ngày).
+ */
+export const USER_DEVICE_STALE_AFTER_SECONDS = 60 * 24 * 60 * 60;

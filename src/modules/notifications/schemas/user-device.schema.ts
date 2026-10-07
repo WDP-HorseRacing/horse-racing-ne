@@ -1,10 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { USER_DEVICE_STALE_AFTER_SECONDS } from '../constants/notification.constants';
 import { DevicePlatform } from '../enums/device-platform.enum';
 
 /**
  * Thiết bị nhận push FCM của người dùng, lưu ở collection `user_devices`.
  *
  * - `_id` là FCM registration token: mỗi thiết bị chỉ thuộc một người dùng tại một thời điểm
+ * - Không cập nhật quá USER_DEVICE_STALE_AFTER_SECONDS: MongoDB tự xóa (TTL index trên `updatedAt`)
  */
 @Schema({ collection: 'user_devices', versionKey: false })
 export class UserDevice {
@@ -24,3 +26,10 @@ export class UserDevice {
 export const UserDeviceSchema = SchemaFactory.createForClass(UserDevice);
 
 UserDeviceSchema.index({ userId: 1 }, { name: 'user_devices_user_idx' });
+UserDeviceSchema.index(
+  { updatedAt: 1 },
+  {
+    expireAfterSeconds: USER_DEVICE_STALE_AFTER_SECONDS,
+    name: 'user_devices_stale_ttl',
+  },
+);
