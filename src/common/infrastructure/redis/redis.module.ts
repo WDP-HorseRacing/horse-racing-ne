@@ -2,7 +2,10 @@ import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { redisConnectionOptions } from './redis-connection';
+import {
+  bullConnectionOptions,
+  redisConnectionOptions,
+} from './redis-connection';
 import { RedisService } from './redis.service';
 import { REDIS_CLIENT } from './redis.token';
 
@@ -12,7 +15,7 @@ import { REDIS_CLIENT } from './redis.token';
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        connection: redisConnectionOptions(config),
+        connection: bullConnectionOptions(config),
       }),
     }),
   ],
