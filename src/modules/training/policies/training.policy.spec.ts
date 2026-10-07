@@ -13,12 +13,15 @@ import {
   assertClassActivatable,
   assertParticipantComplete,
   assertSessionOperational,
-  assertSessionWindowInPlan,
+  assertSessionWindowInClass,
   assertTrainableHorse,
   assertHorseEnrollable,
+  assertClassOpenForSessions,
   assertSubjectExercise,
+  classEndDate,
   eligibilityForSession,
   initialParticipantEligibility,
+  totalPlanWeeks,
 } from './training.policy';
 
 describe('training policy', () => {
@@ -63,9 +66,9 @@ describe('training policy', () => {
     ).not.toThrow();
   });
 
-  it('keeps a session window inside the plan date range', () => {
+  it('keeps a session window inside the class date range', () => {
     expect(() =>
-      assertSessionWindowInPlan(
+      assertSessionWindowInClass(
         '2026-09-10T08:00:00.000Z',
         '2026-09-10T09:00:00.000Z',
         '2026-09-01',
@@ -73,7 +76,7 @@ describe('training policy', () => {
       ),
     ).not.toThrow();
     expect(() =>
-      assertSessionWindowInPlan(
+      assertSessionWindowInClass(
         '2026-08-31T23:00:00.000Z',
         '2026-09-01T01:00:00.000Z',
         '2026-09-01',
@@ -227,4 +230,36 @@ describe('assertSubjectExercise', () => {
       assertSubjectExercise(TrainingSessionType.REGULAR, 3000, 75000),
     ).toThrow(BadRequestException);
   });
+});
+
+describe('plan weeks and class end date', () => {
+  it('sums the weeks of every plan subject', () => {
+    expect(totalPlanWeeks([{ weeks: 4 }, { weeks: 2 }])).toBe(6);
+  });
+
+  it.each([
+    ['2026-10-05', 1, '2026-10-11'],
+    ['2026-10-05', 6, '2026-11-15'],
+    ['2026-12-28', 1, '2027-01-03'],
+  ])('ends a class starting %s after %d weeks on %s', (start, weeks, end) => {
+    expect(classEndDate(start, weeks)).toBe(end);
+  });
+});
+
+describe('assertClassOpenForSessions', () => {
+  it.each([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE])(
+    'accepts a %s class',
+    (status) => {
+      expect(() => assertClassOpenForSessions(status)).not.toThrow();
+    },
+  );
+
+  it.each([TrainingClassStatus.COMPLETED, TrainingClassStatus.CANCELLED])(
+    'rejects a %s class',
+    (status) => {
+      expect(() => assertClassOpenForSessions(status)).toThrow(
+        ConflictException,
+      );
+    },
+  );
 });

@@ -29,7 +29,7 @@ export interface HorseTrainingSessionRow {
   classId: string;
   className: string;
   planName: string;
-  phaseName: string;
+  subjectName: string | null;
   name: string;
   sessionType: TrainingSessionType;
   scheduledStartAt: Date;

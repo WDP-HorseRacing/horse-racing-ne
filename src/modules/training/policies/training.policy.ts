@@ -18,7 +18,6 @@ import { SessionParticipantStatus } from '../enums/session-participant-status.en
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 
 export function assertClassActivatable(status: TrainingClassStatus): void {
@@ -61,7 +60,7 @@ export function assertValidDateRange(start: string, end: string): void {
   }
 }
 
-export function assertSessionWindowInPlan(
+export function assertSessionWindowInClass(
   scheduledStartAt: string | Date,
   scheduledEndAt: string | Date,
   startDate: string,
@@ -77,7 +76,7 @@ export function assertSessionWindowInPlan(
   const startDay = dateOnly(new Date(start).toISOString());
   const endDay = dateOnly(new Date(end).toISOString());
   if (startDay < dateOnly(startDate) || endDay > dateOnly(endDate)) {
-    throw new BadRequestException('Buổi tập phải nằm trong thời gian giáo án');
+    throw new BadRequestException('Buổi tập phải nằm trong thời gian của lớp');
   }
 }
 
@@ -86,33 +85,6 @@ export function assertTrainableHorse(isReference: boolean): void {
     throw new BadRequestException(
       'Ngựa tham chiếu không thuộc đàn, không lập giáo án được',
     );
-  }
-}
-
-export function assertPlanEditable(status: TrainingPlanStatus): void {
-  if (status !== TrainingPlanStatus.SCHEDULED) {
-    throw new ConflictException('Chỉ được sửa giáo án đang SCHEDULED');
-  }
-}
-
-export function assertPlanActivatable(status: TrainingPlanStatus): void {
-  if (status !== TrainingPlanStatus.SCHEDULED) {
-    throw new ConflictException('Chỉ giáo án SCHEDULED mới được kích hoạt');
-  }
-}
-
-export function assertPlanCompletable(status: TrainingPlanStatus): void {
-  if (status !== TrainingPlanStatus.ACTIVE) {
-    throw new ConflictException('Chỉ giáo án ACTIVE mới được hoàn thành');
-  }
-}
-
-export function assertPlanCancellable(status: TrainingPlanStatus): void {
-  if (
-    status === TrainingPlanStatus.COMPLETED ||
-    status === TrainingPlanStatus.CANCELLED
-  ) {
-    throw new ConflictException('Giáo án đã ở trạng thái kết thúc');
   }
 }
 
@@ -287,5 +259,49 @@ export function assertSubjectExercise(
   }
   if (sessionType === TrainingSessionType.REGULAR && targetTimeMs !== null) {
     throw new BadRequestException('Chỉ môn chạy thử mới có thời gian mục tiêu');
+  }
+}
+
+/**
+ * Tính tổng số tuần của giáo án
+ *
+ * @param items Các môn của giáo án kèm số tuần
+ * @returns Tổng số tuần
+ */
+export function totalPlanWeeks(
+  items: ReadonlyArray<{ weeks: number }>,
+): number {
+  return items.reduce((sum, item) => sum + item.weeks, 0);
+}
+
+/**
+ * Tính ngày kết thúc của lớp theo ngày bắt đầu và tổng số tuần của giáo án
+ *
+ * - Ngày kết thúc = ngày bắt đầu + tổng số tuần × 7 − 1 ngày
+ *
+ * @param startDate Ngày bắt đầu dạng YYYY-MM-DD
+ * @param totalWeeks Tổng số tuần của giáo án, lớn hơn 0
+ * @returns Ngày kết thúc dạng YYYY-MM-DD
+ */
+export function classEndDate(startDate: string, totalWeeks: number): string {
+  const end = new Date(`${dateOnly(startDate)}T00:00:00.000Z`);
+  end.setUTCDate(end.getUTCDate() + totalWeeks * 7 - 1);
+  return end.toISOString().slice(0, 10);
+}
+
+/**
+ * Chỉ thêm hoặc sửa buổi tập khi lớp còn nháp hoặc đang chạy
+ *
+ * @param status Trạng thái của lớp
+ * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy
+ */
+export function assertClassOpenForSessions(status: TrainingClassStatus): void {
+  if (
+    status !== TrainingClassStatus.DRAFT &&
+    status !== TrainingClassStatus.ACTIVE
+  ) {
+    throw new ConflictException(
+      'Lớp đã kết thúc, không thêm hoặc sửa buổi tập được',
+    );
   }
 }

@@ -27,7 +27,6 @@ describe('Training class queries over its sessions (Postgres)', () => {
   let classes: TrainingClassesService;
   let enrollments: TrainingClassEnrollmentsService;
   let manager: Actor;
-  let hasClassColumn: boolean;
 
   beforeAll(async () => {
     db = await startTestPostgres();
@@ -48,11 +47,6 @@ describe('Training class queries over its sessions (Postgres)', () => {
       new TrainingOperationsFacade(),
       dataSource,
     );
-    const [column] = await dataSource.query<unknown[]>(
-      `SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'training_sessions' AND column_name = 'class_id'`,
-    );
-    hasClassColumn = Boolean(column);
   });
 
   afterAll(() => stopTestPostgres(db));
@@ -71,37 +65,25 @@ describe('Training class queries over its sessions (Postgres)', () => {
     return { sub: row.keycloak_id, roles: [role] };
   }
 
-  async function seedClass(code: string, planStatus = 'ACTIVE') {
+  async function seedClass(code: string) {
     const trainer = await seed.user(UserRole.HEAD_TRAINER);
-    const classId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_classes (id, version, name, code, head_trainer_id, start_date, end_date, status)
-       VALUES ($1, 1, $2, $2, $3, '2026-01-01', '2099-12-31', 'ACTIVE')`,
-      [classId, code, trainer],
-    );
-    const planId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_plans (id, version, class_id, created_by, name, phase_name, goal, start_date, end_date, status)
-       VALUES ($1, 1, $2, $3, 'Giáo án', 'Nền', 'Mục tiêu', '2026-01-01', '2099-12-31', $4)`,
-      [planId, classId, trainer, planStatus],
-    );
-    return { classId, planId };
+    return seed.trainingClass(trainer, {
+      code,
+      startDate: '2026-01-01',
+      endDate: '2099-12-31',
+    });
   }
 
   async function seedSession(
-    owner: { classId: string; planId: string },
+    owner: { classId: string },
     status: string,
     startAt = '2099-06-01T01:00:00Z',
   ): Promise<string> {
     const id = randomUUID();
-    const columns = hasClassColumn ? ', class_id' : '';
-    const values = hasClassColumn ? ', $5' : '';
     await dataSource.query(
-      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m${columns})
-       VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', $4, 'MODERATE', 3000${values})`,
-      hasClassColumn
-        ? [id, owner.planId, startAt, status, owner.classId]
-        : [id, owner.planId, startAt, status],
+      `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
+       VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', $4, 'MODERATE', 3000)`,
+      [id, owner.classId, startAt, status],
     );
     return id;
   }
@@ -175,8 +157,8 @@ describe('Training class queries over its sessions (Postgres)', () => {
   });
 
   it('blocks completing a class only by its own unfinished sessions', async () => {
-    const a = await seedClass('A', 'COMPLETED');
-    const b = await seedClass('B', 'COMPLETED');
+    const a = await seedClass('A');
+    const b = await seedClass('B');
     await seedSession(b, 'DRAFT');
 
     await expect(
@@ -230,26 +212,25 @@ describe('Training class queries over its sessions (Postgres)', () => {
     );
   });
 
-  it('rejects new class dates only when they leave out a session of that class', async () => {
+  it('rejects a new start date only when the recomputed range leaves out a session of that class', async () => {
     const a = await seedClass('A');
     const b = await seedClass('B');
     await dataSource.query(
       `UPDATE training_classes SET status = 'DRAFT' WHERE id IN ($1, $2)`,
       [a.classId, b.classId],
     );
-    await dataSource.query(
-      `UPDATE training_plans SET start_date = '2026-03-01', end_date = '2026-03-31'`,
-    );
     await seedSession(b, 'DRAFT', '2026-03-10T01:00:00Z');
     await seedSession(a, 'DRAFT', '2026-12-01T01:00:00Z');
-    const range = { startDate: '2026-01-01', endDate: '2026-06-30' };
 
     await expect(
-      classes.update(manager, b.classId, range),
+      classes.update(manager, b.classId, { startDate: '2026-03-02' }),
     ).resolves.toMatchObject({
-      endDate: '2026-06-30',
+      startDate: '2026-03-02',
+      endDate: '2026-03-29',
     });
-    await expect(classes.update(manager, a.classId, range)).rejects.toThrow(
+    await expect(
+      classes.update(manager, a.classId, { startDate: '2026-03-02' }),
+    ).rejects.toThrow(
       new ConflictException(
         'Khoảng ngày mới không bao phủ các session hiện có',
       ),

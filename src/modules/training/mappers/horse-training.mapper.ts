@@ -60,7 +60,7 @@ export function toHorseTrainingSessionResponse(
     classId: row.classId,
     className: row.className,
     planName: row.planName,
-    phaseName: row.phaseName,
+    subjectName: row.subjectName,
     name: row.name,
     sessionType: row.sessionType,
     scheduledStartAt: row.scheduledStartAt,

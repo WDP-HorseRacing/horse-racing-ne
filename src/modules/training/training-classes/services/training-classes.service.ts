@@ -1,6 +1,11 @@
-import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
 import { UserRole } from '../../../users/user.enums';
 import {
@@ -12,7 +17,6 @@ import {
 import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../../enums/training-class-status.enum';
-import { TrainingPlanStatus } from '../../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
 import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
@@ -25,8 +29,9 @@ import {
   assertClassCancellable,
   assertClassCompletable,
   assertClassEditable,
-  assertValidDateRange,
+  classEndDate,
   dateOnly,
+  totalPlanWeeks,
 } from '../../policies/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
 
@@ -50,8 +55,6 @@ export class TrainingClassesService {
     if (existing) {
       throw new ConflictException(`Mã lớp ${code} đã tồn tại`);
     }
-    // validate startDate < endDate
-    assertValidDateRange(body.startDate, body.endDate);
     if (body.headTrainerId) {
       await this.access.assertHeadTrainer(
         this.dataSource.manager,
@@ -68,6 +71,14 @@ export class TrainingClassesService {
         'Head trainer chỉ được tạo class cho chính mình',
       );
     }
+    if (!headTrainerId) {
+      throw new BadRequestException('Lớp phải có Head Trainer phụ trách');
+    }
+    const totalWeeks = await this.planWeeksOf(
+      this.dataSource.manager,
+      body.planId,
+      headTrainerId,
+    );
     const row = await this.classes.save(
       this.classes.create({
         code,
@@ -76,8 +87,9 @@ export class TrainingClassesService {
         raceAptitude: body.raceAptitude ?? null,
         maxHorses: body.maxHorses ?? 10,
         headTrainerId,
+        planId: body.planId,
         startDate: dateOnly(body.startDate),
-        endDate: dateOnly(body.endDate),
+        endDate: classEndDate(body.startDate, totalWeeks),
         status: TrainingClassStatus.DRAFT,
       }),
     );
@@ -161,14 +173,6 @@ export class TrainingClassesService {
       this.access.assertCanManageClass(actor, caller.id, row.headTrainerId);
       assertClassCompletable(row.status);
 
-      const unfinishedPlans = await manager.countBy(TrainingPlanEntity, {
-        classId,
-        status: In([TrainingPlanStatus.SCHEDULED, TrainingPlanStatus.ACTIVE]),
-      });
-      if (unfinishedPlans) {
-        throw new ConflictException('Class vẫn còn plan chưa kết thúc');
-      }
-
       const unfinishedSessions = await manager
         .getRepository(TrainingSessionEntity)
         .createQueryBuilder('session')
@@ -229,65 +233,43 @@ export class TrainingClassesService {
       }
 
       const now = new Date();
-      const planIds = (
-        await manager.findBy(TrainingPlanEntity, { classId })
-      ).map((plan) => plan.id);
+      await manager.update(
+        TrainingSessionEntity,
+        {
+          classId,
+          status: In([
+            TrainingSessionStatus.DRAFT,
+            TrainingSessionStatus.SCHEDULED,
+            TrainingSessionStatus.IN_PROGRESS,
+          ]),
+        },
+        {
+          status: TrainingSessionStatus.CANCELLED,
+          cancelledAt: now,
+          cancelledBy: caller.id,
+          cancelReason: `Class bị hủy: ${reason}`,
+        },
+      );
 
-      if (planIds.length) {
-        await manager.update(
-          TrainingSessionEntity,
-          {
-            classId,
-            status: In([
-              TrainingSessionStatus.DRAFT,
-              TrainingSessionStatus.SCHEDULED,
-              TrainingSessionStatus.IN_PROGRESS,
-            ]),
-          },
-          {
-            status: TrainingSessionStatus.CANCELLED,
-            cancelledAt: now,
-            cancelledBy: caller.id,
-            cancelReason: `Class bị hủy: ${reason}`,
-          },
-        );
-
-        await manager
-          .createQueryBuilder()
-          .update(SessionParticipantEntity)
-          .set({
-            status: SessionParticipantStatus.CANCELLED,
-            cancelReason: reason,
-          })
-          .where(
-            'session_id IN (SELECT id FROM training_sessions WHERE class_id = :classId)',
-            { classId },
-          )
-          .andWhere('status IN (:...statuses)', {
-            statuses: [
-              SessionParticipantStatus.PLANNED,
-              SessionParticipantStatus.PRESENT,
-              SessionParticipantStatus.READY,
-            ],
-          })
-          .execute();
-
-        await manager.update(
-          TrainingPlanEntity,
-          {
-            classId,
-            status: In([
-              TrainingPlanStatus.SCHEDULED,
-              TrainingPlanStatus.ACTIVE,
-            ]),
-          },
-          {
-            status: TrainingPlanStatus.CANCELLED,
-            cancelledAt: now,
-            cancelReason: reason,
-          },
-        );
-      }
+      await manager
+        .createQueryBuilder()
+        .update(SessionParticipantEntity)
+        .set({
+          status: SessionParticipantStatus.CANCELLED,
+          cancelReason: reason,
+        })
+        .where(
+          'session_id IN (SELECT id FROM training_sessions WHERE class_id = :classId)',
+          { classId },
+        )
+        .andWhere('status IN (:...statuses)', {
+          statuses: [
+            SessionParticipantStatus.PLANNED,
+            SessionParticipantStatus.PRESENT,
+            SessionParticipantStatus.READY,
+          ],
+        })
+        .execute();
 
       await manager.update(
         HorseEnrollmentEntity,
@@ -326,19 +308,12 @@ export class TrainingClassesService {
       const startDate = body.startDate
         ? dateOnly(body.startDate)
         : row.startDate;
-      const endDate = body.endDate ? dateOnly(body.endDate) : row.endDate;
-      assertValidDateRange(startDate, endDate);
-      if (body.headTrainerId)
-        await this.access.assertHeadTrainer(manager, body.headTrainerId);
-      if (
-        caller.role === UserRole.HEAD_TRAINER &&
-        body.headTrainerId !== undefined &&
-        body.headTrainerId !== caller.id
-      ) {
-        throw new ForbiddenException(
-          'Head trainer không được chuyển class cho head trainer khác',
-        );
-      }
+      const endDate = body.startDate
+        ? classEndDate(
+            startDate,
+            await this.planWeeksOf(manager, row.planId, row.headTrainerId),
+          )
+        : row.endDate;
       const activeEnrollments = await manager.countBy(HorseEnrollmentEntity, {
         classId,
         status: HorseEnrollmentStatus.ACTIVE,
@@ -347,20 +322,6 @@ export class TrainingClassesService {
       if (activeEnrollments > nextMaxHorses) {
         throw new ConflictException(
           `Sức chứa mới không được nhỏ hơn số horse đang enroll (${activeEnrollments})`,
-        );
-      }
-      const outsidePlans = await manager
-        .getRepository(TrainingPlanEntity)
-        .createQueryBuilder('plan')
-        .where('plan.class_id = :classId', { classId })
-        .andWhere(
-          '(plan.start_date < :startDate OR plan.end_date > :endDate)',
-          { startDate, endDate },
-        )
-        .getCount();
-      if (outsidePlans) {
-        throw new ConflictException(
-          'Khoảng ngày mới không bao phủ các plan hiện có',
         );
       }
       const outsideSessions = await manager
@@ -400,12 +361,37 @@ export class TrainingClassesService {
             ? body.raceAptitude
             : row.raceAptitude,
         maxHorses: body.maxHorses ?? row.maxHorses,
-        headTrainerId: body.headTrainerId ?? row.headTrainerId,
         startDate,
         endDate,
       });
       return manager.save(row);
     });
     return toTrainingClassResponse(updated);
+  }
+
+  /**
+   * Lấy tổng số tuần của giáo án dùng cho lớp, kèm kiểm giáo án thuộc Head Trainer phụ trách lớp
+   *
+   * @param manager EntityManager dùng để query
+   * @param planId UUID của giáo án
+   * @param headTrainerId UUID của Head Trainer phụ trách lớp
+   * @returns Promise trả về tổng số tuần của giáo án
+   * @throws BadRequestException Nếu không có giáo án hoặc giáo án không thuộc Head Trainer phụ trách lớp
+   */
+  private async planWeeksOf(
+    manager: EntityManager,
+    planId: string,
+    headTrainerId: string | null,
+  ): Promise<number> {
+    const plan = await manager.findOne(TrainingPlanEntity, {
+      where: { id: planId },
+      relations: { subjects: true },
+    });
+    if (!plan || plan.headTrainerId !== headTrainerId) {
+      throw new BadRequestException(
+        'Giáo án không thuộc Head Trainer phụ trách lớp',
+      );
+    }
+    return totalPlanWeeks(plan.subjects);
   }
 }

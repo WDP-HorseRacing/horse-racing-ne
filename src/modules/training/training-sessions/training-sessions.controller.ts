@@ -17,21 +17,24 @@ import { TrainingSessionsService } from './training-sessions.service';
 export class TrainingSessionsController {
   constructor(private readonly sessions: TrainingSessionsService) {}
 
-  @Get('training-plans/:id/sessions')
+  @Get('classes/:classId/sessions')
   @ApiOkResponse({ type: [TrainingSessionResponseDto] })
-  list(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) planId: string) {
-    return this.sessions.listSessions(actor, planId);
+  list(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+  ) {
+    return this.sessions.listSessions(actor, classId);
   }
 
   @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
-  @Post('training-plans/:id/sessions')
+  @Post('classes/:classId/sessions')
   @ApiCreatedResponse({ type: TrainingSessionResponseDto })
   create(
     @CurrentUser() actor: Actor,
-    @Param('id', ParseUUIDPipe) planId: string,
+    @Param('classId', ParseUUIDPipe) classId: string,
     @Body() body: CreateTrainingSessionDto,
   ) {
-    return this.sessions.createSession(actor, planId, body);
+    return this.sessions.createSession(actor, classId, body);
   }
 
   @Get('training-sessions/:sessionId')

@@ -67,31 +67,22 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
   const enrolledHorse = async (name: string) => {
     const trainer = await seed.user(UserRole.HEAD_TRAINER);
     const horseId = await seed.horse(name);
-    const classId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_classes (id, version, name, code, head_trainer_id, start_date, end_date, status)
-       VALUES ($1, 1, $2, $3, $4, '2026-09-01', '2026-12-31', 'ACTIVE')`,
-      [classId, `Lớp ${name}`, classId.slice(0, 8), trainer],
-    );
+    const { classId } = await seed.trainingClass(trainer, {
+      name: `Lớp ${name}`,
+    });
     const enrollmentId = randomUUID();
     await dataSource.query(
       `INSERT INTO horse_enrollments (id, version, class_id, horse_id, status, enrolled_at)
        VALUES ($1, 1, $2, $3, 'ACTIVE', '2026-09-05T00:00:00Z')`,
       [enrollmentId, classId, horseId],
     );
-    const planId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_plans (id, version, class_id, created_by, name, phase_name, goal, start_date, end_date)
-       VALUES ($1, 1, $2, $3, 'Giáo án', 'Nền tảng', 'Mục tiêu', '2026-09-01', '2026-12-31')`,
-      [planId, classId, trainer],
-    );
 
     const participant = async (scheduledAt: string) => {
       const sessionId = randomUUID();
       await dataSource.query(
-        `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m, class_id)
-         VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', 'MODERATE', 3000, (SELECT class_id FROM training_plans WHERE id = $2))`,
-        [sessionId, planId, scheduledAt],
+        `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m)
+         VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', 'MODERATE', 3000)`,
+        [sessionId, classId, scheduledAt],
       );
       const participantId = randomUUID();
       await dataSource.query(

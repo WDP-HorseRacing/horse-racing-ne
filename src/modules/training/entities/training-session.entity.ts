@@ -5,26 +5,15 @@ import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingClassEntity } from './training-class.entity';
-import { TrainingPlanEntity } from './training-plan.entity';
 import { TrainingSubjectEntity } from './training-subject.entity';
 
 /**
- * TrainingSessionEntity: một thời khóa biểu cụ thể của TrainingPlan.
+ * TrainingSessionEntity: một buổi tập cụ thể của TrainingClass.
  * Trạng thái thực thi theo từng Horse nằm ở SessionParticipantEntity.
  */
 @Entity({ name: 'training_sessions' })
 @Index('training_sessions_class_start_idx', ['classId', 'scheduledStartAt'])
 export class TrainingSessionEntity extends MutableRecordEntity {
-  @Column({ name: 'plan_id', type: 'uuid' })
-  planId!: string;
-
-  @ManyToOne(() => TrainingPlanEntity, {
-    nullable: false,
-    onDelete: 'RESTRICT',
-  })
-  @JoinColumn({ name: 'plan_id' })
-  plan!: TrainingPlanEntity;
-
   @Column({ name: 'class_id', type: 'uuid' })
   classId!: string;
 

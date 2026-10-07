@@ -6,7 +6,6 @@ import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.en
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
-import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSharedModule } from '../shared/training-shared.module';
 import { SessionParticipantsController } from './session-participants.controller';
@@ -18,7 +17,6 @@ import { TrainingSessionsService } from './training-sessions.service';
   imports: [
     TypeOrmModule.forFeature([
       TrainingSessionEntity,
-      TrainingPlanEntity,
       TrainingClassEntity,
       HorseEnrollmentEntity,
       SessionParticipantEntity,

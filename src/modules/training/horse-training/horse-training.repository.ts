@@ -76,7 +76,7 @@ export class HorseTrainingRepository {
       .addSelect('class.id', 'classId')
       .addSelect('class.name', 'className')
       .addSelect('plan.name', 'planName')
-      .addSelect('plan.phaseName', 'phaseName')
+      .addSelect('subject.name', 'subjectName')
       .addSelect('session.name', 'name')
       .addSelect('session.sessionType', 'sessionType')
       .addSelect('session.scheduledStartAt', 'scheduledStartAt')
@@ -120,8 +120,9 @@ export class HorseTrainingRepository {
       .createQueryBuilder('participant')
       .withDeleted()
       .innerJoin('participant.session', 'session')
-      .innerJoin('session.plan', 'plan')
       .innerJoin('session.trainingClass', 'class')
+      .innerJoin('class.plan', 'plan')
+      .leftJoin('session.subject', 'subject')
       .where('participant.horseId = :horseId', { horseId });
     if (filter.classId) {
       query.andWhere('class.id = :classId', { classId: filter.classId });

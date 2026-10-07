@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
@@ -8,6 +12,8 @@ import {
   TrainingSubjectResponseDto,
   UpdateTrainingSubjectDto,
 } from '../dto/training-subject.dto';
+import { TrainingPlanSubjectEntity } from '../entities/training-plan-subject.entity';
+import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingSubjectResponse } from '../mappers/training-subject.mapper';
 import { assertSubjectExercise } from '../policies/training.policy';
@@ -146,17 +152,30 @@ export class TrainingSubjectsService {
   }
 
   /**
-   * Xóa môn học
+   * Xóa môn học chưa được giáo án hay buổi tập nào dùng
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param subjectId UUID của môn học
    * @returns Promise hoàn tất khi đã xóa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có môn học
+   * @throws ConflictException Nếu môn đang có trong giáo án hoặc buổi tập
    */
   async remove(actor: Actor, subjectId: string): Promise<void> {
     await this.access.currentUser(actor);
-    const result = await this.subjects.delete({ id: subjectId });
-    if (!result.affected) throw new NotFoundException(SUBJECT_NOT_FOUND);
+    await this.dataSource.transaction(async (manager) => {
+      const row = await manager.findOne(TrainingSubjectEntity, {
+        where: { id: subjectId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!row) throw new NotFoundException(SUBJECT_NOT_FOUND);
+      if (
+        (await manager.existsBy(TrainingPlanSubjectEntity, { subjectId })) ||
+        (await manager.existsBy(TrainingSessionEntity, { subjectId }))
+      ) {
+        throw new ConflictException('Môn học đang được dùng, không xóa được');
+      }
+      await manager.remove(row);
+    });
   }
 }

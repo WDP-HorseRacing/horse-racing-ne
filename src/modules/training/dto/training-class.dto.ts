@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PartialType,
+} from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import {
   IsDateString,
@@ -53,17 +58,24 @@ export class CreateTrainingClassDto {
   @IsUUID()
   headTrainerId?: string;
 
-  @ApiProperty({ format: 'date' })
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Giáo án của Head Trainer phụ trách lớp',
+  })
+  @IsUUID()
+  planId!: string;
+
+  @ApiProperty({
+    format: 'date',
+    description:
+      'Ngày bắt đầu; ngày kết thúc tự tính theo tổng số tuần của giáo án',
+  })
   @IsDateString()
   startDate!: string;
-
-  @ApiProperty({ format: 'date' })
-  @IsDateString()
-  endDate!: string;
 }
 
 export class UpdateTrainingClassDto extends PartialType(
-  CreateTrainingClassDto,
+  OmitType(CreateTrainingClassDto, ['planId', 'headTrainerId'] as const),
 ) {}
 
 export class UpdateTrainingClassStatusDto {
@@ -112,6 +124,10 @@ export class TrainingClassResponseDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @Expose()
   headTrainerId!: string | null;
+
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  planId!: string;
 
   @ApiProperty({ format: 'date' })
   @Expose()

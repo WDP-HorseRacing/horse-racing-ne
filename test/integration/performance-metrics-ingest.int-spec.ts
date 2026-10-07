@@ -74,29 +74,21 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     const trainer = await seed.user(UserRole.HEAD_TRAINER);
     const groom = await seed.user(UserRole.GROOM);
     const horse = await seed.horse('Winx');
-    const classId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_classes (id, version, name, code, head_trainer_id, start_date, end_date, status)
-       VALUES ($1, 1, 'Lớp A', 'A', $2, '2026-09-01', '2026-12-31', 'ACTIVE')`,
-      [classId, trainer],
-    );
+    const { classId } = await seed.trainingClass(trainer, {
+      code: 'A',
+      name: 'Lớp A',
+    });
     const enrollmentId = randomUUID();
     await dataSource.query(
       `INSERT INTO horse_enrollments (id, version, class_id, horse_id, status, enrolled_at)
        VALUES ($1, 1, $2, $3, 'ACTIVE', '2026-09-05T00:00:00Z')`,
       [enrollmentId, classId, horse],
     );
-    const planId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_plans (id, version, class_id, created_by, name, phase_name, goal, start_date, end_date, status)
-       VALUES ($1, 1, $2, $3, 'Giáo án', 'Nền tảng', 'Mục tiêu', '2026-09-01', '2026-12-31', 'ACTIVE')`,
-      [planId, classId, trainer],
-    );
     const sessionId = randomUUID();
     await dataSource.query(
-      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m, class_id)
-       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', 'IN_PROGRESS', 'MODERATE', 3000, (SELECT class_id FROM training_plans WHERE id = $2))`,
-      [sessionId, planId],
+      `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
+       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', 'IN_PROGRESS', 'MODERATE', 3000)`,
+      [sessionId, classId],
     );
     const participantId = randomUUID();
     await dataSource.query(

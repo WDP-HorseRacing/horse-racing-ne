@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
   MinLength,
@@ -23,6 +24,11 @@ export class CreateTrainingSessionDto {
   @ApiProperty({ enum: TrainingSessionType })
   @IsEnum(TrainingSessionType)
   sessionType!: TrainingSessionType;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Môn học của buổi' })
+  @IsOptional()
+  @IsUUID()
+  subjectId?: string;
 
   @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
   @IsEnum(TrainingIntensity)
@@ -77,10 +83,6 @@ export class TrainingSessionResponseDto {
   @ApiProperty({ format: 'uuid' })
   @Expose()
   id!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  @Expose()
-  planId!: string;
 
   @ApiProperty({ format: 'uuid' })
   @Expose()

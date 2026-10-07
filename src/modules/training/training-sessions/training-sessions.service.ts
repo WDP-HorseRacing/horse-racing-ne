@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
@@ -15,19 +19,20 @@ import {
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
-import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
+import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
 import {
   assertSessionCancellable,
   assertSessionEditable,
   assertSessionPublishable,
-  assertSessionWindowInPlan,
+  assertClassOpenForSessions,
+  assertSessionWindowInClass,
   eligibilityForSession,
   initialParticipantEligibility,
 } from '../policies/training.policy';
@@ -42,13 +47,21 @@ export class TrainingSessionsService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Liệt kê các buổi tập của lớp theo giờ bắt đầu
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @returns Promise trả về các buổi tập, sớm nhất trước
+   * @throws NotFoundException Nếu không có lớp hoặc người gọi không được xem lớp
+   */
   async listSessions(
     actor: Actor,
-    planId: string,
+    classId: string,
   ): Promise<TrainingSessionResponseDto[]> {
-    await this.access.planForActor(actor, planId);
+    await this.access.assertCanReadClass(actor, classId);
     const rows = await this.sessions.find({
-      where: { planId },
+      where: { classId },
       order: { scheduledStartAt: 'ASC' },
     });
     return rows.map(toTrainingSessionResponse);
@@ -63,40 +76,51 @@ export class TrainingSessionsService {
     );
   }
 
+  /**
+   * Thêm một buổi tập nháp vào lớp
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @param body Nội dung buổi tập, môn học tùy chọn
+   * @returns Promise trả về buổi tập vừa tạo ở trạng thái DRAFT
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp
+   * @throws NotFoundException Nếu không có lớp
+   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy
+   * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, hoặc môn học không tồn tại
+   */
   async createSession(
     actor: Actor,
-    planId: string,
+    classId: string,
     body: CreateTrainingSessionDto,
   ): Promise<TrainingSessionResponseDto> {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
-      const plan = await this.access.lockedPlan(manager, planId);
+      const trainingClass = await this.access.lockedTrainingClass(
+        manager,
+        classId,
+      );
       this.access.assertCanManageClass(
         actor,
         caller.id,
-        plan.trainingClass.headTrainerId,
+        trainingClass.headTrainerId,
       );
-      if (plan.trainingClass.status !== TrainingClassStatus.ACTIVE) {
-        throw new ConflictException('Class phải ACTIVE để tạo session');
-      }
-      if (
-        plan.status !== TrainingPlanStatus.SCHEDULED &&
-        plan.status !== TrainingPlanStatus.ACTIVE
-      ) {
-        throw new ConflictException(
-          'Không thể thêm session vào plan đã kết thúc',
-        );
-      }
-      assertSessionWindowInPlan(
+      assertClassOpenForSessions(trainingClass.status);
+      assertSessionWindowInClass(
         body.scheduledStartAt,
         body.scheduledEndAt,
-        plan.startDate,
-        plan.endDate,
+        trainingClass.startDate,
+        trainingClass.endDate,
       );
+      if (
+        body.subjectId &&
+        !(await manager.existsBy(TrainingSubjectEntity, { id: body.subjectId }))
+      ) {
+        throw new BadRequestException('Môn học không tồn tại');
+      }
       return manager.save(
         manager.create(TrainingSessionEntity, {
-          planId,
-          classId: plan.classId,
+          classId,
+          subjectId: body.subjectId ?? null,
           name: body.name,
           sessionType: body.sessionType,
           intensity: body.intensity,
@@ -121,23 +145,16 @@ export class TrainingSessionsService {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const session = await this.access.lockedSession(manager, sessionId);
-      const plan = await this.access.findPlan(manager, session.planId);
+      const trainingClass = await this.access.findTrainingClass(
+        manager,
+        session.classId,
+      );
       this.access.assertCanManageClass(
         actor,
         caller.id,
-        plan.trainingClass.headTrainerId,
+        trainingClass.headTrainerId,
       );
-      if (
-        plan.status !== TrainingPlanStatus.SCHEDULED &&
-        plan.status !== TrainingPlanStatus.ACTIVE
-      ) {
-        throw new ConflictException(
-          'Không thể sửa session của plan đã kết thúc',
-        );
-      }
-      if (plan.trainingClass.status !== TrainingClassStatus.ACTIVE) {
-        throw new ConflictException('Class phải ACTIVE để sửa session');
-      }
+      assertClassOpenForSessions(trainingClass.status);
       assertSessionEditable(session.status);
       const nextSessionType = body.sessionType ?? session.sessionType;
       if (nextSessionType !== session.sessionType) {
@@ -159,8 +176,20 @@ export class TrainingSessionsService {
       const end = body.scheduledEndAt
         ? new Date(body.scheduledEndAt)
         : session.scheduledEndAt;
-      assertSessionWindowInPlan(start, end, plan.startDate, plan.endDate);
+      assertSessionWindowInClass(
+        start,
+        end,
+        trainingClass.startDate,
+        trainingClass.endDate,
+      );
+      if (
+        body.subjectId &&
+        !(await manager.existsBy(TrainingSubjectEntity, { id: body.subjectId }))
+      ) {
+        throw new BadRequestException('Môn học không tồn tại');
+      }
       Object.assign(session, {
+        subjectId: body.subjectId ?? session.subjectId,
         name: body.name ?? session.name,
         sessionType: nextSessionType,
         intensity: body.intensity ?? session.intensity,
@@ -183,10 +212,9 @@ export class TrainingSessionsService {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const session = await this.access.lockedSession(manager, sessionId);
-      const plan = await this.access.findPlan(manager, session.planId);
       const trainingClass = await this.access.lockedTrainingClass(
         manager,
-        plan.classId,
+        session.classId,
       );
       this.access.assertCanManageClass(
         actor,
@@ -196,11 +224,6 @@ export class TrainingSessionsService {
       assertSessionPublishable(session.status);
       if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
         throw new ConflictException('Class không còn ACTIVE');
-      }
-      if (plan.status !== TrainingPlanStatus.ACTIVE) {
-        throw new ConflictException(
-          'Plan phải ACTIVE trước khi publish session',
-        );
       }
       if (session.sessionType === TrainingSessionType.TIME_TRIAL) {
         const configuredTrial = await manager.findOneBy(TimeTrialEntity, {
@@ -287,11 +310,14 @@ export class TrainingSessionsService {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const session = await this.access.lockedSession(manager, sessionId);
-      const plan = await this.access.findPlan(manager, session.planId);
+      const trainingClass = await this.access.findTrainingClass(
+        manager,
+        session.classId,
+      );
       this.access.assertCanManageClass(
         actor,
         caller.id,
-        plan.trainingClass.headTrainerId,
+        trainingClass.headTrainerId,
       );
       assertSessionCancellable(session.status);
       const ongoing = await manager.countBy(SessionParticipantEntity, {

@@ -317,8 +317,63 @@ export function fixtures(dataSource: DataSource) {
     return id;
   };
 
+  /**
+   * Tạo môn học, giáo án gồm môn đó và lớp dùng giáo án, cùng Head Trainer
+   *
+   * @param headTrainerId Id Head Trainer sở hữu giáo án và phụ trách lớp
+   * @param options Mã, tên, trạng thái, ngày bắt đầu và kết thúc của lớp; số tuần của môn trong giáo án
+   * @returns A promise resolving to id lớp và id giáo án
+   */
+  const trainingClass = async (
+    headTrainerId: string,
+    options: {
+      code?: string;
+      name?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      weeks?: number;
+    } = {},
+  ): Promise<{ classId: string; planId: string }> => {
+    const subjectId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO training_subjects (id, version, name, session_type, intensity, planned_distance_m)
+       VALUES ($1, 1, $2, 'REGULAR', 'MODERATE', 3000)`,
+      [subjectId, `Môn ${subjectId.slice(0, 8)}`],
+    );
+    const planId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO training_plans (id, version, name, head_trainer_id)
+       VALUES ($1, 1, 'Giáo án', $2)`,
+      [planId, headTrainerId],
+    );
+    await dataSource.query(
+      `INSERT INTO training_plan_subjects (plan_id, position, subject_id, weeks)
+       VALUES ($1, 1, $2, $3)`,
+      [planId, subjectId, options.weeks ?? 4],
+    );
+    const classId = randomUUID();
+    const code = options.code ?? classId.slice(0, 8);
+    await dataSource.query(
+      `INSERT INTO training_classes (id, version, name, code, head_trainer_id, plan_id, start_date, end_date, status)
+       VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        classId,
+        options.name ?? `Lớp ${code}`,
+        code,
+        headTrainerId,
+        planId,
+        options.startDate ?? '2026-09-01',
+        options.endDate ?? '2026-12-31',
+        options.status ?? 'ACTIVE',
+      ],
+    );
+    return { classId, planId };
+  };
+
   return {
     user,
+    trainingClass,
     barn,
     horse,
     ownership,

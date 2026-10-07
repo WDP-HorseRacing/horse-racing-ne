@@ -17,7 +17,6 @@ import {
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
-import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 
 @Injectable()
@@ -198,46 +197,6 @@ export class TrainingAccessService {
     });
     if (!row) throw new NotFoundException('Không tìm thấy training class');
     return row;
-  }
-
-  async findPlan(
-    manager: EntityManager,
-    id: string,
-  ): Promise<TrainingPlanEntity> {
-    const plan = await manager.findOne(TrainingPlanEntity, {
-      where: { id },
-      relations: { trainingClass: true },
-    });
-    if (!plan) throw new NotFoundException('Không tìm thấy giáo án');
-    return plan;
-  }
-
-  async lockedPlan(
-    manager: EntityManager,
-    id: string,
-  ): Promise<TrainingPlanEntity> {
-    const plan = await manager.findOne(TrainingPlanEntity, {
-      where: { id },
-      relations: { trainingClass: true },
-      lock: { mode: 'pessimistic_write' },
-    });
-    if (!plan) throw new NotFoundException('Không tìm thấy plan');
-    return plan;
-  }
-
-  async planForActor(
-    actor: Actor,
-    planId: string,
-    manager: EntityManager = this.dataSource.manager,
-  ): Promise<TrainingPlanEntity> {
-    const plan = await this.findPlan(manager, planId);
-    const caller = await this.currentUser(actor, manager);
-    if (
-      !(await this.canReadClass(actor, caller.id, plan.trainingClass, manager))
-    ) {
-      throw new NotFoundException('Không tìm thấy giáo án');
-    }
-    return plan;
   }
 
   async findSession(

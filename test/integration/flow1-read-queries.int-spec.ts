@@ -98,13 +98,15 @@ describe('Flow 1 read queries (Postgres)', () => {
     code: string,
     headTrainerId: string | null,
   ): Promise<string> => {
-    const id = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_classes (id, version, name, code, head_trainer_id, start_date, end_date, status)
-       VALUES ($1, 1, $2, $3, $4, '2026-09-01', '2026-12-31', 'ACTIVE')`,
-      [id, `Lớp ${code}`, code, headTrainerId],
-    );
-    return id;
+    const owner = headTrainerId ?? (await seed.user(UserRole.HEAD_TRAINER));
+    const { classId } = await seed.trainingClass(owner, { code });
+    if (!headTrainerId) {
+      await dataSource.query(
+        'UPDATE training_classes SET head_trainer_id = NULL WHERE id = $1',
+        [classId],
+      );
+    }
+    return classId;
   };
 
   const enrollment = async (
@@ -129,23 +131,13 @@ describe('Flow 1 read queries (Postgres)', () => {
     return id;
   };
 
-  const plan = async (classId: string, createdBy: string): Promise<string> => {
-    const id = randomUUID();
-    await dataSource.query(
-      `INSERT INTO training_plans (id, version, class_id, created_by, name, phase_name, goal, start_date, end_date)
-       VALUES ($1, 1, $2, $3, 'Giáo án', 'Nền tảng', 'Mục tiêu', '2026-09-01', '2026-12-31')`,
-      [id, classId, createdBy],
-    );
-    return id;
-  };
-
-  const session = async (planId: string, startAt: string): Promise<string> => {
+  const session = async (classId: string, startAt: string): Promise<string> => {
     const id = randomUUID();
     const end = new Date(new Date(startAt).getTime() + 3_600_000);
     await dataSource.query(
-      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m, class_id)
-       VALUES ($1, 1, $2, $3, $4, $5, 'MODERATE', 3000, (SELECT class_id FROM training_plans WHERE id = $2))`,
-      [id, planId, `Buổi ${startAt}`, startAt, end],
+      `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m)
+       VALUES ($1, 1, $2, $3, $4, $5, 'MODERATE', 3000)`,
+      [id, classId, `Buổi ${startAt}`, startAt, end],
     );
     return id;
   };
@@ -385,12 +377,10 @@ describe('Flow 1 read queries (Postgres)', () => {
           'ACTIVE',
           '2026-09-01T00:00:00Z',
         );
-        const planA = await plan(classA, trainer);
-        const planB = await plan(classB, trainer);
-        const past = await session(planA, '2026-09-20T01:00:00Z');
-        const soon = await session(planA, '2026-10-02T01:00:00Z');
-        const later = await session(planB, '2026-10-05T01:00:00Z');
-        const atNow = await session(planB, NOW.toISOString());
+        const past = await session(classA, '2026-09-20T01:00:00Z');
+        const soon = await session(classA, '2026-10-02T01:00:00Z');
+        const later = await session(classB, '2026-10-05T01:00:00Z');
+        const atNow = await session(classB, NOW.toISOString());
         ids = {
           past: await participant(past, horse, enrollA, {
             status: 'COMPLETED',
@@ -438,7 +428,7 @@ describe('Flow 1 read queries (Postgres)', () => {
         expect(rows[0]).toMatchObject({
           className: 'Lớp A',
           planName: 'Giáo án',
-          phaseName: 'Nền tảng',
+          subjectName: null,
           sessionType: 'REGULAR',
           sessionStatus: 'DRAFT',
           participantStatus: 'PLANNED',

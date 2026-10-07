@@ -97,8 +97,11 @@ export class HorseTrainingSessionResponseDto {
   @ApiProperty()
   planName!: string;
 
-  @ApiProperty({ description: 'Giai đoạn của giáo án' })
-  phaseName!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Môn học của buổi, null nếu buổi không gắn môn',
+  })
+  subjectName!: string | null;
 
   @ApiProperty()
   name!: string;

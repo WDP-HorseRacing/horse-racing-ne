@@ -13,7 +13,7 @@ import {
   SessionParticipantResponseDto,
 } from '../dto/session-participant.dto';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
-import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
+import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
@@ -243,9 +243,9 @@ export class SessionParticipantsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia
    * @returns Promise trả về lượt tham gia sau khi bắt đầu
-   * @throws NotFoundException Nếu không có lượt tham gia, buổi tập, giáo án hoặc ngựa
+   * @throws NotFoundException Nếu không có lượt tham gia, buổi tập, lớp hoặc ngựa
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
-   * @throws ConflictException Nếu lượt không ở READY, giáo án chưa ACTIVE, buổi không ở trạng thái thực thi, ngựa không còn được tập hoặc ngựa đang có lượt ONGOING khác
+   * @throws ConflictException Nếu lượt không ở READY, lớp chưa ACTIVE, buổi không ở trạng thái thực thi, ngựa không còn được tập hoặc ngựa đang có lượt ONGOING khác
    */
   async start(
     actor: Actor,
@@ -276,9 +276,12 @@ export class SessionParticipantsService {
         context,
       );
       assertParticipantStart(participant.status);
-      const plan = await this.access.findPlan(manager, session.planId);
-      if (plan.status !== TrainingPlanStatus.ACTIVE) {
-        throw new ConflictException('Plan chưa ACTIVE');
+      const trainingClass = await this.access.findTrainingClass(
+        manager,
+        session.classId,
+      );
+      if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
+        throw new ConflictException('Lớp chưa ACTIVE');
       }
       if (
         session.status !== TrainingSessionStatus.SCHEDULED &&

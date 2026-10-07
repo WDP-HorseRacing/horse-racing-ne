@@ -12,10 +12,9 @@ import {
 } from '../dto/time-trial.dto';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { TrainingClassStatus } from '../enums/training-class-status.enum';
-import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { toTimeTrialResponse } from '../mappers/time-trial.mapper';
+import { assertClassOpenForSessions } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 
 @Injectable()
@@ -45,23 +44,16 @@ export class TimeTrialsService {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const session = await this.access.lockedSession(manager, sessionId);
-      const plan = await this.access.findPlan(manager, session.planId);
+      const trainingClass = await this.access.findTrainingClass(
+        manager,
+        session.classId,
+      );
       this.access.assertCanManageClass(
         actor,
         caller.id,
-        plan.trainingClass.headTrainerId,
+        trainingClass.headTrainerId,
       );
-      if (
-        plan.status !== TrainingPlanStatus.SCHEDULED &&
-        plan.status !== TrainingPlanStatus.ACTIVE
-      ) {
-        throw new ConflictException(
-          'Không thể cấu hình Time Trial cho plan đã kết thúc',
-        );
-      }
-      if (plan.trainingClass.status !== TrainingClassStatus.ACTIVE) {
-        throw new ConflictException('Class phải ACTIVE để cấu hình Time Trial');
-      }
+      assertClassOpenForSessions(trainingClass.status);
       if (session.sessionType !== TrainingSessionType.TIME_TRIAL) {
         throw new ConflictException('Session không phải TIME_TRIAL');
       }

@@ -19,7 +19,7 @@ function sessionRow(participantId: string) {
     classId: 'c1',
     className: 'Lớp 1',
     planName: 'Giáo án 1',
-    phaseName: 'Nền tảng',
+    subjectName: 'Sức bền',
     name: 'Buổi 1',
     sessionType: 'TIME_TRIAL',
     scheduledStartAt: new Date('2026-10-01T08:00:00Z'),

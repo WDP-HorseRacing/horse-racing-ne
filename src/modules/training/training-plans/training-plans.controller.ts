@@ -1,13 +1,28 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Access, CurrentUser } from '../../../common/decorators';
-import type { Actor } from '../../../common/types/actor';
-import { UserRole } from '../../users/user.enums';
 import {
-  CancelTrainingPlanDto,
-  CreateTrainingPlanDto,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { UserRole } from '../../../common/enums';
+import type { Actor } from '../../../common/types/actor';
+import {
+  SaveTrainingPlanDto,
   TrainingPlanResponseDto,
-  UpdateTrainingPlanDto,
 } from '../dto/training-plan.dto';
 import { TrainingPlansService } from './training-plans.service';
 
@@ -17,62 +32,48 @@ import { TrainingPlansService } from './training-plans.service';
 export class TrainingPlansController {
   constructor(private readonly plans: TrainingPlansService) {}
 
-  @Get('training-classes/:classId/plans')
+  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Get('training-plans')
+  @ApiOperation({ summary: 'Liệt kê giáo án (Head Trainer: của mình)' })
   @ApiOkResponse({ type: [TrainingPlanResponseDto] })
-  list(@CurrentUser() actor: Actor, @Param('classId', ParseUUIDPipe) classId: string) {
-    return this.plans.listPlansByClass(actor, classId);
+  list(@CurrentUser() actor: Actor) {
+    return this.plans.list(actor);
   }
 
   @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
-  @Post('training-classes/:classId/plans')
-  @ApiCreatedResponse({ type: TrainingPlanResponseDto })
-  create(
-    @CurrentUser() actor: Actor,
-    @Param('classId', ParseUUIDPipe) classId: string,
-    @Body() body: CreateTrainingPlanDto,
-  ) {
-    return this.plans.createTrainingPlan(actor, classId, body);
-  }
-
   @Get('training-plans/:id')
+  @ApiOperation({ summary: 'Xem một giáo án kèm các môn' })
   @ApiOkResponse({ type: TrainingPlanResponseDto })
   get(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
-    return this.plans.getPlanById(actor, id);
+    return this.plans.get(actor, id);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
-  @Patch('training-plans/:id')
+  @Access([UserRole.HEAD_TRAINER])
+  @Post('training-plans')
+  @ApiOperation({ summary: 'Tạo giáo án ghép môn theo tuần' })
+  @ApiCreatedResponse({ type: TrainingPlanResponseDto })
+  create(@CurrentUser() actor: Actor, @Body() body: SaveTrainingPlanDto) {
+    return this.plans.create(actor, body);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
+  @Put('training-plans/:id')
+  @ApiOperation({ summary: 'Thay nội dung giáo án của mình' })
   @ApiOkResponse({ type: TrainingPlanResponseDto })
   update(
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: UpdateTrainingPlanDto,
+    @Body() body: SaveTrainingPlanDto,
   ) {
-    return this.plans.updatePlan(actor, id, body);
+    return this.plans.update(actor, id, body);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
-  @Post('training-plans/:id/activate')
-  @ApiOkResponse({ type: TrainingPlanResponseDto })
-  activate(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
-    return this.plans.activatePlan(actor, id);
-  }
-
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
-  @Post('training-plans/:id/complete')
-  @ApiOkResponse({ type: TrainingPlanResponseDto })
-  complete(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
-    return this.plans.completePlan(actor, id);
-  }
-
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
-  @Post('training-plans/:id/cancel')
-  @ApiOkResponse({ type: TrainingPlanResponseDto })
-  cancel(
-    @CurrentUser() actor: Actor,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: CancelTrainingPlanDto,
-  ) {
-    return this.plans.cancelPlan(actor, id, body);
+  @Access([UserRole.HEAD_TRAINER])
+  @Delete('training-plans/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Xóa giáo án chưa có lớp dùng' })
+  @ApiNoContentResponse()
+  remove(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.plans.remove(actor, id);
   }
 }
