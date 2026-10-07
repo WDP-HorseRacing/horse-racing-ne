@@ -54,7 +54,7 @@ describe('BullMQ connection when Redis goes down', () => {
     await redis?.stop();
   });
 
-  it('fails fast while Redis is down and queues again once Redis is back', async () => {
+  it('gives up while Redis stays down and queues again once Redis is back', async () => {
     await channel.deliver([notification()]);
     await redis!.stop();
     redis = undefined;
@@ -63,7 +63,7 @@ describe('BullMQ connection when Redis goes down', () => {
     await expect(channel.deliver([notification()])).rejects.toThrow(
       'max retries per request',
     );
-    expect(Date.now() - startedAt).toBeLessThan(10_000);
+    expect(Date.now() - startedAt).toBeLessThan(15_000);
 
     redis = await startRedis(port);
     const queued = notification();
@@ -75,6 +75,17 @@ describe('BullMQ connection when Redis goes down', () => {
       if (ok) break;
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
+    expect(await queue.getJob(queued._id)).toBeDefined();
+  }, 60_000);
+
+  it('still queues the job when Redis comes back within a few seconds', async () => {
+    await redis!.stop();
+    const queued = notification();
+    const delivering = channel.deliver([queued]);
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    redis = await startRedis(port);
+
+    await expect(delivering).resolves.toBeUndefined();
     expect(await queue.getJob(queued._id)).toBeDefined();
   }, 60_000);
 });

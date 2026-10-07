@@ -20,12 +20,14 @@ rồi đọc các `recordedAt` của lô đã lưu cho cùng lượt tập để
 ## 3. Push FCM mất khi Redis sập
 
 `NotificationDeliveryService.send` lưu thông báo, đẩy socket, rồi `PushChannel` đưa job vào hàng đợi BullMQ.
-Kết nối BullMQ dùng `maxRetriesPerRequest: 1` (`bullConnectionOptions`): Redis sập thì thêm job lỗi sau khoảng 1 giây,
-lỗi chỉ được log. Thông báo vẫn có trong inbox và đã đẩy socket, nhưng push của thông báo đó mất; outbox không giao lại
-vì listener không ném lỗi, và `send()` chỉ giao thông báo vừa lưu mới.
+Kết nối BullMQ dùng `maxRetriesPerRequest: 5` (`bullConnectionOptions`): Redis rớt dưới khoảng 5 giây thì thêm job chờ rồi
+chạy tiếp, push chỉ trễ. Redis sập lâu hơn thì thêm job lỗi sau khoảng 5 giây, lỗi chỉ được log. Thông báo vẫn có trong inbox
+và đã đẩy socket, nhưng push của thông báo đó mất; outbox không giao lại vì listener không ném lỗi, và `send()` chỉ giao
+thông báo vừa lưu mới.
 
-Đo với mặc định của ioredis (20 lần thử): thêm job đứng chờ 238 giây rồi mới lỗi, giữ cả hàng outbox phía sau
-(gồm việc tự tạo yêu cầu khám từ cảnh báo chỉ số).
+Đánh đổi của số lần thử: mặc định của ioredis (20 lần) làm thêm job đứng chờ 238 giây, giữ cả hàng outbox phía sau
+(gồm việc tự tạo yêu cầu khám từ cảnh báo chỉ số); 1 lần thì Redis rớt 2 giây cũng mất push. 5 lần: chờ tối đa khoảng
+5 giây mỗi event.
 
 Hướng gửi bù khi cần:
 - Thêm `pushQueuedAt` vào thông báo; đưa job được thì đánh dấu.

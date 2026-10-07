@@ -1,6 +1,11 @@
 import type { ConfigService } from '@nestjs/config';
 
 /**
+ * Số lần thử kết nối lại Redis tối đa cho mỗi lệnh BullMQ trước khi báo lỗi.
+ */
+const BULL_MAX_RETRIES_PER_REQUEST = 5;
+
+/**
  * Thông tin kết nối Redis đọc từ env, dùng chung cho Redis client và BullMQ.
  */
 export interface RedisConnectionOptions {
@@ -30,13 +35,17 @@ export function redisConnectionOptions(
 /**
  * Đọc thông tin kết nối Redis cho BullMQ
  *
- * - Mất kết nối Redis: lệnh (vd thêm job) báo lỗi sau một lần thử kết nối lại, không đứng chờ Redis lên lại
+ * - Mất kết nối Redis: lệnh (vd thêm job) chờ tối đa BULL_MAX_RETRIES_PER_REQUEST lần thử kết nối lại (khoảng 1 giây mỗi lần) rồi báo lỗi
+ * - Redis lên lại trong lúc chờ: lệnh chạy tiếp bình thường
  *
  * @param config ConfigService của ứng dụng
- * @returns Thông tin kết nối Redis kèm giới hạn một lần thử lại cho mỗi lệnh
+ * @returns Thông tin kết nối Redis kèm giới hạn số lần thử lại cho mỗi lệnh
  */
 export function bullConnectionOptions(
   config: ConfigService,
 ): RedisConnectionOptions & { maxRetriesPerRequest: number } {
-  return { ...redisConnectionOptions(config), maxRetriesPerRequest: 1 };
+  return {
+    ...redisConnectionOptions(config),
+    maxRetriesPerRequest: BULL_MAX_RETRIES_PER_REQUEST,
+  };
 }
