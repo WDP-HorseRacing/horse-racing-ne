@@ -1,5 +1,6 @@
 import {
   HorsePerformanceResponseDto,
+  ParticipantPerformanceSummaryDto,
   PerformanceEvaluationDto,
   PerformanceMetricPointDto,
   SessionPerformanceSummaryDto,
@@ -8,7 +9,10 @@ import { averageDecimal, roundDecimal } from '../../../common/utils/decimal';
 import { SPEED_SCALE } from '../constants/performance.constants';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import type { PerformanceMetric } from '../schemas/performance-metric.schema';
-import type { SessionMetricAggregate } from '../types/performance.types';
+import type {
+  ParticipantMetricAggregate,
+  SessionMetricAggregate,
+} from '../types/performance.types';
 
 /**
  * Chuyển chỉ số gom theo một lượt tập sang DTO
@@ -36,6 +40,54 @@ export function toSessionPerformanceSummary(
     ),
     maxSpeedMps: roundDecimal(aggregate.maxSpeedMps, SPEED_SCALE),
     alertCount: aggregate.alertCount,
+  };
+}
+
+/**
+ * Chuyển chỉ số gom của một lượt tập sang DTO tổng kết
+ *
+ * - Chưa có điểm đo: count 0, các chỉ số và mốc thời gian là null
+ * - Trung bình làm tròn nửa xa số 0: nhịp tim tới số nguyên, tốc độ tới SPEED_SCALE chữ số
+ *
+ * @param sessionParticipantId UUID của lượt tập
+ * @param aggregate Chỉ số gom, null nếu lượt chưa có điểm đo
+ * @returns Tổng kết chỉ số của lượt tập
+ */
+export function toParticipantPerformanceSummary(
+  sessionParticipantId: string,
+  aggregate: ParticipantMetricAggregate | null,
+): ParticipantPerformanceSummaryDto {
+  if (!aggregate) {
+    return {
+      sessionParticipantId,
+      count: 0,
+      avgHeartRateBpm: null,
+      maxHeartRateBpm: null,
+      avgSpeedMps: null,
+      maxSpeedMps: null,
+      warningCount: 0,
+      criticalCount: 0,
+      firstRecordedAt: null,
+      lastRecordedAt: null,
+    };
+  }
+  return {
+    sessionParticipantId,
+    count: aggregate.count,
+    avgHeartRateBpm: Number(
+      averageDecimal(String(aggregate.sumHeartRateBpm), aggregate.count, 0),
+    ),
+    maxHeartRateBpm: aggregate.maxHeartRateBpm,
+    avgSpeedMps: averageDecimal(
+      aggregate.sumSpeedMps,
+      aggregate.count,
+      SPEED_SCALE,
+    ),
+    maxSpeedMps: roundDecimal(aggregate.maxSpeedMps, SPEED_SCALE),
+    warningCount: aggregate.warningCount,
+    criticalCount: aggregate.criticalCount,
+    firstRecordedAt: aggregate.firstRecordedAt,
+    lastRecordedAt: aggregate.lastRecordedAt,
   };
 }
 

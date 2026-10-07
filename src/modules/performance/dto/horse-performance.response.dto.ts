@@ -65,3 +65,47 @@ export class SessionPerformanceSummaryDto {
   @ApiProperty({ description: 'Số điểm đo có alertLevel khác NORMAL' })
   alertCount!: number;
 }
+
+export class ParticipantPerformanceSummaryDto {
+  @ApiProperty({ format: 'uuid' })
+  sessionParticipantId!: string;
+
+  @ApiProperty({ description: 'Số điểm đo của lượt tập' })
+  count!: number;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Nhịp tim trung bình (bpm), null khi chưa có điểm đo',
+  })
+  avgHeartRateBpm!: number | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Nhịp tim cao nhất (bpm), null khi chưa có điểm đo',
+  })
+  maxHeartRateBpm!: number | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Tốc độ trung bình (m/s), null khi chưa có điểm đo',
+  })
+  avgSpeedMps!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Tốc độ cao nhất (m/s), null khi chưa có điểm đo',
+  })
+  maxSpeedMps!: string | null;
+
+  @ApiProperty({ description: 'Số điểm đo mức WARNING' })
+  warningCount!: number;
+
+  @ApiProperty({ description: 'Số điểm đo mức CRITICAL' })
+  criticalCount!: number;
+
+  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  firstRecordedAt!: Date | null;
+
+  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  lastRecordedAt!: Date | null;
+}

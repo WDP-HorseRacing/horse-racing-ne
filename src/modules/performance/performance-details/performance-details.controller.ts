@@ -14,15 +14,6 @@ import type { Actor } from '../../../common/types/actor';
 @ApiResponse({ status: 501, description: 'Contract only' })
 @Controller()
 export class PerformanceDetailsController extends PendingApi {
-  @Get('session-participants/:id/performance-summary')
-  @ApiOperation({ summary: 'Get session metric and alert summary' })
-  sessionSummary(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-  ) {
-    return this.pending();
-  }
-
   @Get('horses/:id/alerts')
   @ApiOperation({ summary: 'List horse performance alerts' })
   alerts(

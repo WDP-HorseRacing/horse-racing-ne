@@ -73,3 +73,20 @@ export interface PerformanceMetricCriticalEvent {
   speedMps: string;
   recordedAt: string;
 }
+
+/**
+ * Chỉ số gom của mọi điểm đo trong một lượt tập, chưa làm tròn.
+ *
+ * - sumSpeedMps, maxSpeedMps là số thập phân dạng chuỗi
+ */
+export interface ParticipantMetricAggregate {
+  count: number;
+  sumHeartRateBpm: number;
+  maxHeartRateBpm: number;
+  sumSpeedMps: string;
+  maxSpeedMps: string;
+  warningCount: number;
+  criticalCount: number;
+  firstRecordedAt: Date;
+  lastRecordedAt: Date;
+}

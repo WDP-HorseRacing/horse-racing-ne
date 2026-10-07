@@ -1,8 +1,9 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { type Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
+import type { Actor } from '../../src/common/types/actor';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { PERFORMANCE_METRIC_CRITICAL_EVENT } from '../../src/modules/performance/constants/performance.constants';
@@ -29,7 +30,7 @@ import {
   type TestPostgres,
 } from './postgres';
 
-describe('PerformanceMetricsService.ingest (Postgres + MongoDB)', () => {
+describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
   let db: TestPostgres;
   let mongo: TestMongo;
   let metrics: Model<PerformanceMetric>;
@@ -189,5 +190,82 @@ describe('PerformanceMetricsService.ingest (Postgres + MongoDB)', () => {
     await expect(
       service.ingest(participantId, [point(0, 150)]),
     ).rejects.toThrow(ConflictException);
+  });
+
+  describe('reading', () => {
+    const actorFor = async (userId: string, role: UserRole): Promise<Actor> => {
+      const [row] = await dataSource.query<Array<{ keycloak_id: string }>>(
+        'SELECT keycloak_id FROM users WHERE id = $1',
+        [userId],
+      );
+      return { sub: row.keycloak_id, roles: [role] };
+    };
+
+    it('lists the participant points oldest first', async () => {
+      const { participantId } = await seedParticipant();
+      const manager = await actorFor(
+        await seed.user(UserRole.CLUB_MANAGER),
+        UserRole.CLUB_MANAGER,
+      );
+      await service.ingest(participantId, [point(2, 160), point(0, 150)]);
+
+      const rows = await service.list(manager, participantId);
+
+      expect(rows.map((row) => row.heartRateBpm)).toEqual([150, 160]);
+      expect(rows[0].speedMps).toBe('12.000');
+    });
+
+    it('summarises averages, maxima and alert counts of the participant', async () => {
+      const { participantId } = await seedParticipant();
+      const manager = await actorFor(
+        await seed.user(UserRole.CLUB_MANAGER),
+        UserRole.CLUB_MANAGER,
+      );
+      await service.ingest(participantId, [
+        point(0, 150, 10.0005),
+        point(1, 225, 12),
+        point(2, 245, 14),
+      ]);
+
+      const summary = await service.summary(manager, participantId);
+
+      expect(summary).toEqual({
+        sessionParticipantId: participantId,
+        count: 3,
+        avgHeartRateBpm: 207,
+        maxHeartRateBpm: 245,
+        avgSpeedMps: '12.000',
+        maxSpeedMps: '14.000',
+        warningCount: 1,
+        criticalCount: 1,
+        firstRecordedAt: new Date(Date.UTC(2026, 9, 10, 1, 0, 0)),
+        lastRecordedAt: new Date(Date.UTC(2026, 9, 10, 1, 0, 2)),
+      });
+    });
+
+    it('returns an empty summary when the participant has no points', async () => {
+      const { participantId } = await seedParticipant();
+      const manager = await actorFor(
+        await seed.user(UserRole.CLUB_MANAGER),
+        UserRole.CLUB_MANAGER,
+      );
+
+      const summary = await service.summary(manager, participantId);
+
+      expect(summary.count).toBe(0);
+      expect(summary.avgHeartRateBpm).toBeNull();
+    });
+
+    it('hides the participant from a head trainer of another class', async () => {
+      const { participantId } = await seedParticipant();
+      const other = await actorFor(
+        await seed.user(UserRole.HEAD_TRAINER),
+        UserRole.HEAD_TRAINER,
+      );
+
+      await expect(service.list(other, participantId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });

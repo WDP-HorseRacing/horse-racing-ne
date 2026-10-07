@@ -3,19 +3,29 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../common/types/actor';
 import { roundDecimal } from '../../../common/utils/decimal';
 import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import type { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 import { TrainingAccessService } from '../../training/shared/training-access.service';
 import {
+  PARTICIPANT_METRIC_LIMIT,
   PERFORMANCE_METRIC_CRITICAL_EVENT,
   PERFORMANCE_METRICS_SOCKET_EVENT,
   SPEED_SCALE,
 } from '../constants/performance.constants';
+import {
+  ParticipantPerformanceSummaryDto,
+  PerformanceMetricPointDto,
+} from '../dto/horse-performance.response.dto';
 import { IngestMetricsResultDto } from '../dto/ingest-metric-batch.dto';
 import { IngestMetricDto } from '../dto/ingest-metric.dto';
 import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
+import {
+  toMetricPoint,
+  toParticipantPerformanceSummary,
+} from '../mappers/performance.mapper';
 import {
   assertParticipantRecording,
   classifyMetric,
@@ -24,6 +34,7 @@ import { PerformanceMetric } from '../schemas/performance-metric.schema';
 import { PerformanceAccessService } from '../shared/performance-access.service';
 import type {
   ClassifiedMetric,
+  ParticipantMetricAggregate,
   PerformanceMetricCriticalEvent,
 } from '../types/performance.types';
 
@@ -132,6 +143,96 @@ export class PerformanceMetricsService {
       skippedDuplicates: metrics.length - fresh.length,
       highestAlertLevel: highestAlertLevel(fresh),
     };
+  }
+
+  /**
+   * Lấy các điểm đo của một lượt tập theo thứ tự thời gian
+   *
+   * - Club Manager, bác sĩ, Groom được giao lượt, Head Trainer của lớp (ngựa thuộc khu mình) xem được
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tập
+   * @returns Promise trả về tối đa PARTICIPANT_METRIC_LIMIT điểm đo, cũ nhất trước
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws NotFoundException Nếu không có lượt tập hoặc người gọi không được xem
+   */
+  async list(
+    actor: Actor,
+    participantId: string,
+  ): Promise<PerformanceMetricPointDto[]> {
+    await this.trainingAccess.assertCanReadParticipant(actor, participantId);
+    const rows = await this.metrics
+      .find({ 'meta.sessionParticipantId': participantId })
+      .sort({ recordedAt: 1 })
+      .limit(PARTICIPANT_METRIC_LIMIT)
+      .lean<PerformanceMetric[]>()
+      .exec();
+    return rows.map(toMetricPoint);
+  }
+
+  /**
+   * Tổng kết chỉ số nhịp tim, tốc độ và số cảnh báo của một lượt tập
+   *
+   * - Ai xem được lượt tập thì xem được tổng kết, kể cả chủ ngựa
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tập
+   * @returns Promise trả về tổng kết; lượt chưa có điểm đo thì count 0 và các chỉ số null
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws NotFoundException Nếu không có lượt tập hoặc người gọi không được xem
+   */
+  async summary(
+    actor: Actor,
+    participantId: string,
+  ): Promise<ParticipantPerformanceSummaryDto> {
+    await this.trainingAccess.assertCanReadParticipant(actor, participantId);
+    const [group] = await this.metrics.aggregate<{
+      count: number;
+      sumHeartRateBpm: number;
+      maxHeartRateBpm: number;
+      sumSpeedMps: Types.Decimal128;
+      maxSpeedMps: Types.Decimal128;
+      warningCount: number;
+      criticalCount: number;
+      firstRecordedAt: Date;
+      lastRecordedAt: Date;
+    }>([
+      { $match: { 'meta.sessionParticipantId': participantId } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          sumHeartRateBpm: { $sum: '$heartRateBpm' },
+          maxHeartRateBpm: { $max: '$heartRateBpm' },
+          sumSpeedMps: { $sum: '$speedMps' },
+          maxSpeedMps: { $max: '$speedMps' },
+          warningCount: {
+            $sum: {
+              $cond: [{ $eq: ['$alertLevel', MetricAlertLevel.WARNING] }, 1, 0],
+            },
+          },
+          criticalCount: {
+            $sum: {
+              $cond: [
+                { $eq: ['$alertLevel', MetricAlertLevel.CRITICAL] },
+                1,
+                0,
+              ],
+            },
+          },
+          firstRecordedAt: { $min: '$recordedAt' },
+          lastRecordedAt: { $max: '$recordedAt' },
+        },
+      },
+    ]);
+    const aggregate: ParticipantMetricAggregate | null = group
+      ? {
+          ...group,
+          sumSpeedMps: group.sumSpeedMps.toString(),
+          maxSpeedMps: group.maxSpeedMps.toString(),
+        }
+      : null;
+    return toParticipantPerformanceSummary(participantId, aggregate);
   }
 
   /**

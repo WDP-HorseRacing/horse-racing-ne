@@ -20,6 +20,11 @@ export const PERFORMANCE_SESSION_LIMIT = 100;
 export const RECENT_METRIC_LIMIT = 100;
 
 /**
+ * Số điểm đo tối đa trả về cho một lượt tập (2 giờ với nhịp 1 điểm/giây).
+ */
+export const PARTICIPANT_METRIC_LIMIT = 7200;
+
+/**
  * Số chữ số thập phân của tốc độ (m/s).
  */
 export const SPEED_SCALE = 3;
