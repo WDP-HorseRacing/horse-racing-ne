@@ -1,6 +1,6 @@
 # Phản hồi BE cho yêu cầu sau review Flow 1 và Flow 3
 
-Cập nhật 06/10/2026. Trả lời file `yeu-cau-be.md` (FE viết khi đối chiếu BE commit `6522bec`).
+Cập nhật 07/10/2026. Trả lời file `yeu-cau-be.md` (FE viết khi đối chiếu BE commit `6522bec`).
 
 Từ commit đó tới nay BE đã đổi khá nhiều: thông báo chuyển sang MongoDB, event đi qua outbox, đổi tên vài trường. Chỗ nào yêu cầu cũ còn hợp lý thì BE làm đúng như file. Chỗ nào đụng phần BE mới thì BE giữ thiết kế mới, FE sửa theo. Những chỗ FE cần sửa được đánh dấu **[FE sửa]**.
 
@@ -15,7 +15,7 @@ Tài liệu API đầy đủ ở `docs/api-catalog.md` và `docs/openapi.contrac
 | Body lỗi 400 | Thêm `errors` theo từng ô | Nên đọc `errors` thay cho dò chữ (mục 1) |
 | BE-1 | Đã làm đúng file | Không |
 | BE-2 | Đã làm đúng file | Không |
-| BE-3 | Đã làm, có thêm vài chi tiết | Xử lý `DECEASED` ở mọi chỗ hiện vòng đời (mục 4) |
+| BE-3 | Đã làm, có thêm vài chi tiết và luồng bác sĩ ghi nhận mất | Xử lý `DECEASED` ở mọi chỗ hiện vòng đời; thêm ô ngày mất vào form đóng bệnh án (mục 4) |
 | BE-4 | Đã làm đủ 3 phần | Màn chuyển nhượng, lịch sử sở hữu, `costHidden` (mục 5) |
 | BE-5 | **Khác file**: giữ thiết kế thông báo mới của BE | **[FE sửa]** đọc `category`, `priority`, `resource` (mục 6) |
 | BE-6 | Đã làm, đổi luôn tên vai trò ở các câu lỗi khác | **[FE sửa]** chỗ dò chữ "head trainer" (mục 7) |
@@ -99,6 +99,38 @@ Làm đúng file: bảng chuyển trạng thái, chặn khi còn bệnh án mở
 | Preview đổi khu | `blockedReason`: `Ngựa đã mất, hồ sơ chỉ đọc` |
 
 **Thông báo:** gửi cho chủ ngựa (nếu còn hoạt động), Huấn luyện viên trưởng của khu cũ và Groom cũ, với category `HORSE_LIFECYCLE` và priority `HIGH`. Groom không nhận thêm thông báo "đã chuyển nhượng".
+
+**Bác sĩ ghi nhận mất khi đóng bệnh án [FE sửa]**
+
+Ngựa mất trong lúc đang điều trị thì bác sĩ ghi nhận luôn ở màn đóng bệnh án, không phải chờ Quản lý.
+
+`POST /medical-cases/:caseId/close` có thêm ô tùy chọn `dateOfDeath`:
+
+```json
+{ "finalConclusion": "Ngựa mất do suy tim", "totalCost": 5000000, "dateOfDeath": "2026-10-07" }
+```
+
+- Có `dateOfDeath`: BE đóng bệnh án rồi ghi nhận ngựa mất trong cùng một lần lưu, chạy đủ các bước dọn dẹp ở trên. Nguyên nhân mất lấy từ `finalConclusion`.
+- Không gửi `dateOfDeath`: đóng bệnh án như cũ.
+- Response vẫn là bệnh án đã đóng như cũ. Muốn hiện trạng thái Đã mất thì FE tải lại hồ sơ ngựa.
+- Bảng xác nhận: `GET /medical-cases/:caseId/close-preview` có thêm key `deathImpact`, các key cũ giữ nguyên. `deathImpact` cùng dạng với `GET /horses/:horseId/lifecycle-status/preview?lifecycleStatus=DECEASED` (`allowed`, `classesWithdrawn`, `stallReleased`, `groomEnded`, `trainingLockReleased`, `examRequestsDismissed`, `careSchedulesCancelled`, `summary`...). Khác một điểm: bệnh án đang mở không làm `deathImpact` bị chặn.
+- Chủ ngựa và Quản lý nhận 2 thông báo: đóng bệnh án và ngựa đã mất.
+- Lỗi 400:
+
+| Trường hợp | `errors[].field` | Câu lỗi |
+|---|---|---|
+| Có `dateOfDeath` mà vẫn gửi `lockDecision` | `lockDecision` | `Ngựa mất thì lệnh khóa huấn luyện tự gỡ, không chọn gỡ hay giữ khóa` |
+| Có `dateOfDeath` mà vẫn gửi `lockExpectedEnd` | `lockExpectedEnd` | như trên |
+| Ngày mất ở tương lai | `dateOfDeath` | `Ngày mất không được ở tương lai` |
+| Ngày mất trước ngày sinh | `dateOfDeath` | `Ngày mất không được trước ngày sinh` |
+
+Có lỗi thì không lưu gì, bệnh án vẫn Đang điều trị.
+
+**[FE sửa]** trên form đóng bệnh án:
+- Thêm lựa chọn "Ngựa mất" kèm ô ngày mất.
+- Khi chọn "Ngựa mất" thì hiện bảng xác nhận từ `deathImpact` (dùng lại component bảng xác nhận đổi vòng đời).
+- Khi chọn "Ngựa mất" thì ẩn phần chọn gỡ hay giữ khóa, vì khóa tự gỡ.
+- Màn đổi vòng đời của Quản lý không đổi.
 
 ---
 

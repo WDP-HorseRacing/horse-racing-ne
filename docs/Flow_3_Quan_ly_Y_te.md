@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 06/10/2026
+> Cập nhật: 07/10/2026
 
 ## I. Những main feature liên quan
 
@@ -148,7 +148,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 
 | Flow | Flow 3 nhận gì / cung cấp gì |
 |---|---|
-| Flow 1 | Nhận hồ sơ ngựa, khu và ô chuồng, HEAD TRAINER phụ trách khu. Ghi số đo vào bảng chỉ số cơ thể của F1.5. Cung cấp trạng thái sức khỏe, khóa huấn luyện, danh sách bệnh án và tổng chi phí để hiển thị trong F1.3. Khi chuyển nhượng (F1.8): chặn nếu ngựa còn bệnh án đang mở; yêu cầu khám đang chờ tự chuyển Đã bỏ qua với lý do "Do chuyển nhượng"; lịch hẹn khám định kỳ và lịch chăm sóc (F3.11) chưa làm tự hủy; khóa huấn luyện tự gỡ. Khi ghi nhận ngựa mất (F1.8): làm giống vậy với lý do "Do ngựa mất" và "Gỡ do ngựa mất". Chuyển nhượng nội bộ (F1.4) cũng bị chặn khi còn bệnh án đang mở. Các hệ quả này nằm trong dòng nhật ký đổi vòng đời. Bệnh án và yêu cầu khám cũng là dữ liệu chặn xóa hồ sơ. |
+| Flow 1 | Nhận hồ sơ ngựa, khu và ô chuồng, HEAD TRAINER phụ trách khu. Ghi số đo vào bảng chỉ số cơ thể của F1.5. Cung cấp trạng thái sức khỏe, khóa huấn luyện, danh sách bệnh án và tổng chi phí để hiển thị trong F1.3. Khi chuyển nhượng (F1.8): chặn nếu ngựa còn bệnh án đang mở; yêu cầu khám đang chờ tự chuyển Đã bỏ qua với lý do "Do chuyển nhượng"; lịch hẹn khám định kỳ và lịch chăm sóc (F3.11) chưa làm tự hủy; khóa huấn luyện tự gỡ. Khi ghi nhận ngựa mất (F1.8): làm giống vậy với lý do "Do ngựa mất" và "Gỡ do ngựa mất". Bác sĩ đóng bệnh án kèm ngày mất (F3.9) thì ngựa được ghi nhận mất trong cùng thao tác. Chuyển nhượng nội bộ (F1.4) cũng bị chặn khi còn bệnh án đang mở. Các hệ quả này nằm trong dòng nhật ký đổi vòng đời. Bệnh án và yêu cầu khám cũng là dữ liệu chặn xóa hồ sơ. |
 | Flow 2 | Cung cấp trạng thái sức khỏe và khóa huấn luyện để Flow 2 chặn việc đăng ký lớp và tham gia buổi tập. Flow 3 không tự rút ngựa khỏi lớp. |
 | Flow 4 | Nhận báo cáo sự cố của GROOM dưới dạng yêu cầu khám. Cung cấp ghi chú chăm sóc và hạn chế vận động (trường "Ghi chú chăm sóc" của buổi khám gần nhất) để Flow 4 điều chỉnh khẩu phần và checklist. |
 | Flow 5 | Cung cấp giá trị "được đua" để Flow 5 chặn đăng ký thi đấu. Flow 3 không tự rút đăng ký thi đấu đã có; Flow 5 kiểm tra lại "được đua" khi chốt danh sách. |
@@ -552,7 +552,7 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 
 ### Mô tả
 
-Kết thúc một bệnh án khi con ngựa đã khỏi, ghi kết luận cuối và tổng chi phí điều trị. Đây là thời điểm chi phí được nhập và cũng là lúc chủ ngựa nhìn thấy chi phí. Sau khi đóng, chi phí chỉ được điều chỉnh kèm lý do.
+Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi kết luận cuối và tổng chi phí điều trị. Đây là thời điểm chi phí được nhập và cũng là lúc chủ ngựa nhìn thấy chi phí. Sau khi đóng, chi phí chỉ được điều chỉnh kèm lý do.
 
 ### Phân quyền
 
@@ -572,6 +572,13 @@ Kết thúc một bệnh án khi con ngựa đã khỏi, ghi kết luận cuối
    - Tổng chi phí điều trị theo mục III.6: một số tiền duy nhất cho cả bệnh án. Hệ thống không tính tự động và không tách theo từng buổi khám hay từng loại thuốc.
 3. Ngày đóng là thời điểm thực hiện thao tác.
 4. Nếu lệnh khóa huấn luyện gắn với bệnh án này còn hiệu lực, hệ thống bắt chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ (theo F3.8 nghiệp vụ 7).
+4b. **Ngựa mất trong lúc điều trị:**
+   - Bác sĩ nhập thêm ngày mất (không ở tương lai, không trước ngày sinh).
+   - Trước khi lưu, hệ thống hiện bảng xác nhận hệ quả giống F1.8 (số lớp bị rút, ô bị trả, GROOM bị bỏ, khóa tự gỡ, yêu cầu khám và lịch bị hủy). Bệnh án đang mở không làm bảng này bị chặn, vì bệnh án được đóng trước khi ghi nhận mất.
+   - Hệ thống đóng bệnh án rồi ghi nhận ngựa mất theo F1.8 mục 2b trong cùng một thao tác, lấy kết luận cuối làm nguyên nhân mất.
+   - Lệnh khóa huấn luyện tự gỡ với lý do "Gỡ do ngựa mất". Bác sĩ không chọn gỡ hay giữ khóa; gửi kèm lựa chọn khóa thì báo lỗi.
+   - Một bước lỗi thì hủy toàn bộ, bệnh án vẫn Đang điều trị.
+   - Gửi cả thông báo đóng bệnh án (nghiệp vụ 10) và thông báo ngựa mất (F1.8).
 5. Nếu trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly, hệ thống cảnh báo và hỏi bác sĩ có muốn cập nhật trạng thái trước khi đóng không. Bác sĩ vẫn được phép đóng, vì có trường hợp ngựa hồi phục dần mà bệnh án đã kết thúc.
 6. Nếu con ngựa còn yêu cầu khám đang chờ, hệ thống báo số lượng để bác sĩ biết, kèm nút mở hàng đợi yêu cầu khám; các yêu cầu này vẫn ở hàng đợi và được xử lý như bình thường sau khi đóng. *(BA chốt)*
 7. Sau khi đóng, bệnh án chuyển sang chỉ đọc. Không mở lại bệnh án đã đóng; vấn đề tái phát thì khám ngoài bệnh án (F3.3) và mở bệnh án mới.
@@ -591,8 +598,8 @@ Kết thúc một bệnh án khi con ngựa đã khỏi, ghi kết luận cuối
 | **Tiền điều kiện** | Đóng: bệnh án đang ở trạng thái Đang điều trị. Điều chỉnh chi phí: bệnh án đã đóng. |
 | **Hậu điều kiện** | Bệnh án chuyển sang Đã đóng và chỉ đọc. Tổng chi phí được lưu và hiển thị cho chủ ngựa. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án và chọn "Đóng bệnh án".<br>2. Hệ thống hiển thị biểu mẫu kết luận cuối và tổng chi phí, kèm lệnh khóa liên quan, trạng thái sức khỏe hiện tại và yêu cầu khám đang chờ.<br>3. VETERINARIAN nhập thông tin.<br>4. VETERINARIAN xác nhận lại số tiền.<br>5. Hệ thống đóng bệnh án, xử lý lệnh khóa theo lựa chọn, gửi thông báo và ghi nhật ký. |
-| **Luồng thay thế** | A1. Khóa huấn luyện còn hiệu lực -> bác sĩ chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ.<br>A2. Trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly -> hệ thống cảnh báo, bác sĩ có thể cập nhật trạng thái rồi đóng.<br>A3. Điều trị không mất chi phí -> nhập 0.<br>A4. Bác sĩ phát hiện chi phí nhập sai sau khi đóng -> chọn "Điều chỉnh chi phí", nhập số mới và lý do; hệ thống lưu, ghi nhật ký và thông báo lại. |
-| **Luồng ngoại lệ** | E1. Không nhập kết luận cuối hoặc chi phí -> báo lỗi.<br>E2. Chi phí âm hoặc không phải số nguyên -> báo lỗi.<br>E3. Đóng bệnh án đã đóng -> trả về 409.<br>E4. Điều chỉnh chi phí của bệnh án đang điều trị -> trả về 409.<br>E5. Khóa còn hiệu lực mà không chọn cách xử lý, hoặc chọn giữ khóa mà ngày dự kiến gỡ ở quá khứ -> báo lỗi. |
+| **Luồng thay thế** | A1. Khóa huấn luyện còn hiệu lực -> bác sĩ chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ.<br>A2. Trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly -> hệ thống cảnh báo, bác sĩ có thể cập nhật trạng thái rồi đóng.<br>A3. Điều trị không mất chi phí -> nhập 0.<br>A4. Bác sĩ phát hiện chi phí nhập sai sau khi đóng -> chọn "Điều chỉnh chi phí", nhập số mới và lý do; hệ thống lưu, ghi nhật ký và thông báo lại.<br>A5. Ngựa mất trong lúc điều trị -> bác sĩ nhập ngày mất; hệ thống đóng bệnh án và ghi nhận ngựa mất cùng lúc (F1.8). |
+| **Luồng ngoại lệ** | E1. Không nhập kết luận cuối hoặc chi phí -> báo lỗi.<br>E2. Chi phí âm hoặc không phải số nguyên -> báo lỗi.<br>E3. Đóng bệnh án đã đóng -> trả về 409.<br>E4. Điều chỉnh chi phí của bệnh án đang điều trị -> trả về 409.<br>E5. Khóa còn hiệu lực mà không chọn cách xử lý, hoặc chọn giữ khóa mà ngày dự kiến gỡ ở quá khứ -> báo lỗi.<br>E6. Có ngày mất mà vẫn chọn gỡ hoặc giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh -> báo lỗi tại ô tương ứng, không đóng bệnh án. |
 
 ---
 
@@ -716,6 +723,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 | Không có ghi chú chăm sóc dù Flow 4 cần | Thêm trường "Ghi chú chăm sóc" cho buổi khám | Mục phụ thuộc Flow 4 đã hứa cung cấp. |
 | Không hủy được buổi mở bệnh án và buổi của bệnh án đã đóng | Buổi tái khám hủy được cả khi bệnh án đã đóng; mở nhầm thì hủy buổi mở, bệnh án chuyển Đã hủy | Phản biện vòng 2: mở nhầm ngựa hoặc số đo sai sau khi đóng thì không còn cách sửa. |
 | Kích hoạt lại thì hạn khám cộng 30 ngày | Hạn khám bằng ngày kích hoạt lại cho tới khi khám | Ngựa đang Cần theo dõi mà 30 ngày không có gì nhắc bác sĩ. |
+| Ngựa mất khi còn bệnh án thì phải chờ bác sĩ đóng bệnh án rồi CLUB MANAGER mới ghi nhận mất | Bác sĩ đóng bệnh án kèm ngày mất, hệ thống ghi nhận mất cùng lúc | Ngựa thường mất trong lúc điều trị; chờ hai bước thì ngựa vẫn hiện Đang hoạt động. Chi phí điều trị vẫn được chốt thật. |
 | Lịch chăm sóc không tự lặp | Khi hoàn tất, bác sĩ nhập ngày lần tới để tạo luôn lịch mới | Quên tạo lịch lần sau là ngựa không bao giờ được nhắc. |
 | Giao lịch cho GROOM bất kỳ | Chỉ GROOM đang phụ trách con ngựa | Đổi GROOM thì GROOM cũ vẫn thao tác được, lọt quyền. |
 | Sơ đồ đàn chỉ đếm và liệt kê tên | Kèm khu và ô chuồng để vẽ trên chuồng trại | Đề bài yêu cầu "sơ đồ trạng thái sức khỏe trên giao diện chuồng trại". |
