@@ -32,7 +32,7 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 
 ## Horse Schema
 
-API, quyền và state machine của nhóm bảng này mô tả chi tiết trong [Flow 1](flow1-horses.md).
+Nghiệp vụ, quyền và state machine của nhóm bảng này mô tả trong [Flow 1](flow1-horses.md); API chi tiết ở [API catalog](api-catalog.md).
 
 ### `horses`
 
