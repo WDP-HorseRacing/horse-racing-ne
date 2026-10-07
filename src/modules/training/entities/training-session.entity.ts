@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingPlanEntity } from './training-plan.entity';
@@ -32,6 +33,9 @@ export class TrainingSessionEntity extends MutableRecordEntity {
     enum: TrainingSessionType,
   })
   sessionType!: TrainingSessionType;
+
+  @Column({ type: 'varchar', length: 32, enum: TrainingIntensity })
+  intensity!: TrainingIntensity;
 
   @Column({ name: 'scheduled_start_at', type: 'timestamptz' })
   scheduledStartAt!: Date;

@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { EligibilityReason } from '../../horses/enums/eligibility-reason.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
 import type {
@@ -15,6 +16,7 @@ const READ_ONLY_ENROLL_MESSAGES: Record<ReadOnlyLifecycleStatus, string> = {
 };
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
+import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 
@@ -181,6 +183,36 @@ export function assertParticipantComplete(
       'Participant phải ONGOING trước khi hoàn thành',
     );
   }
+}
+
+/**
+ * Áp cường độ buổi tập lên điều kiện tập của con ngựa
+ *
+ * - Ngựa Cần theo dõi gặp buổi HEAVY: không được tập, thêm lý do HEALTH_UNDER_OBSERVATION
+ * - Các trường hợp khác: giữ nguyên kết quả
+ *
+ * @param eligibility Kết quả evaluateEligibility của con ngựa
+ * @param intensity Cường độ của buổi tập
+ * @returns Điều kiện tập của con ngựa cho riêng buổi tập này
+ */
+export function eligibilityForSession(
+  eligibility: EligibilityResult,
+  intensity: TrainingIntensity,
+): EligibilityResult {
+  const underObservation = eligibility.reasons.includes(
+    EligibilityReason.HEALTH_UNDER_OBSERVATION,
+  );
+  if (!underObservation || intensity !== TrainingIntensity.HEAVY) {
+    return eligibility;
+  }
+  return {
+    ...eligibility,
+    trainingEligible: false,
+    trainingReasons: [
+      ...eligibility.trainingReasons,
+      EligibilityReason.HEALTH_UNDER_OBSERVATION,
+    ],
+  };
 }
 
 /**

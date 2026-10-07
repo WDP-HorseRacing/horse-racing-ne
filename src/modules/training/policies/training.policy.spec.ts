@@ -6,6 +6,7 @@ import {
 import { evaluateEligibility } from '../../horses/policies/horse.policy';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
+import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   assertClassActivatable,
@@ -14,6 +15,7 @@ import {
   assertSessionWindowInPlan,
   assertTrainableHorse,
   assertHorseEnrollable,
+  eligibilityForSession,
   initialParticipantEligibility,
 } from './training.policy';
 
@@ -142,5 +144,59 @@ describe('assertHorseEnrollable', () => {
     expect(() => assertHorseEnrollable(status)).toThrow(
       new ConflictException(message),
     );
+  });
+});
+
+describe('eligibilityForSession', () => {
+  const eligibilityOf = (
+    healthStatus: HorseHealthStatus,
+    hasActiveTrainingLock = false,
+  ) =>
+    evaluateEligibility({
+      isDeleted: false,
+      lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+      healthStatus,
+      hasActiveTrainingLock,
+    });
+
+  it('blocks an UNDER_OBSERVATION horse from a HEAVY session', () => {
+    const result = eligibilityForSession(
+      eligibilityOf(HorseHealthStatus.UNDER_OBSERVATION),
+      TrainingIntensity.HEAVY,
+    );
+
+    expect(result.trainingEligible).toBe(false);
+    expect(result.trainingReasons).toEqual(['HEALTH_UNDER_OBSERVATION']);
+    expect(initialParticipantEligibility(result, false)).toEqual({
+      status: SessionParticipantStatus.INELIGIBLE,
+      ineligibilityReason: 'HEALTH_UNDER_OBSERVATION',
+    });
+  });
+
+  it.each([TrainingIntensity.LIGHT, TrainingIntensity.MODERATE])(
+    'lets an UNDER_OBSERVATION horse train in a %s session',
+    (intensity) => {
+      const eligibility = eligibilityOf(HorseHealthStatus.UNDER_OBSERVATION);
+
+      expect(eligibilityForSession(eligibility, intensity)).toBe(eligibility);
+    },
+  );
+
+  it('lets an ELIGIBLE horse train in a HEAVY session', () => {
+    const eligibility = eligibilityOf(HorseHealthStatus.ELIGIBLE);
+
+    expect(eligibilityForSession(eligibility, TrainingIntensity.HEAVY)).toBe(
+      eligibility,
+    );
+  });
+
+  it('keeps the lock reason for a locked UNDER_OBSERVATION horse in a HEAVY session', () => {
+    const result = eligibilityForSession(
+      eligibilityOf(HorseHealthStatus.UNDER_OBSERVATION, true),
+      TrainingIntensity.HEAVY,
+    );
+
+    expect(result.trainingEligible).toBe(false);
+    expect(result.trainingReasons).toContain('ACTIVE_TRAINING_LOCK');
   });
 });

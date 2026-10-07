@@ -28,6 +28,7 @@ import {
   assertSessionEditable,
   assertSessionPublishable,
   assertSessionWindowInPlan,
+  eligibilityForSession,
   initialParticipantEligibility,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
@@ -97,6 +98,7 @@ export class TrainingSessionsService {
           planId,
           name: body.name,
           sessionType: body.sessionType,
+          intensity: body.intensity,
           scheduledStartAt: new Date(body.scheduledStartAt),
           scheduledEndAt: new Date(body.scheduledEndAt),
           location: body.location ?? null,
@@ -159,6 +161,7 @@ export class TrainingSessionsService {
       Object.assign(session, {
         name: body.name ?? session.name,
         sessionType: nextSessionType,
+        intensity: body.intensity ?? session.intensity,
         scheduledStartAt: start,
         scheduledEndAt: end,
         location: body.location ?? session.location,
@@ -243,12 +246,15 @@ export class TrainingSessionsService {
           horseId: horse.id,
           status: TrainingLockStatus.ACTIVE,
         });
-        const eligibility = evaluateEligibility({
-          isDeleted: Boolean(horse.deletedAt),
-          lifecycleStatus: horse.lifecycleStatus,
-          healthStatus: horse.healthStatus,
-          hasActiveTrainingLock: !!activeLock,
-        });
+        const eligibility = eligibilityForSession(
+          evaluateEligibility({
+            isDeleted: Boolean(horse.deletedAt),
+            lifecycleStatus: horse.lifecycleStatus,
+            healthStatus: horse.healthStatus,
+            hasActiveTrainingLock: !!activeLock,
+          }),
+          session.intensity,
+        );
         const groom = await this.findGroomAt(
           manager,
           horse.id,

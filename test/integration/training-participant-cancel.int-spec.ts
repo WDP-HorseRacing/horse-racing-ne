@@ -49,8 +49,8 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments (Postgres)'
     );
     const sessionId = randomUUID();
     await dataSource.query(
-      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at)
-       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z')`,
+      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, intensity)
+       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', 'MODERATE')`,
       [sessionId, planId],
     );
     const participantId = randomUUID();

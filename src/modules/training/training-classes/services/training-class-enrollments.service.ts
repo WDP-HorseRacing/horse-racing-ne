@@ -23,6 +23,7 @@ import { toHorseEnrollmentResponse } from '../../mappers/horse-enrollment.mapper
 import { TrainingAccessService } from '../../shared/training-access.service';
 import {
   assertHorseEnrollable,
+  eligibilityForSession,
   initialParticipantEligibility,
 } from '../../policies/training.policy';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
@@ -214,12 +215,15 @@ export class TrainingClassEnrollmentsService {
         horseId: horse.id,
         status: TrainingLockStatus.ACTIVE,
       });
-      const eligibility = evaluateEligibility({
-        isDeleted: Boolean(horse.deletedAt),
-        lifecycleStatus: horse.lifecycleStatus,
-        healthStatus: horse.healthStatus,
-        hasActiveTrainingLock: !!lock,
-      });
+      const eligibility = eligibilityForSession(
+        evaluateEligibility({
+          isDeleted: Boolean(horse.deletedAt),
+          lifecycleStatus: horse.lifecycleStatus,
+          healthStatus: horse.healthStatus,
+          hasActiveTrainingLock: !!lock,
+        }),
+        session.intensity,
+      );
       const groom = await this.findGroomAt(
         manager,
         horse.id,

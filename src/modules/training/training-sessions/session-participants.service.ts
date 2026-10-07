@@ -16,6 +16,7 @@ import { SessionParticipantStatus } from '../enums/session-participant-status.en
 import { TrainingPlanStatus } from '../enums/training-plan-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
+import { TrainingSessionEntity } from '../entities/training-session.entity';
 import {
   toSessionParticipantListItem,
   toSessionParticipantResponse,
@@ -27,6 +28,7 @@ import {
   assertParticipantReady,
   assertParticipantStart,
   assertSessionOperational,
+  eligibilityForSession,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TrainingOperationsFacade } from '../shared/training-operations.facade';
@@ -191,7 +193,7 @@ export class SessionParticipantsService {
         context,
       );
       assertParticipantCheckIn(participant.status);
-      if (await this.markIfIneligible(manager, horse, participant)) {
+      if (await this.markIfIneligible(manager, horse, session, participant)) {
         return { rejected: true as const };
       }
       participant.status = SessionParticipantStatus.PRESENT;
@@ -284,7 +286,7 @@ export class SessionParticipantsService {
       ) {
         throw new ConflictException('Session không ở trạng thái thực thi');
       }
-      if (await this.markIfIneligible(manager, horse, participant)) {
+      if (await this.markIfIneligible(manager, horse, session, participant)) {
         return { rejected: true as const };
       }
       if (
@@ -396,29 +398,34 @@ export class SessionParticipantsService {
    * Đánh lượt tham gia là không được tập nếu ngựa không còn đủ điều kiện, chạy trong transaction của nơi gọi
    *
    * - Ngựa đang bị khóa huấn luyện: lượt chuyển CANCELLED_BY_LOCK
-   * - Ngựa không được tập vì lý do khác: lượt chuyển INELIGIBLE
+   * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi HEAVY: lượt chuyển INELIGIBLE
    * - Lượt bị đánh thì ghi lý do và cập nhật trạng thái buổi tập
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horse Con ngựa của lượt, đã khóa row
+   * @param session Buổi tập của lượt, đã khóa row
    * @param participant Lượt tham gia, đã khóa row
    * @returns Promise trả về true nếu lượt đã bị đánh không được tập, false nếu ngựa vẫn được tập
    */
   private async markIfIneligible(
     manager: EntityManager,
     horse: HorseEntity,
+    session: TrainingSessionEntity,
     participant: SessionParticipantEntity,
   ): Promise<boolean> {
     const activeLock = await manager.findOneBy(TrainingLockEntity, {
       horseId: horse.id,
       status: TrainingLockStatus.ACTIVE,
     });
-    const eligibility = evaluateEligibility({
-      isDeleted: Boolean(horse.deletedAt),
-      lifecycleStatus: horse.lifecycleStatus,
-      healthStatus: horse.healthStatus,
-      hasActiveTrainingLock: !!activeLock,
-    });
+    const eligibility = eligibilityForSession(
+      evaluateEligibility({
+        isDeleted: Boolean(horse.deletedAt),
+        lifecycleStatus: horse.lifecycleStatus,
+        healthStatus: horse.healthStatus,
+        hasActiveTrainingLock: !!activeLock,
+      }),
+      session.intensity,
+    );
     if (eligibility.trainingEligible) return false;
     participant.status = activeLock
       ? SessionParticipantStatus.CANCELLED_BY_LOCK

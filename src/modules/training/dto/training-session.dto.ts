@@ -7,6 +7,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 
@@ -19,6 +20,10 @@ export class CreateTrainingSessionDto {
   @ApiProperty({ enum: TrainingSessionType })
   @IsEnum(TrainingSessionType)
   sessionType!: TrainingSessionType;
+
+  @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
+  @IsEnum(TrainingIntensity)
+  intensity!: TrainingIntensity;
 
   @ApiProperty({ format: 'date-time' })
   @IsDateString()
@@ -71,6 +76,10 @@ export class TrainingSessionResponseDto {
   @ApiProperty({ enum: TrainingSessionType })
   @Expose()
   sessionType!: TrainingSessionType;
+
+  @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
+  @Expose()
+  intensity!: TrainingIntensity;
 
   @ApiProperty({ format: 'date-time' })
   @Expose()

@@ -5,6 +5,7 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
+import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { SessionParticipantEntity } from '../../src/modules/training/entities/session-participant.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
@@ -50,7 +51,11 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
 
   const seedParticipant = async (
     participantStatus: 'PLANNED' | 'READY',
-    options: { health?: HorseHealthStatus; locked?: boolean } = {},
+    options: {
+      health?: HorseHealthStatus;
+      locked?: boolean;
+      intensity?: TrainingIntensity;
+    } = {},
   ) => {
     const trainer = await seed.user(UserRole.HEAD_TRAINER);
     const horse = await seed.horse('Winx', { health: options.health });
@@ -74,9 +79,9 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     );
     const sessionId = randomUUID();
     await dataSource.query(
-      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, status)
-       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', 'SCHEDULED')`,
-      [sessionId, planId],
+      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, status, intensity)
+       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', 'SCHEDULED', $3)`,
+      [sessionId, planId, options.intensity ?? TrainingIntensity.MODERATE],
     );
     const participantId = randomUUID();
     await dataSource.query(
@@ -130,6 +135,23 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
       expect(await sessionStatus(sessionId)).toBe('CANCELLED');
     });
 
+    it('keeps INELIGIBLE after rejecting an UNDER_OBSERVATION horse in a HEAVY session', async () => {
+      const actor = await managerActor();
+      const { participantId } = await seedParticipant('READY', {
+        health: HorseHealthStatus.UNDER_OBSERVATION,
+        intensity: TrainingIntensity.HEAVY,
+      });
+
+      await expect(service.start(actor, participantId)).rejects.toThrow(
+        new ConflictException('Ngựa không còn đủ điều kiện để bắt đầu'),
+      );
+
+      expect(await participantRow(participantId)).toEqual({
+        status: 'INELIGIBLE',
+        ineligibility_reason: 'HEALTH_UNDER_OBSERVATION',
+      });
+    });
+
     it('keeps INELIGIBLE after rejecting an injured horse with 409', async () => {
       const actor = await managerActor();
       const { participantId } = await seedParticipant('READY', {
@@ -169,6 +191,20 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
 
       await expect(service.checkIn(actor, participantId)).rejects.toThrow(
         ConflictException,
+      );
+
+      expect((await participantRow(participantId)).status).toBe('INELIGIBLE');
+    });
+
+    it('keeps INELIGIBLE after rejecting an UNDER_OBSERVATION horse in a HEAVY session', async () => {
+      const actor = await managerActor();
+      const { participantId } = await seedParticipant('PLANNED', {
+        health: HorseHealthStatus.UNDER_OBSERVATION,
+        intensity: TrainingIntensity.HEAVY,
+      });
+
+      await expect(service.checkIn(actor, participantId)).rejects.toThrow(
+        new ConflictException('Ngựa không còn đủ điều kiện để điểm danh'),
       );
 
       expect((await participantRow(participantId)).status).toBe('INELIGIBLE');
