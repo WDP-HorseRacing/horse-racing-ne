@@ -143,8 +143,8 @@ describe('Flow 1 read queries (Postgres)', () => {
     const id = randomUUID();
     const end = new Date(new Date(startAt).getTime() + 3_600_000);
     await dataSource.query(
-      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, intensity)
-       VALUES ($1, 1, $2, $3, $4, $5, 'MODERATE')`,
+      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m)
+       VALUES ($1, 1, $2, $3, $4, $5, 'MODERATE', 3000)`,
       [id, planId, `Buổi ${startAt}`, startAt, end],
     );
     return id;

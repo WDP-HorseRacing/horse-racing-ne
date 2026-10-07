@@ -3,8 +3,11 @@ import { Expose } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
+  Min,
   MinLength,
 } from 'class-validator';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
@@ -24,6 +27,16 @@ export class CreateTrainingSessionDto {
   @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
   @IsEnum(TrainingIntensity)
   intensity!: TrainingIntensity;
+
+  @ApiProperty({
+    minimum: 0,
+    maximum: 20000,
+    description: 'Cự ly dự kiến của buổi tập (mét)',
+  })
+  @IsInt()
+  @Min(0)
+  @Max(20000)
+  plannedDistanceM!: number;
 
   @ApiProperty({ format: 'date-time' })
   @IsDateString()
@@ -80,6 +93,10 @@ export class TrainingSessionResponseDto {
   @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
   @Expose()
   intensity!: TrainingIntensity;
+
+  @ApiProperty({ description: 'Cự ly dự kiến của buổi tập (mét)' })
+  @Expose()
+  plannedDistanceM!: number;
 
   @ApiProperty({ format: 'date-time' })
   @Expose()

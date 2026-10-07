@@ -37,6 +37,9 @@ export class TrainingSessionEntity extends MutableRecordEntity {
   @Column({ type: 'varchar', length: 32, enum: TrainingIntensity })
   intensity!: TrainingIntensity;
 
+  @Column({ name: 'planned_distance_m', type: 'integer' })
+  plannedDistanceM!: number;
+
   @Column({ name: 'scheduled_start_at', type: 'timestamptz' })
   scheduledStartAt!: Date;
 
