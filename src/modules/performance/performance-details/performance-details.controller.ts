@@ -3,12 +3,12 @@ import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser } from '../../../common/decorators';
-import { PendingApi } from '../../../common/openapi/pending-api';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { UserRole } from '../../../common/enums';
 import type { Actor } from '../../../common/types/actor';
+import { HorseAlertPageDto, HorseAlertQueryDto } from '../dto/horse-alert.dto';
 import {
   HorseWorkloadDto,
   HorseWorkloadQueryDto,
@@ -18,19 +18,21 @@ import { PerformanceDetailsService } from './performance-details.service';
 @ApiTags('performance')
 @ApiBearerAuth()
 @Controller()
-export class PerformanceDetailsController extends PendingApi {
-  constructor(private readonly details: PerformanceDetailsService) {
-    super();
-  }
+export class PerformanceDetailsController {
+  constructor(private readonly details: PerformanceDetailsService) {}
 
+  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.VETERINARIAN])
   @Get('horses/:id/alerts')
-  @ApiOperation({ summary: 'List horse performance alerts' })
-  @ApiResponse({ status: 501, description: 'Contract only' })
+  @ApiOperation({
+    summary: 'Lịch sử điểm đo vượt ngưỡng (WARNING, CRITICAL) của ngựa',
+  })
+  @ApiOkResponse({ type: HorseAlertPageDto })
   alerts(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: HorseAlertQueryDto,
   ) {
-    return this.pending();
+    return this.details.alerts(actor, id, query);
   }
 
   @Get('horses/:id/workload')

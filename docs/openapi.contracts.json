@@ -3438,11 +3438,74 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "level",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ lấy một mức; bỏ trống là cả WARNING và CRITICAL",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WARNING",
+                "CRITICAL"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch CLB)",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới hết ngày (lịch CLB)",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseAlertPageDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3450,11 +3513,10 @@
             "bearer": []
           }
         ],
-        "summary": "List horse performance alerts",
+        "summary": "Lịch sử điểm đo vượt ngưỡng (WARNING, CRITICAL) của ngựa",
         "tags": [
           "performance"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses/{id}/workload": {
@@ -11899,6 +11961,68 @@
           "score",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "HorseAlertDto": {
+        "type": "object",
+        "properties": {
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "heartRateBpm": {
+            "type": "number"
+          },
+          "speedMps": {
+            "type": "string",
+            "description": "Tốc độ (m/s), 3 chữ số thập phân"
+          },
+          "alertLevel": {
+            "type": "string",
+            "enum": [
+              "WARNING",
+              "CRITICAL"
+            ]
+          },
+          "sessionParticipantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionName": {
+            "type": "object",
+            "nullable": true,
+            "description": "Tên buổi tập, null nếu buổi không còn"
+          }
+        },
+        "required": [
+          "recordedAt",
+          "heartRateBpm",
+          "speedMps",
+          "alertLevel",
+          "sessionParticipantId",
+          "sessionId"
+        ]
+      },
+      "HorseAlertPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseAlertDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
         ]
       },
       "WorkloadByIntensityDto": {

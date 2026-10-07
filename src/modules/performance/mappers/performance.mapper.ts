@@ -6,6 +6,7 @@ import {
   SessionPerformanceSummaryDto,
 } from '../dto/horse-performance.response.dto';
 import { averageDecimal, roundDecimal } from '../../../common/utils/decimal';
+import { HorseAlertDto } from '../dto/horse-alert.dto';
 import { SPEED_SCALE } from '../constants/performance.constants';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import type { PerformanceMetric } from '../schemas/performance-metric.schema';
@@ -150,5 +151,24 @@ export function toHorsePerformanceResponse(
     latestEvaluation: evaluations[0]
       ? toPerformanceEvaluation(evaluations[0])
       : null,
+  };
+}
+
+/**
+ * Chuyển một điểm đo có cảnh báo sang DTO lịch sử cảnh báo
+ *
+ * @param metric Điểm đo đã lưu
+ * @param sessionName Tên buổi tập, null nếu không tìm thấy buổi
+ * @returns Một dòng lịch sử cảnh báo
+ */
+export function toHorseAlert(
+  metric: PerformanceMetric,
+  sessionName: string | null,
+): HorseAlertDto {
+  return {
+    ...toMetricPoint(metric),
+    sessionParticipantId: metric.meta.sessionParticipantId,
+    sessionId: metric.meta.sessionId,
+    sessionName,
   };
 }

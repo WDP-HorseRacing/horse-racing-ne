@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
+import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
 import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
+import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import { PerformanceMetric } from '../schemas/performance-metric.schema';
 import type { CompletedParticipantLoad } from '../types/performance.types';
 
@@ -117,5 +119,60 @@ export class PerformanceDetailsRepository {
       },
     ]);
     return Math.round(row?.distance ?? 0);
+  }
+
+  /**
+   * Lấy một trang điểm đo có cảnh báo của ngựa, mới nhất trước
+   *
+   * @param horseId UUID của ngựa
+   * @param levels Các mức cảnh báo cần lấy
+   * @param since Từ thời điểm (bao gồm), null nếu không giới hạn
+   * @param before Tới trước thời điểm (không bao gồm), null nếu không giới hạn
+   * @param skip Số điểm bỏ qua
+   * @param limit Số điểm tối đa của trang
+   * @returns Promise trả về các điểm đo của trang và tổng số điểm khớp
+   */
+  async alerts(
+    horseId: string,
+    levels: MetricAlertLevel[],
+    since: Date | null,
+    before: Date | null,
+    skip: number,
+    limit: number,
+  ): Promise<{ rows: PerformanceMetric[]; total: number }> {
+    const recordedAt: Record<string, Date> = {};
+    if (since) recordedAt.$gte = since;
+    if (before) recordedAt.$lt = before;
+    const filter = {
+      'meta.horseId': horseId,
+      alertLevel: { $in: levels },
+      ...(since || before ? { recordedAt } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.metrics
+        .find(filter)
+        .sort({ recordedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean<PerformanceMetric[]>()
+        .exec(),
+      this.metrics.countDocuments(filter),
+    ]);
+    return { rows, total };
+  }
+
+  /**
+   * Lấy tên các buổi tập theo id
+   *
+   * @param sessionIds UUID các buổi tập
+   * @returns Promise trả về map id buổi → tên buổi
+   */
+  async sessionNames(sessionIds: string[]): Promise<Map<string, string>> {
+    if (sessionIds.length === 0) return new Map();
+    const sessions = await this.dataSource.manager.find(TrainingSessionEntity, {
+      select: { id: true, name: true },
+      where: { id: In(sessionIds) },
+    });
+    return new Map(sessions.map((session) => [session.id, session.name]));
   }
 }

@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Types, type Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
@@ -25,7 +29,7 @@ import {
   type TestPostgres,
 } from './postgres';
 
-describe('PerformanceDetailsService.workload (Postgres + MongoDB)', () => {
+describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
   let db: TestPostgres;
   let mongo: TestMongo;
   let metrics: Model<PerformanceMetric>;
@@ -50,6 +54,7 @@ describe('PerformanceDetailsService.workload (Postgres + MongoDB)', () => {
     service = new PerformanceDetailsService(
       new PerformanceDetailsRepository(metrics, dataSource),
       new HorseAccessService(dataSource),
+      dataSource,
     );
   });
 
@@ -113,17 +118,23 @@ describe('PerformanceDetailsService.workload (Postgres + MongoDB)', () => {
     return id;
   };
 
-  const point = (participantId: string, at: string, speed: string) =>
+  const point = (
+    participantId: string,
+    at: string,
+    speed: string,
+    options: { level?: string; sessionId?: string; heartRate?: number } = {},
+  ) =>
     metrics.create({
       recordedAt: new Date(at),
       meta: {
         horseId,
         sessionParticipantId: participantId,
-        sessionId: randomUUID(),
+        sessionId: options.sessionId ?? randomUUID(),
         sourceId: 'sensor-1',
       },
-      heartRateBpm: 150,
+      heartRateBpm: options.heartRate ?? 150,
       speedMps: Types.Decimal128.fromString(speed),
+      alertLevel: options.level ?? 'NORMAL',
     });
 
   it('sums completed participants in the range by intensity, planned distance, duration and sensor distance', async () => {
@@ -202,5 +213,87 @@ describe('PerformanceDetailsService.workload (Postgres + MongoDB)', () => {
         {},
       ),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  describe('alerts', () => {
+    const sessionNamed = async (name: string): Promise<string> => {
+      const id = randomUUID();
+      await dataSource.query(
+        `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
+         VALUES ($1, 1, $2, $3, '2026-10-05T01:00:00Z', '2026-10-05T02:00:00Z', 'COMPLETED', 'HEAVY', 3000)`,
+        [id, classId, name],
+      );
+      return id;
+    };
+
+    it('lists warning and critical points newest first with the session name', async () => {
+      const sessionId = await sessionNamed('Sức bền');
+      const p = randomUUID();
+      await point(p, '2026-10-05T01:00:00Z', '10', { sessionId });
+      await point(p, '2026-10-05T01:00:01Z', '19', {
+        sessionId,
+        level: 'WARNING',
+      });
+      await point(p, '2026-10-05T01:00:02Z', '12', {
+        sessionId,
+        level: 'CRITICAL',
+        heartRate: 245,
+      });
+
+      const page = await service.alerts(manager, horseId, {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(page.meta).toMatchObject({ total: 2, page: 1, limit: 20 });
+      expect(page.items).toEqual([
+        expect.objectContaining({
+          alertLevel: 'CRITICAL',
+          heartRateBpm: 245,
+          speedMps: '12.000',
+          sessionName: 'Sức bền',
+          sessionParticipantId: p,
+        }),
+        expect.objectContaining({ alertLevel: 'WARNING', speedMps: '19.000' }),
+      ]);
+    });
+
+    it('filters by level, club day range and page', async () => {
+      const p = randomUUID();
+      await point(p, '2026-10-04T16:59:00Z', '10', { level: 'CRITICAL' });
+      await point(p, '2026-10-04T17:00:00Z', '10', { level: 'CRITICAL' });
+      await point(p, '2026-10-05T16:59:00Z', '10', { level: 'CRITICAL' });
+      await point(p, '2026-10-05T17:00:00Z', '10', { level: 'CRITICAL' });
+      await point(p, '2026-10-05T10:00:00Z', '19', { level: 'WARNING' });
+
+      const page = await service.alerts(manager, horseId, {
+        page: 2,
+        limit: 1,
+        level: 'CRITICAL' as never,
+        from: '2026-10-05',
+        to: '2026-10-05',
+      });
+
+      expect(page.meta).toMatchObject({ total: 2, totalPages: 2 });
+      expect(page.items.map((item) => item.recordedAt.toISOString())).toEqual([
+        '2026-10-04T17:00:00.000Z',
+      ]);
+    });
+
+    it('forbids a head trainer outside the horse barn', async () => {
+      const otherId = await seed.user(UserRole.HEAD_TRAINER);
+      const [row] = await dataSource.query<Array<{ keycloak_id: string }>>(
+        'SELECT keycloak_id FROM users WHERE id = $1',
+        [otherId],
+      );
+
+      await expect(
+        service.alerts(
+          { sub: row.keycloak_id, roles: [UserRole.HEAD_TRAINER] },
+          horseId,
+          { page: 1, limit: 20 },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 });

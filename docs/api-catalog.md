@@ -120,7 +120,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/horses/{id}/alerts` | List horse performance alerts |
+| GET | `/api/v1/horses/{id}/alerts` | Lịch sử điểm đo vượt ngưỡng (WARNING, CRITICAL) của ngựa |
 | GET | `/api/v1/horses/{id}/performance` | Get horse performance summary |
 | GET | `/api/v1/horses/{id}/performance/sessions` | List per-session performance summary of a horse |
 | GET | `/api/v1/horses/{id}/thresholds` | Xem ngưỡng nhịp tim/tốc độ đang áp và lịch sử phiên bản của ngựa |
