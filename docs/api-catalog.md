@@ -123,15 +123,15 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{id}/alerts` | List horse performance alerts |
 | GET | `/api/v1/horses/{id}/performance` | Get horse performance summary |
 | GET | `/api/v1/horses/{id}/performance/sessions` | List per-session performance summary of a horse |
-| GET | `/api/v1/horses/{id}/thresholds` | List current and historical threshold profiles |
-| PUT | `/api/v1/horses/{id}/thresholds` | Create new version of horse threshold profile |
+| GET | `/api/v1/horses/{id}/thresholds` | Xem ngưỡng nhịp tim/tốc độ đang áp và lịch sử phiên bản của ngựa |
+| PUT | `/api/v1/horses/{id}/thresholds` | Tạo phiên bản ngưỡng nhịp tim/tốc độ mới cho ngựa |
 | GET | `/api/v1/horses/{id}/workload` | Get configured training workload summary |
 | GET | `/api/v1/session-participants/{id}/evaluation` |  |
 | POST | `/api/v1/session-participants/{id}/evaluation` |  |
-| GET | `/api/v1/session-participants/{id}/metrics` | List participant metrics |
-| POST | `/api/v1/session-participants/{id}/metrics` | Ingest participant metric |
-| POST | `/api/v1/session-participants/{id}/metrics/batch` | Ingest metric batch for active participant |
-| GET | `/api/v1/session-participants/{id}/performance-summary` | Get session metric and alert summary |
+| GET | `/api/v1/session-participants/{id}/metrics` | Xem các điểm đo nhịp tim/tốc độ của lượt tập theo thời gian |
+| POST | `/api/v1/session-participants/{id}/metrics` | Nhận một điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra |
+| POST | `/api/v1/session-participants/{id}/metrics/batch` | Nhận một lô điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra |
+| GET | `/api/v1/session-participants/{id}/performance-summary` | Tổng kết nhịp tim, tốc độ và số cảnh báo của lượt tập |
 
 ## racing
 

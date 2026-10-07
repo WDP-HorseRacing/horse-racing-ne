@@ -25,6 +25,7 @@
     "db:seed": "node scripts/seed/run-seed.mjs",
     "db:seed:mongo": "node scripts/seed/run-mongo-seed.mjs",
     "docs:api": "node scripts/generate-api-catalog.cjs",
+    "sim": "node scripts/simulate-metrics.mjs",
     "postman:gen": "node scripts/generate-postman.cjs",
     "check:module-architecture": "node scripts/check-module-architecture.mjs",
     "keycloak:setup": "node scripts/configure-keyclock.mjs",

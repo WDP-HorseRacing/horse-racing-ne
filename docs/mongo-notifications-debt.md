@@ -1,6 +1,6 @@
 # Nợ kỹ thuật: MongoDB, thông báo, outbox
 
-Cập nhật: 2026-10-06 (sau đợt dọn kiến trúc).
+Cập nhật: 2026-10-07.
 
 ## 1. Tự xóa thông báo cũ (TTL)
 
@@ -11,18 +11,11 @@ Hiện giữ vĩnh viễn. Khi cần tự xóa:
 - Thông báo chưa đọc (`readAt: null`) không bị TTL xóa; chỉ thông báo đã đọc quá N giây bị xóa.
 - Đổi N sau này: `db.runCommand({ collMod: 'notifications', index: { name: 'notifications_read_ttl', expireAfterSeconds: M } })`.
 
-## 2. Chống ghi trùng điểm đo khi làm API ingest
+## 2. ~~Chống ghi trùng điểm đo khi làm API ingest~~ (đã làm)
 
-`performance_metrics` là time-series nên không có unique index. Bảng Postgres cũ có
-unique `(session_participant_id, recorded_at, source_id)`. Khi làm `POST /performance/metrics`
-(đang 501) cần chống trùng ở tầng ghi, ví dụ:
-
-- A. Cảm biến gửi lô có `batchId`; lưu `batchId` đã nhận vào collection thường có unique index, nhận trùng thì bỏ cả lô.
-- B. Trước khi ghi, đọc các `recordedAt` đã có trong khoảng thời gian của lô cho cùng `series` rồi bỏ điểm trùng.
-
-Ngoài ra ingest phải:
-- Lưu tốc độ tối đa 3 chữ số thập phân.
-- Điền đủ `series.horseId`, `series.sessionId` theo lượt tập.
+`POST /session-participants/:id/metrics` và `/metrics/batch` bỏ điểm trùng `(cảm biến, thời điểm đo)` trong lô,
+rồi đọc các `recordedAt` của lô đã lưu cho cùng lượt tập để bỏ điểm đã có (hướng B). Tốc độ làm tròn 3 chữ số,
+`meta.horseId`, `meta.sessionId` điền theo lượt tập.
 
 ## 3. Push FCM mất khi Redis lỗi đúng lúc đưa vào hàng đợi
 
@@ -56,13 +49,35 @@ Firebase khuyến nghị coi token không cập nhật khoảng 1–2 tháng là
 Khi cần: cron xóa `user_devices` có `updatedAt` cũ hơn 60 ngày, và app gọi lại `PUT /me/devices` mỗi lần mở.
 Nguồn: https://firebase.google.com/docs/cloud-messaging/manage-tokens
 
-## 8. Mức cảnh báo của điểm đo
+## 8. ~~Mức cảnh báo của điểm đo~~ (đã làm)
 
-Hiện chỉ có hằng `NORMAL_ALERT_LEVEL = 'NORMAL'` (`performance/constants`). Khi làm API ingest,
-chốt danh sách mức cảnh báo rồi đổi thành enum trong `performance/enums/`.
+Enum `MetricAlertLevel` (`NORMAL` / `WARNING` / `CRITICAL`) ở `performance/enums/`.
 
 ## 9. Integration test thỉnh thoảng hết giờ chờ container
 
 Lỗi `Timed out after 10000ms while waiting for container ports to be bound to the host`: Jest chạy song song
 nhiều suite, mỗi suite bật container riêng (Postgres, Mongo, Redis). Hướng sửa: giới hạn `maxWorkers`
 trong `test/jest-integration.json` hoặc tăng thời gian chờ khởi động container.
+
+## 10. Route nhận điểm đo đang public
+
+`POST /session-participants/:id/metrics` và `/metrics/batch` gắn `@Public()` để script giả lập (`pnpm sim`)
+gửi số đo mà không cần token (token Keycloak mặc định hết hạn sau 5 phút, buổi tập dài hơn).
+
+Hệ quả: ai biết id của một lượt tập đang ONGOING cũng gửi được số đo giả, và số đo vượt ngưỡng sẽ bắn
+thông báo KHẨN cho bác sĩ và Head Trainer. Không có giới hạn tần suất.
+
+Trước khi deploy server thật, chọn một hướng:
+
+- A. Khóa thiết bị: header `X-Device-Key` so với biến môi trường (hoặc bảng thiết bị có cấp/thu hồi key).
+- B. Bỏ `@Public()`, script đăng nhập bằng tài khoản Groom/HT (client đã bật `directAccessGrantsEnabled`)
+  và tự làm mới token bằng refresh token.
+
+## 11. Mỗi lô có điểm CRITICAL ghi một dòng outbox
+
+Lượt tập đang vượt ngưỡng thì mỗi lô (mỗi giây với script giả lập) ghi thêm một event
+`performance.metric.critical` vào outbox. Thông báo không trùng vì `eventId` cố định theo lượt tập,
+nhưng outbox phình theo số giây vượt ngưỡng (dọn sau 7 ngày).
+
+Khi cần: trước khi publish, kiểm lượt tập đã có điểm CRITICAL trong Mongo chưa; có rồi thì bỏ qua.
+

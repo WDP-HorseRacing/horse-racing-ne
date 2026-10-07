@@ -34,3 +34,26 @@ Nợ còn lại: `docs/mongo-notifications-debt.md`.
 
 1. Bắt đầu lượt tập: code đánh `CANCELLED_BY_LOCK` / `INELIGIBLE` rồi ném 409 trong cùng transaction nên trạng thái bị rollback. Đã sửa: lưu trạng thái, commit, rồi mới trả 409 (câu báo lỗi giữ nguyên).
 2. Điểm danh chưa kiểm khóa và sức khỏe. Đã sửa theo Q2 Flow 3: điểm danh kiểm giống lúc bắt đầu; không đủ điều kiện thì lưu trạng thái và trả 409 "Ngựa không còn đủ điều kiện để điểm danh".
+
+## 4. Dữ liệu nhịp tim/tốc độ giả lập (đã làm)
+
+Dự án không có thiết bị đo thật nên dữ liệu được giả lập bằng script gửi vào API như một cảm biến.
+
+Luật:
+
+- Ngưỡng: mặc định CLB nhịp tim cảnh báo 220 bpm, nguy hiểm 240 bpm, tốc độ tối đa 18 m/s. Head Trainer của khu hoặc Club Manager đặt ngưỡng riêng cho từng ngựa (`PUT /horses/:id/thresholds`, mỗi lần tạo một phiên bản mới, có khoảng hiệu lực).
+- Mức cảnh báo mỗi điểm đo: nhịp tim vượt ngưỡng nguy hiểm là `CRITICAL`; vượt ngưỡng cảnh báo hoặc tốc độ vượt tối đa là `WARNING`; còn lại `NORMAL`.
+- Chỉ nhận điểm đo khi lượt tập đang `ONGOING` (đã bắt đầu, chưa hoàn thành); ngoài lúc đó trả 409.
+- Head Trainer của lớp nhận điểm đo realtime qua socket, sự kiện `performance.metrics`.
+- Có điểm `CRITICAL`: gửi thông báo KHẨN (lưu inbox + push) cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần.
+- Xem lại: `GET /session-participants/:id/metrics` (điểm đo theo thời gian) và `GET /session-participants/:id/performance-summary` (trung bình, cao nhất, số cảnh báo).
+
+Chạy giả lập (API đang chạy, lượt tập đã bấm Bắt đầu):
+
+```bash
+pnpm sim --participant <sessionParticipantId>
+pnpm sim --participant <sessionParticipantId> --spike-at 30   # giây 30-34 nhịp tim 245, sinh cảnh báo CRITICAL
+```
+
+Route nhận điểm đo đang public (không cần token); xem nợ ở `docs/mongo-notifications-debt.md` mục 10.
+

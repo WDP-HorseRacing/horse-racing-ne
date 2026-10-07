@@ -3427,144 +3427,6 @@
         ]
       }
     },
-    "/api/v1/session-participants/{id}/metrics/batch": {
-      "post": {
-        "operationId": "PerformanceDetailsController_ingestBatch",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngestMetricBatchDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Ingest metric batch for active participant",
-        "tags": [
-          "performance"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/session-participants/{id}/performance-summary": {
-      "get": {
-        "operationId": "PerformanceDetailsController_sessionSummary",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get session metric and alert summary",
-        "tags": [
-          "performance"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/horses/{id}/thresholds": {
-      "get": {
-        "operationId": "PerformanceDetailsController_thresholds",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List current and historical threshold profiles",
-        "tags": [
-          "performance"
-        ],
-        "x-implementation-status": "contract-only"
-      },
-      "put": {
-        "operationId": "PerformanceDetailsController_setThreshold",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpsertThresholdDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create new version of horse threshold profile",
-        "tags": [
-          "performance"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/horses/{id}/alerts": {
       "get": {
         "operationId": "PerformanceDetailsController_alerts",
@@ -3649,8 +3511,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestMetricsResultDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3658,11 +3527,10 @@
             "bearer": []
           }
         ],
-        "summary": "Ingest participant metric",
+        "summary": "Nhận một điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra",
         "tags": [
           "performance"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "get": {
         "operationId": "PerformanceController_list",
@@ -3677,8 +3545,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PerformanceMetricPointDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3686,11 +3564,92 @@
             "bearer": []
           }
         ],
-        "summary": "List participant metrics",
+        "summary": "Xem các điểm đo nhịp tim/tốc độ của lượt tập theo thời gian",
         "tags": [
           "performance"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/metrics/batch": {
+      "post": {
+        "operationId": "PerformanceMetricsController_ingestBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestMetricBatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestMetricsResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Nhận một lô điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra",
+        "tags": [
+          "performance"
+        ]
+      }
+    },
+    "/api/v1/session-participants/{id}/performance-summary": {
+      "get": {
+        "operationId": "PerformanceMetricsController_summary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParticipantPerformanceSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tổng kết nhịp tim, tốc độ và số cảnh báo của lượt tập",
+        "tags": [
+          "performance"
+        ]
       }
     },
     "/api/v1/horses/{id}/performance/sessions": {
@@ -3764,6 +3723,86 @@
           }
         ],
         "summary": "Get horse performance summary",
+        "tags": [
+          "performance"
+        ]
+      }
+    },
+    "/api/v1/horses/{id}/thresholds": {
+      "get": {
+        "operationId": "PerformanceThresholdsController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseThresholdsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xem ngưỡng nhịp tim/tốc độ đang áp và lịch sử phiên bản của ngựa",
+        "tags": [
+          "performance"
+        ]
+      },
+      "put": {
+        "operationId": "PerformanceThresholdsController_upsert",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertThresholdDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThresholdProfileResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tạo phiên bản ngưỡng nhịp tim/tốc độ mới cho ngựa",
         "tags": [
           "performance"
         ]
@@ -11380,7 +11419,8 @@
             "enum": [
               "HORSE",
               "MEDICAL_CASE",
-              "TRAINING_LOCK"
+              "TRAINING_LOCK",
+              "SESSION_PARTICIPANT"
             ]
           },
           "id": {
@@ -11418,7 +11458,8 @@
               "EXAM_REQUEST",
               "CARE_REMINDER",
               "HORSE_LIFECYCLE",
-              "OWNERSHIP"
+              "OWNERSHIP",
+              "PERFORMANCE_ALERT"
             ]
           },
           "priority": {
@@ -11616,10 +11657,39 @@
           "speedMps"
         ]
       },
+      "IngestMetricsResultDto": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "number",
+            "description": "Số điểm đo đã lưu"
+          },
+          "skippedDuplicates": {
+            "type": "number",
+            "description": "Số điểm đo bỏ qua vì trùng cảm biến và thời điểm đo"
+          },
+          "highestAlertLevel": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "WARNING",
+              "CRITICAL"
+            ],
+            "description": "Mức cảnh báo cao nhất trong các điểm đo đã lưu"
+          }
+        },
+        "required": [
+          "accepted",
+          "skippedDuplicates",
+          "highestAlertLevel"
+        ]
+      },
       "IngestMetricBatchDto": {
         "type": "object",
         "properties": {
           "metrics": {
+            "minItems": 1,
+            "maxItems": 500,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/IngestMetricDto"
@@ -11630,31 +11700,90 @@
           "metrics"
         ]
       },
-      "UpsertThresholdDto": {
+      "PerformanceMetricPointDto": {
         "type": "object",
         "properties": {
-          "profileName": {
+          "recordedAt": {
+            "format": "date-time",
             "type": "string"
           },
-          "effectiveFrom": {
-            "type": "string",
-            "format": "date-time"
+          "heartRateBpm": {
+            "type": "number"
           },
-          "effectiveTo": {
-            "type": "string",
-            "format": "date-time"
+          "speedMps": {
+            "type": "string"
           },
-          "limits": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "number"
-            }
+          "alertLevel": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "WARNING",
+              "CRITICAL"
+            ]
           }
         },
         "required": [
-          "profileName",
-          "effectiveFrom",
-          "limits"
+          "recordedAt",
+          "heartRateBpm",
+          "speedMps",
+          "alertLevel"
+        ]
+      },
+      "ParticipantPerformanceSummaryDto": {
+        "type": "object",
+        "properties": {
+          "sessionParticipantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "count": {
+            "type": "number",
+            "description": "Số điểm đo của lượt tập"
+          },
+          "avgHeartRateBpm": {
+            "type": "object",
+            "nullable": true,
+            "description": "Nhịp tim trung bình (bpm), null khi chưa có điểm đo"
+          },
+          "maxHeartRateBpm": {
+            "type": "object",
+            "nullable": true,
+            "description": "Nhịp tim cao nhất (bpm), null khi chưa có điểm đo"
+          },
+          "avgSpeedMps": {
+            "type": "object",
+            "nullable": true,
+            "description": "Tốc độ trung bình (m/s), null khi chưa có điểm đo"
+          },
+          "maxSpeedMps": {
+            "type": "object",
+            "nullable": true,
+            "description": "Tốc độ cao nhất (m/s), null khi chưa có điểm đo"
+          },
+          "warningCount": {
+            "type": "number",
+            "description": "Số điểm đo mức WARNING"
+          },
+          "criticalCount": {
+            "type": "number",
+            "description": "Số điểm đo mức CRITICAL"
+          },
+          "firstRecordedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastRecordedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "sessionParticipantId",
+          "count",
+          "warningCount",
+          "criticalCount"
         ]
       },
       "SessionPerformanceSummaryDto": {
@@ -11697,30 +11826,6 @@
           "avgSpeedMps",
           "maxSpeedMps",
           "alertCount"
-        ]
-      },
-      "PerformanceMetricPointDto": {
-        "type": "object",
-        "properties": {
-          "recordedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "heartRateBpm": {
-            "type": "number"
-          },
-          "speedMps": {
-            "type": "string"
-          },
-          "alertLevel": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "recordedAt",
-          "heartRateBpm",
-          "speedMps",
-          "alertLevel"
         ]
       },
       "PerformanceEvaluationDto": {
@@ -11782,6 +11887,131 @@
           "horseId",
           "sessionsTracked",
           "recentMetrics"
+        ]
+      },
+      "ThresholdLimitsDto": {
+        "type": "object",
+        "properties": {
+          "heartRateWarningBpm": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "Nhịp tim vượt mức này là WARNING"
+          },
+          "heartRateCriticalBpm": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "Nhịp tim vượt mức này là CRITICAL"
+          },
+          "maxSpeedMps": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "Tốc độ (m/s) vượt mức này là WARNING"
+          }
+        },
+        "required": [
+          "heartRateWarningBpm",
+          "heartRateCriticalBpm",
+          "maxSpeedMps"
+        ]
+      },
+      "ThresholdProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileName": {
+            "type": "string"
+          },
+          "ruleVersion": {
+            "type": "number",
+            "description": "Phiên bản, tăng dần theo từng con ngựa"
+          },
+          "effectiveFrom": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveTo": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ThresholdLimitsDto"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "profileName",
+          "ruleVersion",
+          "effectiveFrom",
+          "limits"
+        ]
+      },
+      "HorseThresholdsResponseDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "HORSE",
+              "CLUB_DEFAULT"
+            ],
+            "description": "Ngưỡng đang áp lấy từ bộ riêng của ngựa hay mặc định CLB"
+          },
+          "activeLimits": {
+            "description": "Ngưỡng đang áp tại thời điểm gọi",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ThresholdLimitsDto"
+              }
+            ]
+          },
+          "profiles": {
+            "description": "Mọi phiên bản ngưỡng riêng của ngựa, mới nhất đứng đầu",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThresholdProfileResponseDto"
+            }
+          }
+        },
+        "required": [
+          "source",
+          "activeLimits",
+          "profiles"
+        ]
+      },
+      "UpsertThresholdDto": {
+        "type": "object",
+        "properties": {
+          "profileName": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ThresholdLimitsDto"
+          }
+        },
+        "required": [
+          "profileName",
+          "effectiveFrom",
+          "limits"
         ]
       },
       "CreateRegistrationDto": {
