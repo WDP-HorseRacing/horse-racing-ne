@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import type { Actor } from '../../../common/types/actor';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
@@ -13,6 +14,7 @@ import { evaluateEligibility } from '../../horses/policies/horse.policy';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
+  PublishClassSessionsDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
 } from '../dto/training-session.dto';
@@ -24,6 +26,7 @@ import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
+import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
@@ -221,85 +224,192 @@ export class TrainingSessionsService {
         caller.id,
         trainingClass.headTrainerId,
       );
-      assertSessionPublishable(session.status);
-      if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
-        throw new ConflictException('Class không còn ACTIVE');
-      }
-      if (session.sessionType === TrainingSessionType.TIME_TRIAL) {
-        const configuredTrial = await manager.findOneBy(TimeTrialEntity, {
-          sessionId: session.id,
-        });
-        if (!configuredTrial) {
-          throw new ConflictException(
-            'Session TIME_TRIAL phải có cấu hình Time Trial trước khi publish',
-          );
-        }
-      }
-      const enrollments = await manager
-        .getRepository(HorseEnrollmentEntity)
-        .createQueryBuilder('enrollment')
-        .where('enrollment.class_id = :classId', { classId: trainingClass.id })
-        .andWhere('enrollment.status <> :cancelledStatus', {
-          cancelledStatus: HorseEnrollmentStatus.CANCELLED,
-        })
-        .andWhere('enrollment.enrolled_at <= :scheduledStartAt', {
-          scheduledStartAt: session.scheduledStartAt,
-        })
-        .andWhere(
-          '(enrollment.left_at IS NULL OR :scheduledStartAt < enrollment.left_at)',
-          { scheduledStartAt: session.scheduledStartAt },
-        )
-        .orderBy('enrollment.horse_id', 'ASC')
-        .getMany();
-
-      for (const enrollment of enrollments) {
-        const horse = await this.access.lockedHorse(
-          manager,
-          enrollment.horseId,
-        );
-        await this.access.assertTrainerBarn(
-          manager,
-          actor,
-          caller.id,
-          horse.id,
-        );
-        const existing = await manager.findOneBy(SessionParticipantEntity, {
-          sessionId: session.id,
-          horseId: horse.id,
-        });
-        if (existing) continue;
-        const activeLock = await manager.findOneBy(TrainingLockEntity, {
-          horseId: horse.id,
-          status: TrainingLockStatus.ACTIVE,
-        });
-        const eligibility = eligibilityForSession(
-          evaluateEligibility({
-            isDeleted: Boolean(horse.deletedAt),
-            lifecycleStatus: horse.lifecycleStatus,
-            healthStatus: horse.healthStatus,
-            hasActiveTrainingLock: !!activeLock,
-          }),
-          session.intensity,
-        );
-        const groom = await this.findGroomAt(
-          manager,
-          horse.id,
-          session.scheduledStartAt,
-        );
-        await manager.save(
-          manager.create(SessionParticipantEntity, {
-            sessionId: session.id,
-            horseId: horse.id,
-            horseEnrollmentId: enrollment.id,
-            assignedGroomId: groom?.groomId ?? null,
-            ...initialParticipantEligibility(eligibility, !!activeLock),
-          }),
-        );
-      }
-      session.status = TrainingSessionStatus.SCHEDULED;
-      return manager.save(session);
+      return this.publishLocked(
+        manager,
+        actor,
+        caller.id,
+        trainingClass,
+        session,
+      );
     });
     return toTrainingSessionResponse(row);
+  }
+
+  /**
+   * Publish một lần mọi buổi nháp của lớp, hoặc chỉ các buổi có ngày bắt đầu (theo lịch CLB) trong khoảng from–to
+   *
+   * - Chạy trong một transaction: một buổi lỗi thì không buổi nào được publish
+   * - Mỗi buổi áp đúng luật của publish từng buổi, theo thứ tự giờ bắt đầu
+   * - Không có buổi nháp nào khớp thì trả danh sách rỗng
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @param body Khoảng ngày tùy chọn
+   * @returns Promise trả về các buổi vừa publish, sớm nhất trước
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
+   * @throws NotFoundException Nếu không có lớp
+   * @throws BadRequestException Nếu from sau to
+   * @throws ConflictException Nếu lớp không còn ACTIVE, hoặc có buổi chạy thử chưa cấu hình chạy thử
+   */
+  async publishClassSessions(
+    actor: Actor,
+    classId: string,
+    body: PublishClassSessionsDto,
+  ): Promise<TrainingSessionResponseDto[]> {
+    if (body.from && body.to && body.from > body.to) {
+      throw new BadRequestException('from phải nhỏ hơn hoặc bằng to');
+    }
+    const rows = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const query = manager
+        .getRepository(TrainingSessionEntity)
+        .createQueryBuilder('session')
+        .where('session.class_id = :classId', { classId })
+        .andWhere('session.status = :status', {
+          status: TrainingSessionStatus.DRAFT,
+        })
+        .setParameter('timeZone', CLUB_TIME_ZONE);
+      if (body.from) {
+        query.andWhere(
+          '(session.scheduled_start_at AT TIME ZONE :timeZone)::date >= :from',
+          { from: body.from.slice(0, 10) },
+        );
+      }
+      if (body.to) {
+        query.andWhere(
+          '(session.scheduled_start_at AT TIME ZONE :timeZone)::date <= :to',
+          { to: body.to.slice(0, 10) },
+        );
+      }
+      const drafts = await query
+        .orderBy('session.id', 'ASC')
+        .setLock('pessimistic_write')
+        .getMany();
+      const trainingClass = await this.access.lockedTrainingClass(
+        manager,
+        classId,
+      );
+      this.access.assertCanManageClass(
+        actor,
+        caller.id,
+        trainingClass.headTrainerId,
+      );
+      const ordered = [...drafts].sort(
+        (a, b) => a.scheduledStartAt.getTime() - b.scheduledStartAt.getTime(),
+      );
+      const published: TrainingSessionEntity[] = [];
+      for (const session of ordered) {
+        published.push(
+          await this.publishLocked(
+            manager,
+            actor,
+            caller.id,
+            trainingClass,
+            session,
+          ),
+        );
+      }
+      return published;
+    });
+    return rows.map(toTrainingSessionResponse);
+  }
+
+  /**
+   * Publish một buổi đã khóa: kiểm trạng thái buổi và lớp, cấu hình chạy thử, rồi tạo lượt tập cho từng ngựa đang học lớp
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param trainingClass Lớp của buổi, đã khóa
+   * @param session Buổi tập, đã khóa
+   * @returns Promise trả về buổi sau khi chuyển SCHEDULED
+   * @throws ConflictException Nếu buổi không còn nháp, lớp không còn ACTIVE, hoặc buổi chạy thử chưa có cấu hình chạy thử
+   * @throws ForbiddenException Nếu Head Trainer gặp ngựa ngoài khu mình phụ trách
+   */
+  private async publishLocked(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    trainingClass: TrainingClassEntity,
+    session: TrainingSessionEntity,
+  ): Promise<TrainingSessionEntity> {
+    assertSessionPublishable(session.status);
+    if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
+      throw new ConflictException('Class không còn ACTIVE');
+    }
+    if (session.sessionType === TrainingSessionType.TIME_TRIAL) {
+      const configuredTrial = await manager.findOneBy(TimeTrialEntity, {
+        sessionId: session.id,
+      });
+      if (!configuredTrial) {
+        throw new ConflictException(
+          'Session TIME_TRIAL phải có cấu hình Time Trial trước khi publish',
+        );
+      }
+    }
+    const enrollments = await manager
+      .getRepository(HorseEnrollmentEntity)
+      .createQueryBuilder('enrollment')
+      .where('enrollment.class_id = :classId', { classId: trainingClass.id })
+      .andWhere('enrollment.status <> :cancelledStatus', {
+        cancelledStatus: HorseEnrollmentStatus.CANCELLED,
+      })
+      .andWhere('enrollment.enrolled_at <= :scheduledStartAt', {
+        scheduledStartAt: session.scheduledStartAt,
+      })
+      .andWhere(
+        '(enrollment.left_at IS NULL OR :scheduledStartAt < enrollment.left_at)',
+        { scheduledStartAt: session.scheduledStartAt },
+      )
+      .orderBy('enrollment.horse_id', 'ASC')
+      .getMany();
+
+    for (const enrollment of enrollments) {
+      const horse = await this.access.lockedHorse(
+        manager,
+        enrollment.horseId,
+      );
+      await this.access.assertTrainerBarn(
+        manager,
+        actor,
+        callerId,
+        horse.id,
+      );
+      const existing = await manager.findOneBy(SessionParticipantEntity, {
+        sessionId: session.id,
+        horseId: horse.id,
+      });
+      if (existing) continue;
+      const activeLock = await manager.findOneBy(TrainingLockEntity, {
+        horseId: horse.id,
+        status: TrainingLockStatus.ACTIVE,
+      });
+      const eligibility = eligibilityForSession(
+        evaluateEligibility({
+          isDeleted: Boolean(horse.deletedAt),
+          lifecycleStatus: horse.lifecycleStatus,
+          healthStatus: horse.healthStatus,
+          hasActiveTrainingLock: !!activeLock,
+        }),
+        session.intensity,
+      );
+      const groom = await this.findGroomAt(
+        manager,
+        horse.id,
+        session.scheduledStartAt,
+      );
+      await manager.save(
+        manager.create(SessionParticipantEntity, {
+          sessionId: session.id,
+          horseId: horse.id,
+          horseEnrollmentId: enrollment.id,
+          assignedGroomId: groom?.groomId ?? null,
+          ...initialParticipantEligibility(eligibility, !!activeLock),
+        }),
+      );
+    }
+    session.status = TrainingSessionStatus.SCHEDULED;
+    return manager.save(session);
   }
 
   async cancelSession(

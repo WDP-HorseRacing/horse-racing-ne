@@ -72,6 +72,24 @@ export class UpdateTrainingSessionDto extends PartialType(
   CreateTrainingSessionDto,
 ) {}
 
+export class PublishClassSessionsDto {
+  @ApiPropertyOptional({
+    format: 'date',
+    description: 'Chỉ publish buổi từ ngày này (lịch CLB); bỏ trống là không giới hạn',
+  })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({
+    format: 'date',
+    description: 'Chỉ publish buổi tới hết ngày này (lịch CLB); bỏ trống là không giới hạn',
+  })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}
+
 export class CancelTrainingSessionDto {
   @ApiProperty({ minLength: 1, description: 'Lý do hủy buổi tập' })
   @IsString()

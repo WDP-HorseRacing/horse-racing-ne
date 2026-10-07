@@ -1,11 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../users/user.enums';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
+  PublishClassSessionsDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
 } from '../dto/training-session.dto';
@@ -35,6 +36,21 @@ export class TrainingSessionsController {
     @Body() body: CreateTrainingSessionDto,
   ) {
     return this.sessions.createSession(actor, classId, body);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
+  @Post('classes/:classId/sessions/publish')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Publish một lần mọi buổi nháp của lớp, hoặc trong một khoảng ngày',
+  })
+  @ApiOkResponse({ type: [TrainingSessionResponseDto] })
+  publishMany(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+    @Body() body: PublishClassSessionsDto,
+  ) {
+    return this.sessions.publishClassSessions(actor, classId, body);
   }
 
   @Get('training-sessions/:sessionId')
