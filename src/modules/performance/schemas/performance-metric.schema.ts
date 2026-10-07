@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { NORMAL_ALERT_LEVEL } from '../constants/performance.constants';
+import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 
 /**
  * Định danh một chuỗi đo (metaField của time-series): một cảm biến trong một lượt tập của một con ngựa.
@@ -48,8 +48,13 @@ export class PerformanceMetric {
   @Prop({ type: Types.Decimal128, required: true })
   speedMps!: Types.Decimal128;
 
-  @Prop({ type: String, required: true, default: NORMAL_ALERT_LEVEL })
-  alertLevel!: string;
+  @Prop({
+    type: String,
+    required: true,
+    enum: MetricAlertLevel,
+    default: MetricAlertLevel.NORMAL,
+  })
+  alertLevel!: MetricAlertLevel;
 }
 
 export const PerformanceMetricSchema =

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 
 export class PerformanceMetricPointDto {
   @ApiProperty({ format: 'date-time' })
@@ -10,8 +11,8 @@ export class PerformanceMetricPointDto {
   @ApiProperty()
   speedMps!: string;
 
-  @ApiProperty()
-  alertLevel!: string;
+  @ApiProperty({ enum: MetricAlertLevel })
+  alertLevel!: MetricAlertLevel;
 }
 
 export class PerformanceEvaluationDto {

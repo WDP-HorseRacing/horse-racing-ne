@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import type { ThresholdLimits } from '../types/performance.types';
 
 /**
  * PerformanceThresholdEntity: ngưỡng hiệu suất áp dụng cho club hoặc từng con ngựa.
@@ -28,5 +29,5 @@ export class PerformanceThresholdEntity extends MutableRecordEntity {
   effectiveTo!: Date | null;
 
   @Column({ type: 'jsonb' })
-  limits!: Record<string, number>;
+  limits!: ThresholdLimits;
 }

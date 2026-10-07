@@ -5,11 +5,11 @@ import type { Model, Types } from 'mongoose';
 import { DataSource, In, Repository } from 'typeorm';
 import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
 import {
-  NORMAL_ALERT_LEVEL,
   PERFORMANCE_SESSION_LIMIT,
   RECENT_METRIC_LIMIT,
 } from '../constants/performance.constants';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
+import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import { PerformanceMetric } from '../schemas/performance-metric.schema';
 import type { SessionMetricAggregate } from '../types/performance.types';
 
@@ -63,7 +63,7 @@ export class PerformanceSummariesRepository {
   /**
    * Gom chỉ số theo từng lượt tập của con ngựa, buổi mới nhất đứng đầu
    *
-   * - Tổng và giá trị cao nhất của nhịp tim, tốc độ; số điểm đo có mức cảnh báo khác NORMAL_ALERT_LEVEL
+   * - Tổng và giá trị cao nhất của nhịp tim, tốc độ; số điểm đo có mức cảnh báo khác NORMAL
    * - Giờ của buổi tập lấy từ training_sessions; thứ tự theo giờ bắt đầu dự kiến
    *
    * @param horseId UUID của ngựa
@@ -85,7 +85,7 @@ export class PerformanceSummariesRepository {
           maxSpeedMps: { $max: '$speedMps' },
           alertCount: {
             $sum: {
-              $cond: [{ $ne: ['$alertLevel', NORMAL_ALERT_LEVEL] }, 1, 0],
+              $cond: [{ $ne: ['$alertLevel', MetricAlertLevel.NORMAL] }, 1, 0],
             },
           },
         },

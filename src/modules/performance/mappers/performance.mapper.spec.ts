@@ -1,5 +1,6 @@
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import { Types } from 'mongoose';
+import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import type { PerformanceMetric } from '../schemas/performance-metric.schema';
 import {
   toHorsePerformanceResponse,
@@ -46,7 +47,7 @@ describe('toHorsePerformanceResponse', () => {
       },
       heartRateBpm,
       speedMps: Types.Decimal128.fromString('12'),
-      alertLevel: 'NORMAL',
+      alertLevel: MetricAlertLevel.NORMAL,
     });
     const evaluation = Object.assign(new PerformanceEvaluationEntity(), {
       createdAt: new Date('2026-09-18T08:00:00Z'),

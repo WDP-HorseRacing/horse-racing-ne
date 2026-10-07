@@ -1,7 +1,13 @@
+import type { ThresholdLimits } from '../types/performance.types';
+
 /**
- * Mức cảnh báo của điểm đo bình thường (không phát cảnh báo).
+ * Ngưỡng mặc định của CLB, áp cho ngựa chưa có bộ ngưỡng riêng đang hiệu lực
  */
-export const NORMAL_ALERT_LEVEL = 'NORMAL';
+export const DEFAULT_THRESHOLD_LIMITS: ThresholdLimits = {
+  heartRateWarningBpm: 220,
+  heartRateCriticalBpm: 240,
+  maxSpeedMps: 18,
+};
 
 /**
  * Số buổi tập tối đa trả về khi tổng hợp theo buổi.

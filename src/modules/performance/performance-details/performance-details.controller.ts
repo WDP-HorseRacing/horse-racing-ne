@@ -5,7 +5,6 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
-  Put,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -17,7 +16,6 @@ import { CurrentUser } from '../../../common/decorators';
 import { PendingApi } from '../../../common/openapi/pending-api';
 import type { Actor } from '../../../common/types/actor';
 import { IngestMetricBatchDto } from '../dto/ingest-metric-batch.dto';
-import { UpsertThresholdDto } from '../dto/upsert-threshold.dto';
 
 @ApiTags('performance')
 @ApiBearerAuth()
@@ -39,25 +37,6 @@ export class PerformanceDetailsController extends PendingApi {
   sessionSummary(
     @CurrentUser() _actor: Actor,
     @Param('id', ParseUUIDPipe) _id: string,
-  ) {
-    return this.pending();
-  }
-
-  @Get('horses/:id/thresholds')
-  @ApiOperation({ summary: 'List current and historical threshold profiles' })
-  thresholds(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-  ) {
-    return this.pending();
-  }
-
-  @Put('horses/:id/thresholds')
-  @ApiOperation({ summary: 'Create new version of horse threshold profile' })
-  setThreshold(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: UpsertThresholdDto,
   ) {
     return this.pending();
   }
