@@ -163,8 +163,7 @@ export class TrainingAccessService {
             'session',
             'session.id = participant.session_id',
           )
-          .innerJoin(TrainingPlanEntity, 'plan', 'plan.id = session.plan_id')
-          .where('plan.class_id = :classId', {
+          .where('session.class_id = :classId', {
             classId: trainingClass.id,
           })
           .andWhere('participant.assigned_groom_id = :callerId', {
@@ -247,7 +246,7 @@ export class TrainingAccessService {
   ): Promise<TrainingSessionEntity> {
     const session = await manager.findOne(TrainingSessionEntity, {
       where: { id: sessionId },
-      relations: { plan: { trainingClass: true } },
+      relations: { trainingClass: true },
     });
     if (!session) throw new NotFoundException('Không tìm thấy buổi tập');
     return session;
@@ -276,7 +275,7 @@ export class TrainingAccessService {
       !(await this.canReadClass(
         actor,
         caller.id,
-        session.plan.trainingClass,
+        session.trainingClass,
         manager,
       ))
     ) {
@@ -292,7 +291,7 @@ export class TrainingAccessService {
     const participant = await manager.findOne(SessionParticipantEntity, {
       where: { id: participantId },
       relations: {
-        session: { plan: { trainingClass: true } },
+        session: { trainingClass: true },
         horse: true,
         horseEnrollment: true,
       },
@@ -396,7 +395,7 @@ export class TrainingAccessService {
     }
     if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
       if (
-        participant.session.plan.trainingClass.headTrainerId === callerId &&
+        participant.session.trainingClass.headTrainerId === callerId &&
         (await this.horseAccess.isHorseInTrainerBarn(
           manager,
           participant.horseId,
@@ -426,7 +425,7 @@ export class TrainingAccessService {
       !(await this.canReadClass(
         actor,
         caller.id,
-        session.plan.trainingClass,
+        session.trainingClass,
         manager,
       ))
     ) {
@@ -515,7 +514,7 @@ export class TrainingAccessService {
       return;
     }
     if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
-      if (participant.session.plan.trainingClass.headTrainerId !== callerId) {
+      if (participant.session.trainingClass.headTrainerId !== callerId) {
         throw new ForbiddenException(
           'Participant thuộc class của head trainer khác',
         );

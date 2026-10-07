@@ -120,7 +120,7 @@ export class PerformanceMetricsService {
     if (critical) {
       await this.publishCritical(participant, critical);
     }
-    const headTrainerId = participant.session.plan.trainingClass.headTrainerId;
+    const headTrainerId = participant.session.trainingClass.headTrainerId;
     if (fresh.length > 0 && headTrainerId) {
       this.realtime.emitToUser(
         headTrainerId,
@@ -282,7 +282,7 @@ export class PerformanceMetricsService {
       horseId: participant.horseId,
       sessionId: participant.sessionId,
       sessionParticipantId: participant.id,
-      headTrainerId: participant.session.plan.trainingClass.headTrainerId,
+      headTrainerId: participant.session.trainingClass.headTrainerId,
       heartRateBpm: critical.heartRateBpm,
       speedMps: critical.speedMps,
       recordedAt: critical.recordedAt.toISOString(),

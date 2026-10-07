@@ -96,6 +96,7 @@ export class TrainingSessionsService {
       return manager.save(
         manager.create(TrainingSessionEntity, {
           planId,
+          classId: plan.classId,
           name: body.name,
           sessionType: body.sessionType,
           intensity: body.intensity,

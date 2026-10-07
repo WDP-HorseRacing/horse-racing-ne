@@ -92,7 +92,7 @@ export class TimeTrialsService {
   async get(actor: Actor, trialId: string): Promise<TimeTrialResponseDto> {
     const row = await this.timeTrials.findOne({
       where: { id: trialId },
-      relations: { session: { plan: { trainingClass: true } } },
+      relations: { session: { trainingClass: true } },
     });
     if (!row) throw new NotFoundException('Không tìm thấy Time Trial');
     await this.access.assertCanReadSession(actor, row.sessionId);

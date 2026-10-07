@@ -172,8 +172,7 @@ export class TrainingClassesService {
       const unfinishedSessions = await manager
         .getRepository(TrainingSessionEntity)
         .createQueryBuilder('session')
-        .innerJoin(TrainingPlanEntity, 'plan', 'plan.id = session.plan_id')
-        .where('plan.class_id = :classId', { classId })
+        .where('session.class_id = :classId', { classId })
         .andWhere('session.status IN (:...statuses)', {
           statuses: [
             TrainingSessionStatus.DRAFT,
@@ -218,8 +217,7 @@ export class TrainingClassesService {
           'session',
           'session.id = participant.session_id',
         )
-        .innerJoin(TrainingPlanEntity, 'plan', 'plan.id = session.plan_id')
-        .where('plan.class_id = :classId', { classId })
+        .where('session.class_id = :classId', { classId })
         .andWhere('participant.status = :status', {
           status: SessionParticipantStatus.ONGOING,
         })
@@ -239,7 +237,7 @@ export class TrainingClassesService {
         await manager.update(
           TrainingSessionEntity,
           {
-            planId: In(planIds),
+            classId,
             status: In([
               TrainingSessionStatus.DRAFT,
               TrainingSessionStatus.SCHEDULED,
@@ -262,8 +260,8 @@ export class TrainingClassesService {
             cancelReason: reason,
           })
           .where(
-            'session_id IN (SELECT id FROM training_sessions WHERE plan_id IN (:...planIds))',
-            { planIds },
+            'session_id IN (SELECT id FROM training_sessions WHERE class_id = :classId)',
+            { classId },
           )
           .andWhere('status IN (:...statuses)', {
             statuses: [
@@ -368,8 +366,7 @@ export class TrainingClassesService {
       const outsideSessions = await manager
         .getRepository(TrainingSessionEntity)
         .createQueryBuilder('session')
-        .innerJoin(TrainingPlanEntity, 'plan', 'plan.id = session.plan_id')
-        .where('plan.class_id = :classId', { classId })
+        .where('session.class_id = :classId', { classId })
         .andWhere(
           '(session.scheduled_start_at::date < :startDate OR session.scheduled_end_at::date > :endDate)',
           { startDate, endDate },

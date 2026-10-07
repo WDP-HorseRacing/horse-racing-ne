@@ -89,8 +89,8 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
     const participant = async (scheduledAt: string) => {
       const sessionId = randomUUID();
       await dataSource.query(
-        `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m)
-         VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', 'MODERATE', 3000)`,
+        `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m, class_id)
+         VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', 'MODERATE', 3000, (SELECT class_id FROM training_plans WHERE id = $2))`,
         [sessionId, planId, scheduledAt],
       );
       const participantId = randomUUID();

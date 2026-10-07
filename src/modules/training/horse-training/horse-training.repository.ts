@@ -121,7 +121,7 @@ export class HorseTrainingRepository {
       .withDeleted()
       .innerJoin('participant.session', 'session')
       .innerJoin('session.plan', 'plan')
-      .innerJoin('plan.trainingClass', 'class')
+      .innerJoin('session.trainingClass', 'class')
       .where('participant.horseId = :horseId', { horseId });
     if (filter.classId) {
       query.andWhere('class.id = :classId', { classId: filter.classId });

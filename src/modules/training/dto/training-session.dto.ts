@@ -82,6 +82,14 @@ export class TrainingSessionResponseDto {
   @Expose()
   planId!: string;
 
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  classId!: string;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @Expose()
+  subjectId!: string | null;
+
   @ApiProperty()
   @Expose()
   name!: string;

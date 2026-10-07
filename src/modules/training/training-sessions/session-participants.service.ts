@@ -58,7 +58,7 @@ export class SessionParticipantsService {
     const caller = await this.access.currentUser(actor);
     const rows = await this.participants.find({
       where: { sessionId },
-      relations: { session: { plan: { trainingClass: true } } },
+      relations: { session: { trainingClass: true } },
       order: { createdAt: 'ASC' },
     });
     const visible = await Promise.all(
@@ -123,7 +123,7 @@ export class SessionParticipantsService {
       this.access.assertCanManageClass(
         actor,
         caller.id,
-        context.session.plan.trainingClass.headTrainerId,
+        context.session.trainingClass.headTrainerId,
       );
       await this.access.assertTrainerBarn(
         manager,

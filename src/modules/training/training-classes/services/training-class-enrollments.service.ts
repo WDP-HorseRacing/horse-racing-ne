@@ -17,7 +17,6 @@ import { TrainingClassStatus } from '../../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
 import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
-import { TrainingPlanEntity } from '../../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import { toHorseEnrollmentResponse } from '../../mappers/horse-enrollment.mapper';
 import { TrainingAccessService } from '../../shared/training-access.service';
@@ -192,8 +191,7 @@ export class TrainingClassEnrollmentsService {
     const sessions = await manager
       .getRepository(TrainingSessionEntity)
       .createQueryBuilder('session')
-      .innerJoin(TrainingPlanEntity, 'plan', 'plan.id = session.plan_id')
-      .where('plan.class_id = :classId', {
+      .where('session.class_id = :classId', {
         classId: enrollment.classId,
       })
       .andWhere('session.status = :status', {

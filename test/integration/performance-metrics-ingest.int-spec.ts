@@ -94,8 +94,8 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     );
     const sessionId = randomUUID();
     await dataSource.query(
-      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
-       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', 'IN_PROGRESS', 'MODERATE', 3000)`,
+      `INSERT INTO training_sessions (id, version, plan_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m, class_id)
+       VALUES ($1, 1, $2, 'Buổi 1', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', 'IN_PROGRESS', 'MODERATE', 3000, (SELECT class_id FROM training_plans WHERE id = $2))`,
       [sessionId, planId],
     );
     const participantId = randomUUID();
