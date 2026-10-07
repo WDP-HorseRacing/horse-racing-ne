@@ -5,6 +5,7 @@ import {
 } from '@testcontainers/postgresql';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
+import { startContainerWithRetry } from './container';
 
 /**
  * Postgres dùng riêng cho một file integration test: container Docker mới, đã chạy đủ migration
@@ -25,7 +26,9 @@ const SRC = join(__dirname, '../../src');
  * @returns A promise resolving to DataSource đã kết nối và container đang chạy
  */
 export async function startTestPostgres(): Promise<TestPostgres> {
-  const container = await new PostgreSqlContainer('postgres:16-alpine').start();
+  const container = await startContainerWithRetry(() =>
+    new PostgreSqlContainer('postgres:16-alpine').start(),
+  );
   const dataSource = new DataSource({
     type: 'postgres',
     url: container.getConnectionUri(),

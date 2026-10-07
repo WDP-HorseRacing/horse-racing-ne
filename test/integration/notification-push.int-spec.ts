@@ -27,6 +27,7 @@ import {
   UserDeviceSchema,
 } from '../../src/modules/notifications/schemas/user-device.schema';
 import type { DataSource } from 'typeorm';
+import { startContainerWithRetry } from './container';
 import {
   clearAllMongoCollections,
   startTestMongo,
@@ -76,9 +77,9 @@ describe('FCM push (MongoDB + Redis)', () => {
     devices = mongo.connection.model(UserDevice.name, UserDeviceSchema);
     await Promise.all([notifications.init(), devices.init()]);
 
-    redis = await new GenericContainer('redis:7-alpine')
-      .withExposedPorts(6379)
-      .start();
+    redis = await startContainerWithRetry(() =>
+      new GenericContainer('redis:7-alpine').withExposedPorts(6379).start(),
+    );
     connection = { host: redis.getHost(), port: redis.getMappedPort(6379) };
     queue = new Queue(QUEUE, { connection });
     queueEvents = new QueueEvents(QUEUE, { connection });

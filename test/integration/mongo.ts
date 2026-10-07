@@ -4,6 +4,7 @@ import {
 } from '@testcontainers/mongodb';
 import mongoose, { type Connection } from 'mongoose';
 import * as os from 'node:os';
+import { startContainerWithRetry } from './container';
 
 /**
  * MongoDB dùng riêng cho một file integration test: container Docker mới, replica set một node
@@ -23,7 +24,9 @@ export interface TestMongo {
  * @returns Promise trả về kết nối Mongoose và container đang chạy
  */
 export async function startTestMongo(): Promise<TestMongo> {
-  const container = await new MongoDBContainer('mongo:8.0').start();
+  const container = await startContainerWithRetry(() =>
+    new MongoDBContainer('mongo:8.0').start(),
+  );
   const connection = await mongoose
     .createConnection(container.getConnectionString(), {
       dbName: 'test',
