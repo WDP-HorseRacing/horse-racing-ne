@@ -174,7 +174,7 @@ export class MedicalCasesService {
   }
 
   /**
-   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ
+   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ, và hệ quả nếu đóng kèm ghi nhận ngựa mất
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -194,7 +194,7 @@ export class MedicalCasesService {
     );
     assertCaseOpen(medicalCase.status);
     const manager = this.dataSource.manager;
-    const [activeLock, pendingRequestCount] = await Promise.all([
+    const [activeLock, pendingRequestCount, deathImpact] = await Promise.all([
       manager.findOne(TrainingLockEntity, {
         where: { caseId, status: TrainingLockStatus.ACTIVE },
       }),
@@ -204,6 +204,7 @@ export class MedicalCasesService {
           status: ExamRequestStatus.PENDING,
         },
       }),
+      this.horseStatuses.previewDeath(horse, manager),
     ]);
     return {
       activeLock: activeLock ? toCaseActiveLock(activeLock) : null,
@@ -212,6 +213,7 @@ export class MedicalCasesService {
         horse.healthStatus === HorseHealthStatus.INJURED ||
         horse.healthStatus === HorseHealthStatus.QUARANTINED,
       pendingRequestCount,
+      deathImpact,
     };
   }
 

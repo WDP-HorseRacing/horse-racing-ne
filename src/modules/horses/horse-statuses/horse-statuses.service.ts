@@ -196,6 +196,51 @@ export class HorseStatusesService {
       to,
       effects,
     );
+    return this.buildLifecyclePreview(manager, horse, to, blockedReason);
+  }
+
+  /**
+   * Xem trước hệ quả của việc ghi nhận ngựa mất khi bác sĩ đóng bệnh án đang mở. Không ghi gì.
+   *
+   * - Cùng số liệu và câu tóm tắt với xem trước đổi vòng đời sang Đã mất
+   * - Bỏ qua lý do chặn do bệnh án đang mở, vì bệnh án được đóng trước khi ghi nhận mất
+   *
+   * @param horse Hồ sơ ngựa hiện tại
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Promise trả về bảng xem trước hệ quả, lý do chặn nếu trạng thái hiện tại không chuyển được sang Đã mất
+   */
+  async previewDeath(
+    horse: HorseEntity,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<HorseLifecyclePreviewResponseDto> {
+    const to = HorseLifecycleStatus.DECEASED;
+    return this.buildLifecyclePreview(
+      manager,
+      horse,
+      to,
+      lifecycleTransitionError(horse.lifecycleStatus, to),
+    );
+  }
+
+  /**
+   * Dựng bảng xem trước hệ quả đổi vòng đời từ số liệu hiện tại của ngựa
+   *
+   * - Câu tóm tắt chỉ có khi không bị chặn
+   *
+   * @param manager EntityManager dùng để query
+   * @param horse Hồ sơ ngựa hiện tại
+   * @param to Trạng thái vòng đời muốn chuyển sang
+   * @param blockedReason Lý do không được đổi, null nếu được đổi
+   * @returns Promise trả về bảng xem trước hệ quả
+   */
+  private async buildLifecyclePreview(
+    manager: EntityManager,
+    horse: HorseEntity,
+    to: HorseLifecycleStatus,
+    blockedReason: string | null,
+  ): Promise<HorseLifecyclePreviewResponseDto> {
+    const id = horse.id;
+    const effects = lifecycleSideEffects(horse.lifecycleStatus, to);
     const [counts, hasActiveTrainingLock, invalidOwnerName, medical] =
       await Promise.all([
         this.statuses.lifecycleImpact(manager, id),

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { HorseLifecyclePreviewResponseDto } from '../../horses/dto';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import { MedicalRecordResponseDto } from './medical-record.response.dto';
@@ -103,6 +104,13 @@ export class MedicalCaseClosePreviewResponseDto {
 
   @ApiProperty({ description: 'Số yêu cầu khám còn đang chờ của con ngựa' })
   pendingRequestCount!: number;
+
+  @ApiProperty({
+    type: HorseLifecyclePreviewResponseDto,
+    description:
+      'Hệ quả nếu đóng bệnh án kèm ngày mất, cùng dạng với xem trước đổi vòng đời sang DECEASED',
+  })
+  deathImpact!: HorseLifecyclePreviewResponseDto;
 }
 
 /**

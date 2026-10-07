@@ -102,6 +102,22 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
     };
   };
 
+  it('previews the death consequences although the case is still open', async () => {
+    const { caseId, actor } = await setup();
+
+    const preview = await service.closePreview(actor, caseId);
+
+    expect(preview.deathImpact).toMatchObject({
+      to: HorseLifecycleStatus.DECEASED,
+      allowed: true,
+      blockedReason: null,
+      barnCleared: 'Khu A',
+      trainingLockReleased: true,
+      examRequestsDismissed: 1,
+    });
+    expect(preview.deathImpact.summary).toEqual(expect.any(String));
+  });
+
   it('closes the case and records the death in one transaction', async () => {
     const { horse, caseId, lockId, request, actor } = await setup();
 

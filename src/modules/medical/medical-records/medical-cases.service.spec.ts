@@ -167,7 +167,9 @@ describe('MedicalCasesService', () => {
       audit,
       events,
       ownerships as unknown as HorseOwnershipService,
-      {} as HorseStatusesService,
+      {
+        previewDeath: jest.fn().mockResolvedValue({ summary: 'Ngựa mất' }),
+      } as unknown as HorseStatusesService,
     );
   });
 
@@ -355,6 +357,7 @@ describe('MedicalCasesService', () => {
         healthStatus: HorseHealthStatus.INJURED,
         healthWarning: true,
         pendingRequestCount: 2,
+        deathImpact: { summary: 'Ngựa mất' },
       });
     });
   });
