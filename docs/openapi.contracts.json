@@ -5973,6 +5973,49 @@
         "tags": [
           "training"
         ]
+      },
+      "patch": {
+        "operationId": "TimeTrialsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTimeTrialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeTrialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "training"
+        ]
       }
     },
     "/api/v1/time-trials/{id}": {
@@ -6149,6 +6192,43 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/classes/schedule-preview": {
+      "post": {
+        "operationId": "TrainingClassesController_previewSchedule",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassScheduleInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSchedulePreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xem trước lịch buổi tập sinh từ giáo án, không lưu",
         "tags": [
           "training"
         ]
@@ -6403,19 +6483,10 @@
         ]
       }
     },
-    "/api/v1/training-classes/{classId}/plans": {
+    "/api/v1/training-plans": {
       "get": {
         "operationId": "TrainingPlansController_list",
-        "parameters": [
-          {
-            "name": "classId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "",
@@ -6436,28 +6507,20 @@
             "bearer": []
           }
         ],
+        "summary": "Liệt kê giáo án (Head Trainer: của mình)",
         "tags": [
           "training"
         ]
       },
       "post": {
         "operationId": "TrainingPlansController_create",
-        "parameters": [
-          {
-            "name": "classId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateTrainingPlanDto"
+                "$ref": "#/components/schemas/SaveTrainingPlanDto"
               }
             }
           }
@@ -6479,6 +6542,7 @@
             "bearer": []
           }
         ],
+        "summary": "Tạo giáo án ghép môn theo tuần",
         "tags": [
           "training"
         ]
@@ -6514,11 +6578,12 @@
             "bearer": []
           }
         ],
+        "summary": "Xem một giáo án kèm các môn",
         "tags": [
           "training"
         ]
       },
-      "patch": {
+      "put": {
         "operationId": "TrainingPlansController_update",
         "parameters": [
           {
@@ -6535,7 +6600,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTrainingPlanDto"
+                "$ref": "#/components/schemas/SaveTrainingPlanDto"
               }
             }
           }
@@ -6557,14 +6622,13 @@
             "bearer": []
           }
         ],
+        "summary": "Thay nội dung giáo án của mình",
         "tags": [
           "training"
         ]
-      }
-    },
-    "/api/v1/training-plans/{id}/activate": {
-      "post": {
-        "operationId": "TrainingPlansController_activate",
+      },
+      "delete": {
+        "operationId": "TrainingPlansController_remove",
         "parameters": [
           {
             "name": "id",
@@ -6576,15 +6640,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
-                }
-              }
-            }
+          "204": {
+            "description": ""
           }
         },
         "security": [
@@ -6592,86 +6649,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "training"
-        ]
-      }
-    },
-    "/api/v1/training-plans/{id}/complete": {
-      "post": {
-        "operationId": "TrainingPlansController_complete",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "training"
-        ]
-      }
-    },
-    "/api/v1/training-plans/{id}/cancel": {
-      "post": {
-        "operationId": "TrainingPlansController_cancel",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CancelTrainingPlanDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TrainingPlanResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
+        "summary": "Xóa giáo án chưa có lớp dùng",
         "tags": [
           "training"
         ]
@@ -6945,12 +6923,12 @@
         ]
       }
     },
-    "/api/v1/training-plans/{id}/sessions": {
+    "/api/v1/classes/{classId}/sessions": {
       "get": {
         "operationId": "TrainingSessionsController_list",
         "parameters": [
           {
-            "name": "id",
+            "name": "classId",
             "required": true,
             "in": "path",
             "schema": {
@@ -6986,7 +6964,7 @@
         "operationId": "TrainingSessionsController_create",
         "parameters": [
           {
-            "name": "id",
+            "name": "classId",
             "required": true,
             "in": "path",
             "schema": {
@@ -7021,6 +6999,55 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/classes/{classId}/sessions/publish": {
+      "post": {
+        "operationId": "TrainingSessionsController_publishMany",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishClassSessionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Publish một lần mọi buổi nháp của lớp, hoặc trong một khoảng ngày",
         "tags": [
           "training"
         ]
@@ -7179,6 +7206,178 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-subjects": {
+      "get": {
+        "operationId": "TrainingSubjectsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingSubjectResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Liệt kê danh mục môn học",
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "operationId": "TrainingSubjectsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingSubjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSubjectResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Thêm môn học",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training-subjects/{subjectId}": {
+      "get": {
+        "operationId": "TrainingSubjectsController_get",
+        "parameters": [
+          {
+            "name": "subjectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSubjectResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xem một môn học",
+        "tags": [
+          "training"
+        ]
+      },
+      "patch": {
+        "operationId": "TrainingSubjectsController_update",
+        "parameters": [
+          {
+            "name": "subjectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainingSubjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingSubjectResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sửa môn học",
+        "tags": [
+          "training"
+        ]
+      },
+      "delete": {
+        "operationId": "TrainingSubjectsController_remove",
+        "parameters": [
+          {
+            "name": "subjectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xóa môn học",
         "tags": [
           "training"
         ]
@@ -7452,6 +7651,52 @@
           }
         ],
         "summary": "Change user account status",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/head-trainer-handover": {
+      "post": {
+        "operationId": "UsersController_handover",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadTrainerHandoverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeadTrainerHandoverResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bàn giao khu chuồng, giáo án và lớp chưa kết thúc của Head Trainer sang Head Trainer khác",
         "tags": [
           "users"
         ]
@@ -12829,9 +13074,10 @@
           "planName": {
             "type": "string"
           },
-          "phaseName": {
-            "type": "string",
-            "description": "Giai đoạn của giáo án"
+          "subjectName": {
+            "type": "object",
+            "nullable": true,
+            "description": "Môn học của buổi, null nếu buổi không gắn môn"
           },
           "name": {
             "type": "string"
@@ -12929,7 +13175,6 @@
           "classId",
           "className",
           "planName",
-          "phaseName",
           "name",
           "sessionType",
           "scheduledStartAt",
@@ -13007,6 +13252,27 @@
         "required": [
           "distanceM"
         ]
+      },
+      "UpdateTimeTrialDto": {
+        "type": "object",
+        "properties": {
+          "distanceM": {
+            "type": "number",
+            "minimum": 0.01,
+            "description": "Cự ly chạy thử (mét)"
+          },
+          "targetTimeMs": {
+            "type": "object",
+            "minimum": 1,
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms); gửi null để xóa"
+          },
+          "notes": {
+            "type": "object",
+            "nullable": true,
+            "description": "Gửi null để xóa ghi chú"
+          }
+        }
       },
       "TrialResultResponseDto": {
         "type": "object",
@@ -13110,6 +13376,10 @@
             "type": "object",
             "format": "uuid"
           },
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "startDate": {
             "type": "string",
             "format": "date"
@@ -13152,11 +13422,201 @@
           "code",
           "name",
           "maxHorses",
+          "planId",
           "startDate",
           "endDate",
           "status",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ClassScheduleInputDto": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Giáo án của Head Trainer gọi"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày bắt đầu lớp"
+          },
+          "weekdays": {
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "Các thứ có buổi tập theo ISO: 1 là thứ Hai, 7 là Chủ nhật",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "startTime": {
+            "type": "string",
+            "example": "06:00",
+            "description": "Giờ bắt đầu theo giờ CLB (HH:mm)"
+          },
+          "durationMinutes": {
+            "type": "number",
+            "minimum": 15,
+            "maximum": 480,
+            "description": "Thời lượng mỗi buổi (phút)"
+          }
+        },
+        "required": [
+          "planId",
+          "startDate",
+          "weekdays",
+          "startTime",
+          "durationMinutes"
+        ]
+      },
+      "ScheduledSessionDto": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "number",
+            "description": "Tuần thứ mấy của lớp, bắt đầu từ 1"
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên buổi, mặc định là tên môn"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ]
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ]
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "description": "Cự ly dự kiến (mét)"
+          },
+          "surface": {
+            "type": "object",
+            "nullable": true
+          },
+          "targetTimeMs": {
+            "type": "object",
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms) của buổi chạy thử"
+          },
+          "scheduledStartAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scheduledEndAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week",
+          "subjectId",
+          "name",
+          "sessionType",
+          "intensity",
+          "plannedDistanceM",
+          "scheduledStartAt",
+          "scheduledEndAt"
+        ]
+      },
+      "ClassSchedulePreviewDto": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày kết thúc tính theo tổng số tuần của giáo án"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledSessionDto"
+            }
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate",
+          "sessions"
+        ]
+      },
+      "ClassSessionInputDto": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Môn học; loại buổi lấy theo môn"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ]
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 20000,
+            "description": "Cự ly dự kiến (mét)"
+          },
+          "surface": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "location": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "targetTimeMs": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Thời gian mục tiêu (ms), chỉ cho môn chạy thử"
+          },
+          "scheduledStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scheduledEndAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "subjectId",
+          "name",
+          "intensity",
+          "plannedDistanceM",
+          "scheduledStartAt",
+          "scheduledEndAt"
         ]
       },
       "CreateTrainingClassDto": {
@@ -13189,24 +13649,32 @@
             "minimum": 1,
             "description": "Sức chứa tối đa số ngựa trong lớp"
           },
-          "headTrainerId": {
+          "planId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Giáo án của Head Trainer phụ trách lớp"
           },
           "startDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Ngày bắt đầu; ngày kết thúc tự tính theo tổng số tuần của giáo án"
           },
-          "endDate": {
-            "type": "string",
-            "format": "date"
+          "sessions": {
+            "minItems": 1,
+            "maxItems": 500,
+            "description": "Các buổi tập lấy từ xem trước lịch, đã chỉnh trên màn hình",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassSessionInputDto"
+            }
           }
         },
         "required": [
           "code",
           "name",
+          "planId",
           "startDate",
-          "endDate"
+          "sessions"
         ]
       },
       "UpdateTrainingClassDto": {
@@ -13239,17 +13707,10 @@
             "minimum": 1,
             "description": "Sức chứa tối đa số ngựa trong lớp"
           },
-          "headTrainerId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "startDate": {
             "type": "string",
-            "format": "date"
-          },
-          "endDate": {
-            "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Ngày bắt đầu; ngày kết thúc tự tính theo tổng số tuần của giáo án"
           }
         }
       },
@@ -13353,66 +13814,47 @@
           }
         }
       },
-      "TrainingPlanResponseDto": {
+      "TrainingSubjectResponseDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "classId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "name": {
             "type": "string"
           },
-          "createdBy": {
-            "type": "string",
-            "format": "uuid"
+          "description": {
+            "type": "object",
+            "nullable": true
           },
-          "phaseName": {
-            "type": "string"
-          },
-          "goal": {
-            "type": "string",
-            "description": "Không có key khi caller là Groom"
-          },
-          "startDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "endDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "status": {
+          "sessionType": {
             "type": "string",
             "enum": [
-              "SCHEDULED",
-              "ACTIVE",
-              "COMPLETED",
-              "CANCELLED"
+              "REGULAR",
+              "TIME_TRIAL"
             ]
           },
-          "activatedAt": {
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ]
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "description": "Cự ly dự kiến (mét)"
+          },
+          "surface": {
             "type": "object",
-            "format": "date-time"
+            "nullable": true
           },
-          "completedAt": {
+          "targetTimeMs": {
             "type": "object",
-            "format": "date-time"
-          },
-          "cancelledAt": {
-            "type": "object",
-            "format": "date-time"
-          },
-          "cancelReason": {
-            "type": "object"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms)"
           },
           "updatedAt": {
             "format": "date-time",
@@ -13421,89 +13863,126 @@
         },
         "required": [
           "id",
-          "classId",
           "name",
-          "createdBy",
-          "phaseName",
-          "startDate",
-          "endDate",
-          "status",
-          "createdAt",
+          "sessionType",
+          "intensity",
+          "plannedDistanceM",
           "updatedAt"
         ]
       },
-      "CreateTrainingPlanDto": {
+      "TrainingPlanSubjectResponseDto": {
         "type": "object",
         "properties": {
-          "classId": {
+          "position": {
+            "type": "number",
+            "description": "Thứ tự trong giáo án, bắt đầu từ 1"
+          },
+          "startWeek": {
+            "type": "number",
+            "description": "Tuần bắt đầu học môn, bắt đầu từ 1"
+          },
+          "weeks": {
+            "type": "number",
+            "description": "Số tuần học môn"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/TrainingSubjectResponseDto"
+          }
+        },
+        "required": [
+          "position",
+          "startWeek",
+          "weeks",
+          "subject"
+        ]
+      },
+      "TrainingPlanResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
             "type": "string",
-            "format": "uuid",
-            "description": "Được lấy từ route nếu bỏ trống"
+            "format": "uuid"
           },
           "name": {
             "type": "string"
           },
-          "phaseName": {
-            "type": "string"
+          "description": {
+            "type": "object",
+            "nullable": true
           },
-          "goal": {
-            "type": "string"
-          },
-          "startDate": {
+          "headTrainerId": {
             "type": "string",
-            "format": "date"
+            "format": "uuid",
+            "description": "Head Trainer sở hữu giáo án"
           },
-          "endDate": {
+          "totalWeeks": {
+            "type": "number",
+            "description": "Tổng số tuần của giáo án"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrainingPlanSubjectResponseDto"
+            }
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "headTrainerId",
+          "totalWeeks",
+          "subjects",
+          "updatedAt"
+        ]
+      },
+      "TrainingPlanSubjectInputDto": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
             "type": "string",
-            "format": "date"
+            "format": "uuid",
+            "description": "Môn học"
+          },
+          "weeks": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 52,
+            "description": "Số tuần học môn này"
+          }
+        },
+        "required": [
+          "subjectId",
+          "weeks"
+        ]
+      },
+      "SaveTrainingPlanDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "description": "Mục tiêu, mô tả giáo án"
+          },
+          "subjects": {
+            "minItems": 1,
+            "maxItems": 52,
+            "description": "Các môn theo thứ tự học",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrainingPlanSubjectInputDto"
+            }
           }
         },
         "required": [
           "name",
-          "phaseName",
-          "goal",
-          "startDate",
-          "endDate"
-        ]
-      },
-      "UpdateTrainingPlanDto": {
-        "type": "object",
-        "properties": {
-          "classId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Được lấy từ route nếu bỏ trống"
-          },
-          "name": {
-            "type": "string"
-          },
-          "phaseName": {
-            "type": "string"
-          },
-          "goal": {
-            "type": "string"
-          },
-          "startDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "endDate": {
-            "type": "string",
-            "format": "date"
-          }
-        }
-      },
-      "CancelTrainingPlanDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Lý do hủy kế hoạch huấn luyện"
-          }
-        },
-        "required": [
-          "reason"
+          "subjects"
         ]
       },
       "SessionParticipantListItemDto": {
@@ -13698,9 +14177,14 @@
             "type": "string",
             "format": "uuid"
           },
-          "planId": {
+          "classId": {
             "type": "string",
             "format": "uuid"
+          },
+          "subjectId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
           },
           "name": {
             "type": "string"
@@ -13720,6 +14204,10 @@
               "HEAVY"
             ],
             "description": "Cường độ buổi tập"
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "description": "Cự ly dự kiến của buổi tập (mét)"
           },
           "scheduledStartAt": {
             "format": "date-time",
@@ -13762,10 +14250,11 @@
         },
         "required": [
           "id",
-          "planId",
+          "classId",
           "name",
           "sessionType",
           "intensity",
+          "plannedDistanceM",
           "scheduledStartAt",
           "scheduledEndAt",
           "status"
@@ -13784,6 +14273,11 @@
               "TIME_TRIAL"
             ]
           },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Môn học của buổi"
+          },
           "intensity": {
             "type": "string",
             "enum": [
@@ -13792,6 +14286,12 @@
               "HEAVY"
             ],
             "description": "Cường độ buổi tập"
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 20000,
+            "description": "Cự ly dự kiến của buổi tập (mét)"
           },
           "scheduledStartAt": {
             "type": "string",
@@ -13815,9 +14315,25 @@
           "name",
           "sessionType",
           "intensity",
+          "plannedDistanceM",
           "scheduledStartAt",
           "scheduledEndAt"
         ]
+      },
+      "PublishClassSessionsDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "description": "Chỉ publish buổi từ ngày này (lịch CLB); bỏ trống là không giới hạn"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "description": "Chỉ publish buổi tới hết ngày này (lịch CLB); bỏ trống là không giới hạn"
+          }
+        }
       },
       "UpdateTrainingSessionDto": {
         "type": "object",
@@ -13832,6 +14348,11 @@
               "TIME_TRIAL"
             ]
           },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Môn học của buổi"
+          },
           "intensity": {
             "type": "string",
             "enum": [
@@ -13840,6 +14361,12 @@
               "HEAVY"
             ],
             "description": "Cường độ buổi tập"
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 20000,
+            "description": "Cự ly dự kiến của buổi tập (mét)"
           },
           "scheduledStartAt": {
             "type": "string",
@@ -13872,6 +14399,106 @@
         "required": [
           "reason"
         ]
+      },
+      "CreateTrainingSubjectDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "description": "Tên môn, duy nhất trong CLB"
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả bài tập"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ],
+            "description": "Buổi thường hoặc chạy thử"
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ],
+            "description": "Cường độ bài tập"
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 20000,
+            "description": "Cự ly dự kiến (mét); môn chạy thử phải lớn hơn 0"
+          },
+          "surface": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Mặt sân"
+          },
+          "targetTimeMs": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Thời gian mục tiêu (ms), chỉ dùng cho môn chạy thử"
+          }
+        },
+        "required": [
+          "name",
+          "sessionType",
+          "intensity",
+          "plannedDistanceM"
+        ]
+      },
+      "UpdateTrainingSubjectDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "description": "Tên môn, duy nhất trong CLB"
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả bài tập"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ],
+            "description": "Buổi thường hoặc chạy thử"
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ],
+            "description": "Cường độ bài tập"
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 20000,
+            "description": "Cự ly dự kiến (mét); môn chạy thử phải lớn hơn 0"
+          },
+          "surface": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Mặt sân"
+          },
+          "targetTimeMs": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Thời gian mục tiêu (ms), chỉ dùng cho môn chạy thử"
+          }
+        }
       },
       "PaginationResponseDto": {
         "type": "object",
@@ -14003,6 +14630,41 @@
             ]
           }
         }
+      },
+      "HeadTrainerHandoverDto": {
+        "type": "object",
+        "properties": {
+          "toHeadTrainerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Head Trainer nhận bàn giao"
+          }
+        },
+        "required": [
+          "toHeadTrainerId"
+        ]
+      },
+      "HeadTrainerHandoverResultDto": {
+        "type": "object",
+        "properties": {
+          "barnsMoved": {
+            "type": "number",
+            "description": "Số khu chuồng đã chuyển"
+          },
+          "plansMoved": {
+            "type": "number",
+            "description": "Số giáo án đã chuyển"
+          },
+          "classesMoved": {
+            "type": "number",
+            "description": "Số lớp nháp hoặc đang chạy đã chuyển"
+          }
+        },
+        "required": [
+          "barnsMoved",
+          "plansMoved",
+          "classesMoved"
+        ]
       }
     }
   }

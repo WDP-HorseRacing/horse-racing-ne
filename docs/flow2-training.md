@@ -1,386 +1,162 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-## 1. Mục tiêu
+> Cập nhật: 07/10/2026
 
-Flow này quản lý toàn bộ vòng đời huấn luyện của một ngựa, từ lúc Head Trainer lập giáo án, chia thành các buổi tập, giao Groom thực hiện, ghi nhận kết quả thực tế, đến khi Trainer đánh giá và đóng giáo án.
+## I. Đề bài liên quan
 
-Hai khái niệm chính được tách riêng:
+**HEAD TRAINER**
 
-- `TrainingPlan`: giáo án tổng thể của một ngựa trong một giai đoạn.
-- `TrainingSession`: một buổi tập cụ thể thuộc giáo án.
+- Lập giáo án huấn luyện chi tiết (cự ly, khối lượng, mặt sân) theo từng giai đoạn cho từng con ngựa.
+- Phân công lịch tập luyện hằng ngày cho đội ngũ chăm sóc và quản lý lượt chạy thử.
+- Xem cảnh báo vượt ngưỡng thể lực hoặc nguy cơ chấn thương dựa trên dữ liệu nhịp tim/vận tốc realtime.
+- Đánh giá phong độ, ghi nhận chỉ số buổi tập và đưa ra nhận xét chuyên môn sau mỗi buổi tập.
 
-Các dữ liệu phát sinh trong lúc tập:
+**HORSE OWNER**: xem lịch trình tập luyện và nhận xét của Head Trainer.
 
-- `TimeTrial`: kết quả một lần chạy thử trong session.
-- `PerformanceMetric`: telemetry do module Performance tiếp nhận.
-- `PerformanceEvaluation`: đánh giá cuối buổi của Head Trainer hoặc Club Manager.
+**CLUB MANAGER**: quản lý danh mục, xem báo cáo hiệu suất huấn luyện.
 
-### Cấu trúc triển khai
+## II. Mô hình
 
-Training được chia theo capability thay vì đặt toàn bộ nghiệp vụ trong một service:
-
-- `plans`: vòng đời giáo án và transaction tác động các session con.
-- `sessions`: lên lịch và thực hiện từng buổi tập.
-- `time-trials`: kết quả các lần chạy thử.
-- `evaluations`: đánh giá chuyên môn sau buổi tập.
-- `shared`: kiểm tra actor, phạm vi CLB và quyền thao tác session.
-
-`TrainingModule` chỉ làm composition root, import bốn feature module trên. Mỗi feature có controller, service và repository riêng; các state rule thuần túy nằm trong `policies`.
-
-## 2. Vai trò và quyền
-
-| Hành động                                | CLUB_MANAGER | HEAD_TRAINER | GROOM                 |
-| ---------------------------------------- | ------------ | ------------ | --------------------- |
-| Xem giáo án, session và kết quả          | Có           | Có           | Có                    |
-| Tạo/sửa/kích hoạt/hủy/đóng giáo án       | Có           | Có           | Không                 |
-| Tạo, đổi lịch hoặc đổi Groom của session | Có           | Có           | Không                 |
-| Start/complete/cancel session            | Có           | Có           | Chỉ session được giao |
-| Ghi time trial                           | Có           | Có           | Chỉ session được giao |
-| Đánh giá session                         | Có           | Có           | Không                 |
-
-Mọi thao tác đều bị giới hạn trong CLB của user đang đăng nhập. Khi tài nguyên thuộc CLB khác, API trả `404` để không làm lộ sự tồn tại của dữ liệu.
-
-## 3. State machine
-
-### Training plan
-
-```text
-SCHEDULED ──activate──> ACTIVE ──complete──> COMPLETED
-     │                    │
-     └──────cancel────────┴──────cancel────> CANCELLED
+```
+LỚP HỌC            HT phụ trách, ngựa ghi danh, ngày bắt đầu – kết thúc
+ ├─ GIÁO ÁN        đúng 1 giáo án của HT phụ trách lớp
+ │   └─ MÔN HỌC    các môn theo thứ tự, mỗi môn học trong N tuần
+ └─ BUỔI TẬP       sinh từ giáo án lúc tạo lớp, có thể chỉnh từng buổi
+     └─ LƯỢT TẬP   mỗi ngựa trong lớp một lượt mỗi buổi
+         ├─ kết quả chạy thử, đánh giá của HT
+         └─ điểm đo nhịp tim/tốc độ (MongoDB)
 ```
 
-- Plan mới luôn là `SCHEDULED`.
-- Chỉ `SCHEDULED` được chỉnh sửa.
-- Plan phải có ít nhất một session trước khi activate.
-- Một ngựa chỉ được có một plan `ACTIVE`.
-- Plan chỉ hoàn thành khi không còn session mở và có ít nhất một session `COMPLETED`.
-- Không cho cancel plan nếu còn session `IN_PROGRESS`.
-
-### Training session
-
-```text
-SCHEDULED ──start──> IN_PROGRESS ──complete──> COMPLETED
-     │                    │
-     └──────cancel────────┴──────cancel──────> CANCELLED
-```
-
-- Chỉ session `SCHEDULED` được đổi lịch hoặc đổi Groom.
-- Session chỉ được start khi plan `ACTIVE`.
-- Session chỉ được complete khi đang `IN_PROGRESS`.
-- `COMPLETED` và `CANCELLED` là trạng thái kết thúc, không thể mở lại.
-
-## 4. Kiểm tra an toàn khi bắt đầu tập
-
-`POST /sessions/:id/start` thực hiện trong database transaction và khóa row session. Trước khi chuyển trạng thái, hệ thống kiểm tra:
-
-1. Session đang `SCHEDULED`.
-2. Plan đang `ACTIVE`.
-3. Groom hiện tại đúng là người được giao, trừ khi caller là Head Trainer hoặc Club Manager.
-4. Ngựa thuộc cùng CLB.
-5. Lifecycle của ngựa là `ACTIVE`.
-6. Health status của ngựa là `ELIGIBLE`.
-7. Không tồn tại `TrainingLock` trạng thái `ACTIVE`.
-8. Ngựa không có session khác đang `IN_PROGRESS`.
-
-Row lock ngăn hai request đồng thời cùng start một session. Kiểm tra session đang chạy ngăn một ngựa thực hiện hai buổi tập cùng lúc.
-
-## 5. API giáo án
-
-Tất cả endpoint dùng prefix `/api/v1` và yêu cầu Bearer access token.
-
-### `GET /horses/:horseId/training-plans`
-
-Liệt kê giáo án của một ngựa, mới nhất trước.
-
-- Kiểm tra ngựa thuộc CLB của caller.
-- Trả `200` với mảng plan.
-- Trả `404` nếu không tìm thấy ngựa trong CLB.
-
-### `POST /horses/:horseId/training-plans`
-
-Tạo giáo án mới ở trạng thái `SCHEDULED`.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Body:
-
-```json
-{
-  "phaseName": "Tăng sức bền giai đoạn 1",
-  "goal": "Hoàn thành 5 km với nhịp tim ổn định",
-  "startDate": "2026-09-20",
-  "endDate": "2026-10-20"
-}
-```
-
-Rule:
-
-- `startDate <= endDate`.
-- Ngựa phải thuộc cùng CLB.
-- Người tạo được lấy từ access token, client không được truyền `createdBy`.
-
-Kết quả: `201` cùng plan vừa tạo.
-
-### `GET /training-plans/:id`
-
-Lấy chi tiết một giáo án.
-
-- Trả `200` nếu plan thuộc CLB của caller.
-- Trả `404` nếu không tồn tại hoặc thuộc CLB khác.
-
-### `PATCH /training-plans/:id`
-
-Cập nhật tên giai đoạn, mục tiêu hoặc khoảng ngày.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Chỉ plan `SCHEDULED` được sửa. Nếu thay khoảng ngày, tất cả session đã tạo phải vẫn nằm trong khoảng mới.
-
-Body có thể chứa một phần các trường của endpoint tạo plan.
-
-Lỗi đáng chú ý:
-
-- `400`: khoảng ngày không hợp lệ.
-- `409`: plan không còn `SCHEDULED`, hoặc khoảng mới loại bỏ session đã lên lịch.
-
-### `POST /training-plans/:id/activate`
-
-Chuyển plan từ `SCHEDULED` sang `ACTIVE`.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Điều kiện:
-
-- Plan có ít nhất một session.
-- Ngựa chưa có plan `ACTIVE` khác.
-
-Khi thành công, hệ thống ghi `activatedAt` và phát event `training.plan.activated` sau khi transaction commit.
-
-### `POST /training-plans/:id/complete`
-
-Đóng giáo án thành `COMPLETED`.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Điều kiện:
-
-- Plan đang `ACTIVE`.
-- Không còn session `SCHEDULED` hoặc `IN_PROGRESS`.
-- Có ít nhất một session `COMPLETED`.
-
-Khi thành công, hệ thống ghi `completedAt` và phát event `training.plan.completed`.
-
-### `POST /training-plans/:id/cancel`
-
-Hủy giáo án.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Body:
-
-```json
-{
-  "reason": "Thay đổi mục tiêu thi đấu"
-}
-```
-
-Rule:
-
-- Không hủy plan đã `COMPLETED` hoặc `CANCELLED`.
-- Không hủy khi còn session `IN_PROGRESS`; cần complete hoặc cancel session đó trước.
-- Các session `SCHEDULED` còn lại được chuyển thành `CANCELLED` trong cùng transaction.
-- Lưu `cancelledAt`, `cancelReason` và người hủy trên từng session.
-
-## 6. API session
-
-### `POST /training-plans/:id/sessions`
-
-Thêm một buổi tập vào plan.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Body:
-
-```json
-{
-  "scheduledAt": "2026-09-22T07:00:00+07:00",
-  "distanceKm": 5,
-  "plannedDurationMinutes": 45,
-  "intensity": "MODERATE",
-  "surface": "DIRT",
-  "groomId": "00000000-0000-0000-0000-000000000000"
-}
-```
-
-Rule:
-
-- Plan phải là `SCHEDULED` hoặc `ACTIVE`.
-- Ngày session phải nằm trong khoảng ngày của plan.
-- `groomId`, nếu có, phải là user role `GROOM` thuộc cùng CLB.
-- `distanceKm >= 0`, `plannedDurationMinutes >= 1`.
-
-Kết quả: `201`, session ở trạng thái `SCHEDULED`.
-
-### `GET /training-plans/:id/sessions`
-
-Liệt kê session của plan theo `scheduledAt` tăng dần.
-
-Kết quả: `200` với mảng session.
-
-### `GET /sessions/:id`
-
-Lấy chi tiết một session, gồm dữ liệu dự kiến, dữ liệu thực tế và thông tin hủy nếu có.
-
-### `PATCH /sessions/:id`
-
-Đổi lịch, bài tập hoặc Groom phụ trách.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Chỉ session `SCHEDULED` được sửa. Các rule ngày nằm trong plan và Groom cùng CLB vẫn được áp dụng.
-
-### `POST /sessions/:id/start`
-
-Bắt đầu thực hiện session.
-
-Quyền: Groom được giao, `HEAD_TRAINER`, hoặc `CLUB_MANAGER`.
-
-Không có request body. Thành công sẽ:
-
-- Chuyển status thành `IN_PROGRESS`.
-- Ghi `startedAt` theo thời gian server.
-- Phát event `training.session.started`.
-
-Các kiểm tra y tế và đồng thời được mô tả ở mục 4. Vi phạm business rule trả `409`; Groom không được giao trả `403`.
-
-### `POST /sessions/:id/complete`
-
-Hoàn thành session và ghi kết quả thực tế.
-
-Quyền: Groom được giao, `HEAD_TRAINER`, hoặc `CLUB_MANAGER`.
-
-Body:
-
-```json
-{
-  "actualDistanceKm": 4.8,
-  "actualDurationSeconds": 2460,
-  "perceivedEffort": 7,
-  "notes": "Ngựa giảm tốc ở 500 m cuối"
-}
-```
-
-Chỉ session `IN_PROGRESS` được complete. Thành công sẽ ghi `completedAt`, chuyển status thành `COMPLETED` và phát event `training.session.completed`.
-
-`distanceKm` là bài được giao; `actualDistanceKm` là kết quả thực tế. Hai giá trị không ghi đè nhau để báo cáo có thể so sánh kế hoạch và thực hiện.
-
-### `POST /sessions/:id/cancel`
-
-Hủy một session chưa kết thúc.
-
-Quyền: Groom được giao, `HEAD_TRAINER`, hoặc `CLUB_MANAGER`.
-
-Body:
-
-```json
-{
-  "reason": "Thời tiết không đảm bảo"
-}
-```
-
-Cho phép từ `SCHEDULED` hoặc `IN_PROGRESS`. Hệ thống lưu `cancelledAt`, `cancelledBy`, `cancelReason` và phát event `training.session.cancelled`.
-
-## 7. API time trial
-
-### `POST /sessions/:id/time-trials`
-
-Ghi một lần chạy thử trong session.
-
-Quyền: Groom được giao, `HEAD_TRAINER`, hoặc `CLUB_MANAGER`.
-
-Body:
-
-```json
-{
-  "distanceMeters": 1000,
-  "durationSeconds": 65.421,
-  "videoAssetId": "00000000-0000-0000-0000-000000000000",
-  "notes": "Lần chạy thứ nhất"
-}
-```
-
-Rule:
-
-- Session phải đang `IN_PROGRESS`.
-- Media, nếu có, phải thuộc cùng CLB.
-- Một session có thể có nhiều time trial.
-
-### `GET /sessions/:id/time-trials`
-
-Liệt kê time trial của session theo thứ tự tạo tăng dần.
-
-### `GET /time-trials/:id`
-
-Lấy một kết quả time trial và tham chiếu media. API vẫn kiểm tra gián tiếp CLB qua session → plan → horse.
-
-## 8. API đánh giá
-
-### `POST /sessions/:id/evaluation`
-
-Tạo đánh giá chuyên môn cho session đã hoàn thành.
-
-Quyền: `HEAD_TRAINER`, `CLUB_MANAGER`.
-
-Body:
-
-```json
-{
-  "score": 8,
-  "comment": "Đạt mục tiêu sức bền, cần cải thiện đoạn cuối"
-}
-```
-
-Rule:
-
-- Session phải `COMPLETED`.
-- Điểm từ 1 đến 10.
-- Mỗi session chỉ có một evaluation; unique constraint tại database bảo vệ rule này.
-
-### `GET /sessions/:id/evaluation`
-
-Lấy đánh giá của session.
-
-- Trả `200` nếu có.
-- Trả `404` nếu session chưa được đánh giá.
-
-## 9. Mã lỗi chung
-
-| HTTP  | Ý nghĩa                                                                                    |
-| ----- | ------------------------------------------------------------------------------------------ |
-| `400` | Body, UUID, ngày tháng hoặc dữ liệu nghiệp vụ đầu vào không hợp lệ                         |
-| `401` | Thiếu hoặc access token không hợp lệ                                                       |
-| `403` | Role không đủ quyền hoặc Groom không được giao session                                     |
-| `404` | Không tìm thấy tài nguyên trong phạm vi CLB                                                |
-| `409` | State transition không hợp lệ, training lock, health không phù hợp hoặc xung đột đồng thời |
-
-## 10. Event phát sau thay đổi trạng thái
-
-- `training.plan.activated`
-- `training.plan.completed`
-- `training.plan.cancelled`
-- `training.session.started`
-- `training.session.completed`
-- `training.session.cancelled`
-
-Event được phát sau khi database transaction thành công. Consumer có thể dùng chúng để tạo notification, cập nhật dashboard hoặc gửi realtime event mà không đặt logic đó trực tiếp trong Training service.
-
-## 11. Index
-
-Flow hiện không khai báo index tối ưu query mang tính dự đoán. Unique index của evaluation vẫn được giữ để bảo vệ một đánh giá trên mỗi session. Sau khi có dữ liệu và đo bằng `EXPLAIN ANALYZE`, các ứng viên đầu tiên cần xem xét là:
-
-- `training_plans(horse_id, status)`;
-- `training_sessions(plan_id, scheduled_at)`;
-- `training_sessions(groom_id, status, scheduled_at)`.
-
-Chỉ thêm khi workload thật chứng minh cần thiết.
+| Khái niệm | Bảng | Ai tạo, sửa | Ghi chú |
+|---|---|---|---|
+| Môn học | `training_subjects` | Club Manager | Danh mục dùng chung CLB. Mỗi môn là một bài cố định: loại buổi (thường / chạy thử), cường độ, cự ly dự kiến, mặt sân, thời gian mục tiêu (chỉ môn chạy thử). |
+| Giáo án | `training_plans`, `training_plan_subjects` | Head Trainer sở hữu | Ghép môn theo thứ tự, mỗi môn bao nhiêu tuần. Dùng lại cho các lớp của chính Head Trainer đó. |
+| Lớp học | `training_classes` | Head Trainer | Một lớp theo đúng một giáo án của Head Trainer phụ trách lớp. Ngày kết thúc tự tính. |
+| Buổi tập | `training_sessions` | Head Trainer | Thuộc lớp, gắn môn học. Lưu bản chép cường độ, cự ly, mặt sân của môn lúc tạo. |
+| Lượt tập | `session_participants` | Hệ thống tạo khi publish buổi hoặc ghi danh | Điểm danh, sẵn sàng, bắt đầu, hoàn thành theo từng ngựa. |
+
+Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong một buổi, mọi ngựa cùng một bài.
+
+## III. Luật nghiệp vụ
+
+### 1. Môn học
+
+1. Tên môn duy nhất trong CLB.
+2. Môn chạy thử phải có cự ly lớn hơn 0. Môn thường không có thời gian mục tiêu.
+3. Môn đang nằm trong giáo án hoặc buổi tập thì không xóa được.
+4. Sửa môn không làm đổi các buổi tập đã tạo.
+
+### 2. Giáo án
+
+1. Giáo án thuộc Head Trainer tạo ra. Head Trainer khác không xem, không dùng được. Club Manager xem được mọi giáo án nhưng không tạo, không sửa.
+2. Giáo án có ít nhất một môn. Tuần bắt đầu của mỗi môn tính theo thứ tự (môn 1 tuần 1–4 thì môn 2 bắt đầu tuần 5).
+3. Sửa giáo án là thay toàn bộ danh sách môn. Lớp đã tạo từ giáo án giữ nguyên buổi tập.
+4. Giáo án đã có lớp dùng thì không xóa được.
+
+### 3. Tạo lớp và lịch buổi tập
+
+1. Chỉ Head Trainer tạo lớp, và lớp luôn do chính Head Trainer đó phụ trách.
+2. Luồng màn hình tạo lớp:
+   1. Head Trainer chọn giáo án, ngày bắt đầu, các thứ trong tuần (bao nhiêu thứ cũng được), giờ bắt đầu theo giờ CLB, thời lượng mỗi buổi.
+   2. Hệ thống trả lịch xem trước, chưa lưu gì: tuần thứ n học môn chiếm tuần n trong giáo án; mỗi thứ đã chọn trong tuần sinh một buổi, nội dung lấy từ môn.
+   3. Head Trainer chỉnh ngay trên màn hình: đổi giờ, mặt sân, cự ly, cường độ, thời gian mục tiêu; đổi môn của một buổi (ví dụ thêm ngày đi bộ hồi phục hoặc buổi chạy thử cuối giai đoạn); bỏ buổi.
+   4. Bấm Tạo lớp: lớp và mọi buổi được lưu trong một lần. Lỗi ở bất kỳ buổi nào thì không lưu gì.
+3. Ngày kết thúc lớp = ngày bắt đầu + tổng số tuần của giáo án − 1 ngày.
+4. Mỗi buổi phải nằm trong thời gian của lớp, so theo ngày lịch CLB (giờ Việt Nam).
+5. Loại buổi lấy theo môn của buổi. Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly, thời gian mục tiêu).
+6. Lớp và buổi tạo ra ở trạng thái nháp. Head Trainer kích hoạt lớp rồi publish buổi (từng buổi, theo khoảng ngày hoặc cả lớp).
+7. Đổi ngày bắt đầu của lớp thì ngày kết thúc tự tính lại; buổi nằm ngoài khoảng mới thì chặn.
+8. Lớp không đổi được giáo án hay Head Trainer sau khi tạo. Đổi Head Trainer chỉ qua bàn giao (mục 7).
+
+### 4. Buổi tập và chạy thử
+
+1. Thêm, sửa buổi khi lớp còn nháp hoặc đang chạy. Lớp đã hoàn thành hoặc đã hủy thì không.
+2. Sửa buổi và sửa cấu hình chạy thử chỉ khi buổi còn nháp.
+3. Publish buổi: lớp phải đang chạy; buổi chạy thử phải có cấu hình chạy thử. Publish tạo lượt tập cho từng ngựa đang học lớp.
+4. Publish nhiều buổi một lần: mọi buổi nháp của lớp, hoặc chỉ các buổi có ngày bắt đầu (lịch CLB) trong khoảng `from`–`to` (ví dụ một tuần). Một buổi lỗi thì không buổi nào được publish.
+5. Ghi danh ngựa vào lớp đang chạy: tạo lượt cho các buổi đã publish trong tương lai.
+
+### 5. Ngựa có được tập buổi này không
+
+Áp ở publish buổi, ghi danh, điểm danh và bắt đầu lượt:
+
+1. Ngựa đang bị khóa huấn luyện: lượt thành Hủy do khóa (`CANCELLED_BY_LOCK`).
+2. Ngựa không được tập (chấn thương, cách ly, giải nghệ...): lượt thành Không đủ điều kiện (`INELIGIBLE`).
+3. Ngựa Cần theo dõi gặp buổi cường độ Nặng: lượt thành Không đủ điều kiện, lý do `HEALTH_UNDER_OBSERVATION`. Buổi Nhẹ và Trung bình tập bình thường.
+4. Điểm danh hoặc bắt đầu bị chặn thì vẫn lưu trạng thái trên rồi báo lỗi 409.
+5. Bắt đầu lượt cần lớp đang chạy.
+
+### 6. Nhịp tim và tốc độ (dữ liệu giả lập)
+
+1. Không có thiết bị đo thật; script `pnpm sim` đóng vai cảm biến, mỗi giây gửi một điểm đo.
+2. Chỉ nhận điểm đo khi lượt đang tập (`ONGOING`). Điểm trùng cảm biến và thời điểm đo bị bỏ qua.
+3. Ngưỡng mặc định CLB: nhịp tim cảnh báo 220 bpm, nguy hiểm 240 bpm, tốc độ tối đa 18 m/s. Head Trainer của khu đặt ngưỡng riêng cho từng ngựa theo phiên bản có khoảng hiệu lực.
+4. Mức cảnh báo mỗi điểm: vượt ngưỡng nguy hiểm là `CRITICAL`; vượt ngưỡng cảnh báo nhịp tim hoặc tốc độ tối đa là `WARNING`; còn lại `NORMAL`.
+5. Head Trainer của lớp nhận điểm đo realtime qua socket, sự kiện `performance.metrics`.
+6. Có điểm `CRITICAL`: thông báo KHẨN cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần.
+
+### 7. Bàn giao khi Head Trainer nghỉ
+
+1. Club Manager bàn giao một lần: mọi khu chuồng, mọi giáo án và mọi lớp nháp/đang chạy của Head Trainer A sang Head Trainer B, trong một transaction. Lớp đã hoàn thành hoặc đã hủy giữ A để tra lịch sử.
+2. Mỗi khu được chuyển ghi một dòng nhật ký.
+3. Không khóa tài khoản hay đổi vai trò Head Trainer còn khu chuồng, còn giáo án, hoặc còn lớp nháp/đang chạy.
+
+### 8. Phân quyền
+
+| Thao tác | CM | HT | VET | GROOM | OWNER |
+|---|---|---|---|---|---|
+| Danh mục môn học | Thêm, sửa, xóa, xem | Xem | Xem | Xem | Không |
+| Giáo án | Xem tất cả | Của mình | Không | Không | Không |
+| Lớp, buổi tập (xem) | Tất cả | Lớp mình phụ trách | Tất cả | Lớp có lượt mình dắt | Lớp có ngựa của mình |
+| Tạo, sửa lớp, buổi, chạy thử, ghi danh, publish | Không | Lớp mình phụ trách | Không | Không | Không |
+| Điểm danh, bắt đầu, hoàn thành lượt, kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
+| Đánh giá buổi | Không | Có | Không | Không | Không |
+| Ngưỡng nhịp tim/tốc độ | Xem, đặt | Ngựa thuộc khu mình | Xem | Không | Không |
+| Bàn giao Head Trainer | Có | Không | Không | Không | Không |
+
+## IV. API
+
+| Phương thức | Đường dẫn | Ai gọi | Công dụng |
+|---|---|---|---|
+| GET | `/training-subjects` | CM, HT, VET, GROOM | Danh mục môn |
+| GET | `/training-subjects/:subjectId` | CM, HT, VET, GROOM | Một môn |
+| POST | `/training-subjects` | CM | Thêm môn |
+| PATCH | `/training-subjects/:subjectId` | CM | Sửa môn (gửi `null` để xóa field tùy chọn) |
+| DELETE | `/training-subjects/:subjectId` | CM | Xóa môn chưa dùng |
+| GET | `/training-plans` | HT (của mình), CM | Danh sách giáo án kèm môn, `totalWeeks` |
+| GET | `/training-plans/:id` | HT (của mình), CM | Một giáo án |
+| POST | `/training-plans` | HT | Tạo giáo án `{ name, description?, subjects: [{ subjectId, weeks }] }` |
+| PUT | `/training-plans/:id` | HT (của mình) | Thay toàn bộ giáo án |
+| DELETE | `/training-plans/:id` | HT (của mình) | Xóa giáo án chưa có lớp |
+| POST | `/classes/schedule-preview` | HT | Xem trước lịch `{ planId, startDate, weekdays, startTime, durationMinutes }` |
+| POST | `/classes` | HT | Tạo lớp kèm buổi `{ code, name, ..., planId, startDate, sessions: [...] }` |
+| PATCH | `/classes/:classId` | HT | Sửa lớp (không đổi giáo án, Head Trainer) |
+| PATCH | `/classes/:classId/status` | HT | Kích hoạt, hoàn thành, hủy lớp |
+| GET/POST | `/classes/:classId/sessions` | Xem: theo quyền xem lớp; thêm: HT | Buổi của lớp |
+| PATCH | `/training-sessions/:sessionId` | HT | Sửa buổi nháp, đổi được `subjectId` |
+| POST | `/training-sessions/:sessionId/publish` | HT | Publish buổi |
+| POST | `/classes/:classId/sessions/publish` | HT | Publish nhiều buổi nháp `{ from?, to? }` |
+| PATCH | `/training-sessions/:id/time-trial` | HT | Sửa cấu hình chạy thử của buổi nháp |
+| POST | `/session-participants/:id/check-in`, `/ready`, `/start`, `/complete`, `/absent` | HT, GROOM | Thao tác lượt tập |
+| POST | `/session-participants/:id/metrics`, `/metrics/batch` | Không cần đăng nhập | Nhận điểm đo (giả lập) |
+| GET | `/session-participants/:id/metrics` | CM, VET, HT, GROOM | Điểm đo của lượt theo thời gian |
+| GET | `/session-participants/:id/performance-summary` | Ai xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |
+| GET/PUT | `/horses/:id/thresholds` | Xem: HT, CM, VET; đặt: HT, CM | Ngưỡng của ngựa |
+| POST | `/users/:id/head-trainer-handover` | CM | Bàn giao Head Trainer `{ toHeadTrainerId }` |
+
+Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
+
+## Phụ lục 1: Thay đổi API cần báo FE
+
+1. Bỏ: `GET/POST /training-classes/:classId/plans`, `POST /training-plans/:id/activate|complete|cancel`, `GET/POST /training-plans/:id/sessions`.
+2. Giáo án đổi hẳn dạng: không còn `classId`, `phaseName`, `goal`, `startDate`, `endDate`, `status`; có `description`, `headTrainerId`, `totalWeeks`, `subjects[]`. Sửa bằng `PUT`.
+3. Tạo lớp: bắt buộc `planId`, `sessions`; bỏ `endDate` (tự tính) và `headTrainerId` (luôn là người gọi). Response lớp có `planId`.
+4. Buổi tập: bắt buộc `intensity` (`LIGHT` / `MODERATE` / `HEAVY`) và `plannedDistanceM`; có `subjectId`; response có `classId`, `subjectId`, bỏ `planId`. Danh sách và thêm buổi qua `/classes/:classId/sessions`.
+5. Tab Huấn luyện của ngựa: `phaseName` đổi thành `subjectName` (có thể `null`).
+6. Club Manager không còn gọi được các thao tác ghi của lớp, buổi, lượt tập, kết quả chạy thử, đánh giá (nhận 403).
+7. API mới: môn học, xem trước lịch, publish nhiều buổi, sửa chạy thử, ngưỡng, điểm đo, tổng kết lượt, bàn giao Head Trainer; sự kiện socket `performance.metrics`; loại thông báo `PERFORMANCE_ALERT`, đích `SESSION_PARTICIPANT`.
+
+## Phụ lục 2: Việc còn lại
+
+- `GET /horses/:id/alerts` (lịch sử cảnh báo thể lực của ngựa) và `GET /horses/:id/workload` (khối lượng tập) còn trả 501.
+- Route nhận điểm đo đang public: nợ mục 10 ở `docs/mongo-notifications-debt.md`.

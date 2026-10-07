@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 183 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 190 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -219,7 +219,11 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | PATCH | `/api/v1/classes/{classId}` |  |
 | GET | `/api/v1/classes/{classId}/enrollments` |  |
 | POST | `/api/v1/classes/{classId}/enrollments` |  |
+| GET | `/api/v1/classes/{classId}/sessions` |  |
+| POST | `/api/v1/classes/{classId}/sessions` |  |
+| POST | `/api/v1/classes/{classId}/sessions/publish` | Publish một lần mọi buổi nháp của lớp, hoặc trong một khoảng ngày |
 | PATCH | `/api/v1/classes/{classId}/status` |  |
+| POST | `/api/v1/classes/schedule-preview` | Xem trước lịch buổi tập sinh từ giáo án, không lưu |
 | PATCH | `/api/v1/enrollments/{id}/leave` |  |
 | GET | `/api/v1/horses/{horseId}/training/classes` | List classes of a horse |
 | GET | `/api/v1/horses/{horseId}/training/sessions` | List training sessions of a horse |
@@ -232,22 +236,24 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/session-participants/{id}/trial-results` |  |
 | POST | `/api/v1/session-participants/{id}/trial-results` |  |
 | GET | `/api/v1/time-trials/{id}` |  |
-| GET | `/api/v1/training-classes/{classId}/plans` |  |
-| POST | `/api/v1/training-classes/{classId}/plans` |  |
-| GET | `/api/v1/training-plans/{id}` |  |
-| PATCH | `/api/v1/training-plans/{id}` |  |
-| POST | `/api/v1/training-plans/{id}/activate` |  |
-| POST | `/api/v1/training-plans/{id}/cancel` |  |
-| POST | `/api/v1/training-plans/{id}/complete` |  |
-| GET | `/api/v1/training-plans/{id}/sessions` |  |
-| POST | `/api/v1/training-plans/{id}/sessions` |  |
+| GET | `/api/v1/training-plans` | Liệt kê giáo án (Head Trainer: của mình) |
+| POST | `/api/v1/training-plans` | Tạo giáo án ghép môn theo tuần |
+| DELETE | `/api/v1/training-plans/{id}` | Xóa giáo án chưa có lớp dùng |
+| GET | `/api/v1/training-plans/{id}` | Xem một giáo án kèm các môn |
+| PUT | `/api/v1/training-plans/{id}` | Thay nội dung giáo án của mình |
 | GET | `/api/v1/training-sessions/{id}/time-trial` |  |
+| PATCH | `/api/v1/training-sessions/{id}/time-trial` |  |
 | POST | `/api/v1/training-sessions/{id}/time-trial` |  |
 | GET | `/api/v1/training-sessions/{sessionId}` |  |
 | PATCH | `/api/v1/training-sessions/{sessionId}` |  |
 | POST | `/api/v1/training-sessions/{sessionId}/cancel` |  |
 | GET | `/api/v1/training-sessions/{sessionId}/participants` |  |
 | POST | `/api/v1/training-sessions/{sessionId}/publish` |  |
+| GET | `/api/v1/training-subjects` | Liệt kê danh mục môn học |
+| POST | `/api/v1/training-subjects` | Thêm môn học |
+| DELETE | `/api/v1/training-subjects/{subjectId}` | Xóa môn học |
+| GET | `/api/v1/training-subjects/{subjectId}` | Xem một môn học |
+| PATCH | `/api/v1/training-subjects/{subjectId}` | Sửa môn học |
 
 ## users
 
@@ -257,5 +263,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/users` | Create club user |
 | GET | `/api/v1/users/{id}` | Get club user |
 | PATCH | `/api/v1/users/{id}` | Update club user |
+| POST | `/api/v1/users/{id}/head-trainer-handover` | Bàn giao khu chuồng, giáo án và lớp chưa kết thúc của Head Trainer sang Head Trainer khác |
 | PATCH | `/api/v1/users/{id}/status` | Change user account status |
 
