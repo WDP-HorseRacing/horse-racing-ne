@@ -194,6 +194,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả.
 | Ngày sinh chỉ cần không ở tương lai | Ngựa phải đủ 1 tuổi và không quá 40 tuổi | Câu lạc bộ chỉ quản lý ngựa từ 1 tuổi, ngựa non ở trại giống. Mức 40 tuổi để bắt lỗi gõ nhầm năm. |
 | Cha mẹ chỉ cần sinh trước con | Cha mẹ phải lớn hơn con ít nhất 2 năm | Ngựa cái dậy thì khoảng 12 đến 15 tháng và mang thai khoảng 11 tháng, ngựa đực hiếm khi được phối trước 2 tuổi. |
 | Ngựa chết chỉ xử lý được bằng giải nghệ, chuyển nhượng hoặc xóa | Thêm trạng thái Đã mất | Giải nghệ thì ngựa vẫn chiếm ô và bị nhắc khám, chuyển nhượng sai nghĩa, xóa thì bị chặn vì đã có dữ liệu. |
+| Thông báo ngựa mất không gửi CLUB MANAGER | Gửi mọi CLUB MANAGER đang hoạt động | Bác sĩ ghi nhận mất khi đóng bệnh án thì CLUB MANAGER không biết ngựa đã mất; CLB có thể có nhiều CLUB MANAGER. Giống các thông báo y tế của Flow 3. |
 | Chỉ CLUB MANAGER ghi nhận ngựa mất, phải chờ bác sĩ đóng bệnh án trước | Bác sĩ đóng bệnh án kèm ngày mất, hệ thống ghi nhận mất cùng lúc | Ngựa thường mất trong lúc điều trị. Chờ hai bước thì ngựa vẫn hiện Đang hoạt động, vẫn trong lớp và vẫn được giao GROOM. Ngoài thực tế, bác sĩ thú y là người xác nhận ngựa chết. |
 | Đổi chủ bằng sửa trường chủ sở hữu, chỉ lưu chủ hiện tại | Chuyển nhượng nội bộ, lưu lịch sử giai đoạn sở hữu | Góp ý của giảng viên: chỉ sửa trường chủ là CRUD, chưa phải chuyển nhượng. Chi phí y tế phải tính cho người làm chủ lúc bệnh án được đóng, không dồn hết cho chủ hiện tại. |
 
@@ -607,7 +608,7 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
    - Làm như chuyển nhượng: rút khỏi lớp, rút đăng ký thi đấu chưa diễn ra, trả ô, bỏ khu, kết thúc phân công GROOM, gỡ lệnh khóa huấn luyện với lý do "Gỡ do ngựa mất", yêu cầu khám đang chờ và lịch chưa làm tự hủy với lý do "Do ngựa mất". Không đặt lại trạng thái sức khỏe.
    - Giữ chủ sở hữu, chủ vẫn xem được hồ sơ. Hồ sơ chỉ đọc. Ngựa vẫn hiện là cha mẹ trong phả hệ và vẫn chọn làm cha mẹ được. Số chip vẫn giữ chỗ.
    - Đã mất là trạng thái cuối: không kích hoạt lại, không đổi sang trạng thái khác, không xóa hồ sơ.
-   - Thông báo "Ngựa X đã mất" (kèm ngày mất và nguyên nhân) cho chủ ngựa nếu còn hoạt động, HEAD TRAINER của khu cũ và GROOM cũ. GROOM không nhận thêm thông báo "đã chuyển nhượng".
+   - Thông báo "Ngựa X đã mất" (kèm ngày mất và nguyên nhân) cho chủ ngựa nếu còn hoạt động, HEAD TRAINER của khu cũ, GROOM cũ và mọi CLUB MANAGER đang hoạt động (kể cả người vừa ghi nhận). Áp dụng cho cả hai luồng: CLUB MANAGER ghi nhận và VETERINARIAN ghi nhận khi đóng bệnh án. GROOM không nhận thêm thông báo "đã chuyển nhượng".
 3. **Kích hoạt lại (RETIRED hoặc TRANSFERRED quay về ACTIVE):**
    - Dùng cho trường hợp ngựa quay lại tập luyện hoặc câu lạc bộ mua lại con ngựa đã bán. Luôn kích hoạt lại hồ sơ cũ, không tạo hồ sơ mới, vì số chip định danh gắn với con vật ngoài đời thật và mọi dữ liệu lịch sử, phả hệ đang gắn với hồ sơ này.
    - Toàn bộ dữ liệu cũ được giữ nguyên: bệnh án, chỉ số cơ thể, thành tích, phả hệ, số chip định danh.

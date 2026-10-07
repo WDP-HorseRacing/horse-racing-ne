@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { UserRole } from '../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
@@ -313,8 +314,9 @@ describe('HorseNotificationsService.notifyHorseDeceased', () => {
     reason: 'Đau bụng cấp',
   };
 
-  it('tells the active owner, the old barn head trainer and the old groom', async () => {
+  it('tells the active owner, the old barn head trainer, the old groom and every club manager', async () => {
     const { service, recipients, notifications } = setup();
+    recipients.findActiveUserIdsByRole.mockResolvedValue(['cm-1', 'owner-1']);
     recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: null,
@@ -328,9 +330,12 @@ describe('HorseNotificationsService.notifyHorseDeceased', () => {
     await service.notifyHorseDeceased(event);
 
     expect(recipients.findBarnContact).toHaveBeenCalledWith('barn-1');
+    expect(recipients.findActiveUserIdsByRole).toHaveBeenCalledWith(
+      UserRole.CLUB_MANAGER,
+    );
     expect(notifications.send).toHaveBeenCalledWith({
       eventId: 'event-9',
-      recipientIds: ['owner-1', 'ht-1', 'groom-1'],
+      recipientIds: ['owner-1', 'ht-1', 'groom-1', 'cm-1'],
       category: NotificationCategory.HORSE_LIFECYCLE,
       priority: NotificationPriority.HIGH,
       title: 'Ngựa Sao Mai đã mất',
@@ -345,6 +350,7 @@ describe('HorseNotificationsService.notifyHorseDeceased', () => {
 
   it('skips the people that are missing or no longer active', async () => {
     const { service, recipients, notifications } = setup();
+    recipients.findActiveUserIdsByRole.mockResolvedValue([]);
     recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: null,

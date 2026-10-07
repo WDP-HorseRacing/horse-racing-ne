@@ -193,10 +193,11 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo chủ ngựa, Huấn luyện viên trưởng của khu cũ và Groom cũ khi ngựa được ghi nhận đã mất.
+   * Báo chủ ngựa, Huấn luyện viên trưởng của khu cũ, Groom cũ và mọi Club Manager khi ngựa được ghi nhận đã mất.
    *
    * - Khu và Groom lấy từ payload (trước khi bị dọn); chủ ngựa chỉ nhận khi còn là HORSE_OWNER đang ACTIVE
    * - Huấn luyện viên trưởng chỉ nhận khi khu còn và người đó còn ACTIVE, còn vai trò HEAD_TRAINER
+   * - Club Manager: mọi tài khoản CLUB_MANAGER đang ACTIVE, kể cả người vừa ghi nhận; mỗi người chỉ nhận một lần
    * - Ghi bằng connection riêng, không nhận EntityManager; idempotent theo event.eventId
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
@@ -216,11 +217,19 @@ export class HorseNotificationsService {
     const barn = event.barnId
       ? await this.recipients.findBarnContact(event.barnId)
       : null;
+    const clubManagerIds = await this.recipients.findActiveUserIdsByRole(
+      UserRole.CLUB_MANAGER,
+    );
     const recipientIds = [
-      contact.ownerId,
-      barn?.headTrainerId ?? null,
-      event.groomId,
-    ].filter((id): id is string => id !== null);
+      ...new Set(
+        [
+          contact.ownerId,
+          barn?.headTrainerId ?? null,
+          event.groomId,
+          ...clubManagerIds,
+        ].filter((id): id is string => id !== null),
+      ),
+    ];
     return this.notifications.send({
       eventId: event.eventId,
       recipientIds,

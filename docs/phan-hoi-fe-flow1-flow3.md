@@ -98,7 +98,7 @@ Làm đúng file: bảng chuyển trạng thái, chặn khi còn bệnh án mở
 | Vào lớp | `Ngựa đã mất, không học lớp` |
 | Preview đổi khu | `blockedReason`: `Ngựa đã mất, hồ sơ chỉ đọc` |
 
-**Thông báo:** gửi cho chủ ngựa (nếu còn hoạt động), Huấn luyện viên trưởng của khu cũ và Groom cũ, với category `HORSE_LIFECYCLE` và priority `HIGH`. Groom không nhận thêm thông báo "đã chuyển nhượng".
+**Thông báo:** gửi cho chủ ngựa (nếu còn hoạt động), Huấn luyện viên trưởng của khu cũ, Groom cũ và mọi Quản lý CLB đang hoạt động, với category `HORSE_LIFECYCLE` và priority `HIGH`. Groom không nhận thêm thông báo "đã chuyển nhượng".
 
 **Bác sĩ ghi nhận mất khi đóng bệnh án [FE sửa]**
 
@@ -114,7 +114,7 @@ Ngựa mất trong lúc đang điều trị thì bác sĩ ghi nhận luôn ở m
 - Không gửi `dateOfDeath`: đóng bệnh án như cũ.
 - Response vẫn là bệnh án đã đóng như cũ. Muốn hiện trạng thái Đã mất thì FE tải lại hồ sơ ngựa.
 - Bảng xác nhận: `GET /medical-cases/:caseId/close-preview` có thêm key `deathImpact`, các key cũ giữ nguyên. `deathImpact` cùng dạng với `GET /horses/:horseId/lifecycle-status/preview?lifecycleStatus=DECEASED` (`allowed`, `classesWithdrawn`, `stallReleased`, `groomEnded`, `trainingLockReleased`, `examRequestsDismissed`, `careSchedulesCancelled`, `summary`...). Khác một điểm: bệnh án đang mở không làm `deathImpact` bị chặn.
-- Chủ ngựa và Quản lý nhận 2 thông báo: đóng bệnh án và ngựa đã mất.
+- Thông báo: chủ ngựa và Quản lý nhận 2 thông báo (đóng bệnh án và ngựa đã mất). Huấn luyện viên trưởng khu cũ và Groom cũ nhận thông báo ngựa đã mất.
 - Lỗi 400:
 
 | Trường hợp | `errors[].field` | Câu lỗi |
