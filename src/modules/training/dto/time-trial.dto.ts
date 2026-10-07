@@ -27,6 +27,32 @@ export class CreateTimeTrialDto {
   notes?: string;
 }
 
+export class UpdateTimeTrialDto {
+  @ApiPropertyOptional({ minimum: 0.01, description: 'Cự ly chạy thử (mét)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0.01)
+  distanceM?: number;
+
+  @ApiPropertyOptional({
+    minimum: 1,
+    nullable: true,
+    description: 'Thời gian mục tiêu (ms); gửi null để xóa',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  targetTimeMs?: number | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Gửi null để xóa ghi chú',
+  })
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
+
 export class TimeTrialResponseDto {
   @ApiProperty({ format: 'uuid' })
   @Expose()

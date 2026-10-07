@@ -77,12 +77,23 @@ describe('training policy', () => {
     ).not.toThrow();
     expect(() =>
       assertSessionWindowInClass(
-        '2026-08-31T23:00:00.000Z',
-        '2026-09-01T01:00:00.000Z',
+        '2026-08-31T10:00:00.000Z',
+        '2026-08-31T11:00:00.000Z',
         '2026-09-01',
         '2026-09-30',
       ),
     ).toThrow(BadRequestException);
+  });
+
+  it('compares session days on the club calendar', () => {
+    expect(() =>
+      assertSessionWindowInClass(
+        '2026-08-31T23:00:00.000Z',
+        '2026-09-01T00:00:00.000Z',
+        '2026-09-01',
+        '2026-09-30',
+      ),
+    ).not.toThrow();
   });
 });
 

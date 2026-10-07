@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { toClubDate } from '../../../common/utils/club-date';
 import { EligibilityReason } from '../../horses/enums/eligibility-reason.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
@@ -60,6 +61,15 @@ export function assertValidDateRange(start: string, end: string): void {
   }
 }
 
+/**
+ * Kiểm giờ buổi tập hợp lệ và nằm trong thời gian của lớp, so theo ngày lịch CLB
+ *
+ * @param scheduledStartAt Thời điểm bắt đầu buổi
+ * @param scheduledEndAt Thời điểm kết thúc buổi
+ * @param startDate Ngày bắt đầu lớp dạng YYYY-MM-DD
+ * @param endDate Ngày kết thúc lớp dạng YYYY-MM-DD
+ * @throws BadRequestException Nếu giờ kết thúc không sau giờ bắt đầu, hoặc ngày buổi tập theo lịch CLB nằm ngoài thời gian lớp
+ */
 export function assertSessionWindowInClass(
   scheduledStartAt: string | Date,
   scheduledEndAt: string | Date,
@@ -73,8 +83,8 @@ export function assertSessionWindowInClass(
       'scheduledEndAt phải lớn hơn scheduledStartAt',
     );
   }
-  const startDay = dateOnly(new Date(start).toISOString());
-  const endDay = dateOnly(new Date(end).toISOString());
+  const startDay = toClubDate(new Date(start));
+  const endDay = toClubDate(new Date(end));
   if (startDay < dateOnly(startDate) || endDay > dateOnly(endDate)) {
     throw new BadRequestException('Buổi tập phải nằm trong thời gian của lớp');
   }

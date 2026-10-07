@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -11,11 +12,16 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../users/user.enums';
+import {
+  ClassScheduleInputDto,
+  ClassSchedulePreviewDto,
+} from '../dto/class-schedule.dto';
 import {
   CreateHorseEnrollmentDto,
   HorseEnrollmentResponseDto,
@@ -46,6 +52,20 @@ export class TrainingClassesController {
   @ApiOkResponse({ type: [TrainingClassResponseDto] })
   list(@CurrentUser() actor: Actor) {
     return this.classes.list(actor);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
+  @Post('classes/schedule-preview')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Xem trước lịch buổi tập sinh từ giáo án, không lưu',
+  })
+  @ApiOkResponse({ type: ClassSchedulePreviewDto })
+  previewSchedule(
+    @CurrentUser() actor: Actor,
+    @Body() body: ClassScheduleInputDto,
+  ) {
+    return this.classes.previewSchedule(actor, body);
   }
 
   // create class

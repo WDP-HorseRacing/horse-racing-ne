@@ -47,3 +47,27 @@ export function subtractYears(date: string, years: number): string {
   const shifted = new Date(Date.UTC(target, month - 1, Math.min(day, lastDay)));
   return shifted.toISOString().slice(0, 10);
 }
+
+/**
+ * Đổi ngày và giờ theo lịch câu lạc bộ (CLUB_TIME_ZONE) sang thời điểm UTC
+ *
+ * @param date Ngày dạng YYYY-MM-DD
+ * @param time Giờ dạng HH:mm
+ * @returns Thời điểm tương ứng
+ */
+export function clubDateTimeToInstant(date: string, time: string): Date {
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const asUtc = Date.UTC(year, month - 1, day, hour, minute);
+  const offset = new Intl.DateTimeFormat('en-US', {
+    timeZone: CLUB_TIME_ZONE,
+    timeZoneName: 'longOffset',
+  })
+    .formatToParts(new Date(asUtc))
+    .find((part) => part.type === 'timeZoneName')!.value;
+  const match = /GMT([+-])(\d{2}):(\d{2})/.exec(offset);
+  const offsetMinutes = match
+    ? (match[1] === '-' ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3]))
+    : 0;
+  return new Date(asUtc - offsetMinutes * 60_000);
+}

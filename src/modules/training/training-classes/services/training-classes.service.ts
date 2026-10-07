@@ -6,8 +6,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
 import type { Actor } from '../../../../common/types/actor';
 import { UserRole } from '../../../users/user.enums';
+import {
+  ClassSchedulePreviewDto,
+  ClassScheduleInputDto,
+} from '../../dto/class-schedule.dto';
 import {
   CreateTrainingClassDto,
   TrainingClassResponseDto,
@@ -18,22 +23,29 @@ import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum'
 import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
+import { TrainingSessionType } from '../../enums/training-session-type.enum';
 import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
 import { TrainingClassEntity } from '../../entities/training-class.entity';
+import { TimeTrialEntity } from '../../entities/time-trial.entity';
+import { TrainingPlanSubjectEntity } from '../../entities/training-plan-subject.entity';
 import { TrainingPlanEntity } from '../../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
+import { TrainingSubjectEntity } from '../../entities/training-subject.entity';
 import { toTrainingClassResponse } from '../../mappers/training-class.mapper';
 import {
   assertClassActivatable,
   assertClassCancellable,
   assertClassCompletable,
   assertClassEditable,
+  assertSessionWindowInClass,
+  assertSubjectExercise,
   classEndDate,
   dateOnly,
   totalPlanWeeks,
 } from '../../policies/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
+import { buildClassSchedule } from '../../utils/class-schedule';
 
 @Injectable()
 export class TrainingClassesService {
@@ -44,13 +56,70 @@ export class TrainingClassesService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Xem trước lịch buổi tập sinh từ giáo án của Head Trainer gọi, không lưu gì
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param body Giáo án, ngày bắt đầu, các thứ trong tuần, giờ bắt đầu và thời lượng
+   * @returns Promise trả về ngày bắt đầu, ngày kết thúc và các buổi tập theo thứ tự thời gian
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws BadRequestException Nếu không có giáo án hoặc giáo án không thuộc người gọi
+   */
+  async previewSchedule(
+    actor: Actor,
+    body: ClassScheduleInputDto,
+  ): Promise<ClassSchedulePreviewDto> {
+    const caller = await this.access.currentUser(actor);
+    const items = await this.ownedPlanItems(
+      this.dataSource.manager,
+      body.planId,
+      caller.id,
+    );
+    const startDate = dateOnly(body.startDate);
+    return {
+      startDate,
+      endDate: classEndDate(startDate, totalPlanWeeks(items)),
+      sessions: buildClassSchedule(
+        items,
+        startDate,
+        body.weekdays,
+        body.startTime,
+        body.durationMinutes,
+      ).map((session) => ({
+        week: session.week,
+        subjectId: session.subject.id,
+        name: session.subject.name,
+        sessionType: session.subject.sessionType,
+        intensity: session.subject.intensity,
+        plannedDistanceM: session.subject.plannedDistanceM,
+        surface: session.subject.surface,
+        targetTimeMs: session.subject.targetTimeMs,
+        scheduledStartAt: session.scheduledStartAt,
+        scheduledEndAt: session.scheduledEndAt,
+      })),
+    };
+  }
+
+  /**
+   * Tạo lớp nháp theo giáo án kèm các buổi tập đã chỉnh từ xem trước, trong một transaction
+   *
+   * - Ngày kết thúc = ngày bắt đầu + tổng số tuần của giáo án
+   * - Loại buổi lấy theo môn của từng buổi; buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly, thời gian mục tiêu)
+   * - Buổi tập lưu ở trạng thái DRAFT
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param body Thông tin lớp, giáo án, ngày bắt đầu và các buổi tập
+   * @returns Promise trả về lớp vừa tạo
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc Head Trainer tạo lớp cho người khác
+   * @throws ConflictException Nếu mã lớp đã tồn tại
+   * @throws BadRequestException Nếu lớp không có Head Trainer, giáo án không thuộc Head Trainer phụ trách lớp, môn học không tồn tại, buổi nằm ngoài thời gian của lớp hoặc nội dung buổi sai theo loại môn
+   */
   async create(
     actor: Actor,
     body: CreateTrainingClassDto,
   ): Promise<TrainingClassResponseDto> {
     const caller = await this.access.currentUser(actor);
     const code = body.code.trim().toUpperCase();
-    // validate class code exists ?
     const existing = await this.classes.findOneBy({ code });
     if (existing) {
       throw new ConflictException(`Mã lớp ${code} đã tồn tại`);
@@ -61,12 +130,10 @@ export class TrainingClassesService {
         body.headTrainerId,
       );
     }
-    const headTrainerId = body.headTrainerId ??
+    const headTrainerId =
+      body.headTrainerId ??
       (caller.role === UserRole.HEAD_TRAINER ? caller.id : null);
-    if (
-      caller.role === UserRole.HEAD_TRAINER &&
-      headTrainerId !== caller.id
-    ) {
+    if (caller.role === UserRole.HEAD_TRAINER && headTrainerId !== caller.id) {
       throw new ForbiddenException(
         'Head trainer chỉ được tạo class cho chính mình',
       );
@@ -74,25 +141,83 @@ export class TrainingClassesService {
     if (!headTrainerId) {
       throw new BadRequestException('Lớp phải có Head Trainer phụ trách');
     }
-    const totalWeeks = await this.planWeeksOf(
-      this.dataSource.manager,
-      body.planId,
-      headTrainerId,
-    );
-    const row = await this.classes.save(
-      this.classes.create({
-        code,
-        name: body.name,
-        description: body.description ?? null,
-        raceAptitude: body.raceAptitude ?? null,
-        maxHorses: body.maxHorses ?? 10,
+    const row = await this.dataSource.transaction(async (manager) => {
+      const items = await this.ownedPlanItems(
+        manager,
+        body.planId,
         headTrainerId,
-        planId: body.planId,
-        startDate: dateOnly(body.startDate),
-        endDate: classEndDate(body.startDate, totalWeeks),
-        status: TrainingClassStatus.DRAFT,
-      }),
-    );
+      );
+      const startDate = dateOnly(body.startDate);
+      const endDate = classEndDate(startDate, totalPlanWeeks(items));
+      const subjectIds = [...new Set(body.sessions.map((s) => s.subjectId))];
+      const subjects = await manager.findBy(TrainingSubjectEntity, {
+        id: In(subjectIds),
+      });
+      if (subjects.length !== subjectIds.length) {
+        throw new BadRequestException('Có môn học không tồn tại');
+      }
+      const typeOf = new Map(subjects.map((s) => [s.id, s.sessionType]));
+      for (const session of body.sessions) {
+        assertSubjectExercise(
+          typeOf.get(session.subjectId)!,
+          session.plannedDistanceM,
+          session.targetTimeMs ?? null,
+        );
+        assertSessionWindowInClass(
+          session.scheduledStartAt,
+          session.scheduledEndAt,
+          startDate,
+          endDate,
+        );
+      }
+      const saved = await manager.save(
+        manager.create(TrainingClassEntity, {
+          code,
+          name: body.name,
+          description: body.description ?? null,
+          raceAptitude: body.raceAptitude ?? null,
+          maxHorses: body.maxHorses ?? 10,
+          headTrainerId,
+          planId: body.planId,
+          startDate,
+          endDate,
+          status: TrainingClassStatus.DRAFT,
+        }),
+      );
+      for (const input of body.sessions) {
+        const sessionType = typeOf.get(input.subjectId)!;
+        const session = await manager.save(
+          manager.create(TrainingSessionEntity, {
+            classId: saved.id,
+            subjectId: input.subjectId,
+            name: input.name,
+            sessionType,
+            intensity: input.intensity,
+            plannedDistanceM: input.plannedDistanceM,
+            scheduledStartAt: new Date(input.scheduledStartAt),
+            scheduledEndAt: new Date(input.scheduledEndAt),
+            location: input.location ?? null,
+            surface: input.surface ?? null,
+            notes: input.notes ?? null,
+            status: TrainingSessionStatus.DRAFT,
+          }),
+        );
+        if (sessionType === TrainingSessionType.TIME_TRIAL) {
+          await manager.save(
+            manager.create(TimeTrialEntity, {
+              sessionId: session.id,
+              distanceM: String(input.plannedDistanceM),
+              targetTimeMs:
+                input.targetTimeMs === undefined
+                  ? null
+                  : String(input.targetTimeMs),
+              notes: null,
+            }),
+          );
+        }
+      }
+      return saved;
+    });
     return toTrainingClassResponse(row);
   }
 
@@ -311,7 +436,9 @@ export class TrainingClassesService {
       const endDate = body.startDate
         ? classEndDate(
             startDate,
-            await this.planWeeksOf(manager, row.planId, row.headTrainerId),
+            totalPlanWeeks(
+              await this.ownedPlanItems(manager, row.planId, row.headTrainerId),
+            ),
           )
         : row.endDate;
       const activeEnrollments = await manager.countBy(HorseEnrollmentEntity, {
@@ -329,8 +456,8 @@ export class TrainingClassesService {
         .createQueryBuilder('session')
         .where('session.class_id = :classId', { classId })
         .andWhere(
-          '(session.scheduled_start_at::date < :startDate OR session.scheduled_end_at::date > :endDate)',
-          { startDate, endDate },
+          '((session.scheduled_start_at AT TIME ZONE :timeZone)::date < :startDate OR (session.scheduled_end_at AT TIME ZONE :timeZone)::date > :endDate)',
+          { startDate, endDate, timeZone: CLUB_TIME_ZONE },
         )
         .getCount();
       if (outsideSessions) {
@@ -370,28 +497,28 @@ export class TrainingClassesService {
   }
 
   /**
-   * Lấy tổng số tuần của giáo án dùng cho lớp, kèm kiểm giáo án thuộc Head Trainer phụ trách lớp
+   * Lấy các môn của giáo án dùng cho lớp theo thứ tự, kèm kiểm giáo án thuộc Head Trainer phụ trách lớp
    *
    * @param manager EntityManager dùng để query
    * @param planId UUID của giáo án
    * @param headTrainerId UUID của Head Trainer phụ trách lớp
-   * @returns Promise trả về tổng số tuần của giáo án
+   * @returns Promise trả về các môn của giáo án kèm số tuần, theo thứ tự
    * @throws BadRequestException Nếu không có giáo án hoặc giáo án không thuộc Head Trainer phụ trách lớp
    */
-  private async planWeeksOf(
+  private async ownedPlanItems(
     manager: EntityManager,
     planId: string,
     headTrainerId: string | null,
-  ): Promise<number> {
+  ): Promise<TrainingPlanSubjectEntity[]> {
     const plan = await manager.findOne(TrainingPlanEntity, {
       where: { id: planId },
-      relations: { subjects: true },
+      relations: { subjects: { subject: true } },
     });
     if (!plan || plan.headTrainerId !== headTrainerId) {
       throw new BadRequestException(
         'Giáo án không thuộc Head Trainer phụ trách lớp',
       );
     }
-    return totalPlanWeeks(plan.subjects);
+    return [...plan.subjects].sort((a, b) => a.position - b.position);
   }
 }

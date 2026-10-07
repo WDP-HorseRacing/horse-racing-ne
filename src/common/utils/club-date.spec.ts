@@ -1,4 +1,5 @@
 import {
+  clubDateTimeToInstant,
   clubToday,
   subtractYears,
   toClubDate,
@@ -37,5 +38,16 @@ describe('subtractYears', () => {
 describe('clubToday', () => {
   it('returns today in YYYY-MM-DD', () => {
     expect(clubToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('clubDateTimeToInstant', () => {
+  it('converts a club local date and time to UTC', () => {
+    expect(clubDateTimeToInstant('2026-10-05', '06:00').toISOString()).toBe(
+      '2026-10-04T23:00:00.000Z',
+    );
+    expect(clubDateTimeToInstant('2026-10-05', '15:30').toISOString()).toBe(
+      '2026-10-05T08:30:00.000Z',
+    );
   });
 });

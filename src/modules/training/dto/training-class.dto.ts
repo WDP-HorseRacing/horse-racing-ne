@@ -4,8 +4,11 @@ import {
   OmitType,
   PartialType,
 } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -15,9 +18,11 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { RaceAptitude } from '../../horses/enums/race-aptitude.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
+import { ClassSessionInputDto } from './class-schedule.dto';
 
 export class CreateTrainingClassDto {
   @ApiProperty({ description: 'Mã lớp huấn luyện (ví dụ: TC-2026-01)' })
@@ -72,10 +77,27 @@ export class CreateTrainingClassDto {
   })
   @IsDateString()
   startDate!: string;
+
+  @ApiProperty({
+    type: [ClassSessionInputDto],
+    minItems: 1,
+    maxItems: 500,
+    description: 'Các buổi tập lấy từ xem trước lịch, đã chỉnh trên màn hình',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => ClassSessionInputDto)
+  sessions!: ClassSessionInputDto[];
 }
 
 export class UpdateTrainingClassDto extends PartialType(
-  OmitType(CreateTrainingClassDto, ['planId', 'headTrainerId'] as const),
+  OmitType(CreateTrainingClassDto, [
+    'planId',
+    'headTrainerId',
+    'sessions',
+  ] as const),
 ) {}
 
 export class UpdateTrainingClassStatusDto {
