@@ -55,5 +55,5 @@ pnpm sim --participant <sessionParticipantId>
 pnpm sim --participant <sessionParticipantId> --spike-at 30   # giây 30-34 nhịp tim 245, sinh cảnh báo CRITICAL
 ```
 
-Route nhận điểm đo đang public (không cần token); xem nợ ở `docs/mongo-notifications-debt.md` mục 10.
+Route nhận điểm đo đang public (không cần token); xem nợ ở `docs/mongo-notifications-debt.md` mục 5.
 

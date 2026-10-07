@@ -162,4 +162,4 @@ Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
 ## Phụ lục 2: Việc còn lại
 
-- Route nhận điểm đo đang public: nợ mục 10 ở `docs/mongo-notifications-debt.md`.
+- Route nhận điểm đo đang public: nợ mục 5 ở `docs/mongo-notifications-debt.md`.
