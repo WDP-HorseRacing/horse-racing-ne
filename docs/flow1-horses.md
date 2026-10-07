@@ -724,9 +724,9 @@ Còn lại, chưa làm:
 
 ### 3. Ngoài Flow 1 nhưng nên làm sớm
 
-Phần thông báo (API đọc, thử socket, sau này push FCM) chuyển cho Flow 2 phụ trách.
+Phần thông báo không còn giao Flow 2; đã làm (lưu MongoDB, API đọc, push FCM). Chi tiết ở `docs/cau-hoi-flow2.md` mục 2, nợ còn lại ở `docs/mongo-notifications-debt.md`.
 
-- API đọc thông báo đang trả 501: `GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`. Không có thì người offline không xem lại được thông báo (thông báo vẫn lưu trong bảng `notifications`).
+- ~~API đọc thông báo đang trả 501~~ Đã làm: `GET /notifications`, `GET /notifications/unread-count`, `GET /notifications/:id`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`.
 - Chưa thử client socket thật nhận sự kiện `notification.created` (namespace `/events`, gửi token ở `auth.token`).
 - ~~PATCH health-status (VET) đang nằm ở module horses; docs nói thuộc Flow 3.~~ Chuyển sang Flow 3 (lô 6), bắt buộc lý do và ghi nhật ký; bỏ chặn ELIGIBLE khi đang khóa (Flow 3 mục III.4.3).
 
