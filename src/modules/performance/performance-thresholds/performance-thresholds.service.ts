@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -75,15 +76,15 @@ export class PerformanceThresholdsService {
    * Tạo phiên bản ngưỡng mới cho con ngựa, phiên bản cũ giữ nguyên làm lịch sử
    *
    * - Số phiên bản bằng phiên bản lớn nhất hiện có của ngựa cộng 1
-   * - Head Trainer chỉ đặt được cho ngựa thuộc khu mình phụ trách
+   * - Chỉ Head Trainer, và chỉ cho ngựa thuộc khu mình phụ trách
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Tên, khoảng hiệu lực và bộ ngưỡng
    * @returns Promise trả về phiên bản ngưỡng vừa tạo
-   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc Head Trainer đặt ngưỡng cho ngựa ngoài khu
+   * @throws ForbiddenException Nếu người gọi không phải Head Trainer, tài khoản không hoạt động, hoặc ngựa ngoài khu mình phụ trách
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi
-   * @throws ConflictException Nếu hồ sơ đã xóa (Club Manager), ngựa đã chuyển nhượng hoặc đã mất
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
    * @throws BadRequestException Nếu ngưỡng cảnh báo nhịp tim không nhỏ hơn ngưỡng nguy hiểm, hoặc khoảng hiệu lực sai
    */
   async upsert(
@@ -91,6 +92,11 @@ export class PerformanceThresholdsService {
     horseId: string,
     body: UpsertThresholdDto,
   ): Promise<ThresholdProfileResponseDto> {
+    if (!actor.roles.includes(UserRole.HEAD_TRAINER)) {
+      throw new ForbiddenException(
+        'Chỉ Head Trainer phụ trách khu được đặt ngưỡng',
+      );
+    }
     const saved = await this.dataSource.transaction(async (manager) => {
       const { caller, horse } = await this.horseAccess.lockWritableHorseInScope(
         manager,

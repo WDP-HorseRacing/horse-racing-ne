@@ -132,11 +132,11 @@ describe('PerformanceThresholdsService (Postgres)', () => {
   });
 
   it('rejects a warning heart rate that is not below the critical one', async () => {
-    const manager = await actorOf(UserRole.CLUB_MANAGER);
-    const horseId = await seed.horse('Winx');
+    const trainer = await actorOf(UserRole.HEAD_TRAINER);
+    const horseId = await horseInBarnOf(trainer.id);
 
     await expect(
-      service.upsert(manager.actor, horseId, {
+      service.upsert(trainer.actor, horseId, {
         profileName: 'Sai',
         effectiveFrom: '2026-01-01T00:00:00Z',
         limits: { ...limits, heartRateWarningBpm: 235 },
@@ -145,10 +145,24 @@ describe('PerformanceThresholdsService (Postgres)', () => {
   });
 
   it('rejects setting thresholds for a transferred horse', async () => {
+    const trainer = await actorOf(UserRole.HEAD_TRAINER);
+    const horseId = await horseInBarnOf(
+      trainer.id,
+      HorseLifecycleStatus.TRANSFERRED,
+    );
+
+    await expect(
+      service.upsert(trainer.actor, horseId, {
+        profileName: 'Nền',
+        effectiveFrom: '2026-01-01T00:00:00Z',
+        limits,
+      }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('forbids the club manager from setting thresholds', async () => {
     const manager = await actorOf(UserRole.CLUB_MANAGER);
-    const horseId = await seed.horse('Winx', {
-      lifecycle: HorseLifecycleStatus.TRANSFERRED,
-    });
+    const horseId = await seed.horse('Winx');
 
     await expect(
       service.upsert(manager.actor, horseId, {
@@ -156,6 +170,6 @@ describe('PerformanceThresholdsService (Postgres)', () => {
         effectiveFrom: '2026-01-01T00:00:00Z',
         limits,
       }),
-    ).rejects.toThrow(ConflictException);
+    ).rejects.toThrow(ForbiddenException);
   });
 });

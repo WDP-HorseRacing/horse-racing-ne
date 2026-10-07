@@ -38,7 +38,7 @@ export class PerformanceThresholdsController {
     return this.thresholds.list(actor, id);
   }
 
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Put('horses/:id/thresholds')
   @ApiOperation({
     summary: 'Tạo phiên bản ngưỡng nhịp tim/tốc độ mới cho ngựa',

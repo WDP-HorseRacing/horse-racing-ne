@@ -90,7 +90,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 
 1. Không có thiết bị đo thật; script `pnpm sim` đóng vai cảm biến, mỗi giây gửi một điểm đo.
 2. Chỉ nhận điểm đo khi lượt đang tập (`ONGOING`). Điểm trùng cảm biến và thời điểm đo bị bỏ qua.
-3. Ngưỡng mặc định CLB: nhịp tim cảnh báo 220 bpm, nguy hiểm 240 bpm, tốc độ tối đa 18 m/s. Head Trainer của khu đặt ngưỡng riêng cho từng ngựa theo phiên bản có khoảng hiệu lực.
+3. Ngưỡng mặc định CLB: nhịp tim cảnh báo 220 bpm, nguy hiểm 240 bpm, tốc độ tối đa 18 m/s. Chỉ Head Trainer của khu đặt ngưỡng riêng cho từng ngựa theo phiên bản có khoảng hiệu lực.
 4. Mức cảnh báo mỗi điểm: vượt ngưỡng nguy hiểm là `CRITICAL`; vượt ngưỡng cảnh báo nhịp tim hoặc tốc độ tối đa là `WARNING`; còn lại `NORMAL`.
 5. Head Trainer của lớp nhận điểm đo realtime qua socket, sự kiện `performance.metrics`.
 6. Có điểm `CRITICAL`: thông báo KHẨN cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần.
@@ -112,7 +112,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | Tạo, sửa lớp, buổi, chạy thử, ghi danh, publish | Không | Lớp mình phụ trách | Không | Không | Không |
 | Điểm danh, bắt đầu, hoàn thành lượt, kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
 | Đánh giá buổi | Không | Có | Không | Không | Không |
-| Ngưỡng nhịp tim/tốc độ | Xem, đặt | Ngựa thuộc khu mình | Xem | Không | Không |
+| Ngưỡng nhịp tim/tốc độ | Xem | Đặt cho ngựa thuộc khu mình | Xem | Không | Không |
 | Bàn giao Head Trainer | Có | Không | Không | Không | Không |
 
 ## IV. API
@@ -143,7 +143,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | GET | `/session-participants/:id/metrics` | CM, VET, HT, GROOM | Điểm đo của lượt theo thời gian |
 | GET | `/session-participants/:id/performance-summary` | Ai xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |
 | GET | `/horses/:id/workload` | Ai xem được hồ sơ ngựa | Khối lượng tập `?from&to` |
-| GET/PUT | `/horses/:id/thresholds` | Xem: HT, CM, VET; đặt: HT, CM | Ngưỡng của ngựa |
+| GET/PUT | `/horses/:id/thresholds` | Xem: HT, CM, VET; đặt: HT | Ngưỡng của ngựa |
 | POST | `/users/:id/head-trainer-handover` | CM | Bàn giao Head Trainer `{ toHeadTrainerId }` |
 
 Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
