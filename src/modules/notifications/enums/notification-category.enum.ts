@@ -11,6 +11,7 @@
  * - CARE_REMINDER: nhắc khám định kỳ, lịch chăm sóc đến hạn
  * - HORSE_LIFECYCLE: vòng đời ngựa thay đổi (ngựa đã mất)
  * - OWNERSHIP: chủ sở hữu ngựa thay đổi do chuyển nhượng nội bộ
+ * - PERFORMANCE_ALERT: nhịp tim của ngựa vượt ngưỡng nguy hiểm khi đang tập
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -23,4 +24,5 @@ export enum NotificationCategory {
   CARE_REMINDER = 'CARE_REMINDER',
   HORSE_LIFECYCLE = 'HORSE_LIFECYCLE',
   OWNERSHIP = 'OWNERSHIP',
+  PERFORMANCE_ALERT = 'PERFORMANCE_ALERT',
 }

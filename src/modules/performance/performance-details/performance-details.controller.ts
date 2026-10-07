@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Post,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -15,23 +8,12 @@ import {
 import { CurrentUser } from '../../../common/decorators';
 import { PendingApi } from '../../../common/openapi/pending-api';
 import type { Actor } from '../../../common/types/actor';
-import { IngestMetricBatchDto } from '../dto/ingest-metric-batch.dto';
 
 @ApiTags('performance')
 @ApiBearerAuth()
 @ApiResponse({ status: 501, description: 'Contract only' })
 @Controller()
 export class PerformanceDetailsController extends PendingApi {
-  @Post('session-participants/:id/metrics/batch')
-  @ApiOperation({ summary: 'Ingest metric batch for active participant' })
-  ingestBatch(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: IngestMetricBatchDto,
-  ) {
-    return this.pending();
-  }
-
   @Get('session-participants/:id/performance-summary')
   @ApiOperation({ summary: 'Get session metric and alert summary' })
   sessionSummary(

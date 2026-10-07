@@ -24,6 +24,8 @@ import { HorseNotificationsService } from './horse-notifications.service';
 import { MedicalEventsListener } from './medical-events.listener';
 import { MedicalNotificationsService } from './medical-notifications.service';
 import { NotificationDeliveryService } from './notification-delivery.service';
+import { PerformanceMetricCriticalListener } from './performance-metric-critical.listener';
+import { PerformanceNotificationsService } from './performance-notifications.service';
 import { NotificationPushProcessor } from './notification-push.processor';
 import { NotificationRecipientsRepository } from './notification-recipients.repository';
 import { PushChannel } from './push.channel';
@@ -62,6 +64,8 @@ import { RealtimeChannel } from './realtime.channel';
     HorseOwnershipTransferredListener,
     GroomAssignmentChangedListener,
     MedicalEventsListener,
+    PerformanceNotificationsService,
+    PerformanceMetricCriticalListener,
   ],
 })
 export class NotificationDeliveryModule {}

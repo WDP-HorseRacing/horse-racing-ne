@@ -1,3 +1,4 @@
+import type { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import type { ThresholdSource } from '../enums/threshold-source.enum';
 
 /**
@@ -43,3 +44,32 @@ export type ActiveThreshold =
       profileId: string;
     }
   | { source: ThresholdSource.CLUB_DEFAULT; limits: ThresholdLimits };
+
+/**
+ * Một điểm đo đã chấm mức cảnh báo, sẵn sàng lưu.
+ */
+export interface ClassifiedMetric {
+  sourceId: string;
+  recordedAt: Date;
+  heartRateBpm: number;
+  speedMps: string;
+  alertLevel: MetricAlertLevel;
+}
+
+/**
+ * Payload của PERFORMANCE_METRIC_CRITICAL_EVENT.
+ *
+ * - eventId cố định theo lượt tập: mỗi lượt chỉ sinh một thông báo dù nhiều điểm đo vượt ngưỡng
+ * - headTrainerId là Head Trainer phụ trách lớp của buổi tập, null nếu lớp chưa có Head Trainer
+ * - recordedAt là chuỗi ISO, speedMps là số thập phân dạng chuỗi
+ */
+export interface PerformanceMetricCriticalEvent {
+  eventId: string;
+  horseId: string;
+  sessionId: string;
+  sessionParticipantId: string;
+  headTrainerId: string | null;
+  heartRateBpm: number;
+  speedMps: string;
+  recordedAt: string;
+}

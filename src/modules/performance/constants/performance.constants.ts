@@ -23,3 +23,13 @@ export const RECENT_METRIC_LIMIT = 100;
  * Số chữ số thập phân của tốc độ (m/s).
  */
 export const SPEED_SCALE = 3;
+
+/**
+ * Tên domain event khi một lượt tập có điểm đo vượt ngưỡng nguy hiểm
+ */
+export const PERFORMANCE_METRIC_CRITICAL_EVENT = 'performance.metric.critical';
+
+/**
+ * Tên sự kiện socket đẩy các điểm đo vừa nhận tới Head Trainer của lớp
+ */
+export const PERFORMANCE_METRICS_SOCKET_EVENT = 'performance.metrics';

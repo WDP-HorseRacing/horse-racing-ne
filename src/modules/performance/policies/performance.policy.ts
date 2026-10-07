@@ -1,4 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
+import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import type { ThresholdLimits } from '../types/performance.types';
 
 /**
@@ -24,4 +26,47 @@ export function assertThresholdProfile(
       'Thời điểm hết hiệu lực phải sau thời điểm bắt đầu',
     );
   }
+}
+
+/**
+ * Chỉ nhận điểm đo khi lượt tập đang diễn ra
+ *
+ * @param status Trạng thái của lượt tập
+ * @throws ConflictException Nếu lượt tập không ở ONGOING
+ */
+export function assertParticipantRecording(
+  status: SessionParticipantStatus,
+): void {
+  if (status !== SessionParticipantStatus.ONGOING) {
+    throw new ConflictException('Chỉ nhận điểm đo khi lượt tập đang diễn ra');
+  }
+}
+
+/**
+ * Chấm mức cảnh báo cho một điểm đo theo bộ ngưỡng của con ngựa
+ *
+ * - Nhịp tim vượt heartRateCriticalBpm: CRITICAL
+ * - Nhịp tim vượt heartRateWarningBpm hoặc tốc độ vượt maxSpeedMps: WARNING
+ * - Còn lại: NORMAL
+ *
+ * @param heartRateBpm Nhịp tim (bpm)
+ * @param speedMps Tốc độ (m/s)
+ * @param limits Bộ ngưỡng đang áp cho con ngựa
+ * @returns Mức cảnh báo của điểm đo
+ */
+export function classifyMetric(
+  heartRateBpm: number,
+  speedMps: number,
+  limits: ThresholdLimits,
+): MetricAlertLevel {
+  if (heartRateBpm > limits.heartRateCriticalBpm) {
+    return MetricAlertLevel.CRITICAL;
+  }
+  if (
+    heartRateBpm > limits.heartRateWarningBpm ||
+    speedMps > limits.maxSpeedMps
+  ) {
+    return MetricAlertLevel.WARNING;
+  }
+  return MetricAlertLevel.NORMAL;
 }
