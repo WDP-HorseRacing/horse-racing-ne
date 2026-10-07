@@ -17,25 +17,32 @@ Hiện giữ vĩnh viễn. Khi cần tự xóa:
 rồi đọc các `recordedAt` của lô đã lưu cho cùng lượt tập để bỏ điểm đã có (hướng B). Tốc độ làm tròn 3 chữ số,
 `meta.horseId`, `meta.sessionId` điền theo lượt tập.
 
-## 3. Push FCM mất khi Redis lỗi đúng lúc đưa vào hàng đợi
+## 3. Push FCM mất khi Redis sập
 
-`NotificationsService.send` lưu thông báo rồi mới giao qua các kênh. Nếu `FcmChannel`
-lỗi (Redis down) thì chỉ log. Outbox giao lại event thì `send()` thấy thông báo đã có
-nên không giao lại, push của thông báo đó mất. Thông báo vẫn có trong inbox và đã đẩy socket.
+`NotificationDeliveryService.send` lưu thông báo, đẩy socket, rồi `PushChannel` đưa job vào hàng đợi BullMQ.
+Kết nối BullMQ dùng `maxRetriesPerRequest: 1` (`bullConnectionOptions`): Redis sập thì thêm job lỗi sau khoảng 1 giây,
+lỗi chỉ được log. Thông báo vẫn có trong inbox và đã đẩy socket, nhưng push của thông báo đó mất; outbox không giao lại
+vì listener không ném lỗi, và `send()` chỉ giao thông báo vừa lưu mới.
 
-Hướng sửa khi cần: đưa việc đẩy push vào outbox riêng, hoặc job định kỳ quét thông báo
-mới chưa có job push.
+Đo với mặc định của ioredis (20 lần thử): thêm job đứng chờ 238 giây rồi mới lỗi, giữ cả hàng outbox phía sau
+(gồm việc tự tạo yêu cầu khám từ cảnh báo chỉ số).
+
+Hướng gửi bù khi cần:
+- Thêm `pushQueuedAt` vào thông báo; đưa job được thì đánh dấu.
+- Push lỗi thì ném lỗi để outbox giao lại; lần giao lại chỉ đẩy push cho thông báo của `eventId` có `pushQueuedAt = null`
+  (socket không đẩy lại, `jobId = notificationId` chống trùng job).
+- Socket và push phải tách khỏi vòng lặp kênh chung vì xử lý lỗi khác nhau.
+- Redis sập quá khoảng 17 phút thì mọi event có thông báo trong lúc đó bị `dead_at`: phải làm cảnh báo ở mục 6 cùng lúc.
 
 ## 4. Lỗi FCM `invalid-argument`
 
 Chỉ log, không xóa token, vì lỗi này có thể do payload. Theo dõi log; nếu gặp nhiều
 với token cũ thì cân nhắc xóa token.
 
-## 5. Đồng bộ badge giữa các thiết bị
+## 5. ~~Đồng bộ badge giữa các thiết bị~~ (đã làm)
 
-Đánh dấu đã đọc trên một máy không đẩy socket cho máy khác của cùng người dùng.
-Client gọi lại `GET /notifications/unread-count` khi mở app. Khi cần: phát
-`notification.read` qua room `user:<id>`.
+Đánh dấu đã đọc thì đẩy socket `notification.read` `{ id }` hoặc `notification.all-read` `{}` tới room `user:<id>`.
+Không có gì đổi thì không đẩy.
 
 ## 6. Event outbox thất bại hẳn
 
@@ -43,21 +50,19 @@ Event lỗi đủ 10 lần có `dead_at` và dừng thử. Chưa có màn hình 
 `SELECT event_name, attempts, last_error FROM outbox_events WHERE dead_at IS NOT NULL`.
 Giao lại: `UPDATE outbox_events SET dead_at = NULL, attempts = 0, next_attempt_at = now() WHERE id = ...`.
 
-## 7. Dọn token FCM cũ
+## 7. ~~Dọn token FCM cũ~~ (đã làm)
 
-Firebase khuyến nghị coi token không cập nhật khoảng 1–2 tháng là cũ (token Android hết hạn sau 270 ngày).
-Khi cần: cron xóa `user_devices` có `updatedAt` cũ hơn 60 ngày, và app gọi lại `PUT /me/devices` mỗi lần mở.
+TTL index `user_devices_stale_ttl`: token không cập nhật 60 ngày bị MongoDB tự xóa. App cần gọi lại `PUT /me/devices`
+mỗi lần mở và khi token đổi.
 Nguồn: https://firebase.google.com/docs/cloud-messaging/manage-tokens
 
 ## 8. ~~Mức cảnh báo của điểm đo~~ (đã làm)
 
 Enum `MetricAlertLevel` (`NORMAL` / `WARNING` / `CRITICAL`) ở `performance/enums/`.
 
-## 9. Integration test thỉnh thoảng hết giờ chờ container
+## 9. ~~Integration test thỉnh thoảng hết giờ chờ container~~ (đã làm)
 
-Lỗi `Timed out after 10000ms while waiting for container ports to be bound to the host`: Jest chạy song song
-nhiều suite, mỗi suite bật container riêng (Postgres, Mongo, Redis). Hướng sửa: giới hạn `maxWorkers`
-trong `test/jest-integration.json` hoặc tăng thời gian chờ khởi động container.
+`startContainerWithRetry` (`test/integration/container.ts`) bật lại container khi gặp lỗi chờ gắn port, tối đa 3 lần.
 
 ## 10. Route nhận điểm đo đang public
 
