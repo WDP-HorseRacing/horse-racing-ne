@@ -185,7 +185,7 @@ export class TrainingSessionsService {
           nextSessionType !== TrainingSessionType.TIME_TRIAL
         ) {
           throw new ConflictException(
-            'Không thể đổi session về REGULAR khi đã có cấu hình Time Trial',
+            'Không thể đổi về buổi thường khi đã có cấu hình chạy thử',
           );
         }
       }
@@ -298,7 +298,7 @@ export class TrainingSessionsService {
     body: PublishClassSessionsDto,
   ): Promise<PublishedSessionResponseDto[]> {
     if (body.from && body.to && body.from > body.to) {
-      throw new BadRequestException('from phải nhỏ hơn hoặc bằng to');
+      throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
     }
     const rows = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
@@ -384,7 +384,7 @@ export class TrainingSessionsService {
   ): Promise<{ session: TrainingSessionEntity; skipped: SkippedHorse[] }> {
     assertSessionPublishable(session.status);
     if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
-      throw new ConflictException('Class không còn ACTIVE');
+      throw new ConflictException('Lớp không còn ở trạng thái đang chạy');
     }
     if (session.sessionType === TrainingSessionType.TIME_TRIAL) {
       const configuredTrial = await manager.findOneBy(TimeTrialEntity, {
@@ -392,7 +392,7 @@ export class TrainingSessionsService {
       });
       if (!configuredTrial) {
         throw new ConflictException(
-          'Session TIME_TRIAL phải có cấu hình Time Trial trước khi publish',
+          'Buổi chạy thử phải có cấu hình chạy thử trước khi công bố',
         );
       }
     }
@@ -503,7 +503,7 @@ export class TrainingSessionsService {
       });
       if (ongoing)
         throw new ConflictException(
-          'Không thể hủy session đang có participant ONGOING',
+          'Không thể hủy buổi tập khi còn lượt tập đang tập',
         );
       await manager
         .createQueryBuilder()

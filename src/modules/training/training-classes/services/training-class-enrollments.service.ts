@@ -87,7 +87,7 @@ export class TrainingClassEnrollmentsService {
         trainingClass.headTrainerId,
       );
       if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
-        throw new ConflictException('Chỉ class ACTIVE mới nhận thêm horse');
+        throw new ConflictException('Chỉ lớp đang chạy mới nhận thêm ngựa');
       }
       if (trainingClass.maxHorses) {
         const activeCount = await manager.count(HorseEnrollmentEntity, {
@@ -114,7 +114,7 @@ export class TrainingClassEnrollmentsService {
           clubDateTimeToInstant(shiftDays(trainingClass.endDate, 1), '00:00')
       ) {
         throw new ConflictException(
-          'enrolledAt phải nằm trong thời gian class',
+          'Thời điểm ghi danh phải nằm trong thời gian của lớp',
         );
       }
       const existingPeriods = await manager.find(HorseEnrollmentEntity, {
@@ -129,7 +129,7 @@ export class TrainingClassEnrollmentsService {
           (period) => !period.leftAt || enrolledAt < period.leftAt,
         )
       ) {
-        throw new ConflictException('Khoảng enrollment của Horse bị chồng lấn');
+        throw new ConflictException('Khoảng ghi danh của ngựa bị chồng lấn');
       }
       const row = await manager.save(
         manager.create(HorseEnrollmentEntity, {
@@ -158,24 +158,26 @@ export class TrainingClassEnrollmentsService {
         relations: { trainingClass: true },
         lock: { mode: 'pessimistic_write' },
       });
-      if (!row) throw new ConflictException('Không tìm thấy horse enrollment');
+      if (!row) throw new ConflictException('Không tìm thấy ghi danh của ngựa');
       this.access.assertCanManageClass(
         actor,
         caller.id,
         row.trainingClass.headTrainerId,
       );
       if (row.status !== HorseEnrollmentStatus.ACTIVE) {
-        throw new ConflictException('Enrollment đã rời class');
+        throw new ConflictException('Ngựa đã rời lớp');
       }
       const leftAt = body.leftAt ? new Date(body.leftAt) : new Date();
       if (leftAt < row.enrolledAt) {
-        throw new ConflictException('leftAt không hợp lệ');
+        throw new ConflictException('Thời điểm rời lớp không hợp lệ');
       }
       if (
         leftAt >=
         clubDateTimeToInstant(shiftDays(row.trainingClass.endDate, 1), '00:00')
       ) {
-        throw new ConflictException('leftAt phải nằm trong thời gian class');
+        throw new ConflictException(
+          'Thời điểm rời lớp phải nằm trong thời gian của lớp',
+        );
       }
       row.leftAt = leftAt;
       row.status = HorseEnrollmentStatus.LEFT;

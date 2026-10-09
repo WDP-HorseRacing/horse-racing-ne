@@ -65,7 +65,7 @@ export class PerformanceDetailsService {
     const from = query.from?.slice(0, 10);
     const to = query.to?.slice(0, 10);
     if (from && to && from > to) {
-      throw new BadRequestException('from phải nhỏ hơn hoặc bằng to');
+      throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
     }
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -115,7 +115,7 @@ export class PerformanceDetailsService {
     const to = query.to?.slice(0, 10) ?? clubToday();
     const from = query.from?.slice(0, 10) ?? shiftDays(to, -6);
     if (from > to) {
-      throw new BadRequestException('from phải nhỏ hơn hoặc bằng to');
+      throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
     }
     const loads = await this.repository.completedLoads(horseId, from, to);
     const byIntensity = {

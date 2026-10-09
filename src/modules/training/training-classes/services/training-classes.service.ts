@@ -243,9 +243,7 @@ export class TrainingClassesService {
       case TrainingClassStatus.CANCELLED:
         return this.cancel(actor, classId, body.cancelReason!);
       case TrainingClassStatus.DRAFT:
-        throw new ConflictException(
-          'Không thể chuyển class về trạng thái DRAFT',
-        );
+        throw new ConflictException('Không thể chuyển lớp về trạng thái nháp');
     }
   }
 
@@ -260,7 +258,7 @@ export class TrainingClassesService {
       assertClassActivatable(row.status);
       if (!row.headTrainerId) {
         throw new ConflictException(
-          'Phải phân công head trainer trước khi kích hoạt class',
+          'Phải phân công HLV trưởng trước khi kích hoạt lớp',
         );
       }
       row.status = TrainingClassStatus.ACTIVE;
@@ -292,7 +290,7 @@ export class TrainingClassesService {
         })
         .getCount();
       if (unfinishedSessions) {
-        throw new ConflictException('Class vẫn còn session chưa kết thúc');
+        throw new ConflictException('Lớp vẫn còn buổi tập chưa kết thúc');
       }
 
       const now = new Date();
@@ -334,7 +332,7 @@ export class TrainingClassesService {
         .getCount();
       if (ongoingParticipants) {
         throw new ConflictException(
-          'Không thể hủy class khi còn participant ONGOING',
+          'Không thể hủy lớp khi còn lượt tập đang tập',
         );
       }
 
@@ -433,7 +431,7 @@ export class TrainingClassesService {
       const nextMaxHorses = body.maxHorses ?? row.maxHorses;
       if (activeEnrollments > nextMaxHorses) {
         throw new ConflictException(
-          `Sức chứa mới không được nhỏ hơn số horse đang enroll (${activeEnrollments})`,
+          `Sức chứa mới không được nhỏ hơn số ngựa đang ghi danh (${activeEnrollments})`,
         );
       }
       const outsideSessions = await manager
@@ -447,7 +445,7 @@ export class TrainingClassesService {
         .getCount();
       if (outsideSessions) {
         throw new ConflictException(
-          'Khoảng ngày mới không bao phủ các session hiện có',
+          'Khoảng ngày mới không bao phủ các buổi tập hiện có',
         );
       }
       const outsideEnrollments = await manager
@@ -461,7 +459,7 @@ export class TrainingClassesService {
         .getCount();
       if (outsideEnrollments) {
         throw new ConflictException(
-          'Khoảng ngày mới không bao phủ các enrollment hiện có',
+          'Khoảng ngày mới không bao phủ các ghi danh hiện có',
         );
       }
       Object.assign(row, {
@@ -501,7 +499,7 @@ export class TrainingClassesService {
     });
     if (!plan || plan.headTrainerId !== headTrainerId) {
       throw new BadRequestException(
-        'Giáo án không thuộc Head Trainer phụ trách lớp',
+        'Giáo án không thuộc HLV trưởng phụ trách lớp',
       );
     }
     return [...plan.phases].sort((a, b) => a.position - b.position);

@@ -90,10 +90,10 @@ export class TrainingOperationsFacade {
     const participant = await manager.findOneBy(SessionParticipantEntity, {
       id: participantId,
     });
-    if (!participant) throw new NotFoundException('Không tìm thấy participant');
+    if (!participant) throw new NotFoundException('Không tìm thấy lượt tập');
     if (participant.status !== SessionParticipantStatus.COMPLETED) {
       throw new ConflictException(
-        'Chỉ participant COMPLETED mới được ghi dữ liệu performance',
+        'Chỉ lượt tập đã hoàn thành mới được ghi dữ liệu hiệu suất',
       );
     }
     return participant;
@@ -134,7 +134,9 @@ export class TrainingOperationsFacade {
     horseId: string,
   ): Promise<void> {
     if (await this.hasOngoingParticipant(manager, horseId)) {
-      throw new ConflictException('Ngựa đang ONGOING, không thể tạo TrainingLock');
+      throw new ConflictException(
+        'Ngựa đang tập, không thể tạo khóa huấn luyện',
+      );
     }
   }
 

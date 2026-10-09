@@ -170,7 +170,7 @@ export class TrainingAccessService {
       where: { id },
       relations: { headTrainer: true },
     });
-    if (!row) throw new NotFoundException('Không tìm thấy training class');
+    if (!row) throw new NotFoundException('Không tìm thấy lớp huấn luyện');
     return row;
   }
 
@@ -236,7 +236,7 @@ export class TrainingAccessService {
     const caller = await this.currentUser(actor, manager);
     const trainingClass = await this.findTrainingClass(manager, classId);
     if (!(await this.canReadClass(actor, caller.id, trainingClass, manager))) {
-      throw new NotFoundException('Không tìm thấy training class');
+      throw new NotFoundException('Không tìm thấy lớp huấn luyện');
     }
     return trainingClass;
   }
@@ -249,7 +249,7 @@ export class TrainingAccessService {
       where: { id },
       lock: { mode: 'pessimistic_write' },
     });
-    if (!row) throw new NotFoundException('Không tìm thấy training class');
+    if (!row) throw new NotFoundException('Không tìm thấy lớp huấn luyện');
     return row;
   }
 
@@ -309,7 +309,7 @@ export class TrainingAccessService {
         horseEnrollment: true,
       },
     });
-    if (!participant) throw new NotFoundException('Không tìm thấy participant');
+    if (!participant) throw new NotFoundException('Không tìm thấy lượt tập');
     return participant;
   }
 
@@ -321,7 +321,7 @@ export class TrainingAccessService {
       where: { id: participantId },
       lock: { mode: 'pessimistic_write' },
     });
-    if (!participant) throw new NotFoundException('Không tìm thấy participant');
+    if (!participant) throw new NotFoundException('Không tìm thấy lượt tập');
     return participant;
   }
 
@@ -333,7 +333,7 @@ export class TrainingAccessService {
       where: { id: enrollmentId },
       relations: { trainingClass: true, horse: true },
     });
-    if (!row) throw new NotFoundException('Không tìm thấy horse enrollment');
+    if (!row) throw new NotFoundException('Không tìm thấy ghi danh của ngựa');
     return row;
   }
 
@@ -386,7 +386,7 @@ export class TrainingAccessService {
     if (
       !(await this.canReadParticipant(actor, caller.id, participant, manager))
     ) {
-      throw new NotFoundException('Không tìm thấy participant');
+      throw new NotFoundException('Không tìm thấy lượt tập');
     }
     return participant;
   }
@@ -469,7 +469,7 @@ export class TrainingAccessService {
         status: UserStatus.ACTIVE,
       },
     });
-    if (!trainer) throw new BadRequestException('Head trainer không hợp lệ');
+    if (!trainer) throw new BadRequestException('HLV trưởng không hợp lệ');
     return trainer;
   }
 
@@ -500,15 +500,15 @@ export class TrainingAccessService {
     headTrainerId: string | null,
   ): void {
     if (!actor.roles.includes(UserRole.HEAD_TRAINER)) {
-      throw new ForbiddenException('Không có quyền quản lý training class');
+      throw new ForbiddenException('Không có quyền quản lý lớp huấn luyện');
     }
     if (!headTrainerId) {
       throw new ForbiddenException(
-        'Class phải được phân công cho head trainer trước khi thao tác',
+        'Lớp phải được phân công cho HLV trưởng trước khi thao tác',
       );
     }
     if (headTrainerId !== callerId) {
-      throw new ForbiddenException('Class thuộc head trainer khác');
+      throw new ForbiddenException('Lớp thuộc HLV trưởng khác');
     }
   }
 
@@ -520,15 +520,13 @@ export class TrainingAccessService {
   ): Promise<void> {
     if (actor.roles.includes(UserRole.GROOM)) {
       if (participant.assignedGroomId !== callerId) {
-        throw new ForbiddenException('Bạn không được assign participant này');
+        throw new ForbiddenException('Lượt tập này không được giao cho bạn');
       }
       return;
     }
     if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
       if (participant.session.trainingClass.headTrainerId !== callerId) {
-        throw new ForbiddenException(
-          'Participant thuộc class của head trainer khác',
-        );
+        throw new ForbiddenException('Lượt tập thuộc lớp của HLV trưởng khác');
       }
       await this.assertTrainerBarn(
         manager,
@@ -538,7 +536,7 @@ export class TrainingAccessService {
       );
       return;
     }
-    throw new ForbiddenException('Bạn không được thao tác participant này');
+    throw new ForbiddenException('Bạn không được thao tác trên lượt tập này');
   }
 
   async assertCanOperateSession(
@@ -553,7 +551,9 @@ export class TrainingAccessService {
     });
     if (actor.roles.includes(UserRole.GROOM)) {
       if (!participants.some((item) => item.assignedGroomId === callerId)) {
-        throw new ForbiddenException('Bạn không được assign participant nào');
+        throw new ForbiddenException(
+          'Bạn không được giao lượt tập nào trong buổi này',
+        );
       }
       return;
     }

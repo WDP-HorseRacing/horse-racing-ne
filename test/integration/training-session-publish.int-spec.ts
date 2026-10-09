@@ -137,7 +137,7 @@ describe('TrainingSessionsService publishing (Postgres)', () => {
 
       await expect(service.publishSession(trainer, session)).rejects.toThrow(
         new ConflictException(
-          'Session TIME_TRIAL phải có cấu hình Time Trial trước khi publish',
+          'Buổi chạy thử phải có cấu hình chạy thử trước khi công bố',
         ),
       );
     });
@@ -150,7 +150,7 @@ describe('TrainingSessionsService publishing (Postgres)', () => {
       );
 
       await expect(service.publishSession(trainer, session)).rejects.toThrow(
-        new ConflictException('Class không còn ACTIVE'),
+        new ConflictException('Lớp không còn ở trạng thái đang chạy'),
       );
     });
   });

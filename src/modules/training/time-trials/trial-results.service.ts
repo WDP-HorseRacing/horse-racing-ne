@@ -123,22 +123,22 @@ export class TrialResultsService {
         currentContext,
       );
       if (session.sessionType !== TrainingSessionType.TIME_TRIAL) {
-        throw new ConflictException('Session không phải TIME_TRIAL');
+        throw new ConflictException('Buổi tập không phải buổi chạy thử');
       }
       if (session.status !== TrainingSessionStatus.IN_PROGRESS) {
-        throw new ConflictException('Session chưa IN_PROGRESS');
+        throw new ConflictException('Buổi tập chưa ở trạng thái đang diễn ra');
       }
       if (
         participant.status !== SessionParticipantStatus.ONGOING &&
         participant.status !== SessionParticipantStatus.COMPLETED
       ) {
-        throw new ConflictException('Participant không được ghi Trial Result');
+        throw new ConflictException('Lượt tập không được ghi kết quả chạy thử');
       }
       const trial = await manager.findOneBy(TimeTrialEntity, {
         sessionId: session.id,
       });
       if (!trial) {
-        throw new NotFoundException('Session chưa có cấu hình Time Trial');
+        throw new NotFoundException('Buổi tập chưa có cấu hình chạy thử');
       }
       const duplicate = await manager.findOneBy(TrialResultEntity, {
         timeTrialId: trial.id,
@@ -146,7 +146,7 @@ export class TrialResultsService {
         attemptNo: body.attemptNo,
       });
       if (duplicate) {
-        throw new ConflictException('Attempt đã tồn tại');
+        throw new ConflictException('Lần chạy này đã được ghi');
       }
       return manager.save(
         manager.create(TrialResultEntity, {

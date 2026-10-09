@@ -46,7 +46,7 @@ export class PerformanceEvaluationsService {
       const existing = await manager.findOneBy(PerformanceEvaluationEntity, {
         sessionParticipantId: participantId,
       });
-      if (existing) throw new ConflictException('Participant đã có Evaluation');
+      if (existing) throw new ConflictException('Lượt tập đã có đánh giá');
       return manager.save(
         manager.create(PerformanceEvaluationEntity, {
           sessionParticipantId: participantId,
@@ -78,7 +78,7 @@ export class PerformanceEvaluationsService {
     const row = await this.evaluations.findOneBy({
       sessionParticipantId: participantId,
     });
-    if (!row) throw new NotFoundException('Participant chưa có Evaluation');
+    if (!row) throw new NotFoundException('Lượt tập chưa có đánh giá');
     return toPerformanceEvaluationResponse(row);
   }
 }

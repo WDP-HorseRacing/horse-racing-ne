@@ -36,7 +36,7 @@ export class TimeTrialsService {
   ): Promise<TimeTrialResponseDto> {
     await this.access.assertCanReadSession(actor, sessionId);
     const row = await this.timeTrials.findOneBy({ sessionId });
-    if (!row) throw new NotFoundException('Session chưa có cấu hình Time Trial');
+    if (!row) throw new NotFoundException('Buổi tập chưa có cấu hình chạy thử');
     return toTimeTrialResponse(row);
   }
 
@@ -59,19 +59,19 @@ export class TimeTrialsService {
       );
       assertClassOpenForSessions(trainingClass.status);
       if (session.sessionType !== TrainingSessionType.TIME_TRIAL) {
-        throw new ConflictException('Session không phải TIME_TRIAL');
+        throw new ConflictException('Buổi tập không phải buổi chạy thử');
       }
       if (
         session.status !== TrainingSessionStatus.DRAFT &&
         session.status !== TrainingSessionStatus.SCHEDULED
       ) {
         throw new ConflictException(
-          'Chỉ cấu hình Time Trial trước khi thực thi',
+          'Chỉ được cấu hình chạy thử trước khi buổi tập bắt đầu',
         );
       }
       const existing = await manager.findOneBy(TimeTrialEntity, { sessionId });
       if (existing)
-        throw new ConflictException('Session đã có cấu hình Time Trial');
+        throw new ConflictException('Buổi tập đã có cấu hình chạy thử');
       return manager.save(
         manager.create(TimeTrialEntity, {
           sessionId,
@@ -118,7 +118,8 @@ export class TimeTrialsService {
       assertClassOpenForSessions(trainingClass.status);
       assertSessionEditable(session.status);
       const trial = await manager.findOneBy(TimeTrialEntity, { sessionId });
-      if (!trial) throw new NotFoundException('Không tìm thấy Time Trial');
+      if (!trial)
+        throw new NotFoundException('Không tìm thấy cấu hình chạy thử');
       if (body.distanceM !== undefined) {
         trial.distanceM = String(body.distanceM);
       }
@@ -137,7 +138,7 @@ export class TimeTrialsService {
       where: { id: trialId },
       relations: { session: { trainingClass: true } },
     });
-    if (!row) throw new NotFoundException('Không tìm thấy Time Trial');
+    if (!row) throw new NotFoundException('Không tìm thấy cấu hình chạy thử');
     await this.access.assertCanReadSession(actor, row.sessionId);
     return toTimeTrialResponse(row);
   }

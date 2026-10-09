@@ -235,7 +235,7 @@ describe('TrainingClassEnrollmentsService.create', () => {
 
       await expect(
         service.create(actor, 'c1', { horseId: 'h1', enrolledAt }),
-      ).rejects.toThrow('enrolledAt phải nằm trong thời gian class');
+      ).rejects.toThrow('Thời điểm ghi danh phải nằm trong thời gian của lớp');
       expect(save).not.toHaveBeenCalled();
     });
   });
@@ -261,7 +261,7 @@ describe('TrainingClassEnrollmentsService.leave theo ngày lịch CLB', () => {
 
     await expect(
       service.leave(actor, 'e1', { leftAt: '2026-12-31T17:00:00.000Z' }),
-    ).rejects.toThrow('leftAt phải nằm trong thời gian class');
+    ).rejects.toThrow('Thời điểm rời lớp phải nằm trong thời gian của lớp');
     expect(save).not.toHaveBeenCalled();
   });
 });

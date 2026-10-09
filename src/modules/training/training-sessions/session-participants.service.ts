@@ -141,7 +141,7 @@ export class SessionParticipantsService {
         ].includes(participant.status)
       ) {
         throw new ConflictException(
-          'Không thể giao Groom cho participant đã kết thúc',
+          'Không thể giao Groom cho lượt tập đã kết thúc',
         );
       }
       if (body.groomId) await this.access.assertGroom(manager, body.groomId);
@@ -281,13 +281,15 @@ export class SessionParticipantsService {
         session.classId,
       );
       if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
-        throw new ConflictException('Lớp chưa ACTIVE');
+        throw new ConflictException('Lớp chưa ở trạng thái đang chạy');
       }
       if (
         session.status !== TrainingSessionStatus.SCHEDULED &&
         session.status !== TrainingSessionStatus.IN_PROGRESS
       ) {
-        throw new ConflictException('Session không ở trạng thái thực thi');
+        throw new ConflictException(
+          'Buổi tập chưa công bố hoặc đã kết thúc, không thao tác được',
+        );
       }
       if (await this.markIfIneligible(manager, horse, session, participant)) {
         return { rejected: true as const };
@@ -299,7 +301,7 @@ export class SessionParticipantsService {
           participant.id,
         )
       ) {
-        throw new ConflictException('Ngựa đang có participant ONGOING khác');
+        throw new ConflictException('Ngựa đang có lượt tập khác đang tập');
       }
       participant.status = SessionParticipantStatus.ONGOING;
       participant.startedAt = new Date();
@@ -344,7 +346,7 @@ export class SessionParticipantsService {
       );
       assertParticipantComplete(participant.status);
       if (session.status !== TrainingSessionStatus.IN_PROGRESS) {
-        throw new ConflictException('Session chưa IN_PROGRESS');
+        throw new ConflictException('Buổi tập chưa ở trạng thái đang diễn ra');
       }
       participant.status = SessionParticipantStatus.COMPLETED;
       participant.completedAt = new Date();

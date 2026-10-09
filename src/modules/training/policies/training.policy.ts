@@ -28,13 +28,13 @@ import type {
 
 export function assertClassActivatable(status: TrainingClassStatus): void {
   if (status !== TrainingClassStatus.DRAFT) {
-    throw new ConflictException('Chỉ class DRAFT mới được kích hoạt');
+    throw new ConflictException('Chỉ lớp nháp mới được kích hoạt');
   }
 }
 
 export function assertClassCompletable(status: TrainingClassStatus): void {
   if (status !== TrainingClassStatus.ACTIVE) {
-    throw new ConflictException('Chỉ class ACTIVE mới được hoàn thành');
+    throw new ConflictException('Chỉ lớp đang chạy mới được hoàn thành');
   }
 }
 
@@ -43,7 +43,7 @@ export function assertClassCancellable(status: TrainingClassStatus): void {
     status === TrainingClassStatus.COMPLETED ||
     status === TrainingClassStatus.CANCELLED
   ) {
-    throw new ConflictException('Class đã ở trạng thái kết thúc');
+    throw new ConflictException('Lớp đã kết thúc');
   }
 }
 
@@ -52,7 +52,7 @@ export function assertClassEditable(status: TrainingClassStatus): void {
     status === TrainingClassStatus.COMPLETED ||
     status === TrainingClassStatus.CANCELLED
   ) {
-    throw new ConflictException('Class đã ở trạng thái kết thúc');
+    throw new ConflictException('Lớp đã kết thúc');
   }
 }
 
@@ -62,7 +62,9 @@ export function dateOnly(value: string): string {
 
 export function assertValidDateRange(start: string, end: string): void {
   if (dateOnly(start) > dateOnly(end)) {
-    throw new BadRequestException('startDate phải nhỏ hơn hoặc bằng endDate');
+    throw new BadRequestException(
+      'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc',
+    );
   }
 }
 
@@ -84,9 +86,7 @@ export function assertSessionWindowInClass(
   const start = new Date(scheduledStartAt).getTime();
   const end = new Date(scheduledEndAt).getTime();
   if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
-    throw new BadRequestException(
-      'scheduledEndAt phải lớn hơn scheduledStartAt',
-    );
+    throw new BadRequestException('Giờ kết thúc phải sau giờ bắt đầu');
   }
   const startDay = toClubDate(new Date(start));
   const endDay = toClubDate(new Date(end));
@@ -180,13 +180,13 @@ export function assertTrainableHorse(isReference: boolean): void {
 
 export function assertSessionEditable(status: TrainingSessionStatus): void {
   if (status !== TrainingSessionStatus.DRAFT) {
-    throw new ConflictException('Chỉ được sửa buổi tập đang DRAFT');
+    throw new ConflictException('Chỉ được sửa buổi tập nháp');
   }
 }
 
 export function assertSessionPublishable(status: TrainingSessionStatus): void {
   if (status !== TrainingSessionStatus.DRAFT) {
-    throw new ConflictException('Chỉ buổi tập DRAFT mới được publish');
+    throw new ConflictException('Chỉ buổi tập nháp mới được công bố');
   }
 }
 
@@ -204,7 +204,9 @@ export function assertSessionOperational(status: TrainingSessionStatus): void {
     status !== TrainingSessionStatus.SCHEDULED &&
     status !== TrainingSessionStatus.IN_PROGRESS
   ) {
-    throw new ConflictException('Session không ở trạng thái thực thi');
+    throw new ConflictException(
+      'Buổi tập chưa công bố hoặc đã kết thúc, không thao tác được',
+    );
   }
 }
 
@@ -212,7 +214,9 @@ export function assertParticipantCheckIn(
   status: SessionParticipantStatus,
 ): void {
   if (status !== SessionParticipantStatus.PLANNED) {
-    throw new ConflictException('Chỉ participant PLANNED mới được check-in');
+    throw new ConflictException(
+      'Chỉ lượt tập chờ điểm danh mới được điểm danh',
+    );
   }
 }
 
@@ -241,13 +245,15 @@ export function assertParticipantAbsent(
 
 export function assertParticipantReady(status: SessionParticipantStatus): void {
   if (status !== SessionParticipantStatus.PRESENT) {
-    throw new ConflictException('Participant phải PRESENT trước khi READY');
+    throw new ConflictException(
+      'Lượt tập phải có mặt trước khi chuyển sang sẵn sàng',
+    );
   }
 }
 
 export function assertParticipantStart(status: SessionParticipantStatus): void {
   if (status !== SessionParticipantStatus.READY) {
-    throw new ConflictException('Participant phải READY trước khi bắt đầu');
+    throw new ConflictException('Lượt tập phải sẵn sàng trước khi bắt đầu');
   }
 }
 
@@ -255,9 +261,7 @@ export function assertParticipantComplete(
   status: SessionParticipantStatus,
 ): void {
   if (status !== SessionParticipantStatus.ONGOING) {
-    throw new ConflictException(
-      'Participant phải ONGOING trước khi hoàn thành',
-    );
+    throw new ConflictException('Lượt tập phải đang tập trước khi hoàn thành');
   }
 }
 

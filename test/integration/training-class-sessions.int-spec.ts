@@ -160,7 +160,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
         cancelReason: 'Thôi',
       }),
     ).rejects.toThrow(
-      new ConflictException('Không thể hủy class khi còn participant ONGOING'),
+      new ConflictException('Không thể hủy lớp khi còn lượt tập đang tập'),
     );
   });
 
@@ -180,7 +180,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
         status: TrainingClassStatus.COMPLETED,
       }),
     ).rejects.toThrow(
-      new ConflictException('Class vẫn còn session chưa kết thúc'),
+      new ConflictException('Lớp vẫn còn buổi tập chưa kết thúc'),
     );
   });
 
@@ -240,7 +240,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
       classes.update(a.trainer, a.classId, { startDate: '2026-03-02' }),
     ).rejects.toThrow(
       new ConflictException(
-        'Khoảng ngày mới không bao phủ các session hiện có',
+        'Khoảng ngày mới không bao phủ các buổi tập hiện có',
       ),
     );
   });
