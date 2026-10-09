@@ -140,6 +140,49 @@ export class TrainingOperationsFacade {
     }
   }
 
+  /**
+   * Chặn đổi khu khi ngựa đang tập ở lớp sẽ bị rút, chạy trong transaction của nơi gọi
+   *
+   * - Chỉ xét lượt ONGOING thuộc ghi danh ACTIVE của lớp mà withdrawHorseFromClasses sẽ rút
+   * - Có `exceptHeadTrainerId` thì lớp do Head Trainer đó phụ trách không tính (lớp được giữ lại)
+   * - Nơi gọi giữ lock pessimistic_write trên row ngựa
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param exceptHeadTrainerId UUID Head Trainer khu mới, bỏ trống nếu khu mới chưa có
+   * @returns Promise trả về khi kiểm tra xong
+   * @throws ConflictException Nếu ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút
+   */
+  async assertNoOngoingParticipantInClassesToWithdraw(
+    manager: EntityManager,
+    horseId: string,
+    exceptHeadTrainerId?: string,
+  ): Promise<void> {
+    const query = manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .innerJoin('participant.horseEnrollment', 'enrollment')
+      .innerJoin('enrollment.trainingClass', 'class')
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere('participant.status = :status', {
+        status: SessionParticipantStatus.ONGOING,
+      })
+      .andWhere('enrollment.status = :enrollmentStatus', {
+        enrollmentStatus: HorseEnrollmentStatus.ACTIVE,
+      });
+    if (exceptHeadTrainerId) {
+      query.andWhere(
+        '(class.head_trainer_id IS NULL OR class.head_trainer_id <> :exceptHeadTrainerId)',
+        { exceptHeadTrainerId },
+      );
+    }
+    if ((await query.getCount()) > 0) {
+      throw new ConflictException(
+        'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu',
+      );
+    }
+  }
+
   async cancelFutureParticipationsByTrainingLock(
     manager: EntityManager,
     horseId: string,

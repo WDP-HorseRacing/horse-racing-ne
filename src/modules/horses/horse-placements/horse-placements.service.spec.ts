@@ -46,7 +46,10 @@ describe('HorsePlacementsService', () => {
     moveHorseToStallInTransaction: jest.Mock;
   };
   let grooms: { assignInTransaction: jest.Mock };
-  let training: { withdrawHorseFromClasses: jest.Mock };
+  let training: {
+    withdrawHorseFromClasses: jest.Mock;
+    assertNoOngoingParticipantInClassesToWithdraw: jest.Mock;
+  };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
   let barnQuery: {
@@ -162,6 +165,9 @@ describe('HorsePlacementsService', () => {
       }),
     };
     training = {
+      assertNoOngoingParticipantInClassesToWithdraw: jest.fn(
+        track('assertNoOngoing'),
+      ),
       withdrawHorseFromClasses: jest.fn(
         track('withdrawHorseFromClasses', {
           classIds: ['c1'],
@@ -255,6 +261,7 @@ describe('HorsePlacementsService', () => {
     expect(calls).toEqual([
       'transaction:start',
       'lockAssignableBarn',
+      'assertNoOngoing',
       'closeOpenStallAssignment',
       'withdrawHorseFromClasses',
       'update',
@@ -317,6 +324,19 @@ describe('HorsePlacementsService', () => {
     await expect(assign('b2')).rejects.toThrow(
       new ConflictException('Khu đã hết ô trống'),
     );
+    expectNoWrite();
+  });
+
+  it('rejects with 409 before any write when the horse is training in a class to withdraw', async () => {
+    training.assertNoOngoingParticipantInClassesToWithdraw.mockRejectedValue(
+      new ConflictException('Ngựa đang tập'),
+    );
+    await expect(assign('b2')).rejects.toThrow(
+      new ConflictException('Ngựa đang tập'),
+    );
+    expect(
+      training.assertNoOngoingParticipantInClassesToWithdraw,
+    ).toHaveBeenCalledWith(manager, HORSE_ID, 'ht-2');
     expectNoWrite();
   });
 

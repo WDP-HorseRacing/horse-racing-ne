@@ -91,6 +91,7 @@ export class HorsePlacementsService {
    * - Chọn đúng khu đang ở thì không đổi gì
    * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; ghi HORSE_BARN_ASSIGNED_EVENT vào outbox trong cùng transaction để báo Head Trainer khu mới
    * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách; có rút thì nhật ký ghi thêm classesWithdrawn
+   * - Ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút thì không đổi khu được; lớp do Head Trainer khu mới phụ trách không tính
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -99,7 +100,7 @@ export class HorsePlacementsService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
    * @throws BadRequestException Nếu đổi khu (ngựa đã có khu) mà không có lý do
-   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), ngựa đã chuyển nhượng hoặc đã mất, hoặc khu không hoạt động, chưa có Head Trainer, hết ô trống
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), ngựa đã chuyển nhượng hoặc đã mất, hoặc khu không hoạt động, chưa có Head Trainer, hết ô trống, hoặc ngựa đang tập ở lớp sẽ bị rút
    */
   async assignBarn(
     actor: Actor,
@@ -234,7 +235,9 @@ export class HorsePlacementsService {
   /**
    * Chuyển ngựa sang khu mới trong transaction đang chạy, ghi một dòng nhật ký
    *
-   * - Khóa khu mới và kiểm khu nhận được ngựa, trả ô đang giữ về trống
+   * - Khóa khu mới và kiểm khu nhận được ngựa
+   * - Ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút thì chặn, chưa ghi gì
+   * - Trả ô đang giữ về trống
    * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách
    * - Cập nhật khu của ngựa rồi ghi nhật ký; có rút lớp thì nhật ký ghi thêm classesWithdrawn
    * - Không phát event; nơi gọi phát sau khi commit
@@ -243,7 +246,7 @@ export class HorsePlacementsService {
    * @param input Người gọi, ngựa, khu hiện tại (null nếu chưa có khu), khu mới và lý do (bỏ trống khi xếp khu lần đầu)
    * @returns Promise hoàn tất khi đã đổi khu và ghi nhật ký
    * @throws NotFoundException Nếu không có khu
-   * @throws ConflictException Nếu khu không hoạt động, chưa có Head Trainer hoặc hết ô trống
+   * @throws ConflictException Nếu khu không hoạt động, chưa có Head Trainer, hết ô trống hoặc ngựa đang tập ở lớp sẽ bị rút
    */
   private async applyBarnChange(
     manager: EntityManager,
@@ -260,11 +263,16 @@ export class HorsePlacementsService {
       manager,
       input.toBarnId,
     );
+    const keptHeadTrainerId = newBarn.headTrainerId ?? undefined;
+    await this.training.assertNoOngoingParticipantInClassesToWithdraw(
+      manager,
+      horseId,
+      keptHeadTrainerId,
+    );
     const released = await this.stalls.closeOpenStallAssignment(
       manager,
       horseId,
     );
-    const keptHeadTrainerId = newBarn.headTrainerId ?? undefined;
     const withdrawn = await this.training.withdrawHorseFromClasses(
       manager,
       horseId,
