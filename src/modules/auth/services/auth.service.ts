@@ -6,6 +6,7 @@ import { KeycloakTokenService } from '../../../common/infrastructure/keycloak/to
 import type { KeycloakIdentityProvider } from '../../../common/infrastructure/keycloak/types/oidc';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
+import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { ProvisioningService } from '../../users/services/provisioning.service';
 import { AuthTokensResponseDto } from '../dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from '../dto/current-user.response.dto';
@@ -89,7 +90,8 @@ export class AuthService {
    * @param currentPassword Mật khẩu hiện tại
    * @param newPassword Mật khẩu mới
    * @returns Promise hoàn tất khi đã đổi mật khẩu và đăng xuất các phiên
-   * @throws UnauthorizedException Nếu token không có email hoặc mật khẩu hiện tại không đúng
+   * @throws UnauthorizedException Nếu token không có email
+   * @throws BadRequestException Nếu mật khẩu hiện tại không đúng (lỗi gắn với ô `currentPassword`)
    * @throws BadGatewayException Nếu Keycloak trả lỗi
    */
   async changePassword(
@@ -106,7 +108,7 @@ export class AuthService {
         password: currentPassword,
       });
     } catch {
-      throw new UnauthorizedException('Mat khau hien tai khong dung');
+      throw fieldBadRequest('currentPassword', 'Mật khẩu hiện tại không đúng');
     }
     await this.keycloakUsers.resetUserPassword(actor.sub, newPassword);
     await this.keycloakUsers.logoutUser(actor.sub);
