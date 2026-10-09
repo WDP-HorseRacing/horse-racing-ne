@@ -15,6 +15,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   Min,
   MinLength,
   ValidateIf,
@@ -25,14 +26,19 @@ import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { ClassSessionInputDto } from './class-schedule.dto';
 
 export class CreateTrainingClassDto {
-  @ApiProperty({ description: 'Mã lớp huấn luyện (ví dụ: TC-2026-01)' })
+  @ApiProperty({
+    maxLength: 32,
+    description: 'Mã lớp huấn luyện (ví dụ: TC-2026-01)',
+  })
   @IsString()
   @MinLength(1)
+  @MaxLength(32, { message: 'Mã lớp tối đa 32 ký tự' })
   code!: string;
 
-  @ApiProperty({ description: 'Tên lớp huấn luyện' })
+  @ApiProperty({ maxLength: 160, description: 'Tên lớp huấn luyện' })
   @IsString()
   @MinLength(1)
+  @MaxLength(160, { message: 'Tên lớp tối đa 160 ký tự' })
   name!: string;
 
   @ApiPropertyOptional({ description: 'Mô tả lớp học' })

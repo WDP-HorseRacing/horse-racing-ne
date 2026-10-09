@@ -13846,10 +13846,12 @@
         "properties": {
           "code": {
             "type": "string",
+            "maxLength": 32,
             "description": "Mã lớp huấn luyện (ví dụ: TC-2026-01)"
           },
           "name": {
             "type": "string",
+            "maxLength": 160,
             "description": "Tên lớp huấn luyện"
           },
           "description": {
@@ -13904,10 +13906,12 @@
         "properties": {
           "code": {
             "type": "string",
+            "maxLength": 32,
             "description": "Mã lớp huấn luyện (ví dụ: TC-2026-01)"
           },
           "name": {
             "type": "string",
+            "maxLength": 160,
             "description": "Tên lớp huấn luyện"
           },
           "description": {
@@ -14611,7 +14615,8 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160
           },
           "sessionType": {
             "type": "string",
@@ -14649,10 +14654,12 @@
             "format": "date-time"
           },
           "location": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160
           },
           "surface": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 80
           },
           "notes": {
             "type": "string"
@@ -14811,7 +14818,8 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160
           },
           "sessionType": {
             "type": "string",
@@ -14850,11 +14858,13 @@
           },
           "location": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "maxLength": 160
           },
           "surface": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "maxLength": 80
           },
           "notes": {
             "type": "string",

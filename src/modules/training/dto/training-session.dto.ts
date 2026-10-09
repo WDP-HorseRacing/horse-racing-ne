@@ -13,6 +13,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -21,9 +22,10 @@ import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 
 export class CreateTrainingSessionDto {
-  @ApiProperty()
+  @ApiProperty({ maxLength: 160 })
   @IsString()
   @MinLength(1)
+  @MaxLength(160, { message: 'Tên buổi tập tối đa 160 ký tự' })
   name!: string;
 
   @ApiProperty({ enum: TrainingSessionType })
@@ -57,14 +59,16 @@ export class CreateTrainingSessionDto {
   @IsDateString()
   scheduledEndAt!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: 160 })
   @IsOptional()
   @IsString()
+  @MaxLength(160, { message: 'Địa điểm tối đa 160 ký tự' })
   location?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: 80 })
   @IsOptional()
   @IsString()
+  @MaxLength(80, { message: 'Mặt sân tối đa 80 ký tự' })
   surface?: string;
 
   @ApiPropertyOptional()
@@ -76,14 +80,16 @@ export class CreateTrainingSessionDto {
 export class UpdateTrainingSessionDto extends PartialType(
   OmitType(CreateTrainingSessionDto, ['location', 'surface', 'notes'] as const),
 ) {
-  @ApiPropertyOptional({ nullable: true, type: String })
+  @ApiPropertyOptional({ nullable: true, type: String, maxLength: 160 })
   @IsOptional()
   @IsString()
+  @MaxLength(160, { message: 'Địa điểm tối đa 160 ký tự' })
   location?: string | null;
 
-  @ApiPropertyOptional({ nullable: true, type: String })
+  @ApiPropertyOptional({ nullable: true, type: String, maxLength: 80 })
   @IsOptional()
   @IsString()
+  @MaxLength(80, { message: 'Mặt sân tối đa 80 ký tự' })
   surface?: string | null;
 
   @ApiPropertyOptional({ nullable: true, type: String })
