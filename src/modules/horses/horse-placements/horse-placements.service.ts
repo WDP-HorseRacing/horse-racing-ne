@@ -11,7 +11,10 @@ import { BarnEntity } from '../../stable/entities/barn.entity';
 import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../stable/constants/stable-events.constants';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
-import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
+import {
+  ONGOING_PARTICIPANT_BARN_CHANGE_REASON,
+  TrainingOperationsFacade,
+} from '../../training/shared/training-operations.facade';
 import {
   AssignHorseBarnDto,
   BarnPreviewQueryDto,
@@ -139,6 +142,7 @@ export class HorsePlacementsService {
    *
    * - Dùng cùng luật rút lớp như assignBarn: mọi lớp không do Head Trainer khu mới phụ trách
    * - Ngựa đã chuyển nhượng hoặc đã mất hoặc đang ở đúng khu này thì trả allowed = false kèm lý do
+   * - Ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút thì trả allowed = false kèm lý do, cùng điều kiện chặn của assignBarn
    * - Không kiểm sức chứa, trạng thái khu; các điều kiện đó kiểm lúc đổi thật
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -158,11 +162,15 @@ export class HorsePlacementsService {
     const horse = await this.access.findWritableHorse(actor, horseId);
     const target = await this.findBarnWithHeadTrainer(query.barnId);
     if (!target) throw new NotFoundException('Không tìm thấy khu chuồng');
-    const blockedReason = barnChangeBlockedReason(
-      horse.lifecycleStatus,
-      horse.barnId,
-      target.id,
-    );
+    const blockedReason =
+      barnChangeBlockedReason(horse.lifecycleStatus, horse.barnId, target.id) ??
+      ((await this.training.hasOngoingParticipantInClassesToWithdraw(
+        this.dataSource.manager,
+        horseId,
+        target.headTrainerId ?? undefined,
+      ))
+        ? ONGOING_PARTICIPANT_BARN_CHANGE_REASON
+        : null);
     const impact = await this.placements.barnChangeImpact(
       horseId,
       target.headTrainerId,

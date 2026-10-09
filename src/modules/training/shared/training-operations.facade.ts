@@ -52,6 +52,12 @@ const HAPPENED_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.SKIPPED,
 ];
 
+/**
+ * Câu báo khi ngựa đang tập ở lớp sẽ bị rút nên không đổi khu được
+ */
+export const ONGOING_PARTICIPANT_BARN_CHANGE_REASON =
+  'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu';
+
 const NO_PARTICIPANT_LEFT_REASON = 'Không còn ngựa tham gia';
 
 const REEVALUATED_PARTICIPANT_STATUSES = [
@@ -141,23 +147,21 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Chặn đổi khu khi ngựa đang tập ở lớp sẽ bị rút, chạy trong transaction của nơi gọi
+   * Kiểm ngựa có đang tập ở lớp sẽ bị rút khi đổi khu không
    *
    * - Chỉ xét lượt ONGOING thuộc ghi danh ACTIVE của lớp mà withdrawHorseFromClasses sẽ rút
    * - Có `exceptHeadTrainerId` thì lớp do Head Trainer đó phụ trách không tính (lớp được giữ lại)
-   * - Nơi gọi giữ lock pessimistic_write trên row ngựa
    *
-   * @param manager EntityManager của transaction đang chạy
+   * @param manager EntityManager dùng để đọc
    * @param horseId UUID của ngựa
    * @param exceptHeadTrainerId UUID Head Trainer khu mới, bỏ trống nếu khu mới chưa có
-   * @returns Promise trả về khi kiểm tra xong
-   * @throws ConflictException Nếu ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút
+   * @returns Promise trả về true nếu ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút
    */
-  async assertNoOngoingParticipantInClassesToWithdraw(
+  async hasOngoingParticipantInClassesToWithdraw(
     manager: EntityManager,
     horseId: string,
     exceptHeadTrainerId?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const query = manager
       .getRepository(SessionParticipantEntity)
       .createQueryBuilder('participant')
@@ -176,10 +180,34 @@ export class TrainingOperationsFacade {
         { exceptHeadTrainerId },
       );
     }
-    if ((await query.getCount()) > 0) {
-      throw new ConflictException(
-        'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu',
-      );
+    return (await query.getCount()) > 0;
+  }
+
+  /**
+   * Chặn đổi khu khi ngựa đang tập ở lớp sẽ bị rút, chạy trong transaction của nơi gọi
+   *
+   * - Điều kiện chặn như hasOngoingParticipantInClassesToWithdraw
+   * - Nơi gọi giữ lock pessimistic_write trên row ngựa
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param exceptHeadTrainerId UUID Head Trainer khu mới, bỏ trống nếu khu mới chưa có
+   * @returns Promise trả về khi kiểm tra xong
+   * @throws ConflictException Nếu ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút
+   */
+  async assertNoOngoingParticipantInClassesToWithdraw(
+    manager: EntityManager,
+    horseId: string,
+    exceptHeadTrainerId?: string,
+  ): Promise<void> {
+    if (
+      await this.hasOngoingParticipantInClassesToWithdraw(
+        manager,
+        horseId,
+        exceptHeadTrainerId,
+      )
+    ) {
+      throw new ConflictException(ONGOING_PARTICIPANT_BARN_CHANGE_REASON);
     }
   }
 

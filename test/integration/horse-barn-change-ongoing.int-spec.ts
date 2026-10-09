@@ -172,4 +172,39 @@ describe('Đổi khu của ngựa đang có lượt tập (Postgres)', () => {
       enrollment: 'LEFT',
     });
   });
+
+  describe('barn-preview', () => {
+    const preview = (barnId: string) =>
+      service.previewBarnChange(actor, horseId, { barnId });
+
+    it('blocks with the same sentence as the real change when the horse is training in a class to withdraw', async () => {
+      await participant('ONGOING');
+
+      expect(await preview(barnOtherTrainer)).toMatchObject({
+        allowed: false,
+        blockedReason: 'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu',
+        classesWithdrawn: 0,
+        summary: null,
+      });
+    });
+
+    it('allows when the new barn has the same head trainer, the class is kept', async () => {
+      await participant('ONGOING');
+
+      expect(await preview(barnSameTrainer)).toMatchObject({
+        allowed: true,
+        blockedReason: null,
+      });
+    });
+
+    it('allows when no participant is ONGOING', async () => {
+      await participant('PLANNED');
+
+      expect(await preview(barnOtherTrainer)).toMatchObject({
+        allowed: true,
+        blockedReason: null,
+        classesWithdrawn: 1,
+      });
+    });
+  });
 });

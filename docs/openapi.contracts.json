@@ -834,7 +834,7 @@
     },
     "/api/v1/horses/{horseId}/barn-preview": {
       "get": {
-        "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt.",
+        "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt. allowed = false kèm blockedReason khi không đổi được, kể cả khi ngựa đang tập ở lớp sẽ bị rút.",
         "operationId": "HorsePlacementsController_previewBarnChange",
         "parameters": [
           {

@@ -37,7 +37,7 @@ export class HorsePlacementsController {
   @ApiOperation({
     summary: 'Preview the consequences of changing the barn of a horse',
     description:
-      'Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt.',
+      'Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt. allowed = false kèm blockedReason khi không đổi được, kể cả khi ngựa đang tập ở lớp sẽ bị rút.',
   })
   @ApiOkResponse({ type: HorseBarnPreviewResponseDto })
   previewBarnChange(

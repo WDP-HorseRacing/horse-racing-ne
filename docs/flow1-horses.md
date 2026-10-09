@@ -503,6 +503,7 @@ CLUB MANAGER quyết định con ngựa thuộc khu chuồng nào. Khu chuồng 
    - Ngựa bị rút khỏi mọi lớp đang học không do HEAD TRAINER khu mới phụ trách (lớp của HEAD TRAINER khu cũ, của HEAD TRAINER khác hoặc lớp chưa có HEAD TRAINER). Khu mới cùng HEAD TRAINER với khu cũ thì giữ nguyên lớp. *(BA chốt)* Các buổi chưa diễn ra biến mất khỏi lịch của con ngựa, các buổi đã học giữ nguyên lịch sử.
    - HEAD TRAINER khu mới nhận thông báo và đăng ký lớp lại nếu cần.
    - Ngựa đang có lượt tập đang diễn ra (ONGOING) ở lớp sẽ bị rút thì không đổi khu được (409), phải chờ hoàn thành lượt tập. Khu mới cùng HEAD TRAINER với lớp thì lớp được giữ nên không bị chặn.
+   - Bảng xem trước hệ quả đổi khu (`GET /horses/:id/barn-preview`) báo trường hợp này bằng `allowed = false` và `blockedReason` là đúng câu 409 của đổi khu thật.
 5. Chỉ xếp khu và đổi khu cho ngựa ở trạng thái Đang hoạt động hoặc Đã giải nghệ. Ngựa đã chuyển nhượng hoặc hồ sơ đã xóa thì không thao tác được.
 6. Bắt buộc nhập lý do khi đổi khu (ngựa đã có khu). Xếp khu lần đầu (ngựa đang Chờ xếp khu) không bắt lý do. Ghi nhật ký thao tác. *(BA chốt)*
 

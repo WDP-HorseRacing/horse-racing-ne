@@ -49,6 +49,7 @@ describe('HorsePlacementsService', () => {
   let training: {
     withdrawHorseFromClasses: jest.Mock;
     assertNoOngoingParticipantInClassesToWithdraw: jest.Mock;
+    hasOngoingParticipantInClassesToWithdraw: jest.Mock;
   };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
@@ -165,6 +166,9 @@ describe('HorsePlacementsService', () => {
       }),
     };
     training = {
+      hasOngoingParticipantInClassesToWithdraw: jest.fn(() =>
+        Promise.resolve(false),
+      ),
       assertNoOngoingParticipantInClassesToWithdraw: jest.fn(
         track('assertNoOngoing'),
       ),
@@ -487,6 +491,38 @@ describe('HorsePlacementsService', () => {
         classesWithdrawn: 0,
         summary: null,
       });
+    });
+
+    it('returns allowed = false with the 409 sentence when the horse is training in a class to withdraw', async () => {
+      training.hasOngoingParticipantInClassesToWithdraw.mockResolvedValue(true);
+
+      const result = await preview();
+
+      expect(
+        training.hasOngoingParticipantInClassesToWithdraw,
+      ).toHaveBeenCalledWith(manager, HORSE_ID, 'ht-2');
+      expect(result).toMatchObject({
+        allowed: false,
+        blockedReason: 'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu',
+        stallReleased: null,
+        classesWithdrawn: 0,
+        summary: null,
+      });
+      expectNoWrite();
+    });
+
+    it('keeps the earlier reason when the horse is already in that barn', async () => {
+      training.hasOngoingParticipantInClassesToWithdraw.mockResolvedValue(true);
+      barnQuery.getOne.mockResolvedValue({
+        id: 'b1',
+        name: 'Khu A',
+        headTrainerId: 'ht-1',
+        headTrainer: { fullName: 'Nam' },
+      });
+
+      const result = await preview('b1');
+
+      expect(result.blockedReason).toBe('Ngựa đang ở khu này');
     });
 
     it('returns allowed = false for a TRANSFERRED horse', async () => {
