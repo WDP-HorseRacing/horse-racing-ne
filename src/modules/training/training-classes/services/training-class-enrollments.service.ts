@@ -18,6 +18,7 @@ import {
   HorseEnrollmentResponseDto,
   LeaveHorseEnrollmentDto,
 } from '../../dto/horse-enrollment.dto';
+import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
 import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
 import { TrainingClassStatus } from '../../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
@@ -224,6 +225,20 @@ export class TrainingClassEnrollmentsService {
     return toHorseEnrollmentResponse(saved);
   }
 
+  /**
+   * Thêm ngựa vào các buổi đã công bố chưa tới giờ của lớp kể từ lúc ghi danh
+   *
+   * - Từ chối cả lần ghi danh nếu ngựa đang giữ buổi ở lớp khác trùng giờ
+   * - Buổi chưa có lượt của ngựa: tạo lượt mới theo điều kiện huấn luyện hiện tại
+   * - Buổi có lượt cũ CANCELLED (do rời lớp): dùng lại lượt đó, gắn ghi danh mới và đặt lại như lượt mới tạo
+   * - Buổi có lượt cũ ở trạng thái khác: giữ nguyên
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param enrollment Lượt ghi danh vừa tạo
+   * @param horse Ngựa được ghi danh, đã khóa
+   * @returns Promise hoàn tất khi các lượt tham gia đã được lưu
+   * @throws ConflictException Nếu ngựa đã có buổi tập trùng giờ ở lớp khác
+   */
   private async addToFuturePublishedSessions(
     manager: EntityManager,
     enrollment: HorseEnrollmentEntity,
@@ -259,7 +274,9 @@ export class TrainingClassEnrollmentsService {
         sessionId: session.id,
         horseId: horse.id,
       });
-      if (exists) continue;
+      if (exists && exists.status !== SessionParticipantStatus.CANCELLED) {
+        continue;
+      }
       const lock = await manager.findOneBy(TrainingLockEntity, {
         horseId: horse.id,
         status: TrainingLockStatus.ACTIVE,
@@ -278,12 +295,21 @@ export class TrainingClassEnrollmentsService {
         horse.id,
         session.scheduledStartAt,
       );
-      await manager.save(
+      const participant =
+        exists ??
         manager.create(SessionParticipantEntity, {
           sessionId: session.id,
           horseId: horse.id,
+        });
+      await manager.save(
+        Object.assign(participant, {
           horseEnrollmentId: enrollment.id,
           assignedGroomId: groom?.groomId ?? null,
+          checkedInAt: null,
+          startedAt: null,
+          completedAt: null,
+          absenceReason: null,
+          cancelReason: null,
           ...initialParticipantEligibility(eligibility, !!lock),
         }),
       );
