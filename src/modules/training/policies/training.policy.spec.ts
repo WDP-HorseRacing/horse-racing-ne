@@ -11,6 +11,7 @@ import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   assertClassActivatable,
+  assertParticipantAbsent,
   assertParticipantComplete,
   assertSessionOperational,
   assertSessionWindowInClass,
@@ -55,6 +56,24 @@ describe('training policy', () => {
     expect(() =>
       assertSessionOperational(TrainingSessionStatus.COMPLETED),
     ).toThrow(ConflictException);
+  });
+
+  it.each([
+    SessionParticipantStatus.PLANNED,
+    SessionParticipantStatus.PRESENT,
+    SessionParticipantStatus.READY,
+  ])('accepts an absence report from a %s participant', (status) => {
+    expect(() => assertParticipantAbsent(status)).not.toThrow();
+  });
+
+  it.each([
+    SessionParticipantStatus.ONGOING,
+    SessionParticipantStatus.COMPLETED,
+  ])('rejects an absence report from a %s participant with 409', (status) => {
+    expect(() => assertParticipantAbsent(status)).toThrow(ConflictException);
+    expect(() => assertParticipantAbsent(status)).toThrow(
+      'Chỉ lượt chờ điểm danh, có mặt hoặc sẵn sàng mới được báo vắng',
+    );
   });
 
   it('requires a completed participant before downstream completion', () => {

@@ -136,12 +136,25 @@ export function assertParticipantCheckIn(
   }
 }
 
+/**
+ * Kiểm lượt tham gia còn báo vắng được
+ *
+ * - Lượt chờ điểm danh, có mặt hoặc sẵn sàng: được báo vắng
+ * - Lượt đang chạy hoặc đã kết thúc: 409
+ *
+ * @param status Trạng thái hiện tại của lượt tham gia
+ * @throws ConflictException Nếu lượt không ở PLANNED, PRESENT hoặc READY
+ */
 export function assertParticipantAbsent(
   status: SessionParticipantStatus,
 ): void {
-  if (status !== SessionParticipantStatus.PLANNED) {
+  if (
+    status !== SessionParticipantStatus.PLANNED &&
+    status !== SessionParticipantStatus.PRESENT &&
+    status !== SessionParticipantStatus.READY
+  ) {
     throw new ConflictException(
-      'Chỉ participant PLANNED mới được đánh dấu vắng',
+      'Chỉ lượt chờ điểm danh, có mặt hoặc sẵn sàng mới được báo vắng',
     );
   }
 }

@@ -1,4 +1,5 @@
-import { DataSource, In, Repository } from 'typeorm';
+import { ConflictException } from '@nestjs/common';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
@@ -89,5 +90,69 @@ describe('SessionParticipantsService.list', () => {
 
     await expect(service.list(actor, 's1')).resolves.toEqual([]);
     expect(manager.find).not.toHaveBeenCalled();
+  });
+});
+
+describe('SessionParticipantsService.absent', () => {
+  function setup(status: SessionParticipantStatus) {
+    const row = {
+      ...participant('p1', 'h1'),
+      status,
+      absenceReason: null as string | null,
+    };
+    const manager = {
+      save: jest.fn((value: unknown) => Promise.resolve(value)),
+    } as unknown as EntityManager;
+    const access = {
+      currentUser: jest.fn().mockResolvedValue({ id: 'ht-1' }),
+      findParticipant: jest
+        .fn()
+        .mockResolvedValue({ sessionId: 's1', horseId: 'h1' }),
+      lockedSession: jest.fn().mockResolvedValue({ status: 'SCHEDULED' }),
+      lockedParticipant: jest.fn().mockResolvedValue(row),
+      assertCanOperateParticipant: jest.fn().mockResolvedValue(undefined),
+    };
+    const operations = new TrainingOperationsFacade();
+    const refresh = jest
+      .spyOn(operations, 'refreshSessionStatus')
+      .mockResolvedValue({} as never);
+    const service = new SessionParticipantsService(
+      {} as Repository<SessionParticipantEntity>,
+      access as unknown as TrainingAccessService,
+      operations,
+      {
+        transaction: jest.fn((cb: (m: EntityManager) => unknown) =>
+          cb(manager),
+        ),
+      } as unknown as DataSource,
+    );
+    return { service, row, refresh, manager };
+  }
+
+  it.each([SessionParticipantStatus.PRESENT, SessionParticipantStatus.READY])(
+    'báo vắng lượt %s: chuyển ABSENT, ghi lý do và cập nhật trạng thái buổi',
+    async (status) => {
+      const { service, row, refresh, manager } = setup(status);
+
+      await service.absent(actor, 'p1', { reason: 'Ngựa mệt' });
+
+      expect(row.status).toBe(SessionParticipantStatus.ABSENT);
+      expect(row.absenceReason).toBe('Ngựa mệt');
+      expect(refresh).toHaveBeenCalledWith(manager, 's1');
+    },
+  );
+
+  it('từ chối báo vắng lượt ONGOING bằng 409 và không lưu gì', async () => {
+    const { service, manager, refresh } = setup(
+      SessionParticipantStatus.ONGOING,
+    );
+
+    await expect(
+      service.absent(actor, 'p1', { reason: 'x' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(
+      (manager as unknown as { save: jest.Mock }).save,
+    ).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
   });
 });
