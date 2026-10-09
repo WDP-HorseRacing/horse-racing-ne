@@ -84,7 +84,7 @@ export class BarnsController {
   @ApiOperation({
     summary: 'Update barn details or its head trainer',
     description:
-      'Sửa tên, mô tả, sức chứa, trạng thái và Head Trainer phụ trách; gửi headTrainerId = null để gỡ người phụ trách. Head Trainer mới phải đang hoạt động (400 nếu không có hoặc sai vai trò, 409 nếu không còn ACTIVE). Khu còn ngựa thì không chuyển được sang CLOSED hoặc MAINTENANCE và không gỡ được Head Trainer (409). Sức chứa không được nhỏ hơn số ô hiện có, tên khu không được trùng (409).',
+      'Sửa tên, mô tả, sức chứa, trạng thái và Head Trainer phụ trách; gửi headTrainerId = null để gỡ người phụ trách. Head Trainer mới phải đang hoạt động (400 nếu không có hoặc sai vai trò, 409 nếu không còn ACTIVE). Khu còn ngựa thì không chuyển được sang CLOSED hoặc MAINTENANCE và không gỡ được Head Trainer (409). Đổi sang Head Trainer khác bị chặn (409) khi Head Trainer hiện tại còn lớp đang chạy có ngựa của khu; dùng Bàn giao khi Head Trainer nghỉ. Sức chứa không được nhỏ hơn số ô hiện có, tên khu không được trùng (409).',
   })
   @ApiOkResponse({ type: BarnResponseDto })
   update(

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../../audit/audit.module';
+import { TrainingSharedModule } from '../../training/shared/training-shared.module';
 import { BarnEntity } from '../entities/barn.entity';
 import { StableSharedModule } from '../shared/stable-shared.module';
 import { BarnsController } from './barns.controller';
@@ -10,6 +11,7 @@ import { BarnsService } from './barns.service';
   imports: [
     TypeOrmModule.forFeature([BarnEntity]),
     StableSharedModule,
+    TrainingSharedModule,
     AuditModule,
   ],
   controllers: [BarnsController],

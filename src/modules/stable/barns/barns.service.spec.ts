@@ -22,6 +22,7 @@ import { StallStatus } from '../constants/stall-status.enum';
 import { UserEntity } from '../../users/entities/user.entity';
 import { BarnEntity } from '../entities/barn.entity';
 import { StallEntity } from '../entities/stall.entity';
+import { TrainingAccessService } from '../../training/shared/training-access.service';
 import { StableAccessService } from '../shared/stable-access.service';
 import { BarnsService } from './barns.service';
 
@@ -43,6 +44,7 @@ describe('BarnsService', () => {
     save: jest.Mock;
   };
   let audit: { record: jest.Mock };
+  let trainingAccess: { findActiveClassCodesWithHorsesInBarn: jest.Mock };
   let service: BarnsService;
 
   beforeEach(() => {
@@ -67,6 +69,9 @@ describe('BarnsService', () => {
       save: jest.fn((row: object) => Promise.resolve({ id: 'b-new', ...row })),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    trainingAccess = {
+      findActiveClassCodesWithHorsesInBarn: jest.fn().mockResolvedValue([]),
+    };
     const dataSource = {
       manager,
       transaction: jest.fn((work: (m: typeof manager) => Promise<unknown>) =>
@@ -78,6 +83,7 @@ describe('BarnsService', () => {
       dataSource,
       new StableAccessService(new HorseAccessService(dataSource)),
       audit,
+      trainingAccess as unknown as TrainingAccessService,
     );
   });
 
@@ -501,6 +507,55 @@ describe('BarnsService', () => {
           expect(manager.exists).toHaveBeenCalledWith(HorseEntity, {
             where: { barnId: 'b1' },
           });
+        });
+      });
+
+      describe('when replacing the head trainer', () => {
+        it('rejects with the class codes when the current head trainer still runs classes with horses of the barn', async () => {
+          trainingAccess.findActiveClassCodesWithHorsesInBarn.mockResolvedValue(
+            ['LOP-01', 'LOP-02'],
+          );
+          await expect(
+            service.update(actor, 'b1', { headTrainerId: 'u-9' }),
+          ).rejects.toThrow(
+            new ConflictException(
+              'Huấn luyện viên trưởng hiện tại còn lớp LOP-01, LOP-02 đang có ngựa của khu này. Cho các ngựa rời lớp hoặc hoàn thành lớp trước khi đổi Huấn luyện viên trưởng, hoặc dùng Bàn giao nếu Huấn luyện viên nghỉ.',
+            ),
+          );
+          expect(
+            trainingAccess.findActiveClassCodesWithHorsesInBarn,
+          ).toHaveBeenCalledWith(manager, 'ht-1', 'b1');
+          expect(manager.save).not.toHaveBeenCalled();
+        });
+
+        it('allows the replacement when no running class has horses of the barn', async () => {
+          await expect(
+            service.update(actor, 'b1', { headTrainerId: 'u-9' }),
+          ).resolves.toMatchObject({ headTrainerId: 'u-9' });
+        });
+
+        it('does not look up classes when the head trainer is unchanged, removed or first assigned', async () => {
+          await service.update(actor, 'b1', { headTrainerId: null });
+          barn = { ...barn, headTrainerId: 'u-9' };
+          await service.update(actor, 'b1', { headTrainerId: 'u-9' });
+          barn = { ...barn, headTrainerId: null };
+          await service.update(actor, 'b1', { headTrainerId: 'u-9' });
+          expect(
+            trainingAccess.findActiveClassCodesWithHorsesInBarn,
+          ).not.toHaveBeenCalled();
+        });
+
+        it('keeps the earlier checks first: a capacity below the stall count wins', async () => {
+          trainingAccess.findActiveClassCodesWithHorsesInBarn.mockResolvedValue(
+            ['LOP-01'],
+          );
+          await expect(
+            service.update(actor, 'b1', { headTrainerId: 'u-9', capacity: 3 }),
+          ).rejects.toThrow(
+            new ConflictException(
+              'Khu chuồng đang có 4 ô chuồng, không hạ sức chứa xuống 3 được. Vui lòng xóa bớt ô trước',
+            ),
+          );
         });
       });
 

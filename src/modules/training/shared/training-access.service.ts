@@ -14,6 +14,8 @@ import {
   CurrentActorUser,
   currentUserForActor,
 } from '../../users/utils/current-user';
+import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
+import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
@@ -567,5 +569,45 @@ export class TrainingAccessService {
       return;
     }
     throw new ForbiddenException('Bạn không được thao tác buổi tập này');
+  }
+
+  /**
+   * Liệt kê mã các lớp đang chạy của một Head Trainer có ngựa của một khu đang học
+   *
+   * - Chỉ tính lớp ACTIVE do Head Trainer đó phụ trách; lớp nháp, hoàn thành, hủy không tính
+   * - Chỉ tính ghi danh ACTIVE của ngựa chưa xóa mềm đang thuộc khu (horses.barn_id); ghi danh LEFT, CANCELLED không tính
+   * - Mỗi lớp xuất hiện một lần, sắp theo mã
+   *
+   * @param manager EntityManager dùng để query
+   * @param headTrainerId UUID Head Trainer phụ trách lớp
+   * @param barnId UUID của khu chuồng
+   * @returns Promise trả về danh sách mã lớp, rỗng nếu không có
+   */
+  async findActiveClassCodesWithHorsesInBarn(
+    manager: EntityManager,
+    headTrainerId: string,
+    barnId: string,
+  ): Promise<string[]> {
+    const rows = await manager
+      .createQueryBuilder(TrainingClassEntity, 'class')
+      .select('class.code', 'code')
+      .distinct(true)
+      .innerJoin(
+        HorseEnrollmentEntity,
+        'enrollment',
+        'enrollment.class_id = class.id',
+      )
+      .innerJoin(HorseEntity, 'horse', 'horse.id = enrollment.horse_id')
+      .where('class.head_trainer_id = :headTrainerId', { headTrainerId })
+      .andWhere('class.status = :classStatus', {
+        classStatus: TrainingClassStatus.ACTIVE,
+      })
+      .andWhere('enrollment.status = :enrollmentStatus', {
+        enrollmentStatus: HorseEnrollmentStatus.ACTIVE,
+      })
+      .andWhere('horse.barn_id = :barnId', { barnId })
+      .orderBy('class.code', 'ASC')
+      .getRawMany<{ code: string }>();
+    return rows.map((row) => row.code);
   }
 }

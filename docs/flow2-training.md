@@ -112,6 +112,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 1. Club Manager bàn giao một lần: mọi khu chuồng, mọi giáo án và mọi lớp nháp/đang chạy của Head Trainer A sang Head Trainer B, trong một transaction. Lớp đã hoàn thành hoặc đã hủy giữ A để tra lịch sử.
 2. Mỗi khu được chuyển ghi một dòng nhật ký.
 3. Không khóa tài khoản hay đổi vai trò Head Trainer còn khu chuồng, còn giáo án, hoặc còn lớp nháp/đang chạy.
+4. Sửa khu chuồng (`PATCH /barns/:id`) để đổi từ Head Trainer A sang B bị chặn (409) khi A còn lớp ACTIVE có ghi danh ACTIVE của ngựa đang thuộc khu; lớp nháp không tính, gỡ Head Trainer (null) theo luật cũ. Muốn đổi thì cho ngựa rời lớp hoặc hoàn thành lớp, hoặc dùng bàn giao.
 
 ### 8. Phân quyền
 

@@ -12,6 +12,7 @@ import { HorseAccessService } from '../../src/modules/horses/shared/horse-access
 import { BarnsService } from '../../src/modules/stable/barns/barns.service';
 import { BarnEntity } from '../../src/modules/stable/entities/barn.entity';
 import { StableAccessService } from '../../src/modules/stable/shared/stable-access.service';
+import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
 import { HeadTrainerHandoverService } from '../../src/modules/users/services/head-trainer-handover.service';
 import { fixtures } from './fixtures';
@@ -42,6 +43,10 @@ describe('HeadTrainerHandoverService (Postgres)', () => {
         dataSource,
         new StableAccessService(new HorseAccessService(dataSource)),
         new AuditService(),
+        new TrainingAccessService(
+          dataSource,
+          new HorseAccessService(dataSource),
+        ),
       ),
       new TrainingOperationsFacade(),
     );

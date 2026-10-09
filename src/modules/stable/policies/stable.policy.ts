@@ -360,6 +360,22 @@ export function assertBarnChangeKeepsHorses(change: BarnChange): void {
 }
 
 /**
+ * Chặn đổi Head Trainer của khu khi Head Trainer hiện tại còn lớp đang chạy có ngựa của khu
+ *
+ * - Không có lớp nào: cho qua
+ * - Còn lớp ACTIVE có ngựa của khu đang học: 409 kèm mã các lớp
+ *
+ * @param classCodes Mã các lớp ACTIVE của Head Trainer hiện tại đang có ngựa của khu
+ * @throws ConflictException Nếu còn ít nhất một lớp
+ */
+export function assertHeadTrainerReplaceable(classCodes: string[]): void {
+  if (classCodes.length === 0) return;
+  throw new ConflictException(
+    `Huấn luyện viên trưởng hiện tại còn lớp ${classCodes.join(', ')} đang có ngựa của khu này. Cho các ngựa rời lớp hoặc hoàn thành lớp trước khi đổi Huấn luyện viên trưởng, hoặc dùng Bàn giao nếu Huấn luyện viên nghỉ.`,
+  );
+}
+
+/**
  * Chặn hạ sức chứa của khu xuống dưới số ô đang có, áp cho mọi khu dù còn ngựa hay không
  *
  * - capacity là số ô tối đa của khu

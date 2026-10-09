@@ -13,6 +13,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { TrainingAccessService } from '../../training/shared/training-access.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { BarnStatus } from '../constants/barn-status.enum';
@@ -32,6 +33,7 @@ import {
   assertBarnHasHeadTrainer,
   assertBarnHasRoomForHorse,
   assertCapacityFitsStalls,
+  assertHeadTrainerReplaceable,
   assertBarnRemovable,
   changedFieldsDiff,
   EMPTY_CAPACITY,
@@ -48,6 +50,7 @@ export class BarnsService {
     private readonly dataSource: DataSource,
     private readonly access: StableAccessService,
     private readonly auditService: AuditService,
+    private readonly trainingAccess: TrainingAccessService,
   ) {}
 
   /**
@@ -151,6 +154,7 @@ export class BarnsService {
    * - Head Trainer mới phải là user HEAD_TRAINER đang ACTIVE; gửi null để gỡ người phụ trách
    * - Khu còn ngựa (horses.barn_id, hồ sơ chưa xóa) thì chặn: chuyển sang CLOSED hoặc MAINTENANCE, gỡ Head Trainer
    * - Mọi khu, dù còn ngựa hay không: chặn hạ sức chứa xuống dưới số ô hiện có
+   * - Đổi từ Head Trainer cũ sang Head Trainer khác: chặn khi Head Trainer cũ còn lớp ACTIVE có ghi danh ACTIVE của ngựa thuộc khu; lớp nháp không tính; luồng Bàn giao không qua hàm này
    * - Ghi nhật ký UPDATE với before/after của các field thực sự đổi; không field nào đổi thì không ghi
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -159,7 +163,7 @@ export class BarnsService {
    * @returns Promise trả về khu chuồng sau khi sửa
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
    * @throws BadRequestException Nếu Head Trainer mới không có hoặc không phải HEAD_TRAINER
-   * @throws ConflictException Nếu Head Trainer mới không còn hoạt động, tên khu đã tồn tại, sức chứa mới nhỏ hơn số ô hiện có, hoặc khu còn ngựa mà thay đổi thuộc trường hợp bị chặn
+   * @throws ConflictException Nếu Head Trainer mới không còn hoạt động, tên khu đã tồn tại, sức chứa mới nhỏ hơn số ô hiện có, khu còn ngựa mà thay đổi thuộc trường hợp bị chặn, hoặc Head Trainer cũ còn lớp đang chạy có ngựa của khu
    */
   async update(
     actor: Actor,
@@ -191,6 +195,19 @@ export class BarnsService {
           assertCapacityFitsStalls(
             await this.access.countStallsInBarn(manager, barnId),
             body.capacity,
+          );
+        }
+        if (
+          barn.headTrainerId !== null &&
+          body.headTrainerId &&
+          body.headTrainerId !== barn.headTrainerId
+        ) {
+          assertHeadTrainerReplaceable(
+            await this.trainingAccess.findActiveClassCodesWithHorsesInBarn(
+              manager,
+              barn.headTrainerId,
+              barnId,
+            ),
           );
         }
 
