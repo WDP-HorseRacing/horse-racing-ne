@@ -61,7 +61,15 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     } = {},
   ) => {
     const trainer = await seed.user(UserRole.HEAD_TRAINER);
-    const horse = await seed.horse('Winx', { health: options.health });
+    const barn = await seed.barn('Khu A');
+    await dataSource.query(
+      'UPDATE barns SET head_trainer_id = $1 WHERE id = $2',
+      [trainer, barn],
+    );
+    const horse = await seed.horse('Winx', {
+      health: options.health,
+      barnId: barn,
+    });
     const { classId } = await seed.trainingClass(trainer, {
       code: 'A',
       name: 'Lớp A',
@@ -99,7 +107,15 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
         [randomUUID(), horse, vet],
       );
     }
-    return { participantId, sessionId };
+    const [trainerRow] = await dataSource.query<Array<{ keycloak_id: string }>>(
+      'SELECT keycloak_id FROM users WHERE id = $1',
+      [trainer],
+    );
+    const trainerActor: Actor = {
+      sub: trainerRow.keycloak_id,
+      roles: [UserRole.HEAD_TRAINER],
+    };
+    return { participantId, sessionId, trainerActor };
   };
 
   const participantRow = async (participantId: string) => {
@@ -122,12 +138,15 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
 
   describe('start', () => {
     it('keeps CANCELLED_BY_LOCK after rejecting a locked horse with 409', async () => {
-      const actor = await groomActor();
-      const { participantId, sessionId } = await seedParticipant('READY', {
-        locked: true,
-      });
+      await groomActor();
+      const { participantId, sessionId, trainerActor } = await seedParticipant(
+        'READY',
+        {
+          locked: true,
+        },
+      );
 
-      await expect(service.start(actor, participantId)).rejects.toThrow(
+      await expect(service.start(trainerActor, participantId)).rejects.toThrow(
         new ConflictException('Ngựa không còn đủ điều kiện để bắt đầu'),
       );
 
@@ -138,13 +157,13 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     });
 
     it('keeps INELIGIBLE after rejecting an UNDER_OBSERVATION horse in a HEAVY session', async () => {
-      const actor = await groomActor();
-      const { participantId } = await seedParticipant('READY', {
+      await groomActor();
+      const { participantId, trainerActor } = await seedParticipant('READY', {
         health: HorseHealthStatus.UNDER_OBSERVATION,
         intensity: TrainingIntensity.HEAVY,
       });
 
-      await expect(service.start(actor, participantId)).rejects.toThrow(
+      await expect(service.start(trainerActor, participantId)).rejects.toThrow(
         new ConflictException('Ngựa không còn đủ điều kiện để bắt đầu'),
       );
 
@@ -155,12 +174,12 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     });
 
     it('keeps INELIGIBLE after rejecting an injured horse with 409', async () => {
-      const actor = await groomActor();
-      const { participantId } = await seedParticipant('READY', {
+      await groomActor();
+      const { participantId, trainerActor } = await seedParticipant('READY', {
         health: HorseHealthStatus.INJURED,
       });
 
-      await expect(service.start(actor, participantId)).rejects.toThrow(
+      await expect(service.start(trainerActor, participantId)).rejects.toThrow(
         ConflictException,
       );
 

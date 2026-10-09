@@ -111,7 +111,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | Giáo án | Xem tất cả | Của mình | Không | Không | Không |
 | Lớp, buổi tập (xem) | Tất cả | Lớp mình phụ trách | Tất cả | Lớp có lượt mình dắt | Lớp có ngựa của mình |
 | Tạo, sửa lớp, buổi, chạy thử, ghi danh, publish | Không | Lớp mình phụ trách | Không | Không | Không |
-| Điểm danh, bắt đầu, hoàn thành lượt, kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
+| Điểm danh, báo vắng, báo sẵn sàng | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
+| Bắt đầu, hoàn thành lượt, ghi kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
 | Đánh giá buổi | Không | Có | Không | Không | Không |
 | Ngưỡng nhịp tim/tốc độ | Xem | Đặt cho ngựa thuộc khu mình | Xem | Không | Không |
 | Bàn giao Head Trainer | Có | Không | Không | Không | Không |
@@ -139,10 +140,11 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | POST | `/training-sessions/:sessionId/publish` | HT | Publish buổi |
 | POST | `/classes/:classId/sessions/publish` | HT | Publish nhiều buổi nháp `{ from?, to? }` |
 | PATCH | `/training-sessions/:id/time-trial` | HT | Sửa cấu hình chạy thử của buổi nháp |
-| POST | `/session-participants/:id/check-in`, `/ready`, `/start`, `/complete`, `/absent` | HT, GROOM | Thao tác lượt tập |
+| POST | `/session-participants/:id/check-in`, `/ready`, `/absent` | HT, GROOM | Điểm danh, báo sẵn sàng, báo vắng |
+| POST | `/session-participants/:id/start`, `/complete` | HT | Bắt đầu, hoàn thành lượt tập |
 | POST | `/session-participants/:id/metrics`, `/metrics/batch` | Không cần đăng nhập | Nhận điểm đo (giả lập) |
-| GET | `/session-participants/:id/metrics` | CM, VET, HT, GROOM | Điểm đo của lượt theo thời gian |
-| GET | `/session-participants/:id/performance-summary` | Ai xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |
+| GET | `/session-participants/:id/metrics` | CM, VET, HT | Điểm đo của lượt theo thời gian |
+| GET | `/session-participants/:id/performance-summary` | CM, VET, HT, OWNER, và phải xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |
 | GET | `/horses/:id/alerts` | CM, VET, HT của khu | Lịch sử cảnh báo `?level&from&to&page&limit` |
 | GET | `/horses/:id/workload` | Ai xem được hồ sơ ngựa | Khối lượng tập `?from&to` |
 | GET/PUT | `/horses/:id/thresholds` | Xem: HT, CM, VET; đặt: HT | Ngưỡng của ngựa |

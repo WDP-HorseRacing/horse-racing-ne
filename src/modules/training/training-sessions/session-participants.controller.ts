@@ -70,14 +70,14 @@ export class SessionParticipantsController {
     return this.participants.ready(actor, id);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/start')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   start(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.participants.start(actor, id);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/complete')
   @ApiOkResponse({ type: SessionParticipantResponseDto })
   complete(

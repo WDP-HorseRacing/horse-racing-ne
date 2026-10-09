@@ -60,12 +60,7 @@ export class PerformanceMetricsController {
     return this.metrics.ingest(id, body.metrics);
   }
 
-  @Access([
-    UserRole.CLUB_MANAGER,
-    UserRole.VETERINARIAN,
-    UserRole.HEAD_TRAINER,
-    UserRole.GROOM,
-  ])
+  @Access([UserRole.CLUB_MANAGER, UserRole.VETERINARIAN, UserRole.HEAD_TRAINER])
   @Get('session-participants/:id/metrics')
   @ApiOperation({
     summary: 'Xem các điểm đo nhịp tim/tốc độ của lượt tập theo thời gian',
@@ -76,6 +71,12 @@ export class PerformanceMetricsController {
     return this.metrics.list(actor, id);
   }
 
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.VETERINARIAN,
+    UserRole.HEAD_TRAINER,
+    UserRole.HORSE_OWNER,
+  ])
   @Get('session-participants/:id/performance-summary')
   @ApiOperation({
     summary: 'Tổng kết nhịp tim, tốc độ và số cảnh báo của lượt tập',

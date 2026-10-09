@@ -26,7 +26,7 @@ export class TrialResultsController {
     return this.results.list(actor, id);
   }
 
-  @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/trial-results')
   @ApiCreatedResponse({ type: TrialResultResponseDto })
   create(
