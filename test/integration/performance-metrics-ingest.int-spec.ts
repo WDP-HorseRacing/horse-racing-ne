@@ -1,12 +1,15 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { type Model } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { PERFORMANCE_METRIC_CRITICAL_EVENT } from '../../src/modules/performance/constants/performance.constants';
+import {
+  PARTICIPANT_METRIC_LIMIT,
+  PERFORMANCE_METRIC_CRITICAL_EVENT,
+} from '../../src/modules/performance/constants/performance.constants';
 import { MetricAlertLevel } from '../../src/modules/performance/enums/metric-alert-level.enum';
 import { PerformanceMetricsService } from '../../src/modules/performance/performance-metrics/performance-metrics.service';
 import {
@@ -205,6 +208,41 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
 
       expect(rows.map((row) => row.heartRateBpm)).toEqual([150, 160]);
       expect(rows[0].speedMps).toBe('12.000');
+    });
+
+    it('lists only the newest points, oldest first, when the participant has more than the limit', async () => {
+      const { horse, participantId } = await seedParticipant();
+      const manager = await actorFor(
+        await seed.user(UserRole.CLUB_MANAGER),
+        UserRole.CLUB_MANAGER,
+      );
+      const total = PARTICIPANT_METRIC_LIMIT + 3;
+      await metrics.insertMany(
+        Array.from({ length: total }, (_, index) => ({
+          recordedAt: new Date(Date.UTC(2026, 9, 10, 1, 0, index)),
+          meta: {
+            horseId: horse,
+            sessionParticipantId: participantId,
+            sessionId: randomUUID(),
+            sourceId: 'sensor-1',
+          },
+          heartRateBpm: 100 + (index % 100),
+          speedMps: Types.Decimal128.fromString('12.000'),
+          alertLevel: MetricAlertLevel.NORMAL,
+        })),
+      );
+
+      const rows = await service.list(manager, participantId);
+
+      expect(rows).toHaveLength(PARTICIPANT_METRIC_LIMIT);
+      expect(rows[0].recordedAt).toEqual(
+        new Date(Date.UTC(2026, 9, 10, 1, 0, 3)),
+      );
+      expect(rows[rows.length - 1].recordedAt).toEqual(
+        new Date(Date.UTC(2026, 9, 10, 1, 0, total - 1)),
+      );
+      const times = rows.map((row) => row.recordedAt.getTime());
+      expect(times).toEqual([...times].sort((a, b) => a - b));
     });
 
     it('summarises averages, maxima and alert counts of the participant', async () => {

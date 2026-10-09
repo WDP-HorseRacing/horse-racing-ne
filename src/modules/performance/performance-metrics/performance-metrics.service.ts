@@ -146,13 +146,14 @@ export class PerformanceMetricsService {
   }
 
   /**
-   * Lấy các điểm đo của một lượt tập theo thứ tự thời gian
+   * Lấy các điểm đo mới nhất của một lượt tập theo thứ tự thời gian
    *
+   * - Lượt có nhiều hơn PARTICIPANT_METRIC_LIMIT điểm: bỏ các điểm cũ nhất, giữ các điểm mới nhất
    * - Club Manager, bác sĩ, Groom được giao lượt, Head Trainer của lớp (ngựa thuộc khu mình) xem được
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tập
-   * @returns Promise trả về tối đa PARTICIPANT_METRIC_LIMIT điểm đo, cũ nhất trước
+   * @returns Promise trả về tối đa PARTICIPANT_METRIC_LIMIT điểm đo mới nhất, xếp cũ nhất trước
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có lượt tập hoặc người gọi không được xem
    */
@@ -163,11 +164,11 @@ export class PerformanceMetricsService {
     await this.trainingAccess.assertCanReadParticipant(actor, participantId);
     const rows = await this.metrics
       .find({ 'meta.sessionParticipantId': participantId })
-      .sort({ recordedAt: 1 })
+      .sort({ recordedAt: -1 })
       .limit(PARTICIPANT_METRIC_LIMIT)
       .lean<PerformanceMetric[]>()
       .exec();
-    return rows.map(toMetricPoint);
+    return rows.reverse().map(toMetricPoint);
   }
 
   /**
