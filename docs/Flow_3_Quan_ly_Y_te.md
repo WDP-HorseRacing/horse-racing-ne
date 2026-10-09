@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 07/10/2026
+> Cập nhật: 09/10/2026
 
 ## I. Những main feature liên quan
 
@@ -179,7 +179,7 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
    - Bệnh án đang mở, kèm ngày khám gần nhất và ngày hẹn tái khám.
    - Yêu cầu khám đang chờ xử lý, xếp yêu cầu Khẩn lên trước.
 2. Thứ tự ưu tiên trong sơ đồ đàn: Cách ly và Chấn thương lên đầu, rồi Cần theo dõi, cuối cùng là Đủ điều kiện.
-3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe.
+3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và ba khối còn lại.
 4. Bấm vào một con ngựa mở hồ sơ chi tiết (F1.3) hoặc bệnh án (F3.10).
 5. Không hiển thị ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa.
 6. Số liệu tính trực tiếp khi mở màn hình, không lưu lại.
@@ -745,7 +745,7 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 | Q6 | Có cần màn "Việc được giao cho tôi" cho GROOM không? | FE | Đã chốt: không cần, xem lịch chăm sóc theo từng con ngựa |
 | Q7 | Tài liệu mô hình dữ liệu ghi quyền ghi số đo lệch spec F1.5 | Flow 1 | Đã xác nhận: theo spec F1.5 (cả bốn loại) |
 | Q8 | Ngựa đã chuyển nhượng có được hủy buổi khám, điều chỉnh chi phí không? | Flow 1, F3.6, F3.9 | Đã chốt: chặn (hồ sơ đã chuyển nhượng chỉ xem được) |
-| Q9 | Lọc bảng điều khiển theo trạng thái thì số đếm tính trên đâu? | F3.1 | Đã chốt: đếm theo bộ lọc |
+| Q9 | Lọc bảng điều khiển theo trạng thái thì số đếm tính trên đâu? | F3.1 | Đã chốt: số đếm bốn mức theo bộ lọc khu, không theo bộ lọc sức khỏe |
 | Q10 | BA xác nhận các thay đổi ở Phụ lục 1 | Toàn Flow 3 | Đã xác nhận |
 
 Cần báo FE (theo câu trả lời BA):
