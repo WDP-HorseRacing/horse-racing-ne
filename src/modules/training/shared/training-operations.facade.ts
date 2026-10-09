@@ -1,5 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager, In } from 'typeorm';
+import { HorseEntity } from '../../horses/entities/horse.entity';
+import { evaluateEligibility } from '../../horses/policies/horse.policy';
+import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
+import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
@@ -9,6 +13,10 @@ import { SessionParticipantEntity } from '../entities/session-participant.entity
 import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
+import {
+  eligibilityForSession,
+  initialParticipantEligibility,
+} from '../policies/training.policy';
 
 /**
  * Tham số khi hệ thống tự rút một con ngựa khỏi lớp.
@@ -45,6 +53,12 @@ const HAPPENED_PARTICIPANT_STATUSES = [
 ];
 
 const NO_PARTICIPANT_LEFT_REASON = 'Không còn ngựa tham gia';
+
+const REEVALUATED_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
+];
 
 const NON_TERMINAL_PARTICIPANT_STATUSES = [
   ...OPEN_PARTICIPANT_STATUSES,
@@ -137,6 +151,95 @@ export class TrainingOperationsFacade {
       reason,
       now,
     );
+  }
+
+  /**
+   * Chấm lại điều kiện tập các lượt sắp tới của một con ngựa, chạy trong transaction của nơi gọi
+   *
+   * - Chỉ xét lượt PLANNED, CANCELLED_BY_LOCK hoặc INELIGIBLE của buổi SCHEDULED chưa tới giờ bắt đầu
+   * - Ngựa đang bị khóa huấn luyện: CANCELLED_BY_LOCK
+   * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi HEAVY: INELIGIBLE kèm lý do
+   * - Ngựa được tập: PLANNED, xóa lý do không đủ điều kiện
+   * - Khóa theo thứ tự ngựa → buổi → lượt; chạy lại nhiều lần cho cùng kết quả
+   * - Hồ sơ ngựa đã xóa vẫn được chấm (thành INELIGIBLE); không có ngựa thì không làm gì
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về số lượt đã đổi trạng thái hoặc lý do
+   */
+  async reevaluateUpcomingParticipants(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<number> {
+    const horse = await manager.findOne(HorseEntity, {
+      where: { id: horseId },
+      withDeleted: true,
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!horse) return 0;
+    const sessions = await manager
+      .getRepository(TrainingSessionEntity)
+      .createQueryBuilder('session')
+      .innerJoin(
+        SessionParticipantEntity,
+        'participant',
+        'participant.session_id = session.id',
+      )
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: REEVALUATED_PARTICIPANT_STATUSES,
+      })
+      .andWhere('session.status = :sessionStatus', {
+        sessionStatus: TrainingSessionStatus.SCHEDULED,
+      })
+      .andWhere('session.scheduled_start_at > :now', { now: new Date() })
+      .orderBy('session.id', 'ASC')
+      .setLock('pessimistic_write', undefined, ['session'])
+      .getMany();
+    if (sessions.length === 0) return 0;
+    const participants = await manager.find(SessionParticipantEntity, {
+      where: {
+        horseId,
+        sessionId: In(sessions.map((session) => session.id)),
+        status: In(REEVALUATED_PARTICIPANT_STATUSES),
+      },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    const hasActiveTrainingLock = await manager.existsBy(TrainingLockEntity, {
+      horseId,
+      status: TrainingLockStatus.ACTIVE,
+    });
+    const eligibility = evaluateEligibility({
+      isDeleted: Boolean(horse.deletedAt),
+      lifecycleStatus: horse.lifecycleStatus,
+      healthStatus: horse.healthStatus,
+      hasActiveTrainingLock,
+    });
+    const intensityBySession = new Map(
+      sessions.map((session) => [session.id, session.intensity]),
+    );
+    const changed = participants.filter((participant) => {
+      const next = initialParticipantEligibility(
+        eligibilityForSession(
+          eligibility,
+          intensityBySession.get(participant.sessionId)!,
+        ),
+        hasActiveTrainingLock,
+      );
+      if (
+        next.status === participant.status &&
+        next.ineligibilityReason === participant.ineligibilityReason
+      ) {
+        return false;
+      }
+      Object.assign(participant, next);
+      return true;
+    });
+    if (changed.length) {
+      await manager.save(SessionParticipantEntity, changed);
+    }
+    return changed.length;
   }
 
   /**
@@ -360,6 +463,7 @@ export class TrainingOperationsFacade {
    * Đóng buổi tập khi không còn lượt nào đang mở.
    *
    * - Chỉ xét buổi SCHEDULED hoặc IN_PROGRESS; buổi đã đóng giữ nguyên
+   * - Buổi SCHEDULED chưa tới giờ bắt đầu: giữ nguyên dù không còn lượt mở
    * - Còn lượt mở (PLANNED/PRESENT/READY/ONGOING): không đổi gì
    * - Hết lượt mở và có lượt COMPLETED, ABSENT hoặc SKIPPED: COMPLETED
    * - Hết lượt mở và mọi lượt đều bị hủy hoặc không đủ điều kiện: CANCELLED, ghi thời điểm và lý do "Không còn ngựa tham gia"
@@ -382,6 +486,12 @@ export class TrainingOperationsFacade {
     if (
       session.status !== TrainingSessionStatus.SCHEDULED &&
       session.status !== TrainingSessionStatus.IN_PROGRESS
+    ) {
+      return session;
+    }
+    if (
+      session.status === TrainingSessionStatus.SCHEDULED &&
+      session.scheduledStartAt > new Date()
     ) {
       return session;
     }

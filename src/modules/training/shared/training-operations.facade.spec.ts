@@ -405,6 +405,18 @@ describe('TrainingOperationsFacade.refreshSessionStatus', () => {
     expect(save).toHaveBeenCalledWith(session);
   });
 
+  it('keeps an upcoming SCHEDULED session without open participants', async () => {
+    const { session, manager, save } = sessionManager(
+      TrainingSessionStatus.SCHEDULED,
+      0,
+      0,
+    );
+    session.scheduledStartAt = new Date(Date.now() + 60_000);
+    await facade.refreshSessionStatus(manager, 's1');
+    expect(session.status).toBe(TrainingSessionStatus.SCHEDULED);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('leaves an already closed session alone', async () => {
     const { session, manager, save } = sessionManager(
       TrainingSessionStatus.COMPLETED,

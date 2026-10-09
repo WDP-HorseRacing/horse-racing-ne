@@ -80,13 +80,16 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 
 ### 5. Ngựa có được tập buổi này không
 
-Áp ở publish buổi, ghi danh, điểm danh và bắt đầu lượt:
+Áp ở publish buổi, ghi danh, điểm danh, bắt đầu lượt, và khi chấm lại (luật 6):
 
 1. Ngựa đang bị khóa huấn luyện: lượt thành Hủy do khóa (`CANCELLED_BY_LOCK`).
 2. Ngựa không được tập (chấn thương, cách ly, giải nghệ...): lượt thành Không đủ điều kiện (`INELIGIBLE`).
 3. Ngựa Cần theo dõi gặp buổi cường độ Nặng: lượt thành Không đủ điều kiện, lý do `HEALTH_UNDER_OBSERVATION`. Buổi Nhẹ và Trung bình tập bình thường.
 4. Điểm danh hoặc bắt đầu bị chặn thì vẫn lưu trạng thái trên rồi báo lỗi 409.
 5. Bắt đầu lượt cần lớp đang chạy.
+6. Chấm lại ngay khi bác sĩ đặt khóa, gỡ khóa, hoặc sức khỏe ngựa đổi (xấu đi hay tốt lên): mọi lượt Chờ điểm danh (`PLANNED`), Hủy do khóa, Không đủ điều kiện của ngựa đó ở buổi đã publish chưa tới giờ bắt đầu được chấm lại theo luật 1–3; ổn hết thì về Chờ điểm danh và xóa lý do. Lượt đã điểm danh, sẵn sàng, đang tập, đã kết thúc, và buổi đã tới giờ giữ nguyên.
+7. Buổi chưa tới giờ bắt đầu không bao giờ tự đóng, kể cả khi mọi lượt đều bị hủy hoặc không đủ điều kiện (còn chờ chấm lại).
+8. Buổi đã tới giờ: lượt mở cuối cùng xong hoặc vắng thì buổi đóng ngay. Buổi đã tới giờ mà không còn lượt mở thì hệ thống tự đóng trong vòng một phút: có lượt đã diễn ra (hoàn thành, vắng, bỏ qua) thì Hoàn thành, không thì Hủy với lý do "Không còn ngựa tham gia".
 
 ### 6. Nhịp tim và tốc độ (dữ liệu giả lập)
 
