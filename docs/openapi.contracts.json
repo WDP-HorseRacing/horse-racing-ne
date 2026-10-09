@@ -13663,15 +13663,6 @@
             "format": "date",
             "description": "Ngày bắt đầu lớp"
           },
-          "weekdays": {
-            "minItems": 1,
-            "maxItems": 7,
-            "description": "Các thứ có buổi tập theo ISO: 1 là thứ Hai, 7 là Chủ nhật",
-            "type": "array",
-            "items": {
-              "type": "number"
-            }
-          },
           "startTime": {
             "type": "string",
             "example": "06:00",
@@ -13687,7 +13678,6 @@
         "required": [
           "planId",
           "startDate",
-          "weekdays",
           "startTime",
           "durationMinutes"
         ]
@@ -14093,27 +14083,50 @@
       "TrainingPlanSubjectResponseDto": {
         "type": "object",
         "properties": {
+          "subject": {
+            "$ref": "#/components/schemas/TrainingSubjectResponseDto"
+          },
+          "weekdays": {
+            "description": "Các thứ học môn theo ISO (1 là thứ Hai, 7 là Chủ nhật), tăng dần",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "subject",
+          "weekdays"
+        ]
+      },
+      "TrainingPlanPhaseResponseDto": {
+        "type": "object",
+        "properties": {
           "position": {
             "type": "number",
-            "description": "Thứ tự trong giáo án, bắt đầu từ 1"
+            "description": "Thứ tự giai đoạn trong giáo án, bắt đầu từ 1"
           },
           "startWeek": {
             "type": "number",
-            "description": "Tuần bắt đầu học môn, bắt đầu từ 1"
+            "description": "Tuần bắt đầu của giai đoạn, bắt đầu từ 1"
           },
           "weeks": {
             "type": "number",
-            "description": "Số tuần học môn"
+            "description": "Số tuần của giai đoạn"
           },
-          "subject": {
-            "$ref": "#/components/schemas/TrainingSubjectResponseDto"
+          "subjects": {
+            "description": "Các môn của giai đoạn, sắp theo thứ nhỏ nhất trong tuần",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrainingPlanSubjectResponseDto"
+            }
           }
         },
         "required": [
           "position",
           "startWeek",
           "weeks",
-          "subject"
+          "subjects"
         ]
       },
       "TrainingPlanResponseDto": {
@@ -14139,10 +14152,10 @@
             "type": "number",
             "description": "Tổng số tuần của giáo án"
           },
-          "subjects": {
+          "phases": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TrainingPlanSubjectResponseDto"
+              "$ref": "#/components/schemas/TrainingPlanPhaseResponseDto"
             }
           },
           "updatedAt": {
@@ -14155,7 +14168,7 @@
           "name",
           "headTrainerId",
           "totalWeeks",
-          "subjects",
+          "phases",
           "updatedAt"
         ]
       },
@@ -14167,16 +14180,43 @@
             "format": "uuid",
             "description": "Môn học"
           },
-          "weeks": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 52,
-            "description": "Số tuần học môn này"
+          "weekdays": {
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "Các thứ học môn này theo ISO: 1 là thứ Hai, 7 là Chủ nhật; trong một giai đoạn mỗi thứ chỉ thuộc một môn",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
           }
         },
         "required": [
           "subjectId",
-          "weeks"
+          "weekdays"
+        ]
+      },
+      "TrainingPlanPhaseInputDto": {
+        "type": "object",
+        "properties": {
+          "weeks": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 52,
+            "description": "Số tuần của giai đoạn"
+          },
+          "subjects": {
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "Các môn của giai đoạn, mỗi môn một dòng",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrainingPlanSubjectInputDto"
+            }
+          }
+        },
+        "required": [
+          "weeks",
+          "subjects"
         ]
       },
       "SaveTrainingPlanDto": {
@@ -14190,19 +14230,19 @@
             "type": "string",
             "description": "Mục tiêu, mô tả giáo án"
           },
-          "subjects": {
+          "phases": {
             "minItems": 1,
             "maxItems": 52,
-            "description": "Các môn theo thứ tự học",
+            "description": "Các giai đoạn theo thứ tự học; tổng số tuần không quá 104",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TrainingPlanSubjectInputDto"
+              "$ref": "#/components/schemas/TrainingPlanPhaseInputDto"
             }
           }
         },
         "required": [
           "name",
-          "subjects"
+          "phases"
         ]
       },
       "SessionParticipantListItemDto": {

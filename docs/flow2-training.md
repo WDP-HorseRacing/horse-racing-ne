@@ -1,6 +1,6 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-> Cập nhật: 07/10/2026
+> Cập nhật: 09/10/2026
 
 ## I. Đề bài liên quan
 
@@ -20,7 +20,8 @@
 ```
 LỚP HỌC            HT phụ trách, ngựa ghi danh, ngày bắt đầu – kết thúc
  ├─ GIÁO ÁN        đúng 1 giáo án của HT phụ trách lớp
- │   └─ MÔN HỌC    các môn theo thứ tự, mỗi môn học trong N tuần
+ │   └─ GIAI ĐOẠN  theo thứ tự, mỗi giai đoạn N tuần
+ │       └─ MÔN HỌC   nhiều môn, mỗi môn học vào các thứ cố định trong tuần
  └─ BUỔI TẬP       sinh từ giáo án lúc tạo lớp, có thể chỉnh từng buổi
      └─ LƯỢT TẬP   mỗi ngựa trong lớp một lượt mỗi buổi
          ├─ kết quả chạy thử, đánh giá của HT
@@ -30,7 +31,7 @@ LỚP HỌC            HT phụ trách, ngựa ghi danh, ngày bắt đầu – 
 | Khái niệm | Bảng | Ai tạo, sửa | Ghi chú |
 |---|---|---|---|
 | Môn học | `training_subjects` | Club Manager | Danh mục dùng chung CLB. Mỗi môn là một bài cố định: loại buổi (thường / chạy thử), cường độ, cự ly dự kiến, mặt sân, thời gian mục tiêu (chỉ môn chạy thử). |
-| Giáo án | `training_plans`, `training_plan_subjects` | Head Trainer sở hữu | Ghép môn theo thứ tự, mỗi môn bao nhiêu tuần. Dùng lại cho các lớp của chính Head Trainer đó. |
+| Giáo án | `training_plans`, `training_plan_phases`, `training_plan_subjects` | Head Trainer sở hữu | Chia giai đoạn theo thứ tự, mỗi giai đoạn bao nhiêu tuần; trong giai đoạn mỗi môn gắn các thứ trong tuần. Dùng lại cho các lớp của chính Head Trainer đó. |
 | Lớp học | `training_classes` | Head Trainer | Một lớp theo đúng một giáo án của Head Trainer phụ trách lớp. Ngày kết thúc tự tính. |
 | Buổi tập | `training_sessions` | Head Trainer | Thuộc lớp, gắn môn học. Lưu bản chép cường độ, cự ly, mặt sân của môn lúc tạo. |
 | Lượt tập | `session_participants` | Hệ thống tạo khi publish buổi hoặc ghi danh | Điểm danh, sẵn sàng, bắt đầu, hoàn thành theo từng ngựa. |
@@ -49,16 +50,17 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 ### 2. Giáo án
 
 1. Giáo án thuộc Head Trainer tạo ra. Head Trainer khác không xem, không dùng được. Club Manager xem được mọi giáo án nhưng không tạo, không sửa.
-2. Giáo án có ít nhất một môn. Tuần bắt đầu của mỗi môn tính theo thứ tự (môn 1 tuần 1–4 thì môn 2 bắt đầu tuần 5).
-3. Sửa giáo án là thay toàn bộ danh sách môn. Lớp đã tạo từ giáo án giữ nguyên buổi tập.
-4. Giáo án đã có lớp dùng thì không xóa được.
+2. Giáo án có 1–52 giai đoạn, tổng không quá 104 tuần. Mỗi giai đoạn 1–52 tuần và 1–7 môn; mỗi môn gắn 1–7 thứ trong tuần (1 là thứ Hai … 7 là Chủ nhật). Tuần bắt đầu của mỗi giai đoạn tính theo thứ tự (giai đoạn 1 tuần 1–4 thì giai đoạn 2 bắt đầu tuần 5).
+3. Trong một giai đoạn, một thứ chỉ thuộc một môn và một môn chỉ có một dòng (học nhiều thứ thì gộp thứ vào dòng đó). Vi phạm thì báo 400 đúng ô lỗi, ví dụ "Giai đoạn 2: Thứ Tư bị chọn cho hơn một môn".
+4. Sửa giáo án là thay toàn bộ các giai đoạn. Lớp đã tạo từ giáo án giữ nguyên buổi tập.
+5. Giáo án đã có lớp dùng thì không xóa được.
 
 ### 3. Tạo lớp và lịch buổi tập
 
 1. Chỉ Head Trainer tạo lớp, và lớp luôn do chính Head Trainer đó phụ trách.
 2. Luồng màn hình tạo lớp:
-   1. Head Trainer chọn giáo án, ngày bắt đầu, các thứ trong tuần (bao nhiêu thứ cũng được), giờ bắt đầu theo giờ CLB, thời lượng mỗi buổi.
-   2. Hệ thống trả lịch xem trước, chưa lưu gì: tuần thứ n học môn chiếm tuần n trong giáo án; mỗi thứ đã chọn trong tuần sinh một buổi, nội dung lấy từ môn.
+   1. Head Trainer chọn giáo án, ngày bắt đầu, giờ bắt đầu theo giờ CLB, thời lượng mỗi buổi. Thứ trong tuần lấy từ giáo án.
+   2. Hệ thống trả lịch xem trước, chưa lưu gì: tuần thứ n (tính từ ngày bắt đầu lớp, mỗi tuần 7 ngày) thuộc giai đoạn chứa tuần n; mỗi ngày sinh một buổi của môn có thứ đó trong giai đoạn, nội dung lấy từ môn; ngày không thuộc môn nào thì không có buổi.
    3. Head Trainer chỉnh ngay trên màn hình: đổi giờ, mặt sân, cự ly, cường độ, thời gian mục tiêu; đổi môn của một buổi (ví dụ thêm ngày đi bộ hồi phục hoặc buổi chạy thử cuối giai đoạn); bỏ buổi.
    4. Bấm Tạo lớp: lớp và mọi buổi được lưu trong một lần. Lỗi ở bất kỳ buổi nào thì không lưu gì.
 3. Ngày kết thúc lớp = ngày bắt đầu + tổng số tuần của giáo án − 1 ngày.
@@ -126,12 +128,12 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | POST | `/training-subjects` | CM | Thêm môn |
 | PATCH | `/training-subjects/:subjectId` | CM | Sửa môn (gửi `null` để xóa field tùy chọn) |
 | DELETE | `/training-subjects/:subjectId` | CM | Xóa môn chưa dùng |
-| GET | `/training-plans` | HT (của mình), CM | Danh sách giáo án kèm môn, `totalWeeks` |
+| GET | `/training-plans` | HT (của mình), CM | Danh sách giáo án kèm giai đoạn, môn, `totalWeeks` |
 | GET | `/training-plans/:id` | HT (của mình), CM | Một giáo án |
-| POST | `/training-plans` | HT | Tạo giáo án `{ name, description?, subjects: [{ subjectId, weeks }] }` |
+| POST | `/training-plans` | HT | Tạo giáo án `{ name, description?, phases: [{ weeks, subjects: [{ subjectId, weekdays }] }] }` |
 | PUT | `/training-plans/:id` | HT (của mình) | Thay toàn bộ giáo án |
 | DELETE | `/training-plans/:id` | HT (của mình) | Xóa giáo án chưa có lớp |
-| POST | `/classes/schedule-preview` | HT | Xem trước lịch `{ planId, startDate, weekdays, startTime, durationMinutes }` |
+| POST | `/classes/schedule-preview` | HT | Xem trước lịch `{ planId, startDate, startTime, durationMinutes }` |
 | POST | `/classes` | HT | Tạo lớp kèm buổi `{ code, name, ..., planId, startDate, sessions: [...] }` |
 | PATCH | `/classes/:classId` | HT | Sửa lớp (không đổi giáo án, Head Trainer) |
 | PATCH | `/classes/:classId/status` | HT | Kích hoạt, hoàn thành, hủy lớp |
@@ -155,12 +157,13 @@ Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 ## Phụ lục 1: Thay đổi API cần báo FE
 
 1. Bỏ: `GET/POST /training-classes/:classId/plans`, `POST /training-plans/:id/activate|complete|cancel`, `GET/POST /training-plans/:id/sessions`.
-2. Giáo án đổi hẳn dạng: không còn `classId`, `phaseName`, `goal`, `startDate`, `endDate`, `status`; có `description`, `headTrainerId`, `totalWeeks`, `subjects[]`. Sửa bằng `PUT`.
+2. Giáo án đổi hẳn dạng: không còn `classId`, `phaseName`, `goal`, `startDate`, `endDate`, `status`; có `description`, `headTrainerId`, `totalWeeks`, `phases[]`. Sửa bằng `PUT`.
 3. Tạo lớp: bắt buộc `planId`, `sessions`; bỏ `endDate` (tự tính) và `headTrainerId` (luôn là người gọi). Response lớp có `planId`.
 4. Buổi tập: bắt buộc `intensity` (`LIGHT` / `MODERATE` / `HEAVY`) và `plannedDistanceM`; có `subjectId`; response có `classId`, `subjectId`, bỏ `planId`. Danh sách và thêm buổi qua `/classes/:classId/sessions`.
 5. Tab Huấn luyện của ngựa: `phaseName` đổi thành `subjectName` (có thể `null`).
 6. Club Manager không còn gọi được các thao tác ghi của lớp, buổi, lượt tập, kết quả chạy thử, đánh giá (nhận 403).
-7. API mới: môn học, xem trước lịch, publish nhiều buổi, sửa chạy thử, khối lượng tập, lịch sử cảnh báo, ngưỡng, điểm đo, tổng kết lượt, bàn giao Head Trainer; sự kiện socket `performance.metrics`; loại thông báo `PERFORMANCE_ALERT`, đích `SESSION_PARTICIPANT`.
+7. Giáo án theo giai đoạn: body `POST`/`PUT /training-plans` đổi `subjects: [{ subjectId, weeks }]` thành `phases: [{ weeks, subjects: [{ subjectId, weekdays }] }]` (gửi `subjects` kiểu cũ bị 400). Response bỏ `subjects`, thêm `phases: [{ position, startWeek, weeks, subjects: [{ subject, weekdays }] }]`; `weekdays` tăng dần, môn trong giai đoạn sắp theo thứ nhỏ nhất. `POST /classes/schedule-preview` bỏ `weekdays` (gửi lên bị 400).
+8. API mới: môn học, xem trước lịch, publish nhiều buổi, sửa chạy thử, khối lượng tập, lịch sử cảnh báo, ngưỡng, điểm đo, tổng kết lượt, bàn giao Head Trainer; sự kiện socket `performance.metrics`; loại thông báo `PERFORMANCE_ALERT`, đích `SESSION_PARTICIPANT`.
 
 ## Phụ lục 2: Việc còn lại
 
