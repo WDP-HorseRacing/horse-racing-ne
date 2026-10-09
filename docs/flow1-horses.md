@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 07/10/2026
+> Cập nhật: 09/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -682,7 +682,7 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 - ~~Tab Huấn luyện ở hồ sơ ngựa (F1.3)~~ Đã làm, thay cho `GET /horses/:id/training-plans` Flow 2 đã bỏ: `GET /horses/:horseId/training/classes` (lớp đang học và đã rời) và `GET /horses/:horseId/training/sessions` (lịch buổi có phân trang, lọc `classId`, `when=upcoming|history`, kèm kết quả time trial). CM, HT, VET, OWNER xem; GROOM 403; ngoài phạm vi 404.
 - ~~Nhận xét sau buổi tập (F1.3)~~ Đã làm: mỗi buổi trong `GET /horses/:horseId/training/sessions` có `evaluation { score, comment, evaluatorName, createdAt }` hoặc `null`.
 - ~~Giao Groom lần đầu~~ Đã làm: giao hoặc đổi Groom (`PUT /horses/:id/groom`) điền Groom mới vào các lượt tập tương lai chưa ai dắt, cùng với lượt của Groom cũ; lượt HT đã giao tay cho người khác giữ nguyên.
-- **Khóa huấn luyện và lượt tập đã xếp** (đã chốt, Q2 ở Phụ lục 2 Flow 3; áp dụng cả khi sức khỏe chuyển Chấn thương / Cách ly): đặt khóa **không** hủy lượt tập đã xếp. Ngựa bị chặn lúc publish buổi và lúc bắt đầu/điểm danh (Flow 2 đánh `CANCELLED_BY_LOCK`); gỡ khóa trước giờ tập thì ngựa tập bình thường. Lý do: khóa là tạm thời, hủy sớm không khôi phục được lượt (có khi mất cả buổi). `cancelFutureParticipationsByTrainingLock` và `assertNoOngoingParticipant` chưa có nơi gọi, giữ lại chưa dùng. Danh sách lượt tập (`GET /training-sessions/:sessionId/participants`) có cờ `trainingLocked` tính lúc đọc để FE hiện nhãn "Đang bị khóa" trước giờ tập.
+- **Khóa huấn luyện và lượt tập đã xếp** (đã chốt, Q2 ở Phụ lục 2 Flow 3; áp dụng cả khi sức khỏe chuyển Chấn thương / Cách ly): đặt khóa, gỡ khóa hoặc đổi sức khỏe thì Flow 2 chấm lại ngay các lượt sắp tới của ngựa (`ParticipantEligibilityListener` → `reevaluateUpcomingParticipants`): lượt Chờ điểm danh của buổi đã publish chưa tới giờ thành `CANCELLED_BY_LOCK` / `INELIGIBLE`; gỡ khóa hoặc khỏe lại trước giờ tập thì lượt về Chờ điểm danh. Vẫn chặn lúc publish buổi, ghi danh, bắt đầu/điểm danh (Flow 2 luật 6). `cancelFutureParticipationsByTrainingLock` và `assertNoOngoingParticipant` chưa có nơi gọi, giữ lại chưa dùng. Danh sách lượt tập (`GET /training-sessions/:sessionId/participants`) có cờ `trainingLocked` tính lúc đọc để FE hiện nhãn "Đang bị khóa" trước giờ tập.
 - ~~Cần theo dõi chỉ tập Nhẹ và Trung bình (III.4) chưa chặn được~~ Đã làm: mỗi buổi tập có cường độ bắt buộc (`intensity`: `LIGHT` / `MODERATE` / `HEAVY`). Ngựa Cần theo dõi gặp buổi `HEAVY` thì lượt tự đánh `INELIGIBLE` (lý do `HEALTH_UNDER_OBSERVATION`), chặn ở cùng các bước như khóa huấn luyện: publish buổi, ghi danh, điểm danh, bắt đầu.
 - ~~Đánh giá buổi tập bị bỏ~~ Sai, đính chính: chức năng vẫn có ở nhánh Flow 2, chỉ bị merge làm rơi; đã gộp lại, tab hiệu suất đọc lại được đánh giá mới nhất.
 - ~~Lỗi schema của Flow 2~~ Đã sửa (migration `RelaxLegacyTrainingColumns`): bỏ `NOT NULL` cho 8 cột cũ, giữ dữ liệu; đã lưu thử giáo án, buổi tập, time trial, chỉ số, đánh giá trên DB migrate mới. Cùng đợt: buổi bị rút hết ngựa chuyển `CANCELLED` (không còn `COMPLETED`), khóa huấn luyện hủy lượt từ đúng thời điểm khóa (`>=`).

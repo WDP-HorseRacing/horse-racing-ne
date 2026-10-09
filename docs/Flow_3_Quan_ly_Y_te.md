@@ -482,7 +482,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Hệ thống gửi thông báo mức HIGH cho HEAD TRAINER phụ trách khu, CLUB MANAGER và HORSE OWNER.
    - Hệ thống **KHÔNG** tự rút ngựa khỏi lớp học và không tự rút đăng ký thi đấu. Ngựa vẫn còn trong lớp nhưng không tham gia được buổi tập; HEAD TRAINER quyết định giữ hay rút.
    - Hệ thống không tự chuyển ô. Cần tách đàn thì HEAD TRAINER chuyển ô bằng F1.7 (Flow 1 mục III.2.2).
-4. Chuyển sang Cần theo dõi: ngựa mất quyền đua và chỉ được tập cường độ Nhẹ và Trung bình (Flow 1 mục III.2); không gửi thông báo riêng.
+4. Chuyển sang Cần theo dõi: ngựa mất quyền đua và chỉ được tập cường độ Nhẹ và Trung bình (Flow 1 mục III.2); gửi thông báo mức NORMAL cho HEAD TRAINER phụ trách khu.
 5. Chuyển sang Đủ điều kiện được phép cả khi đang có lệnh khóa huấn luyện, và không tự gỡ khóa. Khóa chỉ được gỡ ở F3.8.
 6. Không đổi trạng thái cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 7. Ghi nhật ký kèm giá trị trước, giá trị sau và lý do. Lịch sử trạng thái sức khỏe (F3.10) được dựng từ nhật ký này.
@@ -738,7 +738,7 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 | # | Câu hỏi | Liên quan | Hệ thống đang chạy |
 |---|---|---|---|
 | Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Đã chốt: được tập buổi Nhẹ và Trung bình, không được đua. Buổi tập có cường độ; gặp buổi Nặng thì lượt tự đánh Không đủ điều kiện, chặn ở publish buổi, ghi danh, điểm danh, bắt đầu |
-| Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt: không hủy lượt đã xếp; chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh; gỡ trước giờ tập thì tập bình thường |
+| Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt: chấm lại ngay các lượt sắp tới của ngựa khi đặt khóa, gỡ khóa hoặc đổi sức khỏe (lượt thành Hủy do khóa / Không đủ điều kiện, gỡ hoặc khỏe lại trước giờ tập thì về Chờ điểm danh); vẫn chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh (Flow 2 luật 6) |
 | Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | GROOM gửi yêu cầu khám trực tiếp (ngựa được phân công) |
 | Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Đã chốt: trong hồ sơ ngựa; GROOM chỉ thấy ghi chú mới nhất của ngựa mình được giao |
 | Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Đã chốt: lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |
