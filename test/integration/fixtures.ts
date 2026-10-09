@@ -318,10 +318,10 @@ export function fixtures(dataSource: DataSource) {
   };
 
   /**
-   * Tạo môn học, giáo án gồm môn đó và lớp dùng giáo án, cùng Head Trainer
+   * Tạo môn học, giáo án một giai đoạn gồm môn đó (thứ Hai, Tư, Sáu) và lớp dùng giáo án, cùng Head Trainer
    *
    * @param headTrainerId Id Head Trainer sở hữu giáo án và phụ trách lớp
-   * @param options Mã, tên, trạng thái, ngày bắt đầu và kết thúc của lớp; số tuần của môn trong giáo án
+   * @param options Mã, tên, trạng thái, ngày bắt đầu và kết thúc của lớp; số tuần của giai đoạn duy nhất trong giáo án
    * @returns A promise resolving to id lớp và id giáo án
    */
   const trainingClass = async (
@@ -347,10 +347,16 @@ export function fixtures(dataSource: DataSource) {
        VALUES ($1, 1, 'Giáo án', $2)`,
       [planId, headTrainerId],
     );
+    const phaseId = randomUUID();
     await dataSource.query(
-      `INSERT INTO training_plan_subjects (plan_id, position, subject_id, weeks)
-       VALUES ($1, 1, $2, $3)`,
-      [planId, subjectId, options.weeks ?? 4],
+      `INSERT INTO training_plan_phases (id, plan_id, position, weeks)
+       VALUES ($1, $2, 1, $3)`,
+      [phaseId, planId, options.weeks ?? 4],
+    );
+    await dataSource.query(
+      `INSERT INTO training_plan_subjects (phase_id, subject_id, weekdays)
+       VALUES ($1, $2, '{1,3,5}')`,
+      [phaseId, subjectId],
     );
     const classId = randomUUID();
     const code = options.code ?? classId.slice(0, 8);

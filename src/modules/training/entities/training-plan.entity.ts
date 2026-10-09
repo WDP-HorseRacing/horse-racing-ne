@@ -1,10 +1,10 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { TrainingPlanSubjectEntity } from './training-plan-subject.entity';
+import { TrainingPlanPhaseEntity } from './training-plan-phase.entity';
 
 /**
- * TrainingPlanEntity: giáo án của một Head Trainer, ghép các môn học theo thứ tự và số tuần; dùng lại cho các lớp của Head Trainer đó.
+ * TrainingPlanEntity: giáo án của một Head Trainer, chia các giai đoạn theo thứ tự, mỗi giai đoạn có số tuần và các môn học theo thứ trong tuần; dùng lại cho các lớp của Head Trainer đó.
  */
 @Entity({ name: 'training_plans' })
 export class TrainingPlanEntity extends MutableRecordEntity {
@@ -21,6 +21,6 @@ export class TrainingPlanEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'head_trainer_id' })
   headTrainer!: UserEntity;
 
-  @OneToMany(() => TrainingPlanSubjectEntity, (item) => item.plan)
-  subjects!: TrainingPlanSubjectEntity[];
+  @OneToMany(() => TrainingPlanPhaseEntity, (phase) => phase.plan)
+  phases!: TrainingPlanPhaseEntity[];
 }

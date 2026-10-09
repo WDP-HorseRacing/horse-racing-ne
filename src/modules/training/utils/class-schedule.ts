@@ -12,37 +12,45 @@ export interface GeneratedSession {
 }
 
 /**
- * Sinh lịch buổi tập của lớp từ giáo án
+ * Sinh lịch buổi tập của lớp từ các giai đoạn của giáo án
  *
- * - Tuần thứ n (tính từ ngày bắt đầu, mỗi tuần 7 ngày) học môn đang chiếm tuần n trong giáo án
- * - Trong mỗi tuần, mỗi ngày có thứ nằm trong `weekdays` sinh một buổi lúc `startTime` theo giờ CLB, dài `durationMinutes` phút
+ * - Tuần thứ n (tính từ ngày bắt đầu, mỗi tuần 7 ngày) thuộc giai đoạn đang chiếm tuần n trong giáo án
+ * - Mỗi ngày sinh một buổi của môn có `weekdays` chứa thứ của ngày đó trong giai đoạn, lúc `startTime` theo giờ CLB, dài `durationMinutes` phút
+ * - Ngày không thuộc môn nào của giai đoạn: không có buổi
  * - Thứ theo ISO: 1 là thứ Hai, 7 là Chủ nhật
  *
- * @param items Các môn của giáo án theo thứ tự, kèm số tuần
+ * @param phases Các giai đoạn của giáo án theo thứ tự, mỗi giai đoạn có số tuần và các môn kèm thứ trong tuần
  * @param startDate Ngày bắt đầu lớp dạng YYYY-MM-DD
- * @param weekdays Các thứ trong tuần có buổi tập
  * @param startTime Giờ bắt đầu dạng HH:mm theo giờ CLB
  * @param durationMinutes Thời lượng mỗi buổi (phút)
  * @returns Các buổi tập theo thứ tự thời gian
  */
 export function buildClassSchedule(
-  items: ReadonlyArray<{ subject: TrainingSubjectEntity; weeks: number }>,
+  phases: ReadonlyArray<{
+    weeks: number;
+    subjects: ReadonlyArray<{
+      subject: TrainingSubjectEntity;
+      weekdays: ReadonlyArray<number>;
+    }>;
+  }>,
   startDate: string,
-  weekdays: ReadonlyArray<number>,
   startTime: string,
   durationMinutes: number,
 ): GeneratedSession[] {
   const start = new Date(`${startDate.slice(0, 10)}T00:00:00.000Z`);
   const sessions: GeneratedSession[] = [];
   let week = 0;
-  for (const item of items) {
-    for (let i = 0; i < item.weeks; i += 1) {
+  for (const phase of phases) {
+    for (let i = 0; i < phase.weeks; i += 1) {
       week += 1;
       for (let offset = 0; offset < 7; offset += 1) {
         const day = new Date(start);
         day.setUTCDate(start.getUTCDate() + (week - 1) * 7 + offset);
         const isoWeekday = ((day.getUTCDay() + 6) % 7) + 1;
-        if (!weekdays.includes(isoWeekday)) continue;
+        const item = phase.subjects.find((subject) =>
+          subject.weekdays.includes(isoWeekday),
+        );
+        if (!item) continue;
         const scheduledStartAt = clubDateTimeToInstant(
           day.toISOString().slice(0, 10),
           startTime,

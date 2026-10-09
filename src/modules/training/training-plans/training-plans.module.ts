@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { TrainingPlanPhaseEntity } from '../entities/training-plan-phase.entity';
 import { TrainingPlanSubjectEntity } from '../entities/training-plan-subject.entity';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSharedModule } from '../shared/training-shared.module';
@@ -11,7 +12,11 @@ import { TrainingPlansService } from './training-plans.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TrainingPlanEntity, TrainingPlanSubjectEntity]),
+    TypeOrmModule.forFeature([
+      TrainingPlanEntity,
+      TrainingPlanPhaseEntity,
+      TrainingPlanSubjectEntity,
+    ]),
     TrainingSharedModule,
   ],
   controllers: [TrainingPlansController],

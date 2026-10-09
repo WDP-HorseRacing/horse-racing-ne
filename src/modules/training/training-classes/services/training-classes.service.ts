@@ -26,7 +26,7 @@ import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
 import { TrainingClassEntity } from '../../entities/training-class.entity';
 import { TimeTrialEntity } from '../../entities/time-trial.entity';
-import { TrainingPlanSubjectEntity } from '../../entities/training-plan-subject.entity';
+import { TrainingPlanPhaseEntity } from '../../entities/training-plan-phase.entity';
 import { TrainingPlanEntity } from '../../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../../entities/training-subject.entity';
@@ -58,7 +58,7 @@ export class TrainingClassesService {
    * Xem trước lịch buổi tập sinh từ giáo án của Head Trainer gọi, không lưu gì
    *
    * @param actor Thông tin danh tính từ Access Token
-   * @param body Giáo án, ngày bắt đầu, các thứ trong tuần, giờ bắt đầu và thời lượng
+   * @param body Giáo án, ngày bắt đầu, giờ bắt đầu và thời lượng
    * @returns Promise trả về ngày bắt đầu, ngày kết thúc và các buổi tập theo thứ tự thời gian
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws BadRequestException Nếu không có giáo án hoặc giáo án không thuộc người gọi
@@ -68,7 +68,7 @@ export class TrainingClassesService {
     body: ClassScheduleInputDto,
   ): Promise<ClassSchedulePreviewDto> {
     const caller = await this.access.currentUser(actor);
-    const items = await this.ownedPlanItems(
+    const phases = await this.ownedPlanPhases(
       this.dataSource.manager,
       body.planId,
       caller.id,
@@ -76,11 +76,10 @@ export class TrainingClassesService {
     const startDate = dateOnly(body.startDate);
     return {
       startDate,
-      endDate: classEndDate(startDate, totalPlanWeeks(items)),
+      endDate: classEndDate(startDate, totalPlanWeeks(phases)),
       sessions: buildClassSchedule(
-        items,
+        phases,
         startDate,
-        body.weekdays,
         body.startTime,
         body.durationMinutes,
       ).map((session) => ({
@@ -124,13 +123,13 @@ export class TrainingClassesService {
     }
     const headTrainerId = caller.id;
     const row = await this.dataSource.transaction(async (manager) => {
-      const items = await this.ownedPlanItems(
+      const phases = await this.ownedPlanPhases(
         manager,
         body.planId,
         headTrainerId,
       );
       const startDate = dateOnly(body.startDate);
-      const endDate = classEndDate(startDate, totalPlanWeeks(items));
+      const endDate = classEndDate(startDate, totalPlanWeeks(phases));
       const subjectIds = [...new Set(body.sessions.map((s) => s.subjectId))];
       const subjects = await manager.findBy(TrainingSubjectEntity, {
         id: In(subjectIds),
@@ -419,7 +418,11 @@ export class TrainingClassesService {
         ? classEndDate(
             startDate,
             totalPlanWeeks(
-              await this.ownedPlanItems(manager, row.planId, row.headTrainerId),
+              await this.ownedPlanPhases(
+                manager,
+                row.planId,
+                row.headTrainerId,
+              ),
             ),
           )
         : row.endDate;
@@ -479,28 +482,28 @@ export class TrainingClassesService {
   }
 
   /**
-   * Lấy các môn của giáo án dùng cho lớp theo thứ tự, kèm kiểm giáo án thuộc Head Trainer phụ trách lớp
+   * Lấy các giai đoạn của giáo án dùng cho lớp theo thứ tự, kèm kiểm giáo án thuộc Head Trainer phụ trách lớp
    *
    * @param manager EntityManager dùng để query
    * @param planId UUID của giáo án
    * @param headTrainerId UUID của Head Trainer phụ trách lớp
-   * @returns Promise trả về các môn của giáo án kèm số tuần, theo thứ tự
+   * @returns Promise trả về các giai đoạn của giáo án kèm số tuần và các môn theo thứ trong tuần, theo thứ tự
    * @throws BadRequestException Nếu không có giáo án hoặc giáo án không thuộc Head Trainer phụ trách lớp
    */
-  private async ownedPlanItems(
+  private async ownedPlanPhases(
     manager: EntityManager,
     planId: string,
     headTrainerId: string | null,
-  ): Promise<TrainingPlanSubjectEntity[]> {
+  ): Promise<TrainingPlanPhaseEntity[]> {
     const plan = await manager.findOne(TrainingPlanEntity, {
       where: { id: planId },
-      relations: { subjects: { subject: true } },
+      relations: { phases: { subjects: { subject: true } } },
     });
     if (!plan || plan.headTrainerId !== headTrainerId) {
       throw new BadRequestException(
         'Giáo án không thuộc Head Trainer phụ trách lớp',
       );
     }
-    return [...plan.subjects].sort((a, b) => a.position - b.position);
+    return [...plan.phases].sort((a, b) => a.position - b.position);
   }
 }

@@ -1,9 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  ArrayUnique,
-  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -27,21 +23,6 @@ export class ClassScheduleInputDto {
   @ApiProperty({ format: 'date', description: 'Ngày bắt đầu lớp' })
   @IsDateString()
   startDate!: string;
-
-  @ApiProperty({
-    type: [Number],
-    minItems: 1,
-    maxItems: 7,
-    description: 'Các thứ có buổi tập theo ISO: 1 là thứ Hai, 7 là Chủ nhật',
-  })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(7)
-  @ArrayUnique()
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  @Max(7, { each: true })
-  weekdays!: number[];
 
   @ApiProperty({
     example: '06:00',
