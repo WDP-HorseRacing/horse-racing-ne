@@ -43,6 +43,8 @@ function setup(
   );
   const manager = {
     findOne: jest.fn().mockResolvedValue(enrollment),
+    find: jest.fn().mockResolvedValue([]),
+    create: jest.fn((_entity: unknown, value: unknown) => value),
     save,
     getRepository: jest.fn(() => ({ createQueryBuilder: () => qb })),
   } as unknown as EntityManager;
@@ -192,4 +194,74 @@ describe('TrainingClassEnrollmentsService.create', () => {
       expect(save).not.toHaveBeenCalled();
     },
   );
+
+  describe('enrolledAt theo ngày lịch CLB', () => {
+    const club = {
+      id: 'c1',
+      status: TrainingClassStatus.ACTIVE,
+      maxHorses: 0,
+      headTrainerId: 'ht',
+      startDate: '2026-10-05',
+      endDate: '2026-10-10',
+    };
+
+    it.each([
+      ['06:30 giờ VN ngày khai giảng', '2026-10-04T23:30:00.000Z'],
+      ['00:00 giờ VN ngày khai giảng', '2026-10-04T17:00:00.000Z'],
+      ['23:59 giờ VN ngày kết thúc', '2026-10-10T16:59:00.000Z'],
+    ])('nhận ghi danh lúc %s', async (_label, enrolledAt) => {
+      const { service, access, save } = setup(buildEnrollment(), []);
+      access.lockedTrainingClass.mockResolvedValue(club);
+      jest
+        .spyOn(
+          service as unknown as {
+            addToFuturePublishedSessions: () => Promise<void>;
+          },
+          'addToFuturePublishedSessions',
+        )
+        .mockResolvedValue();
+
+      await service.create(actor, 'c1', { horseId: 'h1', enrolledAt });
+
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['23:59:59 giờ VN trước ngày khai giảng', '2026-10-04T16:59:59.000Z'],
+      ['00:00 giờ VN ngày sau ngày kết thúc', '2026-10-10T17:00:00.000Z'],
+    ])('từ chối ghi danh lúc %s bằng 409', async (_label, enrolledAt) => {
+      const { service, access, save } = setup(buildEnrollment(), []);
+      access.lockedTrainingClass.mockResolvedValue(club);
+
+      await expect(
+        service.create(actor, 'c1', { horseId: 'h1', enrolledAt }),
+      ).rejects.toThrow('enrolledAt phải nằm trong thời gian class');
+      expect(save).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('TrainingClassEnrollmentsService.leave theo ngày lịch CLB', () => {
+  function enrollmentEndingOn(endDate: string) {
+    const enrollment = buildEnrollment();
+    enrollment.trainingClass = { headTrainerId: 'ht', endDate };
+    return enrollment;
+  }
+
+  it('nhận leftAt lúc 23:59 giờ VN ngày kết thúc', async () => {
+    const { service } = setup(enrollmentEndingOn('2026-12-31'), []);
+
+    await expect(
+      service.leave(actor, 'e1', { leftAt: '2026-12-31T16:59:00.000Z' }),
+    ).resolves.toBeDefined();
+  });
+
+  it('từ chối leftAt lúc 00:00 giờ VN ngày sau ngày kết thúc bằng 409', async () => {
+    const { service, save } = setup(enrollmentEndingOn('2026-12-31'), []);
+
+    await expect(
+      service.leave(actor, 'e1', { leftAt: '2026-12-31T17:00:00.000Z' }),
+    ).rejects.toThrow('leftAt phải nằm trong thời gian class');
+    expect(save).not.toHaveBeenCalled();
+  });
 });

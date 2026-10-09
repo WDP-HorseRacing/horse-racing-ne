@@ -2,6 +2,10 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
+import {
+  clubDateTimeToInstant,
+  shiftDays,
+} from '../../../../common/utils/club-date';
 import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
 import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
 import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
@@ -104,8 +108,9 @@ export class TrainingClassEnrollmentsService {
         ? new Date(body.enrolledAt)
         : new Date();
       if (
-        enrolledAt < new Date(`${trainingClass.startDate}T00:00:00.000Z`) ||
-        enrolledAt > new Date(`${trainingClass.endDate}T23:59:59.999Z`)
+        enrolledAt < clubDateTimeToInstant(trainingClass.startDate, '00:00') ||
+        enrolledAt >=
+          clubDateTimeToInstant(shiftDays(trainingClass.endDate, 1), '00:00')
       ) {
         throw new ConflictException(
           'enrolledAt phải nằm trong thời gian class',
@@ -165,7 +170,10 @@ export class TrainingClassEnrollmentsService {
       if (leftAt < row.enrolledAt) {
         throw new ConflictException('leftAt không hợp lệ');
       }
-      if (leftAt > new Date(`${row.trainingClass.endDate}T23:59:59.999Z`)) {
+      if (
+        leftAt >=
+        clubDateTimeToInstant(shiftDays(row.trainingClass.endDate, 1), '00:00')
+      ) {
         throw new ConflictException('leftAt phải nằm trong thời gian class');
       }
       row.leftAt = leftAt;

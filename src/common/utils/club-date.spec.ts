@@ -1,6 +1,7 @@
 import {
   clubDateTimeToInstant,
   clubToday,
+  shiftDays,
   subtractYears,
   toClubDate,
   toDisplayDate,
@@ -49,5 +50,12 @@ describe('clubDateTimeToInstant', () => {
     expect(clubDateTimeToInstant('2026-10-05', '15:30').toISOString()).toBe(
       '2026-10-05T08:30:00.000Z',
     );
+  });
+});
+
+describe('shiftDays', () => {
+  it('dời qua ranh giới tháng và năm, cả hai chiều', () => {
+    expect(shiftDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(shiftDays('2026-03-01', -1)).toBe('2026-02-28');
   });
 });
