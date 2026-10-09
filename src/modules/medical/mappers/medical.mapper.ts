@@ -34,6 +34,7 @@ import type { MedicalCostReportRow } from '../medical-records/medical-cases.repo
 import { healthPriority } from '../policies/medical.policy';
 import type { HorseCheckupAnchorRow } from '../types/medical-checkup.types';
 import type { HealthStatusChange } from '../../horses/shared/horse-health.service';
+import type { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 
 /**
  * Chuyển đơn thuốc sang DTO, chỉ thêm liều lượng và tần suất khi người gọi được xem.
@@ -348,13 +349,18 @@ export function toHealthHistoryItem(
 /**
  * Dựng khối đàn ngựa của bảng điều khiển y tế
  *
- * - Đếm số ngựa theo từng trạng thái sức khỏe
+ * - Đếm số ngựa theo từng trạng thái sức khỏe trên toàn bộ rows, không phụ thuộc healthStatus
+ * - Danh sách ngựa chỉ giữ ngựa có trạng thái sức khỏe bằng healthStatus nếu có truyền
  * - Xếp ngựa theo mức ưu tiên sức khỏe, cùng mức thì theo tên tiếng Việt
  *
- * @param rows Đàn ngựa kèm mốc tính hạn
+ * @param rows Đàn ngựa kèm mốc tính hạn, chưa lọc theo trạng thái sức khỏe
+ * @param healthStatus Trạng thái sức khỏe để lọc danh sách ngựa; bỏ trống để lấy đủ
  * @returns HerdBlockDto gồm số đếm và danh sách ngựa
  */
-export function toHerdBlock(rows: HorseCheckupAnchorRow[]): HerdBlockDto {
+export function toHerdBlock(
+  rows: HorseCheckupAnchorRow[],
+  healthStatus?: HorseHealthStatus,
+): HerdBlockDto {
   const counts: HerdCountsDto = {
     QUARANTINED: 0,
     INJURED: 0,
@@ -363,6 +369,7 @@ export function toHerdBlock(rows: HorseCheckupAnchorRow[]): HerdBlockDto {
   };
   for (const row of rows) counts[row.healthStatus] += 1;
   const horses = rows
+    .filter((row) => !healthStatus || row.healthStatus === healthStatus)
     .map((row) => ({
       horseId: row.horseId,
       horseName: row.horseName,

@@ -86,13 +86,10 @@ describe('MedicalDashboardService', () => {
     expect(result.checkups.map((item) => item.horseId)).toEqual(['Cúc', 'An']);
   });
 
-  it('applies the barn and health filters to every block', async () => {
-    shared.herdCheckupAnchors.mockResolvedValue([
-      horse('Cúc', HorseHealthStatus.INJURED),
-    ]);
+  it('filters the barn in the query and the health status in memory for every block', async () => {
     const filter = { barnId: 'b2', healthStatus: HorseHealthStatus.INJURED };
     await service.get({ sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] }, filter);
-    expect(shared.herdCheckupAnchors).toHaveBeenCalledWith(filter);
+    expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({ barnId: 'b2' });
     expect(shared.herdCheckupAnchors).toHaveBeenCalledTimes(1);
     expect(checkups.checkupItemsFor).toHaveBeenCalledWith(
       [expect.objectContaining({ horseId: 'Cúc' })],
@@ -102,6 +99,20 @@ describe('MedicalDashboardService', () => {
     expect(shared.dueCareSchedules).toHaveBeenCalledWith(expect.any(String), [
       'Cúc',
     ]);
+  });
+
+  it('keeps all four counts when the health status filter is set, and lists only that status', async () => {
+    const result = await service.get(
+      { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] },
+      { healthStatus: HorseHealthStatus.INJURED },
+    );
+    expect(result.herd.counts).toEqual({
+      QUARANTINED: 1,
+      INJURED: 1,
+      UNDER_OBSERVATION: 1,
+      ELIGIBLE: 2,
+    });
+    expect(result.herd.horses.map((item) => item.horseId)).toEqual(['Cúc']);
   });
 
   it('skips the request query when no horse matches', async () => {

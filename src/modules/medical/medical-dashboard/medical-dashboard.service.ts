@@ -25,11 +25,11 @@ export class MedicalDashboardService {
   /**
    * Bảng điều khiển y tế gồm bốn khối, tính trực tiếp mỗi lần mở, không có chi phí
    *
-   * - Sơ đồ đàn: đếm theo trạng thái sức khỏe, mỗi con kèm khu và ô chuồng để vẽ theo chuồng trại, Cách ly và Chấn thương lên đầu
+   * - Sơ đồ đàn: đếm theo trạng thái sức khỏe trên cả đàn thuộc phạm vi khu (không bị lọc theo trạng thái sức khỏe); danh sách mỗi con kèm khu và ô chuồng để vẽ theo chuồng trại, Cách ly và Chấn thương lên đầu
    * - Lịch khám: các con Quá hạn và Đến hạn; kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong CHECKUP_DUE_SOON_DAYS ngày tới
    * - Bệnh án đang mở kèm buổi khám gần nhất và ngày hẹn tái khám
    * - Yêu cầu khám đang chờ, Khẩn lên trước
-   * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu và trạng thái sức khỏe áp cho cả bốn khối
+   * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu áp cho cả bốn khối; bộ lọc trạng thái sức khỏe áp cho danh sách ngựa của sơ đồ đàn và ba khối còn lại, không áp cho số đếm
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Lọc theo khu và trạng thái sức khỏe
@@ -41,9 +41,13 @@ export class MedicalDashboardService {
     query: MedicalDashboardQueryDto,
   ): Promise<MedicalDashboardResponseDto> {
     await this.horseAccess.currentUser(actor);
-    const filter = { barnId: query.barnId, healthStatus: query.healthStatus };
     const today = toClubDate(new Date());
-    const rows = await this.checkups.herdCheckupAnchors(filter);
+    const herd = await this.checkups.herdCheckupAnchors({
+      barnId: query.barnId,
+    });
+    const rows = query.healthStatus
+      ? herd.filter((row) => row.healthStatus === query.healthStatus)
+      : herd;
     const horseIds = rows.map((row) => row.horseId);
     const [checkups, careSchedules, openCases, pending] = await Promise.all([
       this.checkups.checkupItemsFor(rows, today),
@@ -67,7 +71,7 @@ export class MedicalDashboardService {
     ]);
 
     return {
-      herd: toHerdBlock(rows),
+      herd: toHerdBlock(herd, query.healthStatus),
       checkups: checkups.filter(
         (item) => item.dueStatus !== CheckupDueStatus.OK,
       ),
