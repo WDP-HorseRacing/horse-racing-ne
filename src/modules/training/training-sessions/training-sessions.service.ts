@@ -4,7 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import type { Actor } from '../../../common/types/actor';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
@@ -15,6 +15,7 @@ import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
   PublishClassSessionsDto,
+  PublishedSessionResponseDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
 } from '../dto/training-session.dto';
@@ -29,17 +30,23 @@ import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
-import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
 import {
+  toPublishedSessionResponse,
+  toTrainingSessionResponse,
+} from '../mappers/training-session.mapper';
+import {
+  assertNoOverlappingClassSession,
   assertSessionCancellable,
   assertSessionEditable,
   assertSessionPublishable,
   assertClassOpenForSessions,
   assertSessionWindowInClass,
   eligibilityForSession,
+  findOverlappingHolding,
   initialParticipantEligibility,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
+import type { SkippedHorse } from '../types/training-session.types';
 
 @Injectable()
 export class TrainingSessionsService {
@@ -88,7 +95,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập vừa tạo ở trạng thái DRAFT
    * @throws ForbiddenException Nếu người gọi không quản lý lớp
    * @throws NotFoundException Nếu không có lớp
-   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy
+   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, hoặc buổi trùng giờ với buổi chưa hủy khác của lớp
    * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, hoặc môn học không tồn tại
    */
   async createSession(
@@ -120,6 +127,15 @@ export class TrainingSessionsService {
       ) {
         throw new BadRequestException('Môn học không tồn tại');
       }
+      assertNoOverlappingClassSession(
+        {
+          scheduledStartAt: new Date(body.scheduledStartAt),
+          scheduledEndAt: new Date(body.scheduledEndAt),
+        },
+        await manager.find(TrainingSessionEntity, {
+          where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
+        }),
+      );
       return manager.save(
         manager.create(TrainingSessionEntity, {
           classId,
@@ -148,7 +164,7 @@ export class TrainingSessionsService {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const session = await this.access.lockedSession(manager, sessionId);
-      const trainingClass = await this.access.findTrainingClass(
+      const trainingClass = await this.access.lockedTrainingClass(
         manager,
         session.classId,
       );
@@ -191,6 +207,18 @@ export class TrainingSessionsService {
       ) {
         throw new BadRequestException('Môn học không tồn tại');
       }
+      if (body.scheduledStartAt || body.scheduledEndAt) {
+        assertNoOverlappingClassSession(
+          { scheduledStartAt: start, scheduledEndAt: end },
+          await manager.find(TrainingSessionEntity, {
+            where: {
+              classId: session.classId,
+              id: Not(sessionId),
+              status: Not(TrainingSessionStatus.CANCELLED),
+            },
+          }),
+        );
+      }
       Object.assign(session, {
         subjectId: body.subjectId ?? session.subjectId,
         name: body.name ?? session.name,
@@ -209,11 +237,23 @@ export class TrainingSessionsService {
     return toTrainingSessionResponse(row);
   }
 
+  /**
+   * Publish một buổi nháp của lớp và tạo lượt tập cho từng ngựa đang học lớp
+   *
+   * - Ngựa đang giữ chỗ ở lớp khác trùng giờ với buổi: không tạo lượt, trả trong skippedHorses
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @returns Promise trả về buổi vừa publish kèm các ngựa bị bỏ qua vì trùng giờ
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
+   * @throws NotFoundException Nếu không có buổi tập hoặc lớp
+   * @throws ConflictException Nếu buổi không còn nháp, lớp không còn ACTIVE, hoặc buổi chạy thử chưa cấu hình chạy thử
+   */
   async publishSession(
     actor: Actor,
     sessionId: string,
-  ): Promise<TrainingSessionResponseDto> {
-    const row = await this.dataSource.transaction(async (manager) => {
+  ): Promise<PublishedSessionResponseDto> {
+    const published = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const session = await this.access.lockedSession(manager, sessionId);
       const trainingClass = await this.access.lockedTrainingClass(
@@ -233,7 +273,7 @@ export class TrainingSessionsService {
         session,
       );
     });
-    return toTrainingSessionResponse(row);
+    return toPublishedSessionResponse(published.session, published.skipped);
   }
 
   /**
@@ -246,7 +286,7 @@ export class TrainingSessionsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param classId UUID của lớp
    * @param body Khoảng ngày tùy chọn
-   * @returns Promise trả về các buổi vừa publish, sớm nhất trước
+   * @returns Promise trả về các buổi vừa publish, sớm nhất trước, mỗi buổi kèm ngựa bị bỏ qua vì trùng giờ
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có lớp
    * @throws BadRequestException Nếu from sau to
@@ -256,7 +296,7 @@ export class TrainingSessionsService {
     actor: Actor,
     classId: string,
     body: PublishClassSessionsDto,
-  ): Promise<TrainingSessionResponseDto[]> {
+  ): Promise<PublishedSessionResponseDto[]> {
     if (body.from && body.to && body.from > body.to) {
       throw new BadRequestException('from phải nhỏ hơn hoặc bằng to');
     }
@@ -298,7 +338,10 @@ export class TrainingSessionsService {
       const ordered = [...drafts].sort(
         (a, b) => a.scheduledStartAt.getTime() - b.scheduledStartAt.getTime(),
       );
-      const published: TrainingSessionEntity[] = [];
+      const published: Array<{
+        session: TrainingSessionEntity;
+        skipped: SkippedHorse[];
+      }> = [];
       for (const session of ordered) {
         published.push(
           await this.publishLocked(
@@ -312,18 +355,23 @@ export class TrainingSessionsService {
       }
       return published;
     });
-    return rows.map(toTrainingSessionResponse);
+    return rows.map((row) =>
+      toPublishedSessionResponse(row.session, row.skipped),
+    );
   }
 
   /**
    * Publish một buổi đã khóa: kiểm trạng thái buổi và lớp, cấu hình chạy thử, rồi tạo lượt tập cho từng ngựa đang học lớp
+   *
+   * - Khóa row từng con ngựa trước khi tạo lượt
+   * - Ngựa đang giữ chỗ ở lớp khác trùng giờ với buổi: không tạo lượt, đưa vào danh sách bị bỏ qua
    *
    * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
    * @param callerId UUID của người gọi
    * @param trainingClass Lớp của buổi, đã khóa
    * @param session Buổi tập, đã khóa
-   * @returns Promise trả về buổi sau khi chuyển SCHEDULED
+   * @returns Promise trả về buổi sau khi chuyển SCHEDULED và các ngựa bị bỏ qua vì trùng giờ
    * @throws ConflictException Nếu buổi không còn nháp, lớp không còn ACTIVE, hoặc buổi chạy thử chưa có cấu hình chạy thử
    * @throws ForbiddenException Nếu Head Trainer gặp ngựa ngoài khu mình phụ trách
    */
@@ -333,7 +381,7 @@ export class TrainingSessionsService {
     callerId: string,
     trainingClass: TrainingClassEntity,
     session: TrainingSessionEntity,
-  ): Promise<TrainingSessionEntity> {
+  ): Promise<{ session: TrainingSessionEntity; skipped: SkippedHorse[] }> {
     assertSessionPublishable(session.status);
     if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
       throw new ConflictException('Class không còn ACTIVE');
@@ -365,6 +413,7 @@ export class TrainingSessionsService {
       .orderBy('enrollment.horse_id', 'ASC')
       .getMany();
 
+    const skipped: SkippedHorse[] = [];
     for (const enrollment of enrollments) {
       const horse = await this.access.lockedHorse(
         manager,
@@ -381,6 +430,23 @@ export class TrainingSessionsService {
         horseId: horse.id,
       });
       if (existing) continue;
+      const clash = findOverlappingHolding(
+        session,
+        await this.access.horseSessionHoldings(
+          manager,
+          horse.id,
+          trainingClass.id,
+        ),
+      );
+      if (clash) {
+        skipped.push({
+          horseId: horse.id,
+          horseName: horse.name,
+          conflictClassCode: clash.classCode,
+          conflictStartAt: clash.scheduledStartAt,
+        });
+        continue;
+      }
       const activeLock = await manager.findOneBy(TrainingLockEntity, {
         horseId: horse.id,
         status: TrainingLockStatus.ACTIVE,
@@ -410,7 +476,7 @@ export class TrainingSessionsService {
       );
     }
     session.status = TrainingSessionStatus.SCHEDULED;
-    return manager.save(session);
+    return { session: await manager.save(session), skipped };
   }
 
   async cancelSession(

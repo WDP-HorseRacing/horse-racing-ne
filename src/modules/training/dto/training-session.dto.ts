@@ -4,7 +4,7 @@ import {
   OmitType,
   PartialType,
 } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -181,4 +181,36 @@ export class TrainingSessionResponseDto {
   @ApiPropertyOptional()
   @Expose()
   cancelReason!: string | null;
+}
+
+export class SkippedHorseDto {
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  horseId!: string;
+
+  @ApiProperty()
+  @Expose()
+  horseName!: string;
+
+  @ApiProperty({ description: 'Mã lớp có buổi trùng giờ' })
+  @Expose()
+  conflictClassCode!: string;
+
+  @ApiProperty({
+    format: 'date-time',
+    description: 'Giờ bắt đầu của buổi trùng giờ',
+  })
+  @Expose()
+  conflictStartAt!: Date;
+}
+
+export class PublishedSessionResponseDto extends TrainingSessionResponseDto {
+  @ApiProperty({
+    type: [SkippedHorseDto],
+    description:
+      'Ngựa không được tạo lượt ở buổi này vì trùng giờ với buổi ở lớp khác',
+  })
+  @Expose()
+  @Type(() => SkippedHorseDto)
+  skippedHorses!: SkippedHorseDto[];
 }

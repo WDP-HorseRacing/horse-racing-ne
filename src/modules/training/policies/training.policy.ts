@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { toClubDate } from '../../../common/utils/club-date';
+import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
+import { toClubDate, toDisplayDate } from '../../../common/utils/club-date';
 import { EligibilityReason } from '../../horses/enums/eligibility-reason.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
@@ -20,6 +21,10 @@ import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import type {
+  HorseSessionHolding,
+  SessionWindow,
+} from '../types/training-session.types';
 
 export function assertClassActivatable(status: TrainingClassStatus): void {
   if (status !== TrainingClassStatus.DRAFT) {
@@ -87,6 +92,81 @@ export function assertSessionWindowInClass(
   const endDay = toClubDate(new Date(end));
   if (startDay < dateOnly(startDate) || endDay > dateOnly(endDate)) {
     throw new BadRequestException('Buổi tập phải nằm trong thời gian của lớp');
+  }
+}
+
+/**
+ * Kiểm hai buổi tập có trùng giờ không
+ *
+ * - Mỗi buổi tính từ giờ bắt đầu tới trước giờ kết thúc; buổi này kết thúc đúng lúc buổi kia bắt đầu thì không trùng
+ *
+ * @param a Khoảng giờ của buổi thứ nhất
+ * @param b Khoảng giờ của buổi thứ hai
+ * @returns true nếu hai buổi trùng giờ
+ */
+export function sessionWindowsOverlap(
+  a: SessionWindow,
+  b: SessionWindow,
+): boolean {
+  return (
+    a.scheduledStartAt < b.scheduledEndAt &&
+    b.scheduledStartAt < a.scheduledEndAt
+  );
+}
+
+/**
+ * Chặn buổi tập trùng giờ với buổi khác của cùng lớp
+ *
+ * @param window Khoảng giờ của buổi đang thêm hoặc sửa
+ * @param others Các buổi chưa hủy khác của lớp
+ * @throws ConflictException Nếu trùng giờ với một buổi; câu báo kèm giờ và ngày bắt đầu của buổi trùng theo giờ CLB
+ */
+export function assertNoOverlappingClassSession(
+  window: SessionWindow,
+  others: ReadonlyArray<SessionWindow>,
+): void {
+  const clash = others.find((other) => sessionWindowsOverlap(window, other));
+  if (clash) {
+    throw new ConflictException(
+      `Trùng giờ với buổi tập lúc ${formatClubDateTime(clash.scheduledStartAt)} của lớp`,
+    );
+  }
+}
+
+/**
+ * Tìm buổi ngựa đang giữ chỗ trùng giờ với một buổi tập
+ *
+ * @param window Khoảng giờ của buổi tập cần xét
+ * @param holdings Các buổi ngựa đang giữ chỗ
+ * @returns Buổi giữ chỗ trùng giờ đầu tiên, undefined nếu không có
+ */
+export function findOverlappingHolding(
+  window: SessionWindow,
+  holdings: ReadonlyArray<HorseSessionHolding>,
+): HorseSessionHolding | undefined {
+  return holdings.find((holding) => sessionWindowsOverlap(window, holding));
+}
+
+/**
+ * Chặn ghi danh khi ngựa đã giữ chỗ ở lớp khác trùng giờ với một buổi của lớp đang ghi danh
+ *
+ * @param horseName Tên ngựa
+ * @param sessions Các buổi của lớp sẽ tạo lượt cho ngựa
+ * @param holdings Các buổi ngựa đang giữ chỗ ở lớp khác
+ * @throws ConflictException Nếu một buổi trùng giờ với buổi ngựa đang giữ chỗ
+ */
+export function assertNoHoldingOverlap(
+  horseName: string,
+  sessions: ReadonlyArray<SessionWindow>,
+  holdings: ReadonlyArray<HorseSessionHolding>,
+): void {
+  for (const session of sessions) {
+    const clash = findOverlappingHolding(session, holdings);
+    if (clash) {
+      throw new ConflictException(
+        `Ngựa ${horseName} đã có buổi tập trùng giờ ở lớp ${clash.classCode}`,
+      );
+    }
   }
 }
 
@@ -327,4 +407,20 @@ export function assertClassOpenForSessions(status: TrainingClassStatus): void {
       'Lớp đã kết thúc, không thêm hoặc sửa buổi tập được',
     );
   }
+}
+
+/**
+ * Định dạng một thời điểm theo giờ CLB để đưa vào câu báo
+ *
+ * @param value Thời điểm cần định dạng
+ * @returns Chuỗi dạng "HH:mm ngày dd/mm/yyyy"
+ */
+function formatClubDateTime(value: Date): string {
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone: CLUB_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(value);
+  return `${time} ngày ${toDisplayDate(toClubDate(value))}`;
 }

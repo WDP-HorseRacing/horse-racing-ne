@@ -26,6 +26,7 @@ import { toHorseEnrollmentResponse } from '../../mappers/horse-enrollment.mapper
 import { TrainingAccessService } from '../../shared/training-access.service';
 import {
   assertHorseEnrollable,
+  assertNoHoldingOverlap,
   eligibilityForSession,
   initialParticipantEligibility,
 } from '../../policies/training.policy';
@@ -211,6 +212,15 @@ export class TrainingClassEnrollmentsService {
       .andWhere('session.scheduled_start_at > :now', { now })
       .orderBy('session.scheduled_start_at', 'ASC')
       .getMany();
+    assertNoHoldingOverlap(
+      horse.name,
+      sessions,
+      await this.access.horseSessionHoldings(
+        manager,
+        horse.id,
+        enrollment.classId,
+      ),
+    );
     for (const session of sessions) {
       const exists = await manager.findOneBy(SessionParticipantEntity, {
         sessionId: session.id,

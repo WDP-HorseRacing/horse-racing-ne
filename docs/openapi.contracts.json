@@ -7123,7 +7123,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                    "$ref": "#/components/schemas/PublishedSessionResponseDto"
                   }
                 }
               }
@@ -7238,7 +7238,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                  "$ref": "#/components/schemas/PublishedSessionResponseDto"
                 }
               }
             }
@@ -14594,6 +14594,131 @@
             "description": "Chỉ publish buổi tới hết ngày này (lịch CLB); bỏ trống là không giới hạn"
           }
         }
+      },
+      "SkippedHorseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "conflictClassCode": {
+            "type": "string",
+            "description": "Mã lớp có buổi trùng giờ"
+          },
+          "conflictStartAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Giờ bắt đầu của buổi trùng giờ"
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "conflictClassCode",
+          "conflictStartAt"
+        ]
+      },
+      "PublishedSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ]
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ],
+            "description": "Cường độ buổi tập"
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "description": "Cự ly dự kiến của buổi tập (mét)"
+          },
+          "scheduledStartAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scheduledEndAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "location": {
+            "type": "object"
+          },
+          "surface": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "object"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "cancelledAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "cancelledBy": {
+            "type": "object",
+            "format": "uuid"
+          },
+          "cancelReason": {
+            "type": "object"
+          },
+          "skippedHorses": {
+            "description": "Ngựa không được tạo lượt ở buổi này vì trùng giờ với buổi ở lớp khác",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkippedHorseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "classId",
+          "name",
+          "sessionType",
+          "intensity",
+          "plannedDistanceM",
+          "scheduledStartAt",
+          "scheduledEndAt",
+          "status",
+          "skippedHorses"
+        ]
       },
       "UpdateTrainingSessionDto": {
         "type": "object",

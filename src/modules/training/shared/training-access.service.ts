@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In, Not } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -18,6 +18,18 @@ import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
+import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import type { HorseSessionHolding } from '../types/training-session.types';
+
+const SEAT_HOLDING_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.PRESENT,
+  SessionParticipantStatus.READY,
+  SessionParticipantStatus.ONGOING,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
+];
 
 @Injectable()
 export class TrainingAccessService {
@@ -106,6 +118,46 @@ export class TrainingAccessService {
     });
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
     return horse;
+  }
+
+  /**
+   * Lấy các buổi tập ngựa đang giữ chỗ ở những lớp khác
+   *
+   * - Lượt giữ chỗ: PLANNED, PRESENT, READY, ONGOING, CANCELLED_BY_LOCK, INELIGIBLE
+   * - Bỏ buổi đã hủy hoặc đã hoàn thành
+   *
+   * @param manager EntityManager dùng để query
+   * @param horseId UUID của ngựa
+   * @param excludeClassId UUID lớp không xét
+   * @returns Promise trả về các buổi giữ chỗ kèm mã lớp
+   */
+  async horseSessionHoldings(
+    manager: EntityManager,
+    horseId: string,
+    excludeClassId: string,
+  ): Promise<HorseSessionHolding[]> {
+    const participants = await manager.find(SessionParticipantEntity, {
+      where: {
+        horseId,
+        status: In(SEAT_HOLDING_PARTICIPANT_STATUSES),
+        session: {
+          classId: Not(excludeClassId),
+          status: Not(
+            In([
+              TrainingSessionStatus.CANCELLED,
+              TrainingSessionStatus.COMPLETED,
+            ]),
+          ),
+        },
+      },
+      relations: { session: { trainingClass: true } },
+    });
+    return participants.map(({ session }) => ({
+      sessionId: session.id,
+      classCode: session.trainingClass.code,
+      scheduledStartAt: session.scheduledStartAt,
+      scheduledEndAt: session.scheduledEndAt,
+    }));
   }
 
   async findTrainingClass(

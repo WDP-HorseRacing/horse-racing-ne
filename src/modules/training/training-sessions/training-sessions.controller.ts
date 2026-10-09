@@ -7,6 +7,7 @@ import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
   PublishClassSessionsDto,
+  PublishedSessionResponseDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
 } from '../dto/training-session.dto';
@@ -44,7 +45,7 @@ export class TrainingSessionsController {
   @ApiOperation({
     summary: 'Publish một lần mọi buổi nháp của lớp, hoặc trong một khoảng ngày',
   })
-  @ApiOkResponse({ type: [TrainingSessionResponseDto] })
+  @ApiOkResponse({ type: [PublishedSessionResponseDto] })
   publishMany(
     @CurrentUser() actor: Actor,
     @Param('classId', ParseUUIDPipe) classId: string,
@@ -72,7 +73,7 @@ export class TrainingSessionsController {
 
   @Access([UserRole.HEAD_TRAINER])
   @Post('training-sessions/:sessionId/publish')
-  @ApiOkResponse({ type: TrainingSessionResponseDto })
+  @ApiOkResponse({ type: PublishedSessionResponseDto })
   publish(@CurrentUser() actor: Actor, @Param('sessionId', ParseUUIDPipe) sessionId: string) {
     return this.sessions.publishSession(actor, sessionId);
   }

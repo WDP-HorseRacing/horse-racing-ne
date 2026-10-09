@@ -77,6 +77,11 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 3. Publish buổi: lớp phải đang chạy; buổi chạy thử phải có cấu hình chạy thử. Publish tạo lượt tập cho từng ngựa đang học lớp.
 4. Publish nhiều buổi một lần: mọi buổi nháp của lớp, hoặc chỉ các buổi có ngày bắt đầu (lịch CLB) trong khoảng `from`–`to` (ví dụ một tuần). Một buổi lỗi thì không buổi nào được publish.
 5. Ghi danh ngựa vào lớp đang chạy: tạo lượt cho các buổi đã publish trong tương lai.
+6. Trùng giờ: mỗi buổi tính từ giờ bắt đầu tới trước giờ kết thúc; buổi này kết thúc đúng lúc buổi kia bắt đầu thì không trùng.
+   1. Thêm buổi hoặc đổi giờ buổi trùng với buổi chưa hủy khác của cùng lớp: chặn 409, câu báo kèm giờ và ngày của buổi trùng.
+   2. Một ngựa không có hai lượt giữ chỗ trùng giờ. Lượt giữ chỗ: Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập, Hủy do khóa, Không đủ điều kiện (hai trạng thái sau còn có thể mở lại, mục 5 luật 6), ở buổi chưa hủy, chưa hoàn thành. Vì ngựa chỉ học lớp của Head Trainer phụ trách khu mình, trùng giờ xảy ra giữa các lớp của cùng một Head Trainer.
+   3. Ghi danh: ngựa đang giữ chỗ ở lớp khác trùng giờ với một buổi đã publish chưa tới giờ của lớp này thì chặn 409 cả thao tác ("Ngựa {tên} đã có buổi tập trùng giờ ở lớp {mã lớp}").
+   4. Publish (một buổi hoặc nhiều buổi): ngựa trùng giờ thì không tạo lượt ở buổi đó, các ngựa khác bình thường, không báo lỗi. Mỗi buổi trong response kèm `skippedHorses` (ngựa, mã lớp và giờ bắt đầu của buổi trùng).
 
 ### 5. Ngựa có được tập buổi này không
 

@@ -11,6 +11,10 @@ import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   assertClassActivatable,
+  assertNoHoldingOverlap,
+  assertNoOverlappingClassSession,
+  findOverlappingHolding,
+  sessionWindowsOverlap,
   assertParticipantAbsent,
   assertParticipantComplete,
   assertSessionOperational,
@@ -292,4 +296,90 @@ describe('assertClassOpenForSessions', () => {
       );
     },
   );
+});
+
+describe('session overlap policy', () => {
+  const window = (start: string, end: string) => ({
+    scheduledStartAt: new Date(start),
+    scheduledEndAt: new Date(end),
+  });
+  const base = window('2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z');
+
+  it('treats windows that only touch at the edge as not overlapping', () => {
+    expect(
+      sessionWindowsOverlap(
+        base,
+        window('2026-10-10T02:00:00Z', '2026-10-10T03:00:00Z'),
+      ),
+    ).toBe(false);
+    expect(
+      sessionWindowsOverlap(
+        base,
+        window('2026-10-10T00:00:00Z', '2026-10-10T01:00:00Z'),
+      ),
+    ).toBe(false);
+  });
+
+  it('detects partial and nested overlaps', () => {
+    expect(
+      sessionWindowsOverlap(
+        base,
+        window('2026-10-10T01:59:00Z', '2026-10-10T03:00:00Z'),
+      ),
+    ).toBe(true);
+    expect(
+      sessionWindowsOverlap(
+        base,
+        window('2026-10-10T01:15:00Z', '2026-10-10T01:30:00Z'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects a class session overlapping another one with the club time of the clash', () => {
+    expect(() =>
+      assertNoOverlappingClassSession(base, [
+        window('2026-10-09T01:00:00Z', '2026-10-09T02:00:00Z'),
+        window('2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+      ]),
+    ).toThrow(
+      new ConflictException(
+        'Trùng giờ với buổi tập lúc 08:30 ngày 10/10/2026 của lớp',
+      ),
+    );
+  });
+
+  it('accepts a class session next to the others', () => {
+    expect(() =>
+      assertNoOverlappingClassSession(base, [
+        window('2026-10-10T02:00:00Z', '2026-10-10T03:00:00Z'),
+      ]),
+    ).not.toThrow();
+  });
+
+  it('finds the holding that overlaps a session', () => {
+    const holding = {
+      ...window('2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+      sessionId: 's2',
+      classCode: 'B',
+    };
+    expect(findOverlappingHolding(base, [holding])).toBe(holding);
+    expect(
+      findOverlappingHolding(
+        window('2026-10-10T02:30:00Z', '2026-10-10T03:00:00Z'),
+        [holding],
+      ),
+    ).toBeUndefined();
+  });
+
+  it('rejects enrolling a horse that holds an overlapping session in another class', () => {
+    const holding = {
+      ...window('2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+      sessionId: 's2',
+      classCode: 'B',
+    };
+    expect(() => assertNoHoldingOverlap('Winx', [base], [holding])).toThrow(
+      new ConflictException('Ngựa Winx đã có buổi tập trùng giờ ở lớp B'),
+    );
+    expect(() => assertNoHoldingOverlap('Winx', [base], [])).not.toThrow();
+  });
 });
