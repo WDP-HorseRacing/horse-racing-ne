@@ -102,7 +102,7 @@ export class ClassSessionInputDto {
   @ApiProperty({ maxLength: 160 })
   @IsString()
   @MinLength(1)
-  @MaxLength(160)
+  @MaxLength(160, { message: 'Tên buổi tập tối đa 160 ký tự' })
   name!: string;
 
   @ApiProperty({ enum: TrainingIntensity })
@@ -122,12 +122,13 @@ export class ClassSessionInputDto {
   @ApiPropertyOptional({ maxLength: 80 })
   @IsOptional()
   @IsString()
-  @MaxLength(80)
+  @MaxLength(80, { message: 'Mặt sân tối đa 80 ký tự' })
   surface?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: 160 })
   @IsOptional()
   @IsString()
+  @MaxLength(160, { message: 'Địa điểm tối đa 160 ký tự' })
   location?: string;
 
   @ApiPropertyOptional()

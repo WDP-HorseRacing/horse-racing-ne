@@ -13823,7 +13823,8 @@
             "maxLength": 80
           },
           "location": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160
           },
           "notes": {
             "type": "string"
