@@ -66,3 +66,17 @@ export class HorseEnrollmentResponseDto {
   @Expose()
   updatedAt!: Date;
 }
+
+export class HorseEnrollmentListItemDto extends HorseEnrollmentResponseDto {
+  @ApiProperty({ description: 'Tên ngựa, kể cả ngựa đã xóa mềm' })
+  @Expose()
+  horseName!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh',
+  })
+  @Expose()
+  horsePhotoUrl!: string | null;
+}

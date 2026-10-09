@@ -12,6 +12,7 @@ import { TrainingAccessService } from '../../src/modules/training/shared/trainin
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
 import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-classes/services/training-class-enrollments.service';
 import { TrainingSessionsService } from '../../src/modules/training/training-sessions/training-sessions.service';
+import { MediaService } from '../../src/modules/media/services/media.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -49,6 +50,9 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       access,
       new TrainingOperationsFacade(),
       dataSource,
+      {
+        signDownloadUrls: () => Promise.resolve(new Map()),
+      } as unknown as MediaService,
     );
   });
 

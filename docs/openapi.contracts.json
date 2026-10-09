@@ -6466,7 +6466,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/HorseEnrollmentResponseDto"
+                    "$ref": "#/components/schemas/HorseEnrollmentListItemDto"
                   }
                 }
               }
@@ -13958,6 +13958,82 @@
           "status"
         ]
       },
+      "HorseEnrollmentListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "leftAt": {
+            "type": "object",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "LEFT",
+              "CANCELLED"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "horseName": {
+            "type": "string",
+            "description": "Tên ngựa, kể cả ngựa đã xóa mềm"
+          },
+          "horsePhotoUrl": {
+            "type": "object",
+            "nullable": true,
+            "description": "Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh"
+          }
+        },
+        "required": [
+          "id",
+          "classId",
+          "horseId",
+          "enrolledAt",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "horseName"
+        ]
+      },
+      "CreateHorseEnrollmentDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "horseId"
+        ]
+      },
       "HorseEnrollmentResponseDto": {
         "type": "object",
         "properties": {
@@ -14006,22 +14082,6 @@
           "status",
           "createdAt",
           "updatedAt"
-        ]
-      },
-      "CreateHorseEnrollmentDto": {
-        "type": "object",
-        "properties": {
-          "horseId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "enrolledAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "horseId"
         ]
       },
       "LeaveHorseEnrollmentDto": {
@@ -14328,6 +14388,20 @@
           "trainingLocked": {
             "type": "boolean",
             "description": "Ngựa đang có lệnh khóa huấn luyện hiệu lực, tính tại lúc đọc. Lượt còn mở sẽ bị chặn khi bắt đầu buổi"
+          },
+          "horseName": {
+            "type": "string",
+            "description": "Tên ngựa, kể cả ngựa đã xóa mềm"
+          },
+          "horsePhotoUrl": {
+            "type": "object",
+            "nullable": true,
+            "description": "Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh"
+          },
+          "assignedGroomName": {
+            "type": "object",
+            "nullable": true,
+            "description": "Tên Groom được giao, null nếu chưa giao"
           }
         },
         "required": [
@@ -14338,7 +14412,8 @@
           "status",
           "createdAt",
           "updatedAt",
-          "trainingLocked"
+          "trainingLocked",
+          "horseName"
         ]
       },
       "AssignParticipantGroomDto": {

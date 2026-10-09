@@ -22,7 +22,10 @@ import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import type { HorseSessionHolding } from '../types/training-session.types';
+import type {
+  HorseBrief,
+  HorseSessionHolding,
+} from '../types/training-session.types';
 
 const SEAT_HOLDING_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.PLANNED,
@@ -39,6 +42,27 @@ export class TrainingAccessService {
     private readonly dataSource: DataSource,
     private readonly horseAccess: HorseAccessService,
   ) {}
+
+  /**
+   * Lấy tên và mã ảnh đại diện của nhiều ngựa trong một câu truy vấn, kể cả ngựa đã xóa mềm
+   *
+   * @param horseIds UUID các ngựa cần lấy, có thể trùng nhau
+   * @returns Promise trả về map từ UUID ngựa sang tên và mã ảnh, rỗng nếu không truyền ngựa nào
+   */
+  async horseBriefs(horseIds: string[]): Promise<Map<string, HorseBrief>> {
+    if (horseIds.length === 0) return new Map();
+    const horses = await this.dataSource.manager.find(HorseEntity, {
+      select: { id: true, name: true, mediaId: true },
+      where: { id: In([...new Set(horseIds)]) },
+      withDeleted: true,
+    });
+    return new Map(
+      horses.map((horse) => [
+        horse.id,
+        { name: horse.name, mediaId: horse.mediaId },
+      ]),
+    );
+  }
 
   async currentUser(
     actor: Actor,

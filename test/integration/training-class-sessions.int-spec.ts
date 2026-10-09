@@ -11,6 +11,7 @@ import { TrainingAccessService } from '../../src/modules/training/shared/trainin
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
 import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-classes/services/training-class-enrollments.service';
 import { TrainingClassesService } from '../../src/modules/training/training-classes/services/training-classes.service';
+import { MediaService } from '../../src/modules/media/services/media.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -45,6 +46,9 @@ describe('Training class queries over its sessions (Postgres)', () => {
       access,
       new TrainingOperationsFacade(),
       dataSource,
+      {
+        signDownloadUrls: () => Promise.resolve(new Map()),
+      } as unknown as MediaService,
     );
   });
 

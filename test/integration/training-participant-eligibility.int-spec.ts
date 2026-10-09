@@ -10,6 +10,7 @@ import { SessionParticipantEntity } from '../../src/modules/training/entities/se
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
 import { SessionParticipantsService } from '../../src/modules/training/training-sessions/session-participants.service';
+import { MediaService } from '../../src/modules/media/services/media.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -33,6 +34,9 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
       new TrainingOperationsFacade(),
       dataSource,
+      {
+        signDownloadUrls: () => Promise.resolve(new Map()),
+      } as unknown as MediaService,
     );
   });
 

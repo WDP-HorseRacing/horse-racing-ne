@@ -2,6 +2,8 @@ import { ConflictException } from '@nestjs/common';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import type { MediaService } from '../../media/services/media.service';
+import { UserEntity } from '../../users/entities/user.entity';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
@@ -18,7 +20,7 @@ function participant(id: string, horseId: string) {
     sessionId: 's1',
     horseId,
     horseEnrollmentId: `e-${horseId}`,
-    assignedGroomId: null,
+    assignedGroomId: null as string | null,
     status: SessionParticipantStatus.PLANNED,
   };
 }
@@ -29,8 +31,10 @@ describe('SessionParticipantsService.list', () => {
     assertCanReadSession: jest.Mock;
     currentUser: jest.Mock;
     canReadParticipant: jest.Mock;
+    horseBriefs: jest.Mock;
   };
   let manager: { find: jest.Mock };
+  let media: { signDownloadUrls: jest.Mock };
   let service: SessionParticipantsService;
 
   beforeEach(() => {
@@ -39,8 +43,25 @@ describe('SessionParticipantsService.list', () => {
       assertCanReadSession: jest.fn().mockResolvedValue(undefined),
       currentUser: jest.fn().mockResolvedValue({ id: 'ht-1' }),
       canReadParticipant: jest.fn().mockResolvedValue(true),
+      horseBriefs: jest.fn().mockResolvedValue(
+        new Map([
+          ['h1', { name: 'Gió', mediaId: 'm1' }],
+          ['h2', { name: 'Bão', mediaId: null }],
+        ]),
+      ),
     };
-    manager = { find: jest.fn().mockResolvedValue([{ horseId: 'h2' }]) };
+    manager = {
+      find: jest.fn((entity: unknown) =>
+        Promise.resolve(
+          entity === UserEntity
+            ? [{ id: 'g1', fullName: 'Groom Một' }]
+            : [{ horseId: 'h2' }],
+        ),
+      ),
+    };
+    media = {
+      signDownloadUrls: jest.fn().mockResolvedValue(new Map()),
+    };
     service = new SessionParticipantsService(
       {
         find: jest.fn(() => Promise.resolve(rows)),
@@ -48,6 +69,7 @@ describe('SessionParticipantsService.list', () => {
       access as unknown as TrainingAccessService,
       {} as TrainingOperationsFacade,
       { manager } as unknown as DataSource,
+      media as unknown as MediaService,
     );
   });
 
@@ -58,7 +80,6 @@ describe('SessionParticipantsService.list', () => {
       ['p1', false],
       ['p2', true],
     ]);
-    expect(manager.find).toHaveBeenCalledTimes(1);
     expect(manager.find).toHaveBeenCalledWith(TrainingLockEntity, {
       select: { horseId: true },
       where: {
@@ -90,6 +111,54 @@ describe('SessionParticipantsService.list', () => {
 
     await expect(service.list(actor, 's1')).resolves.toEqual([]);
     expect(manager.find).not.toHaveBeenCalled();
+  });
+
+  it('adds horse name, signed photo and groom name with one query per table', async () => {
+    rows[0].assignedGroomId = 'g1';
+    media.signDownloadUrls.mockResolvedValue(
+      new Map([['m1', 'https://signed/m1']]),
+    );
+
+    const result = await service.list(actor, 's1');
+
+    expect(
+      result.map((item) => [
+        item.horseName,
+        item.horsePhotoUrl,
+        item.assignedGroomName,
+      ]),
+    ).toEqual([
+      ['Gió', 'https://signed/m1', 'Groom Một'],
+      ['Bão', null, null],
+    ]);
+    expect(access.horseBriefs).toHaveBeenCalledTimes(1);
+    expect(access.horseBriefs).toHaveBeenCalledWith(['h1', 'h2']);
+    expect(media.signDownloadUrls).toHaveBeenCalledTimes(1);
+    expect(media.signDownloadUrls).toHaveBeenCalledWith(['m1']);
+    expect(manager.find).toHaveBeenCalledWith(UserEntity, {
+      select: { id: true, fullName: true },
+      where: { id: In(['g1']) },
+      withDeleted: true,
+    });
+  });
+
+  it('signs and looks up names only for the participants the caller can see', async () => {
+    access.canReadParticipant.mockImplementation(
+      (_actor: Actor, _callerId: string, row: { id: string }) =>
+        Promise.resolve(row.id === 'p2'),
+    );
+
+    await service.list(actor, 's1');
+
+    expect(access.horseBriefs).toHaveBeenCalledWith(['h2']);
+  });
+
+  it('keeps the groom name null when the groom row is missing', async () => {
+    rows[0].assignedGroomId = 'gone';
+
+    const result = await service.list(actor, 's1');
+
+    expect(result[0].assignedGroomName).toBeNull();
   });
 });
 
@@ -125,6 +194,7 @@ describe('SessionParticipantsService.absent', () => {
           cb(manager),
         ),
       } as unknown as DataSource,
+      {} as MediaService,
     );
     return { service, row, refresh, manager };
   }

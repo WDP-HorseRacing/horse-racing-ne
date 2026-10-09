@@ -24,6 +24,7 @@ import {
 } from '../dto/class-schedule.dto';
 import {
   CreateHorseEnrollmentDto,
+  HorseEnrollmentListItemDto,
   HorseEnrollmentResponseDto,
   LeaveHorseEnrollmentDto,
 } from '../dto/horse-enrollment.dto';
@@ -112,7 +113,7 @@ export class TrainingClassesController {
 
   // get enrollments by classId
   @Get('classes/:classId/enrollments')
-  @ApiOkResponse({ type: [HorseEnrollmentResponseDto] })
+  @ApiOkResponse({ type: [HorseEnrollmentListItemDto] })
   listEnrollments(
     @CurrentUser() actor: Actor,
     @Param('classId', ParseUUIDPipe) classId: string,

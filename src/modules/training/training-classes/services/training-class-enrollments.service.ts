@@ -10,9 +10,11 @@ import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment
 import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
 import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
 import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { MediaService } from '../../../media/services/media.service';
 import { evaluateEligibility } from '../../../horses/policies/horse.policy';
 import {
   CreateHorseEnrollmentDto,
+  HorseEnrollmentListItemDto,
   HorseEnrollmentResponseDto,
   LeaveHorseEnrollmentDto,
 } from '../../dto/horse-enrollment.dto';
@@ -22,7 +24,10 @@ import { TrainingSessionStatus } from '../../enums/training-session-status.enum'
 import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
-import { toHorseEnrollmentResponse } from '../../mappers/horse-enrollment.mapper';
+import {
+  toHorseEnrollmentListItem,
+  toHorseEnrollmentResponse,
+} from '../../mappers/horse-enrollment.mapper';
 import { TrainingAccessService } from '../../shared/training-access.service';
 import {
   assertHorseEnrollable,
@@ -31,6 +36,7 @@ import {
   initialParticipantEligibility,
 } from '../../policies/training.policy';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
+import { horseListDisplay } from '../../utils/horse-list-display';
 
 @Injectable()
 export class TrainingClassEnrollmentsService {
@@ -40,12 +46,25 @@ export class TrainingClassEnrollmentsService {
     private readonly access: TrainingAccessService,
     private readonly operations: TrainingOperationsFacade,
     private readonly dataSource: DataSource,
+    private readonly media: MediaService,
   ) {}
 
+  /**
+   * Liệt kê các lượt ghi danh của lớp mà người gọi được xem, mỗi lượt kèm tên và ảnh ngựa
+   *
+   * - Tên ngựa vẫn hiện khi hồ sơ ngựa đã xóa mềm
+   * - Ảnh ngựa chỉ ký link sau khi đã lọc các lượt người gọi được xem
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @returns Promise trả về các lượt ghi danh theo thứ tự ghi danh
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có lớp hoặc lớp nằm ngoài phạm vi xem của người gọi
+   */
   async list(
     actor: Actor,
     classId: string,
-  ): Promise<HorseEnrollmentResponseDto[]> {
+  ): Promise<HorseEnrollmentListItemDto[]> {
     const caller = await this.access.currentUser(actor);
     await this.access.assertCanReadClass(actor, classId);
     const rows = await this.enrollments.find({
@@ -65,8 +84,20 @@ export class TrainingClassEnrollmentsService {
           : null,
       ),
     );
-    return visible.filter((row): row is HorseEnrollmentEntity => !!row).map(
-      toHorseEnrollmentResponse,
+    const shown = visible.filter((row): row is HorseEnrollmentEntity => !!row);
+    const briefs = await this.access.horseBriefs(
+      shown.map((row) => row.horseId),
+    );
+    const photoUrls = await this.media.signDownloadUrls(
+      [...briefs.values()]
+        .map((brief) => brief.mediaId)
+        .filter((id): id is string => id !== null),
+    );
+    return shown.map((row) =>
+      toHorseEnrollmentListItem(
+        row,
+        horseListDisplay(row.horseId, briefs, photoUrls),
+      ),
     );
   }
 

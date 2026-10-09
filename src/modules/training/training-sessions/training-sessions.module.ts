@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { MediaModule } from '../../media/media.module';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
@@ -27,6 +28,7 @@ import { TrainingSessionsService } from './training-sessions.service';
       HorseEntity,
     ]),
     TrainingSharedModule,
+    MediaModule,
   ],
   controllers: [TrainingSessionsController, SessionParticipantsController],
   providers: [

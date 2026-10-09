@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
 import { UserRole } from '../../../../common/enums/role.enum';
+import type { MediaService } from '../../../media/services/media.service';
 import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
 import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
 import { TrainingClassStatus } from '../../enums/training-class-status.enum';
@@ -77,6 +78,7 @@ function setup(
     access as unknown as TrainingAccessService,
     operations,
     dataSource,
+    {} as MediaService,
   );
   return { service, qb, save, access, refresh, manager };
 }
@@ -263,5 +265,71 @@ describe('TrainingClassEnrollmentsService.leave theo ngày lịch CLB', () => {
       service.leave(actor, 'e1', { leftAt: '2026-12-31T17:00:00.000Z' }),
     ).rejects.toThrow('Thời điểm rời lớp phải nằm trong thời gian của lớp');
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe('TrainingClassEnrollmentsService.list', () => {
+  const rows = [
+    { ...buildEnrollment(), id: 'e1', horseId: 'h1' },
+    { ...buildEnrollment(), id: 'e2', horseId: 'h2' },
+    { ...buildEnrollment(), id: 'e3', horseId: 'h3' },
+  ];
+
+  function build(canRead: (row: { id: string }) => boolean) {
+    const access = {
+      currentUser: jest.fn().mockResolvedValue({ id: 'ht' }),
+      assertCanReadClass: jest.fn().mockResolvedValue(undefined),
+      canReadEnrollment: jest.fn(
+        (_actor: Actor, _callerId: string, row: { id: string }) =>
+          Promise.resolve(canRead(row)),
+      ),
+      horseBriefs: jest.fn().mockResolvedValue(
+        new Map([
+          ['h1', { name: 'Gió', mediaId: 'm1' }],
+          ['h2', { name: 'Bão (đã xóa)', mediaId: null }],
+          ['h3', { name: 'Mây', mediaId: 'm3' }],
+        ]),
+      ),
+    };
+    const media = {
+      signDownloadUrls: jest
+        .fn()
+        .mockResolvedValue(new Map([['m1', 'https://signed/m1']])),
+    };
+    const service = new TrainingClassEnrollmentsService(
+      {
+        find: jest.fn().mockResolvedValue(rows),
+      } as unknown as Repository<HorseEnrollmentEntity>,
+      access as unknown as TrainingAccessService,
+      new TrainingOperationsFacade(),
+      { manager: {} } as unknown as DataSource,
+      media as unknown as MediaService,
+    );
+    return { service, access, media };
+  }
+
+  it('adds horse name and photo url, null when the horse has no photo or it cannot be signed', async () => {
+    const { service, access, media } = build(() => true);
+
+    const result = await service.list(actor, 'c1');
+
+    expect(result.map((item) => [item.horseName, item.horsePhotoUrl])).toEqual([
+      ['Gió', 'https://signed/m1'],
+      ['Bão (đã xóa)', null],
+      ['Mây', null],
+    ]);
+    expect(access.horseBriefs).toHaveBeenCalledTimes(1);
+    expect(access.horseBriefs).toHaveBeenCalledWith(['h1', 'h2', 'h3']);
+    expect(media.signDownloadUrls).toHaveBeenCalledTimes(1);
+    expect(media.signDownloadUrls).toHaveBeenCalledWith(['m1', 'm3']);
+  });
+
+  it('looks up names and signs photos only for the enrollments the caller can see', async () => {
+    const { service, access } = build((row) => row.id === 'e1');
+
+    const result = await service.list(actor, 'c1');
+
+    expect(result.map((item) => item.id)).toEqual(['e1']);
+    expect(access.horseBriefs).toHaveBeenCalledWith(['h1']);
   });
 });

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { MediaService } from '../../media/services/media.service';
+import { UserEntity } from '../../users/entities/user.entity';
 import { evaluateEligibility } from '../../horses/policies/horse.policy';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
@@ -32,6 +34,7 @@ import {
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TrainingOperationsFacade } from '../shared/training-operations.facade';
+import { horseListDisplay } from '../utils/horse-list-display';
 
 @Injectable()
 export class SessionParticipantsService {
@@ -41,10 +44,14 @@ export class SessionParticipantsService {
     private readonly access: TrainingAccessService,
     private readonly operations: TrainingOperationsFacade,
     private readonly dataSource: DataSource,
+    private readonly media: MediaService,
   ) {}
 
   /**
-   * Liệt kê các lượt tham gia của buổi tập mà người gọi được xem, mỗi lượt kèm cờ ngựa đang bị khóa huấn luyện
+   * Liệt kê các lượt tham gia của buổi tập mà người gọi được xem, mỗi lượt kèm cờ ngựa đang bị khóa huấn luyện, tên và ảnh ngựa, tên Groom
+   *
+   * - Tên ngựa và Groom vẫn hiện khi bản ghi đã xóa mềm
+   * - Ảnh ngựa chỉ ký link sau khi đã lọc các lượt người gọi được xem
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param sessionId UUID của buổi tập
@@ -79,9 +86,45 @@ export class SessionParticipantsService {
     const lockedHorseIds = await this.lockedHorseIds(
       shown.map((row) => row.horseId),
     );
-    return shown.map((row) =>
-      toSessionParticipantListItem(row, lockedHorseIds),
+    const briefs = await this.access.horseBriefs(
+      shown.map((row) => row.horseId),
     );
+    const [photoUrls, groomNames] = await Promise.all([
+      this.media.signDownloadUrls(
+        [...briefs.values()]
+          .map((brief) => brief.mediaId)
+          .filter((id): id is string => id !== null),
+      ),
+      this.userNames(
+        shown
+          .map((row) => row.assignedGroomId)
+          .filter((id): id is string => id !== null),
+      ),
+    ]);
+    return shown.map((row) =>
+      toSessionParticipantListItem(row, lockedHorseIds, {
+        ...horseListDisplay(row.horseId, briefs, photoUrls),
+        assignedGroomName: row.assignedGroomId
+          ? (groomNames.get(row.assignedGroomId) ?? null)
+          : null,
+      }),
+    );
+  }
+
+  /**
+   * Lấy họ tên của nhiều người dùng trong một câu truy vấn, kể cả tài khoản đã xóa mềm
+   *
+   * @param userIds UUID các người dùng cần lấy, có thể trùng nhau
+   * @returns Promise trả về map từ UUID người dùng sang họ tên, rỗng nếu không truyền id nào
+   */
+  private async userNames(userIds: string[]): Promise<Map<string, string>> {
+    if (userIds.length === 0) return new Map();
+    const users = await this.dataSource.manager.find(UserEntity, {
+      select: { id: true, fullName: true },
+      where: { id: In([...new Set(userIds)]) },
+      withDeleted: true,
+    });
+    return new Map(users.map((user) => [user.id, user.fullName]));
   }
 
   /**

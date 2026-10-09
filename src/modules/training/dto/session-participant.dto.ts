@@ -89,4 +89,23 @@ export class SessionParticipantListItemDto extends SessionParticipantResponseDto
   })
   @Expose()
   trainingLocked!: boolean;
+
+  @ApiProperty({ description: 'Tên ngựa, kể cả ngựa đã xóa mềm' })
+  @Expose()
+  horseName!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh',
+  })
+  @Expose()
+  horsePhotoUrl!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Tên Groom được giao, null nếu chưa giao',
+  })
+  @Expose()
+  assignedGroomName!: string | null;
 }
