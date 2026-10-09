@@ -39,6 +39,18 @@ import {
   HorseEligibilityDto,
 } from './horse.dto';
 
+const LETTERS_PATTERN = /^\p{L}+(?:[ '-]\p{L}+)*$/u;
+const MICROCHIP_PATTERN = /^\d{15}$/;
+
+/**
+ * Cắt khoảng trắng đầu cuối của chuỗi; chuỗi rỗng sau khi cắt thành null, giá trị không phải chuỗi giữ nguyên
+ *
+ * @param value Giá trị thô từ body
+ * @returns Chuỗi đã cắt, null nếu rỗng, hoặc nguyên giá trị nếu không phải chuỗi
+ */
+const trimToNull = ({ value }: { value: unknown }): unknown =>
+  typeof value === 'string' ? value.trim() || null : value;
+
 export class CreateHorseDto {
   @ApiProperty({ maxLength: 160 })
   @Transform(({ value }: { value: unknown }) =>
@@ -53,22 +65,50 @@ export class CreateHorseDto {
   @IsEnum(HorseGender)
   gender!: HorseGender;
 
-  @ApiPropertyOptional({ maxLength: 80, nullable: true, type: String })
+  @ApiPropertyOptional({
+    maxLength: 80,
+    nullable: true,
+    type: String,
+    pattern: LETTERS_PATTERN.source,
+    description:
+      'Chỉ gồm chữ cái; các từ ngăn bằng một khoảng trắng, gạch nối hoặc dấu nháy đơn',
+  })
+  @Transform(trimToNull)
   @IsOptional()
   @IsString()
   @MaxLength(80)
+  @Matches(LETTERS_PATTERN, {
+    message: 'Giống chỉ gồm chữ cái, khoảng trắng hoặc gạch nối',
+  })
   breed?: string | null;
 
-  @ApiPropertyOptional({ maxLength: 40, nullable: true, type: String })
+  @ApiPropertyOptional({
+    maxLength: 40,
+    nullable: true,
+    type: String,
+    pattern: LETTERS_PATTERN.source,
+    description:
+      'Chỉ gồm chữ cái; các từ ngăn bằng một khoảng trắng, gạch nối hoặc dấu nháy đơn',
+  })
+  @Transform(trimToNull)
   @IsOptional()
   @IsString()
   @MaxLength(40)
+  @Matches(LETTERS_PATTERN, {
+    message: 'Màu lông chỉ gồm chữ cái, khoảng trắng hoặc gạch nối',
+  })
   color?: string | null;
 
-  @ApiPropertyOptional({ maxLength: 80, nullable: true, type: String })
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    pattern: MICROCHIP_PATTERN.source,
+    description: 'Đúng 15 chữ số',
+  })
+  @Transform(trimToNull)
   @IsOptional()
   @IsString()
-  @MaxLength(80)
+  @Matches(MICROCHIP_PATTERN, { message: 'Số chip phải gồm đúng 15 chữ số' })
   microchipId?: string | null;
 
   @ApiPropertyOptional({ format: 'date', nullable: true, type: String })

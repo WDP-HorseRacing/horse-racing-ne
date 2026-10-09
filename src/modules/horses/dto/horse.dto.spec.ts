@@ -36,6 +36,91 @@ describe('horse DTOs', () => {
     });
   });
 
+  describe.each([
+    [
+      'CreateHorseDto',
+      CreateHorseDto,
+      { name: 'Gió', gender: HorseGender.MALE },
+    ],
+    ['UpdateHorseDto', UpdateHorseDto, { version: 1 }],
+  ] as const)('%s microchipId, breed, color', (_label, dto, base) => {
+    const check = (extra: Record<string, unknown>) =>
+      invalidFields(dto as new () => object, { ...base, ...extra });
+
+    it.each(['123456789012345', '  123456789012345  '])(
+      'accepts microchipId %p',
+      async (microchipId) => {
+        const { fields } = await check({ microchipId });
+        expect(fields).not.toContain('microchipId');
+      },
+    );
+
+    it.each([
+      '12345678901234',
+      '1234567890123456',
+      'CHIP-1',
+      '12345678901234a',
+    ])('rejects microchipId %p', async (microchipId) => {
+      const { fields } = await check({ microchipId });
+      expect(fields).toContain('microchipId');
+    });
+
+    it.each([
+      'Thoroughbred',
+      'Anglo-Arabian',
+      'Akhal-Teke',
+      'Quarter Horse',
+      'Dark Bay',
+      'Ngựa nội',
+      ' Bay ',
+    ])('accepts breed and color %p', async (text) => {
+      const { fields } = await check({ breed: text, color: text });
+      expect(fields).not.toContain('breed');
+      expect(fields).not.toContain('color');
+    });
+
+    it.each(['Bay2', 'Bay--', ' -Bay', 'Nâu  sẫm', 'Bay!', '123'])(
+      'rejects breed and color %p',
+      async (text) => {
+        const { fields } = await check({ breed: text, color: text });
+        expect(fields).toEqual(expect.arrayContaining(['breed', 'color']));
+      },
+    );
+
+    it('turns empty or null values into null without error', async () => {
+      const { instance, fields } = await check({
+        microchipId: '  ',
+        breed: '',
+        color: null,
+      });
+      expect(fields).toEqual([]);
+      expect(instance).toMatchObject({
+        microchipId: null,
+        breed: null,
+        color: null,
+      });
+    });
+
+    it('gives the Vietnamese messages', async () => {
+      const instance = plainToInstance(dto as new () => object, {
+        ...base,
+        microchipId: 'x',
+        breed: '1',
+        color: '1',
+      });
+      const messages = (await validate(instance)).flatMap((error) =>
+        Object.values(error.constraints ?? {}),
+      );
+      expect(messages).toEqual(
+        expect.arrayContaining([
+          'Số chip phải gồm đúng 15 chữ số',
+          'Giống chỉ gồm chữ cái, khoảng trắng hoặc gạch nối',
+          'Màu lông chỉ gồm chữ cái, khoảng trắng hoặc gạch nối',
+        ]),
+      );
+    });
+  });
+
   describe('UpdateHorseDto.name', () => {
     it('rejects a name made only of spaces', async () => {
       const { fields } = await invalidFields(UpdateHorseDto, {

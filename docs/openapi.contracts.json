@@ -8963,17 +8963,22 @@
           "breed": {
             "type": "string",
             "maxLength": 80,
-            "nullable": true
+            "nullable": true,
+            "pattern": "^\\p{L}+(?:[ '-]\\p{L}+)*$",
+            "description": "Chỉ gồm chữ cái; các từ ngăn bằng một khoảng trắng, gạch nối hoặc dấu nháy đơn"
           },
           "color": {
             "type": "string",
             "maxLength": 40,
-            "nullable": true
+            "nullable": true,
+            "pattern": "^\\p{L}+(?:[ '-]\\p{L}+)*$",
+            "description": "Chỉ gồm chữ cái; các từ ngăn bằng một khoảng trắng, gạch nối hoặc dấu nháy đơn"
           },
           "microchipId": {
             "type": "string",
-            "maxLength": 80,
-            "nullable": true
+            "nullable": true,
+            "pattern": "^\\d{15}$",
+            "description": "Đúng 15 chữ số"
           },
           "dateOfBirth": {
             "type": "string",
@@ -9302,17 +9307,22 @@
           "breed": {
             "type": "string",
             "maxLength": 80,
-            "nullable": true
+            "nullable": true,
+            "pattern": "^\\p{L}+(?:[ '-]\\p{L}+)*$",
+            "description": "Chỉ gồm chữ cái; các từ ngăn bằng một khoảng trắng, gạch nối hoặc dấu nháy đơn"
           },
           "color": {
             "type": "string",
             "maxLength": 40,
-            "nullable": true
+            "nullable": true,
+            "pattern": "^\\p{L}+(?:[ '-]\\p{L}+)*$",
+            "description": "Chỉ gồm chữ cái; các từ ngăn bằng một khoảng trắng, gạch nối hoặc dấu nháy đơn"
           },
           "microchipId": {
             "type": "string",
-            "maxLength": 80,
-            "nullable": true
+            "nullable": true,
+            "pattern": "^\\d{15}$",
+            "description": "Đúng 15 chữ số"
           },
           "dateOfBirth": {
             "type": "string",
