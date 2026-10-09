@@ -14597,13 +14597,16 @@
             "format": "date-time"
           },
           "location": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "surface": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           }
         }
       },

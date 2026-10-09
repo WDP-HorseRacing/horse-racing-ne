@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PartialType,
+} from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import {
   IsDateString,
@@ -69,8 +74,23 @@ export class CreateTrainingSessionDto {
 }
 
 export class UpdateTrainingSessionDto extends PartialType(
-  CreateTrainingSessionDto,
-) {}
+  OmitType(CreateTrainingSessionDto, ['location', 'surface', 'notes'] as const),
+) {
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  location?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  surface?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
 
 export class PublishClassSessionsDto {
   @ApiPropertyOptional({

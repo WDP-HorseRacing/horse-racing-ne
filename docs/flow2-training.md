@@ -135,7 +135,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | PATCH | `/classes/:classId` | HT | Sửa lớp (không đổi giáo án, Head Trainer) |
 | PATCH | `/classes/:classId/status` | HT | Kích hoạt, hoàn thành, hủy lớp |
 | GET/POST | `/classes/:classId/sessions` | Xem: theo quyền xem lớp; thêm: HT | Buổi của lớp |
-| PATCH | `/training-sessions/:sessionId` | HT | Sửa buổi nháp, đổi được `subjectId` |
+| PATCH | `/training-sessions/:sessionId` | HT | Sửa buổi nháp, đổi được `subjectId` (gửi `null` để xóa `location`, `surface`, `notes`) |
 | POST | `/training-sessions/:sessionId/publish` | HT | Publish buổi |
 | POST | `/classes/:classId/sessions/publish` | HT | Publish nhiều buổi nháp `{ from?, to? }` |
 | PATCH | `/training-sessions/:id/time-trial` | HT | Sửa cấu hình chạy thử của buổi nháp |

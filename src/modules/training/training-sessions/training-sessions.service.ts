@@ -199,9 +199,10 @@ export class TrainingSessionsService {
         plannedDistanceM: body.plannedDistanceM ?? session.plannedDistanceM,
         scheduledStartAt: start,
         scheduledEndAt: end,
-        location: body.location ?? session.location,
-        surface: body.surface ?? session.surface,
-        notes: body.notes ?? session.notes,
+        location:
+          body.location === undefined ? session.location : body.location,
+        surface: body.surface === undefined ? session.surface : body.surface,
+        notes: body.notes === undefined ? session.notes : body.notes,
       });
       return manager.save(session);
     });
