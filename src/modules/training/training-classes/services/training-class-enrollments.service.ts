@@ -187,14 +187,17 @@ export class TrainingClassEnrollmentsService {
       const caller = await this.access.currentUser(actor, manager);
       const row = await manager.findOne(HorseEnrollmentEntity, {
         where: { id: enrollmentId },
-        relations: { trainingClass: true },
         lock: { mode: 'pessimistic_write' },
       });
       if (!row) throw new ConflictException('Không tìm thấy ghi danh của ngựa');
+      const trainingClass = await this.access.findTrainingClass(
+        manager,
+        row.classId,
+      );
       this.access.assertCanManageClass(
         actor,
         caller.id,
-        row.trainingClass.headTrainerId,
+        trainingClass.headTrainerId,
       );
       if (row.status !== HorseEnrollmentStatus.ACTIVE) {
         throw new ConflictException('Ngựa đã rời lớp');
@@ -205,7 +208,7 @@ export class TrainingClassEnrollmentsService {
       }
       if (
         leftAt >=
-        clubDateTimeToInstant(shiftDays(row.trainingClass.endDate, 1), '00:00')
+        clubDateTimeToInstant(shiftDays(trainingClass.endDate, 1), '00:00')
       ) {
         throw new ConflictException(
           'Thời điểm rời lớp phải nằm trong thời gian của lớp',

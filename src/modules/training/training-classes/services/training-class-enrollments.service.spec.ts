@@ -55,6 +55,7 @@ function setup(
   const access = {
     currentUser: jest.fn().mockResolvedValue({ id: 'ht' }),
     assertCanManageClass: jest.fn(),
+    findTrainingClass: jest.fn().mockResolvedValue(enrollment.trainingClass),
     lockedTrainingClass: jest.fn().mockResolvedValue({
       id: 'c1',
       status: TrainingClassStatus.ACTIVE,

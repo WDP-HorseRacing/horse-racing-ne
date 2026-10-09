@@ -171,4 +171,72 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
       status: 'ABSENT',
     });
   });
+
+  describe('leave (service)', () => {
+    it('marks the enrollment LEFT and cancels future participants', async () => {
+      const winx = await seed.horse('Winx', { barnId });
+      const future = await session(
+        '2030-01-10T01:00:00Z',
+        '2030-01-10T02:00:00Z',
+      );
+      const first = await enrollments.create(trainer, classId, {
+        horseId: winx,
+      });
+
+      const left = await enrollments.leave(trainer, first.id, {
+        reason: 'Nghỉ tập',
+      });
+
+      expect(left).toMatchObject({ id: first.id, status: 'LEFT' });
+      expect(left.leftAt).toBeTruthy();
+      expect((await participantsOf(future))[0]).toMatchObject({
+        status: 'CANCELLED',
+        cancel_reason: 'Nghỉ tập',
+      });
+    });
+
+    it('409 when the horse already left', async () => {
+      const winx = await seed.horse('Winx', { barnId });
+      const first = await enrollments.create(trainer, classId, {
+        horseId: winx,
+      });
+      await enrollments.leave(trainer, first.id, {});
+
+      await expect(enrollments.leave(trainer, first.id, {})).rejects.toThrow(
+        'Ngựa đã rời lớp',
+      );
+    });
+
+    it('409 when the enrollment does not exist', async () => {
+      await expect(
+        enrollments.leave(trainer, randomUUID(), {}),
+      ).rejects.toThrow('Không tìm thấy ghi danh của ngựa');
+    });
+
+    it('409 when leftAt is before enrolledAt', async () => {
+      const winx = await seed.horse('Winx', { barnId });
+      const first = await enrollments.create(trainer, classId, {
+        horseId: winx,
+      });
+
+      await expect(
+        enrollments.leave(trainer, first.id, {
+          leftAt: '2000-01-01T00:00:00Z',
+        }),
+      ).rejects.toThrow('Thời điểm rời lớp không hợp lệ');
+    });
+
+    it('409 when leftAt is after the class end', async () => {
+      const winx = await seed.horse('Winx', { barnId });
+      const first = await enrollments.create(trainer, classId, {
+        horseId: winx,
+      });
+
+      await expect(
+        enrollments.leave(trainer, first.id, {
+          leftAt: '2031-06-01T00:00:00Z',
+        }),
+      ).rejects.toThrow('Thời điểm rời lớp phải nằm trong thời gian của lớp');
+    });
+  });
 });
