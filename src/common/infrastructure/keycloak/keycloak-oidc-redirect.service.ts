@@ -60,7 +60,7 @@ export class KeycloakOidcRedirectService {
 
     if (!cached || cached.provider !== provider) {
       throw new UnauthorizedException(
-        'State OIDC khong hop le hoac da het han',
+        'State OIDC không hợp lệ hoặc đã hết hạn',
       );
     }
     return {

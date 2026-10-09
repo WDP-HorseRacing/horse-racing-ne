@@ -100,7 +100,7 @@ export class AuthService {
     newPassword: string,
   ): Promise<void> {
     if (!actor.email) {
-      throw new UnauthorizedException('Token khong chua email');
+      throw new UnauthorizedException('Token không chứa email');
     }
     try {
       await this.keycloakTokens.exchangePasswordForToken({

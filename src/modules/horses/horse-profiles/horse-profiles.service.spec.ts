@@ -1026,7 +1026,7 @@ describe('HorseProfilesService', () => {
 
     it('checks a new photo on storage before opening the transaction', async () => {
       media.assertAttachableHorsePhoto.mockRejectedValue(
-        new ConflictException('Tệp chưa được tải lên storage'),
+        new ConflictException('Tệp chưa được tải lên kho lưu trữ'),
       );
       await expect(
         service.update(cm(), HORSE_ID, { version: 3, mediaId: 'asset-2' }),

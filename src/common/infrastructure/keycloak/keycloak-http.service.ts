@@ -25,7 +25,7 @@ export class KeycloakHttpService {
         );
       }
       // Timeout, DNS hong, connection refused: khong voi toi duoc -> 503.
-      throw new ServiceUnavailableException('Khong ket noi duoc Keycloak');
+      throw new ServiceUnavailableException('Không kết nối được Keycloak');
     }
   }
 

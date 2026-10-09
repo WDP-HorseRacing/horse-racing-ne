@@ -329,13 +329,13 @@ export class MediaService {
       .getMetadata(asset.objectKey)
       .catch((error: unknown) => {
         if (isObjectNotFoundError(error)) {
-          throw new ConflictException('Tệp chưa được tải lên storage');
+          throw new ConflictException('Tệp chưa được tải lên kho lưu trữ');
         }
         throw error;
       });
     if (stored.contentType === undefined || stored.byteSize === undefined) {
       throw new BadRequestException(
-        'Storage không trả về định dạng hoặc dung lượng của tệp',
+        'Kho lưu trữ không trả về định dạng hoặc dung lượng của tệp',
       );
     }
     const actualType = normalizeContentType(stored.contentType);
