@@ -41,17 +41,22 @@ export function toHorseTrainingClassResponse(
  * @param row Dòng đọc từ HorseTrainingRepository.listSessions
  * @param trials Các lần chạy time trial của lượt tập, giữ nguyên thứ tự
  * @param evaluation Đánh giá của lượt tập, null nếu chưa có
+ * @param videoUrls Link xem video theo UUID tệp; lần chạy không có video hoặc không có link thì videoUrl là null
  * @returns Buổi tập của ngựa kèm kết quả và đánh giá
  */
 export function toHorseTrainingSessionResponse(
   row: HorseTrainingSessionRow,
   trials: HorseTrainingTrialRow[],
   evaluation: HorseTrainingEvaluationRow | null,
+  videoUrls: ReadonlyMap<string, string>,
 ): HorseTrainingSessionResponseDto {
   const trialResults: HorseTrainingTrialResultDto[] = trials.map((trial) => ({
     attemptNo: trial.attemptNo,
     elapsedMs: trial.elapsedMs,
     notes: trial.notes,
+    videoUrl: trial.videoMediaId
+      ? (videoUrls.get(trial.videoMediaId) ?? null)
+      : null,
     recordedAt: trial.recordedAt,
   }));
   return {

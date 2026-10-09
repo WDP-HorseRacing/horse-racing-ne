@@ -52,6 +52,7 @@ export interface HorseTrainingTrialRow {
   attemptNo: number;
   elapsedMs: string;
   notes: string | null;
+  videoMediaId: string | null;
   recordedAt: Date;
 }
 

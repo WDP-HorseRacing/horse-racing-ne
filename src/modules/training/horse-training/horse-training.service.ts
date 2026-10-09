@@ -3,6 +3,7 @@ import { DataSource, In } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { MediaService } from '../../media/services/media.service';
 import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
 import {
   HorseTrainingClassResponseDto,
@@ -72,6 +73,7 @@ export class HorseTrainingService {
     private readonly horseAccess: HorseAccessService,
     private readonly repository: HorseTrainingRepository,
     private readonly dataSource: DataSource,
+    private readonly media: MediaService,
   ) {}
 
   /**
@@ -99,6 +101,7 @@ export class HorseTrainingService {
    *
    * - Quyền và phạm vi xem như listClasses
    * - Lọc theo lớp và theo buổi sắp tới / đã diễn ra (xem HorseTrainingRepository.listSessions)
+   * - Mỗi lần chạy có video thì kèm videoUrl (link có hạn); chỉ ký sau khi đã kiểm quyền xem ngựa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -127,12 +130,18 @@ export class HorseTrainingService {
     ]);
     const trialsByParticipant = groupTrialsByParticipant(trials);
     const evaluationByParticipant = pickEvaluationByParticipant(evaluations);
+    const videoUrls = await this.media.signDownloadUrls(
+      trials
+        .map((trial) => trial.videoMediaId)
+        .filter((id): id is string => id !== null),
+    );
     return new PaginationResponseDto(
       rows.map((row) =>
         toHorseTrainingSessionResponse(
           row,
           trialsByParticipant.get(row.participantId) ?? [],
           evaluationByParticipant.get(row.participantId) ?? null,
+          videoUrls,
         ),
       ),
       total,
@@ -160,6 +169,7 @@ export class HorseTrainingService {
       attemptNo: trial.attemptNo,
       elapsedMs: trial.elapsedMs,
       notes: trial.notes,
+      videoMediaId: trial.videoMediaId,
       recordedAt: trial.recordedAt,
     }));
   }

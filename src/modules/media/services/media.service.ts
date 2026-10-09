@@ -194,14 +194,67 @@ export class MediaService {
     callerId: string,
     assetId: string,
   ): Promise<MediaAssetEntity> {
+    return this.assertAttachable(
+      callerId,
+      assetId,
+      MediaPurpose.HORSE_PHOTO,
+      'Tệp không phải ảnh đại diện ngựa',
+    );
+  }
+
+  /**
+   * Kiểm tra một tệp có được gắn làm video chạy thử không; gọi trước khi mở transaction ghi kết quả chạy thử.
+   *
+   * - Tệp phải do chính người gọi tải lên.
+   * - Tệp phải được xin tải lên với mục đích TRIAL_VIDEO.
+   * - Metadata thật trên storage phải đạt giới hạn video chạy thử và khớp số liệu khai báo; tệp chưa tải lên storage bị từ chối.
+   * - Có một lần gọi HEAD tới storage.
+   *
+   * @param callerId UUID của người gọi (users.id)
+   * @param assetId UUID của bản ghi media_assets
+   * @returns Promise trả về MediaAssetEntity - Tệp hợp lệ để gắn làm video chạy thử
+   * @throws NotFoundException Nếu không có tệp hoặc tệp không do người gọi tải lên
+   * @throws BadRequestException Nếu tệp không phải video chạy thử, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
+   * @throws ConflictException Nếu tệp chưa có trên storage
+   */
+  async assertAttachableTrialVideo(
+    callerId: string,
+    assetId: string,
+  ): Promise<MediaAssetEntity> {
+    return this.assertAttachable(
+      callerId,
+      assetId,
+      MediaPurpose.TRIAL_VIDEO,
+      'Tệp không phải video chạy thử',
+    );
+  }
+
+  /**
+   * Kiểm tra một tệp do người gọi tải lên đúng mục đích và đã nằm trên storage đúng như khai báo.
+   *
+   * @param callerId UUID của người gọi (users.id)
+   * @param assetId UUID của bản ghi media_assets
+   * @param purpose Mục đích sử dụng tệp phải có
+   * @param wrongPurposeMessage Câu báo lỗi khi tệp thuộc mục đích khác
+   * @returns Promise trả về MediaAssetEntity - Tệp hợp lệ
+   * @throws NotFoundException Nếu không có tệp hoặc tệp không do người gọi tải lên
+   * @throws BadRequestException Nếu tệp thuộc mục đích khác, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
+   * @throws ConflictException Nếu tệp chưa có trên storage
+   */
+  private async assertAttachable(
+    callerId: string,
+    assetId: string,
+    purpose: MediaPurpose,
+    wrongPurposeMessage: string,
+  ): Promise<MediaAssetEntity> {
     const asset = await this.findAsset(assetId);
     if (asset.uploadedBy !== callerId) {
       throw new NotFoundException('Không tìm thấy tệp');
     }
-    if (mediaPurposeOfObjectKey(asset.objectKey) !== MediaPurpose.HORSE_PHOTO) {
-      throw new BadRequestException('Tệp không phải ảnh đại diện ngựa');
+    if (mediaPurposeOfObjectKey(asset.objectKey) !== purpose) {
+      throw new BadRequestException(wrongPurposeMessage);
     }
-    await this.verifyStoredObject(asset, MediaPurpose.HORSE_PHOTO);
+    await this.verifyStoredObject(asset, purpose);
     return asset;
   }
 

@@ -6,6 +6,8 @@ import {
   MEDIA_FILE_EXTENSION,
   MEDIA_OBJECT_KEY_PREFIX,
   MEDIA_UPLOAD_PERMISSION,
+  TRIAL_VIDEO_ALLOWED_MIME_TYPES,
+  TRIAL_VIDEO_MAX_BYTES,
 } from '../constants/media.constants';
 import { MediaPurpose } from '../enums/media-purpose.enum';
 
@@ -47,6 +49,33 @@ export function assertHorsePhotoSpec(mimeType: string, byteSize: number): void {
 }
 
 /**
+ * Kiểm tra định dạng và dung lượng của video chạy thử.
+ *
+ * - Định dạng: MP4, WebM hoặc QuickTime.
+ * - Dung lượng: lớn hơn 0 và không quá 200 MB.
+ * - Dùng cả khi xin tải lên (số liệu khai báo), khi xác nhận tải xong (số liệu thật trên storage) và khi module training gắn video.
+ *
+ * @param mimeType Mime type của tệp
+ * @param byteSize Dung lượng tệp tính bằng byte
+ * @throws BadRequestException Nếu sai định dạng hoặc vượt dung lượng cho phép
+ */
+export function assertTrialVideoSpec(mimeType: string, byteSize: number): void {
+  if (
+    !TRIAL_VIDEO_ALLOWED_MIME_TYPES.includes(normalizeContentType(mimeType))
+  ) {
+    throw new BadRequestException(
+      'Video chạy thử phải có định dạng MP4, WebM hoặc QuickTime',
+    );
+  }
+  if (!Number.isFinite(byteSize) || byteSize <= 0) {
+    throw new BadRequestException('Dung lượng video không hợp lệ');
+  }
+  if (byteSize > TRIAL_VIDEO_MAX_BYTES) {
+    throw new BadRequestException('Video chạy thử không được vượt quá 200 MB');
+  }
+}
+
+/**
  * Kiểm tra tệp theo giới hạn của mục đích sử dụng.
  *
  * @param purpose Mục đích sử dụng của tệp
@@ -62,6 +91,9 @@ export function assertMediaSpec(
   switch (purpose) {
     case MediaPurpose.HORSE_PHOTO:
       assertHorsePhotoSpec(mimeType, byteSize);
+      return;
+    case MediaPurpose.TRIAL_VIDEO:
+      assertTrialVideoSpec(mimeType, byteSize);
       return;
   }
 }
@@ -106,6 +138,7 @@ export function mediaPurposeOfObjectKey(
  * Kiểm tra người gọi có được xin tải lên tệp cho mục đích này không, theo bảng MEDIA_UPLOAD_PERMISSION.
  *
  * - HORSE_PHOTO: chỉ CLUB_MANAGER.
+ * - TRIAL_VIDEO: chỉ HEAD_TRAINER.
  * - Kiểm theo vai trò trong Access Token (actor.roles).
  *
  * @param actor Thông tin danh tính từ Access Token

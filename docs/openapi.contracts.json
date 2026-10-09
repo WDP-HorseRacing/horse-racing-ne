@@ -1454,7 +1454,7 @@
     },
     "/api/v1/media/upload-requests": {
       "post": {
-        "description": "Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only; other roles get 403.",
+        "description": "Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only. TRIAL_VIDEO (video/mp4, video/webm, video/quicktime, up to 200 MB): HEAD_TRAINER only. Other roles get 403.",
         "operationId": "MediaController_requestUpload",
         "parameters": [],
         "requestBody": {
@@ -4641,7 +4641,7 @@
         ]
       },
       "patch": {
-        "description": "Sửa tên, mô tả, sức chứa, trạng thái và Head Trainer phụ trách; gửi headTrainerId = null để gỡ người phụ trách. Head Trainer mới phải đang hoạt động (400 nếu không có hoặc sai vai trò, 409 nếu không còn ACTIVE). Khu còn ngựa thì không chuyển được sang CLOSED hoặc MAINTENANCE và không gỡ được Head Trainer (409). Sức chứa không được nhỏ hơn số ô hiện có, tên khu không được trùng (409).",
+        "description": "Sửa tên, mô tả, sức chứa, trạng thái và Head Trainer phụ trách; gửi headTrainerId = null để gỡ người phụ trách. Head Trainer mới phải đang hoạt động (400 nếu không có hoặc sai vai trò, 409 nếu không còn ACTIVE). Khu còn ngựa thì không chuyển được sang CLOSED hoặc MAINTENANCE và không gỡ được Head Trainer (409). Đổi sang Head Trainer khác bị chặn (409) khi Head Trainer hiện tại còn lớp đang chạy có ngựa của khu; dùng Bàn giao khi Head Trainer nghỉ. Sức chứa không được nhỏ hơn số ô hiện có, tên khu không được trùng (409).",
         "operationId": "BarnsController_update",
         "parameters": [
           {
@@ -9795,7 +9795,8 @@
       "MediaPurpose": {
         "type": "string",
         "enum": [
-          "HORSE_PHOTO"
+          "HORSE_PHOTO",
+          "TRIAL_VIDEO"
         ]
       },
       "RequestUploadDto": {
@@ -13236,6 +13237,11 @@
             "nullable": true,
             "description": "Ghi chú của người bấm giờ cho lần chạy này"
           },
+          "videoUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Link xem video chạy thử có hạn dùng, null nếu không có video"
+          },
           "recordedAt": {
             "format": "date-time",
             "type": "string"
@@ -13522,6 +13528,11 @@
             "type": "object",
             "format": "uuid"
           },
+          "videoUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Link xem video có hạn dùng, null nếu lần chạy không có video"
+          },
           "recordedBy": {
             "type": "string",
             "format": "uuid"
@@ -13557,7 +13568,8 @@
           },
           "videoMediaId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Id video chạy thử đã tải lên với mục đích TRIAL_VIDEO bởi chính người ghi"
           }
         },
         "required": [

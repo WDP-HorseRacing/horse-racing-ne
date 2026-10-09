@@ -3,6 +3,7 @@ import { DataSource, In } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../../common/enums/role.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { MediaService } from '../../media/services/media.service';
 import { PerformanceEvaluationEntity } from '../../performance/entities/performance-evaluation.entity';
 import { HorseTrainingSessionQueryDto } from '../dto/horse-training.dto';
 import { TrialResultEntity } from '../entities/trial-result.entity';
@@ -44,6 +45,7 @@ describe('HorseTrainingService', () => {
   let trialRows: object[];
   let evaluationRows: object[];
   let find: jest.Mock;
+  let media: { signDownloadUrls: jest.Mock };
   let service: HorseTrainingService;
 
   const query = (patch: Partial<HorseTrainingSessionQueryDto> = {}) =>
@@ -62,10 +64,14 @@ describe('HorseTrainingService', () => {
         entity === TrialResultEntity ? trialRows : evaluationRows,
       ),
     );
+    media = {
+      signDownloadUrls: jest.fn().mockResolvedValue(new Map<string, string>()),
+    };
     service = new HorseTrainingService(
       horseAccess as unknown as HorseAccessService,
       repository as unknown as HorseTrainingRepository,
       { manager: { find } } as unknown as DataSource,
+      media as unknown as MediaService,
     );
   });
 
@@ -128,6 +134,7 @@ describe('HorseTrainingService', () => {
         attemptNo: 1,
         elapsedMs: '61000',
         notes: 'Xuất phát chậm',
+        videoMediaId: null,
         recordedAt: new Date('2026-10-01T08:30:00Z'),
       },
     ];
@@ -143,11 +150,58 @@ describe('HorseTrainingService', () => {
         attemptNo: 1,
         elapsedMs: '61000',
         notes: 'Xuất phát chậm',
+        videoUrl: null,
         recordedAt: new Date('2026-10-01T08:30:00Z'),
       },
     ]);
     expect(page.items[1].trialResults).toEqual([]);
     expect(page.meta).toEqual({ total: 25, page: 1, limit: 20, totalPages: 2 });
+  });
+
+  it('returns a signed videoUrl for a trial with video and null for one without', async () => {
+    repository.listSessions.mockResolvedValue({
+      rows: [sessionRow('p1')],
+      total: 1,
+    });
+    trialRows = [
+      {
+        sessionParticipantId: 'p1',
+        attemptNo: 1,
+        elapsedMs: '61000',
+        notes: null,
+        videoMediaId: 'm1',
+        recordedAt: new Date('2026-10-01T08:30:00Z'),
+      },
+      {
+        sessionParticipantId: 'p1',
+        attemptNo: 2,
+        elapsedMs: '60000',
+        notes: null,
+        videoMediaId: null,
+        recordedAt: new Date('2026-10-01T08:40:00Z'),
+      },
+    ];
+    media.signDownloadUrls.mockResolvedValue(
+      new Map([['m1', 'https://s3/video-m1']]),
+    );
+
+    const page = await service.listSessions(actor, 'h1', query());
+
+    expect(media.signDownloadUrls).toHaveBeenCalledWith(['m1']);
+    expect(page.items[0].trialResults.map((trial) => trial.videoUrl)).toEqual([
+      'https://s3/video-m1',
+      null,
+    ]);
+  });
+
+  it('signs nothing when the caller cannot read the horse', async () => {
+    horseAccess.findReadableHorseForActor.mockRejectedValue(
+      new NotFoundException(),
+    );
+    await expect(service.listSessions(actor, 'h1', query())).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(media.signDownloadUrls).not.toHaveBeenCalled();
   });
 
   it('attaches each evaluation to its own session and leaves the others null', async () => {

@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,7 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
+import { MediaService } from '../../media/services/media.service';
 import {
   CreateTrialResultDto,
   TrialResultResponseDto,
@@ -27,8 +26,21 @@ export class TrialResultsService {
     private readonly results: Repository<TrialResultEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
+    private readonly media: MediaService,
   ) {}
 
+  /**
+   * Liệt kê các lần chạy thử của một lượt tập, theo thứ tự lần chạy
+   *
+   * - Quyền xem theo TrainingAccessService.assertCanReadParticipant
+   * - videoUrl là link xem video có hạn, null nếu lần chạy không có video; chỉ ký sau khi đã kiểm quyền xem
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia buổi tập
+   * @returns Promise trả về các lần chạy thử kèm videoUrl
+   * @throws ForbiddenException Nếu người gọi không được xem lượt tập này
+   * @throws NotFoundException Nếu không có lượt tập
+   */
   async list(
     actor: Actor,
     participantId: string,
@@ -42,14 +54,47 @@ export class TrialResultsService {
       where: { sessionParticipantId: participantId },
       order: { attemptNo: 'ASC' },
     });
-    return rows.map(toTrialResultResponse);
+    const videoUrls = await this.media.signDownloadUrls(
+      rows
+        .map((row) => row.videoMediaId)
+        .filter((id): id is string => id !== null),
+    );
+    return rows.map((row) =>
+      toTrialResultResponse(
+        row,
+        row.videoMediaId ? (videoUrls.get(row.videoMediaId) ?? null) : null,
+      ),
+    );
   }
 
+  /**
+   * Ghi một lần chạy thử cho lượt tập, có thể kèm video đã tải lên
+   *
+   * - Chỉ Head Trainer phụ trách lớp, buổi TIME_TRIAL đang IN_PROGRESS, lượt tập ONGOING hoặc COMPLETED
+   * - Video (videoMediaId) phải do chính người ghi tải lên với mục đích TRIAL_VIDEO và đã có trên storage đúng như khai báo; kiểm trước khi mở transaction
+   * - Mỗi lần chạy (attemptNo) của một lượt tập chỉ ghi một lần
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia buổi tập
+   * @param body Số lần chạy, thời gian, ghi chú và video (nếu có)
+   * @returns Promise trả về lần chạy vừa ghi kèm videoUrl
+   * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không được thao tác lượt tập này
+   * @throws NotFoundException Nếu không có lượt tập, chưa có cấu hình Time Trial, hoặc video không tồn tại hay không do người gọi tải lên
+   * @throws BadRequestException Nếu video không phải TRIAL_VIDEO, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
+   * @throws ConflictException Nếu buổi hoặc lượt tập sai trạng thái, video chưa có trên storage hoặc lần chạy đã tồn tại
+   */
   async create(
     actor: Actor,
     participantId: string,
     body: CreateTrialResultDto,
   ): Promise<TrialResultResponseDto> {
+    if (body.videoMediaId) {
+      const uploader = await this.access.currentUser(actor);
+      await this.media.assertAttachableTrialVideo(
+        uploader.id,
+        body.videoMediaId,
+      );
+    }
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const context = await this.access.findParticipant(manager, participantId);
@@ -95,17 +140,6 @@ export class TrialResultsService {
       if (!trial) {
         throw new NotFoundException('Session chưa có cấu hình Time Trial');
       }
-      if (body.videoMediaId) {
-        const media = await manager.findOneBy(MediaAssetEntity, {
-          id: body.videoMediaId,
-        });
-        if (!media) {
-          throw new NotFoundException('Không tìm thấy video media');
-        }
-        if (!media.mimeType.toLowerCase().startsWith('video/')) {
-          throw new BadRequestException('Media đính kèm phải là video');
-        }
-      }
       const duplicate = await manager.findOneBy(TrialResultEntity, {
         timeTrialId: trial.id,
         sessionParticipantId: participantId,
@@ -127,6 +161,9 @@ export class TrialResultsService {
         }),
       );
     });
-    return toTrialResultResponse(row);
+    const videoUrl = row.videoMediaId
+      ? await this.media.signDownloadUrl(row.videoMediaId)
+      : null;
+    return toTrialResultResponse(row, videoUrl);
   }
 }

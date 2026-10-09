@@ -10,7 +10,10 @@ import { UserStatus } from '../../../common/enums/user-status.enum';
 import { ObjectStorageService } from '../../../common/infrastructure/storage/object-storage.service';
 import type { Actor } from '../../../common/types/actor';
 import { UserEntity } from '../../users/entities/user.entity';
-import { HORSE_PHOTO_MAX_BYTES } from '../constants/media.constants';
+import {
+  HORSE_PHOTO_MAX_BYTES,
+  TRIAL_VIDEO_MAX_BYTES,
+} from '../constants/media.constants';
 import { MediaAssetEntity } from '../entities/media-asset.entity';
 import { MediaPurpose } from '../enums/media-purpose.enum';
 import { MediaService } from './media.service';
@@ -442,5 +445,155 @@ describe('MediaService.signDownloadUrls', () => {
 
     await expect(service.signDownloadUrls([])).resolves.toEqual(new Map());
     expect(manager.findBy).not.toHaveBeenCalled();
+  });
+});
+
+describe('MediaService.requestUpload (TRIAL_VIDEO)', () => {
+  const body = {
+    purpose: MediaPurpose.TRIAL_VIDEO,
+    fileName: 'chay-thu.MP4',
+    mimeType: 'video/mp4',
+    byteSize: 50 * 1024 * 1024,
+  };
+
+  it('lets a HEAD_TRAINER request an upload and saves it under the trial-videos prefix', async () => {
+    const { service, manager, storage } = setup({
+      callerRole: UserRole.HEAD_TRAINER,
+    });
+
+    const result = await service.requestUpload(
+      makeActor([UserRole.HEAD_TRAINER]),
+      body,
+    );
+
+    expect(manager.save.mock.calls[0][0]).toMatchObject({
+      uploadedBy: CALLER_ID,
+      objectKey: `trial-videos/${result.assetId}.mp4`,
+      mimeType: 'video/mp4',
+    });
+    expect(storage.createUploadUrl).toHaveBeenCalledWith(
+      `trial-videos/${result.assetId}.mp4`,
+      'video/mp4',
+      body.byteSize,
+    );
+  });
+
+  it.each(['video/webm', 'video/quicktime'])('accepts %s', async (mimeType) => {
+    const { service } = setup({ callerRole: UserRole.HEAD_TRAINER });
+    await expect(
+      service.requestUpload(makeActor([UserRole.HEAD_TRAINER]), {
+        ...body,
+        mimeType,
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  it.each(['image/jpeg', 'video/x-msvideo', 'application/pdf'])(
+    'rejects declared mime type %s',
+    async (mimeType) => {
+      const { service, manager } = setup({ callerRole: UserRole.HEAD_TRAINER });
+      await expect(
+        service.requestUpload(makeActor([UserRole.HEAD_TRAINER]), {
+          ...body,
+          mimeType,
+        }),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'Video chạy thử phải có định dạng MP4, WebM hoặc QuickTime',
+        ),
+      );
+      expect(manager.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it('accepts exactly 200 MB and rejects one byte more', async () => {
+    const { service, manager } = setup({ callerRole: UserRole.HEAD_TRAINER });
+    const actor = makeActor([UserRole.HEAD_TRAINER]);
+    await expect(
+      service.requestUpload(actor, {
+        ...body,
+        byteSize: TRIAL_VIDEO_MAX_BYTES,
+      }),
+    ).resolves.toBeDefined();
+    manager.save.mockClear();
+    await expect(
+      service.requestUpload(actor, {
+        ...body,
+        byteSize: TRIAL_VIDEO_MAX_BYTES + 1,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('Video chạy thử không được vượt quá 200 MB'),
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    UserRole.CLUB_MANAGER,
+    UserRole.VETERINARIAN,
+    UserRole.GROOM,
+    UserRole.HORSE_OWNER,
+  ])('rejects a trial video upload by %s (403)', async (role) => {
+    const { service, manager, storage } = setup({ callerRole: role });
+
+    const error: unknown = await service
+      .requestUpload(makeActor([role]), body)
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect((error as ForbiddenException).message).toBe(
+      'Chỉ Huấn luyện viên trưởng được tải lên video chạy thử',
+    );
+    expect(storage.createUploadUrl).not.toHaveBeenCalled();
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('MediaService.assertAttachableTrialVideo', () => {
+  const VIDEO_KEY = `trial-videos/${ASSET_ID}.mp4`;
+  const videoAsset = (overrides: Partial<MediaAssetEntity> = {}) =>
+    makeAsset({
+      objectKey: VIDEO_KEY,
+      mimeType: 'video/mp4',
+      byteSize: '4096',
+      ...overrides,
+    });
+
+  it('returns the asset when it is a stored trial video of the caller', async () => {
+    const asset = videoAsset();
+    const { service, storage } = setup({ asset });
+    storage.getMetadata.mockResolvedValue({
+      contentType: 'video/mp4',
+      byteSize: 4096,
+    });
+
+    await expect(
+      service.assertAttachableTrialVideo(CALLER_ID, ASSET_ID),
+    ).resolves.toBe(asset);
+    expect(storage.getMetadata).toHaveBeenCalledWith(VIDEO_KEY);
+  });
+
+  it('rejects an asset that was requested as a horse photo', async () => {
+    const { service, storage } = setup({ asset: makeAsset() });
+    await expect(
+      service.assertAttachableTrialVideo(CALLER_ID, ASSET_ID),
+    ).rejects.toThrow(new BadRequestException('Tệp không phải video chạy thử'));
+    expect(storage.getMetadata).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 for a video uploaded by someone else', async () => {
+    const { service } = setup({ asset: videoAsset({ uploadedBy: 'other' }) });
+    await expect(
+      service.assertAttachableTrialVideo(CALLER_ID, ASSET_ID),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns 409 when the video was never uploaded to storage', async () => {
+    const { service, storage } = setup({ asset: videoAsset() });
+    storage.getMetadata.mockRejectedValueOnce(
+      Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' }),
+    );
+    await expect(
+      service.assertAttachableTrialVideo(CALLER_ID, ASSET_ID),
+    ).rejects.toThrow(ConflictException);
   });
 });

@@ -59,6 +59,13 @@ export class HorseTrainingTrialResultDto {
   })
   notes!: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Link xem video chạy thử có hạn dùng, null nếu không có video',
+  })
+  videoUrl!: string | null;
+
   @ApiProperty({ format: 'date-time' })
   recordedAt!: Date;
 }

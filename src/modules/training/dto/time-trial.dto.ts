@@ -95,7 +95,11 @@ export class CreateTrialResultDto {
   @IsString()
   notes?: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Id video chạy thử đã tải lên với mục đích TRIAL_VIDEO bởi chính người ghi',
+  })
   @IsOptional()
   @IsUUID()
   videoMediaId?: string;
@@ -129,6 +133,13 @@ export class TrialResultResponseDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @Expose()
   videoMediaId!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Link xem video có hạn dùng, null nếu lần chạy không có video',
+  })
+  videoUrl!: string | null;
 
   @ApiProperty({ format: 'uuid' })
   @Expose()

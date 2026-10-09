@@ -82,6 +82,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    2. Một ngựa không có hai lượt giữ chỗ trùng giờ. Lượt giữ chỗ: Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập, Hủy do khóa, Không đủ điều kiện (hai trạng thái sau còn có thể mở lại, mục 5 luật 6), ở buổi chưa hủy, chưa hoàn thành. Vì ngựa chỉ học lớp của Head Trainer phụ trách khu mình, trùng giờ xảy ra giữa các lớp của cùng một Head Trainer.
    3. Ghi danh: ngựa đang giữ chỗ ở lớp khác trùng giờ với một buổi đã publish chưa tới giờ của lớp này thì chặn 409 cả thao tác ("Ngựa {tên} đã có buổi tập trùng giờ ở lớp {mã lớp}").
    4. Publish (một buổi hoặc nhiều buổi): ngựa trùng giờ thì không tạo lượt ở buổi đó, các ngựa khác bình thường, không báo lỗi. Mỗi buổi trong response kèm `skippedHorses` (ngựa, mã lớp và giờ bắt đầu của buổi trùng).
+7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
 
 ### 5. Ngựa có được tập buổi này không
 

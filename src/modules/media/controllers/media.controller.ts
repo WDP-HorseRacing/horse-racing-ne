@@ -33,7 +33,7 @@ export class MediaController {
   @ApiOperation({
     summary: 'Request time-limited private upload URL',
     description:
-      'Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only; other roles get 403.',
+      'Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only. TRIAL_VIDEO (video/mp4, video/webm, video/quicktime, up to 200 MB): HEAD_TRAINER only. Other roles get 403.',
   })
   @ApiCreatedResponse({ type: MediaUploadRequestResponseDto })
   requestUpload(@CurrentUser() actor: Actor, @Body() body: RequestUploadDto) {

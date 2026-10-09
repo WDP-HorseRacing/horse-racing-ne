@@ -491,6 +491,7 @@ describe('Flow 1 read queries (Postgres)', () => {
             attemptNo: 1,
             elapsedMs: '9007199254740993',
             notes: null,
+            videoMediaId: null,
             recordedAt: new Date('2026-10-02T02:00:00Z'),
           },
           {
@@ -498,6 +499,7 @@ describe('Flow 1 read queries (Postgres)', () => {
             attemptNo: 2,
             elapsedMs: '61000',
             notes: null,
+            videoMediaId: null,
             recordedAt: new Date('2026-10-02T02:00:00Z'),
           },
         ]);
