@@ -10,9 +10,10 @@ import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
 import type { ReadOnlyLifecycleStatus } from '../../horses/types/horse.types';
 import type { HorseEntity } from '../../horses/entities/horse.entity';
 import type { UserEntity } from '../../users/entities/user.entity';
-import { BarnStatus } from '../constants/barn-status.enum';
+import { BARN_STATUS_LABELS, BarnStatus } from '../constants/barn-status.enum';
 import {
   MANUAL_STALL_STATUSES,
+  STALL_STATUS_LABELS,
   StallStatus,
 } from '../constants/stall-status.enum';
 import type { BarnEntity } from '../entities/barn.entity';
@@ -265,7 +266,7 @@ export function assertManualStallStatusChange(
     !(MANUAL_STALL_STATUSES as readonly StallStatus[]).includes(currentStatus)
   ) {
     throw new ConflictException(
-      `Ô chuồng đang ${currentStatus}, chỉ được đổi giữa AVAILABLE và MAINTENANCE`,
+      `Ô chuồng đang ở trạng thái ${STALL_STATUS_LABELS[currentStatus]}, chỉ được đổi giữa ${STALL_STATUS_LABELS[StallStatus.AVAILABLE]} và ${STALL_STATUS_LABELS[StallStatus.MAINTENANCE]}`,
     );
   }
 }
@@ -346,7 +347,7 @@ export function assertBarnChangeKeepsHorses(change: BarnChange): void {
     HORSE_BLOCKING_BARN_STATUSES.includes(change.nextStatus)
   ) {
     throw new ConflictException(
-      `Khu chuồng còn ngựa, không chuyển sang ${change.nextStatus} được. Vui lòng chuyển ngựa sang khu khác trước`,
+      `Khu chuồng còn ngựa, không chuyển sang ${BARN_STATUS_LABELS[change.nextStatus]} được. Vui lòng chuyển ngựa sang khu khác trước`,
     );
   }
   if (

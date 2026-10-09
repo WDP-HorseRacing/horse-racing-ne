@@ -28,6 +28,8 @@ import {
   DECEASED_HORSE_READ_ONLY_MESSAGE,
   FEVER_THRESHOLD_CELSIUS,
   HEALTH_REASONS,
+  HORSE_LIFECYCLE_LABELS,
+  HORSE_MEASUREMENT_LABELS,
   HORSE_MEASUREMENT_SPECS,
   LIFECYCLE_TRANSITIONS,
   LIFECYCLE_VERBS,
@@ -42,6 +44,7 @@ import {
   TRANSFERRED_HORSE_READ_ONLY_MESSAGE,
   WEIGHT_DROP_PERCENT,
 } from '../constants/horse.constants';
+import { formatMeasurement } from '../utils/measurement-format';
 import type {
   ChildProfile,
   ReadOnlyLifecycleStatus,
@@ -298,7 +301,7 @@ export function lifecycleTransitionError(
   if (from === HorseLifecycleStatus.DECEASED) {
     return DECEASED_HORSE_READ_ONLY_MESSAGE;
   }
-  return `Không thể chuyển vòng đời từ ${from} sang ${to}`;
+  return `Không thể chuyển vòng đời từ ${HORSE_LIFECYCLE_LABELS[from]} sang ${HORSE_LIFECYCLE_LABELS[to]}`;
 }
 
 /**
@@ -746,7 +749,7 @@ export function assertMeasurementValue(
   const spec = HORSE_MEASUREMENT_SPECS[type];
   if (value < spec.min || value > spec.max) {
     throw new BadRequestException(
-      `${type} phải trong khoảng ${spec.min}–${spec.max} ${spec.unit}`,
+      `${HORSE_MEASUREMENT_LABELS[type]} phải trong khoảng ${spec.min} đến ${formatMeasurement(spec.max, spec.unit)}`,
     );
   }
 }
@@ -811,7 +814,7 @@ export function assertAbnormalConfirmed(
 ): void {
   const abnormalTypes = values
     .filter((item) => isAbnormalMeasurement(item.type, item.value))
-    .map((item) => item.type);
+    .map((item) => HORSE_MEASUREMENT_LABELS[item.type]);
   if (abnormalTypes.length > 0 && !confirmed) {
     throw new UnprocessableEntityException(
       `Giá trị ngoài khoảng bình thường (${abnormalTypes.join(', ')}). Gửi lại với confirmAbnormal = true để xác nhận lưu`,
@@ -1000,7 +1003,7 @@ export function evaluateHorsePermissions(
  */
 export function assertTimeRange(from?: Date, to?: Date): void {
   if (from && to && from > to) {
-    throw new BadRequestException('from phải trước hoặc bằng to');
+    throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
   }
 }
 

@@ -41,7 +41,7 @@ export class UpdateHorseLifecycleDto {
   })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'dateOfDeath must be in YYYY-MM-DD format',
+    message: 'Ngày mất phải có dạng YYYY-MM-DD',
   })
   @IsDateString({ strict: true })
   dateOfDeath?: string;

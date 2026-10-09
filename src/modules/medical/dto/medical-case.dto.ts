@@ -80,7 +80,7 @@ export class CloseMedicalCaseDto {
   })
   @IsOptional()
   @Matches(DATE_ONLY_PATTERN, {
-    message: 'dateOfDeath phải có dạng YYYY-MM-DD',
+    message: 'Ngày mất phải có dạng YYYY-MM-DD',
   })
   @IsDateString({ strict: true })
   dateOfDeath?: string;
@@ -112,14 +112,14 @@ export class MedicalCostReportQueryDto {
     format: 'date',
     description: 'Từ ngày (lịch câu lạc bộ), YYYY-MM-DD',
   })
-  @Matches(DATE_ONLY_PATTERN, { message: 'from phải có dạng YYYY-MM-DD' })
+  @Matches(DATE_ONLY_PATTERN, { message: 'Từ ngày phải có dạng YYYY-MM-DD' })
   from!: string;
 
   @ApiProperty({
     format: 'date',
     description: 'Đến ngày (lịch câu lạc bộ), YYYY-MM-DD',
   })
-  @Matches(DATE_ONLY_PATTERN, { message: 'to phải có dạng YYYY-MM-DD' })
+  @Matches(DATE_ONLY_PATTERN, { message: 'Đến ngày phải có dạng YYYY-MM-DD' })
   to!: string;
 
   @ApiPropertyOptional({ format: 'uuid' })

@@ -3,6 +3,7 @@
  */
 const UNIT_LABELS: Readonly<Record<string, string>> = {
   celsius: '°C',
+  score: 'điểm',
 };
 
 /**

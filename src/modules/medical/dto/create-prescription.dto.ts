@@ -35,7 +35,9 @@ export class CreatePrescriptionDto {
   frequency!: string;
 
   @ApiProperty({ format: 'date', description: 'YYYY-MM-DD' })
-  @Matches(DATE_ONLY_PATTERN, { message: 'startDate phải có dạng YYYY-MM-DD' })
+  @Matches(DATE_ONLY_PATTERN, {
+    message: 'Ngày bắt đầu phải có dạng YYYY-MM-DD',
+  })
   startDate!: string;
 
   @ApiPropertyOptional({
@@ -43,6 +45,8 @@ export class CreatePrescriptionDto {
     description: 'YYYY-MM-DD, không sớm hơn startDate',
   })
   @IsOptional()
-  @Matches(DATE_ONLY_PATTERN, { message: 'endDate phải có dạng YYYY-MM-DD' })
+  @Matches(DATE_ONLY_PATTERN, {
+    message: 'Ngày kết thúc phải có dạng YYYY-MM-DD',
+  })
   endDate?: string;
 }

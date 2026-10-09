@@ -235,7 +235,7 @@ describe('HorseMeasurementsService', () => {
         ]),
       );
       await expect(result).rejects.toThrow(UnprocessableEntityException);
-      await expect(result).rejects.toThrow(/TEMPERATURE/);
+      await expect(result).rejects.toThrow(/Thân nhiệt/);
       expect(measurementRepository.save).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
       expect(events.publish).not.toHaveBeenCalled();

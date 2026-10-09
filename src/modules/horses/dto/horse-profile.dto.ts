@@ -74,7 +74,7 @@ export class CreateHorseDto {
   @ApiPropertyOptional({ format: 'date', nullable: true, type: String })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'dateOfBirth must be in YYYY-MM-DD format',
+    message: 'Ngày sinh phải có dạng YYYY-MM-DD',
   })
   @IsDateString({ strict: true })
   dateOfBirth?: string | null;

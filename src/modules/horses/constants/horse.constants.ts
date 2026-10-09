@@ -74,6 +74,26 @@ export const HORSE_MEASUREMENT_SPECS: Record<
 };
 
 /**
+ * Tên hiển thị của từng loại chỉ số, dùng trong câu báo lỗi
+ */
+export const HORSE_MEASUREMENT_LABELS: Record<HorseMeasurementType, string> = {
+  [HorseMeasurementType.WEIGHT]: 'Cân nặng',
+  [HorseMeasurementType.HEIGHT]: 'Chiều cao',
+  [HorseMeasurementType.BODY_CONDITION]: 'Điểm thể trạng',
+  [HorseMeasurementType.TEMPERATURE]: 'Thân nhiệt',
+};
+
+/**
+ * Tên hiển thị của từng trạng thái vòng đời ngựa, dùng trong câu báo lỗi
+ */
+export const HORSE_LIFECYCLE_LABELS: Record<HorseLifecycleStatus, string> = {
+  [HorseLifecycleStatus.ACTIVE]: 'Đang hoạt động',
+  [HorseLifecycleStatus.RETIRED]: 'Đã giải nghệ',
+  [HorseLifecycleStatus.TRANSFERRED]: 'Đã chuyển nhượng',
+  [HorseLifecycleStatus.DECEASED]: 'Đã mất',
+};
+
+/**
  * Số ngày tối đa được nhập lùi thời điểm đo so với hiện tại.
  */
 export const MEASUREMENT_BACKDATE_MAX_DAYS = 7;

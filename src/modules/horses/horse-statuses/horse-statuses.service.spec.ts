@@ -320,7 +320,7 @@ describe('HorseStatusesService', () => {
         horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
         await expect(recordDeath('2026-10-01')).rejects.toThrow(
           new ConflictException(
-            'Không thể chuyển vòng đời từ TRANSFERRED sang DECEASED',
+            'Không thể chuyển vòng đời từ Đã chuyển nhượng sang Đã mất',
           ),
         );
         expectNoWrite();
@@ -880,7 +880,7 @@ describe('HorseStatusesService', () => {
         expect.objectContaining({
           allowed: false,
           blockedReason:
-            'Không thể chuyển vòng đời từ TRANSFERRED sang RETIRED',
+            'Không thể chuyển vòng đời từ Đã chuyển nhượng sang Đã giải nghệ',
           summary: null,
         }),
       );

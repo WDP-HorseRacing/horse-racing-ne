@@ -796,7 +796,7 @@ describe('horse.policy', () => {
       const from = HorseLifecycleStatus.TRANSFERRED;
       const to = HorseLifecycleStatus.RETIRED;
       expect(lifecycleTransitionError(from, to)).toBe(
-        'Không thể chuyển vòng đời từ TRANSFERRED sang RETIRED',
+        'Không thể chuyển vòng đời từ Đã chuyển nhượng sang Đã giải nghệ',
       );
       expect(() => assertLifecycleTransition(from, to)).toThrow(
         ConflictException,
@@ -1211,7 +1211,7 @@ describe('horse.policy', () => {
           HorseLifecycleStatus.TRANSFERRED,
           HorseLifecycleStatus.DECEASED,
         ),
-      ).toBe('Không thể chuyển vòng đời từ TRANSFERRED sang DECEASED');
+      ).toBe('Không thể chuyển vòng đời từ Đã chuyển nhượng sang Đã mất');
     });
 
     it('is final', () => {
