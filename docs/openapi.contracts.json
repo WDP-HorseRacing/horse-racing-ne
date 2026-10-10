@@ -6222,6 +6222,61 @@
         ]
       }
     },
+    "/api/v1/session-participants/{id}/trial-results/{attemptNo}": {
+      "patch": {
+        "description": "Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Gửi videoMediaId null để gỡ video; chỉ video thay đổi.",
+        "operationId": "TrialResultsController_updateVideo",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attemptNo",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrialResultVideoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialResultResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gắn, đổi hoặc gỡ video của một lần chạy thử",
+        "tags": [
+          "training"
+        ]
+      }
+    },
     "/api/v1/classes": {
       "get": {
         "operationId": "TrainingClassesController_list",
@@ -6840,7 +6895,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -6885,7 +6940,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -6920,7 +6975,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -6955,7 +7010,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -6990,7 +7045,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -7233,7 +7288,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -7278,7 +7333,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -13479,7 +13534,9 @@
           },
           "targetTimeMs": {
             "type": "number",
-            "minimum": 1
+            "minimum": 1,
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms); null là không có mục tiêu"
           },
           "notes": {
             "type": "string"
@@ -13585,6 +13642,20 @@
         "required": [
           "attemptNo",
           "elapsedMs"
+        ]
+      },
+      "UpdateTrialResultVideoDto": {
+        "type": "object",
+        "properties": {
+          "videoMediaId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Id video chạy thử đã tải lên với mục đích TRIAL_VIDEO bởi chính người sửa; gửi null để gỡ video"
+          }
+        },
+        "required": [
+          "videoMediaId"
         ]
       },
       "TrainingClassResponseDto": {
@@ -13827,12 +13898,14 @@
             "maxLength": 160
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 1000
           },
           "targetTimeMs": {
             "type": "number",
             "minimum": 1,
-            "description": "Thời gian mục tiêu (ms), chỉ cho môn chạy thử"
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu"
           },
           "scheduledStartAt": {
             "type": "string",
@@ -14674,11 +14747,17 @@
           },
           "notes": {
             "type": "string"
+          },
+          "targetTimeMs": {
+            "type": "number",
+            "minimum": 1,
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu"
           }
         },
         "required": [
           "name",
-          "sessionType",
+          "subjectId",
           "intensity",
           "plannedDistanceM",
           "scheduledStartAt",

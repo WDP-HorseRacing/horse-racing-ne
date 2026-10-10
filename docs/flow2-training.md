@@ -63,9 +63,10 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    2. Hệ thống trả lịch xem trước, chưa lưu gì: tuần thứ n (tính từ ngày bắt đầu lớp, mỗi tuần 7 ngày) thuộc giai đoạn chứa tuần n; mỗi ngày sinh một buổi của môn có thứ đó trong giai đoạn, nội dung lấy từ môn; ngày không thuộc môn nào thì không có buổi.
    3. Head Trainer chỉnh ngay trên màn hình: đổi giờ, mặt sân, cự ly, cường độ, thời gian mục tiêu; đổi môn của một buổi (ví dụ thêm ngày đi bộ hồi phục hoặc buổi chạy thử cuối giai đoạn); bỏ buổi.
    4. Bấm Tạo lớp: lớp và mọi buổi được lưu trong một lần. Lỗi ở bất kỳ buổi nào thì không lưu gì.
+   5. Thời gian mục tiêu của buổi chạy thử để `null` nghĩa là không có mục tiêu. Hai buổi trong danh sách trùng giờ với nhau thì chặn 409.
 3. Ngày kết thúc lớp = ngày bắt đầu + tổng số tuần của giáo án − 1 ngày.
 4. Mỗi buổi phải nằm trong thời gian của lớp, so theo ngày lịch CLB (giờ Việt Nam).
-5. Loại buổi lấy theo môn của buổi. Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly, thời gian mục tiêu).
+5. Loại buổi lấy theo môn của buổi. Thêm buổi vào lớp bắt buộc có môn; loại buổi gửi kèm (nếu có) phải khớp môn. Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly, thời gian mục tiêu); khi thêm buổi chạy thử vào lớp, cấu hình được tạo ngay trong cùng request (`targetTimeMs` không bắt buộc).
 6. Lớp và buổi tạo ra ở trạng thái nháp. Head Trainer kích hoạt lớp rồi publish buổi (từng buổi, theo khoảng ngày hoặc cả lớp).
 7. Đổi ngày bắt đầu của lớp thì ngày kết thúc tự tính lại; buổi nằm ngoài khoảng mới thì chặn.
 8. Lớp không đổi được giáo án hay Head Trainer sau khi tạo. Đổi Head Trainer chỉ qua bàn giao (mục 7).
@@ -85,6 +86,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    5. Thêm buổi hoặc đổi giờ buổi nháp: kiểm sau luật 6.1. Xét mọi ngựa có khoảng ghi danh chưa hủy ở lớp chứa giờ bắt đầu của buổi. Buổi trùng giờ với lịch hoặc lượt giữ chỗ của các ngựa đó ở lớp khác thì chặn 409, câu báo liệt kê mọi ngựa trùng theo tên, mỗi ngựa kèm mã lớp và giờ bắt đầu của buổi trùng sớm nhất: "Trùng giờ với lịch của ngựa: Công Phá (lớp KD-01, 06:00 ngày 10/10/2026), Giả Nhân (lớp KD-03, 06:00 ngày 10/10/2026)". Sửa buổi mà không đổi giờ thì không kiểm.
    6. Publish (một buổi hoặc nhiều buổi): ngựa trùng giờ thì không tạo lượt ở buổi đó, các ngựa khác bình thường, không báo lỗi. Mỗi buổi trong response kèm `skippedHorses` (ngựa, mã lớp và giờ bắt đầu của buổi trùng). Publish giữ cách bỏ qua vì publish nhiều buổi chạy trong một transaction: trả 409 thì một ngựa trùng sẽ chặn cả tuần của mọi ngựa khác.
 7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
+   1. Head Trainer phụ trách lớp gắn, đổi hoặc gỡ (`videoMediaId = null`) video của một lần chạy thử bằng `PATCH /session-participants/:id/trial-results/:attemptNo`, không kiểm khu của ngựa. Làm được tới 7 ngày sau giờ kết thúc dự kiến của buổi; buổi đã hủy thì 409. Chỉ video thay đổi, các số đo giữ nguyên.
 8. Danh sách lượt tập của buổi (`GET /training-sessions/:sessionId/participants`) kèm `horseName`, `horsePhotoUrl` (link có hạn, null nếu ngựa chưa có ảnh) và `assignedGroomName` (null nếu chưa giao Groom); danh sách ghi danh của lớp (`GET /classes/:classId/enrollments`) kèm `horseName`, `horsePhotoUrl`. Ngựa hoặc Groom đã xóa mềm vẫn hiện tên; các endpoint ghi giữ response cũ.
 
 ### 5. Ngựa có được tập buổi này không
@@ -146,15 +148,29 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | POST | `/training-plans` | HT | Tạo giáo án `{ name, description?, phases: [{ weeks, subjects: [{ subjectId, weekdays }] }] }` |
 | PUT | `/training-plans/:id` | HT (của mình) | Thay toàn bộ giáo án |
 | DELETE | `/training-plans/:id` | HT (của mình) | Xóa giáo án chưa có lớp |
+| GET | `/classes` | Theo quyền xem lớp | Danh sách lớp |
+| GET | `/classes/:classId` | Theo quyền xem lớp | Một lớp |
 | POST | `/classes/schedule-preview` | HT | Xem trước lịch `{ planId, startDate, startTime, durationMinutes }` |
 | POST | `/classes` | HT | Tạo lớp kèm buổi `{ code, name, ..., planId, startDate, sessions: [...] }` |
 | PATCH | `/classes/:classId` | HT | Sửa lớp (không đổi giáo án, Head Trainer) |
 | PATCH | `/classes/:classId/status` | HT | Kích hoạt, hoàn thành, hủy lớp |
+| GET | `/classes/:classId/enrollments` | Theo quyền xem lớp | Ghi danh của lớp, kèm `horseName`, `horsePhotoUrl` |
+| POST | `/classes/:classId/enrollments` | HT | Ghi danh ngựa vào lớp |
+| PATCH | `/enrollments/:id/leave` | HT | Cho ngựa rời lớp |
 | GET/POST | `/classes/:classId/sessions` | Xem: theo quyền xem lớp; thêm: HT | Buổi của lớp |
+| GET | `/training-sessions/:sessionId` | Theo quyền xem lớp | Một buổi |
 | PATCH | `/training-sessions/:sessionId` | HT | Sửa buổi nháp, đổi được `subjectId` (gửi `null` để xóa `location`, `surface`, `notes`) |
 | POST | `/training-sessions/:sessionId/publish` | HT | Publish buổi |
 | POST | `/classes/:classId/sessions/publish` | HT | Publish nhiều buổi nháp `{ from?, to? }` |
+| POST | `/training-sessions/:sessionId/cancel` | HT | Hủy buổi |
+| GET | `/training-sessions/:sessionId/participants` | Theo quyền xem buổi | Lượt tập của buổi, kèm `horseName`, `horsePhotoUrl`, `assignedGroomName` |
+| GET/POST | `/training-sessions/:id/time-trial` | Xem: theo quyền xem buổi; tạo: HT | Cấu hình chạy thử của buổi |
 | PATCH | `/training-sessions/:id/time-trial` | HT | Sửa cấu hình chạy thử của buổi nháp |
+| GET | `/time-trials/:id` | Theo quyền xem buổi | Một cấu hình chạy thử |
+| PATCH | `/session-participants/:id/groom` | HT | Giao Groom dắt ngựa |
+| GET/POST | `/session-participants/:id/trial-results` | Xem: theo quyền xem lượt; ghi: HT | Kết quả chạy thử của lượt |
+| PATCH | `/session-participants/:id/trial-results/:attemptNo` | HT | Gắn, đổi hoặc gỡ video của một lần chạy thử `{ videoMediaId }` |
+| GET/POST | `/session-participants/:id/evaluation` | Xem: theo quyền xem lượt; ghi: HT | Đánh giá lượt tập |
 | POST | `/session-participants/:id/check-in`, `/ready`, `/absent` | HT, GROOM | Điểm danh, báo sẵn sàng, báo vắng |
 | POST | `/session-participants/:id/start`, `/complete` | HT | Bắt đầu, hoàn thành lượt tập |
 | POST | `/session-participants/:id/metrics`, `/metrics/batch` | Không cần đăng nhập | Nhận điểm đo (giả lập) |
@@ -162,6 +178,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | GET | `/session-participants/:id/performance-summary` | CM, VET, HT, OWNER, và phải xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |
 | GET | `/horses/:id/alerts` | CM, VET, HT của khu | Lịch sử cảnh báo `?level&from&to&page&limit` |
 | GET | `/horses/:id/workload` | Ai xem được hồ sơ ngựa | Khối lượng tập `?from&to` |
+| GET | `/horses/:horseId/training/classes`, `/horses/:horseId/training/sessions` | CM, HT, VET, OWNER | Lớp và buổi tập của ngựa (tab huấn luyện) |
 | GET/PUT | `/horses/:id/thresholds` | Xem: HT, CM, VET; đặt: HT | Ngưỡng của ngựa |
 | POST | `/users/:id/head-trainer-handover` | CM | Bàn giao Head Trainer `{ toHeadTrainerId }` |
 

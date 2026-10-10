@@ -1,6 +1,6 @@
 # Phản hồi góp ý Backend của FE
 
-> Cập nhật 09/10/2026. Trả lời file "Góp ý Backend từ phía FE" (09/10/2026). Code nằm ở nhánh `truong-fe-feedback`, chưa merge vào `truong`. Mã mục (A1, B1.1...) giữ đúng như file góp ý.
+> Cập nhật 09/10/2026. Trả lời file "Góp ý Backend từ phía FE" (09/10/2026). Code nằm ở nhánh `truong`. Mã mục (A1, B1.1...) giữ đúng như file góp ý.
 
 Đọc nhanh:
 
@@ -88,7 +88,8 @@ FE chỉ đề xuất mở lại lượt. BE làm cả hai chiều:
 ### A5. Ngựa bị xếp trùng giờ: đã làm, công bố xử lý khác đề xuất
 
 - **Thêm hoặc sửa giờ buổi** trùng với buổi khác của cùng lớp: 409 "Trùng giờ với buổi tập lúc 07:00 ngày 12/10/2026 của lớp".
-- **Ghi danh** ngựa đã có lượt trùng giờ ở lớp khác: 409 "Ngựa Giả Nhân đã có buổi tập trùng giờ ở lớp KD-0810".
+- **Thêm hoặc đổi giờ buổi** trùng với lịch của một ngựa đang ghi danh ở lớp khác: 409, câu lỗi liệt kê các ngựa trùng kèm mã lớp và giờ.
+- **Ghi danh** ngựa đã có lượt trùng giờ ở lớp khác (so cả với các buổi nháp): 409 "Ngựa Giả Nhân đã có buổi tập trùng giờ ở lớp KD-0810".
 - **Công bố** (một buổi hoặc nhiều buổi) **không báo lỗi**. Ngựa trùng giờ được bỏ qua, ngựa khác vẫn có lượt. Mỗi buổi trong response kèm:
 
   ```json
