@@ -16,11 +16,16 @@ export class CreateTimeTrialDto {
   @Min(0.01)
   distanceM!: number;
 
-  @ApiPropertyOptional({ minimum: 1 })
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: 1,
+    nullable: true,
+    description: 'Thời gian mục tiêu (ms); null là không có mục tiêu',
+  })
   @IsOptional()
   @IsInt()
   @Min(1)
-  targetTimeMs?: number;
+  targetTimeMs?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()

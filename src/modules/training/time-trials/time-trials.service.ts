@@ -77,7 +77,7 @@ export class TimeTrialsService {
           sessionId,
           distanceM: String(body.distanceM),
           targetTimeMs:
-            body.targetTimeMs === undefined ? null : String(body.targetTimeMs),
+            body.targetTimeMs == null ? null : String(body.targetTimeMs),
           notes: body.notes ?? null,
         }),
       );
