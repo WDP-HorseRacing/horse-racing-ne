@@ -1,6 +1,6 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-> Cập nhật: 09/10/2026
+> Cập nhật: 10/10/2026
 
 ## I. Đề bài liên quan
 
@@ -79,9 +79,11 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 5. Ghi danh ngựa vào lớp đang chạy: tạo lượt cho các buổi đã publish trong tương lai.
 6. Trùng giờ: mỗi buổi tính từ giờ bắt đầu tới trước giờ kết thúc; buổi này kết thúc đúng lúc buổi kia bắt đầu thì không trùng.
    1. Thêm buổi hoặc đổi giờ buổi trùng với buổi chưa hủy khác của cùng lớp: chặn 409, câu báo kèm giờ và ngày của buổi trùng.
-   2. Một ngựa không có hai lượt giữ chỗ trùng giờ. Lượt giữ chỗ: Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập, Hủy do khóa, Không đủ điều kiện (hai trạng thái sau còn có thể mở lại, mục 5 luật 6), ở buổi chưa hủy, chưa hoàn thành. Vì ngựa chỉ học lớp của Head Trainer phụ trách khu mình, trùng giờ xảy ra giữa các lớp của cùng một Head Trainer.
-   3. Ghi danh: ngựa đang giữ chỗ ở lớp khác trùng giờ với một buổi đã publish chưa tới giờ của lớp này thì chặn 409 cả thao tác ("Ngựa {tên} đã có buổi tập trùng giờ ở lớp {mã lớp}").
-   4. Publish (một buổi hoặc nhiều buổi): ngựa trùng giờ thì không tạo lượt ở buổi đó, các ngựa khác bình thường, không báo lỗi. Mỗi buổi trong response kèm `skippedHorses` (ngựa, mã lớp và giờ bắt đầu của buổi trùng).
+   2. Một ngựa học được nhiều lớp nhưng không có hai buổi trùng giờ. Lịch của ngựa ở một lớp: các buổi Nháp, Đã công bố, Đang diễn ra có giờ bắt đầu sau hiện tại và nằm trong một khoảng ghi danh chưa hủy `[ghi danh, rời lớp)` của ngựa ở lớp đó. Buổi nháp cũng tính, để Head Trainer thấy trùng ngay lúc xếp lịch thay vì đến lúc publish mới bị bỏ qua. Ngựa đã rời lớp thì các buổi sau lúc rời không còn trong lịch.
+   3. Lượt giữ chỗ: Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập, Hủy do khóa, Không đủ điều kiện (hai trạng thái sau còn có thể mở lại, mục 5 luật 6), ở buổi chưa hủy, chưa hoàn thành. Lượt giữ chỗ tính cả buổi đã tới giờ mà chưa đóng. Vì ngựa chỉ học lớp của Head Trainer phụ trách khu mình, trùng giờ xảy ra giữa các lớp của cùng một Head Trainer.
+   4. Ghi danh: chặn 409 cả thao tác ("Ngựa {tên} đã có buổi tập trùng giờ ở lớp {mã lớp}") khi ngựa đang giữ chỗ ở lớp khác trùng giờ với một buổi đã publish chưa tới giờ của lớp này, hoặc lịch của ngựa ở lớp này (tính từ lúc ghi danh) trùng giờ với lịch của ngựa ở lớp khác.
+   5. Thêm buổi hoặc đổi giờ buổi nháp: kiểm sau luật 6.1. Xét mọi ngựa có khoảng ghi danh chưa hủy ở lớp chứa giờ bắt đầu của buổi. Buổi trùng giờ với lịch hoặc lượt giữ chỗ của các ngựa đó ở lớp khác thì chặn 409, câu báo liệt kê mọi ngựa trùng theo tên, mỗi ngựa kèm mã lớp và giờ bắt đầu của buổi trùng sớm nhất: "Trùng giờ với lịch của ngựa: Công Phá (lớp KD-01, 06:00 ngày 10/10/2026), Giả Nhân (lớp KD-03, 06:00 ngày 10/10/2026)". Sửa buổi mà không đổi giờ thì không kiểm.
+   6. Publish (một buổi hoặc nhiều buổi): ngựa trùng giờ thì không tạo lượt ở buổi đó, các ngựa khác bình thường, không báo lỗi. Mỗi buổi trong response kèm `skippedHorses` (ngựa, mã lớp và giờ bắt đầu của buổi trùng). Publish giữ cách bỏ qua vì publish nhiều buổi chạy trong một transaction: trả 409 thì một ngựa trùng sẽ chặn cả tuần của mọi ngựa khác.
 7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
 8. Danh sách lượt tập của buổi (`GET /training-sessions/:sessionId/participants`) kèm `horseName`, `horsePhotoUrl` (link có hạn, null nếu ngựa chưa có ảnh) và `assignedGroomName` (null nếu chưa giao Groom); danh sách ghi danh của lớp (`GET /classes/:classId/enrollments`) kèm `horseName`, `horsePhotoUrl`. Ngựa hoặc Groom đã xóa mềm vẫn hiện tên; các endpoint ghi giữ response cũ.
 

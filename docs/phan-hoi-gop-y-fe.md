@@ -195,7 +195,7 @@ B1.7, B1.13, B2.1 (`GET /session-participants/:id`), B2.11 (báo cáo `/reports`
 
 1. Giáo án chia giai đoạn. Mỗi giai đoạn có số tuần và nhiều môn, mỗi môn gắn thứ cố định. Lớp không chọn thứ riêng (A1).
 2. Lượt tập được chấm lại ngay khi đặt khóa, gỡ khóa, hoặc đổi sức khỏe. Buổi chưa tới giờ không tự đóng (A2).
-3. Một ngựa không có hai lượt trùng giờ. Ghi danh và thêm/sửa buổi thì chặn, công bố thì bỏ qua ngựa trùng (A5).
+3. Một ngựa học nhiều lớp nhưng lịch không có hai buổi trùng giờ, kể cả buổi nháp. Ghi danh và thêm/sửa giờ buổi thì chặn 409, công bố thì bỏ qua ngựa trùng (A5).
 4. Groom chỉ điểm danh, báo vắng, báo sẵn sàng. Bắt đầu, hoàn thành, ghi chạy thử và xem nhịp tim là việc của HLV trưởng (A3).
 5. Đổi HLV của khu bị chặn khi HLV cũ còn lớp đang chạy có ngựa của khu (A4).
 6. Đổi khu của ngựa bị chặn khi ngựa đang tập ở lớp sẽ bị rút (B1.2).
