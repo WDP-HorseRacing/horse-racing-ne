@@ -311,6 +311,38 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       );
     });
 
+    it('lets only one of two concurrent overlapping sessions of a shared horse through', async () => {
+      const winx = await seed.horse('Winx', { barnId });
+      await enroll(classA, winx);
+      await enroll(classB, winx);
+
+      for (let day = 10; day < 20; day++) {
+        const results = await Promise.allSettled([
+          sessions.createSession(
+            trainer,
+            classA,
+            await newSession(
+              `2030-01-${day}T01:00:00Z`,
+              `2030-01-${day}T02:00:00Z`,
+            ),
+          ),
+          sessions.createSession(
+            trainer,
+            classB,
+            await newSession(
+              `2030-01-${day}T01:30:00Z`,
+              `2030-01-${day}T02:30:00Z`,
+            ),
+          ),
+        ]);
+
+        expect(results.map((result) => result.status).sort()).toEqual([
+          'fulfilled',
+          'rejected',
+        ]);
+      }
+    });
+
     it('refuses adding a session overlapping a seat the horse holds in another class', async () => {
       const winx = await seed.horse('Winx', { barnId });
       await enroll(classA, winx);

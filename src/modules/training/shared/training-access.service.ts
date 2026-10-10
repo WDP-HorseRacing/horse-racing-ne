@@ -153,6 +153,26 @@ export class TrainingAccessService {
   }
 
   /**
+   * Khóa nhiều con ngựa theo thứ tự UUID để các thao tác ghi lịch của cùng ngựa chạy tuần tự
+   *
+   * - Khóa cả ngựa đã xóa mềm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseIds UUID các ngựa cần khóa, không rỗng
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHorses(manager: EntityManager, horseIds: string[]): Promise<void> {
+    await manager
+      .createQueryBuilder(HorseEntity, 'horse')
+      .withDeleted()
+      .select('horse.id')
+      .where('horse.id IN (:...horseIds)', { horseIds })
+      .orderBy('horse.id', 'ASC')
+      .setLock('pessimistic_write')
+      .getMany();
+  }
+
+  /**
    * Lấy các buổi tập nhiều ngựa đang giữ chỗ ở những lớp khác trong một câu truy vấn
    *
    * - Lượt giữ chỗ: PLANNED, PRESENT, READY, ONGOING, CANCELLED_BY_LOCK, INELIGIBLE

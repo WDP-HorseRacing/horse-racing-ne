@@ -567,6 +567,7 @@ export class TrainingSessionsService {
    * Chặn buổi tập của lớp trùng giờ với lịch ở lớp khác của những ngựa đang học lớp vào giờ đó
    *
    * - Ngựa xét: có khoảng ghi danh chưa hủy ở lớp chứa giờ bắt đầu của buổi
+   * - Khóa các ngựa xét trước khi đọc lịch
    * - Trùng khi buổi chồng giờ với lịch của ngựa ở lớp khác hoặc với buổi ngựa đang giữ chỗ ở lớp khác
    *
    * @param manager EntityManager của transaction đang chạy
@@ -584,6 +585,7 @@ export class TrainingSessionsService {
       await this.enrollmentsAt(manager, classId, window.scheduledStartAt)
     ).map((enrollment) => enrollment.horseId);
     if (horseIds.length === 0) return;
+    await this.access.lockHorses(manager, horseIds);
     const clashes = findHorseScheduleClashes(window, [
       ...(await this.access.horseScheduledSessionsInOtherClasses(
         manager,
