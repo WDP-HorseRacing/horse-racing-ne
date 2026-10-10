@@ -26,3 +26,18 @@ export interface ChecklistTaskAddedEvent {
   groomId: string;
   taskName: string;
 }
+
+/**
+ * Payload của domain event INCIDENT_REPORTED_EVENT
+ *
+ * - eventId: UUID của sự cố
+ * - urgent: sự cố khẩn
+ * - description: mô tả của Groom
+ */
+export interface IncidentReportedEvent {
+  eventId: string;
+  incidentId: string;
+  horseId: string;
+  urgent: boolean;
+  description: string;
+}

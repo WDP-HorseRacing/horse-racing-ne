@@ -299,6 +299,61 @@ describe('HorseNotificationsService.notifyChecklistTaskAdded', () => {
   });
 });
 
+describe('HorseNotificationsService.notifyIncidentReported', () => {
+  const notice = {
+    eventId: 'incident-1',
+    incidentId: 'incident-1',
+    horseId: 'horse-1',
+    urgent: true,
+    description: 'Nằm lăn, bỏ ăn từ sáng',
+  };
+
+  it('tells the barn head trainer with HIGH priority for an urgent incident', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseBarnContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'trainer-1',
+    });
+
+    await service.notifyIncidentReported(notice);
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'incident-1',
+        recipientIds: ['trainer-1'],
+        category: NotificationCategory.INCIDENT,
+        priority: NotificationPriority.HIGH,
+        message: 'Ngựa Sao Mai: Nằm lăn, bỏ ăn từ sáng',
+      }),
+    );
+  });
+
+  it('uses NORMAL priority for a routine incident', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseBarnContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'trainer-1',
+    });
+
+    await service.notifyIncidentReported({ ...notice, urgent: false });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({ priority: NotificationPriority.NORMAL }),
+    );
+  });
+
+  it('sends nothing when the barn has no head trainer', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseBarnContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+    });
+
+    await expect(service.notifyIncidentReported(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
 describe('HorseNotificationsService.notifyGroomReleasedByTransfer', () => {
   it('tells the groom that the horse was transferred', async () => {
     const { service, recipients, notifications } = setup();

@@ -1,11 +1,15 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { UserRole } from '../../../common/enums/role.enum';
 import {
   HORSE_PHOTO_MAX_BYTES,
+  INCIDENT_PHOTO_MAX_BYTES,
   TRIAL_VIDEO_MAX_BYTES,
 } from '../constants/media.constants';
 import { MediaPurpose } from '../enums/media-purpose.enum';
 import {
+  assertCanUploadMedia,
   assertHorsePhotoSpec,
+  assertIncidentPhotoSpec,
   assertMediaSpec,
   assertTrialVideoSpec,
   buildMediaObjectKey,
@@ -78,5 +82,48 @@ describe('media.policy', () => {
       MediaPurpose.HORSE_PHOTO,
     );
     expect(mediaPurposeOfObjectKey('other/a1.jpg')).toBeUndefined();
+  });
+
+  it.each([
+    ['image/jpeg', 1],
+    ['image/webp', INCIDENT_PHOTO_MAX_BYTES],
+  ])('accepts incident photo %s with %d bytes', (mime, size) => {
+    expect(() =>
+      assertMediaSpec(MediaPurpose.INCIDENT_PHOTO, mime, size),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ['video/mp4', 10],
+    ['image/png', INCIDENT_PHOTO_MAX_BYTES + 1],
+  ])('rejects incident photo %s with %d bytes', (mime, size) => {
+    expect(() => assertIncidentPhotoSpec(mime, size)).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('keeps incident photos in their own folder', () => {
+    const key = buildMediaObjectKey(
+      MediaPurpose.INCIDENT_PHOTO,
+      'a1',
+      'image/png',
+    );
+    expect(key).toBe('incident-photos/a1.png');
+    expect(mediaPurposeOfObjectKey(key)).toBe(MediaPurpose.INCIDENT_PHOTO);
+  });
+
+  it('lets only a groom upload an incident photo', () => {
+    expect(() =>
+      assertCanUploadMedia(
+        { sub: 'g', roles: [UserRole.GROOM] },
+        MediaPurpose.INCIDENT_PHOTO,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertCanUploadMedia(
+        { sub: 'h', roles: [UserRole.HEAD_TRAINER] },
+        MediaPurpose.INCIDENT_PHOTO,
+      ),
+    ).toThrow(ForbiddenException);
   });
 });

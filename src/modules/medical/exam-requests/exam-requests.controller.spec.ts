@@ -16,7 +16,15 @@ function rolesOf(method: string): UserRole[] {
 }
 
 describe('ExamRequestsController access', () => {
-  it.each(['create', 'list', 'listByHorse'])(
+  it('lets staff create but not grooms or horse owners', () => {
+    expect(rolesOf('create')).toEqual([
+      UserRole.VETERINARIAN,
+      UserRole.CLUB_MANAGER,
+      UserRole.HEAD_TRAINER,
+    ]);
+  });
+
+  it.each(['list', 'listByHorse'])(
     'lets staff and grooms %s but not horse owners',
     (method) => {
       expect(rolesOf(method)).toEqual([

@@ -15,6 +15,7 @@ import {
 import { UserDevice, UserDeviceSchema } from '../schemas/user-device.schema';
 import type { NotificationChannel } from '../types/notification.types';
 import { ChecklistTaskAddedListener } from './checklist-task-added.listener';
+import { IncidentReportedListener } from './incident-reported.listener';
 import { GroomAssignmentChangedListener } from './groom-assignment-changed.listener';
 import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
 import { HorseDeceasedListener } from './horse-deceased.listener';
@@ -65,6 +66,7 @@ import { RealtimeChannel } from './realtime.channel';
     HorseOwnershipTransferredListener,
     GroomAssignmentChangedListener,
     ChecklistTaskAddedListener,
+    IncidentReportedListener,
     MedicalEventsListener,
     PerformanceNotificationsService,
     PerformanceMetricCriticalListener,

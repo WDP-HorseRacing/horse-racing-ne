@@ -63,7 +63,7 @@ export class ExamRequestsService {
   /**
    * Gửi yêu cầu khám cho con ngựa
    *
-   * - Veterinarian, Club Manager: mọi ngựa; Head Trainer: ngựa thuộc khu mình; Groom: ngựa được phân công
+   * - Veterinarian, Club Manager: mọi ngựa; Head Trainer: ngựa thuộc khu mình
    * - Khóa row ngựa; kiểm phạm vi người gửi trước, rồi mới chặn ngựa đã chuyển nhượng hoặc đã mất (ngoài phạm vi luôn là 403)
    * - Không tạo cho ngựa đã chuyển nhượng hoặc đã mất hoặc hồ sơ đã xóa
    * - Nguồn gốc theo vai trò người gửi; ghi nhật ký

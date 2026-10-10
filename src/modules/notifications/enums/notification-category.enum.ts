@@ -13,6 +13,7 @@
  * - OWNERSHIP: chủ sở hữu ngựa thay đổi do chuyển nhượng nội bộ
  * - PERFORMANCE_ALERT: nhịp tim của ngựa vượt ngưỡng nguy hiểm khi đang tập
  * - DAILY_CHECKLIST: có việc mới trong checklist chăm sóc hôm nay
+ * - INCIDENT: Groom báo sự cố tại chuồng
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -27,4 +28,5 @@ export enum NotificationCategory {
   OWNERSHIP = 'OWNERSHIP',
   PERFORMANCE_ALERT = 'PERFORMANCE_ALERT',
   DAILY_CHECKLIST = 'DAILY_CHECKLIST',
+  INCIDENT = 'INCIDENT',
 }

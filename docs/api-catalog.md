@@ -189,10 +189,11 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/horses/{id}/grooms` | List the groom history of a horse |
 | DELETE | `/api/v1/horses/{id}/stall` | Remove a horse from its current stall |
 | PUT | `/api/v1/horses/{id}/stall` | Assign or move a horse to a stall in its barn |
-| GET | `/api/v1/incidents` | List stable incidents |
-| POST | `/api/v1/incidents` | Report stable incident |
-| GET | `/api/v1/incidents/{id}` | Get stable incident |
-| PATCH | `/api/v1/incidents/{id}/status` | Update incident resolution status |
+| GET | `/api/v1/incidents` | Liệt kê sự cố tại chuồng |
+| POST | `/api/v1/incidents` | Báo sự cố tại chuồng cho ngựa mình phụ trách |
+| GET | `/api/v1/incidents/{id}` | Xem một sự cố kèm yêu cầu khám |
+| POST | `/api/v1/incidents/{id}/refer` | Chuyển sự cố cho bác sĩ: tạo yêu cầu khám |
+| POST | `/api/v1/incidents/{id}/resolve` | Đóng sự cố kèm kết quả xử lý |
 | POST | `/api/v1/stall-assignments/{id}/end` | End stall assignment |
 | GET | `/api/v1/stalls` | List club stalls |
 | POST | `/api/v1/stalls` | Create stall |

@@ -3,6 +3,8 @@ import type { Actor } from '../../../common/types/actor';
 import {
   HORSE_PHOTO_ALLOWED_MIME_TYPES,
   HORSE_PHOTO_MAX_BYTES,
+  INCIDENT_PHOTO_ALLOWED_MIME_TYPES,
+  INCIDENT_PHOTO_MAX_BYTES,
   MEDIA_FILE_EXTENSION,
   MEDIA_OBJECT_KEY_PREFIX,
   MEDIA_UPLOAD_PERMISSION,
@@ -76,6 +78,35 @@ export function assertTrialVideoSpec(mimeType: string, byteSize: number): void {
 }
 
 /**
+ * Kiểm tra định dạng và dung lượng của ảnh sự cố tại chuồng.
+ *
+ * - Định dạng: JPEG, PNG hoặc WebP.
+ * - Dung lượng: lớn hơn 0 và không quá 10 MB.
+ *
+ * @param mimeType Mime type của tệp
+ * @param byteSize Dung lượng tệp tính bằng byte
+ * @throws BadRequestException Nếu sai định dạng hoặc vượt dung lượng cho phép
+ */
+export function assertIncidentPhotoSpec(
+  mimeType: string,
+  byteSize: number,
+): void {
+  if (
+    !INCIDENT_PHOTO_ALLOWED_MIME_TYPES.includes(normalizeContentType(mimeType))
+  ) {
+    throw new BadRequestException(
+      'Ảnh sự cố phải có định dạng JPEG, PNG hoặc WebP',
+    );
+  }
+  if (!Number.isFinite(byteSize) || byteSize <= 0) {
+    throw new BadRequestException('Dung lượng ảnh không hợp lệ');
+  }
+  if (byteSize > INCIDENT_PHOTO_MAX_BYTES) {
+    throw new BadRequestException('Ảnh sự cố không được vượt quá 10 MB');
+  }
+}
+
+/**
  * Kiểm tra tệp theo giới hạn của mục đích sử dụng.
  *
  * @param purpose Mục đích sử dụng của tệp
@@ -94,6 +125,9 @@ export function assertMediaSpec(
       return;
     case MediaPurpose.TRIAL_VIDEO:
       assertTrialVideoSpec(mimeType, byteSize);
+      return;
+    case MediaPurpose.INCIDENT_PHOTO:
+      assertIncidentPhotoSpec(mimeType, byteSize);
       return;
   }
 }
@@ -139,6 +173,7 @@ export function mediaPurposeOfObjectKey(
  *
  * - HORSE_PHOTO: chỉ CLUB_MANAGER.
  * - TRIAL_VIDEO: chỉ HEAD_TRAINER.
+ * - INCIDENT_PHOTO: chỉ GROOM.
  * - Kiểm theo vai trò trong Access Token (actor.roles).
  *
  * @param actor Thông tin danh tính từ Access Token

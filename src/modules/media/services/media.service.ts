@@ -230,6 +230,32 @@ export class MediaService {
   }
 
   /**
+   * Kiểm tra một tệp có được gắn làm ảnh sự cố không.
+   *
+   * - Tệp phải do chính người gọi tải lên.
+   * - Tệp phải được xin tải lên với mục đích INCIDENT_PHOTO.
+   * - Metadata thật trên storage phải đạt giới hạn ảnh sự cố và khớp số liệu khai báo.
+   *
+   * @param callerId UUID của người gọi (users.id)
+   * @param assetId UUID của bản ghi media_assets
+   * @returns Promise trả về MediaAssetEntity - Tệp hợp lệ để gắn làm ảnh sự cố
+   * @throws NotFoundException Nếu không có tệp hoặc tệp không do người gọi tải lên
+   * @throws BadRequestException Nếu tệp không phải ảnh sự cố, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
+   * @throws ConflictException Nếu tệp chưa có trên storage
+   */
+  async assertAttachableIncidentPhoto(
+    callerId: string,
+    assetId: string,
+  ): Promise<MediaAssetEntity> {
+    return this.assertAttachable(
+      callerId,
+      assetId,
+      MediaPurpose.INCIDENT_PHOTO,
+      'Tệp không phải ảnh sự cố',
+    );
+  }
+
+  /**
    * Kiểm tra một tệp do người gọi tải lên đúng mục đích và đã nằm trên storage đúng như khai báo.
    *
    * @param callerId UUID của người gọi (users.id)

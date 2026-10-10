@@ -4,4 +4,5 @@
 export enum MediaPurpose {
   HORSE_PHOTO = 'HORSE_PHOTO',
   TRIAL_VIDEO = 'TRIAL_VIDEO',
+  INCIDENT_PHOTO = 'INCIDENT_PHOTO',
 }

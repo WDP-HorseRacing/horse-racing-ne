@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -10,6 +10,12 @@ import { IncidentStatus } from '../constants/incident-status.enum';
  * Dùng để báo cáo, ưu tiên xử lý, đính kèm hình ảnh và theo dõi trạng thái giải quyết.
  */
 @Entity({ name: 'incidents' })
+@Index('incidents_horse_created_idx', ['horseId', 'createdAt'])
+@Index('incidents_status_created_idx', ['status', 'createdAt'])
+@Index('incidents_media_asset_uq', ['mediaAssetId'], {
+  unique: true,
+  where: 'media_asset_id IS NOT NULL',
+})
 export class IncidentEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -45,4 +51,20 @@ export class IncidentEntity extends MutableRecordEntity {
     enum: IncidentStatus,
   })
   status!: IncidentStatus;
+
+  @Column({ type: 'text', nullable: true })
+  resolution!: string | null;
+
+  @Column({ name: 'resolved_by', type: 'uuid', nullable: true })
+  resolvedBy!: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'resolved_by',
+    foreignKeyConstraintName: 'incidents_resolved_by_fk',
+  })
+  resolver!: UserEntity | null;
+
+  @Column({ name: 'resolved_at', type: 'timestamptz', nullable: true })
+  resolvedAt!: Date | null;
 }

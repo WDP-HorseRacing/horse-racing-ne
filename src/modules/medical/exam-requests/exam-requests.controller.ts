@@ -34,6 +34,11 @@ const EXAM_REQUEST_ROLES = [
   UserRole.HEAD_TRAINER,
   UserRole.GROOM,
 ];
+const EXAM_REQUEST_SENDERS = [
+  UserRole.VETERINARIAN,
+  UserRole.CLUB_MANAGER,
+  UserRole.HEAD_TRAINER,
+];
 
 @ApiTags('medical')
 @ApiBearerAuth()
@@ -41,12 +46,12 @@ const EXAM_REQUEST_ROLES = [
 export class ExamRequestsController {
   constructor(private readonly examRequests: ExamRequestsService) {}
 
-  @Access(EXAM_REQUEST_ROLES)
+  @Access(EXAM_REQUEST_SENDERS)
   @Post('horses/:horseId/exam-requests')
   @ApiOperation({
     summary: 'Request a medical exam for a horse',
     description:
-      'Veterinarian, Club Manager: mọi ngựa. Head Trainer: ngựa thuộc khu mình (ngoài khu 403). Groom: ngựa được phân công (không được phân công 403). Ngựa đã chuyển nhượng: 409.',
+      'Veterinarian, Club Manager: mọi ngựa. Head Trainer: ngựa thuộc khu mình (ngoài khu 403). Groom: 403, báo qua POST /incidents. Ngựa đã chuyển nhượng: 409.',
   })
   @ApiCreatedResponse({ type: ExamRequestResponseDto })
   create(

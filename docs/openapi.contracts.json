@@ -1929,7 +1929,7 @@
     },
     "/api/v1/horses/{horseId}/exam-requests": {
       "post": {
-        "description": "Veterinarian, Club Manager: mọi ngựa. Head Trainer: ngựa thuộc khu mình (ngoài khu 403). Groom: ngựa được phân công (không được phân công 403). Ngựa đã chuyển nhượng: 409.",
+        "description": "Veterinarian, Club Manager: mọi ngựa. Head Trainer: ngựa thuộc khu mình (ngoài khu 403). Groom: 403, báo qua POST /incidents. Ngựa đã chuyển nhượng: 409.",
         "operationId": "ExamRequestsController_create",
         "parameters": [
           {
@@ -5417,11 +5417,96 @@
     },
     "/api/v1/incidents": {
       "get": {
-        "operationId": "IncidentsController_incidents",
-        "parameters": [],
+        "operationId": "IncidentsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "RESOLVED"
+              ]
+            }
+          },
+          {
+            "name": "horseId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "barnId",
+            "required": false,
+            "in": "query",
+            "description": "Khu chứa ngựa",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentPageResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5429,11 +5514,10 @@
             "bearer": []
           }
         ],
-        "summary": "List stable incidents",
+        "summary": "Liệt kê sự cố tại chuồng",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "IncidentsController_report",
@@ -5449,8 +5533,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5458,16 +5549,15 @@
             "bearer": []
           }
         ],
-        "summary": "Report stable incident",
+        "summary": "Báo sự cố tại chuồng cho ngựa mình phụ trách",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/incidents/{id}": {
       "get": {
-        "operationId": "IncidentsController_incident",
+        "operationId": "IncidentsController_get",
         "parameters": [
           {
             "name": "id",
@@ -5479,8 +5569,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5488,16 +5585,51 @@
             "bearer": []
           }
         ],
-        "summary": "Get stable incident",
+        "summary": "Xem một sự cố kèm yêu cầu khám",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
-    "/api/v1/incidents/{id}/status": {
-      "patch": {
-        "operationId": "IncidentsController_incidentStatus",
+    "/api/v1/incidents/{id}/refer": {
+      "post": {
+        "operationId": "IncidentsController_refer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Chuyển sự cố cho bác sĩ: tạo yêu cầu khám",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/incidents/{id}/resolve": {
+      "post": {
+        "operationId": "IncidentsController_resolve",
         "parameters": [
           {
             "name": "id",
@@ -5513,14 +5645,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateIncidentStatusDto"
+                "$ref": "#/components/schemas/ResolveIncidentDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5528,11 +5667,10 @@
             "bearer": []
           }
         ],
-        "summary": "Update incident resolution status",
+        "summary": "Đóng sự cố kèm kết quả xử lý",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/stalls": {
@@ -10552,7 +10690,8 @@
         "type": "string",
         "enum": [
           "HORSE_PHOTO",
-          "TRIAL_VIDEO"
+          "TRIAL_VIDEO",
+          "INCIDENT_PHOTO"
         ]
       },
       "RequestUploadDto": {
@@ -12550,7 +12689,8 @@
               "HORSE_LIFECYCLE",
               "OWNERSHIP",
               "PERFORMANCE_ALERT",
-              "DAILY_CHECKLIST"
+              "DAILY_CHECKLIST",
+              "INCIDENT"
             ]
           },
           "priority": {
@@ -14104,27 +14244,167 @@
           "groomId"
         ]
       },
+      "IncidentExamRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "EXAMINED",
+              "DISMISSED"
+            ]
+          },
+          "urgent": {
+            "type": "boolean"
+          },
+          "handledAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dismissReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "urgent"
+        ]
+      },
+      "IncidentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string",
+            "description": "Tên ngựa"
+          },
+          "description": {
+            "type": "string"
+          },
+          "urgent": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Link xem ảnh có hạn; null nếu không có ảnh"
+          },
+          "reporter": {
+            "description": "Người báo",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CareTaskUserSummaryResponseDto"
+              }
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolver": {
+            "nullable": true,
+            "description": "Người đóng",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CareTaskUserSummaryResponseDto"
+              }
+            ]
+          },
+          "resolvedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "examRequest": {
+            "nullable": true,
+            "description": "Yêu cầu khám gắn với sự cố, chỉ để xem",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IncidentExamRequestResponseDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "horseName",
+          "description",
+          "urgent",
+          "status",
+          "reporter",
+          "createdAt"
+        ]
+      },
+      "IncidentPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncidentResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
       "ReportIncidentDto": {
         "type": "object",
         "properties": {
           "horseId": {
             "type": "string",
             "format": "uuid",
-            "description": "ID ngựa gặp sự cố"
+            "description": "Ngựa gặp sự cố"
           },
           "description": {
             "type": "string",
-            "description": "Mô tả chi tiết sự cố"
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Mô tả sự cố"
           },
           "urgent": {
             "type": "boolean",
             "default": false,
-            "description": "Mức độ khẩn cấp"
+            "description": "Khẩn: tự tạo yêu cầu khám khẩn cho bác sĩ"
           },
-          "mediaAssetId": {
+          "photoMediaId": {
             "type": "string",
             "format": "uuid",
-            "description": "Hình ảnh/video đính kèm (nếu có)"
+            "description": "Ảnh tải lên với purpose INCIDENT_PHOTO"
           }
         },
         "required": [
@@ -14132,21 +14412,18 @@
           "description"
         ]
       },
-      "UpdateIncidentStatusDto": {
+      "ResolveIncidentDto": {
         "type": "object",
         "properties": {
-          "status": {
+          "resolution": {
             "type": "string",
-            "enum": [
-              "OPEN",
-              "IN_REVIEW",
-              "RESOLVED"
-            ],
-            "description": "Trạng thái xử lý sự cố"
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Kết quả xử lý"
           }
         },
         "required": [
-          "status"
+          "resolution"
         ]
       },
       "StallResponseDto": {
