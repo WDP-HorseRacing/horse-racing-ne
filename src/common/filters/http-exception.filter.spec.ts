@@ -53,4 +53,37 @@ describe('HttpExceptionFilter', () => {
     expect(body).not.toHaveProperty('errors');
     expect(body).toMatchObject({ code: 409, message: 'Trùng', details: null });
   });
+
+  it('maps a body-parser size error to 413', () => {
+    const tooLarge = Object.assign(new Error('request entity too large'), {
+      status: 413,
+      statusCode: 413,
+      expose: true,
+      type: 'entity.too.large',
+    });
+    expect(bodyFor(tooLarge)).toMatchObject({
+      code: 413,
+      message: 'Dữ liệu gửi lên vượt quá dung lượng cho phép',
+    });
+  });
+
+  it('keeps the status of other body-parser client errors', () => {
+    const unsupported = Object.assign(new Error('unsupported charset'), {
+      status: 415,
+      statusCode: 415,
+      expose: true,
+      type: 'charset.unsupported',
+    });
+    expect(bodyFor(unsupported)).toMatchObject({
+      code: 415,
+      message: 'Dữ liệu gửi lên không hợp lệ',
+    });
+  });
+
+  it('keeps unknown errors as 500', () => {
+    expect(bodyFor(new Error('boom'))).toMatchObject({
+      code: 500,
+      message: 'Internal server error',
+    });
+  });
 });
