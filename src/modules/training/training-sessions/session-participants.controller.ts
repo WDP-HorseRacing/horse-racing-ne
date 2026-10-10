@@ -7,7 +7,12 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../users/user.enums';
@@ -47,14 +52,14 @@ export class SessionParticipantsController {
 
   @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/check-in')
-  @ApiOkResponse({ type: SessionParticipantResponseDto })
+  @ApiCreatedResponse({ type: SessionParticipantResponseDto })
   checkIn(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.participants.checkIn(actor, id);
   }
 
   @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/absent')
-  @ApiOkResponse({ type: SessionParticipantResponseDto })
+  @ApiCreatedResponse({ type: SessionParticipantResponseDto })
   absent(
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
@@ -65,21 +70,21 @@ export class SessionParticipantsController {
 
   @Access([UserRole.GROOM, UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/ready')
-  @ApiOkResponse({ type: SessionParticipantResponseDto })
+  @ApiCreatedResponse({ type: SessionParticipantResponseDto })
   ready(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.participants.ready(actor, id);
   }
 
   @Access([UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/start')
-  @ApiOkResponse({ type: SessionParticipantResponseDto })
+  @ApiCreatedResponse({ type: SessionParticipantResponseDto })
   start(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
     return this.participants.start(actor, id);
   }
 
   @Access([UserRole.HEAD_TRAINER])
   @Post('session-participants/:id/complete')
-  @ApiOkResponse({ type: SessionParticipantResponseDto })
+  @ApiCreatedResponse({ type: SessionParticipantResponseDto })
   complete(
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,

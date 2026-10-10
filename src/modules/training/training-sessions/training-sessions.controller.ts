@@ -73,14 +73,14 @@ export class TrainingSessionsController {
 
   @Access([UserRole.HEAD_TRAINER])
   @Post('training-sessions/:sessionId/publish')
-  @ApiOkResponse({ type: PublishedSessionResponseDto })
+  @ApiCreatedResponse({ type: PublishedSessionResponseDto })
   publish(@CurrentUser() actor: Actor, @Param('sessionId', ParseUUIDPipe) sessionId: string) {
     return this.sessions.publishSession(actor, sessionId);
   }
 
   @Access([UserRole.HEAD_TRAINER])
   @Post('training-sessions/:sessionId/cancel')
-  @ApiOkResponse({ type: TrainingSessionResponseDto })
+  @ApiCreatedResponse({ type: TrainingSessionResponseDto })
   cancel(
     @CurrentUser() actor: Actor,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
