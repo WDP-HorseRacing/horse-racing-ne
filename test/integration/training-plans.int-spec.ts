@@ -380,7 +380,9 @@ describe('Training plans and classes built from them (Postgres)', () => {
         sessions: [oneSession()],
       }),
     ).rejects.toThrow(
-      new BadRequestException('Giáo án không thuộc HLV trưởng phụ trách lớp'),
+      new BadRequestException(
+        'Giáo án không thuộc Huấn luyện viên trưởng phụ trách lớp',
+      ),
     );
   });
 

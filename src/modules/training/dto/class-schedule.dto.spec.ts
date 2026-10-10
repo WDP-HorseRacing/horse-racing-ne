@@ -21,6 +21,7 @@ describe('ClassSessionInputDto text length limits', () => {
     ['name', 160, 'Tên buổi tập tối đa 160 ký tự'],
     ['location', 160, 'Địa điểm tối đa 160 ký tự'],
     ['surface', 80, 'Mặt sân tối đa 80 ký tự'],
+    ['notes', 1000, 'Ghi chú tối đa 1000 ký tự'],
   ])(
     'accepts %s at the column length and rejects longer with a Vietnamese message',
     async (field, max, message) => {
@@ -32,4 +33,12 @@ describe('ClassSessionInputDto text length limits', () => {
       expect(Object.values(errors[0].constraints ?? {})).toEqual([message]);
     },
   );
+});
+
+describe('ClassSessionInputDto target time', () => {
+  it('accepts null as no target', async () => {
+    await expect(validate(session({ targetTimeMs: null }))).resolves.toEqual(
+      [],
+    );
+  });
 });

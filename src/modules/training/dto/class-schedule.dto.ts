@@ -131,19 +131,23 @@ export class ClassSessionInputDto {
   @MaxLength(160, { message: 'Địa điểm tối đa 160 ký tự' })
   location?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: 1000 })
   @IsOptional()
   @IsString()
+  @MaxLength(1000, { message: 'Ghi chú tối đa 1000 ký tự' })
   notes?: string;
 
   @ApiPropertyOptional({
+    type: Number,
     minimum: 1,
-    description: 'Thời gian mục tiêu (ms), chỉ cho môn chạy thử',
+    nullable: true,
+    description:
+      'Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu',
   })
   @IsOptional()
   @IsInt()
   @Min(1)
-  targetTimeMs?: number;
+  targetTimeMs?: number | null;
 
   @ApiProperty({ format: 'date-time' })
   @IsDateString()

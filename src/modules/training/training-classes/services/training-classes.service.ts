@@ -36,6 +36,7 @@ import {
   assertClassCancellable,
   assertClassCompletable,
   assertClassEditable,
+  assertNoOverlappingClassSession,
   assertSessionWindowInClass,
   assertSubjectExercise,
   classEndDate,
@@ -44,6 +45,11 @@ import {
 } from '../../policies/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
 import { buildClassSchedule } from '../../utils/class-schedule';
+
+/**
+ * Số dòng tối đa trong một câu INSERT khi lưu nhiều buổi tập hoặc cấu hình chạy thử một lượt
+ */
+const SAVE_CHUNK_SIZE = 100;
 
 @Injectable()
 export class TrainingClassesService {
@@ -103,12 +109,14 @@ export class TrainingClassesService {
    * - Ngày kết thúc = ngày bắt đầu + tổng số tuần của giáo án
    * - Loại buổi lấy theo môn của từng buổi; buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly, thời gian mục tiêu)
    * - Buổi tập lưu ở trạng thái DRAFT
+   * - Kiểm hết mọi buổi trước khi lưu; một buổi sai thì không lưu gì
+   * - Buổi tập và cấu hình chạy thử lưu theo lô, mỗi câu INSERT tối đa 100 dòng
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin lớp, giáo án, ngày bắt đầu và các buổi tập
    * @returns Promise trả về lớp vừa tạo
    * @throws ForbiddenException Nếu tài khoản không hoạt động
-   * @throws ConflictException Nếu mã lớp đã tồn tại
+   * @throws ConflictException Nếu mã lớp đã tồn tại, hoặc hai buổi trong danh sách trùng giờ
    * @throws BadRequestException Nếu giáo án không thuộc Head Trainer gọi, môn học không tồn tại, buổi nằm ngoài thời gian của lớp hoặc nội dung buổi sai theo loại môn
    */
   async create(
@@ -151,6 +159,17 @@ export class TrainingClassesService {
           endDate,
         );
       }
+      const windows = body.sessions
+        .map((session) => ({
+          scheduledStartAt: new Date(session.scheduledStartAt),
+          scheduledEndAt: new Date(session.scheduledEndAt),
+        }))
+        .sort(
+          (a, b) => a.scheduledStartAt.getTime() - b.scheduledStartAt.getTime(),
+        );
+      windows.forEach((window, index) =>
+        assertNoOverlappingClassSession(window, windows.slice(0, index)),
+      );
       const saved = await manager.save(
         manager.create(TrainingClassEntity, {
           code,
@@ -165,14 +184,13 @@ export class TrainingClassesService {
           status: TrainingClassStatus.DRAFT,
         }),
       );
-      for (const input of body.sessions) {
-        const sessionType = typeOf.get(input.subjectId)!;
-        const session = await manager.save(
+      const sessions = await manager.save(
+        body.sessions.map((input) =>
           manager.create(TrainingSessionEntity, {
             classId: saved.id,
             subjectId: input.subjectId,
             name: input.name,
-            sessionType,
+            sessionType: typeOf.get(input.subjectId)!,
             intensity: input.intensity,
             plannedDistanceM: input.plannedDistanceM,
             scheduledStartAt: new Date(input.scheduledStartAt),
@@ -182,21 +200,28 @@ export class TrainingClassesService {
             notes: input.notes ?? null,
             status: TrainingSessionStatus.DRAFT,
           }),
-        );
-        if (sessionType === TrainingSessionType.TIME_TRIAL) {
-          await manager.save(
-            manager.create(TimeTrialEntity, {
-              sessionId: session.id,
-              distanceM: String(input.plannedDistanceM),
-              targetTimeMs:
-                input.targetTimeMs === undefined
-                  ? null
-                  : String(input.targetTimeMs),
-              notes: null,
-            }),
-          );
-        }
-      }
+        ),
+        { chunk: SAVE_CHUNK_SIZE },
+      );
+      await manager.save(
+        sessions.flatMap((session, index) => {
+          const input = body.sessions[index];
+          return session.sessionType === TrainingSessionType.TIME_TRIAL
+            ? [
+                manager.create(TimeTrialEntity, {
+                  sessionId: session.id,
+                  distanceM: String(input.plannedDistanceM),
+                  targetTimeMs:
+                    input.targetTimeMs == null
+                      ? null
+                      : String(input.targetTimeMs),
+                  notes: null,
+                }),
+              ]
+            : [];
+        }),
+        { chunk: SAVE_CHUNK_SIZE },
+      );
       return saved;
     });
     return toTrainingClassResponse(row);
@@ -258,7 +283,7 @@ export class TrainingClassesService {
       assertClassActivatable(row.status);
       if (!row.headTrainerId) {
         throw new ConflictException(
-          'Phải phân công HLV trưởng trước khi kích hoạt lớp',
+          'Phải phân công Huấn luyện viên trưởng trước khi kích hoạt lớp',
         );
       }
       row.status = TrainingClassStatus.ACTIVE;
@@ -351,7 +376,7 @@ export class TrainingClassesService {
           status: TrainingSessionStatus.CANCELLED,
           cancelledAt: now,
           cancelledBy: caller.id,
-          cancelReason: `Class bị hủy: ${reason}`,
+          cancelReason: `Lớp bị hủy: ${reason}`,
         },
       );
 
@@ -499,7 +524,7 @@ export class TrainingClassesService {
     });
     if (!plan || plan.headTrainerId !== headTrainerId) {
       throw new BadRequestException(
-        'Giáo án không thuộc HLV trưởng phụ trách lớp',
+        'Giáo án không thuộc Huấn luyện viên trưởng phụ trách lớp',
       );
     }
     return [...plan.phases].sort((a, b) => a.position - b.position);
