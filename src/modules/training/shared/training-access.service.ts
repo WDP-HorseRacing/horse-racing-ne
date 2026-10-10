@@ -22,8 +22,10 @@ import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import { HORSE_SCHEDULE_SESSION_STATUSES } from '../policies/training.policy';
 import type {
   HorseBrief,
+  HorseClassSession,
   HorseSessionHolding,
 } from '../types/training-session.types';
 
@@ -47,11 +49,15 @@ export class TrainingAccessService {
    * Lấy tên và mã ảnh đại diện của nhiều ngựa trong một câu truy vấn, kể cả ngựa đã xóa mềm
    *
    * @param horseIds UUID các ngựa cần lấy, có thể trùng nhau
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
    * @returns Promise trả về map từ UUID ngựa sang tên và mã ảnh, rỗng nếu không truyền ngựa nào
    */
-  async horseBriefs(horseIds: string[]): Promise<Map<string, HorseBrief>> {
+  async horseBriefs(
+    horseIds: string[],
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<Map<string, HorseBrief>> {
     if (horseIds.length === 0) return new Map();
-    const horses = await this.dataSource.manager.find(HorseEntity, {
+    const horses = await manager.find(HorseEntity, {
       select: { id: true, name: true, mediaId: true },
       where: { id: In([...new Set(horseIds)]) },
       withDeleted: true,
@@ -147,24 +153,24 @@ export class TrainingAccessService {
   }
 
   /**
-   * Lấy các buổi tập ngựa đang giữ chỗ ở những lớp khác
+   * Lấy các buổi tập nhiều ngựa đang giữ chỗ ở những lớp khác trong một câu truy vấn
    *
    * - Lượt giữ chỗ: PLANNED, PRESENT, READY, ONGOING, CANCELLED_BY_LOCK, INELIGIBLE
    * - Bỏ buổi đã hủy hoặc đã hoàn thành
    *
    * @param manager EntityManager dùng để query
-   * @param horseId UUID của ngựa
+   * @param horseIds UUID các ngựa cần xét, không rỗng
    * @param excludeClassId UUID lớp không xét
-   * @returns Promise trả về các buổi giữ chỗ kèm mã lớp
+   * @returns Promise trả về các buổi giữ chỗ kèm UUID ngựa và mã lớp
    */
   async horseSessionHoldings(
     manager: EntityManager,
-    horseId: string,
+    horseIds: string[],
     excludeClassId: string,
   ): Promise<HorseSessionHolding[]> {
     const participants = await manager.find(SessionParticipantEntity, {
       where: {
-        horseId,
+        horseId: In(horseIds),
         status: In(SEAT_HOLDING_PARTICIPANT_STATUSES),
         session: {
           classId: Not(excludeClassId),
@@ -178,12 +184,57 @@ export class TrainingAccessService {
       },
       relations: { session: { trainingClass: true } },
     });
-    return participants.map(({ session }) => ({
+    return participants.map(({ horseId, session }) => ({
+      horseId,
       sessionId: session.id,
       classCode: session.trainingClass.code,
       scheduledStartAt: session.scheduledStartAt,
       scheduledEndAt: session.scheduledEndAt,
     }));
+  }
+
+  /**
+   * Lấy lịch tập của nhiều ngựa ở những lớp khác trong một câu truy vấn
+   *
+   * - Lịch của ngựa ở một lớp: buổi DRAFT, SCHEDULED, IN_PROGRESS bắt đầu sau thời điểm hiện tại và nằm trong một khoảng ghi danh chưa hủy [enrolledAt, leftAt) của ngựa ở lớp đó
+   * - Tính cả ngựa đã xóa mềm
+   *
+   * @param manager EntityManager dùng để query
+   * @param horseIds UUID các ngựa cần xét, không rỗng
+   * @param excludeClassId UUID lớp không xét
+   * @returns Promise trả về các buổi trong lịch kèm UUID ngựa và mã lớp
+   */
+  async horseScheduledSessionsInOtherClasses(
+    manager: EntityManager,
+    horseIds: string[],
+    excludeClassId: string,
+  ): Promise<HorseClassSession[]> {
+    return manager
+      .createQueryBuilder(TrainingSessionEntity, 'session')
+      .innerJoin(TrainingClassEntity, 'class', 'class.id = session.class_id')
+      .innerJoin(
+        HorseEnrollmentEntity,
+        'enrollment',
+        'enrollment.class_id = session.class_id',
+      )
+      .select('enrollment.horse_id', 'horseId')
+      .addSelect('class.code', 'classCode')
+      .addSelect('session.scheduled_start_at', 'scheduledStartAt')
+      .addSelect('session.scheduled_end_at', 'scheduledEndAt')
+      .where('enrollment.horse_id IN (:...horseIds)', { horseIds })
+      .andWhere('enrollment.status <> :cancelledEnrollment', {
+        cancelledEnrollment: HorseEnrollmentStatus.CANCELLED,
+      })
+      .andWhere('session.class_id <> :excludeClassId', { excludeClassId })
+      .andWhere('session.status IN (:...sessionStatuses)', {
+        sessionStatuses: HORSE_SCHEDULE_SESSION_STATUSES,
+      })
+      .andWhere('session.scheduled_start_at > :now', { now: new Date() })
+      .andWhere('session.scheduled_start_at >= enrollment.enrolled_at')
+      .andWhere(
+        '(enrollment.left_at IS NULL OR session.scheduled_start_at < enrollment.left_at)',
+      )
+      .getRawMany<HorseClassSession>();
   }
 
   async findTrainingClass(

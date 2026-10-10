@@ -22,9 +22,19 @@ import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import type {
-  HorseSessionHolding,
+  HorseBrief,
+  HorseClassSession,
   SessionWindow,
 } from '../types/training-session.types';
+
+/**
+ * Trạng thái buổi tập được tính vào lịch của ngựa ở một lớp
+ */
+export const HORSE_SCHEDULE_SESSION_STATUSES = [
+  TrainingSessionStatus.DRAFT,
+  TrainingSessionStatus.SCHEDULED,
+  TrainingSessionStatus.IN_PROGRESS,
+];
 
 export function assertClassActivatable(status: TrainingClassStatus): void {
   if (status !== TrainingClassStatus.DRAFT) {
@@ -134,31 +144,31 @@ export function assertNoOverlappingClassSession(
 }
 
 /**
- * Tìm buổi ngựa đang giữ chỗ trùng giờ với một buổi tập
+ * Tìm buổi của ngựa ở lớp khác trùng giờ với một buổi tập
  *
  * @param window Khoảng giờ của buổi tập cần xét
- * @param holdings Các buổi ngựa đang giữ chỗ
- * @returns Buổi giữ chỗ trùng giờ đầu tiên, undefined nếu không có
+ * @param holdings Các buổi ngựa đang giữ chỗ hoặc các buổi trong lịch của ngựa ở lớp khác
+ * @returns Buổi trùng giờ đầu tiên, undefined nếu không có
  */
 export function findOverlappingHolding(
   window: SessionWindow,
-  holdings: ReadonlyArray<HorseSessionHolding>,
-): HorseSessionHolding | undefined {
+  holdings: ReadonlyArray<HorseClassSession>,
+): HorseClassSession | undefined {
   return holdings.find((holding) => sessionWindowsOverlap(window, holding));
 }
 
 /**
- * Chặn ghi danh khi ngựa đã giữ chỗ ở lớp khác trùng giờ với một buổi của lớp đang ghi danh
+ * Chặn ghi danh khi một buổi của lớp đang ghi danh trùng giờ với buổi của ngựa ở lớp khác
  *
  * @param horseName Tên ngựa
- * @param sessions Các buổi của lớp sẽ tạo lượt cho ngựa
- * @param holdings Các buổi ngựa đang giữ chỗ ở lớp khác
- * @throws ConflictException Nếu một buổi trùng giờ với buổi ngựa đang giữ chỗ
+ * @param sessions Các buổi của lớp đang ghi danh cần xét
+ * @param holdings Các buổi ngựa đang giữ chỗ hoặc các buổi trong lịch của ngựa ở lớp khác
+ * @throws ConflictException Nếu một buổi trùng giờ với buổi của ngựa ở lớp khác
  */
 export function assertNoHoldingOverlap(
   horseName: string,
   sessions: ReadonlyArray<SessionWindow>,
-  holdings: ReadonlyArray<HorseSessionHolding>,
+  holdings: ReadonlyArray<HorseClassSession>,
 ): void {
   for (const session of sessions) {
     const clash = findOverlappingHolding(session, holdings);
@@ -168,6 +178,59 @@ export function assertNoHoldingOverlap(
       );
     }
   }
+}
+
+/**
+ * Tìm các ngựa có buổi ở lớp khác trùng giờ với một buổi tập
+ *
+ * - Mỗi ngựa lấy một buổi trùng, buổi bắt đầu sớm nhất
+ *
+ * @param window Khoảng giờ của buổi tập cần xét
+ * @param horseSessions Các buổi của nhiều ngựa ở lớp khác
+ * @returns Mỗi ngựa bị trùng một buổi, rỗng nếu không ngựa nào trùng
+ */
+export function findHorseScheduleClashes(
+  window: SessionWindow,
+  horseSessions: ReadonlyArray<HorseClassSession>,
+): HorseClassSession[] {
+  const clashes = new Map<string, HorseClassSession>();
+  for (const item of horseSessions) {
+    if (!sessionWindowsOverlap(window, item)) continue;
+    const current = clashes.get(item.horseId);
+    if (!current || item.scheduledStartAt < current.scheduledStartAt) {
+      clashes.set(item.horseId, item);
+    }
+  }
+  return [...clashes.values()];
+}
+
+/**
+ * Tạo lỗi 409 liệt kê mọi ngựa có buổi trùng giờ ở lớp khác
+ *
+ * - Mỗi ngựa ghi tên, mã lớp và giờ bắt đầu theo giờ CLB của buổi trùng; sắp theo tên ngựa
+ * - Không có tên ngựa thì ghi UUID của ngựa
+ *
+ * @param clashes Kết quả findHorseScheduleClashes, không rỗng
+ * @param horseBriefs Map từ UUID ngựa sang tên và mã ảnh
+ * @returns ConflictException với câu báo liệt kê các ngựa trùng giờ
+ */
+export function horseScheduleClashError(
+  clashes: ReadonlyArray<HorseClassSession>,
+  horseBriefs: ReadonlyMap<string, HorseBrief>,
+): ConflictException {
+  const items = clashes
+    .map((clash) => ({
+      name: horseBriefs.get(clash.horseId)?.name ?? clash.horseId,
+      clash,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    .map(
+      ({ name, clash }) =>
+        `${name} (lớp ${clash.classCode}, ${formatClubDateTime(clash.scheduledStartAt)})`,
+    );
+  return new ConflictException(
+    `Trùng giờ với lịch của ngựa: ${items.join(', ')}`,
+  );
 }
 
 export function assertTrainableHorse(isReference: boolean): void {

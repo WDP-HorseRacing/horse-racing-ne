@@ -119,6 +119,17 @@ function setupCreate(
     find: jest.fn().mockResolvedValue([]),
     create: jest.fn((target: unknown, row: object) => ({ target, ...row })),
     save: jest.fn((row: object) => Promise.resolve({ id: 'new', ...row })),
+    getRepository: jest.fn(() => ({
+      createQueryBuilder: () => {
+        const qb = {
+          where: () => qb,
+          andWhere: () => qb,
+          orderBy: () => qb,
+          getMany: () => Promise.resolve([]),
+        };
+        return qb;
+      },
+    })),
   };
   const dataSource = {
     transaction: jest.fn((cb: (m: EntityManager) => unknown) =>

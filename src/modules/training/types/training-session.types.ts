@@ -7,11 +7,18 @@ export interface SessionWindow {
 }
 
 /**
+ * Buổi tập của một ngựa ở một lớp, kèm mã lớp của buổi.
+ */
+export interface HorseClassSession extends SessionWindow {
+  horseId: string;
+  classCode: string;
+}
+
+/**
  * Buổi tập ngựa đang giữ chỗ, kèm mã lớp của buổi.
  */
-export interface HorseSessionHolding extends SessionWindow {
+export interface HorseSessionHolding extends HorseClassSession {
   sessionId: string;
-  classCode: string;
 }
 
 /**

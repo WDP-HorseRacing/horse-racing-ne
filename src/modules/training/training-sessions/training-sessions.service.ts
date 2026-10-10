@@ -44,11 +44,16 @@ import {
   assertSessionWindowInClass,
   assertSubjectExercise,
   eligibilityForSession,
+  findHorseScheduleClashes,
   findOverlappingHolding,
+  horseScheduleClashError,
   initialParticipantEligibility,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
-import type { SkippedHorse } from '../types/training-session.types';
+import type {
+  SessionWindow,
+  SkippedHorse,
+} from '../types/training-session.types';
 
 @Injectable()
 export class TrainingSessionsService {
@@ -100,7 +105,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập vừa tạo ở trạng thái DRAFT
    * @throws ForbiddenException Nếu người gọi không quản lý lớp
    * @throws NotFoundException Nếu không có lớp
-   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, hoặc buổi trùng giờ với buổi chưa hủy khác của lớp
+   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, buổi trùng giờ với buổi chưa hủy khác của lớp, hoặc trùng giờ với lịch ở lớp khác của ngựa đang học lớp vào giờ đó
    * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, môn học không tồn tại, loại buổi gửi lên khác loại buổi của môn, hoặc nội dung buổi sai theo loại môn
    */
   async createSession(
@@ -144,15 +149,17 @@ export class TrainingSessionsService {
         body.plannedDistanceM,
         targetTimeMs,
       );
+      const window = {
+        scheduledStartAt: new Date(body.scheduledStartAt),
+        scheduledEndAt: new Date(body.scheduledEndAt),
+      };
       assertNoOverlappingClassSession(
-        {
-          scheduledStartAt: new Date(body.scheduledStartAt),
-          scheduledEndAt: new Date(body.scheduledEndAt),
-        },
+        window,
         await manager.find(TrainingSessionEntity, {
           where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
         }),
       );
+      await this.assertNoHorseScheduleClash(manager, classId, window);
       const session = await manager.save(
         manager.create(TrainingSessionEntity, {
           classId,
@@ -246,6 +253,15 @@ export class TrainingSessionsService {
             },
           }),
         );
+      }
+      if (
+        start.getTime() !== session.scheduledStartAt.getTime() ||
+        end.getTime() !== session.scheduledEndAt.getTime()
+      ) {
+        await this.assertNoHorseScheduleClash(manager, session.classId, {
+          scheduledStartAt: start,
+          scheduledEndAt: end,
+        });
       }
       Object.assign(session, {
         subjectId: body.subjectId ?? session.subjectId,
@@ -424,22 +440,11 @@ export class TrainingSessionsService {
         );
       }
     }
-    const enrollments = await manager
-      .getRepository(HorseEnrollmentEntity)
-      .createQueryBuilder('enrollment')
-      .where('enrollment.class_id = :classId', { classId: trainingClass.id })
-      .andWhere('enrollment.status <> :cancelledStatus', {
-        cancelledStatus: HorseEnrollmentStatus.CANCELLED,
-      })
-      .andWhere('enrollment.enrolled_at <= :scheduledStartAt', {
-        scheduledStartAt: session.scheduledStartAt,
-      })
-      .andWhere(
-        '(enrollment.left_at IS NULL OR :scheduledStartAt < enrollment.left_at)',
-        { scheduledStartAt: session.scheduledStartAt },
-      )
-      .orderBy('enrollment.horse_id', 'ASC')
-      .getMany();
+    const enrollments = await this.enrollmentsAt(
+      manager,
+      trainingClass.id,
+      session.scheduledStartAt,
+    );
 
     const skipped: SkippedHorse[] = [];
     for (const enrollment of enrollments) {
@@ -462,7 +467,7 @@ export class TrainingSessionsService {
         session,
         await this.access.horseSessionHoldings(
           manager,
-          horse.id,
+          [horse.id],
           trainingClass.id,
         ),
       );
@@ -556,6 +561,77 @@ export class TrainingSessionsService {
       return manager.save(session);
     });
     return toTrainingSessionResponse(row);
+  }
+
+  /**
+   * Chặn buổi tập của lớp trùng giờ với lịch ở lớp khác của những ngựa đang học lớp vào giờ đó
+   *
+   * - Ngựa xét: có khoảng ghi danh chưa hủy ở lớp chứa giờ bắt đầu của buổi
+   * - Trùng khi buổi chồng giờ với lịch của ngựa ở lớp khác hoặc với buổi ngựa đang giữ chỗ ở lớp khác
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param classId UUID của lớp
+   * @param window Khoảng giờ của buổi đang thêm hoặc sửa
+   * @returns Promise hoàn tất khi không ngựa nào bị trùng giờ
+   * @throws ConflictException Nếu có ngựa bị trùng giờ; câu báo liệt kê mọi ngựa trùng kèm mã lớp và giờ bắt đầu của buổi trùng
+   */
+  private async assertNoHorseScheduleClash(
+    manager: EntityManager,
+    classId: string,
+    window: SessionWindow,
+  ): Promise<void> {
+    const horseIds = (
+      await this.enrollmentsAt(manager, classId, window.scheduledStartAt)
+    ).map((enrollment) => enrollment.horseId);
+    if (horseIds.length === 0) return;
+    const clashes = findHorseScheduleClashes(window, [
+      ...(await this.access.horseScheduledSessionsInOtherClasses(
+        manager,
+        horseIds,
+        classId,
+      )),
+      ...(await this.access.horseSessionHoldings(manager, horseIds, classId)),
+    ]);
+    if (clashes.length > 0) {
+      throw horseScheduleClashError(
+        clashes,
+        await this.access.horseBriefs(
+          clashes.map((clash) => clash.horseId),
+          manager,
+        ),
+      );
+    }
+  }
+
+  /**
+   * Lấy các khoảng ghi danh chưa hủy của lớp chứa một thời điểm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param classId UUID của lớp
+   * @param at Thời điểm cần xét, thường là giờ bắt đầu của buổi
+   * @returns Promise trả về các khoảng ghi danh có enrolledAt <= at và chưa rời lớp tại at, sắp theo UUID ngựa
+   */
+  private enrollmentsAt(
+    manager: EntityManager,
+    classId: string,
+    at: Date,
+  ): Promise<HorseEnrollmentEntity[]> {
+    return manager
+      .getRepository(HorseEnrollmentEntity)
+      .createQueryBuilder('enrollment')
+      .where('enrollment.class_id = :classId', { classId })
+      .andWhere('enrollment.status <> :cancelledStatus', {
+        cancelledStatus: HorseEnrollmentStatus.CANCELLED,
+      })
+      .andWhere('enrollment.enrolled_at <= :scheduledStartAt', {
+        scheduledStartAt: at,
+      })
+      .andWhere(
+        '(enrollment.left_at IS NULL OR :scheduledStartAt < enrollment.left_at)',
+        { scheduledStartAt: at },
+      )
+      .orderBy('enrollment.horse_id', 'ASC')
+      .getMany();
   }
 
   private findGroomAt(manager: EntityManager, horseId: string, at: Date) {

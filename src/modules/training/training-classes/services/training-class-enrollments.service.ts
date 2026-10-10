@@ -33,6 +33,7 @@ import { TrainingAccessService } from '../../shared/training-access.service';
 import {
   assertHorseEnrollable,
   assertNoHoldingOverlap,
+  HORSE_SCHEDULE_SESSION_STATUSES,
   eligibilityForSession,
   initialParticipantEligibility,
 } from '../../policies/training.policy';
@@ -231,7 +232,8 @@ export class TrainingClassEnrollmentsService {
   /**
    * Thêm ngựa vào các buổi đã công bố chưa tới giờ của lớp kể từ lúc ghi danh
    *
-   * - Từ chối cả lần ghi danh nếu ngựa đang giữ buổi ở lớp khác trùng giờ
+   * - Từ chối cả lần ghi danh nếu ngựa đang giữ buổi ở lớp khác trùng giờ với một buổi đã công bố
+   * - Từ chối cả lần ghi danh nếu lịch của ngựa ở lớp này (buổi DRAFT, SCHEDULED, IN_PROGRESS chưa tới giờ, kể từ lúc ghi danh) trùng giờ với lịch của ngựa ở lớp khác
    * - Buổi chưa có lượt của ngựa: tạo lượt mới theo điều kiện huấn luyện hiện tại
    * - Buổi có lượt cũ CANCELLED (do rời lớp): dùng lại lượt đó, gắn ghi danh mới và đặt lại như lượt mới tạo
    * - Buổi có lượt cũ ở trạng thái khác: giữ nguyên
@@ -248,14 +250,14 @@ export class TrainingClassEnrollmentsService {
     horse: HorseEntity,
   ): Promise<void> {
     const now = new Date();
-    const sessions = await manager
+    const schedule = await manager
       .getRepository(TrainingSessionEntity)
       .createQueryBuilder('session')
       .where('session.class_id = :classId', {
         classId: enrollment.classId,
       })
-      .andWhere('session.status = :status', {
-        status: TrainingSessionStatus.SCHEDULED,
+      .andWhere('session.status IN (:...statuses)', {
+        statuses: HORSE_SCHEDULE_SESSION_STATUSES,
       })
       .andWhere('session.scheduled_start_at >= :enrolledAt', {
         enrolledAt: enrollment.enrolledAt,
@@ -263,12 +265,24 @@ export class TrainingClassEnrollmentsService {
       .andWhere('session.scheduled_start_at > :now', { now })
       .orderBy('session.scheduled_start_at', 'ASC')
       .getMany();
+    const sessions = schedule.filter(
+      (session) => session.status === TrainingSessionStatus.SCHEDULED,
+    );
     assertNoHoldingOverlap(
       horse.name,
       sessions,
       await this.access.horseSessionHoldings(
         manager,
-        horse.id,
+        [horse.id],
+        enrollment.classId,
+      ),
+    );
+    assertNoHoldingOverlap(
+      horse.name,
+      schedule,
+      await this.access.horseScheduledSessionsInOtherClasses(
+        manager,
+        [horse.id],
         enrollment.classId,
       ),
     );

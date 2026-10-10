@@ -13,7 +13,9 @@ import {
   assertClassActivatable,
   assertNoHoldingOverlap,
   assertNoOverlappingClassSession,
+  findHorseScheduleClashes,
   findOverlappingHolding,
+  horseScheduleClashError,
   sessionWindowsOverlap,
   assertParticipantAbsent,
   assertParticipantComplete,
@@ -361,6 +363,7 @@ describe('session overlap policy', () => {
   it('finds the holding that overlaps a session', () => {
     const holding = {
       ...window('2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+      horseId: 'h1',
       sessionId: 's2',
       classCode: 'B',
     };
@@ -376,6 +379,7 @@ describe('session overlap policy', () => {
   it('rejects enrolling a horse that holds an overlapping session in another class', () => {
     const holding = {
       ...window('2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+      horseId: 'h1',
       sessionId: 's2',
       classCode: 'B',
     };
@@ -383,6 +387,66 @@ describe('session overlap policy', () => {
       new ConflictException('Ngựa Winx đã có buổi tập trùng giờ ở lớp B'),
     );
     expect(() => assertNoHoldingOverlap('Winx', [base], [])).not.toThrow();
+  });
+
+  describe('horse schedule clashes', () => {
+    const busy = (
+      horseId: string,
+      classCode: string,
+      start: string,
+      end: string,
+    ) => ({
+      ...window(start, end),
+      horseId,
+      classCode,
+    });
+
+    it('lists every clashing horse once with its earliest clash, sorted by name, in club time', () => {
+      const clashes = findHorseScheduleClashes(base, [
+        busy('h2', 'KD-03', '2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+        busy('h1', 'KD-02', '2026-10-10T01:45:00Z', '2026-10-10T02:00:00Z'),
+        busy('h1', 'KD-01', '2026-10-10T00:30:00Z', '2026-10-10T01:15:00Z'),
+        busy('h3', 'KD-04', '2026-10-11T01:00:00Z', '2026-10-11T02:00:00Z'),
+      ]);
+
+      expect(clashes.map((clash) => [clash.horseId, clash.classCode])).toEqual([
+        ['h2', 'KD-03'],
+        ['h1', 'KD-01'],
+      ]);
+      expect(
+        horseScheduleClashError(
+          clashes,
+          new Map([
+            ['h1', { name: 'Công Phá', mediaId: null }],
+            ['h2', { name: 'Giả Nhân', mediaId: null }],
+          ]),
+        ),
+      ).toEqual(
+        new ConflictException(
+          'Trùng giờ với lịch của ngựa: Công Phá (lớp KD-01, 07:30 ngày 10/10/2026), Giả Nhân (lớp KD-03, 08:30 ngày 10/10/2026)',
+        ),
+      );
+    });
+
+    it('does not count sessions that only touch the edge', () => {
+      expect(
+        findHorseScheduleClashes(base, [
+          busy('h1', 'KD-01', '2026-10-10T00:00:00Z', '2026-10-10T01:00:00Z'),
+          busy('h2', 'KD-02', '2026-10-10T02:00:00Z', '2026-10-10T03:00:00Z'),
+        ]),
+      ).toEqual([]);
+    });
+
+    it('falls back to the horse id when the name is unknown', () => {
+      expect(
+        horseScheduleClashError(
+          [busy('h9', 'KD-01', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z')],
+          new Map(),
+        ).message,
+      ).toBe(
+        'Trùng giờ với lịch của ngựa: h9 (lớp KD-01, 08:00 ngày 10/10/2026)',
+      );
+    });
   });
 
   describe('assertTrialVideoEditable', () => {
