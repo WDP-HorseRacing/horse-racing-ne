@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import type { Actor } from '../../../common/types/actor';
+import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
@@ -41,6 +42,7 @@ import {
   assertSessionPublishable,
   assertClassOpenForSessions,
   assertSessionWindowInClass,
+  assertSubjectExercise,
   eligibilityForSession,
   findOverlappingHolding,
   initialParticipantEligibility,
@@ -89,6 +91,9 @@ export class TrainingSessionsService {
   /**
    * Thêm một buổi tập nháp vào lớp
    *
+   * - Có môn học: loại buổi gửi lên phải trùng loại buổi của môn
+   * - Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly theo cự ly dự kiến, thời gian mục tiêu) trong cùng transaction
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param classId UUID của lớp
    * @param body Nội dung buổi tập, môn học tùy chọn
@@ -96,7 +101,7 @@ export class TrainingSessionsService {
    * @throws ForbiddenException Nếu người gọi không quản lý lớp
    * @throws NotFoundException Nếu không có lớp
    * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, hoặc buổi trùng giờ với buổi chưa hủy khác của lớp
-   * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, hoặc môn học không tồn tại
+   * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, môn học không tồn tại, loại buổi gửi lên khác loại buổi của môn, hoặc nội dung buổi sai theo loại môn
    */
   async createSession(
     actor: Actor,
@@ -121,12 +126,23 @@ export class TrainingSessionsService {
         trainingClass.startDate,
         trainingClass.endDate,
       );
-      if (
-        body.subjectId &&
-        !(await manager.existsBy(TrainingSubjectEntity, { id: body.subjectId }))
-      ) {
+      const subject = body.subjectId
+        ? await manager.findOneBy(TrainingSubjectEntity, {
+            id: body.subjectId,
+          })
+        : null;
+      if (body.subjectId && !subject) {
         throw new BadRequestException('Môn học không tồn tại');
       }
+      if (subject && body.sessionType !== subject.sessionType) {
+        throw fieldBadRequest(
+          'sessionType',
+          'Loại buổi phải trùng với loại buổi của môn học',
+        );
+      }
+      const sessionType = subject?.sessionType ?? body.sessionType;
+      const targetTimeMs = body.targetTimeMs ?? null;
+      assertSubjectExercise(sessionType, body.plannedDistanceM, targetTimeMs);
       assertNoOverlappingClassSession(
         {
           scheduledStartAt: new Date(body.scheduledStartAt),
@@ -136,12 +152,12 @@ export class TrainingSessionsService {
           where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
         }),
       );
-      return manager.save(
+      const session = await manager.save(
         manager.create(TrainingSessionEntity, {
           classId,
-          subjectId: body.subjectId ?? null,
+          subjectId: subject?.id ?? null,
           name: body.name,
-          sessionType: body.sessionType,
+          sessionType,
           intensity: body.intensity,
           plannedDistanceM: body.plannedDistanceM,
           scheduledStartAt: new Date(body.scheduledStartAt),
@@ -152,6 +168,17 @@ export class TrainingSessionsService {
           status: TrainingSessionStatus.DRAFT,
         }),
       );
+      if (sessionType === TrainingSessionType.TIME_TRIAL) {
+        await manager.save(
+          manager.create(TimeTrialEntity, {
+            sessionId: session.id,
+            distanceM: String(body.plannedDistanceM),
+            targetTimeMs: targetTimeMs === null ? null : String(targetTimeMs),
+            notes: null,
+          }),
+        );
+      }
+      return session;
     });
     return toTrainingSessionResponse(row);
   }

@@ -75,10 +75,27 @@ export class CreateTrainingSessionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: 1,
+    nullable: true,
+    description:
+      'Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  targetTimeMs?: number | null;
 }
 
 export class UpdateTrainingSessionDto extends PartialType(
-  OmitType(CreateTrainingSessionDto, ['location', 'surface', 'notes'] as const),
+  OmitType(CreateTrainingSessionDto, [
+    'location',
+    'surface',
+    'notes',
+    'targetTimeMs',
+  ] as const),
 ) {
   @ApiPropertyOptional({ nullable: true, type: String, maxLength: 160 })
   @IsOptional()

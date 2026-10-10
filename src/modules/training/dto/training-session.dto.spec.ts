@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
@@ -14,6 +15,7 @@ async function failedFields(dto: object): Promise<string[]> {
 
 function create(overrides: Record<string, unknown>): CreateTrainingSessionDto {
   return plainToInstance(CreateTrainingSessionDto, {
+    subjectId: randomUUID(),
     name: 'Buổi 1',
     sessionType: TrainingSessionType.REGULAR,
     scheduledStartAt: '2026-10-10T01:00:00Z',
@@ -45,6 +47,17 @@ describe('CreateTrainingSessionDto', () => {
       failedFields(create({ intensity: undefined })),
     ).resolves.toEqual(['intensity']);
   });
+
+  it.each([
+    ['null', null, []],
+    ['positive', 62000, []],
+    ['zero', 0, ['targetTimeMs']],
+    ['fractional', 1.5, ['targetTimeMs']],
+  ])('validates a %s target time', async (_case, targetTimeMs, fields) => {
+    await expect(failedFields(create({ targetTimeMs }))).resolves.toEqual(
+      fields,
+    );
+  });
 });
 
 describe('UpdateTrainingSessionDto', () => {
@@ -52,6 +65,14 @@ describe('UpdateTrainingSessionDto', () => {
     await expect(
       failedFields(plainToInstance(UpdateTrainingSessionDto, { name: 'Mới' })),
     ).resolves.toEqual([]);
+  });
+
+  it('does not accept a target time', async () => {
+    const errors = await validate(
+      plainToInstance(UpdateTrainingSessionDto, { targetTimeMs: 62000 }),
+      { whitelist: true, forbidNonWhitelisted: true },
+    );
+    expect(errors.map((error) => error.property)).toEqual(['targetTimeMs']);
   });
 });
 

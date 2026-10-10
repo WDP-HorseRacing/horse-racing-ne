@@ -1,13 +1,18 @@
+import { BadRequestException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { UpdateTrainingSessionDto } from '../dto/training-session.dto';
+import {
+  CreateTrainingSessionDto,
+  UpdateTrainingSessionDto,
+} from '../dto/training-session.dto';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
+import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TrainingSessionsService } from './training-sessions.service';
@@ -103,5 +108,169 @@ describe('UpdateTrainingSessionDto', () => {
     });
 
     await expect(validate(dto)).resolves.toEqual([]);
+  });
+});
+
+function setupCreate(
+  subject: { id: string; sessionType: TrainingSessionType } | null,
+) {
+  const manager = {
+    findOneBy: jest.fn().mockResolvedValue(subject),
+    find: jest.fn().mockResolvedValue([]),
+    create: jest.fn((target: unknown, row: object) => ({ target, ...row })),
+    save: jest.fn((row: object) => Promise.resolve({ id: 'new', ...row })),
+  };
+  const dataSource = {
+    transaction: jest.fn((cb: (m: EntityManager) => unknown) =>
+      cb(manager as unknown as EntityManager),
+    ),
+  } as unknown as DataSource;
+  const access = {
+    currentUser: jest.fn().mockResolvedValue({ id: 'ht' }),
+    lockedTrainingClass: jest.fn().mockResolvedValue({
+      id: 'c1',
+      status: TrainingClassStatus.DRAFT,
+      headTrainerId: 'ht',
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+    }),
+    assertCanManageClass: jest.fn(),
+  };
+  const service = new TrainingSessionsService(
+    {} as Repository<TrainingSessionEntity>,
+    access as unknown as TrainingAccessService,
+    dataSource,
+  );
+  return { service, manager };
+}
+
+const newSession = (
+  overrides: Partial<CreateTrainingSessionDto> = {},
+): CreateTrainingSessionDto => ({
+  subjectId: 'sub1',
+  sessionType: TrainingSessionType.TIME_TRIAL,
+  name: 'Buổi mới',
+  intensity: TrainingIntensity.HEAVY,
+  plannedDistanceM: 1200,
+  scheduledStartAt: '2026-10-10T01:00:00.000Z',
+  scheduledEndAt: '2026-10-10T02:00:00.000Z',
+  ...overrides,
+});
+
+describe('TrainingSessionsService.createSession', () => {
+  const trial = { id: 'sub1', sessionType: TrainingSessionType.TIME_TRIAL };
+  const regular = { id: 'sub1', sessionType: TrainingSessionType.REGULAR };
+
+  it('trả 400 khi môn học không tồn tại', async () => {
+    const { service, manager } = setupCreate(null);
+
+    await expect(
+      service.createSession(actor, 'c1', newSession()),
+    ).rejects.toThrow(new BadRequestException('Môn học không tồn tại'));
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('trả 400 gắn ô sessionType khi loại buổi gửi lên khác loại của môn', async () => {
+    const { service, manager } = setupCreate(trial);
+
+    const error = await service
+      .createSession(
+        actor,
+        'c1',
+        newSession({ sessionType: TrainingSessionType.REGULAR }),
+      )
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect((error as BadRequestException).getResponse()).toEqual({
+      message: 'Loại buổi phải trùng với loại buổi của môn học',
+      errors: [
+        {
+          field: 'sessionType',
+          message: 'Loại buổi phải trùng với loại buổi của môn học',
+        },
+      ],
+    });
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('trả 400 khi buổi thường có thời gian mục tiêu', async () => {
+    const { service, manager } = setupCreate(regular);
+
+    await expect(
+      service.createSession(
+        actor,
+        'c1',
+        newSession({
+          sessionType: TrainingSessionType.REGULAR,
+          targetTimeMs: 62000,
+        }),
+      ),
+    ).rejects.toThrow(
+      new BadRequestException('Chỉ môn chạy thử mới có thời gian mục tiêu'),
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('trả 400 khi buổi chạy thử có cự ly 0', async () => {
+    const { service, manager } = setupCreate(trial);
+
+    await expect(
+      service.createSession(actor, 'c1', newSession({ plannedDistanceM: 0 })),
+    ).rejects.toThrow(
+      new BadRequestException('Môn chạy thử phải có cự ly lớn hơn 0'),
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('tạo sẵn cấu hình chạy thử cho buổi chạy thử', async () => {
+    const { service, manager } = setupCreate(trial);
+
+    const created = await service.createSession(
+      actor,
+      'c1',
+      newSession({ targetTimeMs: null }),
+    );
+
+    expect(created.sessionType).toBe(TrainingSessionType.TIME_TRIAL);
+    expect(manager.create).toHaveBeenCalledWith(TimeTrialEntity, {
+      sessionId: 'new',
+      distanceM: '1200',
+      targetTimeMs: null,
+      notes: null,
+    });
+  });
+
+  it('không tạo cấu hình chạy thử cho buổi thường', async () => {
+    const { service, manager } = setupCreate(regular);
+
+    const created = await service.createSession(
+      actor,
+      'c1',
+      newSession({ sessionType: TrainingSessionType.REGULAR }),
+    );
+
+    expect(created.sessionType).toBe(TrainingSessionType.REGULAR);
+    expect(manager.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('không có môn thì lấy loại buổi gửi lên', async () => {
+    const { service, manager } = setupCreate(null);
+
+    const created = await service.createSession(
+      actor,
+      'c1',
+      newSession({ subjectId: undefined, targetTimeMs: 62000 }),
+    );
+
+    expect(manager.findOneBy).not.toHaveBeenCalled();
+    expect(created.subjectId).toBeNull();
+    expect(created.sessionType).toBe(TrainingSessionType.TIME_TRIAL);
+    expect(manager.create).toHaveBeenCalledWith(TimeTrialEntity, {
+      sessionId: 'new',
+      distanceM: '1200',
+      targetTimeMs: '62000',
+      notes: null,
+    });
   });
 });
