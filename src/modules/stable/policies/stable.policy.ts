@@ -41,10 +41,12 @@ const READ_ONLY_HORSE_MESSAGES: Record<
   [HorseLifecycleStatus.TRANSFERRED]: {
     STALL: 'Ngựa đã chuyển nhượng, không xếp ô chuồng được',
     GROOM: 'Ngựa đã chuyển nhượng, không giao groom được',
+    FEEDING: 'Ngựa đã chuyển nhượng, không lập hay duyệt khẩu phần được',
   },
   [HorseLifecycleStatus.DECEASED]: {
     STALL: 'Ngựa đã mất, không xếp ô chuồng được',
     GROOM: 'Ngựa đã mất, không giao groom được',
+    FEEDING: 'Ngựa đã mất, không lập hay duyệt khẩu phần được',
   },
 };
 

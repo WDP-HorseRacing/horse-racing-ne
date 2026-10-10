@@ -71,12 +71,14 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 ### 3. Khẩu phần
 
-1. Khẩu phần lập theo từng ngựa. Head Trainer chỉ lập cho ngựa thuộc khu mình; ngựa đã xóa, đã chết, đã chuyển nhượng hoặc giải nghệ thì không lập được.
+1. Khẩu phần lập theo từng ngựa. Head Trainer chỉ lập, sửa, duyệt cho ngựa thuộc khu mình (403). Ngựa đã xóa: 404; ngựa chưa xếp khu, đã chuyển nhượng hoặc đã mất: 409. Ngựa giải nghệ vẫn lập được (vẫn cần ăn).
 2. Mỗi dòng: bữa (`EARLY_MORNING` Sáng sớm, `NOON` Trưa, `AFTERNOON` Chiều, `EVENING` Tối), vật tư loại `FEED` hoặc `SUPPLEMENT`, lượng (> 0, theo đơn vị của vật tư), ghi chú. Khẩu phần có 1–50 dòng; trong một bữa mỗi vật tư một dòng. Không bắt đủ bốn bữa.
 3. Lập một lần cho nhiều ngựa (1–50 con): mỗi con một bản `DRAFT` riêng, sau đó sửa riêng từng bản. Có thể lấy dòng từ một khẩu phần có sẵn (`copyFromPlanId`) thay cho nhập tay.
 4. Bản `DRAFT` sửa (thay toàn bộ dòng) và xóa được. Bản `ACTIVE`, `ARCHIVED` không sửa, không xóa.
-5. Duyệt: Head Trainer của khu chuyển `DRAFT` thành `ACTIVE`, ghi người duyệt, thời điểm hiệu lực. Bản `ACTIVE` cũ của ngựa (nếu có) chuyển `ARCHIVED`, ghi thời điểm hết hiệu lực. Không cần bác sĩ duyệt.
-6. Ngựa chuyển sang khu khác: khẩu phần giữ nguyên; Head Trainer khu mới lập bản mới khi cần.
+5. Lập nhiều ngựa một lần: một con lỗi thì không con nào được lập.
+6. Bản nháp còn dòng dùng vật tư đã xóa thì không duyệt được (409); sửa bản nháp trước.
+7. Duyệt: Head Trainer của khu chuyển `DRAFT` thành `ACTIVE`, ghi người duyệt, thời điểm hiệu lực. Bản `ACTIVE` cũ của ngựa (nếu có) chuyển `ARCHIVED`, ghi thời điểm hết hiệu lực. Không cần bác sĩ duyệt.
+8. Ngựa chuyển sang khu khác: khẩu phần giữ nguyên; Head Trainer khu mới lập bản mới khi cần.
 
 ### 4. Loại việc và việc riêng của ngựa
 

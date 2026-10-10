@@ -4834,7 +4834,7 @@
     },
     "/api/v1/horses/{horseId}/feeding-plans": {
       "get": {
-        "operationId": "FeedingPlansController_feedingPlans",
+        "operationId": "FeedingPlansController_listForHorse",
         "parameters": [
           {
             "name": "horseId",
@@ -4843,11 +4843,35 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Lọc theo trạng thái; Groom luôn chỉ nhận bản ACTIVE",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "ACTIVE",
+                "ARCHIVED"
+              ]
+            }
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FeedingPlanResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4855,17 +4879,92 @@
             "bearer": []
           }
         ],
-        "summary": "List horse feeding plans",
+        "summary": "Liệt kê khẩu phần của ngựa",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
-      },
+        ]
+      }
+    },
+    "/api/v1/feeding-plans": {
       "post": {
-        "operationId": "FeedingPlansController_createFeedingPlan",
+        "operationId": "FeedingPlansController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedingPlansDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FeedingPlanResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lập bản nháp khẩu phần cho một hoặc nhiều ngựa",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/feeding-plans/{id}": {
+      "get": {
+        "operationId": "FeedingPlansController_get",
         "parameters": [
           {
-            "name": "horseId",
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xem một khẩu phần",
+        "tags": [
+          "stable"
+        ]
+      },
+      "put": {
+        "operationId": "FeedingPlansController_replace",
+        "parameters": [
+          {
+            "name": "id",
             "required": true,
             "in": "path",
             "schema": {
@@ -4878,14 +4977,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateFeedingPlanDto"
+                "$ref": "#/components/schemas/ReplaceFeedingPlanDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedingPlanResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4893,16 +4999,13 @@
             "bearer": []
           }
         ],
-        "summary": "Create feeding plan for approval",
+        "summary": "Thay toàn bộ dòng của bản nháp khẩu phần",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/feeding-plans/{id}/approve": {
-      "post": {
-        "operationId": "FeedingPlansController_approveFeedingPlan",
+        ]
+      },
+      "delete": {
+        "operationId": "FeedingPlansController_remove",
         "parameters": [
           {
             "name": "id",
@@ -4914,8 +5017,8 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "204": {
+            "description": ""
           }
         },
         "security": [
@@ -4923,11 +5026,46 @@
             "bearer": []
           }
         ],
-        "summary": "Approve feeding plan as Trainer or Vet",
+        "summary": "Xóa bản nháp khẩu phần",
         "tags": [
           "stable"
+        ]
+      }
+    },
+    "/api/v1/feeding-plans/{id}/approve": {
+      "post": {
+        "operationId": "FeedingPlansController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedingPlanResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Duyệt bản nháp thành khẩu phần đang áp dụng của ngựa",
+        "tags": [
+          "stable"
+        ]
       }
     },
     "/api/v1/horses/{id}/grooms": {
@@ -13191,28 +13329,264 @@
           "items"
         ]
       },
-      "CreateFeedingPlanDto": {
+      "FeedingUserSummaryResponseDto": {
         "type": "object",
         "properties": {
-          "effectiveFrom": {
+          "id": {
             "type": "string",
-            "format": "date",
-            "description": "Ngày bắt đầu áp dụng kế hoạch dinh dưỡng"
+            "format": "uuid"
           },
-          "effectiveTo": {
-            "type": "string",
-            "format": "date",
-            "description": "Ngày kết thúc (nếu có)"
-          },
-          "ration": {
-            "type": "object",
-            "additionalProperties": true,
-            "description": "Khẩu phần ăn (cám, cỏ, vitamin, khoáng chất...)"
+          "fullName": {
+            "type": "string"
           }
         },
         "required": [
-          "effectiveFrom",
-          "ration"
+          "id",
+          "fullName"
+        ]
+      },
+      "FeedingPlanItemResponseDto": {
+        "type": "object",
+        "properties": {
+          "supplyItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên vật tư"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "FEED",
+              "SUPPLEMENT",
+              "MEDICINE",
+              "EQUIPMENT"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "description": "Đơn vị của vật tư"
+          },
+          "quantity": {
+            "type": "string",
+            "description": "Lượng"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "supplyItemId",
+          "name",
+          "category",
+          "unit",
+          "quantity"
+        ]
+      },
+      "FeedingMealResponseDto": {
+        "type": "object",
+        "properties": {
+          "meal": {
+            "type": "string",
+            "enum": [
+              "EARLY_MORNING",
+              "NOON",
+              "AFTERNOON",
+              "EVENING"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedingPlanItemResponseDto"
+            }
+          }
+        },
+        "required": [
+          "meal",
+          "items"
+        ]
+      },
+      "FeedingPlanResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string",
+            "description": "Tên ngựa"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ARCHIVED"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "creator": {
+            "description": "Người lập",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeedingUserSummaryResponseDto"
+              }
+            ]
+          },
+          "approver": {
+            "nullable": true,
+            "description": "Người duyệt",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeedingUserSummaryResponseDto"
+              }
+            ]
+          },
+          "approvedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Thời điểm bắt đầu áp dụng"
+          },
+          "archivedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Thời điểm hết hiệu lực"
+          },
+          "meals": {
+            "description": "Các bữa có dòng, theo thứ tự trong ngày",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedingMealResponseDto"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "horseName",
+          "status",
+          "creator",
+          "meals",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "FeedingPlanItemInputDto": {
+        "type": "object",
+        "properties": {
+          "meal": {
+            "type": "string",
+            "enum": [
+              "EARLY_MORNING",
+              "NOON",
+              "AFTERNOON",
+              "EVENING"
+            ],
+            "description": "Bữa"
+          },
+          "supplyItemId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Vật tư loại FEED hoặc SUPPLEMENT"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1000000,
+            "description": "Lượng, theo đơn vị của vật tư"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Ghi chú cho dòng"
+          }
+        },
+        "required": [
+          "meal",
+          "supplyItemId",
+          "quantity"
+        ]
+      },
+      "CreateFeedingPlansDto": {
+        "type": "object",
+        "properties": {
+          "horseIds": {
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "Các ngựa cần lập khẩu phần; mỗi ngựa một bản nháp riêng",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "items": {
+            "maxItems": 50,
+            "description": "Các dòng khẩu phần; gửi đúng một trong items hoặc copyFromPlanId",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedingPlanItemInputDto"
+            }
+          },
+          "copyFromPlanId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Lấy dòng từ khẩu phần có sẵn thay cho items"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Ghi chú khẩu phần"
+          }
+        },
+        "required": [
+          "horseIds"
+        ]
+      },
+      "ReplaceFeedingPlanDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "Toàn bộ dòng khẩu phần mới",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedingPlanItemInputDto"
+            }
+          },
+          "note": {
+            "type": "object",
+            "maxLength": 500,
+            "nullable": true,
+            "description": "Ghi chú khẩu phần; gửi null để xóa"
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "GroomWorkloadResponseDto": {

@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 193 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 196 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -170,13 +170,16 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/barns/{id}` | Get barn details |
 | PATCH | `/api/v1/barns/{id}` | Update barn details or its head trainer |
 | PATCH | `/api/v1/checklists/{id}/complete` | Complete assigned checklist item |
-| POST | `/api/v1/feeding-plans/{id}/approve` | Approve feeding plan as Trainer or Vet |
+| POST | `/api/v1/feeding-plans` | Lập bản nháp khẩu phần cho một hoặc nhiều ngựa |
+| DELETE | `/api/v1/feeding-plans/{id}` | Xóa bản nháp khẩu phần |
+| GET | `/api/v1/feeding-plans/{id}` | Xem một khẩu phần |
+| PUT | `/api/v1/feeding-plans/{id}` | Thay toàn bộ dòng của bản nháp khẩu phần |
+| POST | `/api/v1/feeding-plans/{id}/approve` | Duyệt bản nháp thành khẩu phần đang áp dụng của ngựa |
 | GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |
 | GET | `/api/v1/grooms/workload` | List active grooms with the number of horses each one cares for |
 | GET | `/api/v1/horses/{horseId}/checklists` | List horse daily checklists |
 | POST | `/api/v1/horses/{horseId}/checklists` | Create assigned daily checklist |
-| GET | `/api/v1/horses/{horseId}/feeding-plans` | List horse feeding plans |
-| POST | `/api/v1/horses/{horseId}/feeding-plans` | Create feeding plan for approval |
+| GET | `/api/v1/horses/{horseId}/feeding-plans` | Liệt kê khẩu phần của ngựa |
 | PUT | `/api/v1/horses/{id}/groom` | Assign or change the groom of a horse |
 | GET | `/api/v1/horses/{id}/grooms` | List the groom history of a horse |
 | DELETE | `/api/v1/horses/{id}/stall` | Remove a horse from its current stall |

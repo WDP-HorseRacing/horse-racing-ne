@@ -1,5 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EntityManager } from 'typeorm';
+import { UserRole } from '../../../common/enums/role.enum';
+import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -99,6 +105,70 @@ export class StableAccessService {
     assertHorseHasBarn(horse);
     await this.assertHorseInTrainerBarn(manager, horseId, callerId);
     return horse;
+  }
+
+  /**
+   * Tìm con ngựa và kiểm người gọi được xem dữ liệu chăm sóc hằng ngày của nó (khẩu phần, checklist)
+   *
+   * - Club Manager, Veterinarian: mọi ngựa trong phạm vi xem hồ sơ
+   * - Head Trainer: ngựa thuộc khu mình phụ trách
+   * - Chỉ có vai trò Groom: ngựa mình đang phụ trách
+   *
+   * @param manager EntityManager dùng để query
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về con ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi xem hồ sơ
+   * @throws ForbiddenException Nếu Head Trainer xem ngựa ngoài khu, hoặc Groom xem ngựa không do mình phụ trách
+   */
+  async findHorseForDailyCare(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    horseId: string,
+  ): Promise<HorseEntity> {
+    const horse = await this.horseAccess.findReadableHorse(
+      manager,
+      actor,
+      callerId,
+      horseId,
+    );
+    if (
+      this.horseAccess.hasRole(
+        actor,
+        UserRole.CLUB_MANAGER,
+        UserRole.VETERINARIAN,
+      )
+    ) {
+      return horse;
+    }
+    if (this.horseAccess.hasRole(actor, UserRole.HEAD_TRAINER)) {
+      await this.assertHorseInTrainerBarn(manager, horseId, callerId);
+      return horse;
+    }
+    if (!(await this.horseAccess.isGroomAssigned(horseId, callerId, manager))) {
+      throw new ForbiddenException('Ngựa không do bạn phụ trách');
+    }
+    return horse;
+  }
+
+  /**
+   * Kiểm người gọi chỉ có vai trò Groom trong số các vai trò được xem dữ liệu chăm sóc
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @returns true nếu người gọi là Groom và không có vai trò Club Manager, Head Trainer, Veterinarian
+   */
+  isGroomOnly(actor: Actor): boolean {
+    return (
+      this.horseAccess.hasRole(actor, UserRole.GROOM) &&
+      !this.horseAccess.hasRole(
+        actor,
+        UserRole.CLUB_MANAGER,
+        UserRole.HEAD_TRAINER,
+        UserRole.VETERINARIAN,
+      )
+    );
   }
 
   /**

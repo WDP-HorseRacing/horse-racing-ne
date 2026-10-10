@@ -57,6 +57,9 @@ export class SupplyItemEntity extends SoftDeletableRecordEntity {
   lastCountedBy!: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'last_counted_by' })
+  @JoinColumn({
+    name: 'last_counted_by',
+    foreignKeyConstraintName: 'supply_items_last_counted_by_fk',
+  })
   lastCounter!: UserEntity | null;
 }

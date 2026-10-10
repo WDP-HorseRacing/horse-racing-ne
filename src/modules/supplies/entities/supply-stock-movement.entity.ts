@@ -19,7 +19,10 @@ export class SupplyStockMovementEntity extends BaseRecordEntity {
   itemId!: string;
 
   @ManyToOne(() => SupplyItemEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'item_id' })
+  @JoinColumn({
+    name: 'item_id',
+    foreignKeyConstraintName: 'supply_stock_movements_item_fk',
+  })
   item!: SupplyItemEntity;
 
   @Column({ type: 'numeric', precision: 12, scale: 2 })
@@ -38,7 +41,10 @@ export class SupplyStockMovementEntity extends BaseRecordEntity {
     nullable: true,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'request_id' })
+  @JoinColumn({
+    name: 'request_id',
+    foreignKeyConstraintName: 'supply_stock_movements_request_fk',
+  })
   request!: SupplyRequestEntity | null;
 
   @Column({ type: 'text', nullable: true })
@@ -48,6 +54,9 @@ export class SupplyStockMovementEntity extends BaseRecordEntity {
   createdBy!: string;
 
   @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'created_by' })
+  @JoinColumn({
+    name: 'created_by',
+    foreignKeyConstraintName: 'supply_stock_movements_created_by_fk',
+  })
   creator!: UserEntity;
 }
