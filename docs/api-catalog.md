@@ -178,7 +178,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/feeding-plans/{id}` | Xem một khẩu phần |
 | PUT | `/api/v1/feeding-plans/{id}` | Thay toàn bộ dòng của bản nháp khẩu phần |
 | POST | `/api/v1/feeding-plans/{id}/approve` | Duyệt bản nháp thành khẩu phần đang áp dụng của ngựa |
-| GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |
+| GET | `/api/v1/grooms/me/today` | Màn Hôm nay của Groom: việc trong ngày của từng ngựa phụ trách |
 | GET | `/api/v1/grooms/workload` | List active grooms with the number of horses each one cares for |
 | DELETE | `/api/v1/horse-care-tasks/{id}` | Gỡ việc riêng: chưa bắt đầu thì xóa, đang chạy thì kết thúc hôm nay |
 | GET | `/api/v1/horses/{horseId}/care-tasks` | Liệt kê việc riêng của ngựa |

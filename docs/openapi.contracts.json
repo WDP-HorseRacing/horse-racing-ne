@@ -5000,8 +5000,15 @@
         "operationId": "DailyChecklistsController_today",
         "parameters": [],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroomTodayResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5009,11 +5016,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get today assigned groom checklist",
+        "summary": "Màn Hôm nay của Groom: việc trong ngày của từng ngựa phụ trách",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/checklist-items/{id}": {
@@ -13932,24 +13938,6 @@
           "items"
         ]
       },
-      "TickChecklistItemDto": {
-        "type": "object",
-        "properties": {
-          "done": {
-            "type": "boolean",
-            "description": "true là đã xong, false là gỡ tick"
-          },
-          "note": {
-            "type": "object",
-            "maxLength": 200,
-            "nullable": true,
-            "description": "Ghi chú; gửi null để xóa"
-          }
-        },
-        "required": [
-          "done"
-        ]
-      },
       "FeedingUserSummaryResponseDto": {
         "type": "object",
         "properties": {
@@ -14113,6 +14101,192 @@
           "meals",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "GroomTodayRunResponseDto": {
+        "type": "object",
+        "properties": {
+          "participantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Lượt tập"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionName": {
+            "type": "string",
+            "description": "Tên buổi tập"
+          },
+          "scheduledStartAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scheduledEndAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "PRESENT",
+              "READY",
+              "ONGOING",
+              "COMPLETED",
+              "ABSENT",
+              "SKIPPED",
+              "INELIGIBLE",
+              "CANCELLED_BY_LOCK",
+              "CANCELLED"
+            ]
+          }
+        },
+        "required": [
+          "participantId",
+          "sessionId",
+          "sessionName",
+          "scheduledStartAt",
+          "scheduledEndAt",
+          "status"
+        ]
+      },
+      "GroomTodayCareScheduleResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VACCINATION",
+              "DEWORMING",
+              "FARRIER",
+              "ROUTINE_CHECKUP"
+            ]
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "Đến hạn trước hôm nay mà chưa làm"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "dueAt",
+          "overdue"
+        ]
+      },
+      "GroomTodayHorseResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "barnName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Khu"
+          },
+          "stallCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ô chuồng"
+          },
+          "checklist": {
+            "nullable": true,
+            "description": "Checklist hôm nay; null nếu ngày không có việc nào",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DailyChecklistResponseDto"
+              }
+            ]
+          },
+          "feedingPlan": {
+            "nullable": true,
+            "description": "Khẩu phần đang áp dụng",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeedingPlanResponseDto"
+              }
+            ]
+          },
+          "trainingRuns": {
+            "description": "Lượt tập hôm nay Groom được giao dắt, theo giờ bắt đầu",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroomTodayRunResponseDto"
+            }
+          },
+          "careSchedules": {
+            "description": "Lịch chăm sóc giao cho Groom, đến hạn tới hết hôm nay mà chưa làm",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroomTodayCareScheduleResponseDto"
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "trainingRuns",
+          "careSchedules"
+        ]
+      },
+      "GroomTodayResponseDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Hôm nay theo lịch CLB"
+          },
+          "horses": {
+            "description": "Ngựa Groom đang phụ trách, theo tên",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroomTodayHorseResponseDto"
+            }
+          }
+        },
+        "required": [
+          "date",
+          "horses"
+        ]
+      },
+      "TickChecklistItemDto": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "boolean",
+            "description": "true là đã xong, false là gỡ tick"
+          },
+          "note": {
+            "type": "object",
+            "maxLength": 200,
+            "nullable": true,
+            "description": "Ghi chú; gửi null để xóa"
+          }
+        },
+        "required": [
+          "done"
         ]
       },
       "FeedingPlanItemInputDto": {

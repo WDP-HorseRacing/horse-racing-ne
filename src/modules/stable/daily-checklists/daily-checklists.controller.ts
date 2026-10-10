@@ -11,27 +11,28 @@ import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums';
-import { PendingApi } from '../../../common/openapi/pending-api';
 import type { Actor } from '../../../common/types/actor';
 import {
   DailyChecklistQueryDto,
   DailyChecklistResponseDto,
   TickChecklistItemDto,
 } from '../dto/daily-checklist.dto';
+import { GroomTodayResponseDto } from '../dto/groom-today.dto';
 import { ChecklistsService } from './checklists.service';
+import { GroomTodayService } from './groom-today.service';
 
 @ApiTags('stable')
 @ApiBearerAuth()
 @Controller()
-export class DailyChecklistsController extends PendingApi {
-  constructor(private readonly checklists: ChecklistsService) {
-    super();
-  }
+export class DailyChecklistsController {
+  constructor(
+    private readonly checklists: ChecklistsService,
+    private readonly groomToday: GroomTodayService,
+  ) {}
 
   @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.GROOM])
   @Get('horses/:horseId/checklists')
@@ -45,11 +46,14 @@ export class DailyChecklistsController extends PendingApi {
     return this.checklists.listForHorse(actor, horseId, query);
   }
 
+  @Access([UserRole.GROOM])
   @Get('grooms/me/today')
-  @ApiResponse({ status: 501, description: 'Contract only' })
-  @ApiOperation({ summary: 'Get today assigned groom checklist' })
-  today(@CurrentUser() _actor: Actor) {
-    return this.pending();
+  @ApiOperation({
+    summary: 'Màn Hôm nay của Groom: việc trong ngày của từng ngựa phụ trách',
+  })
+  @ApiOkResponse({ type: GroomTodayResponseDto })
+  today(@CurrentUser() actor: Actor) {
+    return this.groomToday.today(actor);
   }
 
   @Access([UserRole.GROOM])

@@ -5,6 +5,7 @@ import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
 import { StableSharedModule } from '../shared/stable-shared.module';
 import { ChecklistsService } from './checklists.service';
 import { DailyChecklistsController } from './daily-checklists.controller';
+import { GroomTodayService } from './groom-today.service';
 
 @Module({
   imports: [
@@ -12,6 +13,6 @@ import { DailyChecklistsController } from './daily-checklists.controller';
     StableSharedModule,
   ],
   controllers: [DailyChecklistsController],
-  providers: [ChecklistsService],
+  providers: [ChecklistsService, GroomTodayService],
 })
 export class DailyChecklistsModule {}
