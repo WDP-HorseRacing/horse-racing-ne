@@ -428,3 +428,32 @@ function formatClubDateTime(value: Date): string {
   }).format(value);
   return `${time} ngày ${toDisplayDate(toClubDate(value))}`;
 }
+
+/**
+ * Thời gian cho phép gắn, đổi hoặc gỡ video chạy thử kể từ giờ kết thúc dự kiến của buổi tập (7 ngày)
+ */
+export const TRIAL_VIDEO_EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Chỉ cho gắn, đổi hoặc gỡ video chạy thử khi buổi chưa hủy và chưa quá hạn
+ *
+ * - Buổi đã hủy: 409
+ * - Quá giờ kết thúc dự kiến của buổi cộng 7 ngày: 409; đúng mốc đó vẫn còn được sửa
+ *
+ * @param sessionStatus Trạng thái của buổi tập
+ * @param scheduledEndAt Giờ kết thúc dự kiến của buổi tập
+ * @param now Thời điểm hiện tại
+ * @throws ConflictException Nếu buổi đã hủy hoặc đã quá hạn gắn video
+ */
+export function assertTrialVideoEditable(
+  sessionStatus: TrainingSessionStatus,
+  scheduledEndAt: Date,
+  now: Date,
+): void {
+  if (sessionStatus === TrainingSessionStatus.CANCELLED) {
+    throw new ConflictException('Buổi tập đã hủy, không sửa video chạy thử');
+  }
+  if (now.getTime() > scheduledEndAt.getTime() + TRIAL_VIDEO_EDIT_WINDOW_MS) {
+    throw new ConflictException('Quá hạn gắn video chạy thử');
+  }
+}

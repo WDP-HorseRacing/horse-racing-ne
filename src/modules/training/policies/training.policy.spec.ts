@@ -20,6 +20,8 @@ import {
   assertSessionOperational,
   assertSessionWindowInClass,
   assertTrainableHorse,
+  assertTrialVideoEditable,
+  TRIAL_VIDEO_EDIT_WINDOW_MS,
   assertHorseEnrollable,
   assertClassOpenForSessions,
   assertSubjectExercise,
@@ -381,5 +383,38 @@ describe('session overlap policy', () => {
       new ConflictException('Ngựa Winx đã có buổi tập trùng giờ ở lớp B'),
     );
     expect(() => assertNoHoldingOverlap('Winx', [base], [])).not.toThrow();
+  });
+
+  describe('assertTrialVideoEditable', () => {
+    const endAt = new Date('2026-10-10T02:00:00Z');
+    const deadline = new Date(endAt.getTime() + TRIAL_VIDEO_EDIT_WINDOW_MS);
+
+    it('allows editing right up to the 7th day after the scheduled end, inclusive', () => {
+      expect(() =>
+        assertTrialVideoEditable(
+          TrainingSessionStatus.COMPLETED,
+          endAt,
+          deadline,
+        ),
+      ).not.toThrow();
+    });
+
+    it('rejects one millisecond past the deadline', () => {
+      expect(() =>
+        assertTrialVideoEditable(
+          TrainingSessionStatus.COMPLETED,
+          endAt,
+          new Date(deadline.getTime() + 1),
+        ),
+      ).toThrow(new ConflictException('Quá hạn gắn video chạy thử'));
+    });
+
+    it('rejects a cancelled session even within the window', () => {
+      expect(() =>
+        assertTrialVideoEditable(TrainingSessionStatus.CANCELLED, endAt, endAt),
+      ).toThrow(
+        new ConflictException('Buổi tập đã hủy, không sửa video chạy thử'),
+      );
+    });
   });
 });

@@ -7,6 +7,7 @@ import {
   IsString,
   IsUUID,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateTimeTrialDto {
@@ -148,4 +149,17 @@ export class TrialResultResponseDto {
   @ApiProperty({ format: 'date-time' })
   @Expose()
   recordedAt!: Date;
+}
+
+export class UpdateTrialResultVideoDto {
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    type: String,
+    description:
+      'Id video chạy thử đã tải lên với mục đích TRIAL_VIDEO bởi chính người sửa; gửi null để gỡ video',
+  })
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  videoMediaId!: string | null;
 }

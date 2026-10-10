@@ -10,6 +10,7 @@ import { MediaService } from '../../media/services/media.service';
 import {
   CreateTrialResultDto,
   TrialResultResponseDto,
+  UpdateTrialResultVideoDto,
 } from '../dto/time-trial.dto';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
@@ -17,6 +18,7 @@ import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrialResultEntity } from '../entities/trial-result.entity';
 import { toTrialResultResponse } from '../mappers/trial-result.mapper';
+import { assertTrialVideoEditable } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 
 @Injectable()
@@ -160,6 +162,71 @@ export class TrialResultsService {
           recordedAt: new Date(),
         }),
       );
+    });
+    const videoUrl = row.videoMediaId
+      ? await this.media.signDownloadUrl(row.videoMediaId)
+      : null;
+    return toTrialResultResponse(row, videoUrl);
+  }
+
+  /**
+   * Gắn, đổi hoặc gỡ video của một lần chạy thử, kể cả sau khi buổi tập kết thúc
+   *
+   * - Chỉ Head Trainer đang phụ trách lớp của lượt tập; không kiểm khu chuồng của ngựa
+   * - Video khác null phải do chính người sửa tải lên với mục đích TRIAL_VIDEO và đã có trên storage; kiểm trước khi mở transaction
+   * - videoMediaId null: gỡ video khỏi lần chạy, tệp cũ vẫn nằm trên storage
+   * - Buổi đã hủy hoặc quá 7 ngày kể từ giờ kết thúc dự kiến: 409
+   * - Chỉ đổi video, giữ nguyên thời gian, ghi chú và người ghi
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia buổi tập
+   * @param attemptNo Số lần chạy cần sửa video
+   * @param body Id video mới, hoặc null để gỡ video
+   * @returns Promise trả về lần chạy sau khi sửa kèm videoUrl
+   * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phải Head Trainer phụ trách lớp
+   * @throws NotFoundException Nếu không có lượt tập, không có lần chạy, hoặc video không tồn tại hay không do người gọi tải lên
+   * @throws BadRequestException Nếu video không phải TRIAL_VIDEO, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
+   * @throws ConflictException Nếu buổi đã hủy, quá hạn gắn video hoặc video chưa có trên storage
+   */
+  async updateVideo(
+    actor: Actor,
+    participantId: string,
+    attemptNo: number,
+    body: UpdateTrialResultVideoDto,
+  ): Promise<TrialResultResponseDto> {
+    if (body.videoMediaId !== null) {
+      const uploader = await this.access.currentUser(actor);
+      await this.media.assertAttachableTrialVideo(
+        uploader.id,
+        body.videoMediaId,
+      );
+    }
+    const row = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const context = await this.access.findParticipant(manager, participantId);
+      this.access.assertCanManageClass(
+        actor,
+        caller.id,
+        context.session.trainingClass.headTrainerId,
+      );
+      const session = await this.access.lockedSession(
+        manager,
+        context.sessionId,
+      );
+      const result = await manager.findOne(TrialResultEntity, {
+        where: { sessionParticipantId: participantId, attemptNo },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!result) {
+        throw new NotFoundException('Không tìm thấy lần chạy thử');
+      }
+      assertTrialVideoEditable(
+        session.status,
+        session.scheduledEndAt,
+        new Date(),
+      );
+      result.videoMediaId = body.videoMediaId;
+      return manager.save(result);
     });
     const videoUrl = row.videoMediaId
       ? await this.media.signDownloadUrl(row.videoMediaId)
