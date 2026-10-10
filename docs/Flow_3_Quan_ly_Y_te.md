@@ -150,7 +150,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 |---|---|
 | Flow 1 | Nhận hồ sơ ngựa, khu và ô chuồng, HEAD TRAINER phụ trách khu. Ghi số đo vào bảng chỉ số cơ thể của F1.5. Cung cấp trạng thái sức khỏe, khóa huấn luyện, danh sách bệnh án và tổng chi phí để hiển thị trong F1.3. Khi chuyển nhượng (F1.8): chặn nếu ngựa còn bệnh án đang mở; yêu cầu khám đang chờ tự chuyển Đã bỏ qua với lý do "Do chuyển nhượng"; lịch hẹn khám định kỳ và lịch chăm sóc (F3.11) chưa làm tự hủy; khóa huấn luyện tự gỡ. Khi ghi nhận ngựa mất (F1.8): làm giống vậy với lý do "Do ngựa mất" và "Gỡ do ngựa mất". Bác sĩ đóng bệnh án kèm ngày mất (F3.9) thì ngựa được ghi nhận mất trong cùng thao tác. Chuyển nhượng nội bộ (F1.4) cũng bị chặn khi còn bệnh án đang mở. Các hệ quả này nằm trong dòng nhật ký đổi vòng đời. Bệnh án và yêu cầu khám cũng là dữ liệu chặn xóa hồ sơ. |
 | Flow 2 | Cung cấp trạng thái sức khỏe và khóa huấn luyện để Flow 2 chặn việc đăng ký lớp và tham gia buổi tập. Flow 3 không tự rút ngựa khỏi lớp. |
-| Flow 4 | Nhận báo cáo sự cố của GROOM dưới dạng yêu cầu khám. Cung cấp ghi chú chăm sóc và hạn chế vận động (trường "Ghi chú chăm sóc" của buổi khám gần nhất) để Flow 4 điều chỉnh khẩu phần và checklist. |
+| Flow 4 | Nhận báo cáo sự cố của GROOM dưới dạng yêu cầu khám khi sự cố khẩn hoặc HEAD TRAINER chuyển bác sĩ. Cung cấp ghi chú chăm sóc và hạn chế vận động (trường "Ghi chú chăm sóc" của buổi khám gần nhất) để Flow 4 điều chỉnh khẩu phần và checklist. |
 | Flow 5 | Cung cấp giá trị "được đua" để Flow 5 chặn đăng ký thi đấu. Flow 3 không tự rút đăng ký thi đấu đã có; Flow 5 kiểm tra lại "được đua" khi chốt danh sách. |
 
 ---
@@ -317,7 +317,7 @@ Hàng đợi các yêu cầu khám phát sinh ngoài lịch định kỳ. Đây 
 | Vai trò | Quyền | Phạm vi | Ghi chú |
 |---|---|---|---|
 | VETERINARIAN | Thêm, Sửa, Xem | Toàn câu lạc bộ | Xử lý hàng đợi: khám (F3.3, F3.6) hoặc bỏ qua kèm lý do; đổi mức độ. |
-| GROOM | Thêm, Xem | Ngựa được phân công | Gửi yêu cầu qua chức năng báo cáo sự cố của Flow 4. |
+| GROOM | Xem | Ngựa được phân công | Không gửi trực tiếp; yêu cầu sinh từ sự cố khẩn hoặc khi HEAD TRAINER chuyển bác sĩ (Flow 4). |
 | HEAD TRAINER | Thêm, Xem | Thêm: ngựa thuộc khu phụ trách. Xem: toàn câu lạc bộ | Gửi yêu cầu khi thấy ngựa bất thường trong buổi tập. |
 | CLUB MANAGER | Thêm, Xem | Toàn câu lạc bộ | Là người duy nhất gửi được yêu cầu cho ngựa chưa xếp khu, ngoài VETERINARIAN. |
 | HORSE OWNER | Không | | Đề nghị qua câu lạc bộ. |
@@ -325,7 +325,7 @@ Hàng đợi các yêu cầu khám phát sinh ngoài lịch định kỳ. Đây 
 ### Nghiệp vụ
 
 1. Một yêu cầu khám gồm: con ngựa, người gửi, thời điểm gửi, mô tả dấu hiệu, mức độ (Bình thường hoặc Khẩn) và nguồn gốc. Bốn nguồn gốc:
-   - Báo cáo sự cố của GROOM (Flow 4).
+   - Báo cáo sự cố của GROOM (Flow 4): sự cố khẩn, hoặc HEAD TRAINER chuyển bác sĩ.
    - Cảnh báo tự động từ chỉ số cơ thể (F1.5), theo mục III.5. Người gửi ghi là Hệ thống.
    - HEAD TRAINER hoặc CLUB MANAGER gửi tay.
    - VETERINARIAN tự tạo.
@@ -346,12 +346,12 @@ Hàng đợi các yêu cầu khám phát sinh ngoài lịch định kỳ. Đây 
 | **Mã use case** | UC-F3-04 |
 | **Tên use case** | Tiếp nhận yêu cầu khám khi ngựa có vấn đề |
 | **Actor chính** | VETERINARIAN |
-| **Actor phụ** | GROOM, HEAD TRAINER, CLUB MANAGER (gửi yêu cầu), Hệ thống (sinh yêu cầu từ cảnh báo) |
+| **Actor phụ** | HEAD TRAINER, CLUB MANAGER (gửi yêu cầu), Hệ thống (sinh yêu cầu từ cảnh báo và từ sự cố của GROOM) |
 | **Tiền điều kiện** | Người gửi đã đăng nhập và con ngựa nằm trong phạm vi của họ. |
 | **Hậu điều kiện** | Yêu cầu khám được lưu ở trạng thái Chờ xử lý, hoặc được chuyển sang Đã khám / Đã bỏ qua. |
 | **Luồng sự kiện chính** | 1. Người gửi mô tả dấu hiệu bất thường và chọn mức độ.<br>2. Hệ thống lưu yêu cầu ở trạng thái Chờ xử lý và gửi thông báo nếu là mức Khẩn.<br>3. VETERINARIAN mở hàng đợi yêu cầu.<br>4. VETERINARIAN chọn một yêu cầu và bắt đầu buổi khám: UC-F3-03 nếu ngựa chưa có bệnh án mở, UC-F3-06 nếu đã có.<br>5. Hệ thống chuyển yêu cầu sang Đã khám và ghi nhật ký. |
 | **Luồng thay thế** | A1. Chỉ số cơ thể vượt ngưỡng -> hệ thống tự tạo yêu cầu, không cần người gửi.<br>A2. VETERINARIAN thấy yêu cầu không cần khám -> bỏ qua kèm lý do.<br>A3. Nhiều yêu cầu của cùng một con ngựa -> gắn tất cả vào một buổi khám.<br>A4. VETERINARIAN đổi mức độ -> nhập lý do, hệ thống lưu và ghi nhật ký. |
-| **Luồng ngoại lệ** | E1. Không nhập mô tả -> báo lỗi.<br>E2. GROOM gửi yêu cầu cho ngựa không được phân công, HEAD TRAINER gửi cho ngựa ngoài khu -> trả về 403.<br>E3. Ngựa đã chuyển nhượng hoặc đã mất -> không cho tạo yêu cầu (409). Riêng HEAD TRAINER và GROOM: ngựa đã chuyển nhượng hoặc đã mất không còn thuộc khu hay phân công của họ nên nhận 403, không lộ tình trạng con ngựa. *(BA chốt)* Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E4. Bỏ qua hoặc đổi mức độ một yêu cầu không còn Chờ xử lý -> trả về 409. |
+| **Luồng ngoại lệ** | E1. Không nhập mô tả -> báo lỗi.<br>E2. GROOM gọi gửi yêu cầu, HEAD TRAINER gửi cho ngựa ngoài khu -> trả về 403.<br>E3. Ngựa đã chuyển nhượng hoặc đã mất -> không cho tạo yêu cầu (409). Riêng HEAD TRAINER và GROOM: ngựa đã chuyển nhượng hoặc đã mất không còn thuộc khu hay phân công của họ nên nhận 403, không lộ tình trạng con ngựa. *(BA chốt)* Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E4. Bỏ qua hoặc đổi mức độ một yêu cầu không còn Chờ xử lý -> trả về 409. |
 
 ---
 
@@ -739,7 +739,7 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 |---|---|---|---|
 | Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Đã chốt: được tập buổi Nhẹ và Trung bình, không được đua. Buổi tập có cường độ; gặp buổi Nặng thì lượt tự đánh Không đủ điều kiện, chặn ở publish buổi, ghi danh, điểm danh, bắt đầu |
 | Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt: chấm lại ngay các lượt sắp tới của ngựa khi đặt khóa, gỡ khóa hoặc đổi sức khỏe (lượt thành Hủy do khóa / Không đủ điều kiện, gỡ hoặc khỏe lại trước giờ tập thì về Chờ điểm danh); vẫn chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh (Flow 2 luật 6) |
-| Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | GROOM gửi yêu cầu khám trực tiếp (ngựa được phân công) |
+| Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | Đã chốt: sự cố khẩn tự tạo yêu cầu khám; sự cố thường do HEAD TRAINER chuyển bác sĩ (`docs/flow4-stable-care.md` mục 6) |
 | Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Đã chốt: trong hồ sơ ngựa; GROOM chỉ thấy ghi chú mới nhất của ngựa mình được giao |
 | Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Đã chốt: lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |
 | Q6 | Có cần màn "Việc được giao cho tôi" cho GROOM không? | FE | Đã chốt: không cần, xem lịch chăm sóc theo từng con ngựa |
@@ -755,4 +755,4 @@ Cần báo FE (theo câu trả lời BA):
 - Thông báo mới cho HEAD TRAINER khi sức khỏe chuyển sang Cần theo dõi (mức NORMAL).
 - Hồ sơ đã xóa, CLUB MANAGER thao tác ghi: 409 thay cho 403 (theo Flow 1).
 
-Đã chốt: GROOM được gửi yêu cầu khám trong lúc Flow 4 chưa làm, phạm vi ngựa được phân công, nguồn ghi là "Báo cáo sự cố của GROOM". Ảnh đính kèm để dành cho báo cáo sự cố của Flow 4.
+Đã chốt: GROOM không gửi yêu cầu khám trực tiếp; yêu cầu nguồn "Báo cáo sự cố của GROOM" sinh từ sự cố của Flow 4 (`docs/flow4-stable-care.md` mục 6).

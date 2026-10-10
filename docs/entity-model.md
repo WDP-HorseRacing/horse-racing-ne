@@ -21,9 +21,9 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | Training      | `training_plans`, `training_sessions`, `time_trials`                                     |
 | Performance   | `performance_metrics`, `performance_thresholds`, `performance_evaluations`               |
 | Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
-| Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents` |
+| Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `care_task_types`, `horse_care_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
 | Racing        | `races`, `race_registrations`                                                            |
-| Supplies      | `supply_items`, `supply_requests`                                                        |
+| Supplies      | `supply_items`, `supply_stock_movements`, `supply_requests`                              |
 | Notifications | `notifications`                                                                          |
 | Audit         | `audit_logs`                                                                             |
 | Media         | `media_assets`                                                                           |
@@ -100,7 +100,7 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
 - `training_locks.case_id`: bệnh án liên quan (nullable).
 - `care_schedules`: thêm type `ROUTINE_CHECKUP` (ngày hẹn khám định kỳ, partial unique một lịch `SCHEDULED` mỗi ngựa), `completed_by`, `cancel_reason`. `status` chỉ còn `SCHEDULED`/`COMPLETED`/`CANCELLED` (bỏ `IN_PROGRESS` không dùng; cột varchar nên không cần migration).
 - `injury_markers.position` (`jsonb`, nullable): tọa độ `{ x, y, z }` trên mô hình 3D của ngựa; `body_region` vẫn bắt buộc để lọc/tô theo vùng.
-- `supply_items.category`: `FEED` (thức ăn), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc.
+- `supply_items.category`: `FEED` (thức ăn), `SUPPLEMENT` (vitamin, thực phẩm bổ sung), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc. Kho chung CLB; số tồn chỉ đổi kèm một dòng `supply_stock_movements` (Flow 4).
 
 ## Khu chuồng
 
