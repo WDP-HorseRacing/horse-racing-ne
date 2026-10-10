@@ -11,3 +11,18 @@ export interface GroomAssignmentChangedEvent {
   newGroomId: string | null;
   previousGroomId: string | null;
 }
+
+/**
+ * Payload của domain event CHECKLIST_TASK_ADDED_EVENT
+ *
+ * - eventId: UUID của dòng checklist vừa thêm
+ * - groomId: Groom đang giữ checklist
+ * - taskName: tên việc vừa thêm
+ */
+export interface ChecklistTaskAddedEvent {
+  eventId: string;
+  checklistId: string;
+  horseId: string;
+  groomId: string;
+  taskName: string;
+}

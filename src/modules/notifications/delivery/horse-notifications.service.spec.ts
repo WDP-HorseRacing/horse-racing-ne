@@ -264,6 +264,41 @@ describe('HorseNotificationsService.notifyGroomChanged', () => {
   });
 });
 
+describe('HorseNotificationsService.notifyChecklistTaskAdded', () => {
+  const notice = {
+    eventId: 'item-1',
+    checklistId: 'checklist-1',
+    horseId: 'horse-1',
+    groomId: 'groom-1',
+    taskName: 'Ngâm chân nước đá',
+  };
+
+  it('tells the checklist groom about the new task', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseName.mockResolvedValue('Sao Mai');
+
+    await service.notifyChecklistTaskAdded(notice);
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'item-1',
+        recipientIds: ['groom-1'],
+        category: NotificationCategory.DAILY_CHECKLIST,
+        priority: NotificationPriority.NORMAL,
+        message: expect.stringContaining('Ngâm chân nước đá') as string,
+      }),
+    );
+  });
+
+  it('sends nothing when the horse is missing', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseName.mockResolvedValue(null);
+
+    await expect(service.notifyChecklistTaskAdded(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
 describe('HorseNotificationsService.notifyGroomReleasedByTransfer', () => {
   it('tells the groom that the horse was transferred', async () => {
     const { service, recipients, notifications } = setup();

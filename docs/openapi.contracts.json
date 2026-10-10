@@ -4713,9 +4713,120 @@
         ]
       }
     },
-    "/api/v1/horses/{horseId}/checklists": {
+    "/api/v1/care-task-types": {
       "get": {
-        "operationId": "DailyChecklistsController_checklists",
+        "operationId": "CareTasksController_listTypes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CareTaskTypeResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Liệt kê danh mục loại việc chăm sóc",
+        "tags": [
+          "stable"
+        ]
+      },
+      "post": {
+        "operationId": "CareTasksController_createType",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCareTaskTypeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTaskTypeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Thêm loại việc chăm sóc",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/care-task-types/{id}": {
+      "patch": {
+        "operationId": "CareTasksController_updateType",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCareTaskTypeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTaskTypeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sửa, ngưng hoặc dùng lại loại việc chăm sóc",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/care-tasks": {
+      "get": {
+        "operationId": "CareTasksController_listForHorse",
         "parameters": [
           {
             "name": "horseId",
@@ -4727,8 +4838,18 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseCareTaskResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4736,14 +4857,13 @@
             "bearer": []
           }
         ],
-        "summary": "List horse daily checklists",
+        "summary": "Liệt kê việc riêng của ngựa",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
-        "operationId": "DailyChecklistsController_createChecklist",
+        "operationId": "CareTasksController_createForHorse",
         "parameters": [
           {
             "name": "horseId",
@@ -4759,14 +4879,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateChecklistDto"
+                "$ref": "#/components/schemas/CreateHorseCareTaskDto"
               }
             }
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseCareTaskResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4774,11 +4901,98 @@
             "bearer": []
           }
         ],
-        "summary": "Create assigned daily checklist",
+        "summary": "Gắn việc riêng cho ngựa trong khoảng ngày",
         "tags": [
           "stable"
+        ]
+      }
+    },
+    "/api/v1/horse-care-tasks/{id}": {
+      "delete": {
+        "operationId": "CareTasksController_removeForHorse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Gỡ việc riêng: chưa bắt đầu thì xóa, đang chạy thì kết thúc hôm nay",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/checklists": {
+      "get": {
+        "operationId": "DailyChecklistsController_listForHorse",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày, mặc định hôm nay",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Đến ngày, mặc định bằng from; tối đa 31 ngày",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DailyChecklistResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Checklist hằng ngày của ngựa theo khoảng ngày",
+        "tags": [
+          "stable"
+        ]
       }
     },
     "/api/v1/grooms/me/today": {
@@ -4802,9 +5016,9 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/checklists/{id}/complete": {
+    "/api/v1/checklist-items/{id}": {
       "patch": {
-        "operationId": "DailyChecklistsController_complete",
+        "operationId": "DailyChecklistsController_tick",
         "parameters": [
           {
             "name": "id",
@@ -4815,9 +5029,26 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TickChecklistItemDto"
+              }
+            }
+          }
+        },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyChecklistResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4825,11 +5056,10 @@
             "bearer": []
           }
         ],
-        "summary": "Complete assigned checklist item",
+        "summary": "Tick hoặc gỡ tick một việc trong checklist hôm nay",
         "tags": [
           "stable"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/feeding-plans": {
@@ -12319,7 +12549,8 @@
               "CARE_REMINDER",
               "HORSE_LIFECYCLE",
               "OWNERSHIP",
-              "PERFORMANCE_ALERT"
+              "PERFORMANCE_ALERT",
+              "DAILY_CHECKLIST"
             ]
           },
           "priority": {
@@ -13302,31 +13533,281 @@
           }
         }
       },
-      "CreateChecklistDto": {
+      "CareTaskTypeResponseDto": {
         "type": "object",
         "properties": {
-          "groomId": {
+          "id": {
             "type": "string",
-            "format": "uuid",
-            "description": "ID groom được giao checklist"
+            "format": "uuid"
           },
-          "checklistDate": {
-            "type": "string",
-            "format": "date",
-            "description": "Ngày kiểm tra"
+          "name": {
+            "type": "string"
           },
-          "items": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "boolean"
-            },
-            "description": "Các hạng mục kiểm tra sức khỏe, vệ sinh và trạng thái hoàn thành"
+          "appliesToAll": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
           }
         },
         "required": [
-          "groomId",
+          "id",
+          "name",
+          "appliesToAll",
+          "active"
+        ]
+      },
+      "CreateCareTaskTypeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Tên loại việc, duy nhất"
+          },
+          "appliesToAll": {
+            "type": "boolean",
+            "description": "Áp cho mọi ngựa mỗi ngày"
+          }
+        },
+        "required": [
+          "name",
+          "appliesToAll"
+        ]
+      },
+      "UpdateCareTaskTypeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Tên loại việc, duy nhất"
+          },
+          "appliesToAll": {
+            "type": "boolean",
+            "description": "Áp cho mọi ngựa mỗi ngày"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Đang dùng; ngưng thì từ ngày sau không còn sinh vào checklist"
+          }
+        }
+      },
+      "CareTaskUserSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName"
+        ]
+      },
+      "HorseCareTaskResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "taskType": {
+            "$ref": "#/components/schemas/CareTaskTypeResponseDto"
+          },
+          "fromDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "toDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "creator": {
+            "description": "Người gắn",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CareTaskUserSummaryResponseDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "taskType",
+          "fromDate",
+          "toDate",
+          "creator",
+          "createdAt"
+        ]
+      },
+      "CreateHorseCareTaskDto": {
+        "type": "object",
+        "properties": {
+          "taskTypeId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Loại việc"
+          },
+          "fromDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày bắt đầu, từ hôm nay"
+          },
+          "toDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày kết thúc"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Ghi chú cho Groom"
+          }
+        },
+        "required": [
+          "taskTypeId",
+          "fromDate",
+          "toDate"
+        ]
+      },
+      "DailyChecklistItemResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "taskTypeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tên việc"
+          },
+          "done": {
+            "type": "boolean",
+            "description": "Đã xong"
+          },
+          "doneAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "doer": {
+            "nullable": true,
+            "description": "Người tick",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CareTaskUserSummaryResponseDto"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "taskTypeId",
+          "name",
+          "done"
+        ]
+      },
+      "DailyChecklistResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string",
+            "description": "Tên ngựa"
+          },
+          "checklistDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "INCOMPLETE"
+            ]
+          },
+          "groom": {
+            "description": "Groom",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CareTaskUserSummaryResponseDto"
+              }
+            ]
+          },
+          "completedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyChecklistItemResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "horseName",
           "checklistDate",
+          "status",
+          "groom",
           "items"
+        ]
+      },
+      "TickChecklistItemDto": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "boolean",
+            "description": "true là đã xong, false là gỡ tick"
+          },
+          "note": {
+            "type": "object",
+            "maxLength": 200,
+            "nullable": true,
+            "description": "Ghi chú; gửi null để xóa"
+          }
+        },
+        "required": [
+          "done"
         ]
       },
       "FeedingUserSummaryResponseDto": {

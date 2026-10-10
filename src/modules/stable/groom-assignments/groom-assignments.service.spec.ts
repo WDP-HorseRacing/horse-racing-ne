@@ -155,7 +155,7 @@ describe('GroomAssignmentsService', () => {
       events,
       new StableAccessService(horseAccess),
       horseAccess,
-      new DailyChecklistsService(),
+      new DailyChecklistsService(events),
       training as unknown as TrainingOperationsFacade,
       workloads as unknown as GroomAssignmentsRepository,
     );

@@ -16,7 +16,10 @@ import type {
   HorseOwnershipTransferredEvent,
   HorseMeasurementAlertEvent,
 } from '../../horses/types/horse.types';
-import type { GroomAssignmentChangedEvent } from '../../stable/types/stable-events.types';
+import type {
+  ChecklistTaskAddedEvent,
+  GroomAssignmentChangedEvent,
+} from '../../stable/types/stable-events.types';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { horseResource } from '../mappers/notification.mapper';
@@ -159,6 +162,33 @@ export class HorseNotificationsService {
       );
     }
     return sent;
+  }
+
+  /**
+   * Báo Groom của checklist có việc mới trong checklist hôm nay của ngựa
+   *
+   * @param notice Payload do module stable phát khi thêm việc vào checklist
+   * @returns Promise trả về id các thông báo đã gửi; không tìm thấy ngựa thì trả mảng rỗng
+   */
+  async notifyChecklistTaskAdded(
+    notice: ChecklistTaskAddedEvent,
+  ): Promise<string[]> {
+    const horseName = await this.horseName(notice.horseId);
+    if (!horseName) {
+      this.logger.warn(
+        `Bỏ qua thông báo thêm việc ${notice.eventId}: không tìm thấy ngựa ${notice.horseId}`,
+      );
+      return [];
+    }
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds: [notice.groomId],
+      category: NotificationCategory.DAILY_CHECKLIST,
+      priority: NotificationPriority.NORMAL,
+      title: 'Có việc mới hôm nay',
+      message: `Ngựa ${horseName} có thêm việc "${notice.taskName}" trong checklist hôm nay.`,
+      resource: horseResource(notice.horseId),
+    });
   }
 
   /**

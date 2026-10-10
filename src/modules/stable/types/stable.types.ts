@@ -17,8 +17,9 @@ export interface BarnStallCapacity {
  * - STALL: xếp hoặc chuyển ô chuồng
  * - GROOM: giao hoặc đổi groom phụ trách
  * - FEEDING: lập, sửa, duyệt khẩu phần
+ * - CARE_TASK: gắn, gỡ việc riêng của ngựa
  */
-export type StableHorseOperation = 'STALL' | 'GROOM' | 'FEEDING';
+export type StableHorseOperation = 'STALL' | 'GROOM' | 'FEEDING' | 'CARE_TASK';
 
 /**
  * Trạng thái hiện tại và giá trị mới của khu chuồng mà Club Manager gửi lên, dùng để kiểm luật khu còn ngựa.

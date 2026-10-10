@@ -82,8 +82,8 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 ### 4. Loại việc và việc riêng của ngựa
 
-1. Club Manager thêm, sửa loại việc (tên duy nhất, cờ "áp mọi ngựa", đang dùng hay ngưng). Không xóa; ngưng dùng thì từ ngày sau không còn sinh vào checklist.
-2. Head Trainer của khu gắn loại việc cho một ngựa trong khoảng ngày (từ ngày ≤ đến ngày, từ ngày không ở quá khứ). Một loại việc không gắn trùng khoảng ngày cho cùng một ngựa.
+1. Club Manager thêm, sửa loại việc (tên duy nhất, cờ "áp mọi ngựa", đang dùng hay ngưng). Không xóa; ngưng dùng thì checklist sinh sau đó (kể cả trong ngày) không còn việc này, checklist đã sinh giữ nguyên.
+2. Head Trainer của khu gắn loại việc cho một ngựa trong khoảng ngày (từ ngày ≤ đến ngày, từ ngày không ở quá khứ, dài tối đa 366 ngày). Một loại việc không gắn trùng khoảng ngày cho cùng một ngựa (409). Loại việc đã ngưng hoặc đã "áp mọi ngựa" thì không gắn riêng được (409).
 3. Gắn việc có hiệu lực hôm nay khi checklist hôm nay đã sinh: thêm dòng vào checklist hôm nay; checklist đang `COMPLETED` quay về `IN_PROGRESS`; báo Groom phụ trách.
 4. Gỡ việc riêng: chưa tới ngày bắt đầu thì xóa; đã bắt đầu thì kết thúc ở hôm nay. Checklist đã sinh không đổi.
 
@@ -174,7 +174,7 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | GET | `/horses/:horseId/care-tasks` | CM, HT, GROOM | Việc riêng của ngựa |
 | POST | `/horses/:horseId/care-tasks` | HT | Gắn `{ taskTypeId, fromDate, toDate, note? }` |
 | DELETE | `/horse-care-tasks/:id` | HT | Gỡ việc riêng (luật 4.4) |
-| GET | `/horses/:horseId/checklists` | CM, HT, GROOM | Checklist theo ngày `?from&to` (mặc định hôm nay) |
+| GET | `/horses/:horseId/checklists` | CM, HT, GROOM | Checklist theo ngày `?from&to` (mặc định hôm nay, tối đa 31 ngày) |
 | PATCH | `/checklist-items/:id` | GROOM | Tick, gỡ tick `{ done, note? }` |
 | GET | `/grooms/me/today` | GROOM | Màn Hôm nay (luật 7) |
 | POST | `/incidents` | GROOM | Báo sự cố `{ horseId, description, urgent?, photoMediaId? }` |
