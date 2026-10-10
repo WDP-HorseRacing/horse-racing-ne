@@ -503,21 +503,19 @@ export function canSeeDosage(roles: UserRole[]): boolean {
  *
  * - Veterinarian, Club Manager: mọi ngựa
  * - Head Trainer: ngựa thuộc khu mình phụ trách
- * - Groom: ngựa được phân công
+ * - Vai trò khác (kể cả Groom): không được gửi
  *
- * @param input Vai trò, ngựa có thuộc khu của Head Trainer không, Groom có được phân công không
+ * @param input Vai trò, ngựa có thuộc khu của Head Trainer không
  * @throws ForbiddenException Nếu người gọi không được gửi yêu cầu cho con ngựa này
  */
 export function assertCanRequestExam(input: {
   roles: UserRole[];
   isInTrainerBarn: boolean;
-  isAssignedGroom: boolean;
 }): void {
   const allowed =
     input.roles.includes(UserRole.VETERINARIAN) ||
     input.roles.includes(UserRole.CLUB_MANAGER) ||
-    (input.roles.includes(UserRole.HEAD_TRAINER) && input.isInTrainerBarn) ||
-    (input.roles.includes(UserRole.GROOM) && input.isAssignedGroom);
+    (input.roles.includes(UserRole.HEAD_TRAINER) && input.isInTrainerBarn);
   if (!allowed) {
     throw new ForbiddenException(
       'Bạn không được gửi yêu cầu khám cho con ngựa này',
@@ -528,18 +526,13 @@ export function assertCanRequestExam(input: {
 /**
  * Chọn nguồn gốc yêu cầu khám theo vai trò người gửi, ưu tiên vai trò có quyền rộng hơn
  *
- * @param roles Vai trò của người gửi
- * @returns VET, STAFF (Club Manager, Head Trainer) hoặc GROOM_INCIDENT
+ * @param roles Vai trò của người gửi (Veterinarian, Club Manager hoặc Head Trainer)
+ * @returns VET nếu có vai trò Veterinarian, còn lại STAFF
  */
 export function examRequestSourceFor(roles: UserRole[]): ExamRequestSource {
-  if (roles.includes(UserRole.VETERINARIAN)) return ExamRequestSource.VET;
-  if (
-    roles.includes(UserRole.CLUB_MANAGER) ||
-    roles.includes(UserRole.HEAD_TRAINER)
-  ) {
-    return ExamRequestSource.STAFF;
-  }
-  return ExamRequestSource.GROOM_INCIDENT;
+  return roles.includes(UserRole.VETERINARIAN)
+    ? ExamRequestSource.VET
+    : ExamRequestSource.STAFF;
 }
 
 /**

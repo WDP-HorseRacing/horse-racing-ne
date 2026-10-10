@@ -416,14 +416,9 @@ describe('medical.policy', () => {
   });
 
   describe('exam requests', () => {
-    const scope = (
-      roles: UserRole[],
-      isInTrainerBarn = false,
-      isAssignedGroom = false,
-    ) => ({
+    const scope = (roles: UserRole[], isInTrainerBarn = false) => ({
       roles,
       isInTrainerBarn,
-      isAssignedGroom,
     });
 
     it('lets veterinarians and club managers request an exam for any horse', () => {
@@ -435,7 +430,7 @@ describe('medical.policy', () => {
       ).not.toThrow();
     });
 
-    it('limits head trainers to their barn and grooms to their horses', () => {
+    it('limits head trainers to their barn and rejects grooms and owners', () => {
       expect(() =>
         assertCanRequestExam(scope([UserRole.HEAD_TRAINER])),
       ).toThrow(ForbiddenException);
@@ -445,9 +440,6 @@ describe('medical.policy', () => {
       expect(() => assertCanRequestExam(scope([UserRole.GROOM]))).toThrow(
         ForbiddenException,
       );
-      expect(() =>
-        assertCanRequestExam(scope([UserRole.GROOM], false, true)),
-      ).not.toThrow();
       expect(() => assertCanRequestExam(scope([UserRole.HORSE_OWNER]))).toThrow(
         ForbiddenException,
       );
@@ -462,9 +454,6 @@ describe('medical.policy', () => {
       );
       expect(examRequestSourceFor([UserRole.CLUB_MANAGER])).toBe(
         ExamRequestSource.STAFF,
-      );
-      expect(examRequestSourceFor([UserRole.GROOM])).toBe(
-        ExamRequestSource.GROOM_INCIDENT,
       );
     });
 

@@ -167,15 +167,12 @@ describe('ExamRequestsService', () => {
       expect(events.publish).not.toHaveBeenCalled();
     });
 
-    it('rejects a groom not assigned to the horse with 403', async () => {
+    it('rejects a groom with 403, even one assigned to the horse', async () => {
+      horseAccess.isGroomAssigned.mockResolvedValue(true);
       await expect(
         service.create(actorWith(UserRole.GROOM), 'h1', body),
       ).rejects.toThrow(ForbiddenException);
-      expect(horseAccess.isGroomAssigned).toHaveBeenCalledWith(
-        'h1',
-        'user-1',
-        manager,
-      );
+      expect(manager.save).not.toHaveBeenCalled();
     });
 
     it('propagates conflict for a transferred horse', async () => {
@@ -208,16 +205,16 @@ describe('ExamRequestsService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('lets an assigned groom send an urgent request and alerts veterinarians in the transaction', async () => {
-      horseAccess.isGroomAssigned.mockResolvedValue(true);
+    it('lets a head trainer of the barn send an urgent request and alerts veterinarians in the transaction', async () => {
+      horseAccess.isHorseInTrainerBarn.mockResolvedValue(true);
       const result = await service.create(
-        actorWith(UserRole.GROOM),
+        actorWith(UserRole.HEAD_TRAINER),
         'h1',
         body,
       );
       expect(result).toMatchObject({
         horseName: 'Winx',
-        source: ExamRequestSource.GROOM_INCIDENT,
+        source: ExamRequestSource.STAFF,
         status: ExamRequestStatus.PENDING,
         urgent: true,
       });

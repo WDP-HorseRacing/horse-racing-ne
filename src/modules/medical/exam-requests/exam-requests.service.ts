@@ -90,7 +90,13 @@ export class ExamRequestsService {
       );
       assertCanRequestExam({
         roles: actor.roles,
-        ...(await this.scopeFlags(manager, actor, caller.id, horseId)),
+        isInTrainerBarn:
+          actor.roles.includes(UserRole.HEAD_TRAINER) &&
+          (await this.horseAccess.isHorseInTrainerBarn(
+            manager,
+            horseId,
+            caller.id,
+          )),
       });
       assertLifecycleWritable(horse);
       const saved = await this.insert(manager, {
@@ -480,32 +486,6 @@ export class ExamRequestsService {
       feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
     });
     return saved;
-  }
-
-  /**
-   * Chỉ query khu phụ trách khi người gọi là Head Trainer, chỉ query phân công khi là Groom
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param actor Thông tin danh tính từ Access Token
-   * @param callerId UUID người gọi
-   * @param horseId UUID của ngựa
-   * @returns Promise trả về cờ ngựa thuộc khu của Head Trainer và Groom được phân công
-   */
-  private async scopeFlags(
-    manager: EntityManager,
-    actor: Actor,
-    callerId: string,
-    horseId: string,
-  ): Promise<{ isInTrainerBarn: boolean; isAssignedGroom: boolean }> {
-    const [isInTrainerBarn, isAssignedGroom] = await Promise.all([
-      actor.roles.includes(UserRole.HEAD_TRAINER)
-        ? this.horseAccess.isHorseInTrainerBarn(manager, horseId, callerId)
-        : Promise.resolve(false),
-      actor.roles.includes(UserRole.GROOM)
-        ? this.horseAccess.isGroomAssigned(horseId, callerId, manager)
-        : Promise.resolve(false),
-    ]);
-    return { isInTrainerBarn, isAssignedGroom };
   }
 
   /**
