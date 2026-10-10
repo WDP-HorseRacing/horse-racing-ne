@@ -156,7 +156,7 @@ describe('TrainingClassEnrollmentsService.leave', () => {
 
     await service.leave(actor, 'e1', { leftAt: LEFT_AT });
 
-    expect(participants[0].cancelReason).toBe('Horse đã rời class');
+    expect(participants[0].cancelReason).toBe('Ngựa đã rời lớp');
   });
 
   it('returns 409 when the enrollment already left the class', async () => {

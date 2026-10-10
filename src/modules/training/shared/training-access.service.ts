@@ -493,7 +493,8 @@ export class TrainingAccessService {
         status: UserStatus.ACTIVE,
       },
     });
-    if (!trainer) throw new BadRequestException('HLV trưởng không hợp lệ');
+    if (!trainer)
+      throw new BadRequestException('Huấn luyện viên trưởng không hợp lệ');
     return trainer;
   }
 
@@ -528,11 +529,11 @@ export class TrainingAccessService {
     }
     if (!headTrainerId) {
       throw new ForbiddenException(
-        'Lớp phải được phân công cho HLV trưởng trước khi thao tác',
+        'Lớp phải được phân công cho Huấn luyện viên trưởng trước khi thao tác',
       );
     }
     if (headTrainerId !== callerId) {
-      throw new ForbiddenException('Lớp thuộc HLV trưởng khác');
+      throw new ForbiddenException('Lớp thuộc Huấn luyện viên trưởng khác');
     }
   }
 
@@ -550,7 +551,9 @@ export class TrainingAccessService {
     }
     if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
       if (participant.session.trainingClass.headTrainerId !== callerId) {
-        throw new ForbiddenException('Lượt tập thuộc lớp của HLV trưởng khác');
+        throw new ForbiddenException(
+          'Lượt tập thuộc lớp của Huấn luyện viên trưởng khác',
+        );
       }
       await this.assertTrainerBarn(
         manager,

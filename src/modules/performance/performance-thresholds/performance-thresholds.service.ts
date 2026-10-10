@@ -94,7 +94,7 @@ export class PerformanceThresholdsService {
   ): Promise<ThresholdProfileResponseDto> {
     if (!actor.roles.includes(UserRole.HEAD_TRAINER)) {
       throw new ForbiddenException(
-        'Chỉ HLV trưởng phụ trách khu được đặt ngưỡng',
+        'Chỉ Huấn luyện viên trưởng phụ trách khu được đặt ngưỡng',
       );
     }
     const saved = await this.dataSource.transaction(async (manager) => {

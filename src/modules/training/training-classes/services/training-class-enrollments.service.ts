@@ -221,7 +221,7 @@ export class TrainingClassEnrollmentsService {
         manager,
         [enrollmentId],
         leftAt,
-        body.reason ?? 'Horse đã rời class',
+        body.reason ?? 'Ngựa đã rời lớp',
       );
       return updated;
     });

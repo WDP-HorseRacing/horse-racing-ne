@@ -50,20 +50,24 @@ export class HeadTrainerHandoverService {
   ): Promise<HeadTrainerHandoverResultDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     if (fromHeadTrainerId === body.toHeadTrainerId) {
-      throw new BadRequestException('HLV trưởng nhận phải khác người bàn giao');
+      throw new BadRequestException(
+        'Huấn luyện viên trưởng nhận phải khác người bàn giao',
+      );
     }
     return this.dataSource.transaction(async (manager) => {
       const from = await this.lockedUser(manager, fromHeadTrainerId);
       if (!from || from.role !== UserRole.HEAD_TRAINER) {
-        throw new NotFoundException('Không tìm thấy HLV trưởng');
+        throw new NotFoundException('Không tìm thấy Huấn luyện viên trưởng');
       }
       const to = await this.lockedUser(manager, body.toHeadTrainerId);
       if (!to || to.role !== UserRole.HEAD_TRAINER) {
-        throw new BadRequestException('HLV trưởng nhận không hợp lệ');
+        throw new BadRequestException(
+          'Huấn luyện viên trưởng nhận không hợp lệ',
+        );
       }
       if (to.status !== UserStatus.ACTIVE) {
         throw new ConflictException(
-          'HLV trưởng nhận không ở trạng thái hoạt động',
+          'Huấn luyện viên trưởng nhận không ở trạng thái hoạt động',
         );
       }
       const barnsMoved = await this.barns.reassignHeadTrainerBarns(
