@@ -20,6 +20,7 @@ import type {
   ChecklistTaskAddedEvent,
   GroomAssignmentChangedEvent,
   IncidentReportedEvent,
+  IncidentStaleEvent,
 } from '../../stable/types/stable-events.types';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationCategory } from '../enums/notification-category.enum';
@@ -215,6 +216,37 @@ export class HorseNotificationsService {
         : NotificationPriority.NORMAL,
       title: notice.urgent ? 'Sự cố khẩn tại chuồng' : 'Sự cố tại chuồng',
       message: `Ngựa ${horse.horseName}: ${notice.description}`,
+      resource: horseResource(notice.horseId),
+    });
+  }
+
+  /**
+   * Nhắc Head Trainer của khu và mọi Club Manager đang hoạt động về sự cố còn mở quá hạn mà chưa chuyển bác sĩ
+   *
+   * - Không tìm thấy ngựa thì không gửi
+   *
+   * @param notice Payload do module stable phát khi sự cố quá hạn
+   * @returns Promise trả về id các thông báo đã gửi; không gửi thì trả mảng rỗng
+   */
+  async notifyIncidentStale(notice: IncidentStaleEvent): Promise<string[]> {
+    const horse = await this.recipients.findHorseBarnContact(notice.horseId);
+    if (!horse) {
+      this.logger.warn(
+        `Bỏ qua nhắc sự cố ${notice.incidentId}: không tìm thấy ngựa ${notice.horseId}`,
+      );
+      return [];
+    }
+    const recipientIds = await this.recipients.findActiveUserIdsByRole(
+      UserRole.CLUB_MANAGER,
+    );
+    if (horse.headTrainerId) recipientIds.push(horse.headTrainerId);
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds,
+      category: NotificationCategory.INCIDENT,
+      priority: NotificationPriority.HIGH,
+      title: 'Sự cố chưa được xử lý',
+      message: `Ngựa ${horse.horseName}: sự cố mở ${notice.hours} giờ chưa được xử lý. ${notice.description}`,
       resource: horseResource(notice.horseId),
     });
   }

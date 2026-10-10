@@ -34,9 +34,6 @@ export class IncidentEntity extends MutableRecordEntity {
   @Column({ type: 'text' })
   description!: string;
 
-  @Column({ type: 'boolean', default: false })
-  urgent!: boolean;
-
   @Column({ name: 'media_asset_id', type: 'uuid', nullable: true })
   mediaAssetId!: string | null;
 
@@ -67,4 +64,7 @@ export class IncidentEntity extends MutableRecordEntity {
 
   @Column({ name: 'resolved_at', type: 'timestamptz', nullable: true })
   resolvedAt!: Date | null;
+
+  @Column({ name: 'reminded_at', type: 'timestamptz', nullable: true })
+  remindedAt!: Date | null;
 }

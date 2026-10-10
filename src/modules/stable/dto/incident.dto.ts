@@ -47,6 +47,16 @@ export class ReportIncidentDto {
   photoMediaId?: string;
 }
 
+export class ReferIncidentDto {
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Khẩn: báo ngay mọi bác sĩ',
+  })
+  @IsOptional()
+  @IsBoolean()
+  urgent?: boolean;
+}
+
 export class ResolveIncidentDto {
   @ApiProperty({
     minLength: 1,
@@ -116,7 +126,10 @@ export class IncidentResponseDto {
   description!: string;
 
   @Expose()
-  @ApiProperty()
+  @ApiProperty({
+    description:
+      'Mức khẩn hiện tại: theo yêu cầu khám của sự cố; chưa có yêu cầu khám thì false',
+  })
   urgent!: boolean;
 
   @Expose()

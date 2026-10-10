@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 201 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 202 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -192,7 +192,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/incidents` | Liệt kê sự cố tại chuồng |
 | POST | `/api/v1/incidents` | Báo sự cố tại chuồng cho ngựa mình phụ trách |
 | GET | `/api/v1/incidents/{id}` | Xem một sự cố kèm yêu cầu khám |
-| POST | `/api/v1/incidents/{id}/refer` | Chuyển sự cố cho bác sĩ: tạo yêu cầu khám |
+| POST | `/api/v1/incidents/{id}/refer` | Chuyển sự cố cho bác sĩ: tạo yêu cầu khám, khẩn thì báo ngay mọi bác sĩ |
 | POST | `/api/v1/incidents/{id}/resolve` | Đóng sự cố kèm kết quả xử lý |
 | POST | `/api/v1/stall-assignments/{id}/end` | End stall assignment |
 | GET | `/api/v1/stalls` | List club stalls |

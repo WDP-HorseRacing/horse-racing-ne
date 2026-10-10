@@ -354,6 +354,47 @@ describe('HorseNotificationsService.notifyIncidentReported', () => {
   });
 });
 
+describe('HorseNotificationsService.notifyIncidentStale', () => {
+  const notice = {
+    eventId: 'stale-1',
+    incidentId: 'incident-1',
+    horseId: 'horse-1',
+    description: 'Bỏ ăn',
+    hours: 5,
+  };
+
+  it('reminds every club manager and the barn head trainer', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findActiveUserIdsByRole.mockResolvedValue(['cm-1']);
+    recipients.findHorseBarnContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'trainer-1',
+    });
+
+    await service.notifyIncidentStale(notice);
+
+    expect(recipients.findActiveUserIdsByRole).toHaveBeenCalledWith(
+      UserRole.CLUB_MANAGER,
+    );
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'stale-1',
+        recipientIds: ['cm-1', 'trainer-1'],
+        category: NotificationCategory.INCIDENT,
+        priority: NotificationPriority.HIGH,
+      }),
+    );
+  });
+
+  it('sends nothing when the horse is missing', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseBarnContact.mockResolvedValue(null);
+
+    await expect(service.notifyIncidentStale(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
 describe('HorseNotificationsService.notifyGroomReleasedByTransfer', () => {
   it('tells the groom that the horse was transferred', async () => {
     const { service, recipients, notifications } = setup();

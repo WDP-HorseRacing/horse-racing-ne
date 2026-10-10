@@ -22,6 +22,7 @@ import {
   IncidentListQueryDto,
   IncidentPageResponseDto,
   IncidentResponseDto,
+  ReferIncidentDto,
   ReportIncidentDto,
   ResolveIncidentDto,
 } from '../dto/incident.dto';
@@ -166,7 +167,6 @@ export class IncidentsService {
               horseId: horse.id,
               reportedBy: caller.id,
               description,
-              urgent,
               mediaAssetId: body.photoMediaId ?? null,
               status: IncidentStatus.OPEN,
             }),
@@ -220,16 +220,23 @@ export class IncidentsService {
   }
 
   /**
-   * Head Trainer của khu chuyển sự cố đang mở cho bác sĩ: tạo yêu cầu khám thường gắn sự cố
+   * Head Trainer của khu chuyển sự cố đang mở cho bác sĩ: tạo yêu cầu khám gắn sự cố
+   *
+   * - Khẩn: ghi event báo mọi bác sĩ vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của sự cố
+   * @param body Mức khẩn của yêu cầu khám
    * @returns Promise trả về sự cố kèm yêu cầu khám
    * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc ngựa không thuộc khu người gọi
    * @throws NotFoundException Nếu không có sự cố hoặc ngựa
    * @throws ConflictException Nếu ngựa chưa có khu, đã chuyển nhượng hoặc đã mất; sự cố đã đóng; hoặc đã chuyển bác sĩ
    */
-  async refer(actor: Actor, id: string): Promise<IncidentResponseDto> {
+  async refer(
+    actor: Actor,
+    id: string,
+    body: ReferIncidentDto,
+  ): Promise<IncidentResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
       const incident = await this.lockIncident(manager, id);
@@ -250,7 +257,7 @@ export class IncidentsService {
         incidentId: incident.id,
         reportedBy: caller.id,
         description: incident.description,
-        urgent: false,
+        urgent: body.urgent === true,
       });
       await this.examRequests.announceCreated(manager, exam);
     });

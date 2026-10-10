@@ -5610,6 +5610,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferIncidentDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -5627,7 +5637,7 @@
             "bearer": []
           }
         ],
-        "summary": "Chuyển sự cố cho bác sĩ: tạo yêu cầu khám",
+        "summary": "Chuyển sự cố cho bác sĩ: tạo yêu cầu khám, khẩn thì báo ngay mọi bác sĩ",
         "tags": [
           "stable"
         ]
@@ -14471,7 +14481,8 @@
             "type": "string"
           },
           "urgent": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Mức khẩn hiện tại: theo yêu cầu khám của sự cố; chưa có yêu cầu khám thì false"
           },
           "status": {
             "type": "string",
@@ -14585,6 +14596,16 @@
           "horseId",
           "description"
         ]
+      },
+      "ReferIncidentDto": {
+        "type": "object",
+        "properties": {
+          "urgent": {
+            "type": "boolean",
+            "default": false,
+            "description": "Khẩn: báo ngay mọi bác sĩ"
+          }
+        }
       },
       "ResolveIncidentDto": {
         "type": "object",

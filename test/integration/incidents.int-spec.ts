@@ -22,9 +22,13 @@ import { MedicalExamRequestEntity } from '../../src/modules/medical/entities/med
 import { ExamRequestsService } from '../../src/modules/medical/exam-requests/exam-requests.service';
 import type { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
 import { IncidentStatus } from '../../src/modules/stable/constants/incident-status.enum';
-import { INCIDENT_REPORTED_EVENT } from '../../src/modules/stable/constants/stable-events.constants';
+import {
+  INCIDENT_REPORTED_EVENT,
+  INCIDENT_STALE_EVENT,
+} from '../../src/modules/stable/constants/stable-events.constants';
 import { IncidentListQueryDto } from '../../src/modules/stable/dto/incident.dto';
 import { IncidentEntity } from '../../src/modules/stable/entities/incident.entity';
+import { IncidentRemindersService } from '../../src/modules/stable/incidents/incident-reminders.service';
 import { IncidentsService } from '../../src/modules/stable/incidents/incidents.service';
 import { StableAccessService } from '../../src/modules/stable/shared/stable-access.service';
 import { fixtures } from './fixtures';
@@ -188,6 +192,7 @@ describe('Stable incidents (Postgres)', () => {
       });
 
       expect(shown.examRequest).toBeNull();
+      expect(shown.urgent).toBe(false);
       expect(
         await dataSource.query('SELECT id FROM medical_exam_requests'),
       ).toEqual([]);
@@ -275,14 +280,14 @@ describe('Stable incidents (Postgres)', () => {
     });
 
     it('refers once, then waits for the vet before closing', async () => {
-      const referred = await incidents.refer(trainer, routineId);
+      const referred = await incidents.refer(trainer, routineId, {});
       expect(referred.examRequest).toMatchObject({
         status: ExamRequestStatus.PENDING,
         urgent: false,
       });
-      await expect(incidents.refer(trainer, routineId)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
+      await expect(
+        incidents.refer(trainer, routineId, {}),
+      ).rejects.toBeInstanceOf(ConflictException);
       await expect(
         incidents.resolve(trainer, routineId, { resolution: 'xong' }),
       ).rejects.toBeInstanceOf(ConflictException);
@@ -298,9 +303,29 @@ describe('Stable incidents (Postgres)', () => {
       expect(resolved.examRequest?.dismissReason).toBe('Không cần khám');
     });
 
+    it('lets the trainer refer as urgent and alerts every vet', async () => {
+      const referred = await incidents.refer(trainer, routineId, {
+        urgent: true,
+      });
+
+      expect(referred.urgent).toBe(true);
+      expect(referred.examRequest?.urgent).toBe(true);
+      expect(await outbox(MEDICAL_EXAM_REQUEST_URGENT_EVENT)).toHaveLength(1);
+    });
+
+    it('follows the vet when the exam request urgency changes', async () => {
+      await incidents.refer(trainer, routineId, { urgent: true });
+      await dataSource.query(
+        'UPDATE medical_exam_requests SET urgent = false WHERE incident_id = $1',
+        [routineId],
+      );
+
+      expect((await incidents.get(trainer, routineId)).urgent).toBe(false);
+    });
+
     it('keeps other barns and grooms out', async () => {
       await expect(
-        incidents.refer(otherTrainer, routineId),
+        incidents.refer(otherTrainer, routineId, {}),
       ).rejects.toBeInstanceOf(ForbiddenException);
       await expect(
         incidents.resolve(otherTrainer, routineId, { resolution: 'x' }),
@@ -315,9 +340,9 @@ describe('Stable incidents (Postgres)', () => {
 
     it('returns 404 for a missing incident', async () => {
       const missing = '00000000-0000-4000-8000-000000000000';
-      await expect(incidents.refer(trainer, missing)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        incidents.refer(trainer, missing, {}),
+      ).rejects.toBeInstanceOf(NotFoundException);
       await expect(incidents.get(vet, missing)).rejects.toBeInstanceOf(
         NotFoundException,
       );
@@ -369,6 +394,60 @@ describe('Stable incidents (Postgres)', () => {
       expect(result.meta.total).toBe(2);
       expect(result.items[0].examRequest?.urgent).toBe(true);
       expect(result.items[1].examRequest).toBeNull();
+    });
+  });
+  describe('reminding stale incidents', () => {
+    const reminders = () =>
+      new IncidentRemindersService(new DomainEventPublisher(), dataSource);
+    const ageHours = (id: string, hours: number) =>
+      dataSource.query(
+        `UPDATE incidents SET created_at = now() - make_interval(hours => $2) WHERE id = $1`,
+        [id, hours],
+      );
+
+    it('reminds once about a routine incident left open for 4 hours', async () => {
+      const stale = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Bỏ ăn',
+      });
+      const fresh = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Mới báo',
+      });
+      await ageHours(stale.id, 5);
+      await ageHours(fresh.id, 3);
+
+      expect(await reminders().remindStale(new Date())).toBe(1);
+      expect(await reminders().remindStale(new Date())).toBe(0);
+      const events = await outbox(INCIDENT_STALE_EVENT);
+      expect(events).toHaveLength(1);
+      expect(events[0].payload).toMatchObject({
+        incidentId: stale.id,
+        hours: 5,
+      });
+    });
+
+    it('skips incidents already referred, resolved or urgent', async () => {
+      const referred = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Đã chuyển',
+      });
+      await incidents.refer(trainer, referred.id, {});
+      const resolved = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Đã xong',
+      });
+      await incidents.resolve(trainer, resolved.id, { resolution: 'Ổn' });
+      const urgent = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Khẩn',
+        urgent: true,
+      });
+      for (const id of [referred.id, resolved.id, urgent.id]) {
+        await ageHours(id, 10);
+      }
+
+      expect(await reminders().remindStale(new Date())).toBe(0);
     });
   });
 });

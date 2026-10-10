@@ -41,3 +41,17 @@ export interface IncidentReportedEvent {
   urgent: boolean;
   description: string;
 }
+
+/**
+ * Payload của domain event INCIDENT_STALE_EVENT
+ *
+ * - eventId: UUID suy ra cố định từ id sự cố, mỗi sự cố chỉ nhắc một lần
+ * - hours: số giờ sự cố đã mở khi bị nhắc
+ */
+export interface IncidentStaleEvent {
+  eventId: string;
+  incidentId: string;
+  horseId: string;
+  description: string;
+  hours: number;
+}

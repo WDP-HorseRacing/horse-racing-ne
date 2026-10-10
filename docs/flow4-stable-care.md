@@ -106,12 +106,14 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 1. Groom báo sự cố cho ngựa mình phụ trách (403 nếu không phụ trách): mô tả, cờ khẩn, tối đa một ảnh. Ảnh tải lên trước qua `POST /media/upload-requests` với `purpose = INCIDENT_PHOTO` (JPEG, PNG hoặc WebP, tối đa 10 MB), phải do chính người báo tải lên; mỗi ảnh gắn cho tối đa một sự cố (409). Ngựa đã xóa: 404; đã chuyển nhượng hoặc đã mất: 409.
 2. Sự cố khẩn: trong cùng transaction hệ thống tạo yêu cầu khám khẩn (nguồn `GROOM_INCIDENT`, gắn sự cố, mô tả lấy từ sự cố); mọi bác sĩ nhận thông báo khẩn như Flow 3.
-3. Sự cố thường: không tạo yêu cầu khám. Head Trainer của khu bấm "Chuyển bác sĩ" thì tạo yêu cầu khám (thường) gắn sự cố. Mỗi sự cố tối đa một yêu cầu khám.
-4. Mọi sự cố mới đều báo Head Trainer của khu chứa ngựa (khẩn: ưu tiên cao).
-5. Head Trainer của khu đóng sự cố (`OPEN` → `RESOLVED`) kèm kết quả xử lý (bắt buộc), ví dụ "Báo nhầm, ngựa bình thường" hoặc "Đã sát trùng móng".
-6. Yêu cầu khám gắn sự cố còn chờ khám thì không đóng được sự cố (409). Bác sĩ khám xong hoặc bỏ qua (có lý do) rồi Head Trainer mới đóng.
-7. Trạng thái sự cố và trạng thái yêu cầu khám độc lập; xem sự cố thì thấy kèm trạng thái yêu cầu khám (chỉ đọc).
-8. Groom không còn gửi yêu cầu khám trực tiếp; mọi yêu cầu từ Groom đi qua sự cố.
+3. Sự cố thường: không tạo yêu cầu khám. Head Trainer của khu bấm "Chuyển bác sĩ" thì tạo yêu cầu khám gắn sự cố; tick "Khẩn" thì yêu cầu khám là khẩn và mọi bác sĩ được báo ngay. Mỗi sự cố tối đa một yêu cầu khám.
+4. Sự cố thường còn mở từ 4 giờ trở lên mà chưa chuyển bác sĩ: hệ thống nhắc Head Trainer của khu và mọi Club Manager một lần (kiểm mỗi 30 phút).
+5. Mọi sự cố mới đều báo Head Trainer của khu chứa ngựa (khẩn: ưu tiên cao).
+6. Head Trainer của khu đóng sự cố (`OPEN` → `RESOLVED`) kèm kết quả xử lý (bắt buộc), ví dụ "Báo nhầm, ngựa bình thường" hoặc "Đã sát trùng móng".
+7. Yêu cầu khám gắn sự cố còn chờ khám thì không đóng được sự cố (409). Bác sĩ khám xong hoặc bỏ qua (có lý do) rồi Head Trainer mới đóng.
+8. Trạng thái sự cố và trạng thái yêu cầu khám độc lập; xem sự cố thì thấy kèm trạng thái yêu cầu khám (chỉ đọc).
+   Sự cố không tự lưu mức khẩn: ô "Khẩn" lúc báo chỉ quyết có tạo yêu cầu khám khẩn ngay hay không. Mức khẩn hiện tại (`urgent` trong response) lấy theo yêu cầu khám của sự cố; chưa có yêu cầu khám thì không khẩn.
+9. Groom không còn gửi yêu cầu khám trực tiếp; mọi yêu cầu từ Groom đi qua sự cố.
 
 ### 7. Màn Hôm nay của Groom
 
@@ -182,7 +184,7 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | POST | `/incidents` | GROOM | Báo sự cố `{ horseId, description, urgent?, photoMediaId? }` |
 | GET | `/incidents` | CM, HT, VET, GROOM | Danh sách `?status&horseId&barnId&page&limit` |
 | GET | `/incidents/:id` | theo quyền xem | Một sự cố, kèm trạng thái yêu cầu khám |
-| POST | `/incidents/:id/refer` | HT | Chuyển bác sĩ: tạo yêu cầu khám |
+| POST | `/incidents/:id/refer` | HT | Chuyển bác sĩ: tạo yêu cầu khám `{ urgent? }` |
 | POST | `/incidents/:id/resolve` | HT | Đóng `{ resolution }` |
 
 Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.

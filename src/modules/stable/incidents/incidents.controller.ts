@@ -22,6 +22,7 @@ import {
   IncidentListQueryDto,
   IncidentPageResponseDto,
   IncidentResponseDto,
+  ReferIncidentDto,
   ReportIncidentDto,
   ResolveIncidentDto,
 } from '../dto/incident.dto';
@@ -67,10 +68,17 @@ export class IncidentsController {
   @Access([UserRole.HEAD_TRAINER])
   @Post('incidents/:id/refer')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Chuyển sự cố cho bác sĩ: tạo yêu cầu khám' })
+  @ApiOperation({
+    summary:
+      'Chuyển sự cố cho bác sĩ: tạo yêu cầu khám, khẩn thì báo ngay mọi bác sĩ',
+  })
   @ApiOkResponse({ type: IncidentResponseDto })
-  refer(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
-    return this.incidents.refer(actor, id);
+  refer(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ReferIncidentDto,
+  ) {
+    return this.incidents.refer(actor, id, body);
   }
 
   @Access([UserRole.HEAD_TRAINER])

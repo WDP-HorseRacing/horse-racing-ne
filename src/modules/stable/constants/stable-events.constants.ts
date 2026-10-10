@@ -15,3 +15,9 @@ export const CHECKLIST_TASK_ADDED_EVENT = 'stable.checklist.task-added';
  * Payload là IncidentReportedEvent; module notifications nghe event này để báo Head Trainer của khu chứa ngựa.
  */
 export const INCIDENT_REPORTED_EVENT = 'stable.incident.reported';
+
+/**
+ * Tên domain event phát khi sự cố thường còn mở quá hạn mà chưa chuyển bác sĩ.
+ * Payload là IncidentStaleEvent; module notifications nghe event này để nhắc Head Trainer của khu và Club Manager.
+ */
+export const INCIDENT_STALE_EVENT = 'stable.incident.stale';

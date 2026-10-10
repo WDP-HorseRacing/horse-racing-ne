@@ -8,6 +8,8 @@ const MAPPER_OPTIONS = { excludeExtraneousValues: true } as const;
 /**
  * Chuyển sự cố sang response, kèm link ảnh và yêu cầu khám gắn với nó
  *
+ * - Mức khẩn lấy theo yêu cầu khám; chưa có yêu cầu khám thì không khẩn
+ *
  * @param incident Sự cố đã load horse, reporter, resolver (kể cả bản đã xóa)
  * @param photoUrl Link xem ảnh có hạn, null nếu không có ảnh
  * @param examRequest Yêu cầu khám của sự cố, null nếu không có
@@ -24,6 +26,7 @@ export function toIncidentResponse(
       ...incident,
       horseName: incident.horse.name,
       photoUrl,
+      urgent: examRequest?.urgent ?? false,
       resolver: incident.resolvedBy ? incident.resolver : null,
       examRequest,
     },
