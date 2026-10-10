@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 191 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 193 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -197,17 +197,19 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/supplies/items` | List club supply inventory |
-| POST | `/api/v1/supplies/items` | Create supply item |
-| DELETE | `/api/v1/supplies/items/{id}` | Soft-delete supply item |
-| GET | `/api/v1/supplies/items/{id}` | Get supply item |
-| PATCH | `/api/v1/supplies/items/{id}` | Update supply quantity or threshold |
-| GET | `/api/v1/supplies/items/low-stock` | List items at or below reorder threshold |
-| GET | `/api/v1/supplies/requests` | List supply requests |
-| POST | `/api/v1/supplies/requests` | Request supply replenishment |
-| GET | `/api/v1/supplies/requests/{id}` | Get supply request |
-| PATCH | `/api/v1/supplies/requests/{id}` | Update a pending supply request |
-| PATCH | `/api/v1/supplies/requests/{id}/status` | Approve, reject or fulfill supply request |
+| GET | `/api/v1/supplies/items` | Liệt kê vật tư của kho chung |
+| POST | `/api/v1/supplies/items` | Thêm vật tư |
+| DELETE | `/api/v1/supplies/items/{id}` | Xóa mềm vật tư |
+| GET | `/api/v1/supplies/items/{id}` | Xem một vật tư |
+| PATCH | `/api/v1/supplies/items/{id}` | Sửa tên, loại, đơn vị, ngưỡng báo thiếu của vật tư |
+| GET | `/api/v1/supplies/items/{id}/movements` | Sổ nhập xuất của vật tư, mới nhất trước |
+| POST | `/api/v1/supplies/items/{id}/stock-counts` | Kiểm kê: ghi số đếm thực tế của vật tư |
+| GET | `/api/v1/supplies/items/low-stock` | Liệt kê vật tư sắp hết |
+| GET | `/api/v1/supplies/requests` | Liệt kê đề xuất bổ sung vật tư |
+| POST | `/api/v1/supplies/requests` | Gửi đề xuất bổ sung vật tư |
+| GET | `/api/v1/supplies/requests/{id}` | Xem một đề xuất bổ sung vật tư |
+| PATCH | `/api/v1/supplies/requests/{id}` | Sửa đề xuất đang chờ duyệt của mình |
+| PATCH | `/api/v1/supplies/requests/{id}/status` | Duyệt, từ chối hoặc cấp đề xuất bổ sung vật tư |
 
 ## training
 

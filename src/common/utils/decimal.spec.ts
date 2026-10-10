@@ -1,4 +1,10 @@
-import { averageDecimal, roundDecimal } from './decimal';
+import {
+  addDecimal,
+  compareDecimal,
+  averageDecimal,
+  roundDecimal,
+  subtractDecimal,
+} from './decimal';
 
 describe('averageDecimal', () => {
   it.each([
@@ -31,5 +37,26 @@ describe('roundDecimal', () => {
     ['0.0005', '0.001'],
   ])('formats %s as %s', (value, expected) => {
     expect(roundDecimal(value, 3)).toBe(expected);
+  });
+});
+
+describe('subtractDecimal and addDecimal', () => {
+  it('keeps exact cents where floats drift', () => {
+    expect(subtractDecimal('0.3', '0.1', 2)).toBe('0.20');
+    expect(addDecimal('0.1', '0.2', 2)).toBe('0.30');
+  });
+
+  it('returns a negative difference', () => {
+    expect(subtractDecimal('40', '52.5', 2)).toBe('-12.50');
+  });
+});
+
+describe('compareDecimal', () => {
+  it.each([
+    ['40.00', '50', -1],
+    ['50.00', '50', 0],
+    ['50.01', '50', 1],
+  ])('compares %s with %s as %d', (left, right, expected) => {
+    expect(compareDecimal(left, right)).toBe(expected);
   });
 });

@@ -3,88 +3,141 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser } from '../../../common/decorators';
-import { PendingApi } from '../../../common/openapi/pending-api';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { UserRole } from '../../../common/enums';
 import type { Actor } from '../../../common/types/actor';
 import {
   CreateSupplyItemDto,
+  SupplyItemListQueryDto,
+  SupplyItemPageResponseDto,
+  SupplyItemResponseDto,
+  SupplyStockCountDto,
+  SupplyStockMovementPageResponseDto,
   UpdateSupplyItemDto,
 } from '../dto/supply-item.dto';
+import { SupplyItemsService } from './items.service';
+
+const ITEM_READERS = [
+  UserRole.CLUB_MANAGER,
+  UserRole.HEAD_TRAINER,
+  UserRole.VETERINARIAN,
+  UserRole.GROOM,
+];
 
 @ApiTags('supplies')
 @ApiBearerAuth()
-@ApiResponse({ status: 501, description: 'Contract only' })
 @Controller('supplies')
-export class SupplyItemsController extends PendingApi {
+export class SupplyItemsController {
+  constructor(private readonly items: SupplyItemsService) {}
+
+  @Access(ITEM_READERS)
   @Get('items')
   @ApiOperation({
-    summary: 'List club supply inventory',
+    summary: 'Liệt kê vật tư của kho chung',
     operationId: 'SuppliesController_items',
   })
-  items(@CurrentUser() _actor: Actor) {
-    return this.pending();
+  @ApiOkResponse({ type: SupplyItemPageResponseDto })
+  list(@CurrentUser() actor: Actor, @Query() query: SupplyItemListQueryDto) {
+    return this.items.list(actor, query);
   }
 
+  @Access(ITEM_READERS)
   @Get('items/low-stock')
   @ApiOperation({
-    summary: 'List items at or below reorder threshold',
+    summary: 'Liệt kê vật tư sắp hết',
     operationId: 'SuppliesController_lowStock',
   })
-  lowStock(@CurrentUser() _actor: Actor) {
-    return this.pending();
+  @ApiOkResponse({ type: [SupplyItemResponseDto] })
+  lowStock(@CurrentUser() actor: Actor) {
+    return this.items.lowStock(actor);
   }
 
+  @Access([UserRole.CLUB_MANAGER])
   @Post('items')
   @ApiOperation({
-    summary: 'Create supply item',
+    summary: 'Thêm vật tư',
     operationId: 'SuppliesController_createItem',
   })
-  createItem(@CurrentUser() _actor: Actor, @Body() _body: CreateSupplyItemDto) {
-    return this.pending();
+  @ApiCreatedResponse({ type: SupplyItemResponseDto })
+  create(@CurrentUser() actor: Actor, @Body() body: CreateSupplyItemDto) {
+    return this.items.create(actor, body);
   }
 
+  @Access(ITEM_READERS)
   @Get('items/:id')
   @ApiOperation({
-    summary: 'Get supply item',
+    summary: 'Xem một vật tư',
     operationId: 'SuppliesController_item',
   })
-  item(@CurrentUser() _actor: Actor, @Param('id', ParseUUIDPipe) _id: string) {
-    return this.pending();
+  @ApiOkResponse({ type: SupplyItemResponseDto })
+  get(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.items.get(actor, id);
   }
 
+  @Access([UserRole.CLUB_MANAGER])
   @Patch('items/:id')
   @ApiOperation({
-    summary: 'Update supply quantity or threshold',
+    summary: 'Sửa tên, loại, đơn vị, ngưỡng báo thiếu của vật tư',
     operationId: 'SuppliesController_updateItem',
   })
-  updateItem(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: UpdateSupplyItemDto,
+  @ApiOkResponse({ type: SupplyItemResponseDto })
+  update(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateSupplyItemDto,
   ) {
-    return this.pending();
+    return this.items.update(actor, id, body);
   }
 
+  @Access([UserRole.CLUB_MANAGER])
   @Delete('items/:id')
+  @HttpCode(204)
   @ApiOperation({
-    summary: 'Soft-delete supply item',
+    summary: 'Xóa mềm vật tư',
     operationId: 'SuppliesController_deleteItem',
   })
-  deleteItem(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
+  @ApiNoContentResponse()
+  remove(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.items.remove(actor, id);
+  }
+
+  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.GROOM])
+  @Post('items/:id/stock-counts')
+  @ApiOperation({ summary: 'Kiểm kê: ghi số đếm thực tế của vật tư' })
+  @ApiCreatedResponse({ type: SupplyItemResponseDto })
+  count(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: SupplyStockCountDto,
   ) {
-    return this.pending();
+    return this.items.count(actor, id, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Get('items/:id/movements')
+  @ApiOperation({ summary: 'Sổ nhập xuất của vật tư, mới nhất trước' })
+  @ApiOkResponse({ type: SupplyStockMovementPageResponseDto })
+  movements(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.items.movementsOf(actor, id, query);
   }
 }

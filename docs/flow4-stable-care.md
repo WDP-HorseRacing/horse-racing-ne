@@ -58,7 +58,8 @@ SỰ CỐ                             Groom báo, HT khu đóng
    2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp, cộng số lượng đề xuất vào tồn và ghi `RESTOCK` gắn mã đề xuất.
 5. Sắp hết: số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu.
 6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc.
-7. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
+7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối hoặc cấp xong trước.
+8. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
 
 ### 2. Đề xuất bổ sung
 
@@ -153,8 +154,8 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | PATCH | `/supplies/items/:id` | CM | Sửa tên, loại, đơn vị, ngưỡng |
 | DELETE | `/supplies/items/:id` | CM | Xóa mềm |
 | POST | `/supplies/items/:id/stock-counts` | CM, HT, GROOM | Kiểm kê `{ quantityOnHand, note? }` |
-| GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư, mới nhất trước |
-| GET | `/supplies/requests` | CM (tất cả), HT, GROOM (của mình) | Danh sách đề xuất `?status` |
+| GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư, mới nhất trước `?page&limit` |
+| GET | `/supplies/requests` | CM (tất cả), HT, GROOM (của mình) | Danh sách đề xuất `?status&page&limit` |
 | GET | `/supplies/requests/:id` | như trên | Một đề xuất |
 | POST | `/supplies/requests` | HT, GROOM | Gửi `{ itemId, quantity, note? }` |
 | PATCH | `/supplies/requests/:id` | Người gửi | Sửa đề xuất `PENDING` |

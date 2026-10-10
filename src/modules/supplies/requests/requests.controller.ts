@@ -6,83 +6,101 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser } from '../../../common/decorators';
-import { PendingApi } from '../../../common/openapi/pending-api';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { UserRole } from '../../../common/enums';
 import type { Actor } from '../../../common/types/actor';
 import {
   CreateSupplyRequestDto,
   EditSupplyRequestDto,
+  SupplyRequestListQueryDto,
+  SupplyRequestPageResponseDto,
+  SupplyRequestResponseDto,
   UpdateSupplyRequestStatusDto,
 } from '../dto/supply-request.dto';
+import { SupplyRequestsService } from './requests.service';
+
+const REQUEST_READERS = [
+  UserRole.CLUB_MANAGER,
+  UserRole.HEAD_TRAINER,
+  UserRole.GROOM,
+];
+const REQUESTERS = [UserRole.HEAD_TRAINER, UserRole.GROOM];
 
 @ApiTags('supplies')
 @ApiBearerAuth()
-@ApiResponse({ status: 501, description: 'Contract only' })
 @Controller('supplies')
-export class SupplyRequestsController extends PendingApi {
+export class SupplyRequestsController {
+  constructor(private readonly requests: SupplyRequestsService) {}
+
+  @Access(REQUEST_READERS)
   @Get('requests')
   @ApiOperation({
-    summary: 'List supply requests',
+    summary: 'Liệt kê đề xuất bổ sung vật tư',
     operationId: 'SuppliesController_requests',
   })
-  requests(@CurrentUser() _actor: Actor) {
-    return this.pending();
+  @ApiOkResponse({ type: SupplyRequestPageResponseDto })
+  list(@CurrentUser() actor: Actor, @Query() query: SupplyRequestListQueryDto) {
+    return this.requests.list(actor, query);
   }
 
+  @Access(REQUESTERS)
   @Post('requests')
   @ApiOperation({
-    summary: 'Request supply replenishment',
+    summary: 'Gửi đề xuất bổ sung vật tư',
     operationId: 'SuppliesController_createRequest',
   })
-  createRequest(
-    @CurrentUser() _actor: Actor,
-    @Body() _body: CreateSupplyRequestDto,
-  ) {
-    return this.pending();
+  @ApiCreatedResponse({ type: SupplyRequestResponseDto })
+  create(@CurrentUser() actor: Actor, @Body() body: CreateSupplyRequestDto) {
+    return this.requests.create(actor, body);
   }
 
+  @Access(REQUEST_READERS)
   @Get('requests/:id')
   @ApiOperation({
-    summary: 'Get supply request',
+    summary: 'Xem một đề xuất bổ sung vật tư',
     operationId: 'SuppliesController_request',
   })
-  request(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-  ) {
-    return this.pending();
+  @ApiOkResponse({ type: SupplyRequestResponseDto })
+  get(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.requests.get(actor, id);
   }
 
+  @Access(REQUESTERS)
   @Patch('requests/:id')
   @ApiOperation({
-    summary: 'Update a pending supply request',
+    summary: 'Sửa đề xuất đang chờ duyệt của mình',
     operationId: 'SuppliesController_editRequest',
   })
-  editRequest(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: EditSupplyRequestDto,
+  @ApiOkResponse({ type: SupplyRequestResponseDto })
+  edit(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: EditSupplyRequestDto,
   ) {
-    return this.pending();
+    return this.requests.edit(actor, id, body);
   }
 
+  @Access([UserRole.CLUB_MANAGER])
   @Patch('requests/:id/status')
   @ApiOperation({
-    summary: 'Approve, reject or fulfill supply request',
+    summary: 'Duyệt, từ chối hoặc cấp đề xuất bổ sung vật tư',
     operationId: 'SuppliesController_updateRequest',
   })
-  updateRequestStatus(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: UpdateSupplyRequestStatusDto,
+  @ApiOkResponse({ type: SupplyRequestResponseDto })
+  updateStatus(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateSupplyRequestStatusDto,
   ) {
-    return this.pending();
+    return this.requests.updateStatus(actor, id, body);
   }
 }

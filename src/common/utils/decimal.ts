@@ -38,3 +38,45 @@ export function averageDecimal(
 export function roundDecimal(value: string, scale: number): string {
   return new ExactDecimal(value).toFixed(scale);
 }
+
+/**
+ * Hiệu của hai số thập phân, định dạng đúng scale chữ số thập phân
+ *
+ * @param minuend Số bị trừ, dạng chuỗi
+ * @param subtrahend Số trừ, dạng chuỗi
+ * @param scale Số chữ số thập phân của kết quả
+ * @returns Hiệu dạng chuỗi, vd "-12.50"
+ * @throws Error Nếu một trong hai giá trị không phải số thập phân
+ */
+export function subtractDecimal(
+  minuend: string,
+  subtrahend: string,
+  scale: number,
+): string {
+  return new ExactDecimal(minuend).minus(subtrahend).toFixed(scale);
+}
+
+/**
+ * Tổng của hai số thập phân, định dạng đúng scale chữ số thập phân
+ *
+ * @param left Số hạng thứ nhất, dạng chuỗi
+ * @param right Số hạng thứ hai, dạng chuỗi
+ * @param scale Số chữ số thập phân của kết quả
+ * @returns Tổng dạng chuỗi, vd "140.00"
+ * @throws Error Nếu một trong hai giá trị không phải số thập phân
+ */
+export function addDecimal(left: string, right: string, scale: number): string {
+  return new ExactDecimal(left).plus(right).toFixed(scale);
+}
+
+/**
+ * So sánh hai số thập phân
+ *
+ * @param left Số thứ nhất, dạng chuỗi
+ * @param right Số thứ hai, dạng chuỗi
+ * @returns -1 nếu left nhỏ hơn, 0 nếu bằng, 1 nếu lớn hơn
+ * @throws Error Nếu một trong hai giá trị không phải số thập phân
+ */
+export function compareDecimal(left: string, right: string): -1 | 0 | 1 {
+  return new ExactDecimal(left).cmp(right) as -1 | 0 | 1;
+}

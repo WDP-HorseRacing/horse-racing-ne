@@ -5540,10 +5540,89 @@
     "/api/v1/supplies/items": {
       "get": {
         "operationId": "SuppliesController_items",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "description": "Lọc theo loại",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "FEED",
+                "SUPPLEMENT",
+                "MEDICINE",
+                "EQUIPMENT"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Tìm theo tên",
+            "schema": {
+              "maxLength": 160,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyItemPageResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5551,11 +5630,10 @@
             "bearer": []
           }
         ],
-        "summary": "List club supply inventory",
+        "summary": "Liệt kê vật tư của kho chung",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "SuppliesController_createItem",
@@ -5571,8 +5649,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyItemResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5580,11 +5665,10 @@
             "bearer": []
           }
         ],
-        "summary": "Create supply item",
+        "summary": "Thêm vật tư",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/supplies/items/low-stock": {
@@ -5592,8 +5676,18 @@
         "operationId": "SuppliesController_lowStock",
         "parameters": [],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupplyItemResponseDto"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5601,11 +5695,10 @@
             "bearer": []
           }
         ],
-        "summary": "List items at or below reorder threshold",
+        "summary": "Liệt kê vật tư sắp hết",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/supplies/items/{id}": {
@@ -5622,8 +5715,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyItemResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5631,11 +5731,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get supply item",
+        "summary": "Xem một vật tư",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "patch": {
         "operationId": "SuppliesController_updateItem",
@@ -5660,8 +5759,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyItemResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5669,11 +5775,10 @@
             "bearer": []
           }
         ],
-        "summary": "Update supply quantity or threshold",
+        "summary": "Sửa tên, loại, đơn vị, ngưỡng báo thiếu của vật tư",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "delete": {
         "operationId": "SuppliesController_deleteItem",
@@ -5688,8 +5793,8 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "204": {
+            "description": ""
           }
         },
         "security": [
@@ -5697,20 +5802,215 @@
             "bearer": []
           }
         ],
-        "summary": "Soft-delete supply item",
+        "summary": "Xóa mềm vật tư",
         "tags": [
           "supplies"
+        ]
+      }
+    },
+    "/api/v1/supplies/items/{id}/stock-counts": {
+      "post": {
+        "operationId": "SupplyItemsController_count",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "x-implementation-status": "contract-only"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplyStockCountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyItemResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Kiểm kê: ghi số đếm thực tế của vật tư",
+        "tags": [
+          "supplies"
+        ]
+      }
+    },
+    "/api/v1/supplies/items/{id}/movements": {
+      "get": {
+        "operationId": "SupplyItemsController_movements",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyStockMovementPageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sổ nhập xuất của vật tư, mới nhất trước",
+        "tags": [
+          "supplies"
+        ]
       }
     },
     "/api/v1/supplies/requests": {
       "get": {
         "operationId": "SuppliesController_requests",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Trường cần sắp xếp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "required": false,
+            "in": "query",
+            "description": "Chiều sắp xếp",
+            "schema": {
+              "default": "DESC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED",
+                "FULFILLED"
+              ]
+            }
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyRequestPageResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5718,11 +6018,10 @@
             "bearer": []
           }
         ],
-        "summary": "List supply requests",
+        "summary": "Liệt kê đề xuất bổ sung vật tư",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "post": {
         "operationId": "SuppliesController_createRequest",
@@ -5738,8 +6037,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyRequestResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5747,11 +6053,10 @@
             "bearer": []
           }
         ],
-        "summary": "Request supply replenishment",
+        "summary": "Gửi đề xuất bổ sung vật tư",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/supplies/requests/{id}": {
@@ -5768,8 +6073,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyRequestResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5777,11 +6089,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get supply request",
+        "summary": "Xem một đề xuất bổ sung vật tư",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       },
       "patch": {
         "operationId": "SuppliesController_editRequest",
@@ -5806,8 +6117,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyRequestResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5815,11 +6133,10 @@
             "bearer": []
           }
         ],
-        "summary": "Update a pending supply request",
+        "summary": "Sửa đề xuất đang chờ duyệt của mình",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/supplies/requests/{id}/status": {
@@ -5846,8 +6163,15 @@
           }
         },
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyRequestResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5855,11 +6179,10 @@
             "bearer": []
           }
         ],
-        "summary": "Approve, reject or fulfill supply request",
+        "summary": "Duyệt, từ chối hoặc cấp đề xuất bổ sung vật tư",
         "tags": [
           "supplies"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/horses/{horseId}/training/classes": {
@@ -13114,9 +13437,34 @@
           "stallId"
         ]
       },
-      "CreateSupplyItemDto": {
+      "SupplyUserSummaryResponseDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email"
+        ]
+      },
+      "SupplyItemResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "name": {
             "type": "string"
           },
@@ -13124,6 +13472,7 @@
             "type": "string",
             "enum": [
               "FEED",
+              "SUPPLEMENT",
               "MEDICINE",
               "EQUIPMENT"
             ]
@@ -13132,19 +13481,119 @@
             "type": "string"
           },
           "quantityOnHand": {
+            "type": "string",
+            "description": "Số tồn hiện tại"
+          },
+          "reorderThreshold": {
+            "type": "string",
+            "description": "Ngưỡng báo thiếu"
+          },
+          "lowStock": {
+            "type": "boolean",
+            "description": "Số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu"
+          },
+          "lastCountedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lần kiểm kê gần nhất"
+          },
+          "lastCounter": {
+            "nullable": true,
+            "description": "Người kiểm kê gần nhất",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
+              }
+            ]
+          },
+          "deletedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Thời điểm xóa; null nếu vật tư còn dùng"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "unit",
+          "quantityOnHand",
+          "reorderThreshold",
+          "lowStock",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SupplyItemPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupplyItemResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
+      "CreateSupplyItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "description": "Tên vật tư, duy nhất trong CLB"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "FEED",
+              "SUPPLEMENT",
+              "MEDICINE",
+              "EQUIPMENT"
+            ],
+            "description": "Loại vật tư"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "Đơn vị, vd kg, cuộn"
+          },
+          "quantityOnHand": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 1000000000,
+            "default": 0,
+            "description": "Số tồn ban đầu; khác 0 thì ghi một dòng sổ kiểm kê"
           },
           "reorderThreshold": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 1000000000,
+            "description": "Ngưỡng báo thiếu"
           }
         },
         "required": [
           "name",
           "category",
           "unit",
-          "quantityOnHand",
           "reorderThreshold"
         ]
       },
@@ -13152,28 +13601,241 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 160,
+            "description": "Tên vật tư, duy nhất trong CLB"
           },
           "category": {
             "type": "string",
             "enum": [
               "FEED",
+              "SUPPLEMENT",
               "MEDICINE",
               "EQUIPMENT"
-            ]
+            ],
+            "description": "Loại vật tư"
           },
           "unit": {
-            "type": "string"
-          },
-          "quantityOnHand": {
-            "type": "number",
-            "minimum": 0
+            "type": "string",
+            "maxLength": 32,
+            "description": "Đơn vị, vd kg, cuộn"
           },
           "reorderThreshold": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 1000000000,
+            "description": "Ngưỡng báo thiếu"
           }
         }
+      },
+      "SupplyStockCountDto": {
+        "type": "object",
+        "properties": {
+          "quantityOnHand": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "description": "Số đếm thực tế"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Ghi chú kiểm kê"
+          }
+        },
+        "required": [
+          "quantityOnHand"
+        ]
+      },
+      "SupplyStockMovementResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "delta": {
+            "type": "string",
+            "description": "Chênh lệch, âm là giảm"
+          },
+          "balanceAfter": {
+            "type": "string",
+            "description": "Số tồn sau lần đổi"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "RESTOCK",
+              "COUNT_ADJUST"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Đề xuất được cấp, với RESTOCK"
+          },
+          "note": {
+            "type": "object",
+            "nullable": true
+          },
+          "creator": {
+            "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "itemId",
+          "delta",
+          "balanceAfter",
+          "type",
+          "creator",
+          "createdAt"
+        ]
+      },
+      "SupplyStockMovementPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupplyStockMovementResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
+      "SupplyRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "item": {
+            "$ref": "#/components/schemas/SupplyItemResponseDto"
+          },
+          "requestedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requester": {
+            "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "FULFILLED"
+            ]
+          },
+          "note": {
+            "type": "object",
+            "nullable": true
+          },
+          "reviewedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "reviewer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
+              }
+            ]
+          },
+          "reviewedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "fulfilledBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "fulfiller": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
+              }
+            ]
+          },
+          "fulfilledAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "itemId",
+          "item",
+          "requestedBy",
+          "requester",
+          "quantity",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SupplyRequestPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupplyRequestResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
       },
       "CreateSupplyRequestDto": {
         "type": "object",
@@ -13184,10 +13846,13 @@
           },
           "quantity": {
             "type": "number",
-            "minimum": 0.01
+            "minimum": 0.01,
+            "maximum": 1000000000,
+            "description": "Số lượng xin thêm"
           },
           "note": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500
           }
         },
         "required": [
@@ -13200,10 +13865,12 @@
         "properties": {
           "quantity": {
             "type": "number",
-            "minimum": 0.01
+            "minimum": 0.01,
+            "maximum": 1000000000
           },
           "note": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 500
           }
         }
       },

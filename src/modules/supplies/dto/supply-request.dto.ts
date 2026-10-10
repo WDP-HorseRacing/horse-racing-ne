@@ -8,38 +8,55 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  Max,
+  MaxLength,
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
-import { SupplyItemResponseDto } from './supply-item.dto';
+import {
+  SupplyItemResponseDto,
+  SupplyUserSummaryResponseDto,
+} from './supply-item.dto';
+
+const MAX_QUANTITY = 1_000_000_000;
 
 export class CreateSupplyRequestDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   itemId!: string;
 
-  @ApiProperty({ minimum: 0.01 })
+  @ApiProperty({
+    minimum: 0.01,
+    maximum: MAX_QUANTITY,
+    description: 'Số lượng xin thêm',
+  })
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
+  @Max(MAX_QUANTITY)
   quantity!: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: 500 })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   note?: string;
 }
 
 export class EditSupplyRequestDto {
-  @ApiPropertyOptional({ minimum: 0.01 })
+  @ApiPropertyOptional({ minimum: 0.01, maximum: MAX_QUANTITY })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
+  @Max(MAX_QUANTITY)
   quantity?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: 500 })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   note?: string;
 }
 
@@ -66,21 +83,15 @@ export class UpdateSupplyRequestStatusDto {
   )
   @IsString()
   @MinLength(1)
+  @MaxLength(500)
   reason?: string;
 }
 
-export class SupplyUserSummaryResponseDto {
-  @Expose()
-  @ApiProperty({ format: 'uuid' })
-  id!: string;
-
-  @Expose()
-  @ApiProperty()
-  fullName!: string;
-
-  @Expose()
-  @ApiProperty({ format: 'email' })
-  email!: string;
+export class SupplyRequestListQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: SupplyRequestStatus })
+  @IsOptional()
+  @IsEnum(SupplyRequestStatus)
+  status?: SupplyRequestStatus;
 }
 
 export class SupplyRequestResponseDto {
@@ -161,4 +172,13 @@ export class SupplyRequestResponseDto {
   @Expose()
   @ApiProperty({ format: 'date-time' })
   updatedAt!: Date;
+}
+
+export class SupplyRequestPageResponseDto {
+  @ApiProperty({ type: [SupplyRequestResponseDto] })
+  items!: SupplyRequestResponseDto[];
+
+  @ApiProperty({ type: PaginationMetaDto })
+  @Type(() => PaginationMetaDto)
+  meta!: PaginationMetaDto;
 }
