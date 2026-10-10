@@ -28,14 +28,14 @@ export class CreateTrainingSessionDto {
   @MaxLength(160, { message: 'Tên buổi tập tối đa 160 ký tự' })
   name!: string;
 
-  @ApiProperty({ enum: TrainingSessionType })
-  @IsEnum(TrainingSessionType)
-  sessionType!: TrainingSessionType;
-
-  @ApiPropertyOptional({ format: 'uuid', description: 'Môn học của buổi' })
+  @ApiPropertyOptional({ enum: TrainingSessionType })
   @IsOptional()
+  @IsEnum(TrainingSessionType)
+  sessionType?: TrainingSessionType;
+
+  @ApiProperty({ format: 'uuid', description: 'Môn học của buổi' })
   @IsUUID()
-  subjectId?: string;
+  subjectId!: string;
 
   @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
   @IsEnum(TrainingIntensity)

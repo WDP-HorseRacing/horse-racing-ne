@@ -148,7 +148,6 @@ const newSession = (
   overrides: Partial<CreateTrainingSessionDto> = {},
 ): CreateTrainingSessionDto => ({
   subjectId: 'sub1',
-  sessionType: TrainingSessionType.TIME_TRIAL,
   name: 'Buổi mới',
   intensity: TrainingIntensity.HEAVY,
   plannedDistanceM: 1200,
@@ -198,14 +197,7 @@ describe('TrainingSessionsService.createSession', () => {
     const { service, manager } = setupCreate(regular);
 
     await expect(
-      service.createSession(
-        actor,
-        'c1',
-        newSession({
-          sessionType: TrainingSessionType.REGULAR,
-          targetTimeMs: 62000,
-        }),
-      ),
+      service.createSession(actor, 'c1', newSession({ targetTimeMs: 62000 })),
     ).rejects.toThrow(
       new BadRequestException('Chỉ môn chạy thử mới có thời gian mục tiêu'),
     );
@@ -223,13 +215,16 @@ describe('TrainingSessionsService.createSession', () => {
     expect(manager.save).not.toHaveBeenCalled();
   });
 
-  it('tạo sẵn cấu hình chạy thử cho buổi chạy thử', async () => {
+  it('lấy loại buổi theo môn và tạo sẵn cấu hình chạy thử', async () => {
     const { service, manager } = setupCreate(trial);
 
     const created = await service.createSession(
       actor,
       'c1',
-      newSession({ targetTimeMs: null }),
+      newSession({
+        sessionType: TrainingSessionType.TIME_TRIAL,
+        targetTimeMs: null,
+      }),
     );
 
     expect(created.sessionType).toBe(TrainingSessionType.TIME_TRIAL);
@@ -244,33 +239,9 @@ describe('TrainingSessionsService.createSession', () => {
   it('không tạo cấu hình chạy thử cho buổi thường', async () => {
     const { service, manager } = setupCreate(regular);
 
-    const created = await service.createSession(
-      actor,
-      'c1',
-      newSession({ sessionType: TrainingSessionType.REGULAR }),
-    );
+    const created = await service.createSession(actor, 'c1', newSession());
 
     expect(created.sessionType).toBe(TrainingSessionType.REGULAR);
     expect(manager.save).toHaveBeenCalledTimes(1);
-  });
-
-  it('không có môn thì lấy loại buổi gửi lên', async () => {
-    const { service, manager } = setupCreate(null);
-
-    const created = await service.createSession(
-      actor,
-      'c1',
-      newSession({ subjectId: undefined, targetTimeMs: 62000 }),
-    );
-
-    expect(manager.findOneBy).not.toHaveBeenCalled();
-    expect(created.subjectId).toBeNull();
-    expect(created.sessionType).toBe(TrainingSessionType.TIME_TRIAL);
-    expect(manager.create).toHaveBeenCalledWith(TimeTrialEntity, {
-      sessionId: 'new',
-      distanceM: '1200',
-      targetTimeMs: '62000',
-      notes: null,
-    });
   });
 });

@@ -48,6 +48,18 @@ describe('CreateTrainingSessionDto', () => {
     ).resolves.toEqual(['intensity']);
   });
 
+  it('rejects a missing subject', async () => {
+    await expect(
+      failedFields(create({ subjectId: undefined })),
+    ).resolves.toEqual(['subjectId']);
+  });
+
+  it('accepts a session without session type', async () => {
+    await expect(
+      failedFields(create({ sessionType: undefined })),
+    ).resolves.toEqual([]);
+  });
+
   it.each([
     ['null', null, []],
     ['positive', 62000, []],

@@ -129,7 +129,12 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       [sessionId],
     );
 
-  const newSession = (start: string, end: string) => ({
+  const newSession = async (start: string, end: string) => ({
+    subjectId: (
+      await dataSource.query<Array<{ id: string }>>(
+        'SELECT id FROM training_subjects LIMIT 1',
+      )
+    )[0].id,
     name: 'Buổi mới',
     sessionType: TrainingSessionType.REGULAR,
     intensity: TrainingIntensity.MODERATE,
@@ -146,7 +151,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         sessions.createSession(
           trainer,
           classA,
-          newSession('2030-01-10T01:30:00Z', '2030-01-10T02:30:00Z'),
+          await newSession('2030-01-10T01:30:00Z', '2030-01-10T02:30:00Z'),
         ),
       ).rejects.toThrow(
         new ConflictException(
@@ -167,7 +172,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       const created = await sessions.createSession(
         trainer,
         classA,
-        newSession('2030-01-10T02:00:00Z', '2030-01-10T03:00:00Z'),
+        await newSession('2030-01-10T02:00:00Z', '2030-01-10T03:00:00Z'),
       );
 
       expect(created.status).toBe('DRAFT');

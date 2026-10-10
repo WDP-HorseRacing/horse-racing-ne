@@ -91,12 +91,12 @@ export class TrainingSessionsService {
   /**
    * Thêm một buổi tập nháp vào lớp
    *
-   * - Có môn học: loại buổi gửi lên phải trùng loại buổi của môn
+   * - Loại buổi lấy theo môn của buổi; gửi kèm loại buổi thì phải trùng loại buổi của môn
    * - Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly theo cự ly dự kiến, thời gian mục tiêu) trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param classId UUID của lớp
-   * @param body Nội dung buổi tập, môn học tùy chọn
+   * @param body Nội dung buổi tập và môn học của buổi
    * @returns Promise trả về buổi tập vừa tạo ở trạng thái DRAFT
    * @throws ForbiddenException Nếu người gọi không quản lý lớp
    * @throws NotFoundException Nếu không có lớp
@@ -126,23 +126,24 @@ export class TrainingSessionsService {
         trainingClass.startDate,
         trainingClass.endDate,
       );
-      const subject = body.subjectId
-        ? await manager.findOneBy(TrainingSubjectEntity, {
-            id: body.subjectId,
-          })
-        : null;
-      if (body.subjectId && !subject) {
+      const subject = await manager.findOneBy(TrainingSubjectEntity, {
+        id: body.subjectId,
+      });
+      if (!subject) {
         throw new BadRequestException('Môn học không tồn tại');
       }
-      if (subject && body.sessionType !== subject.sessionType) {
+      if (body.sessionType && body.sessionType !== subject.sessionType) {
         throw fieldBadRequest(
           'sessionType',
           'Loại buổi phải trùng với loại buổi của môn học',
         );
       }
-      const sessionType = subject?.sessionType ?? body.sessionType;
       const targetTimeMs = body.targetTimeMs ?? null;
-      assertSubjectExercise(sessionType, body.plannedDistanceM, targetTimeMs);
+      assertSubjectExercise(
+        subject.sessionType,
+        body.plannedDistanceM,
+        targetTimeMs,
+      );
       assertNoOverlappingClassSession(
         {
           scheduledStartAt: new Date(body.scheduledStartAt),
@@ -155,9 +156,9 @@ export class TrainingSessionsService {
       const session = await manager.save(
         manager.create(TrainingSessionEntity, {
           classId,
-          subjectId: subject?.id ?? null,
+          subjectId: subject.id,
           name: body.name,
-          sessionType,
+          sessionType: subject.sessionType,
           intensity: body.intensity,
           plannedDistanceM: body.plannedDistanceM,
           scheduledStartAt: new Date(body.scheduledStartAt),
@@ -168,7 +169,7 @@ export class TrainingSessionsService {
           status: TrainingSessionStatus.DRAFT,
         }),
       );
-      if (sessionType === TrainingSessionType.TIME_TRIAL) {
+      if (subject.sessionType === TrainingSessionType.TIME_TRIAL) {
         await manager.save(
           manager.create(TimeTrialEntity, {
             sessionId: session.id,
