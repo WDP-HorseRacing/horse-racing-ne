@@ -50,7 +50,8 @@ export class AuthService {
    *
    * @param refreshToken Refresh token đang giữ
    * @returns Promise trả về access token và refresh token mới
-   * @throws BadGatewayException Nếu Keycloak từ chối refresh token hoặc trả lỗi
+   * @throws UnauthorizedException Nếu Keycloak từ chối refresh token (hết hạn hoặc đã thu hồi)
+   * @throws BadGatewayException Nếu Keycloak trả lỗi khác
    */
   async refresh(refreshToken: string): Promise<AuthTokensResponseDto> {
     return toAuthTokensResponse(

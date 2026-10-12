@@ -61,13 +61,36 @@ export class KeycloakTokenService {
     }
   }
 
-  exchangeRefreshTokenForToken(
+  /**
+   * Đổi refresh token lấy bộ token mới trên Keycloak
+   *
+   * - Keycloak từ chối refresh token (400, vd hết hạn hoặc đã thu hồi): 401, yêu cầu đăng nhập lại
+   * - Lỗi khác của Keycloak: giữ nguyên 502
+   *
+   * @param params Refresh token đang giữ
+   * @returns Promise trả về bộ token mới
+   * @throws UnauthorizedException Nếu Keycloak từ chối refresh token
+   * @throws BadGatewayException Nếu Keycloak trả lỗi khác
+   */
+  async exchangeRefreshTokenForToken(
     params: KeycloakRefreshGrantParams,
   ): Promise<KeycloakTokenResponse> {
-    return this.tokenRequest({
-      grant_type: 'refresh_token',
-      refresh_token: params.refreshToken,
-    });
+    try {
+      return await this.tokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: params.refreshToken,
+      });
+    } catch (error) {
+      if (
+        error instanceof BadGatewayException &&
+        error.message === keycloakFailureMessage(400)
+      ) {
+        throw new UnauthorizedException(
+          'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
+        );
+      }
+      throw error;
+    }
   }
 
   async revokeRefreshToken(params: KeycloakRefreshGrantParams): Promise<void> {

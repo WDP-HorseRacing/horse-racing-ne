@@ -48,3 +48,24 @@ describe('KeycloakTokenService.exchangePasswordForToken', () => {
     );
   });
 });
+
+describe('KeycloakTokenService.exchangeRefreshTokenForToken', () => {
+  const refresh = (status: number) =>
+    tokenServiceAnswering(status).exchangeRefreshTokenForToken({
+      refreshToken: 'expired',
+    });
+
+  it('turns a rejected refresh token into a 401 asking to log in again', async () => {
+    await expect(refresh(400)).rejects.toEqual(
+      new UnauthorizedException(
+        'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
+      ),
+    );
+  });
+
+  it('keeps other Keycloak errors as 502', async () => {
+    await expect(refresh(500)).rejects.toEqual(
+      new BadGatewayException('Máy chủ xác thực báo lỗi (mã 500)'),
+    );
+  });
+});
