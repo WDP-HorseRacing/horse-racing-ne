@@ -235,7 +235,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     enum: HorsePlacementStatus,
     description:
-      'PENDING_BARN: "Chờ xếp khu". PENDING_STALL: "Chờ xếp ô". PLACED: đã có khu và ô. NOT_APPLICABLE: đã chuyển nhượng',
+      'PENDING_BARN: "Chờ xếp khu". PENDING_STALL: "Chờ xếp ô". PLACED: đã có khu và ô. NOT_APPLICABLE: đã chuyển nhượng hoặc đã mất',
   })
   @IsOptional()
   @IsEnum(HorsePlacementStatus)

@@ -124,7 +124,6 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
   - `STANDARD`: Ô chuồng tiêu chuẩn phục vụ lưu trú thường nhật.
   - `ISOLATION`: Ô chuồng cách ly y tế, kiểm dịch bệnh dịch lây nhiễm.
   - `RECOVERY`: Ô chuồng tịnh dưỡng chuyên biệt sau phẫu thuật / chấn thương.
-  - `FOALING`: Ô chuồng đẻ rộng rãi, an toàn cho ngựa mang thai / ngựa con sơ sinh.
 - `status` (`StallStatus`, default `AVAILABLE`): `AVAILABLE`, `OCCUPIED`, `MAINTENANCE`. `OCCUPIED`/`AVAILABLE` do xếp và gỡ ngựa quyết; người dùng chỉ đổi được `AVAILABLE` ↔ `MAINTENANCE` khi ô trống.
 - `description` (`text`, nullable): Mô tả đặc thù ô chuồng, tiện ích hoặc ghi chú cơ sở vật chất.
 - `has_camera` (`boolean`, default `false`): Ô chuồng có trang bị hệ thống camera giám sát 24/7.

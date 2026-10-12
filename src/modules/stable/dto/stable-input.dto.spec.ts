@@ -74,3 +74,15 @@ describe('stable DTO date-only fields', () => {
     ).resolves.toEqual(['from', 'to']);
   });
 });
+
+describe('CreateStallDto type', () => {
+  it('rejects the dropped FOALING type', async () => {
+    await expect(
+      failedFields(CreateStallDto, {
+        barnId: HORSE_ID,
+        code: 'A-01',
+        type: 'FOALING',
+      }),
+    ).resolves.toEqual(['type']);
+  });
+});

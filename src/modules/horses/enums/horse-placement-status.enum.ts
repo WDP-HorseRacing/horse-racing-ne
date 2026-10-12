@@ -4,7 +4,7 @@
  * - PENDING_BARN: chưa có khu, nằm trong danh sách "Chờ xếp khu" của Club Manager.
  * - PENDING_STALL: đã có khu nhưng chưa có ô, nằm trong danh sách "Chờ xếp ô" của Head Trainer khu đó.
  * - PLACED: đã có khu và ô.
- * - NOT_APPLICABLE: ngựa đã chuyển nhượng, không còn ở câu lạc bộ.
+ * - NOT_APPLICABLE: ngựa đã chuyển nhượng hoặc đã mất, không còn ở câu lạc bộ.
  */
 export enum HorsePlacementStatus {
   PENDING_BARN = 'PENDING_BARN',

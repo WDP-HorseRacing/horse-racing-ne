@@ -34,7 +34,7 @@ export class HorseOwnershipsController {
   @ApiOperation({
     summary: 'Transfer the horse to another owner in the club',
     description:
-      'Chỉ Club Manager, ghi nhận sau khi hai bên đã thỏa thuận. Ngựa phải ACTIVE hoặc RETIRED và đang có chủ (409 nếu không). Chủ mới phải khác chủ hiện tại (400) và là Horse Owner đang hoạt động (400 sai vai trò, 409 không hoạt động). Ngày hiệu lực không ở tương lai, không trước ngày bắt đầu sở hữu của chủ hiện tại (400). Còn bệnh án đang mở trả 409. Sai version trả 409. Không đổi vòng đời, khu, ô, Groom, lớp. Báo cho chủ cũ và chủ mới.',
+      'Chỉ Club Manager, ghi nhận sau khi hai bên đã thỏa thuận. Ngựa phải ACTIVE hoặc RETIRED và đang có chủ (409 nếu không). Chủ mới phải khác chủ hiện tại (400) và là Horse Owner đang hoạt động (400 sai vai trò, 409 không hoạt động). Còn bệnh án đang mở trả 409. Sai version trả 409. Không đổi vòng đời, khu, ô, Groom, lớp. Báo cho chủ cũ và chủ mới.',
   })
   @ApiCreatedResponse({ type: HorseResponseDto })
   transfer(

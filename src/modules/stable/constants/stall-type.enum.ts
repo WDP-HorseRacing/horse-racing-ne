@@ -2,5 +2,4 @@ export enum StallType {
   STANDARD = 'STANDARD',
   ISOLATION = 'ISOLATION',
   RECOVERY = 'RECOVERY',
-  FOALING = 'FOALING',
 }

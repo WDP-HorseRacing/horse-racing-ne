@@ -62,7 +62,7 @@ export class CreateStallDto {
   @ApiPropertyOptional({
     enum: StallType,
     default: StallType.STANDARD,
-    description: 'Phân loại chuồng: STANDARD, ISOLATION, RECOVERY, FOALING',
+    description: 'Phân loại chuồng: STANDARD, ISOLATION, RECOVERY',
   })
   @IsOptional()
   @IsEnum(StallType)
