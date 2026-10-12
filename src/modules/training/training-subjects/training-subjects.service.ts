@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import type { FieldError } from '../../../common/utils/field-errors';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import {
   CreateTrainingSubjectDto,
@@ -19,7 +20,10 @@ import { toTrainingSubjectResponse } from '../mappers/training-subject.mapper';
 import { assertSubjectExercise } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 
-const SUBJECT_NAME_TAKEN = 'Tên môn học đã tồn tại';
+const SUBJECT_NAME_TAKEN: FieldError = {
+  field: 'name',
+  message: 'Tên môn học đã tồn tại',
+};
 const SUBJECT_NOT_FOUND = 'Không tìm thấy môn học';
 
 /**

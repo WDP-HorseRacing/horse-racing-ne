@@ -1,4 +1,5 @@
 import { ConflictException } from '@nestjs/common';
+import { fieldConflict } from './field-errors';
 import { QueryFailedError } from 'typeorm';
 import {
   mapAnyUniqueViolation,
@@ -14,7 +15,10 @@ function queryError(code: string, constraint?: string): QueryFailedError {
 }
 
 describe('mapUniqueViolation', () => {
-  const messages = { horses_microchip_uq: 'Số chip đã được dùng' };
+  const messages = {
+    horses_microchip_uq: 'Số chip đã được dùng',
+    horses_name_uq: { field: 'name', message: 'Tên đã dùng' },
+  };
 
   it('returns the operation result when nothing fails', async () => {
     await expect(
@@ -32,6 +36,15 @@ describe('mapUniqueViolation', () => {
         messages,
       ),
     ).rejects.toEqual(new ConflictException('Số chip đã được dùng'));
+  });
+
+  it('ties the 409 to a field when the constraint maps to one', async () => {
+    await expect(
+      mapUniqueViolation(
+        () => Promise.reject(queryError(PG_UNIQUE_VIOLATION, 'horses_name_uq')),
+        messages,
+      ),
+    ).rejects.toEqual(fieldConflict('name', 'Tên đã dùng'));
   });
 
   it('rethrows a unique violation on an unknown constraint', async () => {
@@ -54,15 +67,18 @@ describe('mapAnyUniqueViolation', () => {
     await expect(
       mapAnyUniqueViolation(
         () => Promise.reject(queryError(PG_UNIQUE_VIOLATION)),
-        'Tên khu chuồng đã tồn tại',
+        { field: 'name', message: 'Tên khu chuồng đã tồn tại' },
       ),
-    ).rejects.toEqual(new ConflictException('Tên khu chuồng đã tồn tại'));
+    ).rejects.toEqual(fieldConflict('name', 'Tên khu chuồng đã tồn tại'));
   });
 
   it('rethrows errors that are not unique violations', async () => {
     const error = new Error('boom');
     await expect(
-      mapAnyUniqueViolation(() => Promise.reject(error), 'x'),
+      mapAnyUniqueViolation(() => Promise.reject(error), {
+        field: 'name',
+        message: 'x',
+      }),
     ).rejects.toBe(error);
   });
 });

@@ -12,8 +12,12 @@ import { TrainingClassesService } from './training-classes.service';
 
 const actor: Actor = { sub: 'ht', roles: [UserRole.HEAD_TRAINER] };
 
-function setup(lockedClass: Partial<TrainingClassEntity> = {}) {
+function setup(
+  lockedClass: Partial<TrainingClassEntity> = {},
+  sameCodeClass: Partial<TrainingClassEntity> | null = null,
+) {
   const manager = {
+    findOneBy: jest.fn().mockResolvedValue(sameCodeClass),
     findOne: jest.fn().mockResolvedValue({
       id: 'p1',
       headTrainerId: 'ht',
@@ -44,7 +48,7 @@ function setup(lockedClass: Partial<TrainingClassEntity> = {}) {
   };
   const service = new TrainingClassesService(
     {
-      findOneBy: jest.fn().mockResolvedValue(null),
+      findOneBy: jest.fn().mockResolvedValue(sameCodeClass),
     } as unknown as Repository<TrainingClassEntity>,
     access as unknown as TrainingAccessService,
     dataSource,
@@ -114,5 +118,36 @@ describe('TrainingClassesService.updateStatus', () => {
         'Phải phân công Huấn luyện viên trưởng trước khi kích hoạt lớp',
       ),
     );
+  });
+});
+
+describe('TrainingClassesService duplicate code', () => {
+  const codeTaken = (code: string) => ({
+    status: 409,
+    response: {
+      errors: [{ field: 'code', message: `Mã lớp ${code} đã tồn tại` }],
+    },
+  });
+
+  it('ties a duplicate code on create to the code field', async () => {
+    const { service } = setup({}, { id: 'other' });
+
+    await expect(
+      service.create(actor, {
+        code: 'k1',
+        name: 'K1',
+        planId: 'p1',
+        startDate: '2026-10-05',
+        sessions: [],
+      }),
+    ).rejects.toMatchObject(codeTaken('K1'));
+  });
+
+  it('ties a duplicate code on update to the code field', async () => {
+    const { service } = setup({ code: 'K1' }, { id: 'other' });
+
+    await expect(
+      service.update(actor, 'c1', { code: 'k2' }),
+    ).rejects.toMatchObject(codeTaken('K2'));
   });
 });

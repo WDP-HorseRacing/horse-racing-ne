@@ -551,4 +551,43 @@ describe('UsersService', () => {
       logError.mockRestore();
     });
   });
+
+  describe('create', () => {
+    const body = {
+      fullName: 'Nguoi Moi',
+      email: ' Owner@Example.com ',
+      role: UserRole.GROOM,
+      password: 'Abc@12345',
+    };
+    const emailTaken = {
+      status: 409,
+      response: {
+        errors: [
+          {
+            field: 'email',
+            message: 'Email này đã được dùng cho tài khoản khác',
+          },
+        ],
+      },
+    };
+
+    it('ties a duplicate email in the database to the email field', async () => {
+      await expect(service.create(actor, body)).rejects.toMatchObject(
+        emailTaken,
+      );
+    });
+
+    it('ties a duplicate email on Keycloak to the email field', async () => {
+      users.findOneBy.mockResolvedValueOnce(null);
+      Object.assign(keycloakUsers, {
+        registerUserWithPassword: jest
+          .fn()
+          .mockRejectedValue(new ConflictException('Keycloak user exists')),
+      });
+
+      await expect(service.create(actor, body)).rejects.toMatchObject(
+        emailTaken,
+      );
+    });
+  });
 });

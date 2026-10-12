@@ -347,7 +347,12 @@ describe('BarnsService', () => {
         manager.existsBy.mockResolvedValue(true);
         await expect(
           service.create(actor, { name: ' Khu A ' }),
-        ).rejects.toThrow(new ConflictException('Tên khu chuồng đã tồn tại'));
+        ).rejects.toMatchObject({
+          status: 409,
+          response: {
+            errors: [{ field: 'name', message: 'Tên khu chuồng đã tồn tại' }],
+          },
+        });
         expect(manager.existsBy).toHaveBeenCalledWith(BarnEntity, {
           name: 'Khu A',
         });
@@ -361,9 +366,14 @@ describe('BarnsService', () => {
             code: '23505',
           } as unknown as Error),
         );
-        await expect(service.create(actor, { name: 'Khu A' })).rejects.toThrow(
-          new ConflictException('Tên khu chuồng đã tồn tại'),
-        );
+        await expect(
+          service.create(actor, { name: 'Khu A' }),
+        ).rejects.toMatchObject({
+          status: 409,
+          response: {
+            errors: [{ field: 'name', message: 'Tên khu chuồng đã tồn tại' }],
+          },
+        });
       });
 
       it('creates an ACTIVE barn without a head trainer', async () => {
@@ -459,7 +469,12 @@ describe('BarnsService', () => {
         );
         await expect(
           service.update(actor, 'b1', { name: 'Khu B' }),
-        ).rejects.toThrow(new ConflictException('Tên khu chuồng đã tồn tại'));
+        ).rejects.toMatchObject({
+          status: 409,
+          response: {
+            errors: [{ field: 'name', message: 'Tên khu chuồng đã tồn tại' }],
+          },
+        });
       });
 
       describe('when the barn still has horses', () => {

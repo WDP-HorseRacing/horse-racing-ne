@@ -8,6 +8,7 @@ import { DataSource, ILike, In, IsNull, Repository } from 'typeorm';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import type { Actor } from '../../../common/types/actor';
+import type { FieldError } from '../../../common/utils/field-errors';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
@@ -32,7 +33,10 @@ import {
   SupplyStockService,
 } from '../shared/supply-stock.service';
 
-const SUPPLY_ITEM_NAME_TAKEN = 'Tên vật tư đã tồn tại';
+const SUPPLY_ITEM_NAME_TAKEN: FieldError = {
+  field: 'name',
+  message: 'Tên vật tư đã tồn tại',
+};
 const ITEM_RELATIONS = { lastCounter: true } as const;
 
 /**

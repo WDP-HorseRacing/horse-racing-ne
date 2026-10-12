@@ -14,6 +14,10 @@ import {
 } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import {
+  fieldConflict,
+  type FieldError,
+} from '../../../common/utils/field-errors';
+import {
   mapAnyUniqueViolation,
   mapUniqueViolation,
 } from '../../../common/utils/unique-violation';
@@ -58,6 +62,14 @@ export interface ReleasedStall {
   stallId: string;
   stallCode: string;
 }
+
+/**
+ * Lỗi 409 gắn ô `code` khi mã ô chuồng đã có
+ */
+const STALL_CODE_TAKEN: FieldError = {
+  field: 'code',
+  message: 'Mã ô chuồng đã tồn tại',
+};
 
 /**
  * Thông báo 409 khi ô được chọn vừa bị ngựa khác chiếm nhưng khu vẫn còn ô trống khác
@@ -157,7 +169,7 @@ export class StallsService {
 
         const code = body.code.trim();
         if (await manager.existsBy(StallEntity, { code })) {
-          throw new ConflictException('Mã ô chuồng đã tồn tại');
+          throw fieldConflict(STALL_CODE_TAKEN.field, STALL_CODE_TAKEN.message);
         }
 
         const fields = {
@@ -180,10 +192,7 @@ export class StallsService {
         });
         return stall;
       });
-    const saved = await mapAnyUniqueViolation(
-      createStall,
-      'Mã ô chuồng đã tồn tại',
-    );
+    const saved = await mapAnyUniqueViolation(createStall, STALL_CODE_TAKEN);
     return toStallResponse(saved);
   }
 
@@ -276,10 +285,7 @@ export class StallsService {
         });
         return updated;
       });
-    const saved = await mapAnyUniqueViolation(
-      updateStall,
-      'Mã ô chuồng đã tồn tại',
-    );
+    const saved = await mapAnyUniqueViolation(updateStall, STALL_CODE_TAKEN);
     return toStallResponse(saved);
   }
 

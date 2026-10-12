@@ -499,7 +499,12 @@ describe('HorseProfilesService', () => {
           HORSE_ID,
           body({ microchipId: 'CHIP-1' }),
         ),
-      ).rejects.toThrow(new ConflictException(MICROCHIP_TAKEN_MESSAGE));
+      ).rejects.toMatchObject({
+        status: 409,
+        response: {
+          errors: [{ field: 'microchipId', message: MICROCHIP_TAKEN_MESSAGE }],
+        },
+      });
       expect(dataSource.transaction).not.toHaveBeenCalled();
     });
 
@@ -515,7 +520,12 @@ describe('HorseProfilesService', () => {
           HORSE_ID,
           body({ microchipId: 'CHIP-2' }),
         ),
-      ).rejects.toThrow(new ConflictException(MICROCHIP_TAKEN_MESSAGE));
+      ).rejects.toMatchObject({
+        status: 409,
+        response: {
+          errors: [{ field: 'microchipId', message: MICROCHIP_TAKEN_MESSAGE }],
+        },
+      });
     });
 
     it('rejects a stale version with 409', async () => {

@@ -16,6 +16,7 @@ import {
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
+import { fieldConflict } from '../../../common/utils/field-errors';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { BarnEntity } from '../../stable/entities/barn.entity';
@@ -38,6 +39,11 @@ import {
 import { UserRole, UserStatus } from '../user.enums';
 import { currentUserForActor } from '../utils/current-user';
 import { splitFullName } from '../utils/name';
+
+/**
+ * Câu báo lỗi 409 khi email đã được tài khoản khác dùng (trên DB hoặc Keycloak)
+ */
+const EMAIL_TAKEN_MESSAGE = 'Email này đã được dùng cho tài khoản khác';
 
 /**
  * Thao tác bắt user phải bàn giao hết trách nhiệm trước, kèm cụm từ hiển thị trong message lỗi
@@ -130,7 +136,7 @@ export class UsersService {
     const fullName = body.fullName.trim();
 
     if (await this.users.findOneBy({ email })) {
-      throw new ConflictException('Email này đã được dùng cho tài khoản khác');
+      throw fieldConflict('email', EMAIL_TAKEN_MESSAGE);
     }
 
     let keycloakId: string;
@@ -143,9 +149,7 @@ export class UsersService {
       });
     } catch (error) {
       if (error instanceof ConflictException) {
-        throw new ConflictException(
-          'Email này đã được dùng cho tài khoản khác',
-        );
+        throw fieldConflict('email', EMAIL_TAKEN_MESSAGE);
       }
       throw error;
     }

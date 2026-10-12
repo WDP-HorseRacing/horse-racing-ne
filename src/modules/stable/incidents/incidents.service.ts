@@ -191,7 +191,12 @@ export class IncidentsService {
           await this.events.publish(manager, INCIDENT_REPORTED_EVENT, event);
           return incident.id;
         }),
-      { incidents_media_asset_uq: 'Ảnh đã gắn cho sự cố khác' },
+      {
+        incidents_media_asset_uq: {
+          field: 'photoMediaId',
+          message: 'Ảnh đã gắn cho sự cố khác',
+        },
+      },
     );
     return this.get(actor, id);
   }

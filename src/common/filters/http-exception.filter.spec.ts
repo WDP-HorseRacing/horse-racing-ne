@@ -3,7 +3,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { fieldBadRequest } from '../utils/field-errors';
+import { fieldBadRequest, fieldConflict } from '../utils/field-errors';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 function bodyFor(exception: unknown): Record<string, unknown> {
@@ -46,6 +46,14 @@ describe('HttpExceptionFilter', () => {
 
   it('returns empty errors for a 400 without field errors', () => {
     expect(bodyFor(new BadRequestException('Sai')).errors).toEqual([]);
+  });
+
+  it('adds the field errors to a 409 thrown with errors', () => {
+    expect(bodyFor(fieldConflict('microchipId', 'Trùng chip'))).toMatchObject({
+      code: 409,
+      message: 'Trùng chip',
+      errors: [{ field: 'microchipId', message: 'Trùng chip' }],
+    });
   });
 
   it('leaves other status codes without errors', () => {

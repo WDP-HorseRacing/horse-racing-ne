@@ -1,4 +1,5 @@
 import { UserRole } from '../../../common/enums/role.enum';
+import type { FieldError } from '../../../common/utils/field-errors';
 import type {
   ReadOnlyLifecycleStatus,
   HorseMeasurementSpec,
@@ -325,10 +326,13 @@ export const DELETED_HORSE_READ_ONLY_MESSAGE =
   'Hồ sơ đã xóa, chỉ xem được. Khôi phục hồ sơ trước khi thao tác';
 
 /**
- * Thông báo xung đột ứng với từng unique index mà thao tác ghi ngựa có thể vi phạm khi ghi đồng thời
+ * Lỗi 409 (kèm ô bị trùng) ứng với từng unique index mà thao tác ghi ngựa có thể vi phạm khi ghi đồng thời
  */
-export const UNIQUE_CONFLICT_MESSAGES: Record<string, string> = {
-  horses_microchip_uq: MICROCHIP_TAKEN_MESSAGE,
+export const UNIQUE_CONFLICT_MESSAGES: Record<string, FieldError> = {
+  horses_microchip_uq: {
+    field: 'microchipId',
+    message: MICROCHIP_TAKEN_MESSAGE,
+  },
 };
 
 /**

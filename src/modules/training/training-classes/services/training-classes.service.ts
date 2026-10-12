@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
 import type { Actor } from '../../../../common/types/actor';
+import { fieldConflict } from '../../../../common/utils/field-errors';
 import {
   ClassSchedulePreviewDto,
   ClassScheduleInputDto,
@@ -127,7 +128,7 @@ export class TrainingClassesService {
     const code = body.code.trim().toUpperCase();
     const existing = await this.classes.findOneBy({ code });
     if (existing) {
-      throw new ConflictException(`Mã lớp ${code} đã tồn tại`);
+      throw fieldConflict('code', `Mã lớp ${code} đã tồn tại`);
     }
     const headTrainerId = caller.id;
     const row = await this.dataSource.transaction(async (manager) => {
@@ -430,7 +431,7 @@ export class TrainingClassesService {
           code: nextCode,
         });
         if (dup) {
-          throw new ConflictException(`Mã lớp ${nextCode} đã tồn tại`);
+          throw fieldConflict('code', `Mã lớp ${nextCode} đã tồn tại`);
         }
         row.code = nextCode;
       }

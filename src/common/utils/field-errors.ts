@@ -1,4 +1,8 @@
-import { BadRequestException, ValidationError } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ValidationError,
+} from '@nestjs/common';
 
 /**
  * Một lỗi gắn với một ô của request body
@@ -20,6 +24,20 @@ export function fieldBadRequest(
   message: string,
 ): BadRequestException {
   return new BadRequestException({ message, errors: [{ field, message }] });
+}
+
+/**
+ * Tạo lỗi 409 gắn với một ô của request body
+ *
+ * @param field Tên ô theo request body (vd `microchipId`, `name`)
+ * @param message Câu báo lỗi
+ * @returns ConflictException có `message` và `errors` một phần tử
+ */
+export function fieldConflict(
+  field: string,
+  message: string,
+): ConflictException {
+  return new ConflictException({ message, errors: [{ field, message }] });
 }
 
 /**

@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
+import { fieldConflict, type FieldError } from './field-errors';
 
 /**
  * Mã lỗi Postgres khi ghi trùng một unique constraint
@@ -23,46 +24,48 @@ function uniqueViolationConstraint(error: unknown): string | null {
 /**
  * Chạy thao tác ghi, đổi lỗi trùng unique thành 409 theo tên constraint
  *
- * - Constraint có trong `messagesByConstraint`: ném 409 với câu tương ứng
+ * - Constraint ứng với một câu: ném 409 với câu đó
+ * - Constraint ứng với một ô ({ field, message }): ném 409 gắn ô đó trong `errors`
  * - Constraint khác hoặc lỗi khác: ném lại lỗi gốc
  *
  * @param operation Thao tác ghi cần chạy
- * @param messagesByConstraint Câu báo lỗi theo tên unique constraint
+ * @param conflictsByConstraint Câu báo lỗi hoặc ô kèm câu báo lỗi theo tên unique constraint
  * @returns Promise trả về kết quả của thao tác
- * @throws ConflictException Nếu thao tác trùng một constraint có trong `messagesByConstraint`
+ * @throws ConflictException Nếu thao tác trùng một constraint có trong `conflictsByConstraint`
  */
 export async function mapUniqueViolation<T>(
   operation: () => Promise<T>,
-  messagesByConstraint: Readonly<Record<string, string>>,
+  conflictsByConstraint: Readonly<Record<string, string | FieldError>>,
 ): Promise<T> {
   try {
     return await operation();
   } catch (error) {
     const constraint = uniqueViolationConstraint(error);
-    const message =
-      constraint === null ? undefined : messagesByConstraint[constraint];
-    if (message) throw new ConflictException(message);
+    const conflict =
+      constraint === null ? undefined : conflictsByConstraint[constraint];
+    if (typeof conflict === 'string') throw new ConflictException(conflict);
+    if (conflict) throw fieldConflict(conflict.field, conflict.message);
     throw error;
   }
 }
 
 /**
- * Chạy thao tác ghi, đổi mọi lỗi trùng unique thành 409 với một câu cố định
+ * Chạy thao tác ghi, đổi mọi lỗi trùng unique thành 409 gắn một ô cố định
  *
  * @param operation Thao tác ghi cần chạy
- * @param message Câu báo lỗi khi trùng bất kỳ unique constraint nào
+ * @param conflict Ô bị trùng và câu báo lỗi khi trùng bất kỳ unique constraint nào
  * @returns Promise trả về kết quả của thao tác
  * @throws ConflictException Nếu thao tác trùng một unique constraint
  */
 export async function mapAnyUniqueViolation<T>(
   operation: () => Promise<T>,
-  message: string,
+  conflict: FieldError,
 ): Promise<T> {
   try {
     return await operation();
   } catch (error) {
     if (uniqueViolationConstraint(error) !== null) {
-      throw new ConflictException(message);
+      throw fieldConflict(conflict.field, conflict.message);
     }
     throw error;
   }

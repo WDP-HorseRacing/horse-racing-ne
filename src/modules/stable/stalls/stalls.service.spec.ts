@@ -678,9 +678,12 @@ describe('StallsService', () => {
 
       it('rejects a code that already exists', async () => {
         manager.existsBy.mockResolvedValue(true);
-        await expect(create()).rejects.toThrow(
-          new ConflictException('Mã ô chuồng đã tồn tại'),
-        );
+        await expect(create()).rejects.toMatchObject({
+          status: 409,
+          response: {
+            errors: [{ field: 'code', message: 'Mã ô chuồng đã tồn tại' }],
+          },
+        });
         expect(manager.existsBy).toHaveBeenCalledWith(StallEntity, {
           code: 'A-09',
         });
@@ -692,9 +695,12 @@ describe('StallsService', () => {
             code: '23505',
           } as unknown as Error),
         );
-        await expect(create()).rejects.toThrow(
-          new ConflictException('Mã ô chuồng đã tồn tại'),
-        );
+        await expect(create()).rejects.toMatchObject({
+          status: 409,
+          response: {
+            errors: [{ field: 'code', message: 'Mã ô chuồng đã tồn tại' }],
+          },
+        });
       });
 
       it('records a CREATE audit with the created fields', async () => {
@@ -997,7 +1003,12 @@ describe('StallsService', () => {
         );
         await expect(
           service.update(actor(), 's1', { code: 'A-00' }),
-        ).rejects.toThrow(new ConflictException('Mã ô chuồng đã tồn tại'));
+        ).rejects.toMatchObject({
+          status: 409,
+          response: {
+            errors: [{ field: 'code', message: 'Mã ô chuồng đã tồn tại' }],
+          },
+        });
       });
     });
 

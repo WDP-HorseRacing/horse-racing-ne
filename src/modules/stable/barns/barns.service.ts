@@ -8,6 +8,10 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
+import {
+  fieldConflict,
+  type FieldError,
+} from '../../../common/utils/field-errors';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -41,6 +45,14 @@ import {
   remainingStallCount,
 } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
+
+/**
+ * Lỗi 409 gắn ô `name` khi tên khu chuồng đã có
+ */
+const BARN_NAME_TAKEN: FieldError = {
+  field: 'name',
+  message: 'Tên khu chuồng đã tồn tại',
+};
 
 @Injectable()
 export class BarnsService {
@@ -118,7 +130,7 @@ export class BarnsService {
       this.dataSource.transaction(async (manager) => {
         const name = body.name.trim();
         if (await manager.existsBy(BarnEntity, { name })) {
-          throw new ConflictException('Tên khu chuồng đã tồn tại');
+          throw fieldConflict(BARN_NAME_TAKEN.field, BARN_NAME_TAKEN.message);
         }
 
         const fields = {
@@ -140,10 +152,7 @@ export class BarnsService {
         });
         return barn;
       });
-    const saved = await mapAnyUniqueViolation(
-      createBarn,
-      'Tên khu chuồng đã tồn tại',
-    );
+    const saved = await mapAnyUniqueViolation(createBarn, BARN_NAME_TAKEN);
     return toBarnResponse(saved);
   }
 
@@ -236,10 +245,7 @@ export class BarnsService {
         });
         return updated;
       });
-    const saved = await mapAnyUniqueViolation(
-      updateBarn,
-      'Tên khu chuồng đã tồn tại',
-    );
+    const saved = await mapAnyUniqueViolation(updateBarn, BARN_NAME_TAKEN);
     return toBarnResponse(saved);
   }
 

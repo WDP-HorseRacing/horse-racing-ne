@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { clubToday } from '../../../common/utils/club-date';
+import type { FieldError } from '../../../common/utils/field-errors';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
@@ -34,7 +35,10 @@ import { DailyChecklistsService } from '../shared/daily-checklists.service';
 import { StableAccessService } from '../shared/stable-access.service';
 
 const CARE_TASK_TYPE_NOT_FOUND = 'Không tìm thấy loại việc';
-const CARE_TASK_TYPE_NAME_TAKEN = 'Tên loại việc đã tồn tại';
+const CARE_TASK_TYPE_NAME_TAKEN: FieldError = {
+  field: 'name',
+  message: 'Tên loại việc đã tồn tại',
+};
 const HORSE_CARE_TASK_NOT_FOUND = 'Không tìm thấy việc riêng của ngựa';
 const TASK_RELATIONS = { taskType: true, creator: true } as const;
 

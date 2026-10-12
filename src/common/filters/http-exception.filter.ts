@@ -42,12 +42,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       code: status,
       message,
       details: Array.isArray(rawMessage) ? rawMessage : null,
-      ...(exception instanceof BadRequestException && {
-        errors:
-          typeof body === 'object' && body !== null && 'errors' in body
-            ? body.errors
-            : [],
-      }),
+      ...(typeof body === 'object' && body !== null && 'errors' in body
+        ? { errors: body.errors }
+        : exception instanceof BadRequestException && { errors: [] }),
       correlationId: request.correlationId ?? null,
       timestamp: new Date().toISOString(),
     });

@@ -11,6 +11,7 @@ import { PaginationResponseDto } from '../../../common/dto/pagination-response.d
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
+import { fieldConflict } from '../../../common/utils/field-errors';
 import { mapUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -620,7 +621,7 @@ export class HorseProfilesService {
         withDeleted: true,
       }))
     ) {
-      throw new ConflictException(MICROCHIP_TAKEN_MESSAGE);
+      throw fieldConflict('microchipId', MICROCHIP_TAKEN_MESSAGE);
     }
   }
 
