@@ -1,17 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
 
 export class CreateCareTaskTypeDto {
   @ApiProperty({ maxLength: 80, description: 'Tên loại việc, duy nhất' })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(80)
@@ -28,6 +31,7 @@ export class UpdateCareTaskTypeDto {
     description: 'Tên loại việc, duy nhất',
   })
   @IsOptional()
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(80)
@@ -54,10 +58,16 @@ export class CreateHorseCareTaskDto {
 
   @ApiProperty({ format: 'date', description: 'Ngày bắt đầu, từ hôm nay' })
   @IsDateString({ strict: true })
+  @Matches(DATE_ONLY_PATTERN, {
+    message: 'Ngày bắt đầu phải có dạng YYYY-MM-DD',
+  })
   fromDate!: string;
 
   @ApiProperty({ format: 'date', description: 'Ngày kết thúc' })
   @IsDateString({ strict: true })
+  @Matches(DATE_ONLY_PATTERN, {
+    message: 'Ngày kết thúc phải có dạng YYYY-MM-DD',
+  })
   toDate!: string;
 
   @ApiPropertyOptional({ maxLength: 200, description: 'Ghi chú cho Groom' })

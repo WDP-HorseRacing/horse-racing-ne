@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsEnum,
   IsNumber,
@@ -10,6 +10,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { SupplyCategory } from '../enums/supply-category.enum';
@@ -22,6 +23,7 @@ export class CreateSupplyItemDto {
     maxLength: 160,
     description: 'Tên vật tư, duy nhất trong CLB',
   })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(160)
@@ -32,6 +34,7 @@ export class CreateSupplyItemDto {
   category!: SupplyCategory;
 
   @ApiProperty({ maxLength: 32, description: 'Đơn vị, vd kg, cuộn' })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(32)
@@ -66,6 +69,7 @@ export class UpdateSupplyItemDto {
     description: 'Tên vật tư, duy nhất trong CLB',
   })
   @IsOptional()
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(160)
@@ -78,6 +82,7 @@ export class UpdateSupplyItemDto {
 
   @ApiPropertyOptional({ maxLength: 32, description: 'Đơn vị, vd kg, cuộn' })
   @IsOptional()
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(32)

@@ -16,7 +16,7 @@ import {
   ExamRequestSource,
   ExamRequestStatus,
 } from '../constants/exam-request.enum';
-import { trimValue } from './medical-visit.dto';
+import { trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Gửi yêu cầu khám khi ngựa có vấn đề.

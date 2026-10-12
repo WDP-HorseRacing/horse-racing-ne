@@ -8,7 +8,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { trimValue } from './medical-visit.dto';
+import { trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Dời ngày, đổi người được giao hoặc ghi chú của lịch chăm sóc.

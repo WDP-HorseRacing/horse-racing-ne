@@ -7,7 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { DATE_ONLY_PATTERN, trimValue } from './medical-visit.dto';
+import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Một dòng đơn thuốc trong buổi khám: không trừ kho, không tính tiền.

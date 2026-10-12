@@ -7,7 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { trimValue } from './medical-visit.dto';
+import { trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Bác sĩ đặt khóa huấn luyện. Thời điểm bắt đầu là lúc đặt.

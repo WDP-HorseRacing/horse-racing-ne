@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { trimValue } from './medical-visit.dto';
+import { trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Bác sĩ đổi trạng thái sức khỏe trực tiếp, bắt buộc lý do.

@@ -9,7 +9,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { CareScheduleType } from '../constants/care-schedule.enum';
-import { trimValue } from './medical-visit.dto';
+import { trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Các loại lịch chăm sóc tạo tay, không gồm ngày hẹn khám định kỳ.

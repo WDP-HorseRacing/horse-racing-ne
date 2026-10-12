@@ -17,7 +17,7 @@ import {
   CaseLockDecision,
   MedicalCaseStatus,
 } from '../constants/medical-case.enum';
-import { DATE_ONLY_PATTERN, trimValue } from './medical-visit.dto';
+import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Chi phí tối đa nhập được cho một bệnh án (VND).

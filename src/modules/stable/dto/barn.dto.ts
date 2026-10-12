@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
@@ -11,10 +11,12 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
 import { BarnStatus } from '../constants/barn-status.enum';
 
 export class CreateBarnDto {
   @ApiProperty({ maxLength: 80 })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(80)

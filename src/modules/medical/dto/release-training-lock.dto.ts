@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsString, MaxLength, MinLength } from 'class-validator';
-import { trimValue } from './medical-visit.dto';
+import { trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Bác sĩ gỡ khóa huấn luyện, bắt buộc lý do.

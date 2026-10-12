@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -9,6 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
@@ -25,6 +26,7 @@ export class ReportIncidentDto {
     maxLength: 2000,
     description: 'Mô tả sự cố',
   })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(2000)
@@ -63,6 +65,7 @@ export class ResolveIncidentDto {
     maxLength: 1000,
     description: 'Kết quả xử lý',
   })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(1000)

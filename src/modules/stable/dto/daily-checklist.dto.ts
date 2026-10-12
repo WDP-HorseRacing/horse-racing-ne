@@ -5,8 +5,10 @@ import {
   IsDateString,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
 } from 'class-validator';
+import { DATE_ONLY_PATTERN } from '../../../common/utils/dto-input';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { CareTaskUserSummaryResponseDto } from './care-task.dto';
 
@@ -17,6 +19,9 @@ export class DailyChecklistQueryDto {
   })
   @IsOptional()
   @IsDateString({ strict: true })
+  @Matches(DATE_ONLY_PATTERN, {
+    message: 'Từ ngày phải có dạng YYYY-MM-DD',
+  })
   from?: string;
 
   @ApiPropertyOptional({
@@ -25,6 +30,9 @@ export class DailyChecklistQueryDto {
   })
   @IsOptional()
   @IsDateString({ strict: true })
+  @Matches(DATE_ONLY_PATTERN, {
+    message: 'Đến ngày phải có dạng YYYY-MM-DD',
+  })
   to?: string;
 }
 

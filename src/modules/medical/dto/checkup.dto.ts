@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
-import { trimValue } from './medical-visit.dto';
+import { trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Lọc lịch khám định kỳ.

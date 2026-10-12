@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -10,6 +10,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
 import {
   MANUAL_STALL_STATUSES,
   type ManualStallStatus,
@@ -52,6 +53,7 @@ export class CreateStallDto {
     maxLength: 80,
     description: 'Mã số ô chuồng (duy nhất trong hệ thống)',
   })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(80)

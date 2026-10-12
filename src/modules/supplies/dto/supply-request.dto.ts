@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsEnum,
   IsIn,
@@ -13,6 +13,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
@@ -47,14 +48,14 @@ export class CreateSupplyRequestDto {
 
 export class EditSupplyRequestDto {
   @ApiPropertyOptional({ minimum: 0.01, maximum: MAX_QUANTITY })
-  @IsOptional()
+  @ValidateIf((body: EditSupplyRequestDto) => body.quantity !== undefined)
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   @Max(MAX_QUANTITY)
   quantity?: number;
 
   @ApiPropertyOptional({ maxLength: 500 })
-  @IsOptional()
+  @ValidateIf((body: EditSupplyRequestDto) => body.note !== undefined)
   @IsString()
   @MaxLength(500)
   note?: string;
@@ -81,6 +82,7 @@ export class UpdateSupplyRequestStatusDto {
     (request: { status?: SupplyRequestStatus }) =>
       request.status === SupplyRequestStatus.REJECTED,
   )
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(500)
