@@ -262,6 +262,34 @@ export function assertSessionCancellable(status: TrainingSessionStatus): void {
   }
 }
 
+/**
+ * Chặn thao tác trên lượt tập ngoài khung giờ của buổi tập
+ *
+ * - Khung giờ mở trước giờ bắt đầu một khoảng opensBeforeMs và đóng đúng giờ kết thúc
+ *
+ * @param session Giờ bắt đầu và giờ kết thúc của buổi tập
+ * @param opensBeforeMs Khoảng mở sớm hơn giờ bắt đầu (ms)
+ * @param now Thời điểm thao tác
+ * @throws ConflictException Nếu chưa tới giờ mở hoặc buổi tập đã hết giờ
+ */
+export function assertParticipantActionWindow(
+  session: { scheduledStartAt: Date; scheduledEndAt: Date },
+  opensBeforeMs: number,
+  now: Date,
+): void {
+  const opensAt = new Date(session.scheduledStartAt.getTime() - opensBeforeMs);
+  if (now < opensAt) {
+    throw new ConflictException(
+      `Chưa tới giờ, mở lúc ${formatClubDateTime(opensAt)}`,
+    );
+  }
+  if (now >= session.scheduledEndAt) {
+    throw new ConflictException(
+      `Buổi tập đã hết giờ lúc ${formatClubDateTime(session.scheduledEndAt)}`,
+    );
+  }
+}
+
 export function assertSessionOperational(status: TrainingSessionStatus): void {
   if (
     status !== TrainingSessionStatus.SCHEDULED &&

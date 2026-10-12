@@ -163,7 +163,7 @@ describe('SessionParticipantsService.list', () => {
 });
 
 describe('SessionParticipantsService.absent', () => {
-  function setup(status: SessionParticipantStatus) {
+  function setup(status: SessionParticipantStatus, startsInMs = 0) {
     const row = {
       ...participant('p1', 'h1'),
       status,
@@ -177,7 +177,13 @@ describe('SessionParticipantsService.absent', () => {
       findParticipant: jest
         .fn()
         .mockResolvedValue({ sessionId: 's1', horseId: 'h1' }),
-      lockedSession: jest.fn().mockResolvedValue({ status: 'SCHEDULED' }),
+      lockedHorse: jest.fn().mockResolvedValue({ id: 'h1' }),
+      findTrainingClass: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
+      lockedSession: jest.fn().mockResolvedValue({
+        status: 'SCHEDULED',
+        scheduledStartAt: new Date(Date.now() + startsInMs),
+        scheduledEndAt: new Date(Date.now() + startsInMs + 3_600_000),
+      }),
       lockedParticipant: jest.fn().mockResolvedValue(row),
       assertCanOperateParticipant: jest.fn().mockResolvedValue(undefined),
     };
@@ -224,5 +230,44 @@ describe('SessionParticipantsService.absent', () => {
       (manager as unknown as { save: jest.Mock }).save,
     ).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  describe('time window', () => {
+    const twentyMinutes = 20 * 60 * 1000;
+
+    it('opens check-in and absence 30 minutes before the start', async () => {
+      const early = setup(SessionParticipantStatus.PLANNED, 2 * 3_600_000);
+      await expect(early.service.checkIn(actor, 'p1')).rejects.toThrow(
+        /^Chưa tới giờ, mở lúc /,
+      );
+      await expect(
+        early.service.absent(actor, 'p1', { reason: 'x' }),
+      ).rejects.toThrow(/^Chưa tới giờ, mở lúc /);
+      expect(
+        (early.manager as unknown as { save: jest.Mock }).save,
+      ).not.toHaveBeenCalled();
+
+      const near = setup(SessionParticipantStatus.PLANNED, twentyMinutes);
+      await near.service.absent(actor, 'p1', { reason: 'Ngựa mệt' });
+      expect(near.row.status).toBe(SessionParticipantStatus.ABSENT);
+    });
+
+    it('opens ready and start only 15 minutes before the start', async () => {
+      const present = setup(SessionParticipantStatus.PRESENT, twentyMinutes);
+      await expect(present.service.ready(actor, 'p1')).rejects.toThrow(
+        /^Chưa tới giờ, mở lúc /,
+      );
+      const ready = setup(SessionParticipantStatus.READY, twentyMinutes);
+      await expect(ready.service.start(actor, 'p1')).rejects.toThrow(
+        /^Chưa tới giờ, mở lúc /,
+      );
+    });
+
+    it('closes every action when the session has ended', async () => {
+      const ended = setup(SessionParticipantStatus.PLANNED, -2 * 3_600_000);
+      await expect(
+        ended.service.absent(actor, 'p1', { reason: 'x' }),
+      ).rejects.toThrow(/^Buổi tập đã hết giờ lúc /);
+    });
   });
 });

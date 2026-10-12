@@ -451,6 +451,43 @@ describe('Flow 1 read queries (Postgres)', () => {
         ]);
       });
 
+      it('puts a run that ended early in history and one still open in upcoming', async () => {
+        const trainer = await seed.user(UserRole.HEAD_TRAINER);
+        const classC = await trainingClass('C', trainer);
+        const enrollC = await enrollment(
+          classC,
+          horse,
+          'ACTIVE',
+          '2026-09-01T00:00:00Z',
+        );
+        const ranEarly = await participant(
+          await session(classC, '2026-10-03T01:00:00Z'),
+          horse,
+          enrollC,
+          { status: 'COMPLETED' },
+        );
+        const stillRunning = await participant(
+          await session(classC, '2026-09-30T01:00:00Z'),
+          horse,
+          enrollC,
+          { status: 'ONGOING' },
+        );
+
+        const upcoming = await list({
+          when: HorseTrainingSessionWhen.UPCOMING,
+        });
+        expect(upcoming.rows.map((row) => row.participantId)).toEqual([
+          stillRunning,
+          ids.soon,
+        ]);
+
+        const history = await list({ when: HorseTrainingSessionWhen.HISTORY });
+        expect(history.rows.map((row) => row.participantId)).toEqual([
+          ranEarly,
+          ids.past,
+        ]);
+      });
+
       it('pages with skip and limit while total counts every match', async () => {
         const page = await list({ skip: 1, limit: 2 });
 

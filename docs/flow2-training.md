@@ -1,6 +1,6 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-> Cập nhật: 10/10/2026
+> Cập nhật: 12/10/2026
 
 ## I. Đề bài liên quan
 
@@ -101,6 +101,9 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 6. Chấm lại ngay khi bác sĩ đặt khóa, gỡ khóa, hoặc sức khỏe ngựa đổi (xấu đi hay tốt lên): mọi lượt Chờ điểm danh (`PLANNED`), Hủy do khóa, Không đủ điều kiện của ngựa đó ở buổi đã publish chưa tới giờ bắt đầu được chấm lại theo luật 1–3; ổn hết thì về Chờ điểm danh và xóa lý do. Lượt đã điểm danh, sẵn sàng, đang tập, đã kết thúc, và buổi đã tới giờ giữ nguyên.
 7. Buổi chưa tới giờ bắt đầu không bao giờ tự đóng, kể cả khi mọi lượt đều bị hủy hoặc không đủ điều kiện (còn chờ chấm lại).
 8. Buổi đã tới giờ: lượt mở cuối cùng xong hoặc vắng thì buổi đóng ngay. Buổi đã tới giờ mà không còn lượt mở thì hệ thống tự đóng trong vòng một phút: có lượt đã diễn ra (hoàn thành, vắng, bỏ qua) thì Hoàn thành, không thì Hủy với lý do "Không còn ngựa tham gia".
+9. Khung giờ thao tác (ví dụ buổi 15:00–16:00): điểm danh và báo vắng từ 30 phút trước giờ bắt đầu (14:30); báo sẵn sàng và bắt đầu từ 15 phút trước (14:45); tất cả đóng lúc hết giờ buổi (16:00). Ngoài khung giờ trả 409 kèm giờ mở hoặc giờ đóng. Hoàn thành lượt đang tập không giới hạn giờ.
+10. Buổi đã hết giờ mà còn lượt chưa tập: trong vòng một phút hệ thống chuyển lượt Chờ điểm danh thành Vắng (lý do "Hết giờ, chưa điểm danh"), lượt Có mặt hoặc Sẵn sàng thành Bỏ qua (`SKIPPED`); lượt Đang tập giữ nguyên. Sau đó buổi đóng theo luật 8.
+11. Tab buổi tập của ngựa (`GET /horses/:horseId/training/sessions`): `when=upcoming` là lượt còn mở (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) bất kể giờ, cùng lượt Không đủ điều kiện của buổi chưa tới giờ; `when=history` là lượt đã kết thúc, kể cả lượt chạy xong trước giờ lịch. Lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ không nằm ở tab nào.
 
 ### 6. Nhịp tim và tốc độ (dữ liệu giả lập)
 

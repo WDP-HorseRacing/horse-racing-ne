@@ -28,10 +28,15 @@ import {
   assertParticipantCheckIn,
   assertParticipantComplete,
   assertParticipantReady,
+  assertParticipantActionWindow,
   assertParticipantStart,
   assertSessionOperational,
   eligibilityForSession,
 } from '../policies/training.policy';
+import {
+  CHECK_IN_OPENS_BEFORE_MS,
+  START_OPENS_BEFORE_MS,
+} from '../constants/participant-window.constants';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TrainingOperationsFacade } from '../shared/training-operations.facade';
 import { horseListDisplay } from '../utils/horse-list-display';
@@ -200,13 +205,14 @@ export class SessionParticipantsService {
    * - Ngựa đang bị khóa huấn luyện: lưu lượt thành CANCELLED_BY_LOCK rồi trả 409
    * - Ngựa không được tập vì lý do khác: lưu lượt thành INELIGIBLE rồi trả 409
    * - Ngựa được tập: lượt chuyển PRESENT
+   * - Chỉ trong khung giờ từ CHECK_IN_OPENS_BEFORE_MS trước giờ bắt đầu tới giờ kết thúc buổi tập
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia
    * @returns Promise trả về lượt tham gia sau khi điểm danh
    * @throws NotFoundException Nếu không có lượt tham gia, buổi tập hoặc ngựa
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
-   * @throws ConflictException Nếu buổi không ở trạng thái thực thi, lượt không ở PLANNED hoặc ngựa không còn được tập
+   * @throws ConflictException Nếu buổi không ở trạng thái thực thi, ngoài khung giờ điểm danh, lượt không ở PLANNED hoặc ngựa không còn được tập
    */
   async checkIn(
     actor: Actor,
@@ -235,6 +241,11 @@ export class SessionParticipantsService {
         caller.id,
         context,
       );
+      assertParticipantActionWindow(
+        session,
+        CHECK_IN_OPENS_BEFORE_MS,
+        new Date(),
+      );
       assertParticipantCheckIn(participant.status);
       if (await this.markIfIneligible(manager, horse, session, participant)) {
         return { rejected: true as const };
@@ -259,21 +270,39 @@ export class SessionParticipantsService {
     participantId: string,
     body: MarkParticipantAbsentDto,
   ): Promise<SessionParticipantResponseDto> {
-    return this.mutateParticipant(actor, participantId, (participant) => {
-      assertParticipantAbsent(participant.status);
-      participant.status = SessionParticipantStatus.ABSENT;
-      participant.absenceReason = body.reason;
-    });
+    return this.mutateParticipant(
+      actor,
+      participantId,
+      (participant, session) => {
+        assertParticipantActionWindow(
+          session,
+          CHECK_IN_OPENS_BEFORE_MS,
+          new Date(),
+        );
+        assertParticipantAbsent(participant.status);
+        participant.status = SessionParticipantStatus.ABSENT;
+        participant.absenceReason = body.reason;
+      },
+    );
   }
 
   async ready(
     actor: Actor,
     participantId: string,
   ): Promise<SessionParticipantResponseDto> {
-    return this.mutateParticipant(actor, participantId, (participant) => {
-      assertParticipantReady(participant.status);
-      participant.status = SessionParticipantStatus.READY;
-    });
+    return this.mutateParticipant(
+      actor,
+      participantId,
+      (participant, session) => {
+        assertParticipantActionWindow(
+          session,
+          START_OPENS_BEFORE_MS,
+          new Date(),
+        );
+        assertParticipantReady(participant.status);
+        participant.status = SessionParticipantStatus.READY;
+      },
+    );
   }
 
   /**
@@ -282,13 +311,14 @@ export class SessionParticipantsService {
    * - Ngựa đang bị khóa huấn luyện: lưu lượt thành CANCELLED_BY_LOCK rồi trả 409
    * - Ngựa không được tập vì lý do khác: lưu lượt thành INELIGIBLE rồi trả 409
    * - Ngựa được tập: lượt chuyển ONGOING, buổi SCHEDULED chuyển IN_PROGRESS
+   * - Chỉ trong khung giờ từ START_OPENS_BEFORE_MS trước giờ bắt đầu tới giờ kết thúc buổi tập
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia
    * @returns Promise trả về lượt tham gia sau khi bắt đầu
    * @throws NotFoundException Nếu không có lượt tham gia, buổi tập, lớp hoặc ngựa
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
-   * @throws ConflictException Nếu lượt không ở READY, lớp chưa ACTIVE, buổi không ở trạng thái thực thi, ngựa không còn được tập hoặc ngựa đang có lượt ONGOING khác
+   * @throws ConflictException Nếu lượt không ở READY, lớp chưa ACTIVE, buổi không ở trạng thái thực thi, ngoài khung giờ bắt đầu, ngựa không còn được tập hoặc ngựa đang có lượt ONGOING khác
    */
   async start(
     actor: Actor,
@@ -334,6 +364,7 @@ export class SessionParticipantsService {
           'Buổi tập chưa công bố hoặc đã kết thúc, không thao tác được',
         );
       }
+      assertParticipantActionWindow(session, START_OPENS_BEFORE_MS, new Date());
       if (await this.markIfIneligible(manager, horse, session, participant)) {
         return { rejected: true as const };
       }
@@ -404,10 +435,24 @@ export class SessionParticipantsService {
     return toSessionParticipantResponse(saved);
   }
 
+  /**
+   * Đổi trạng thái một lượt tập trong transaction sau khi kiểm buổi còn thực thi và quyền thao tác, rồi cập nhật trạng thái buổi
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia
+   * @param mutate Hàm kiểm và đổi lượt, nhận lượt và buổi tập đã khóa
+   * @returns Promise trả về lượt tham gia sau khi đổi
+   * @throws NotFoundException Nếu không có lượt tham gia hoặc buổi tập
+   * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
+   * @throws ConflictException Nếu buổi không ở trạng thái thực thi hoặc mutate từ chối
+   */
   private async mutateParticipant(
     actor: Actor,
     participantId: string,
-    mutate: (participant: SessionParticipantEntity) => void,
+    mutate: (
+      participant: SessionParticipantEntity,
+      session: TrainingSessionEntity,
+    ) => void,
   ): Promise<SessionParticipantResponseDto> {
     const saved = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
@@ -431,7 +476,7 @@ export class SessionParticipantsService {
         caller.id,
         context,
       );
-      mutate(participant);
+      mutate(participant, session);
       const saved = await manager.save(participant);
       await this.operations.refreshSessionStatus(
         manager,

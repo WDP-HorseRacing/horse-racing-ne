@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, SelectQueryBuilder } from 'typeorm';
+import { Brackets, DataSource, SelectQueryBuilder } from 'typeorm';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
@@ -11,9 +11,17 @@ import type {
   HorseTrainingSessionRow,
 } from '../types/horse-training.types';
 
-const HIDDEN_UPCOMING_STATUSES = [
+const OPEN_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.PRESENT,
+  SessionParticipantStatus.READY,
+  SessionParticipantStatus.ONGOING,
+];
+
+const NOT_RUN_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.CANCELLED,
   SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
 ];
 
 /**
@@ -55,8 +63,8 @@ export class HorseTrainingRepository {
   /**
    * Đọc một trang lượt tập của ngựa kèm tổng số lượt khớp bộ lọc
    *
-   * - upcoming: buổi bắt đầu từ `now` trở đi, gần nhất trước, bỏ lượt CANCELLED và CANCELLED_BY_LOCK
-   * - history: buổi bắt đầu trước `now`, mới nhất trước
+   * - upcoming: lượt còn mở (PLANNED, PRESENT, READY, ONGOING) bất kể giờ, cùng lượt INELIGIBLE của buổi chưa tới giờ; gần nhất trước
+   * - history: lượt đã kết thúc, kể cả lượt chạy xong trước giờ lịch; bỏ lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ; mới nhất trước
    * - Bỏ trống `when`: mọi buổi, mới nhất trước
    *
    * @param horseId UUID của ngựa
@@ -104,8 +112,8 @@ export class HorseTrainingRepository {
    * Dựng câu đọc lượt tập của một con ngựa theo bộ lọc, chưa chọn cột và chưa sắp xếp
    *
    * - Nối lượt tập với buổi, giáo án và lớp; đọc cả tài khoản đã xóa mềm
-   * - upcoming: buổi bắt đầu từ `now` trở đi, bỏ lượt CANCELLED và CANCELLED_BY_LOCK
-   * - history: buổi bắt đầu trước `now`
+   * - upcoming: lượt còn mở (PLANNED, PRESENT, READY, ONGOING) bất kể giờ, cùng lượt INELIGIBLE của buổi bắt đầu từ `now` trở đi
+   * - history: lượt không còn mở, trừ lượt CANCELLED, CANCELLED_BY_LOCK, INELIGIBLE của buổi bắt đầu từ `now` trở đi
    *
    * @param horseId UUID của ngựa
    * @param filter Lớp và khoảng thời gian cần lọc
@@ -127,14 +135,32 @@ export class HorseTrainingRepository {
     if (filter.classId) {
       query.andWhere('class.id = :classId', { classId: filter.classId });
     }
+    query.setParameters({
+      now: filter.now,
+      open: OPEN_PARTICIPANT_STATUSES,
+      notRun: NOT_RUN_PARTICIPANT_STATUSES,
+      ineligible: SessionParticipantStatus.INELIGIBLE,
+    });
     if (filter.when === HorseTrainingSessionWhen.UPCOMING) {
-      query
-        .andWhere('session.scheduledStartAt >= :now', { now: filter.now })
-        .andWhere('participant.status NOT IN (:...hiddenStatuses)', {
-          hiddenStatuses: HIDDEN_UPCOMING_STATUSES,
-        });
+      query.andWhere(
+        new Brackets((qb) =>
+          qb
+            .where('participant.status IN (:...open)')
+            .orWhere(
+              'participant.status = :ineligible AND session.scheduledStartAt >= :now',
+            ),
+        ),
+      );
     } else if (filter.when === HorseTrainingSessionWhen.HISTORY) {
-      query.andWhere('session.scheduledStartAt < :now', { now: filter.now });
+      query
+        .andWhere('participant.status NOT IN (:...open)')
+        .andWhere(
+          new Brackets((qb) =>
+            qb
+              .where('session.scheduledStartAt < :now')
+              .orWhere('participant.status NOT IN (:...notRun)'),
+          ),
+        );
     }
     return query;
   }

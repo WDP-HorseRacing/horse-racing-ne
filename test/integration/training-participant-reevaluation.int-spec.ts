@@ -331,5 +331,35 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       expect((await sessionRow(upcoming)).status).toBe('SCHEDULED');
       expect(await job.closeStartedSessions()).toBe(0);
     });
+
+    it('settles participants left open after a session ended, then closes it', async () => {
+      const winx = await horse();
+      const blue = await horse();
+      const red = await horse();
+      const gold = await horse();
+      const ended = await session(-2);
+      const missed = await participant(ended, winx, 'PLANNED');
+      const present = await participant(ended, blue, 'PRESENT');
+      const ready = await participant(ended, red, 'READY');
+      const running = await session(-2);
+      await participant(running, gold, 'ONGOING');
+      const live = await session(-0.5);
+      const waiting = await participant(live, winx, 'PLANNED');
+
+      expect(await job.settleEndedSessions()).toBe(1);
+
+      expect(await participantRow(missed)).toMatchObject({ status: 'ABSENT' });
+      const [reason] = await dataSource.query<{ absence_reason: string }[]>(
+        'SELECT absence_reason FROM session_participants WHERE id = $1',
+        [missed],
+      );
+      expect(reason.absence_reason).toBe('Hết giờ, chưa điểm danh');
+      expect((await participantRow(present)).status).toBe('SKIPPED');
+      expect((await participantRow(ready)).status).toBe('SKIPPED');
+      expect((await sessionRow(ended)).status).toBe('COMPLETED');
+      expect((await sessionRow(running)).status).toBe('SCHEDULED');
+      expect((await participantRow(waiting)).status).toBe('PLANNED');
+      expect(await job.settleEndedSessions()).toBe(0);
+    });
   });
 });

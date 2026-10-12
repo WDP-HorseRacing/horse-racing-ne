@@ -18,6 +18,7 @@ import {
   horseScheduleClashError,
   sessionWindowsOverlap,
   assertParticipantAbsent,
+  assertParticipantActionWindow,
   assertParticipantComplete,
   assertSessionOperational,
   assertSessionWindowInClass,
@@ -480,5 +481,46 @@ describe('session overlap policy', () => {
         new ConflictException('Buổi tập đã hủy, không sửa video chạy thử'),
       );
     });
+  });
+});
+
+describe('assertParticipantActionWindow', () => {
+  const session = {
+    scheduledStartAt: new Date('2026-10-12T08:00:00Z'),
+    scheduledEndAt: new Date('2026-10-12T09:00:00Z'),
+  };
+  const thirtyMinutes = 30 * 60 * 1000;
+  const at = (iso: string) => new Date(iso);
+
+  it('opens the given time before the start and stays open until the end', () => {
+    for (const time of ['2026-10-12T07:30:00Z', '2026-10-12T08:59:59Z']) {
+      expect(() =>
+        assertParticipantActionWindow(session, thirtyMinutes, at(time)),
+      ).not.toThrow();
+    }
+  });
+
+  it('rejects too early with the opening time in club time', () => {
+    expect(() =>
+      assertParticipantActionWindow(
+        session,
+        thirtyMinutes,
+        at('2026-10-12T07:29:59Z'),
+      ),
+    ).toThrow(
+      new ConflictException('Chưa tới giờ, mở lúc 14:30 ngày 12/10/2026'),
+    );
+  });
+
+  it('rejects at or after the end of the session', () => {
+    expect(() =>
+      assertParticipantActionWindow(
+        session,
+        thirtyMinutes,
+        at('2026-10-12T09:00:00Z'),
+      ),
+    ).toThrow(
+      new ConflictException('Buổi tập đã hết giờ lúc 16:00 ngày 12/10/2026'),
+    );
   });
 });
