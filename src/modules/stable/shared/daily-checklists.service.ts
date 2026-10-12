@@ -36,10 +36,11 @@ export class DailyChecklistsService {
   constructor(private readonly events: DomainEventPublisher) {}
 
   /**
-   * Chuyển checklist chưa hoàn thành từ một ngày trở đi của groom cũ sang groom mới
+   * Chuyển checklist từ một ngày trở đi của groom cũ sang groom mới, kể cả checklist đã hoàn thành
    *
-   * - Chỉ chuyển checklist của đúng con ngựa, của groom cũ, chưa hoàn thành và có ngày từ fromDate trở đi
-   * - Checklist đã hoàn thành hoặc của ngày trước fromDate giữ nguyên tên người đã làm
+   * - Chỉ chuyển checklist của đúng con ngựa, của groom cũ và có ngày từ fromDate trở đi
+   * - Checklist của ngày trước fromDate giữ nguyên groom cũ
+   * - Việc đã tick giữ nguyên người tick và thời điểm tick
    * - Lock các checklist sẽ chuyển (pessimistic_write) trước khi kiểm trùng ngày
    * - Groom mới đã có checklist cùng ngày cho ngựa này thì báo lỗi, không gộp và không bỏ qua
    *
@@ -51,42 +52,41 @@ export class DailyChecklistsService {
    * @returns Promise trả về UUID các checklist đã chuyển
    * @throws ConflictException Nếu groom mới đã có checklist trùng ngày cho ngựa này
    */
-  async moveOpenChecklistsToGroom(
+  async moveChecklistsToGroom(
     manager: EntityManager,
     horseId: string,
     fromGroomId: string,
     toGroomId: string,
     fromDate: string,
   ): Promise<string[]> {
-    // look các checklist của của groom cũ đc phân công từ chưa hoàn thành và có từ ngày fromDate trở đi
-    const openChecklists = await manager.find(DailyChecklistEntity, {
+    // look các checklist của của groom cũ đc phân công có từ ngày fromDate trở đi
+    const movedChecklists = await manager.find(DailyChecklistEntity, {
       where: {
         horseId,
         groomId: fromGroomId,
-        completedAt: IsNull(),
         checklistDate: MoreThanOrEqual(fromDate),
       },
       lock: { mode: 'pessimistic_write' },
     });
-    if (openChecklists.length === 0) return [];
+    if (movedChecklists.length === 0) return [];
 
     // Kiểm tra xem groom mới đã có checklist cùng ngày cho ngựa này thì báo lỗi, không gộp và không bỏ qua
     const clashes = await manager.find(DailyChecklistEntity, {
       where: {
         horseId,
         groomId: toGroomId,
-        checklistDate: In(openChecklists.map((c) => c.checklistDate)),
+        checklistDate: In(movedChecklists.map((c) => c.checklistDate)),
       },
       order: { checklistDate: 'ASC' },
     });
     if (clashes.length > 0) {
       const clashDates = clashes.map((c) => c.checklistDate).join(', ');
       throw new ConflictException(
-        `Groom mới đã có checklist của ngựa này vào ngày ${clashDates}, không chuyển được checklist chưa hoàn thành của groom cũ`,
+        `Groom mới đã có checklist của ngựa này vào ngày ${clashDates}, không chuyển được checklist của groom cũ`,
       );
     }
 
-    const ids = openChecklists.map((c) => c.id);
+    const ids = movedChecklists.map((c) => c.id);
     await manager.update(
       DailyChecklistEntity,
       { id: In(ids) },

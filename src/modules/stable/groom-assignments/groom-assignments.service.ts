@@ -85,7 +85,7 @@ export class GroomAssignmentsService {
    * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác.
    * - Ngựa phải đã được xếp khu, chưa chuyển nhượng và chưa bị xóa; khu của ngựa phải đang ACTIVE (lock khu như khi xếp ô).
    * - Lock row user của groom trong transaction rồi mới kiểm groom còn là GROOM đang ACTIVE.
-   * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới.
+   * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist từ hôm nay trở đi của groom cũ sang groom mới, kể cả checklist đã hoàn thành.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
    * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); nhật ký ghi thêm movedParticipantIds.
    * - Ghi GROOM_ASSIGNMENT_CHANGED_EVENT vào outbox trong cùng transaction để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách.
@@ -175,7 +175,7 @@ export class GroomAssignmentsService {
         };
       }
       const now = new Date();
-      // Chuyển checklist chưa hoàn thành của groom cũ sang groom mới (nếu có và groom rãnh khung giờ đó)
+      // Chuyển checklist của groom cũ sang groom mới (nếu có và groom rãnh khung giờ đó)
       const movedChecklistIds = current
         ? await this.closeCurrentAssignment(
             manager,
@@ -230,7 +230,7 @@ export class GroomAssignmentsService {
    * Đóng phân công groom đang mở của ngựa khi đổi sang groom mới
    *
    * - Đặt endAt của phân công cũ bằng thời điểm đổi
-   * - Chuyển checklist chưa hoàn thành từ hôm nay trở đi của groom cũ sang groom mới
+   * - Chuyển checklist từ hôm nay trở đi của groom cũ sang groom mới, kể cả checklist đã hoàn thành
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -253,7 +253,7 @@ export class GroomAssignmentsService {
       { endAt: now },
     );
     // chuyển checklist cũ sang groom mới
-    return this.dailyChecklists.moveOpenChecklistsToGroom(
+    return this.dailyChecklists.moveChecklistsToGroom(
       manager,
       horseId,
       current.groomId,

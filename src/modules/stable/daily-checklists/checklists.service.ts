@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, DataSource, EntityManager, In, Repository } from 'typeorm';
@@ -38,7 +43,7 @@ const CHECKLIST_ITEM_NOT_FOUND = 'Không tìm thấy việc trong checklist';
  * Checklist chăm sóc hằng ngày: xem theo ngựa, Groom tick việc, đóng các ngày đã qua
  */
 @Injectable()
-export class ChecklistsService {
+export class ChecklistsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ChecklistsService.name);
 
   constructor(
@@ -140,6 +145,17 @@ export class ChecklistsService {
     return toDailyChecklistResponse(
       await this.findWithRelations(this.dataSource.manager, checklistId),
     );
+  }
+
+  /**
+   * Chạy bù một lần khi ứng dụng khởi động: đóng checklist của các ngày đã qua còn mở
+   *
+   * - Lỗi chỉ được log, không làm dừng ứng dụng
+   *
+   * @returns Promise hoàn tất khi đã chạy xong
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    await this.runDaily();
   }
 
   /**

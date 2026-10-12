@@ -98,9 +98,9 @@ SỰ CỐ                             Groom báo, HT khu đóng
    - `INCOMPLETE`: ngày đã qua mà chưa xong; checklist bị khóa.
 4. Groom phụ trách tick hoặc gỡ tick từng việc, kèm ghi chú, chỉ trong ngày. Mỗi việc lưu ai tick, lúc nào.
 5. Ghi lên checklist của ngày đã qua: 409.
-6. Mỗi ngày 00:05 (giờ CLB) hệ thống chuyển mọi checklist ngày cũ còn `PENDING`/`IN_PROGRESS` sang `INCOMPLETE`. Chạy lại hoặc chạy bù đều cho cùng kết quả.
+6. Mỗi ngày 00:05 (giờ CLB) và một lần khi khởi động, hệ thống chuyển mọi checklist ngày cũ còn `PENDING`/`IN_PROGRESS` sang `INCOMPLETE`. Chạy lại hoặc chạy bù đều cho cùng kết quả.
 7. Việc còn thiếu không dời sang ngày sau.
-8. Đổi Groom phụ trách: checklist hôm nay chưa xong chuyển cho Groom mới.
+8. Đổi Groom phụ trách: checklist hôm nay (kể cả đã xong) chuyển cho Groom mới; việc đã tick giữ nguyên người tick.
 
 ### 6. Sự cố
 

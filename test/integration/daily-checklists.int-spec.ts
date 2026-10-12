@@ -265,6 +265,21 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       expect(byId[finished.id]).toBe(DailyChecklistStatus.COMPLETED);
     });
 
+    it('closes past days once on startup', async () => {
+      await todayOf(groom, gio);
+      await dataSource.query(
+        'UPDATE daily_checklists SET checklist_date = $1',
+        [shiftDays(today, -1)],
+      );
+
+      await checklists.onApplicationBootstrap();
+
+      const [row] = await dataSource.query<{ status: string }[]>(
+        'SELECT status FROM daily_checklists',
+      );
+      expect(row.status).toBe(DailyChecklistStatus.INCOMPLETE);
+    });
+
     it('does not close today', async () => {
       await todayOf(groom, gio);
       expect(await checklists.closePastDays(today)).toBe(0);
@@ -458,7 +473,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     const checklist = await todayOf(groom, gio);
 
     await dataSource.transaction((tx) =>
-      daily.moveOpenChecklistsToGroom(tx, gio, groomId, otherGroomId, today),
+      daily.moveChecklistsToGroom(tx, gio, groomId, otherGroomId, today),
     );
     await dataSource.query(
       'UPDATE groom_assignments SET end_at = now() WHERE horse_id = $1',
@@ -472,5 +487,29 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     await expect(
       checklists.tick(groom, moved.items[0].id, { done: true }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('moves today’s finished checklist too, keeping who ticked each task', async () => {
+    const checklist = await todayOf(groom, gio);
+    for (const item of checklist.items) {
+      await checklists.tick(groom, item.id, { done: true });
+    }
+
+    await dataSource.transaction((tx) =>
+      daily.moveChecklistsToGroom(tx, gio, groomId, otherGroomId, today),
+    );
+    await dataSource.query(
+      'UPDATE groom_assignments SET end_at = now() WHERE horse_id = $1',
+      [gio],
+    );
+    await assignGroom(gio, otherGroomId);
+
+    const moved = await todayOf(otherGroom, gio);
+    expect(moved.id).toBe(checklist.id);
+    expect(moved.status).toBe(DailyChecklistStatus.COMPLETED);
+    expect(moved.groom.id).toBe(otherGroomId);
+    expect(moved.items.map((item) => item.doer?.id)).toEqual(
+      checklist.items.map(() => groomId),
+    );
   });
 });
