@@ -117,6 +117,12 @@ export class HorseLifecyclePreviewResponseDto {
   })
   careSchedulesCancelled!: number;
 
+  @ApiProperty({
+    description:
+      'Số sự cố tại chuồng đang mở sẽ tự đóng (chuyển nhượng, ghi nhận đã mất)',
+  })
+  incidentsClosed!: number;
+
   @ApiPropertyOptional({
     enum: HorseHealthStatus,
     nullable: true,

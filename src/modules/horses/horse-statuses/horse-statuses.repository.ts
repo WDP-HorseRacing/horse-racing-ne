@@ -4,6 +4,7 @@ import {
   OPEN_REGISTRATION_STATUSES,
   UPCOMING_RACE_STATUSES,
 } from '../../racing/constants/racing.constants';
+import { IncidentStatus } from '../../stable/constants/incident-status.enum';
 import { HorseEnrollmentStatus } from '../../training/enums/horse-enrollment-status.enum';
 import type { LifecycleImpactRow } from '../types/horse.types';
 
@@ -14,6 +15,7 @@ export class HorseStatusesRepository {
    *
    * - Số lớp ngựa đang học (enrollment ACTIVE) và đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra
    * - Ô chuồng, groom và khu hiện tại
+   * - Số sự cố tại chuồng đang mở
    * - Không đếm lệnh khóa huấn luyện đang ACTIVE
    *
    * @param manager EntityManager dùng để query
@@ -37,12 +39,15 @@ export class HorseStatusesRepository {
          (SELECT u.full_name FROM groom_assignments ga JOIN users u ON u.id = ga.groom_id
            WHERE ga.horse_id = $1 AND ga.end_at IS NULL LIMIT 1) AS "groomName",
          (SELECT b.name FROM horses h JOIN barns b ON b.id = h.barn_id
-           WHERE h.id = $1) AS "barnName"`,
+           WHERE h.id = $1) AS "barnName",
+         (SELECT count(*)::int FROM incidents i
+           WHERE i.horse_id = $1 AND i.status = $5) AS "openIncidents"`,
         [
           horseId,
           HorseEnrollmentStatus.ACTIVE,
           OPEN_REGISTRATION_STATUSES,
           UPCOMING_RACE_STATUSES,
+          IncidentStatus.OPEN,
         ],
       );
     return rows[0];

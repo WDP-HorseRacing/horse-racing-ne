@@ -28,8 +28,10 @@ import {
 } from '../../src/modules/stable/constants/stable-events.constants';
 import { IncidentListQueryDto } from '../../src/modules/stable/dto/incident.dto';
 import { IncidentEntity } from '../../src/modules/stable/entities/incident.entity';
+import { HorseStatusesRepository } from '../../src/modules/horses/horse-statuses/horse-statuses.repository';
 import { IncidentRemindersService } from '../../src/modules/stable/incidents/incident-reminders.service';
 import { IncidentsService } from '../../src/modules/stable/incidents/incidents.service';
+import { IncidentWritesService } from '../../src/modules/stable/shared/incident-writes.service';
 import { StableAccessService } from '../../src/modules/stable/shared/stable-access.service';
 import { fixtures } from './fixtures';
 import {
@@ -448,6 +450,59 @@ describe('Stable incidents (Postgres)', () => {
       }
 
       expect(await reminders().remindStale(new Date())).toBe(0);
+    });
+  });
+
+  describe('closing when the horse leaves the club', () => {
+    it('counts and closes only the open incidents of that horse', async () => {
+      const open = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Bỏ ăn',
+      });
+      const done = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Đã xong',
+      });
+      await incidents.resolve(trainer, done.id, { resolution: 'Ổn' });
+      await dataSource.query(
+        `INSERT INTO groom_assignments (version, horse_id, groom_id, start_at)
+         VALUES (1, $1, $2, now())`,
+        [outside, groomId],
+      );
+      const other = await incidents.report(groom, {
+        horseId: outside,
+        description: 'Khu khác',
+      });
+
+      const impact = await new HorseStatusesRepository().lifecycleImpact(
+        dataSource.manager,
+        gio,
+      );
+      expect(impact.openIncidents).toBe(1);
+
+      const closed = await dataSource.transaction((tx) =>
+        new IncidentWritesService().closeOpenIncidentsByHorse(
+          tx,
+          gio,
+          'Ngựa đã chuyển nhượng',
+        ),
+      );
+
+      expect(closed).toBe(1);
+      expect(await incidents.get(manager, open.id)).toMatchObject({
+        status: IncidentStatus.RESOLVED,
+        resolution: 'Ngựa đã chuyển nhượng',
+        resolver: null,
+        resolvedBySystem: true,
+        resolvedAt: expect.any(Date) as unknown,
+      });
+      expect(await incidents.get(manager, done.id)).toMatchObject({
+        resolution: 'Ổn',
+        resolvedBySystem: false,
+      });
+      expect((await incidents.get(manager, other.id)).status).toBe(
+        IncidentStatus.OPEN,
+      );
     });
   });
 });

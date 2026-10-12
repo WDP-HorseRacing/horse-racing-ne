@@ -73,6 +73,7 @@ describe('HorseStatusesService', () => {
     readOnlyBlockReason: jest.Mock;
     readOnlyImpact: jest.Mock;
   };
+  let incidentWrites: { closeOpenIncidentsByHorse: jest.Mock };
   let racing: { withdrawOpenRegistrationsByHorse: jest.Mock };
   let events: { publish: jest.Mock };
   let service: HorseStatusesService;
@@ -86,6 +87,7 @@ describe('HorseStatusesService', () => {
     grooms.endOpenGroomAssignment,
     trainingLocks.releaseActiveLockByHorse,
     medicalLifecycle.settleBeforeReadOnly,
+    incidentWrites.closeOpenIncidentsByHorse,
   ];
 
   const expectNoWrite = () => {
@@ -121,6 +123,7 @@ describe('HorseStatusesService', () => {
       invalidOwnerName: null,
       examRequestsToDismiss: 0,
       careSchedulesToCancel: 0,
+      openIncidents: 0,
     };
     horseRepository = { update: jest.fn().mockResolvedValue({ affected: 1 }) };
     manager = { getRepository: jest.fn(() => horseRepository) };
@@ -172,6 +175,9 @@ describe('HorseStatusesService', () => {
         }),
       ),
     };
+    incidentWrites = {
+      closeOpenIncidentsByHorse: jest.fn().mockResolvedValue(0),
+    };
     racing = {
       withdrawOpenRegistrationsByHorse: jest.fn().mockResolvedValue(3),
     };
@@ -184,6 +190,7 @@ describe('HorseStatusesService', () => {
       grooms as unknown as GroomAssignmentsService,
       trainingLocks as unknown as TrainingLockService,
       medicalLifecycle as unknown as MedicalLifecycleService,
+      incidentWrites,
       racing,
       events,
       training as unknown as TrainingOperationsFacade,
@@ -257,6 +264,11 @@ describe('HorseStatusesService', () => {
           manager,
           HORSE_ID,
           'Gỡ do ngựa mất',
+        );
+        expect(incidentWrites.closeOpenIncidentsByHorse).toHaveBeenCalledWith(
+          manager,
+          HORSE_ID,
+          'Ngựa đã mất',
         );
         expect(horseRepository.update).toHaveBeenCalledWith(
           { id: HORSE_ID },
@@ -453,6 +465,7 @@ describe('HorseStatusesService', () => {
           trainingLockReleased: true,
           examRequestsDismissed: 0,
           careSchedulesCancelled: 0,
+          incidentsClosed: 0,
           raceRegistrationsWithdrawn: 3,
         },
         reason: 'Bán cho CLB khác',
@@ -482,6 +495,7 @@ describe('HorseStatusesService', () => {
             trainingLockReleased: false,
             examRequestsDismissed: 0,
             careSchedulesCancelled: 0,
+            incidentsClosed: 0,
           },
         }),
       );
@@ -639,6 +653,27 @@ describe('HorseStatusesService', () => {
       expect(medicalLifecycle.settleBeforeReadOnly).not.toHaveBeenCalled();
     });
 
+    it('closes the open incidents on transfer and audits how many', async () => {
+      incidentWrites.closeOpenIncidentsByHorse.mockResolvedValue(2);
+      await change(HorseLifecycleStatus.TRANSFERRED);
+      expect(incidentWrites.closeOpenIncidentsByHorse).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+        'Ngựa đã chuyển nhượng',
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          after: expect.objectContaining({ incidentsClosed: 2 }) as unknown,
+        }),
+      );
+    });
+
+    it('does not close incidents when retiring', async () => {
+      await change(HorseLifecycleStatus.RETIRED);
+      expect(incidentWrites.closeOpenIncidentsByHorse).not.toHaveBeenCalled();
+    });
+
     it('rejects an invalid transition with 409 and writes nothing', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
       await expect(change(HorseLifecycleStatus.RETIRED)).rejects.toThrow(
@@ -706,6 +741,7 @@ describe('HorseStatusesService', () => {
         grooms as unknown as GroomAssignmentsService,
         trainingLocks as unknown as TrainingLockService,
         medicalLifecycle as unknown as MedicalLifecycleService,
+        incidentWrites,
         racing,
         events,
         training as unknown as TrainingOperationsFacade,
@@ -785,6 +821,7 @@ describe('HorseStatusesService', () => {
         trainingLockReleased: true,
         examRequestsDismissed: 0,
         careSchedulesCancelled: 0,
+        incidentsClosed: 0,
         healthResetTo: null,
         pendingBarnAfter: false,
         ownerCleared: null,
@@ -841,6 +878,7 @@ describe('HorseStatusesService', () => {
         trainingLockReleased: false,
         examRequestsDismissed: 0,
         careSchedulesCancelled: 0,
+        incidentsClosed: 0,
         healthResetTo: HorseHealthStatus.UNDER_OBSERVATION,
         pendingBarnAfter: true,
         ownerCleared: null,
@@ -919,6 +957,13 @@ describe('HorseStatusesService', () => {
         HORSE_ID,
         manager,
       );
+    });
+
+    it('lists the open incidents a transfer will close', async () => {
+      impact.openIncidents = 2;
+      const shown = await preview(HorseLifecycleStatus.TRANSFERRED);
+      expect(shown.incidentsClosed).toBe(2);
+      expect(shown.summary).toContain('2 sự cố đang mở');
     });
 
     it('does not check medical cases when previewing a retirement', async () => {

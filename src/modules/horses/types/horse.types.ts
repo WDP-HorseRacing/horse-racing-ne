@@ -339,6 +339,7 @@ export interface HorseDetailParts {
  * - clearBarn: bỏ khu chuồng (horses.barn_id = null).
  * - releaseTrainingLock: tự gỡ lệnh khóa huấn luyện đang ACTIVE.
  * - settleMedicalWork: chốt phần y tế khi chuyển nhượng: chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
+ * - closeIncidents: đóng các sự cố tại chuồng đang mở, không ghi người đóng.
  * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại (chỉ khi kích hoạt lại từ chuyển nhượng).
  * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
  * - Chủ sở hữu không bị đổi ở đây: chuyển nhượng vẫn giữ chủ.
@@ -351,6 +352,7 @@ export interface LifecycleSideEffects {
   clearBarn: boolean;
   releaseTrainingLock: boolean;
   settleMedicalWork: boolean;
+  closeIncidents: boolean;
   resetHealth: boolean;
   reactivateFromTransfer: boolean;
 }
@@ -368,6 +370,7 @@ export interface LifecycleImpactRow {
   invalidOwnerName: string | null;
   examRequestsToDismiss: number;
   careSchedulesToCancel: number;
+  openIncidents: number;
 }
 
 /**

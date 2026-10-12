@@ -169,6 +169,13 @@ export class IncidentResponseDto {
   resolver!: CareTaskUserSummaryResponseDto | null;
 
   @Expose()
+  @ApiProperty({
+    description:
+      'True khi hệ thống tự đóng (ví dụ ngựa chuyển nhượng hoặc đã mất)',
+  })
+  resolvedBySystem!: boolean;
+
+  @Expose()
   @ApiPropertyOptional({ format: 'date-time', nullable: true })
   resolvedAt!: Date | null;
 

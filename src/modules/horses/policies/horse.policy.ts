@@ -529,9 +529,9 @@ export function assertLifecycleTransition(
  *    - Các tài nguyên thực tế (khu, ô chuồng, groom và bệnh án y tế) được giữ nguyên.
  * 2. Đang giải nghệ đem chuyển nhượng (RETIRED -> TRANSFERRED): 
  *    - Rút khỏi lớp (để phòng hờ). 
- *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế.
+ *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế, đóng sự cố đang mở.
  * 3. Đang hoạt động đem chuyển nhượng (ACTIVE -> TRANSFERRED): 
- *    - Gộp cả (1) và (2): rút khỏi lớp, rút giải đua, và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế).
+ *    - Gộp cả (1) và (2): rút khỏi lớp, rút giải đua, và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế, đóng sự cố).
  * 4. Ghi nhận ngựa mất (ACTIVE/RETIRED -> DECEASED): làm như chuyển nhượng từ trạng thái đó.
  * 5. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE): 
  *    - Lớp học và giải đua cũ không tự khôi phục. 
@@ -563,6 +563,7 @@ export function lifecycleSideEffects(
     clearBarn: becomesReadOnly,
     releaseTrainingLock: becomesReadOnly,
     settleMedicalWork: becomesReadOnly,
+    closeIncidents: becomesReadOnly,
     resetHealth: reactivateFromTransfer,
     reactivateFromTransfer,
   };
@@ -620,6 +621,10 @@ export function lifecycleImpactSummary(
       `${impact.careSchedulesToCancel} lịch hẹn khám hoặc lịch chăm sóc chưa làm`,
     );
     actions.push('hủy các lịch đó');
+  }
+  if (effects.closeIncidents && impact.openIncidents > 0) {
+    facts.push(`${impact.openIncidents} sự cố đang mở`);
+    actions.push('đóng các sự cố đó');
   }
   if (effects.reactivateFromTransfer) {
     actions.push(

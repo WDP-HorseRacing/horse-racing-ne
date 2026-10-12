@@ -410,6 +410,7 @@ describe('horse.policy', () => {
       clearBarn: false,
       releaseTrainingLock: false,
       settleMedicalWork: false,
+      closeIncidents: false,
       resetHealth: false,
       reactivateFromTransfer: false,
     };
@@ -419,6 +420,7 @@ describe('horse.policy', () => {
       clearBarn: true,
       releaseTrainingLock: true,
       settleMedicalWork: true,
+      closeIncidents: true,
     };
 
     it('retires an ACTIVE horse by cancelling training and withdrawing registrations only', () => {
@@ -815,6 +817,7 @@ describe('horse.policy', () => {
       invalidOwnerName: null,
       examRequestsToDismiss: 0,
       careSchedulesToCancel: 0,
+      openIncidents: 0,
     };
 
     it('lists the facts and the actions of a retirement', () => {
@@ -855,6 +858,30 @@ describe('horse.policy', () => {
         ),
       ).toBe(
         'Winx đang có 2 yêu cầu khám đang chờ, 1 lịch hẹn khám hoặc lịch chăm sóc chưa làm. Nếu chuyển nhượng sẽ bỏ qua yêu cầu khám, hủy các lịch đó.',
+      );
+    });
+
+    it('mentions the open incidents closed by a death', () => {
+      expect(
+        lifecycleImpactSummary(
+          'Winx',
+          HorseLifecycleStatus.DECEASED,
+          lifecycleSideEffects(
+            HorseLifecycleStatus.RETIRED,
+            HorseLifecycleStatus.DECEASED,
+          ),
+          {
+            ...impact,
+            stallCode: null,
+            groomName: null,
+            barnName: null,
+            activeClasses: 0,
+            hasActiveTrainingLock: false,
+            openIncidents: 2,
+          },
+        ),
+      ).toMatch(
+        /^Winx đang có 2 sự cố đang mở\. Nếu .* sẽ đóng các sự cố đó\.$/,
       );
     });
 

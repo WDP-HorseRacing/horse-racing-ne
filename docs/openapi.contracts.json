@@ -10634,6 +10634,10 @@
             "type": "number",
             "description": "Số lịch hẹn khám định kỳ và lịch chăm sóc chưa làm sẽ bị hủy (chuyển nhượng)"
           },
+          "incidentsClosed": {
+            "type": "number",
+            "description": "Số sự cố tại chuồng đang mở sẽ tự đóng (chuyển nhượng, ghi nhận đã mất)"
+          },
           "healthResetTo": {
             "type": "string",
             "enum": [
@@ -10670,6 +10674,7 @@
           "trainingLockReleased",
           "examRequestsDismissed",
           "careSchedulesCancelled",
+          "incidentsClosed",
           "pendingBarnAfter"
         ]
       },
@@ -14525,6 +14530,10 @@
               }
             ]
           },
+          "resolvedBySystem": {
+            "type": "boolean",
+            "description": "True khi hệ thống tự đóng (ví dụ ngựa chuyển nhượng hoặc đã mất)"
+          },
           "resolvedAt": {
             "type": "object",
             "format": "date-time",
@@ -14553,6 +14562,7 @@
           "urgent",
           "status",
           "reporter",
+          "resolvedBySystem",
           "createdAt"
         ]
       },

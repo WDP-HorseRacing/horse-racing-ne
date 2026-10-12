@@ -114,6 +114,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 8. Trạng thái sự cố và trạng thái yêu cầu khám độc lập; xem sự cố thì thấy kèm trạng thái yêu cầu khám (chỉ đọc).
    Sự cố không tự lưu mức khẩn: ô "Khẩn" lúc báo chỉ quyết có tạo yêu cầu khám khẩn ngay hay không. Mức khẩn hiện tại (`urgent` trong response) lấy theo yêu cầu khám của sự cố; chưa có yêu cầu khám thì không khẩn.
 9. Groom không còn gửi yêu cầu khám trực tiếp; mọi yêu cầu từ Groom đi qua sự cố.
+10. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction hệ thống tự đóng mọi sự cố còn mở của ngựa, kết quả "Ngựa đã chuyển nhượng" hoặc "Ngựa đã mất", không ghi người đóng (`resolvedBySystem = true`). Xem trước đổi vòng đời có `incidentsClosed` và câu tóm tắt nêu số sự cố đang mở.
 
 ### 7. Màn Hôm nay của Groom
 

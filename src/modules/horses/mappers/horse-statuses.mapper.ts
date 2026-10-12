@@ -64,6 +64,7 @@ export function toLifecyclePreviewResponse({
     careSchedulesCancelled: effects.settleMedicalWork
       ? impact.careSchedulesToCancel
       : 0,
+    incidentsClosed: effects.closeIncidents ? impact.openIncidents : 0,
     healthResetTo: effects.resetHealth
       ? HorseHealthStatus.UNDER_OBSERVATION
       : null,

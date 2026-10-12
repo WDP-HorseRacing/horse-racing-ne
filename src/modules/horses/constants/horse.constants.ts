@@ -182,6 +182,16 @@ export const READ_ONLY_LIFECYCLE_STATUSES: readonly ReadOnlyLifecycleStatus[] =
 export const DECEASED_LOCK_RELEASE_CONCLUSION = 'Gỡ do ngựa mất';
 
 /**
+ * Kết quả xử lý ghi vào sự cố tại chuồng khi hệ thống tự đóng do ngựa chuyển nhượng.
+ */
+export const TRANSFER_INCIDENT_RESOLUTION = 'Ngựa đã chuyển nhượng';
+
+/**
+ * Kết quả xử lý ghi vào sự cố tại chuồng khi hệ thống tự đóng do ngựa mất.
+ */
+export const DECEASED_INCIDENT_RESOLUTION = 'Ngựa đã mất';
+
+/**
  * Câu chặn thao tác ghi trên ngựa đã chuyển nhượng.
  */
 export const TRANSFERRED_HORSE_READ_ONLY_MESSAGE =
