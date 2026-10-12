@@ -72,13 +72,17 @@ export class BarnsService {
    * - Ngựa chờ xếp ô: ngựa thuộc khu (horses.barn_id), chưa xóa mềm, lifecycle khác TRANSFERRED và không có phân công ô đang mở.
    * - Số chỗ còn nhận = ô trống − ngựa chờ xếp ô, không nhỏ hơn 0.
    * - hasActiveHeadTrainer: Head Trainer phụ trách còn ACTIVE và còn vai trò HEAD_TRAINER (điều kiện để xếp ngựa vào khu).
+   * - Head Trainer (không kiêm Club Manager, Veterinarian) chỉ thấy các khu mình phụ trách.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @returns Promise chứa danh sách khu, sắp theo tên
    */
   async list(actor: Actor): Promise<BarnListItemDto[]> {
-    await currentUserForActor(this.dataSource.manager, actor);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const barns = await this.barnRepository.find({
+      ...(this.access.isBarnScopedTrainer(actor) && {
+        where: { headTrainerId: caller.id },
+      }),
       relations: { headTrainer: true },
       order: { name: 'ASC' },
     });

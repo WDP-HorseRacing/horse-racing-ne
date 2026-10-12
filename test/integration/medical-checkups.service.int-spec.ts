@@ -180,6 +180,10 @@ describe('MedicalCheckupsService (Postgres)', () => {
       await expect(
         names({ barnId: east, healthStatus: HorseHealthStatus.INJURED }),
       ).resolves.toEqual(['East injured']);
+      await expect(names({ barnIds: [west] })).resolves.toEqual([
+        'West injured',
+      ]);
+      await expect(names({ barnIds: [] })).resolves.toEqual([]);
     });
 
     it('takes the latest visit that was not voided, on the club calendar', async () => {

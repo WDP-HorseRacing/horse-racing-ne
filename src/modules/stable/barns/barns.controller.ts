@@ -45,7 +45,7 @@ export class BarnsController {
   @ApiOperation({
     summary: 'List barns of the club with their head trainer',
     description:
-      'Mỗi khu kèm tên Head Trainer phụ trách, availableStallCount (số ô trống trừ số ngựa của khu đang chờ xếp ô, không âm; bằng 0 là không xếp thêm ngựa được) và pendingStallHorseCount (số ngựa của khu chưa xóa, chưa chuyển nhượng, chưa có ô).',
+      'Mỗi khu kèm tên Head Trainer phụ trách, availableStallCount (số ô trống trừ số ngựa của khu đang chờ xếp ô, không âm; bằng 0 là không xếp thêm ngựa được) và pendingStallHorseCount (số ngựa của khu chưa xóa, chưa chuyển nhượng, chưa có ô). Head Trainer chỉ thấy các khu mình phụ trách.',
   })
   @ApiOkResponse({ type: [BarnListItemDto] })
   list(@CurrentUser() actor: Actor): Promise<BarnListItemDto[]> {

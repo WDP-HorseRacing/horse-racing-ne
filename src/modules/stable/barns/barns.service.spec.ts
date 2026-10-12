@@ -292,6 +292,38 @@ describe('BarnsService', () => {
     });
   });
 
+  describe('list scope', () => {
+    beforeEach(() => {
+      manager.findOne.mockResolvedValue({
+        id: 'ht-1',
+        status: UserStatus.ACTIVE,
+        role: UserRole.HEAD_TRAINER,
+      });
+      barnRepository.find.mockResolvedValue([]);
+      manager.query.mockResolvedValue([]);
+    });
+
+    it('lists only the barns a head trainer runs', async () => {
+      await service.list({ sub: 'kc-ht', roles: [UserRole.HEAD_TRAINER] });
+      expect(barnRepository.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { headTrainerId: 'ht-1' } }),
+      );
+    });
+
+    it.each([
+      [[UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER]],
+      [[UserRole.HEAD_TRAINER, UserRole.VETERINARIAN]],
+      [[UserRole.VETERINARIAN]],
+      [[UserRole.GROOM]],
+    ])('lists every barn for %p', async (roles) => {
+      await service.list({ sub: 'kc-x', roles });
+      const [[options]] = barnRepository.find.mock.calls as [
+        [{ where?: unknown }],
+      ];
+      expect(options.where).toBeUndefined();
+    });
+  });
+
   describe('Club Manager writes', () => {
     const actor: Actor = { sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] };
     const clubManager = {

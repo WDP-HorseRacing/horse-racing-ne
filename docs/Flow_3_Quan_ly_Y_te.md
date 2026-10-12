@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 09/10/2026
+> Cập nhật: 12/10/2026
 
 ## I. Những main feature liên quan
 
@@ -167,7 +167,7 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
 |---|---|---|---|
 | VETERINARIAN | Xem | Toàn câu lạc bộ | Vai trò chính sử dụng màn hình này. |
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | Xem để nắm tình hình, không thao tác y tế. |
-| HEAD TRAINER | Xem | Toàn câu lạc bộ | Dùng để biết con nào không tập được. |
+| HEAD TRAINER | Xem | Khu mình phụ trách | Dùng để biết con nào không tập được. Chọn khu khác: 403. |
 | GROOM | Không | | Xem trạng thái sức khỏe trong hồ sơ ngựa (F1.3). |
 | HORSE OWNER | Không | | Xem phần của ngựa mình tại F3.10. |
 

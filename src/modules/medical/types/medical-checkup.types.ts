@@ -20,6 +20,7 @@ export interface HorseCheckupAnchorRow extends CheckupAnchors {
 export interface HerdFilter {
   horseIds?: string[];
   barnId?: string;
+  barnIds?: string[];
   healthStatus?: HorseHealthStatus;
 }
 

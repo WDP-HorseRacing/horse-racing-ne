@@ -1,7 +1,9 @@
+import { ForbiddenException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { StableAccessService } from '../../stable/shared/stable-access.service';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';
@@ -24,9 +26,21 @@ describe('MedicalDashboardService', () => {
   let checkups: { checkupItemsFor: jest.Mock };
   let dashboard: { openCases: jest.Mock };
   let requests: { find: jest.Mock };
+  let stableAccess: {
+    isBarnScopedTrainer: jest.Mock;
+    trainerBarnIds: jest.Mock;
+  };
   let service: MedicalDashboardService;
 
   beforeEach(() => {
+    stableAccess = {
+      isBarnScopedTrainer: jest.fn(
+        (actor: { roles: UserRole[] }) =>
+          actor.roles.includes(UserRole.HEAD_TRAINER) &&
+          !actor.roles.includes(UserRole.CLUB_MANAGER),
+      ),
+      trainerBarnIds: jest.fn().mockResolvedValue(['b1', 'b3']),
+    };
     shared = {
       herdCheckupAnchors: jest
         .fn()
@@ -55,6 +69,7 @@ describe('MedicalDashboardService', () => {
       { ...shared, ...checkups } as unknown as MedicalCheckupsService,
       dashboard as unknown as MedicalDashboardRepository,
       { manager: requests } as unknown as DataSource,
+      stableAccess as unknown as StableAccessService,
     );
   });
 
@@ -123,5 +138,38 @@ describe('MedicalDashboardService', () => {
     );
     expect(requests.find).not.toHaveBeenCalled();
     expect(result.pendingRequests).toEqual([]);
+  });
+
+  describe('head trainer scope', () => {
+    const trainer = { sub: 'kc-ht', roles: [UserRole.HEAD_TRAINER] };
+
+    it('shows only the barns the head trainer runs', async () => {
+      await service.get(trainer, {});
+      expect(stableAccess.trainerBarnIds).toHaveBeenCalledWith(requests, 'u1');
+      expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({
+        barnIds: ['b1', 'b3'],
+      });
+    });
+
+    it('accepts one of their own barns', async () => {
+      await service.get(trainer, { barnId: 'b3' });
+      expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({ barnId: 'b3' });
+    });
+
+    it('rejects another barn with 403 before reading the herd', async () => {
+      await expect(service.get(trainer, { barnId: 'b2' })).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(shared.herdCheckupAnchors).not.toHaveBeenCalled();
+    });
+
+    it('does not limit a head trainer who is also club manager', async () => {
+      await service.get(
+        { sub: 'kc-x', roles: [UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER] },
+        {},
+      );
+      expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({});
+      expect(stableAccess.trainerBarnIds).not.toHaveBeenCalled();
+    });
   });
 });

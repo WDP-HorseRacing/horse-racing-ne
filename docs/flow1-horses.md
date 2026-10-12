@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 09/10/2026
+> Cập nhật: 12/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -115,7 +115,7 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 | Vai trò | Phạm vi xem | Phạm vi thao tác |
 |---|---|---|
 | CLUB MANAGER | Toàn câu lạc bộ, kể cả hồ sơ đã xóa | Toàn câu lạc bộ |
-| HEAD TRAINER | Toàn câu lạc bộ | Ngựa thuộc khu chuồng mình phụ trách |
+| HEAD TRAINER | Toàn câu lạc bộ; danh sách khu chuồng và bảng điều khiển y tế: chỉ khu mình phụ trách (kiêm CLUB MANAGER hoặc VETERINARIAN thì không giới hạn) | Ngựa thuộc khu chuồng mình phụ trách |
 | VETERINARIAN | Toàn câu lạc bộ | Toàn câu lạc bộ (nội dung y tế, thuộc Flow 3) |
 | GROOM | Toàn câu lạc bộ | Ngựa được phân công phụ trách |
 | HORSE OWNER | Ngựa mình sở hữu | Không thao tác |

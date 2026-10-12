@@ -22,7 +22,7 @@ export class MedicalDashboardController {
   @ApiOperation({
     summary: 'Medical dashboard',
     description:
-      'Bốn khối: sơ đồ đàn theo sức khỏe, lịch khám đến hạn/quá hạn, bệnh án đang mở, yêu cầu khám đang chờ. Groom và Horse Owner: 403.',
+      'Bốn khối: sơ đồ đàn theo sức khỏe, lịch khám đến hạn/quá hạn, bệnh án đang mở, yêu cầu khám đang chờ. Head Trainer chỉ xem các khu mình phụ trách: không chọn khu thì lấy mọi khu mình phụ trách, chọn khu khác thì 403. Groom và Horse Owner: 403.',
   })
   @ApiOkResponse({ type: MedicalDashboardResponseDto })
   get(

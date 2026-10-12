@@ -21,6 +21,7 @@ import {
   assertCapacityFitsStalls,
   assertFreeStallRemovable,
   assertHorseHasBarn,
+  assertBarnInTrainerScope,
   assertHorseInTrainerBarn,
   assertHorseLifecycleWritable,
   assertManualStallStatusChange,
@@ -118,6 +119,13 @@ describe('stable.policy', () => {
     it('rejects a horse outside the trainer barn with 403', () => {
       expect(() => assertHorseInTrainerBarn(false)).toThrow(ForbiddenException);
       expect(() => assertHorseInTrainerBarn(true)).not.toThrow();
+    });
+
+    it('lets a head trainer pick only a barn they run', () => {
+      expect(() => assertBarnInTrainerScope(['b1', 'b2'], 'b3')).toThrow(
+        ForbiddenException,
+      );
+      expect(() => assertBarnInTrainerScope(['b1', 'b2'], 'b2')).not.toThrow();
     });
 
     it.each([

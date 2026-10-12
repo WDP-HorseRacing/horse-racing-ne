@@ -79,7 +79,7 @@ export class MedicalCheckupsService {
    * - Mọi ngày đổi sang lịch câu lạc bộ dạng YYYY-MM-DD
    * - Kèm ô chuồng đang xếp (stall_assignments còn mở)
    *
-   * @param filter Giới hạn theo danh sách ngựa, khu, trạng thái sức khỏe; bỏ trống để lấy cả đàn
+   * @param filter Giới hạn theo danh sách ngựa, một khu, danh sách khu (rỗng thì không có ngựa nào), trạng thái sức khỏe; bỏ trống để lấy cả đàn
    * @param manager EntityManager dùng để query, mặc định là manager của DataSource
    * @returns Promise trả về từng con ngựa kèm mốc tính hạn, xếp theo tên
    */
@@ -102,6 +102,10 @@ export class MedicalCheckupsService {
     if (filter.barnId) {
       params.push(filter.barnId);
       conditions.push(`AND h.barn_id = $${params.length}`);
+    }
+    if (filter.barnIds) {
+      params.push(filter.barnIds);
+      conditions.push(`AND h.barn_id = ANY($${params.length}::uuid[])`);
     }
     if (filter.healthStatus) {
       params.push(filter.healthStatus);
