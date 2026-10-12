@@ -52,8 +52,7 @@ async function responseOf(
 describe('field-errors', () => {
   const invalid = { name: 1, age: 0, extra: 'x', items: [{ code: '' }, {}] };
 
-  it('keeps the same message list as the default ValidationPipe', async () => {
-    const defaults = await responseOf(new ValidationPipe(pipeOptions), invalid);
+  it('keeps the order of the default ValidationPipe with Vietnamese messages', async () => {
     const custom = await responseOf(
       new ValidationPipe({
         ...pipeOptions,
@@ -61,7 +60,14 @@ describe('field-errors', () => {
       }),
       invalid,
     );
-    expect(custom.message).toEqual(defaults.message);
+    expect(custom.message).toEqual([
+      'Không nhận ô extra',
+      'name phải là chuỗi',
+      'age không được nhỏ hơn 1',
+      'items.0.code không được để trống',
+      'items.1.code không được để trống',
+      'items.1.code phải là chuỗi',
+    ]);
   });
 
   it('lists one error per failed constraint with a dotted field path', async () => {

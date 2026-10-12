@@ -143,14 +143,16 @@ export class KeycloakUserService {
         (status >= 200 && status < 300) || status === 409,
     });
     if (response.status === 409)
-      throw new ConflictException('Keycloak user already exists');
+      throw new ConflictException('Tài khoản đã tồn tại trên máy chủ xác thực');
 
     const location = response.headers.location as string | undefined;
     if (location) return location.split('/').pop() ?? '';
 
     const found = await this.getUserByUsername(params.username);
     if (!found?.id)
-      throw new BadGatewayException('Keycloak did not return the new user id');
+      throw new BadGatewayException(
+        'Máy chủ xác thực không trả về mã tài khoản mới',
+      );
     return found.id;
   }
 

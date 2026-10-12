@@ -3,6 +3,7 @@ import {
   ConflictException,
   ValidationError,
 } from '@nestjs/common';
+import { translateConstraint } from './validation-messages';
 
 /**
  * Một lỗi gắn với một ô của request body
@@ -44,7 +45,7 @@ export function fieldConflict(
  * Trải phẳng lỗi class-validator thành danh sách lỗi theo ô
  *
  * - Ô lồng nhau: `field` nối bằng dấu chấm (vd `items.0.code`)
- * - Câu lỗi và thứ tự giống hệt ValidationPipe mặc định
+ * - Thứ tự giống ValidationPipe mặc định; câu mặc định của class-validator được dịch sang tiếng Việt
  *
  * @param errors Lỗi class-validator của một object
  * @param parentPath Đường dẫn của object cha, rỗng ở cấp ngoài cùng
@@ -87,15 +88,18 @@ export function validationExceptionFactory(
  *
  * @param error Lỗi class-validator của một ô
  * @param parentPath Đường dẫn của object cha, rỗng ở cấp ngoài cùng
- * @returns Mỗi constraint một lỗi, câu lỗi có tiền tố đường dẫn cha như ValidationPipe mặc định
+ * @returns Mỗi constraint một lỗi, câu lỗi đã dịch sang tiếng Việt (nếu là câu mặc định) và có tiền tố đường dẫn cha như ValidationPipe mặc định
  */
 function constraintErrors(
   error: ValidationError,
   parentPath: string,
 ): FieldError[] {
   const field = parentPath ? `${parentPath}.${error.property}` : error.property;
-  return Object.values(error.constraints ?? {}).map((constraint) => ({
-    field,
-    message: parentPath ? `${parentPath}.${constraint}` : constraint,
-  }));
+  return Object.entries(error.constraints ?? {}).map(([name, text]) => {
+    const message = translateConstraint(name, text);
+    return {
+      field,
+      message: parentPath ? `${parentPath}.${message}` : message,
+    };
+  });
 }

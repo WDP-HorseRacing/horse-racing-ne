@@ -50,7 +50,7 @@ export class KeycloakConfig {
     const value = this.config.get<string>('KEYCLOAK_REDIRECT_URI');
     if (!value) {
       throw new ServiceUnavailableException(
-        'KEYCLOAK_REDIRECT_URI chua duoc cau hinh',
+        'KEYCLOAK_REDIRECT_URI chưa được cấu hình',
       );
     }
     return value;

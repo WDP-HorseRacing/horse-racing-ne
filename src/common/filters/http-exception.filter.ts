@@ -9,6 +9,7 @@ import {
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { translatePipeMessage } from '../utils/validation-messages';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -29,10 +30,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? body.message
         : exception instanceof HttpException
           ? exception.message
-          : 'Internal server error';
+          : 'Lỗi hệ thống, vui lòng thử lại sau';
     const message = Array.isArray(rawMessage)
-      ? 'Validation failed'
-      : String(rawMessage);
+      ? 'Dữ liệu không hợp lệ'
+      : translatePipeMessage(String(rawMessage));
     if (!(exception instanceof HttpException)) {
       this.logger.error(
         `Unhandled request error; correlationId=${request.correlationId ?? 'unknown'}`,

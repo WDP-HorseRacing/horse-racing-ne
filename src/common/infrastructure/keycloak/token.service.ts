@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import type { AxiosRequestConfig } from 'axios';
 import { KeycloakConfig } from './keycloak.config';
-import { KeycloakHttpService } from './keycloak-http.service';
+import {
+  keycloakFailureMessage,
+  KeycloakHttpService,
+} from './keycloak-http.service';
 import { KeycloakJwksService } from './jwks.service';
 import type {
   KeycloakAuthorizationCodeGrantParams,
@@ -48,7 +51,7 @@ export class KeycloakTokenService {
     } catch (error) {
       if (
         error instanceof BadGatewayException &&
-        error.message === 'Keycloak request failed with status 401'
+        error.message === keycloakFailureMessage(401)
       ) {
         throw new UnauthorizedException(
           'Tài khoản hoặc mật khẩu không chính xác!',

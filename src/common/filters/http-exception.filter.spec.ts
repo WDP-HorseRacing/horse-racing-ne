@@ -38,7 +38,7 @@ describe('HttpExceptionFilter', () => {
       }),
     );
     expect(body).toMatchObject({
-      message: 'Validation failed',
+      message: 'Dữ liệu không hợp lệ',
       details: ['name must be a string'],
       errors: [{ field: 'name', message: 'name must be a string' }],
     });
@@ -88,10 +88,17 @@ describe('HttpExceptionFilter', () => {
     });
   });
 
+  it('translates the built-in pipe messages', () => {
+    expect(
+      bodyFor(new BadRequestException('Validation failed (uuid is expected)'))
+        .message,
+    ).toBe('Mã định danh trên đường dẫn phải là UUID');
+  });
+
   it('keeps unknown errors as 500', () => {
     expect(bodyFor(new Error('boom'))).toMatchObject({
       code: 500,
-      message: 'Internal server error',
+      message: 'Lỗi hệ thống, vui lòng thử lại sau',
     });
   });
 });
