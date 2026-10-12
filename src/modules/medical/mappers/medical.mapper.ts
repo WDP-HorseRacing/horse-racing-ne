@@ -183,6 +183,7 @@ export function toExamRequestResponse(
     handledAt: request.handledAt,
     medicalRecordId: request.medicalRecordId,
     alertType: request.alertType,
+    incidentId: request.incidentId,
     createdAt: request.createdAt,
   };
 }

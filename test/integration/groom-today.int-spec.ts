@@ -54,7 +54,13 @@ describe('Groom today view (Postgres)', () => {
   const run = async (
     classId: string,
     horseId: string,
-    options: { start: Date; status?: string; groomId?: string; name?: string },
+    options: {
+      start: Date;
+      status?: string;
+      groomId?: string;
+      name?: string;
+      runStatus?: string;
+    },
   ) => {
     const sessionId = randomUUID();
     await dataSource.query(
@@ -75,8 +81,14 @@ describe('Groom today view (Postgres)', () => {
     );
     await dataSource.query(
       `INSERT INTO session_participants (version, session_id, horse_id, horse_enrollment_id, status, assigned_groom_id)
-       VALUES (1, $1, $2, $3, 'PLANNED', $4)`,
-      [sessionId, horseId, enrollment.id, options.groomId ?? groomId],
+       VALUES (1, $1, $2, $3, $4, $5)`,
+      [
+        sessionId,
+        horseId,
+        enrollment.id,
+        options.runStatus ?? 'PLANNED',
+        options.groomId ?? groomId,
+      ],
     );
   };
 
@@ -208,6 +220,38 @@ describe('Groom today view (Postgres)', () => {
       'Chiều',
     ]);
     expect(second.trainingRuns).toEqual([]);
+  });
+
+  it('hides runs that were cancelled, missed or skipped', async () => {
+    const { classId } = await seed.trainingClass(trainerId);
+    await dataSource.query(
+      `INSERT INTO horse_enrollments (version, class_id, horse_id, status, enrolled_at)
+       VALUES (1, $1, $2, 'ACTIVE', now())`,
+      [classId, gio],
+    );
+    const statuses = [
+      'COMPLETED',
+      'ABSENT',
+      'SKIPPED',
+      'INELIGIBLE',
+      'CANCELLED_BY_LOCK',
+      'CANCELLED',
+      'ONGOING',
+    ];
+    for (const [index, status] of statuses.entries()) {
+      await run(classId, gio, {
+        start: clubDateTimeToInstant(today, `0${index + 1}:00`),
+        name: status,
+        runStatus: status,
+      });
+    }
+
+    const [first] = (await service.today(groom)).horses;
+
+    expect(first.trainingRuns.map((item) => item.sessionName)).toEqual([
+      'COMPLETED',
+      'ONGOING',
+    ]);
   });
 
   it('shows open care schedules due by the end of today, flagging overdue ones', async () => {

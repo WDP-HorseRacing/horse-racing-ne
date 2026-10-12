@@ -1,6 +1,6 @@
 # Flow 4 — Chăm sóc chuồng trại và dinh dưỡng hằng ngày
 
-> Cập nhật: 10/10/2026
+> Cập nhật: 12/10/2026
 
 ## I. Đề bài liên quan
 
@@ -122,7 +122,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 - Khu, ô chuồng hiện tại.
 - Checklist hôm nay (sinh nếu chưa có, luật 5.2).
 - Khẩu phần `ACTIVE` theo bữa.
-- Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu; bỏ buổi nháp và buổi đã hủy.
+- Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu; bỏ buổi nháp và buổi đã hủy, bỏ lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện.
 - Lịch chăm sóc giao cho Groom (Flow 3) đến hạn tới hết hôm nay mà chưa làm, kể cả lịch quá hạn (đánh dấu `overdue`).
 
 Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
@@ -178,7 +178,7 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | GET | `/horses/:horseId/care-tasks` | CM, HT, GROOM | Việc riêng của ngựa |
 | POST | `/horses/:horseId/care-tasks` | HT | Gắn `{ taskTypeId, fromDate, toDate, note? }` |
 | DELETE | `/horse-care-tasks/:id` | HT | Gỡ việc riêng (luật 4.4) |
-| GET | `/horses/:horseId/checklists` | CM, HT, GROOM | Checklist theo ngày `?from&to` (mặc định hôm nay, tối đa 31 ngày) |
+| GET | `/horses/:horseId/checklists` | CM, HT, GROOM | Checklist theo ngày `?from&to` (YYYY-MM-DD; thiếu `from` là hôm nay, thiếu `to` thì bằng `from`; tối đa 31 ngày) |
 | PATCH | `/checklist-items/:id` | GROOM | Tick, gỡ tick `{ done, note? }` |
 | GET | `/grooms/me/today` | GROOM | Màn Hôm nay (luật 7) |
 | POST | `/incidents` | GROOM | Báo sự cố `{ horseId, description, urgent?, photoMediaId? }` |

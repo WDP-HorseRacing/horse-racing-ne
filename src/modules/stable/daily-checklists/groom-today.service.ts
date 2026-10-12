@@ -9,6 +9,7 @@ import {
 import { CareScheduleStatus } from '../../medical/constants/care-schedule.enum';
 import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
 import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
+import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../../training/enums/training-session-status.enum';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { FeedingPlanStatus } from '../constants/feeding-plan-status.enum';
@@ -38,6 +39,14 @@ const PLAN_RELATIONS = {
 const HIDDEN_SESSION_STATUSES = [
   TrainingSessionStatus.DRAFT,
   TrainingSessionStatus.CANCELLED,
+];
+
+const VISIBLE_RUN_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.PRESENT,
+  SessionParticipantStatus.READY,
+  SessionParticipantStatus.ONGOING,
+  SessionParticipantStatus.COMPLETED,
 ];
 
 /**
@@ -136,7 +145,7 @@ export class GroomTodayService {
   }
 
   /**
-   * Lấy các lượt tập Groom được giao dắt có buổi bắt đầu trong ngày, bỏ buổi nháp và buổi đã hủy
+   * Lấy các lượt tập Groom được giao dắt có buổi bắt đầu trong ngày, bỏ buổi nháp, buổi đã hủy và lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện
    *
    * @param manager EntityManager dùng để query
    * @param groomId UUID của Groom
@@ -162,6 +171,9 @@ export class GroomTodayService {
       .andWhere('session.scheduledStartAt < :dayEnd', { dayEnd })
       .andWhere('session.status NOT IN (:...hidden)', {
         hidden: HIDDEN_SESSION_STATUSES,
+      })
+      .andWhere('participant.status IN (:...visible)', {
+        visible: VISIBLE_RUN_STATUSES,
       })
       .orderBy('session.scheduledStartAt', 'ASC')
       .getMany();

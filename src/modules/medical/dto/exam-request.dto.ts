@@ -137,6 +137,14 @@ export class ExamRequestResponseDto {
   @ApiProperty({ enum: HorseMeasurementAlert, nullable: true })
   alertType!: HorseMeasurementAlert | null;
 
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: 'Sự cố tại chuồng sinh ra yêu cầu này',
+  })
+  incidentId!: string | null;
+
   @ApiProperty({ format: 'date-time' })
   createdAt!: Date;
 }

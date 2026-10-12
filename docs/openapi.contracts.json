@@ -1454,7 +1454,7 @@
     },
     "/api/v1/media/upload-requests": {
       "post": {
-        "description": "Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only. TRIAL_VIDEO (video/mp4, video/webm, video/quicktime, up to 200 MB): HEAD_TRAINER only. Other roles get 403.",
+        "description": "Allowed roles depend on purpose. HORSE_PHOTO: CLUB_MANAGER only. TRIAL_VIDEO (video/mp4, video/webm, video/quicktime, up to 200 MB): HEAD_TRAINER only. INCIDENT_PHOTO (image/jpeg, image/png, image/webp, up to 10 MB): GROOM only. Other roles get 403.",
         "operationId": "MediaController_requestUpload",
         "parameters": [],
         "requestBody": {
@@ -11188,6 +11188,12 @@
             ],
             "nullable": true
           },
+          "incidentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Sự cố tại chuồng sinh ra yêu cầu này"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -11209,6 +11215,7 @@
           "handledAt",
           "medicalRecordId",
           "alertType",
+          "incidentId",
           "createdAt"
         ]
       },
