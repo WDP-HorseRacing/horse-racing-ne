@@ -145,7 +145,14 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     expect(emitToUser).toHaveBeenCalledWith(
       trainer,
       'performance.metrics',
-      expect.objectContaining({ sessionParticipantId: participantId }),
+      expect.objectContaining({
+        sessionParticipantId: participantId,
+        points: [
+          expect.objectContaining({ speedMps: 12 }),
+          expect.objectContaining({ speedMps: 12 }),
+          expect.objectContaining({ speedMps: 19 }),
+        ],
+      }),
     );
     expect(await outboxRows()).toEqual([]);
   });
@@ -235,7 +242,7 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
       const rows = await service.list(manager, participantId);
 
       expect(rows.map((row) => row.heartRateBpm)).toEqual([150, 160]);
-      expect(rows[0].speedMps).toBe('12.000');
+      expect(rows[0].speedMps).toBe(12);
     });
 
     it('lists only the newest points, oldest first, when the participant has more than the limit', async () => {
@@ -292,8 +299,8 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
         count: 3,
         avgHeartRateBpm: 207,
         maxHeartRateBpm: 245,
-        avgSpeedMps: '12.000',
-        maxSpeedMps: '14.000',
+        avgSpeedMps: 12,
+        maxSpeedMps: 14,
         warningCount: 1,
         criticalCount: 1,
         firstRecordedAt: new Date(Date.UTC(2026, 9, 10, 1, 0, 0)),

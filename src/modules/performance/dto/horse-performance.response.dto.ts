@@ -8,8 +8,8 @@ export class PerformanceMetricPointDto {
   @ApiProperty()
   heartRateBpm!: number;
 
-  @ApiProperty()
-  speedMps!: string;
+  @ApiProperty({ type: Number })
+  speedMps!: number;
 
   @ApiProperty({ enum: MetricAlertLevel })
   alertLevel!: MetricAlertLevel;
@@ -56,11 +56,17 @@ export class SessionPerformanceSummaryDto {
   @ApiProperty({ description: 'Nhịp tim cao nhất trong buổi (bpm)' })
   maxHeartRateBpm!: number;
 
-  @ApiProperty({ description: 'Tốc độ trung bình trong buổi (m/s)' })
-  avgSpeedMps!: string;
+  @ApiProperty({
+    type: Number,
+    description: 'Tốc độ trung bình trong buổi (m/s)',
+  })
+  avgSpeedMps!: number;
 
-  @ApiProperty({ description: 'Tốc độ cao nhất trong buổi (m/s)' })
-  maxSpeedMps!: string;
+  @ApiProperty({
+    type: Number,
+    description: 'Tốc độ cao nhất trong buổi (m/s)',
+  })
+  maxSpeedMps!: number;
 
   @ApiProperty({ description: 'Số điểm đo có alertLevel khác NORMAL' })
   alertCount!: number;
@@ -86,16 +92,18 @@ export class ParticipantPerformanceSummaryDto {
   maxHeartRateBpm!: number | null;
 
   @ApiPropertyOptional({
+    type: Number,
     nullable: true,
     description: 'Tốc độ trung bình (m/s), null khi chưa có điểm đo',
   })
-  avgSpeedMps!: string | null;
+  avgSpeedMps!: number | null;
 
   @ApiPropertyOptional({
+    type: Number,
     nullable: true,
     description: 'Tốc độ cao nhất (m/s), null khi chưa có điểm đo',
   })
-  maxSpeedMps!: string | null;
+  maxSpeedMps!: number | null;
 
   @ApiProperty({ description: 'Số điểm đo mức WARNING' })
   warningCount!: number;

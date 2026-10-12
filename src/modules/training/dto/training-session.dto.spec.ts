@@ -63,6 +63,8 @@ describe('CreateTrainingSessionDto', () => {
   it.each([
     ['null', null, []],
     ['positive', 62000, []],
+    ['one hour', 3_600_000, []],
+    ['over one hour', 3_600_001, ['targetTimeMs']],
     ['zero', 0, ['targetTimeMs']],
     ['fractional', 1.5, ['targetTimeMs']],
   ])('validates a %s target time', async (_case, targetTimeMs, fields) => {

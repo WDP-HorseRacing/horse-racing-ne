@@ -290,6 +290,7 @@ describe('HorseMeasurementsService', () => {
       expect(result[0].alerts).toEqual([
         expect.objectContaining({ alert: HorseMeasurementAlert.FEVER }),
       ]);
+      expect(result[0].value).toBe(39);
     });
 
     it('fails the transaction when the alert cannot be written to the outbox', async () => {

@@ -9048,8 +9048,8 @@
             ]
           },
           "value": {
-            "type": "string",
-            "example": "512.50"
+            "type": "number",
+            "example": 512.5
           },
           "unit": {
             "type": "string",
@@ -9240,8 +9240,8 @@
             ]
           },
           "value": {
-            "type": "string",
-            "example": "512.50"
+            "type": "number",
+            "example": 512.5
           },
           "unit": {
             "type": "string",
@@ -9930,8 +9930,8 @@
             ]
           },
           "value": {
-            "type": "string",
-            "example": "512.50"
+            "type": "number",
+            "example": 512.5
           },
           "unit": {
             "type": "string",
@@ -12899,8 +12899,8 @@
             "type": "number"
           },
           "speedMps": {
-            "type": "string",
-            "description": "Tốc độ (m/s), 3 chữ số thập phân"
+            "type": "number",
+            "description": "Tốc độ (m/s), làm tròn tối đa 3 chữ số thập phân"
           },
           "alertLevel": {
             "type": "string",
@@ -13106,7 +13106,7 @@
             "type": "number"
           },
           "speedMps": {
-            "type": "string"
+            "type": "number"
           },
           "alertLevel": {
             "type": "string",
@@ -13146,12 +13146,12 @@
             "description": "Nhịp tim cao nhất (bpm), null khi chưa có điểm đo"
           },
           "avgSpeedMps": {
-            "type": "object",
+            "type": "number",
             "nullable": true,
             "description": "Tốc độ trung bình (m/s), null khi chưa có điểm đo"
           },
           "maxSpeedMps": {
-            "type": "object",
+            "type": "number",
             "nullable": true,
             "description": "Tốc độ cao nhất (m/s), null khi chưa có điểm đo"
           },
@@ -13201,11 +13201,11 @@
             "description": "Nhịp tim cao nhất trong buổi (bpm)"
           },
           "avgSpeedMps": {
-            "type": "string",
+            "type": "number",
             "description": "Tốc độ trung bình trong buổi (m/s)"
           },
           "maxSpeedMps": {
-            "type": "string",
+            "type": "number",
             "description": "Tốc độ cao nhất trong buổi (m/s)"
           },
           "alertCount": {
@@ -13480,7 +13480,7 @@
             "nullable": true
           },
           "timeSeconds": {
-            "type": "string",
+            "type": "number",
             "nullable": true
           }
         },
@@ -14005,7 +14005,7 @@
             "description": "Đơn vị của vật tư"
           },
           "quantity": {
-            "type": "string",
+            "type": "number",
             "description": "Lượng"
           },
           "note": {
@@ -14826,11 +14826,11 @@
             "type": "string"
           },
           "quantityOnHand": {
-            "type": "string",
+            "type": "number",
             "description": "Số tồn hiện tại"
           },
           "reorderThreshold": {
-            "type": "string",
+            "type": "number",
             "description": "Ngưỡng báo thiếu"
           },
           "lowStock": {
@@ -15004,11 +15004,11 @@
             "format": "uuid"
           },
           "delta": {
-            "type": "string",
+            "type": "number",
             "description": "Chênh lệch, âm là giảm"
           },
           "balanceAfter": {
-            "type": "string",
+            "type": "number",
             "description": "Số tồn sau lần đổi"
           },
           "type": {
@@ -15086,7 +15086,7 @@
             "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
           },
           "quantity": {
-            "type": "string"
+            "type": "number"
           },
           "status": {
             "type": "string",
@@ -15306,8 +15306,8 @@
             "type": "number"
           },
           "elapsedMs": {
-            "type": "string",
-            "description": "Thời gian chạy, mili giây (chuỗi số)"
+            "type": "number",
+            "description": "Thời gian chạy, mili giây"
           },
           "notes": {
             "type": "string",
@@ -15517,10 +15517,13 @@
             "format": "uuid"
           },
           "distanceM": {
-            "type": "string"
+            "type": "number",
+            "description": "Cự ly chạy thử (mét)"
           },
           "targetTimeMs": {
-            "type": "object"
+            "type": "number",
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms); null là không có mục tiêu"
           },
           "notes": {
             "type": "object"
@@ -15547,6 +15550,7 @@
           "targetTimeMs": {
             "type": "number",
             "minimum": 1,
+            "maximum": 3600000,
             "nullable": true,
             "description": "Thời gian mục tiêu (ms); null là không có mục tiêu"
           },
@@ -15569,6 +15573,7 @@
           "targetTimeMs": {
             "type": "object",
             "minimum": 1,
+            "maximum": 3600000,
             "nullable": true,
             "description": "Thời gian mục tiêu (ms); gửi null để xóa"
           },
@@ -15598,7 +15603,8 @@
             "type": "number"
           },
           "elapsedMs": {
-            "type": "string"
+            "type": "number",
+            "description": "Thời gian chạy (ms)"
           },
           "notes": {
             "type": "object"
@@ -15640,7 +15646,8 @@
           },
           "elapsedMs": {
             "type": "number",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 3600000
           },
           "notes": {
             "type": "string"
@@ -15916,6 +15923,7 @@
           "targetTimeMs": {
             "type": "number",
             "minimum": 1,
+            "maximum": 3600000,
             "nullable": true,
             "description": "Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu"
           },
@@ -16763,6 +16771,7 @@
           "targetTimeMs": {
             "type": "number",
             "minimum": 1,
+            "maximum": 3600000,
             "nullable": true,
             "description": "Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu"
           }
@@ -17030,6 +17039,7 @@
           "targetTimeMs": {
             "type": "number",
             "minimum": 1,
+            "maximum": 3600000,
             "description": "Thời gian mục tiêu (ms), chỉ dùng cho môn chạy thử"
           }
         },
@@ -17083,6 +17093,7 @@
           "targetTimeMs": {
             "type": "number",
             "minimum": 1,
+            "maximum": 3600000,
             "description": "Thời gian mục tiêu (ms), chỉ dùng cho môn chạy thử"
           }
         }

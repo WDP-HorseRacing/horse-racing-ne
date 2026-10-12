@@ -142,7 +142,7 @@ export class PerformanceMetricsService {
           points: fresh.map((point) => ({
             recordedAt: point.recordedAt.toISOString(),
             heartRateBpm: point.heartRateBpm,
-            speedMps: point.speedMps,
+            speedMps: Number(point.speedMps),
             alertLevel: point.alertLevel,
           })),
         },

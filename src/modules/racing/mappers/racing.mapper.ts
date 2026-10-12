@@ -28,6 +28,9 @@ export function toHorseRaceResultResponse(
     raceStatus: registration.race.status,
     registrationStatus: registration.status,
     placing: registration.placing,
-    timeSeconds: registration.timeSeconds,
+    timeSeconds:
+      registration.timeSeconds === null
+        ? null
+        : Number(registration.timeSeconds),
   };
 }

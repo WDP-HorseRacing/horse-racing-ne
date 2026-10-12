@@ -98,7 +98,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     it('records the opening stock as a count adjustment', async () => {
       const item = await oats(40);
 
-      expect(item.quantityOnHand).toBe('40.00');
+      expect(item.quantityOnHand).toBe(40);
       expect(item.lowStock).toBe(true);
       expect(item.lastCountedAt).not.toBeNull();
       expect(await ledger(item.id)).toEqual([
@@ -109,7 +109,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     it('writes no ledger row when the item starts empty', async () => {
       const item = await oats();
 
-      expect(item.quantityOnHand).toBe('0.00');
+      expect(item.quantityOnHand).toBe(0);
       expect(item.lastCountedAt).toBeNull();
       expect(await ledger(item.id)).toEqual([]);
     });
@@ -127,12 +127,12 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         note: 'Kiểm kê sáng',
       });
 
-      expect(counted.quantityOnHand).toBe('27.50');
+      expect(counted.quantityOnHand).toBe(27.5);
       expect(counted.lastCounter?.id).toBeDefined();
       const movements = await items.movementsOf(groom, item.id, page());
       expect(movements.items[0]).toMatchObject({
-        delta: '-12.50',
-        balanceAfter: '27.50',
+        delta: -12.5,
+        balanceAfter: 27.5,
         type: SupplyStockMovementType.COUNT_ADJUST,
         note: 'Kiểm kê sáng',
       });
@@ -164,7 +164,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         reorderThreshold: 10,
       });
 
-      expect(updated.quantityOnHand).toBe('40.00');
+      expect(updated.quantityOnHand).toBe(40);
       expect(updated.lowStock).toBe(false);
     });
 
@@ -236,12 +236,12 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       });
 
       expect(fulfilled.status).toBe(SupplyRequestStatus.FULFILLED);
-      expect(fulfilled.item.quantityOnHand).toBe('140.00');
+      expect(fulfilled.item.quantityOnHand).toBe(140);
       expect(fulfilled.fulfiller).not.toBeNull();
       const movements = await items.movementsOf(manager, item.id, page());
       expect(movements.items[0]).toMatchObject({
-        delta: '100.00',
-        balanceAfter: '140.00',
+        delta: 100,
+        balanceAfter: 140,
         type: SupplyStockMovementType.RESTOCK,
         requestId: request.id,
       });
@@ -293,7 +293,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         requests.edit(otherGroom, request.id, { quantity: 7 }),
       ).rejects.toBeInstanceOf(ForbiddenException);
       const edited = await requests.edit(groom, request.id, { quantity: 7 });
-      expect(edited.quantity).toBe('7.00');
+      expect(edited.quantity).toBe(7);
 
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.APPROVED,

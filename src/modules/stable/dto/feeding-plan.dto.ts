@@ -159,8 +159,8 @@ export class FeedingPlanItemResponseDto {
   unit!: string;
 
   @Expose()
-  @ApiProperty({ type: String, description: 'Lượng' })
-  quantity!: string;
+  @ApiProperty({ type: Number, description: 'Lượng' })
+  quantity!: number;
 
   @Expose()
   @ApiPropertyOptional({ nullable: true, type: String })

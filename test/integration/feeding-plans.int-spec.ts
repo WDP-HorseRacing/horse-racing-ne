@@ -323,7 +323,7 @@ describe('Feeding plans per horse (Postgres)', () => {
     expect(replaced.meals).toEqual([
       {
         meal: FeedingMeal.NOON,
-        items: [expect.objectContaining({ quantity: '4.00' })],
+        items: [expect.objectContaining({ quantity: 4 })],
       },
     ]);
 

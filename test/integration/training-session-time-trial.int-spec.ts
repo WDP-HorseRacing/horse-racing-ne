@@ -103,8 +103,8 @@ describe('Time trial config of a training session (Postgres)', () => {
       timeTrials.getBySession(trainer, created.id),
     ).resolves.toMatchObject({
       sessionId: created.id,
-      distanceM: '1000.00',
-      targetTimeMs: '62000',
+      distanceM: 1000,
+      targetTimeMs: 62000,
       notes: null,
     });
   });

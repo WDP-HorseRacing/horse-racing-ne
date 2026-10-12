@@ -24,6 +24,6 @@ export class HorseRaceResultResponseDto {
   @ApiPropertyOptional({ type: Number, nullable: true })
   placing!: number | null;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
-  timeSeconds!: string | null;
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  timeSeconds!: number | null;
 }

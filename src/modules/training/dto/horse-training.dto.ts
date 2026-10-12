@@ -49,8 +49,8 @@ export class HorseTrainingTrialResultDto {
   @ApiProperty()
   attemptNo!: number;
 
-  @ApiProperty({ description: 'Thời gian chạy, mili giây (chuỗi số)' })
-  elapsedMs!: string;
+  @ApiProperty({ type: Number, description: 'Thời gian chạy, mili giây' })
+  elapsedMs!: number;
 
   @ApiPropertyOptional({
     nullable: true,

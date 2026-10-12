@@ -34,12 +34,10 @@ export function toSessionPerformanceSummary(
       averageDecimal(String(aggregate.sumHeartRateBpm), aggregate.count, 0),
     ),
     maxHeartRateBpm: aggregate.maxHeartRateBpm,
-    avgSpeedMps: averageDecimal(
-      aggregate.sumSpeedMps,
-      aggregate.count,
-      SPEED_SCALE,
+    avgSpeedMps: Number(
+      averageDecimal(aggregate.sumSpeedMps, aggregate.count, SPEED_SCALE),
     ),
-    maxSpeedMps: roundDecimal(aggregate.maxSpeedMps, SPEED_SCALE),
+    maxSpeedMps: Number(roundDecimal(aggregate.maxSpeedMps, SPEED_SCALE)),
     alertCount: aggregate.alertCount,
   };
 }
@@ -79,12 +77,10 @@ export function toParticipantPerformanceSummary(
       averageDecimal(String(aggregate.sumHeartRateBpm), aggregate.count, 0),
     ),
     maxHeartRateBpm: aggregate.maxHeartRateBpm,
-    avgSpeedMps: averageDecimal(
-      aggregate.sumSpeedMps,
-      aggregate.count,
-      SPEED_SCALE,
+    avgSpeedMps: Number(
+      averageDecimal(aggregate.sumSpeedMps, aggregate.count, SPEED_SCALE),
     ),
-    maxSpeedMps: roundDecimal(aggregate.maxSpeedMps, SPEED_SCALE),
+    maxSpeedMps: Number(roundDecimal(aggregate.maxSpeedMps, SPEED_SCALE)),
     warningCount: aggregate.warningCount,
     criticalCount: aggregate.criticalCount,
     firstRecordedAt: aggregate.firstRecordedAt,
@@ -95,7 +91,7 @@ export function toParticipantPerformanceSummary(
 /**
  * Chuyển một điểm đo thô sang DTO
  *
- * - Tốc độ định dạng đúng SPEED_SCALE chữ số thập phân
+ * - Tốc độ làm tròn tối đa SPEED_SCALE chữ số thập phân, trả dạng số
  *
  * @param metric Điểm đo đã lưu
  * @returns PerformanceMetricPointDto - Điểm đo
@@ -106,7 +102,7 @@ export function toMetricPoint(
   return {
     recordedAt: metric.recordedAt,
     heartRateBpm: metric.heartRateBpm,
-    speedMps: roundDecimal(metric.speedMps.toString(), SPEED_SCALE),
+    speedMps: Number(roundDecimal(metric.speedMps.toString(), SPEED_SCALE)),
     alertLevel: metric.alertLevel,
   };
 }

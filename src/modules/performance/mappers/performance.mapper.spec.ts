@@ -25,8 +25,8 @@ describe('toSessionPerformanceSummary', () => {
       scheduledAt: aggregate.scheduledAt,
       avgHeartRateBpm: 151,
       maxHeartRateBpm: 180,
-      avgSpeedMps: '12.583',
-      maxSpeedMps: '15.250',
+      avgSpeedMps: 12.583,
+      maxSpeedMps: 15.25,
       alertCount: 1,
     });
   });
@@ -63,6 +63,7 @@ describe('toHorsePerformanceResponse', () => {
 
     expect(summary.sessionsTracked).toBe(2);
     expect(summary.latestMetric?.heartRateBpm).toBe(170);
+    expect(summary.latestMetric?.speedMps).toBe(12);
     expect(summary.recentMetrics).toHaveLength(3);
     expect(summary.latestEvaluation?.score).toBe(8);
   });

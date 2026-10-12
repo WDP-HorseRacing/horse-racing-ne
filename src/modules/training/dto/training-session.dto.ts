@@ -17,6 +17,10 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import {
+  MAX_TRIAL_TIME_MESSAGE,
+  MAX_TRIAL_TIME_MS,
+} from '../constants/trial-time.constants';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
@@ -79,6 +83,7 @@ export class CreateTrainingSessionDto {
   @ApiPropertyOptional({
     type: Number,
     minimum: 1,
+    maximum: MAX_TRIAL_TIME_MS,
     nullable: true,
     description:
       'Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu',
@@ -86,6 +91,7 @@ export class CreateTrainingSessionDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
   targetTimeMs?: number | null;
 }
 

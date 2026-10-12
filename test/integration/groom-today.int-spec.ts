@@ -192,6 +192,7 @@ describe('Groom today view (Postgres)', () => {
 
     expect(first.feedingPlan?.note).toBe('ACTIVE');
     expect(first.feedingPlan?.meals[0].items[0].name).toBe('Yến mạch');
+    expect(first.feedingPlan?.meals[0].items[0].quantity).toBe(2);
     expect(second.feedingPlan).toBeNull();
   });
 

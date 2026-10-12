@@ -136,8 +136,8 @@ export class HorseLatestMeasurementDto {
   @ApiProperty({ enum: HorseMeasurementType })
   type!: HorseMeasurementType;
 
-  @ApiProperty({ example: '512.50' })
-  value!: string;
+  @ApiProperty({ type: Number, example: 512.5 })
+  value!: number;
 
   @ApiProperty({ example: 'kg' })
   unit!: string;

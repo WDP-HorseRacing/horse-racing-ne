@@ -41,4 +41,12 @@ describe('ClassSessionInputDto target time', () => {
       [],
     );
   });
+
+  it('accepts one hour and rejects longer', async () => {
+    await expect(
+      validate(session({ targetTimeMs: 3_600_000 })),
+    ).resolves.toEqual([]);
+    const errors = await validate(session({ targetTimeMs: 3_600_001 }));
+    expect(errors.map((error) => error.property)).toEqual(['targetTimeMs']);
+  });
 });

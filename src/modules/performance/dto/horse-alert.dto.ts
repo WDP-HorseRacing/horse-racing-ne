@@ -37,8 +37,11 @@ export class HorseAlertDto {
   @ApiProperty()
   heartRateBpm!: number;
 
-  @ApiProperty({ description: 'Tốc độ (m/s), 3 chữ số thập phân' })
-  speedMps!: string;
+  @ApiProperty({
+    type: Number,
+    description: 'Tốc độ (m/s), làm tròn tối đa 3 chữ số thập phân',
+  })
+  speedMps!: number;
 
   @ApiProperty({ enum: [MetricAlertLevel.WARNING, MetricAlertLevel.CRITICAL] })
   alertLevel!: MetricAlertLevel;

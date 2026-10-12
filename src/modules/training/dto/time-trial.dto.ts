@@ -6,9 +6,14 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   Min,
   ValidateIf,
 } from 'class-validator';
+import {
+  MAX_TRIAL_TIME_MESSAGE,
+  MAX_TRIAL_TIME_MS,
+} from '../constants/trial-time.constants';
 
 export class CreateTimeTrialDto {
   @ApiProperty({ minimum: 0.01 })
@@ -19,12 +24,14 @@ export class CreateTimeTrialDto {
   @ApiPropertyOptional({
     type: Number,
     minimum: 1,
+    maximum: MAX_TRIAL_TIME_MS,
     nullable: true,
     description: 'Thời gian mục tiêu (ms); null là không có mục tiêu',
   })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
   targetTimeMs?: number | null;
 
   @ApiPropertyOptional()
@@ -42,12 +49,14 @@ export class UpdateTimeTrialDto {
 
   @ApiPropertyOptional({
     minimum: 1,
+    maximum: MAX_TRIAL_TIME_MS,
     nullable: true,
     description: 'Thời gian mục tiêu (ms); gửi null để xóa',
   })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
   targetTimeMs?: number | null;
 
   @ApiPropertyOptional({
@@ -68,13 +77,17 @@ export class TimeTrialResponseDto {
   @Expose()
   sessionId!: string;
 
-  @ApiProperty()
+  @ApiProperty({ type: Number, description: 'Cự ly chạy thử (mét)' })
   @Expose()
-  distanceM!: string;
+  distanceM!: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: 'Thời gian mục tiêu (ms); null là không có mục tiêu',
+  })
   @Expose()
-  targetTimeMs!: string | null;
+  targetTimeMs!: number | null;
 
   @ApiPropertyOptional()
   @Expose()
@@ -91,9 +104,10 @@ export class CreateTrialResultDto {
   @Min(1)
   attemptNo!: number;
 
-  @ApiProperty({ minimum: 1 })
+  @ApiProperty({ minimum: 1, maximum: MAX_TRIAL_TIME_MS })
   @IsInt()
   @Min(1)
+  @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
   elapsedMs!: number;
 
   @ApiPropertyOptional()
@@ -128,9 +142,9 @@ export class TrialResultResponseDto {
   @Expose()
   attemptNo!: number;
 
-  @ApiProperty()
+  @ApiProperty({ type: Number, description: 'Thời gian chạy (ms)' })
   @Expose()
-  elapsedMs!: string;
+  elapsedMs!: number;
 
   @ApiPropertyOptional()
   @Expose()

@@ -155,8 +155,8 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
           scheduledAt: new Date('2026-10-03T01:00:00Z'),
           avgHeartRateBpm: 150,
           maxHeartRateBpm: 150,
-          avgSpeedMps: '12.500',
-          maxSpeedMps: '12.500',
+          avgSpeedMps: 12.5,
+          maxSpeedMps: 12.5,
           alertCount: 0,
         },
         {
@@ -164,8 +164,8 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
           scheduledAt: new Date('2026-10-01T01:00:00Z'),
           avgHeartRateBpm: 101,
           maxHeartRateBpm: 101,
-          avgSpeedMps: '10.001',
-          maxSpeedMps: '10.001',
+          avgSpeedMps: 10.001,
+          maxSpeedMps: 10.001,
           alertCount: 2,
         },
       ]);
@@ -181,8 +181,8 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
 
       expect(toSessionPerformanceSummary(row)).toMatchObject({
         avgHeartRateBpm: 101,
-        avgSpeedMps: '1.500',
-        maxSpeedMps: '2.000',
+        avgSpeedMps: 1.5,
+        maxSpeedMps: 2,
       });
     });
 
@@ -234,13 +234,13 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
       expect(response.latestMetric).toEqual({
         recordedAt: new Date('2026-10-02T01:00:59Z'),
         heartRateBpm: 150,
-        speedMps: '12.250',
+        speedMps: 12.25,
         alertLevel: 'WARNING',
       });
       expect(response.recentMetrics[99]).toEqual({
         recordedAt: new Date('2026-10-01T01:00:20Z'),
         heartRateBpm: 120,
-        speedMps: '10.000',
+        speedMps: 10,
         alertLevel: 'NORMAL',
       });
       expect(response.sessionsTracked).toBe(2);

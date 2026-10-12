@@ -10,6 +10,7 @@ export function toSupplyRequestResponse(
 ): SupplyRequestResponseDto {
   const source = {
     ...entity,
+    quantity: Number(entity.quantity),
     item: toSupplyItemResponse(requiredRelation(entity.item, 'item')),
     requester: requiredRelation(entity.requester, 'requester'),
     reviewer: entity.reviewedBy

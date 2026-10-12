@@ -52,7 +52,7 @@ export function toHorseTrainingSessionResponse(
 ): HorseTrainingSessionResponseDto {
   const trialResults: HorseTrainingTrialResultDto[] = trials.map((trial) => ({
     attemptNo: trial.attemptNo,
-    elapsedMs: trial.elapsedMs,
+    elapsedMs: Number(trial.elapsedMs),
     notes: trial.notes,
     videoUrl: trial.videoMediaId
       ? (videoUrls.get(trial.videoMediaId) ?? null)

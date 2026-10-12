@@ -18,7 +18,7 @@ export function toLatestMeasurement(
 ): HorseLatestMeasurementDto {
   return {
     type: entity.type,
-    value: entity.value,
+    value: Number(entity.value),
     unit: HORSE_MEASUREMENT_SPECS[entity.type].unit,
     measuredAt: entity.measuredAt,
     isAbnormal: entity.isAbnormal,

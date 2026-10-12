@@ -163,12 +163,12 @@ export class SupplyItemResponseDto {
   unit!: string;
 
   @Expose()
-  @ApiProperty({ type: String, description: 'Số tồn hiện tại' })
-  quantityOnHand!: string;
+  @ApiProperty({ type: Number, description: 'Số tồn hiện tại' })
+  quantityOnHand!: number;
 
   @Expose()
-  @ApiProperty({ type: String, description: 'Ngưỡng báo thiếu' })
-  reorderThreshold!: string;
+  @ApiProperty({ type: Number, description: 'Ngưỡng báo thiếu' })
+  reorderThreshold!: number;
 
   @Expose()
   @ApiProperty({ description: 'Số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu' })
@@ -227,12 +227,12 @@ export class SupplyStockMovementResponseDto {
   itemId!: string;
 
   @Expose()
-  @ApiProperty({ type: String, description: 'Chênh lệch, âm là giảm' })
-  delta!: string;
+  @ApiProperty({ type: Number, description: 'Chênh lệch, âm là giảm' })
+  delta!: number;
 
   @Expose()
-  @ApiProperty({ type: String, description: 'Số tồn sau lần đổi' })
-  balanceAfter!: string;
+  @ApiProperty({ type: Number, description: 'Số tồn sau lần đổi' })
+  balanceAfter!: number;
 
   @Expose()
   @ApiProperty({ enum: SupplyStockMovementType })

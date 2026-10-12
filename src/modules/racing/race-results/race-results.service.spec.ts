@@ -55,7 +55,7 @@ describe('RaceResultsService.listHorseResults', () => {
         raceStatus: RaceStatus.COMPLETED,
         registrationStatus: RegistrationStatus.MANAGER_CONFIRMED,
         placing: 2,
-        timeSeconds: '71.250',
+        timeSeconds: 71.25,
       },
     ]);
   });

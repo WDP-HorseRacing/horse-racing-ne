@@ -120,8 +120,8 @@ export class SupplyRequestResponseDto {
   requester!: SupplyUserSummaryResponseDto;
 
   @Expose()
-  @ApiProperty({ type: String })
-  quantity!: string;
+  @ApiProperty({ type: Number })
+  quantity!: number;
 
   @Expose()
   @ApiProperty({ enum: SupplyRequestStatus })

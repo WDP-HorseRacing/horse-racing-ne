@@ -250,11 +250,11 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
         expect.objectContaining({
           alertLevel: 'CRITICAL',
           heartRateBpm: 245,
-          speedMps: '12.000',
+          speedMps: 12,
           sessionName: 'Sức bền',
           sessionParticipantId: p,
         }),
-        expect.objectContaining({ alertLevel: 'WARNING', speedMps: '19.000' }),
+        expect.objectContaining({ alertLevel: 'WARNING', speedMps: 19 }),
       ]);
     });
 

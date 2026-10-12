@@ -23,6 +23,8 @@ export function toSupplyItemResponse(
     SupplyItemResponseDto,
     {
       ...entity,
+      quantityOnHand: Number(entity.quantityOnHand),
+      reorderThreshold: Number(entity.reorderThreshold),
       lowStock:
         compareDecimal(entity.quantityOnHand, entity.reorderThreshold) <= 0,
       lastCounter: entity.lastCountedBy
@@ -44,7 +46,11 @@ export function toSupplyStockMovementResponse(
 ): SupplyStockMovementResponseDto {
   return plainToInstance(
     SupplyStockMovementResponseDto,
-    entity,
+    {
+      ...entity,
+      delta: Number(entity.delta),
+      balanceAfter: Number(entity.balanceAfter),
+    },
     MAPPER_OPTIONS,
   );
 }

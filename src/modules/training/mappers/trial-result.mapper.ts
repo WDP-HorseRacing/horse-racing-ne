@@ -16,6 +16,7 @@ export function toTrialResultResponse(
   videoUrl: string | null,
 ): TrialResultResponseDto {
   const dto = plainToInstance(TrialResultResponseDto, row, MAPPER_OPTIONS);
+  dto.elapsedMs = Number(row.elapsedMs);
   dto.videoUrl = videoUrl;
   return dto;
 }

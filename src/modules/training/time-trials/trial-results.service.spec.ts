@@ -124,6 +124,7 @@ describe('TrialResultsService', () => {
     it('skips the media checks and returns a null videoUrl without video', async () => {
       const result = await service.create(actor, 'p1', body);
 
+      expect(result.elapsedMs).toBe(61000);
       expect(result.videoUrl).toBeNull();
       expect(media.assertAttachableTrialVideo).not.toHaveBeenCalled();
       expect(media.signDownloadUrl).not.toHaveBeenCalled();
@@ -202,6 +203,7 @@ describe('TrialResultsService', () => {
         }),
       );
       expect(result).toMatchObject({
+        elapsedMs: 61000,
         videoMediaId: VIDEO_ID,
         videoUrl: 'https://s3/video',
       });

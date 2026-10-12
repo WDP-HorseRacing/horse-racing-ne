@@ -26,7 +26,7 @@ export function toFeedingPlanResponse(
         name: item.supplyItem.name,
         category: item.supplyItem.category,
         unit: item.supplyItem.unit,
-        quantity: item.quantity,
+        quantity: Number(item.quantity),
         note: item.note,
       })),
   })).filter((meal) => meal.items.length > 0);

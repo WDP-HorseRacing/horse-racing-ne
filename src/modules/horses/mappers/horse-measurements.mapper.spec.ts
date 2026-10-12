@@ -13,4 +13,15 @@ describe('toLatestMeasurement', () => {
 
     expect(toLatestMeasurement(entity).isAbnormal).toBe(true);
   });
+
+  it('returns the numeric column value as a JSON number', () => {
+    const entity = {
+      type: HorseMeasurementType.WEIGHT,
+      value: '512.50',
+      measuredAt: new Date('2026-09-01T08:00:00Z'),
+      isAbnormal: false,
+    } as HorseMeasurementEntity;
+
+    expect(toLatestMeasurement(entity).value).toBe(512.5);
+  });
 });

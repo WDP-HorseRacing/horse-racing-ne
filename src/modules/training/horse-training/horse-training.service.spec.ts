@@ -148,7 +148,7 @@ describe('HorseTrainingService', () => {
     expect(page.items[0].trialResults).toEqual([
       {
         attemptNo: 1,
-        elapsedMs: '61000',
+        elapsedMs: 61000,
         notes: 'Xuất phát chậm',
         videoUrl: null,
         recordedAt: new Date('2026-10-01T08:30:00Z'),
