@@ -25,6 +25,16 @@ export const RECENT_METRIC_LIMIT = 100;
 export const PARTICIPANT_METRIC_LIMIT = 7200;
 
 /**
+ * Tốc độ lớn nhất (m/s) còn coi là số đo thật; điểm đo vượt mức này bị bỏ.
+ */
+export const MAX_PLAUSIBLE_SPEED_MPS = 25;
+
+/**
+ * Độ lệch đồng hồ (ms) cho phép giữa cảm biến và máy chủ khi kiểm thời điểm đo.
+ */
+export const METRIC_CLOCK_SKEW_MS = 5_000;
+
+/**
  * Số chữ số thập phân của tốc độ (m/s).
  */
 export const SPEED_SCALE = 3;

@@ -13058,6 +13058,10 @@
             "type": "number",
             "description": "Số điểm đo bỏ qua vì trùng cảm biến và thời điểm đo"
           },
+          "skippedInvalid": {
+            "type": "number",
+            "description": "Số điểm đo bỏ qua vì không hợp lệ: tốc độ quá 25 m/s hoặc thời điểm đo ngoài lượt tập"
+          },
           "highestAlertLevel": {
             "type": "string",
             "enum": [
@@ -13071,6 +13075,7 @@
         "required": [
           "accepted",
           "skippedDuplicates",
+          "skippedInvalid",
           "highestAlertLevel"
         ]
       },

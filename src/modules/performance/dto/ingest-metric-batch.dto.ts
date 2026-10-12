@@ -6,6 +6,7 @@ import {
   IsArray,
   ValidateNested,
 } from 'class-validator';
+import { MAX_PLAUSIBLE_SPEED_MPS } from '../constants/performance.constants';
 import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import { IngestMetricDto } from './ingest-metric.dto';
 
@@ -27,6 +28,11 @@ export class IngestMetricsResultDto {
     description: 'Số điểm đo bỏ qua vì trùng cảm biến và thời điểm đo',
   })
   skippedDuplicates!: number;
+
+  @ApiProperty({
+    description: `Số điểm đo bỏ qua vì không hợp lệ: tốc độ quá ${MAX_PLAUSIBLE_SPEED_MPS} m/s hoặc thời điểm đo ngoài lượt tập`,
+  })
+  skippedInvalid!: number;
 
   @ApiProperty({
     enum: MetricAlertLevel,

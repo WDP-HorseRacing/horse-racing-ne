@@ -1,6 +1,6 @@
 # Nợ kỹ thuật: MongoDB, thông báo, outbox
 
-Cập nhật: 2026-10-07.
+Cập nhật: 2026-10-12.
 
 ## 1. Tự xóa thông báo cũ (TTL)
 
@@ -48,6 +48,9 @@ gửi số đo mà không cần token (token Keycloak mặc định hết hạn 
 
 Hệ quả: ai biết id của một lượt tập đang ONGOING cũng gửi được số đo giả, và số đo vượt ngưỡng sẽ bắn
 thông báo KHẨN cho bác sĩ và Head Trainer. Không có giới hạn tần suất.
+
+Đã chặn số vô lý: điểm đo có tốc độ quá 25 m/s hoặc thời điểm đo ngoài khoảng từ lúc lượt bắt đầu tới
+hiện tại (lệch tối đa 5 giây) bị bỏ, đếm vào `skippedInvalid`. Số giả nhưng hợp lý vẫn lọt.
 
 Trước khi deploy server thật, chọn một hướng:
 

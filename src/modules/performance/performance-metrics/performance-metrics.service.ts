@@ -29,6 +29,7 @@ import {
 import {
   assertParticipantRecording,
   classifyMetric,
+  isPlausibleMetric,
 } from '../policies/performance.policy';
 import { PerformanceMetric } from '../schemas/performance-metric.schema';
 import { PerformanceAccessService } from '../shared/performance-access.service';
@@ -63,6 +64,7 @@ export class PerformanceMetricsService {
    * Lưu các điểm đo của một lượt tập đang diễn ra và báo cho Head Trainer của lớp
    *
    * - Không kiểm danh tính người gửi
+   * - Điểm đo không hợp lệ (tốc độ quá trần, thời điểm đo ngoài lượt tập) bị bỏ, không lưu và không chấm cảnh báo
    * - Điểm đo trùng cảm biến và thời điểm đo (trong lô hoặc đã lưu trước đó) bị bỏ qua
    * - Mỗi điểm được chấm mức cảnh báo theo ngưỡng đang áp cho con ngựa
    * - Điểm mới lưu được đẩy qua socket tới Head Trainer của lớp; lớp chưa có Head Trainer thì không đẩy
@@ -70,7 +72,7 @@ export class PerformanceMetricsService {
    *
    * @param participantId UUID của lượt tập
    * @param metrics Các điểm đo gửi lên
-   * @returns Promise trả về số điểm đã lưu, số điểm trùng bị bỏ qua và mức cảnh báo cao nhất
+   * @returns Promise trả về số điểm đã lưu, số điểm trùng và số điểm không hợp lệ bị bỏ qua, mức cảnh báo cao nhất
    * @throws NotFoundException Nếu không có lượt tập
    * @throws ConflictException Nếu lượt tập không ở ONGOING
    */
@@ -83,11 +85,19 @@ export class PerformanceMetricsService {
       participantId,
     );
     assertParticipantRecording(participant.status);
+    const now = new Date();
     const { limits } = await this.performanceAccess.activeThreshold(
       participant.horseId,
-      new Date(),
+      now,
     );
-    const classified = metrics.map((metric): ClassifiedMetric => ({
+    const plausible = metrics.filter((metric) =>
+      isPlausibleMetric(
+        { recordedAt: new Date(metric.recordedAt), speedMps: metric.speedMps },
+        participant.startedAt,
+        now,
+      ),
+    );
+    const classified = plausible.map((metric): ClassifiedMetric => ({
       sourceId: metric.sourceId,
       recordedAt: new Date(metric.recordedAt),
       heartRateBpm: metric.heartRateBpm,
@@ -140,7 +150,8 @@ export class PerformanceMetricsService {
     }
     return {
       accepted: fresh.length,
-      skippedDuplicates: metrics.length - fresh.length,
+      skippedDuplicates: plausible.length - fresh.length,
+      skippedInvalid: metrics.length - plausible.length,
       highestAlertLevel: highestAlertLevel(fresh),
     };
   }

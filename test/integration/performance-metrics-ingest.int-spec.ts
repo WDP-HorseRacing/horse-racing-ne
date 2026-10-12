@@ -73,7 +73,10 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     await clearAllMongoCollections(mongo.connection);
   });
 
-  const seedParticipant = async (status: 'ONGOING' | 'READY' = 'ONGOING') => {
+  const seedParticipant = async (
+    status: 'ONGOING' | 'READY' = 'ONGOING',
+    startedAt: string | null = null,
+  ) => {
     const trainer = await seed.user(UserRole.HEAD_TRAINER);
     const groom = await seed.user(UserRole.GROOM);
     const horse = await seed.horse('Winx');
@@ -95,9 +98,9 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     );
     const participantId = randomUUID();
     await dataSource.query(
-      `INSERT INTO session_participants (id, version, session_id, horse_id, horse_enrollment_id, status, assigned_groom_id)
-       VALUES ($1, 1, $2, $3, $4, $5, $6)`,
-      [participantId, sessionId, horse, enrollmentId, status, groom],
+      `INSERT INTO session_participants (id, version, session_id, horse_id, horse_enrollment_id, status, assigned_groom_id, started_at)
+       VALUES ($1, 1, $2, $3, $4, $5, $6, $7)`,
+      [participantId, sessionId, horse, enrollmentId, status, groom, startedAt],
     );
     return { trainer, groom, horse, participantId };
   };
@@ -126,6 +129,7 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     expect(result).toEqual({
       accepted: 3,
       skippedDuplicates: 0,
+      skippedInvalid: 0,
       highestAlertLevel: MetricAlertLevel.WARNING,
     });
     const stored = await metrics
@@ -177,6 +181,30 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
       PERFORMANCE_METRIC_CRITICAL_EVENT,
     ]);
     expect(rows[0].payload.eventId).toBe(rows[1].payload.eventId);
+  });
+
+  it('drops implausible points and keeps the rest of the batch', async () => {
+    const { participantId } = await seedParticipant(
+      'ONGOING',
+      '2026-10-10T01:00:00Z',
+    );
+    const future = new Date(Date.now() + 60_000).toISOString();
+
+    const result = await service.ingest(participantId, [
+      point(1, 150),
+      point(2, 250, 480),
+      { ...point(3, 150), recordedAt: '2020-01-01T00:00:00Z' },
+      { ...point(4, 150), recordedAt: future },
+      point(5, 150, 25),
+    ]);
+
+    expect(result).toEqual({
+      accepted: 2,
+      skippedDuplicates: 0,
+      skippedInvalid: 3,
+      highestAlertLevel: MetricAlertLevel.WARNING,
+    });
+    expect(await outboxRows()).toEqual([]);
   });
 
   it('rejects points when the participant is not training', async () => {
