@@ -401,11 +401,12 @@ describe('Stable incidents (Postgres)', () => {
   describe('reminding stale incidents', () => {
     const reminders = () =>
       new IncidentRemindersService(new DomainEventPublisher(), dataSource);
+    const now = new Date();
     const ageHours = (id: string, hours: number) =>
-      dataSource.query(
-        `UPDATE incidents SET created_at = now() - make_interval(hours => $2) WHERE id = $1`,
-        [id, hours],
-      );
+      dataSource.query('UPDATE incidents SET created_at = $2 WHERE id = $1', [
+        id,
+        new Date(now.getTime() - hours * 3_600_000),
+      ]);
 
     it('reminds once about a routine incident left open for 4 hours', async () => {
       const stale = await incidents.report(groom, {
@@ -419,8 +420,8 @@ describe('Stable incidents (Postgres)', () => {
       await ageHours(stale.id, 5);
       await ageHours(fresh.id, 3);
 
-      expect(await reminders().remindStale(new Date())).toBe(1);
-      expect(await reminders().remindStale(new Date())).toBe(0);
+      expect(await reminders().remindStale(now)).toBe(1);
+      expect(await reminders().remindStale(now)).toBe(0);
       const events = await outbox(INCIDENT_STALE_EVENT);
       expect(events).toHaveLength(1);
       expect(events[0].payload).toMatchObject({
@@ -449,7 +450,7 @@ describe('Stable incidents (Postgres)', () => {
         await ageHours(id, 10);
       }
 
-      expect(await reminders().remindStale(new Date())).toBe(0);
+      expect(await reminders().remindStale(now)).toBe(0);
     });
   });
 
