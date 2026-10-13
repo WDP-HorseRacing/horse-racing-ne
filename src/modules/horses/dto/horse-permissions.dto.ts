@@ -55,10 +55,4 @@ export class HorsePermissionsResponseDto {
 
   @ApiProperty({ description: 'Xem huấn luyện: mọi vai trò trừ Groom' })
   canViewTrainingTab!: boolean;
-
-  @ApiProperty({
-    description:
-      'Xem thành tích thi đấu: Club Manager, Head Trainer, Horse Owner',
-  })
-  canViewPerformanceTab!: boolean;
 }

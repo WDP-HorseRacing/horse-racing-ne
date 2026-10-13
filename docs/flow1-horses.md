@@ -41,8 +41,8 @@
 
 **Horse Owner (Chủ sở hữu Ngựa)**
 
-- Xem hồ sơ lý lịch, dòng dõi (Pedigree) và lịch sử thành tích thi đấu của ngựa thuộc sở hữu.
-- Theo dõi chỉ số sức khỏe, cân nặng và trạng thái sẵn sàng thi đấu theo thời gian thực.
+- Xem hồ sơ lý lịch và dòng dõi (Pedigree) của ngựa thuộc sở hữu.
+- Theo dõi chỉ số sức khỏe, cân nặng và trạng thái sẵn sàng tập luyện theo thời gian thực.
 - Xem lịch trình tập luyện, video các buổi đua thử và nhật ký nhận xét từ HLV Trưởng.
 - Nhận báo cáo tổng hợp chi phí nuôi dưỡng, y tế và doanh thu tiền thưởng định kỳ.
 
@@ -78,8 +78,8 @@
 
 **HORSE OWNER (Chủ sở hữu Ngựa)**
 
-- Xem hồ sơ lý lịch, dòng dõi (Pedigree) và lịch sử thành tích thi đấu của ngựa thuộc sở hữu.
-- Theo dõi chỉ số sức khỏe, cân nặng và trạng thái sẵn sàng thi đấu.
+- Xem hồ sơ lý lịch và dòng dõi (Pedigree) của ngựa thuộc sở hữu.
+- Theo dõi chỉ số sức khỏe, cân nặng và trạng thái sẵn sàng tập luyện.
 
 **HEAD TRAINER (Huấn luyện viên Trưởng)**
 
@@ -129,29 +129,28 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 ### 2. Trạng thái sức khỏe (do Flow 3 cập nhật, Flow 1 chỉ hiển thị)
 
 1. Bốn giá trị:
-   - **Đủ điều kiện (ELIGIBLE):** khỏe mạnh, tập và đua bình thường.
-   - **Cần theo dõi (UNDER_OBSERVATION):** có dấu hiệu bất thường nhưng chưa xác định bệnh. Chỉ tập cường độ Nhẹ và Trung bình, không được đăng ký đua.
-   - **Chấn thương (INJURED):** đang có tổn thương. Không tập, không đua.
-   - **Cách ly (QUARANTINED):** nghi nhiễm bệnh truyền nhiễm. Không tập, không đua.
+   - **Đủ điều kiện (ELIGIBLE):** khỏe mạnh, tập bình thường.
+   - **Cần theo dõi (UNDER_OBSERVATION):** có dấu hiệu bất thường nhưng chưa xác định bệnh. Chỉ tập cường độ Nhẹ và Trung bình.
+   - **Chấn thương (INJURED):** đang có tổn thương. Không tập.
+   - **Cách ly (QUARANTINED):** nghi nhiễm bệnh truyền nhiễm. Không tập.
 2. Trạng thái Cách ly là trạng thái y tế, không bắt buộc hệ thống phải chuyển ngựa sang một loại ô chuồng riêng. Nếu cần tách ngựa khỏi đàn, HEAD TRAINER phụ trách khu chuyển ngựa sang ô trống bằng F1.7.
 
 ### 3. Trạng thái vòng đời
 
 1. Bốn giá trị:
    - **Đang hoạt động (ACTIVE):** dùng đầy đủ mọi chức năng.
-   - **Đã giải nghệ (RETIRED):** vẫn ở lại câu lạc bộ, vẫn được chăm sóc và chữa bệnh, không học lớp và không đăng ký đua.
+   - **Đã giải nghệ (RETIRED):** vẫn ở lại câu lạc bộ, vẫn được chăm sóc và chữa bệnh, không học lớp.
    - **Đã chuyển nhượng (TRANSFERRED):** đã rời khỏi câu lạc bộ. Hồ sơ chuyển sang chỉ đọc.
    - **Đã mất (DECEASED):** ngựa đã chết. Hồ sơ chuyển sang chỉ đọc, vẫn là hồ sơ của câu lạc bộ, chủ ngựa vẫn xem được.
 2. Chuyển trạng thái đi và về đều được: ACTIVE ⇄ RETIRED, ACTIVE ⇄ TRANSFERRED, và RETIRED → TRANSFERRED (bán ngựa đã giải nghệ, xem F1.8 mục 2; bổ sung cho khớp F1.8). Trường hợp câu lạc bộ mua lại con ngựa đã bán thì kích hoạt lại hồ sơ cũ, không tạo hồ sơ mới (xem F1.8).
 3. ACTIVE → DECEASED và RETIRED → DECEASED được (ghi nhận ngựa mất, xem F1.8 mục 2b). Đã mất là trạng thái cuối, không chuyển sang trạng thái nào khác. Ngựa đã chuyển nhượng không ghi nhận mất được vì không còn ở câu lạc bộ.
 
-### 4. Quy tắc "được tập" và "được đua"
+### 4. Quy tắc "được tập"
 
 1. **Được tập:** vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, và không có lệnh khóa huấn luyện của bác sĩ.
    - Riêng từng buổi tập: ngựa UNDER_OBSERVATION không được tập buổi cường độ Nặng; lượt của ngựa ở buổi đó bị đánh "Không đủ điều kiện".
-2. **Được đua:** vòng đời ACTIVE, sức khỏe ELIGIBLE, và không có lệnh khóa huấn luyện.
-3. Hai giá trị này được tính lại mỗi lần hiển thị, không lưu vào cơ sở dữ liệu.
-4. Khi kết quả là không được phép, hệ thống phải hiện lý do cụ thể.
+2. Giá trị này được tính lại mỗi lần hiển thị, không lưu vào cơ sở dữ liệu.
+3. Khi kết quả là không được phép, hệ thống phải hiện lý do cụ thể.
 
 ### 5. Phụ thuộc giữa các flow
 
@@ -188,7 +187,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả.
 | Bảng thông tin hiển thị của F1.3 gồm 15 mục, nhiều ô "xem rút gọn" | Gộp còn 4 nhóm, bỏ toàn bộ ô "xem rút gọn" | Các mục có quyền giống hệt nhau thì tách ra không có tác dụng, mỗi ô rút gọn lại là một nhánh xử lý phải làm riêng. |
 | Mục chi phí và tiền thưởng trong hồ sơ chi tiết | Bỏ, chỉ giữ tổng chi phí y tế trong tab bệnh án | Thuộc báo cáo tài chính, không nằm trong flow bắt buộc. |
 | Danh sách 14 điều kiện chặn xóa hồ sơ | Gộp thành một quy tắc chung | Danh sách dài dễ lệch với thực tế khi các flow khác thay đổi. |
-| Đã chuyển nhượng là trạng thái cuối | Cho phép kích hoạt lại hồ sơ cũ | Trường hợp câu lạc bộ mua lại ngựa: tạo hồ sơ mới sẽ vướng số chip trùng và mất toàn bộ phả hệ, bệnh án, thành tích. |
+| Đã chuyển nhượng là trạng thái cuối | Cho phép kích hoạt lại hồ sơ cũ | Trường hợp câu lạc bộ mua lại ngựa: tạo hồ sơ mới sẽ vướng số chip trùng và mất toàn bộ phả hệ, bệnh án. |
 | Phân quyền ghi chỉ số cơ thể theo từng loại chỉ số | Vai trò nào được ghi thì ghi được cả bốn loại | Phân quyền theo từng loại làm tăng số nhánh xử lý mà không phục vụ yêu cầu nào của đề bài. |
 | Ngày sinh dùng để chặn vòng lặp phả hệ | Kiểm tra vòng lặp một cách tường minh | Ngày sinh không bắt buộc nên không thể dựa vào nó để chặn vòng lặp. |
 | Ngày sinh chỉ cần không ở tương lai | Ngựa phải đủ 1 tuổi và không quá 40 tuổi | Câu lạc bộ chỉ quản lý ngựa từ 1 tuổi, ngựa non ở trại giống. Mức 40 tuổi để bắt lỗi gõ nhầm năm. |
@@ -313,7 +312,7 @@ Tạo mới một con ngựa cho câu lạc bộ. Trong cùng một thao tác c�
 
 ### Mô tả
 
-Màn hình hồ sơ đầy đủ của một con ngựa. Tab đầu tiên là thông tin do Flow 1 quản lý, gồm cả cây phả hệ (Pedigree) và chỉ số cơ thể. Các tab còn lại là dữ liệu tổng hợp từ Flow 2, Flow 3 và Flow 5.
+Màn hình hồ sơ đầy đủ của một con ngựa. Tab đầu tiên là thông tin do Flow 1 quản lý, gồm cả cây phả hệ (Pedigree) và chỉ số cơ thể. Các tab còn lại là dữ liệu tổng hợp từ Flow 2 và Flow 3.
 
 ### Phân quyền — quyền thao tác
 
@@ -329,20 +328,19 @@ Màn hình hồ sơ đầy đủ của một con ngựa. Tab đầu tiên là th
 
 | Mục thông tin | CM | HT | VET | GROOM | OWNER |
 |---|---|---|---|---|---|
-| 1. Thông tin hồ sơ: định danh, ảnh, số chip, sở trường cự ly, trạng thái sức khỏe và vòng đời, được tập / được đua, cây phả hệ, chủ sở hữu, khu và ô chuồng, GROOM phụ trách, chỉ số cơ thể và biểu đồ | Xem | Xem | Xem | Xem | Xem |
+| 1. Thông tin hồ sơ: định danh, ảnh, số chip, sở trường cự ly, trạng thái sức khỏe và vòng đời, được tập, cây phả hệ, chủ sở hữu, khu và ô chuồng, GROOM phụ trách, chỉ số cơ thể và biểu đồ | Xem | Xem | Xem | Xem | Xem |
 | 2. Bệnh án: danh sách bệnh án, các buổi khám (Flow 3) | Xem | Xem | Xem | Không | Xem |
 | 2b. Tổng chi phí y tế của các bệnh án đã đóng (Flow 3) | Xem | Không | Xem | Không | Xem |
 | 3. Huấn luyện: lớp đang học, lịch buổi tập, kết quả và nhận xét sau buổi tập (Flow 2) | Xem | Xem | Xem | Không | Xem |
-| 4. Thành tích thi đấu (Flow 5) | Xem | Xem | Không | Không | Xem |
 
 GROOM không xem hai tab Bệnh án và Huấn luyện ở màn hình này; dữ liệu của hai tab này không được gửi về máy GROOM. Phần thông tin GROOM cần để làm việc (giờ tập trong ngày, khẩu phần) nằm ở lịch công việc hằng ngày thuộc Flow 2 và Flow 4.
 
-Ảnh đại diện: ai xem được hồ sơ ngựa thì xem được ảnh của ngựa đó. Với hồ sơ đã xóa, CLUB MANAGER vẫn xem được (chỉ đọc) bệnh án, chỉ số, thành tích, kết quả đua và lịch sử GROOM như khi xem hồ sơ. *(BA chốt)*
+Ảnh đại diện: ai xem được hồ sơ ngựa thì xem được ảnh của ngựa đó. Với hồ sơ đã xóa, CLUB MANAGER vẫn xem được (chỉ đọc) bệnh án, chỉ số và lịch sử GROOM như khi xem hồ sơ. *(BA chốt)*
 
 ### Nghiệp vụ
 
-1. Tab 1 tải cùng hồ sơ. Các tab 2, 3, 4 là dữ liệu từ flow khác nên tải riêng khi người dùng mở tab, không tải hết một lần.
-2. Khi con ngựa không được tập hoặc không được đua, hệ thống phải hiện lý do cụ thể, ví dụ "Đang chấn thương", "Đang bị khóa huấn luyện", "Đã giải nghệ".
+1. Tab 1 tải cùng hồ sơ. Các tab 2, 3 là dữ liệu từ flow khác nên tải riêng khi người dùng mở tab, không tải hết một lần.
+2. Khi con ngựa không được tập, hệ thống phải hiện lý do cụ thể, ví dụ "Đang chấn thương", "Đang bị khóa huấn luyện", "Đã giải nghệ".
 3. Cây phả hệ:
    - Hiển thị tối đa 3 đời: con ngựa đang xem, cha mẹ, ông bà.
    - Chỉ vẽ từ những con có hồ sơ tại câu lạc bộ. Ô nào không khai báo được thì để trống.
@@ -361,7 +359,7 @@ GROOM không xem hai tab Bệnh án và Huấn luyện ở màn hình này; dữ
 | **Actor phụ** | Không |
 | **Tiền điều kiện** | Người dùng đã đăng nhập. Con ngựa nằm trong phạm vi xem của người dùng. |
 | **Hậu điều kiện** | Thông tin trong phạm vi quyền được hiển thị. Các trường ngoài quyền không có trong dữ liệu trả về. |
-| **Luồng sự kiện chính** | 1. Người dùng chọn một con ngựa từ danh sách.<br>2. Hệ thống kiểm tra phạm vi xem.<br>3. Hệ thống lấy thông tin hồ sơ, phả hệ và chỉ số cơ thể.<br>4. Hệ thống loại bỏ các trường ngoài quyền.<br>5. Hệ thống tính "được tập" và "được đua" kèm lý do rồi hiển thị tab thông tin hồ sơ.<br>6. Người dùng mở các tab khác → hệ thống tải dữ liệu tương ứng từ Flow 2, Flow 3, Flow 5. |
+| **Luồng sự kiện chính** | 1. Người dùng chọn một con ngựa từ danh sách.<br>2. Hệ thống kiểm tra phạm vi xem.<br>3. Hệ thống lấy thông tin hồ sơ, phả hệ và chỉ số cơ thể.<br>4. Hệ thống loại bỏ các trường ngoài quyền.<br>5. Hệ thống tính "được tập" kèm lý do rồi hiển thị tab thông tin hồ sơ.<br>6. Người dùng mở các tab khác → hệ thống tải dữ liệu tương ứng từ Flow 2, Flow 3. |
 | **Luồng thay thế** | A1. Người dùng bấm vào cha hoặc mẹ trên cây phả hệ → hệ thống mở hồ sơ của con đó nếu nằm trong phạm vi xem.<br>A2. CLUB MANAGER mở hồ sơ đã xóa → hệ thống hiện nhãn "Đã xóa", chỉ có nút "Khôi phục".<br>A3. Hồ sơ ở trạng thái Đã chuyển nhượng → hiển thị chỉ đọc. |
 | **Luồng ngoại lệ** | E1. Con ngựa ngoài phạm vi xem → trả về 404.<br>E2. Không tải được dữ liệu của một tab → hiện lỗi riêng trong tab đó, các phần còn lại giữ nguyên. |
 
@@ -612,7 +610,7 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
    - Thông báo "Ngựa X đã mất" (kèm ngày mất và nguyên nhân) cho chủ ngựa nếu còn hoạt động, HEAD TRAINER của khu cũ, GROOM cũ và mọi CLUB MANAGER đang hoạt động (kể cả người vừa ghi nhận). Áp dụng cho cả hai luồng: CLUB MANAGER ghi nhận và VETERINARIAN ghi nhận khi đóng bệnh án. GROOM không nhận thêm thông báo "đã chuyển nhượng".
 3. **Kích hoạt lại (RETIRED hoặc TRANSFERRED quay về ACTIVE):**
    - Dùng cho trường hợp ngựa quay lại tập luyện hoặc câu lạc bộ mua lại con ngựa đã bán. Luôn kích hoạt lại hồ sơ cũ, không tạo hồ sơ mới, vì số chip định danh gắn với con vật ngoài đời thật và mọi dữ liệu lịch sử, phả hệ đang gắn với hồ sơ này.
-   - Toàn bộ dữ liệu cũ được giữ nguyên: bệnh án, chỉ số cơ thể, thành tích, phả hệ, số chip định danh.
+   - Toàn bộ dữ liệu cũ được giữ nguyên: bệnh án, chỉ số cơ thể, phả hệ, số chip định danh.
    - Lớp học đã rút không tự khôi phục.
    - Nếu kích hoạt lại từ Đã chuyển nhượng: CLUB MANAGER phải xếp lại khu (F1.6), HEAD TRAINER xếp lại ô và GROOM (F1.7). Chủ mới khác chủ cũ thì dùng chuyển nhượng nội bộ (F1.4 mục 9). Nếu chủ cũ không còn là tài khoản HORSE OWNER đang hoạt động thì hệ thống bỏ trống chủ và đóng giai đoạn sở hữu của chủ cũ; bảng xác nhận báo trước "sẽ bỏ trống chủ X", sau đó gán chủ bằng F1.4. *(BA chốt)*
    - Kích hoạt lại từ Đã chuyển nhượng: trạng thái sức khỏe được đặt về "Cần theo dõi" cho tới khi bác sĩ khám lại, vì dữ liệu sức khỏe trong thời gian ngựa ở ngoài câu lạc bộ không còn đáng tin. Kích hoạt lại từ Đã giải nghệ: giữ nguyên trạng thái sức khỏe, vì ngựa vẫn ở câu lạc bộ và vẫn được khám định kỳ. *(BA chốt)*

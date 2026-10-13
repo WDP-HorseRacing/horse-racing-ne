@@ -1077,7 +1077,7 @@ describe('HorseProfilesService', () => {
   });
 
   describe('getEligibility', () => {
-    it('blocks training and racing for a horse under an active training lock', async () => {
+    it('blocks training for a horse under an active training lock', async () => {
       horses.hasActiveTrainingLock.mockResolvedValue(true);
       await expect(
         service.getEligibility(actorWith(UserRole.VETERINARIAN), HORSE_ID),
@@ -1087,10 +1087,7 @@ describe('HorseProfilesService', () => {
         lifecycleStatus: HorseLifecycleStatus.ACTIVE,
         activeTrainingLock: true,
         trainingEligible: false,
-        racingEligible: false,
         trainingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
-        racingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
-        reasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
       });
     });
 

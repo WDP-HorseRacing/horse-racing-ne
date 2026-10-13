@@ -72,27 +72,23 @@ describe('horse.policy', () => {
       hasActiveTrainingLock: false,
     };
 
-    it('allows training and racing for an active, healthy, unlocked horse', () => {
+    it('allows training for an active, healthy, unlocked horse', () => {
       expect(evaluateEligibility(eligible)).toEqual({
         trainingEligible: true,
-        racingEligible: true,
         trainingReasons: [],
-        racingReasons: [],
-        reasons: [],
+        healthStatus: HorseHealthStatus.ELIGIBLE,
       });
     });
 
-    it('blocks both when the profile is deleted', () => {
+    it('blocks training when the profile is deleted', () => {
       expect(evaluateEligibility({ ...eligible, isDeleted: true })).toEqual({
         trainingEligible: false,
-        racingEligible: false,
         trainingReasons: [EligibilityReason.PROFILE_DELETED],
-        racingReasons: [EligibilityReason.PROFILE_DELETED],
-        reasons: [EligibilityReason.PROFILE_DELETED],
+        healthStatus: HorseHealthStatus.ELIGIBLE,
       });
     });
 
-    it('blocks both for a RETIRED horse with the retired reason', () => {
+    it('blocks training for a RETIRED horse with the retired reason', () => {
       expect(
         evaluateEligibility({
           ...eligible,
@@ -100,14 +96,12 @@ describe('horse.policy', () => {
         }),
       ).toEqual({
         trainingEligible: false,
-        racingEligible: false,
         trainingReasons: [EligibilityReason.LIFECYCLE_RETIRED],
-        racingReasons: [EligibilityReason.LIFECYCLE_RETIRED],
-        reasons: [EligibilityReason.LIFECYCLE_RETIRED],
+        healthStatus: HorseHealthStatus.ELIGIBLE,
       });
     });
 
-    it('blocks both for a TRANSFERRED horse with the transferred reason', () => {
+    it('blocks training for a TRANSFERRED horse with the transferred reason', () => {
       expect(
         evaluateEligibility({
           ...eligible,
@@ -115,14 +109,12 @@ describe('horse.policy', () => {
         }),
       ).toEqual({
         trainingEligible: false,
-        racingEligible: false,
         trainingReasons: [EligibilityReason.LIFECYCLE_TRANSFERRED],
-        racingReasons: [EligibilityReason.LIFECYCLE_TRANSFERRED],
-        reasons: [EligibilityReason.LIFECYCLE_TRANSFERRED],
+        healthStatus: HorseHealthStatus.ELIGIBLE,
       });
     });
 
-    it('lets an UNDER_OBSERVATION horse train but not race', () => {
+    it('lets an UNDER_OBSERVATION horse train', () => {
       expect(
         evaluateEligibility({
           ...eligible,
@@ -130,39 +122,33 @@ describe('horse.policy', () => {
         }),
       ).toEqual({
         trainingEligible: true,
-        racingEligible: false,
         trainingReasons: [],
-        racingReasons: [EligibilityReason.HEALTH_UNDER_OBSERVATION],
-        reasons: [EligibilityReason.HEALTH_UNDER_OBSERVATION],
+        healthStatus: HorseHealthStatus.UNDER_OBSERVATION,
       });
     });
 
     it.each([
       [HorseHealthStatus.INJURED, EligibilityReason.HEALTH_INJURED],
       [HorseHealthStatus.QUARANTINED, EligibilityReason.HEALTH_QUARANTINED],
-    ])('blocks both for health %s', (healthStatus, reason) => {
+    ])('blocks training for health %s', (healthStatus, reason) => {
       expect(evaluateEligibility({ ...eligible, healthStatus })).toEqual({
         trainingEligible: false,
-        racingEligible: false,
         trainingReasons: [reason],
-        racingReasons: [reason],
-        reasons: [reason],
+        healthStatus,
       });
     });
 
-    it('blocks both while a training lock is active', () => {
+    it('blocks training while a training lock is active', () => {
       expect(
         evaluateEligibility({ ...eligible, hasActiveTrainingLock: true }),
       ).toEqual({
         trainingEligible: false,
-        racingEligible: false,
         trainingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
-        racingReasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
-        reasons: [EligibilityReason.ACTIVE_TRAINING_LOCK],
+        healthStatus: HorseHealthStatus.ELIGIBLE,
       });
     });
 
-    it('gives each flag its own reasons: empty exactly when the flag is true (F1.3 mục 2)', () => {
+    it('gives training reasons that are empty exactly when the horse can train (F1.3 mục 2)', () => {
       for (const healthStatus of Object.values(HorseHealthStatus)) {
         for (const lifecycleStatus of Object.values(HorseLifecycleStatus)) {
           for (const isDeleted of [false, true]) {
@@ -175,9 +161,6 @@ describe('horse.policy', () => {
               });
               expect(result.trainingReasons.length === 0).toBe(
                 result.trainingEligible,
-              );
-              expect(result.racingReasons.length === 0).toBe(
-                result.racingEligible,
               );
             }
           }
@@ -192,7 +175,7 @@ describe('horse.policy', () => {
           lifecycleStatus: HorseLifecycleStatus.RETIRED,
           healthStatus: HorseHealthStatus.INJURED,
           hasActiveTrainingLock: true,
-        }).reasons,
+        }).trainingReasons,
       ).toEqual([
         EligibilityReason.PROFILE_DELETED,
         EligibilityReason.LIFECYCLE_RETIRED,
@@ -226,13 +209,11 @@ describe('horse.policy', () => {
       });
       expect(permissions.canViewMedicalTab).toBe(false);
       expect(permissions.canViewTrainingTab).toBe(false);
-      expect(permissions.canViewPerformanceTab).toBe(false);
       expect(permissions.canRecordMeasurement).toBe(true);
     });
 
-    it('hides the performance tab from a VETERINARIAN', () => {
+    it('shows the medical and training tabs to a VETERINARIAN', () => {
       const permissions = permissionsOf({ roles: [UserRole.VETERINARIAN] });
-      expect(permissions.canViewPerformanceTab).toBe(false);
       expect(permissions.canViewMedicalTab).toBe(true);
       expect(permissions.canViewTrainingTab).toBe(true);
       expect(permissions.canChangeHealth).toBe(true);
@@ -284,7 +265,6 @@ describe('horse.policy', () => {
       expect(enabled(permissions)).toEqual([
         'canRestore',
         'canViewMedicalTab',
-        'canViewPerformanceTab',
         'canViewTrainingTab',
       ]);
     });
@@ -321,7 +301,7 @@ describe('horse.policy', () => {
 
     it('lets a HORSE_OWNER only view the tabs', () => {
       expect(enabled(permissionsOf({ roles: [UserRole.HORSE_OWNER] }))).toEqual(
-        ['canViewMedicalTab', 'canViewPerformanceTab', 'canViewTrainingTab'],
+        ['canViewMedicalTab', 'canViewTrainingTab'],
       );
     });
   });
@@ -1288,8 +1268,7 @@ describe('horse.policy', () => {
         }),
       ).toMatchObject({
         trainingEligible: false,
-        racingEligible: false,
-        reasons: [EligibilityReason.LIFECYCLE_DECEASED],
+        trainingReasons: [EligibilityReason.LIFECYCLE_DECEASED],
       });
       expect(placementStatusOf(HorseLifecycleStatus.DECEASED, null, null)).toBe(
         HorsePlacementStatus.NOT_APPLICABLE,

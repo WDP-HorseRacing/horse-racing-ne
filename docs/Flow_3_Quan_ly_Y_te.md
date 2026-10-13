@@ -20,7 +20,7 @@
 
 ### HEAD TRAINER (Huấn luyện viên Trưởng)
 
-- Biết con ngựa nào đang không được tập hoặc không được đua để sắp xếp lịch huấn luyện.
+- Biết con ngựa nào đang không được tập để sắp xếp lịch huấn luyện.
 - Gửi yêu cầu khám khi thấy ngựa bất thường trong buổi tập.
 
 ### GROOM / STABLE HAND (Nhân viên Chăm sóc & Chuồng trại)
@@ -94,7 +94,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 1. Bốn trạng thái sức khỏe và ý nghĩa của chúng được định nghĩa ở Flow 1, mục III.2. Chỉ VETERINARIAN đổi được giá trị này, qua Flow 3. Ngoại lệ do hệ thống tự đặt: giá trị khởi tạo khi tạo hồ sơ (F1.2) và giá trị "Cần theo dõi" khi kích hoạt lại (F1.8).
 2. Mọi lần đổi trạng thái sức khỏe đều bắt buộc nhập lý do và ghi nhật ký kèm giá trị trước, sau.
 3. Khóa huấn luyện là một lệnh riêng của bác sĩ, độc lập với trạng thái sức khỏe. Một con ngựa ở trạng thái Cần theo dõi vẫn có thể bị khóa, và ngược lại một con Đủ điều kiện cũng có thể đang bị khóa trong thời gian hồi phục. Hệ thống **cho phép** đặt Đủ điều kiện khi ngựa đang bị khóa.
-4. Quy tắc tính "được tập" và "được đua" nằm ở Flow 1, mục III.4. Flow 3 chỉ cung cấp dữ liệu đầu vào, không tự tính lại.
+4. Quy tắc tính "được tập" nằm ở Flow 1, mục III.4. Flow 3 chỉ cung cấp dữ liệu đầu vào, không tự tính lại.
 5. Trạng thái Cách ly không bắt buộc hệ thống chuyển ngựa sang loại ô riêng. Nếu cần tách đàn, HEAD TRAINER chuyển ô bằng F1.7.
 
 ### 5. Chỉ số cơ thể
@@ -130,7 +130,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Yêu cầu khám mức Khẩn được tạo bởi người dùng, hoặc bác sĩ nâng một yêu cầu (kể cả yêu cầu tự động) lên Khẩn | URGENT | Mọi VETERINARIAN đang hoạt động |
 | Đặt khóa huấn luyện | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER |
 | Trạng thái sức khỏe chuyển sang Chấn thương hoặc Cách ly | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
-| Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) *(BA chốt)* | NORMAL | HEAD TRAINER phụ trách khu |
+| Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa chỉ được tập buổi Nhẹ và Trung bình) *(BA chốt)* | NORMAL | HEAD TRAINER phụ trách khu |
 | Quá hạn khám định kỳ trên 7 ngày | HIGH | Mọi VETERINARIAN đang hoạt động, CLUB MANAGER |
 | Mở bệnh án | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER |
@@ -151,7 +151,6 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Flow 1 | Nhận hồ sơ ngựa, khu và ô chuồng, HEAD TRAINER phụ trách khu. Ghi số đo vào bảng chỉ số cơ thể của F1.5. Cung cấp trạng thái sức khỏe, khóa huấn luyện, danh sách bệnh án và tổng chi phí để hiển thị trong F1.3. Khi chuyển nhượng (F1.8): chặn nếu ngựa còn bệnh án đang mở; yêu cầu khám đang chờ tự chuyển Đã bỏ qua với lý do "Do chuyển nhượng"; lịch hẹn khám định kỳ và lịch chăm sóc (F3.11) chưa làm tự hủy; khóa huấn luyện tự gỡ. Khi ghi nhận ngựa mất (F1.8): làm giống vậy với lý do "Do ngựa mất" và "Gỡ do ngựa mất". Bác sĩ đóng bệnh án kèm ngày mất (F3.9) thì ngựa được ghi nhận mất trong cùng thao tác. Chuyển nhượng nội bộ (F1.4) cũng bị chặn khi còn bệnh án đang mở. Các hệ quả này nằm trong dòng nhật ký đổi vòng đời. Bệnh án và yêu cầu khám cũng là dữ liệu chặn xóa hồ sơ. |
 | Flow 2 | Cung cấp trạng thái sức khỏe và khóa huấn luyện để Flow 2 chặn việc đăng ký lớp và tham gia buổi tập. Flow 3 không tự rút ngựa khỏi lớp. |
 | Flow 4 | Nhận báo cáo sự cố của GROOM dưới dạng yêu cầu khám khi sự cố khẩn hoặc HEAD TRAINER chuyển bác sĩ. Cung cấp ghi chú chăm sóc và hạn chế vận động (trường "Ghi chú chăm sóc" của buổi khám gần nhất) để Flow 4 điều chỉnh khẩu phần và checklist. |
-| Flow 5 | Cung cấp giá trị "được đua" để Flow 5 chặn đăng ký thi đấu. Flow 3 không tự rút đăng ký thi đấu đã có; Flow 5 kiểm tra lại "được đua" khi chốt danh sách. |
 
 ---
 
@@ -459,7 +458,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 
 ### Mô tả
 
-Đổi trạng thái sức khỏe của một con ngựa giữa bốn mức. Đây là dữ liệu mà Flow 1, Flow 2 và Flow 5 đều dựa vào để quyết định con ngựa có được tập và được đua hay không.
+Đổi trạng thái sức khỏe của một con ngựa giữa bốn mức. Đây là dữ liệu mà Flow 1 và Flow 2 dựa vào để quyết định con ngựa có được tập hay không.
 
 ### Phân quyền
 
@@ -478,11 +477,11 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Đổi trực tiếp từ hồ sơ ngựa hoặc bảng điều khiển y tế, không cần tạo buổi khám.
 2. Bốn giá trị và ý nghĩa của chúng theo đúng Flow 1, mục III.2.
 3. Hệ quả khi chuyển sang Chấn thương hoặc Cách ly:
-   - Con ngựa không còn được tập và không còn được đua, do quy tắc tính ở Flow 1 mục III.4.
+   - Con ngựa không còn được tập, do quy tắc tính ở Flow 1 mục III.4.
    - Hệ thống gửi thông báo mức HIGH cho HEAD TRAINER phụ trách khu, CLUB MANAGER và HORSE OWNER.
-   - Hệ thống **KHÔNG** tự rút ngựa khỏi lớp học và không tự rút đăng ký thi đấu. Ngựa vẫn còn trong lớp nhưng không tham gia được buổi tập; HEAD TRAINER quyết định giữ hay rút.
+   - Hệ thống **KHÔNG** tự rút ngựa khỏi lớp học. Ngựa vẫn còn trong lớp nhưng không tham gia được buổi tập; HEAD TRAINER quyết định giữ hay rút.
    - Hệ thống không tự chuyển ô. Cần tách đàn thì HEAD TRAINER chuyển ô bằng F1.7 (Flow 1 mục III.2.2).
-4. Chuyển sang Cần theo dõi: ngựa mất quyền đua và chỉ được tập cường độ Nhẹ và Trung bình (Flow 1 mục III.2); gửi thông báo mức NORMAL cho HEAD TRAINER phụ trách khu.
+4. Chuyển sang Cần theo dõi: ngựa chỉ được tập cường độ Nhẹ và Trung bình (Flow 1 mục III.2); gửi thông báo mức NORMAL cho HEAD TRAINER phụ trách khu.
 5. Chuyển sang Đủ điều kiện được phép cả khi đang có lệnh khóa huấn luyện, và không tự gỡ khóa. Khóa chỉ được gỡ ở F3.8.
 6. Không đổi trạng thái cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 7. Ghi nhật ký kèm giá trị trước, giá trị sau và lý do. Lịch sử trạng thái sức khỏe (F3.10) được dựng từ nhật ký này.
@@ -496,7 +495,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 | **Actor chính** | VETERINARIAN |
 | **Actor phụ** | HEAD TRAINER, CLUB MANAGER (nhận thông báo), Hệ thống (ghi nhật ký) |
 | **Tiền điều kiện** | VETERINARIAN đã đăng nhập. Con ngựa ở trạng thái Đang hoạt động hoặc Đã giải nghệ. |
-| **Hậu điều kiện** | Trạng thái sức khỏe được cập nhật, các giá trị được tập và được đua được tính lại, thông báo được gửi nếu cần. |
+| **Hậu điều kiện** | Trạng thái sức khỏe được cập nhật, giá trị được tập được tính lại, thông báo được gửi nếu cần. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở hồ sơ ngựa hoặc bảng điều khiển y tế.<br>2. VETERINARIAN chọn "Đổi trạng thái sức khỏe".<br>3. Hệ thống hiển thị bốn giá trị kèm mô tả hệ quả.<br>4. VETERINARIAN chọn giá trị mới và nhập lý do.<br>5. Hệ thống lưu, gửi thông báo nếu cần và ghi nhật ký. |
 | **Luồng thay thế** | A1. Trạng thái được đổi ngay trong một buổi khám -> hệ thống lưu cùng buổi khám, không cần thao tác riêng.<br>A2. Trạng thái mới trùng trạng thái cũ -> hệ thống không ghi nhật ký và báo không có thay đổi. |
 | **Luồng ngoại lệ** | E1. Không nhập lý do -> chặn thao tác.<br>E2. Ngựa đã chuyển nhượng hoặc đã mất -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E3. Vai trò khác VETERINARIAN gọi trực tiếp API -> trả về 403. |
@@ -507,7 +506,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 
 ### Mô tả
 
-Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đấu, độc lập với trạng thái sức khỏe. Dùng cho những trường hợp ngựa chưa đến mức chấn thương nhưng vẫn cần nghỉ, hoặc đang hồi phục sau điều trị.
+Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện, độc lập với trạng thái sức khỏe. Dùng cho những trường hợp ngựa chưa đến mức chấn thương nhưng vẫn cần nghỉ, hoặc đang hồi phục sau điều trị.
 
 ### Phân quyền
 
@@ -524,7 +523,7 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 1. Một lệnh khóa gồm: lý do, thời điểm bắt đầu (là lúc đặt khóa, không đặt trước cho tương lai), ngày dự kiến gỡ (tùy chọn), bệnh án liên quan (nếu có) và người đặt.
 2. Nếu con ngựa đang có bệnh án mở, lệnh khóa tự gắn vào bệnh án đó.
 3. Mỗi con ngựa có tối đa **MỘT** lệnh khóa đang hiệu lực.
-4. Khóa chặn cả "được tập" và "được đua", bất kể trạng thái sức khỏe đang là gì.
+4. Khóa chặn "được tập", bất kể trạng thái sức khỏe đang là gì.
 5. Ngày dự kiến gỡ chỉ là thông tin tham khảo cho HEAD TRAINER. Hệ thống không tự gỡ khóa khi đến ngày, vì việc ngựa đã hồi phục hay chưa phải do bác sĩ xác nhận.
 6. Gỡ khóa bắt buộc nhập lý do và chỉ VETERINARIAN thực hiện. Ngoại lệ duy nhất: khi ngựa được chuyển nhượng hoặc được ghi nhận mất, hệ thống tự gỡ khóa với ghi chú "Gỡ do chuyển nhượng" hoặc "Gỡ do ngựa mất" (xem F1.8); lịch sử khóa hiển thị người gỡ là "Hệ thống".
 7. Khi đóng bệnh án mà lệnh khóa gắn với bệnh án đó vẫn còn hiệu lực, hệ thống bắt bác sĩ chọn một trong hai: gỡ khóa ngay, hoặc giữ khóa và nhập ngày dự kiến gỡ.
@@ -541,7 +540,7 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 | **Actor chính** | VETERINARIAN |
 | **Actor phụ** | HEAD TRAINER, CLUB MANAGER (nhận thông báo), Hệ thống (ghi nhật ký) |
 | **Tiền điều kiện** | VETERINARIAN đã đăng nhập. Con ngựa ở trạng thái Đang hoạt động hoặc Đã giải nghệ. |
-| **Hậu điều kiện** | Lệnh khóa được tạo hoặc được gỡ. Giá trị được tập và được đua của con ngựa được tính lại. |
+| **Hậu điều kiện** | Lệnh khóa được tạo hoặc được gỡ. Giá trị được tập của con ngựa được tính lại. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở hồ sơ ngựa hoặc bệnh án.<br>2. VETERINARIAN chọn "Khóa huấn luyện".<br>3. VETERINARIAN nhập lý do và ngày dự kiến gỡ (nếu có).<br>4. Hệ thống kiểm tra con ngựa chưa có khóa đang hiệu lực.<br>5. Hệ thống lưu lệnh khóa (gắn bệnh án đang mở nếu có), gửi thông báo mức HIGH và ghi nhật ký. |
 | **Luồng thay thế** | A1. VETERINARIAN gỡ khóa -> nhập lý do, hệ thống gỡ và gửi thông báo mức NORMAL.<br>A2. Đóng bệnh án mà khóa còn hiệu lực -> hệ thống yêu cầu chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ. |
 | **Luồng ngoại lệ** | E1. Con ngựa đã có khóa đang hiệu lực -> trả về 409 kèm câu thông báo; giao diện tải lại để hiện khóa hiện có. *(BA chốt)*<br>E2. Không nhập lý do -> chặn thao tác.<br>E3. Ngày dự kiến gỡ ở quá khứ (so theo ngày lịch câu lạc bộ) -> báo lỗi.<br>E4. Ngựa đã chuyển nhượng hoặc đã mất -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E5. Gỡ một lệnh khóa đã gỡ -> trả về 409. |
@@ -737,7 +736,7 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 
 | # | Câu hỏi | Liên quan | Hệ thống đang chạy |
 |---|---|---|---|
-| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Đã chốt: được tập buổi Nhẹ và Trung bình, không được đua. Buổi tập có cường độ; gặp buổi Nặng thì lượt tự đánh Không đủ điều kiện, chặn ở publish buổi, ghi danh, điểm danh, bắt đầu |
+| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Đã chốt: được tập buổi Nhẹ và Trung bình. Buổi tập có cường độ; gặp buổi Nặng thì lượt tự đánh Không đủ điều kiện, chặn ở publish buổi, ghi danh, điểm danh, bắt đầu |
 | Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt: chấm lại ngay các lượt sắp tới của ngựa khi đặt khóa, gỡ khóa hoặc đổi sức khỏe (lượt thành Hủy do khóa / Không đủ điều kiện, gỡ hoặc khỏe lại trước giờ tập thì về Chờ điểm danh); vẫn chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh (Flow 2 luật 6) |
 | Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | Đã chốt: sự cố khẩn tự tạo yêu cầu khám; sự cố thường do HEAD TRAINER chuyển bác sĩ (`docs/flow4-stable-care.md` mục 6) |
 | Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Đã chốt: trong hồ sơ ngựa; GROOM chỉ thấy ghi chú mới nhất của ngựa mình được giao |

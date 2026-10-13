@@ -1,5 +1,6 @@
 import type {
   HorseDetailResponseDto,
+  HorseEligibilityDto,
   HorseEligibilityResponseDto,
   HorseListItemDto,
   HorseLocationDto,
@@ -39,7 +40,7 @@ export interface HorseListItemParts {
 }
 
 /**
- * Dựng đầu vào tính "được tập / được đua" từ hồ sơ ngựa
+ * Dựng đầu vào tính "được tập" từ hồ sơ ngựa
  *
  * @param horse Hồ sơ ngựa
  * @param hasActiveTrainingLock Ngựa có đang bị khóa huấn luyện không
@@ -58,7 +59,7 @@ export function eligibilityInputOf(
 }
 
 /**
- * Chuyển một con ngựa thành một dòng của danh sách, kèm vị trí, cờ được đua và cờ đã xóa.
+ * Chuyển một con ngựa thành một dòng của danh sách, kèm vị trí và cờ đã xóa.
  *
  * @param horse Hồ sơ ngựa
  * @param parts Vị trí, cờ khóa huấn luyện, cờ ẩn id vị trí và link ảnh đại diện
@@ -72,9 +73,6 @@ export function toHorseListItem(
     ...toHorseResponse(horse),
     location: toLocation(horse, parts.location, parts.hideLocationIds),
     photoUrl: parts.photoUrl,
-    canRegisterRace: evaluateEligibility(
-      eligibilityInputOf(horse, parts.hasActiveTrainingLock),
-    ).racingEligible,
     isDeleted: horse.deletedAt !== null,
   };
 }
@@ -121,7 +119,7 @@ function toLocation(
  * Dựng hồ sơ chi tiết từ hồ sơ ngựa và các dữ liệu đã tải sẵn.
  *
  * - Mọi vai trò xem cùng nhóm thông tin; chỉ khác ở chỗ Horse Owner không nhận id khu và ô
- * - "Được tập", "được đua" tính lại tại đây, không lưu DB
+ * - "Được tập" tính lại tại đây, không lưu DB
  *
  * @param horse Hồ sơ ngựa
  * @param parts Vị trí, groom, chủ sở hữu, chỉ số mới nhất và cờ khóa huấn luyện
@@ -142,8 +140,8 @@ export function toHorseDetailResponse(
     ownerSince: parts.ownerSince,
     latestMeasurements: parts.latestMeasurements.map(toLatestMeasurement),
     activeTrainingLock: parts.activeTrainingLock,
-    eligibility: evaluateEligibility(
-      eligibilityInputOf(horse, parts.activeTrainingLock),
+    eligibility: toTrainingEligibility(
+      evaluateEligibility(eligibilityInputOf(horse, parts.activeTrainingLock)),
     ),
     isDeleted,
   };
@@ -198,12 +196,12 @@ export function toHorsePedigreeResponse(
 }
 
 /**
- * Dựng kết quả "được tập / được đua" kèm trạng thái hiện tại của ngựa
+ * Dựng kết quả "được tập" kèm trạng thái hiện tại của ngựa
  *
  * @param horse Hồ sơ ngựa
  * @param activeTrainingLock Ngựa có đang bị khóa huấn luyện không
  * @param result Kết quả tính từ evaluateEligibility
- * @returns Hai cờ, trạng thái hiện tại và lý do chặn
+ * @returns Cờ được tập, trạng thái hiện tại và lý do chặn
  */
 export function toHorseEligibilityResponse(
   horse: HorseEntity,
@@ -215,8 +213,21 @@ export function toHorseEligibilityResponse(
     healthStatus: horse.healthStatus,
     lifecycleStatus: horse.lifecycleStatus,
     activeTrainingLock,
-    ...result,
+    ...toTrainingEligibility(result),
   };
+}
+
+/**
+ * Lấy phần trả về API của kết quả "được tập"
+ *
+ * @param result Kết quả tính từ evaluateEligibility
+ * @returns Cờ được tập và lý do chặn
+ */
+function toTrainingEligibility({
+  trainingEligible,
+  trainingReasons,
+}: EligibilityResult): HorseEligibilityDto {
+  return { trainingEligible, trainingReasons };
 }
 
 /**

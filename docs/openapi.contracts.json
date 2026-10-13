@@ -392,7 +392,7 @@
         ]
       },
       "get": {
-        "description": "Thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập/được đua và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.",
+        "description": "Thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.",
         "operationId": "HorseProfilesController_getHorse",
         "parameters": [
           {
@@ -1348,7 +1348,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get current training and racing eligibility",
+        "summary": "Get current training eligibility",
         "tags": [
           "horses"
         ]
@@ -9419,10 +9419,6 @@
             "nullable": true,
             "description": "Link tải ảnh đại diện có hạn dùng; null nếu ngựa chưa có ảnh"
           },
-          "canRegisterRace": {
-            "type": "boolean",
-            "description": "Tính lúc đọc: true khi hồ sơ chưa xóa, ngựa ACTIVE, sức khỏe ELIGIBLE và không có lệnh khóa huấn luyện"
-          },
           "isDeleted": {
             "type": "boolean",
             "description": "true nếu hồ sơ đã xóa (chỉ Club Manager thấy được)"
@@ -9435,7 +9431,6 @@
           "lifecycleStatus",
           "version",
           "location",
-          "canRegisterRace",
           "isDeleted"
         ]
       },
@@ -9573,46 +9568,9 @@
           "trainingEligible": {
             "type": "boolean"
           },
-          "racingEligible": {
-            "type": "boolean"
-          },
           "trainingReasons": {
             "type": "array",
             "description": "Lý do không được tập, rỗng khi trainingEligible = true",
-            "items": {
-              "type": "string",
-              "enum": [
-                "PROFILE_DELETED",
-                "LIFECYCLE_RETIRED",
-                "LIFECYCLE_TRANSFERRED",
-                "LIFECYCLE_DECEASED",
-                "HEALTH_UNDER_OBSERVATION",
-                "HEALTH_INJURED",
-                "HEALTH_QUARANTINED",
-                "ACTIVE_TRAINING_LOCK"
-              ]
-            }
-          },
-          "racingReasons": {
-            "type": "array",
-            "description": "Lý do không được đua, rỗng khi racingEligible = true",
-            "items": {
-              "type": "string",
-              "enum": [
-                "PROFILE_DELETED",
-                "LIFECYCLE_RETIRED",
-                "LIFECYCLE_TRANSFERRED",
-                "LIFECYCLE_DECEASED",
-                "HEALTH_UNDER_OBSERVATION",
-                "HEALTH_INJURED",
-                "HEALTH_QUARANTINED",
-                "ACTIVE_TRAINING_LOCK"
-              ]
-            }
-          },
-          "reasons": {
-            "type": "array",
-            "description": "Mọi lý do, bằng racingReasons",
             "items": {
               "type": "string",
               "enum": [
@@ -9630,10 +9588,7 @@
         },
         "required": [
           "trainingEligible",
-          "racingEligible",
-          "trainingReasons",
-          "racingReasons",
-          "reasons"
+          "trainingReasons"
         ]
       },
       "HorseDetailResponseDto": {
@@ -10056,10 +10011,6 @@
           "canViewTrainingTab": {
             "type": "boolean",
             "description": "Xem huấn luyện: mọi vai trò trừ Groom"
-          },
-          "canViewPerformanceTab": {
-            "type": "boolean",
-            "description": "Xem thành tích thi đấu: Club Manager, Head Trainer, Horse Owner"
           }
         },
         "required": [
@@ -10075,8 +10026,7 @@
           "canRecordMeasurement",
           "canDeleteMeasurement",
           "canViewMedicalTab",
-          "canViewTrainingTab",
-          "canViewPerformanceTab"
+          "canViewTrainingTab"
         ]
       },
       "HorseEligibilityResponseDto": {
@@ -10087,9 +10037,6 @@
             "format": "uuid"
           },
           "trainingEligible": {
-            "type": "boolean"
-          },
-          "racingEligible": {
             "type": "boolean"
           },
           "healthStatus": {
@@ -10129,52 +10076,15 @@
                 "ACTIVE_TRAINING_LOCK"
               ]
             }
-          },
-          "racingReasons": {
-            "type": "array",
-            "description": "Lý do không được đua, rỗng khi racingEligible = true",
-            "items": {
-              "type": "string",
-              "enum": [
-                "PROFILE_DELETED",
-                "LIFECYCLE_RETIRED",
-                "LIFECYCLE_TRANSFERRED",
-                "LIFECYCLE_DECEASED",
-                "HEALTH_UNDER_OBSERVATION",
-                "HEALTH_INJURED",
-                "HEALTH_QUARANTINED",
-                "ACTIVE_TRAINING_LOCK"
-              ]
-            }
-          },
-          "reasons": {
-            "type": "array",
-            "description": "Mọi lý do, bằng racingReasons",
-            "items": {
-              "type": "string",
-              "enum": [
-                "PROFILE_DELETED",
-                "LIFECYCLE_RETIRED",
-                "LIFECYCLE_TRANSFERRED",
-                "LIFECYCLE_DECEASED",
-                "HEALTH_UNDER_OBSERVATION",
-                "HEALTH_INJURED",
-                "HEALTH_QUARANTINED",
-                "ACTIVE_TRAINING_LOCK"
-              ]
-            }
           }
         },
         "required": [
           "horseId",
           "trainingEligible",
-          "racingEligible",
           "healthStatus",
           "lifecycleStatus",
           "activeTrainingLock",
-          "trainingReasons",
-          "racingReasons",
-          "reasons"
+          "trainingReasons"
         ]
       },
       "HorseLifecyclePreviewResponseDto": {

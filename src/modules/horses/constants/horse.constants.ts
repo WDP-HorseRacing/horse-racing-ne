@@ -260,13 +260,11 @@ export const LIFECYCLE_VERBS: Record<HorseLifecycleStatus, string> = {
 };
 
 /**
- * Lý do không đủ điều kiện ứng với từng trạng thái sức khỏe khác ELIGIBLE
+ * Lý do không được tập ứng với từng trạng thái sức khỏe chặn tập
  */
 export const HEALTH_REASONS: Partial<
   Record<HorseHealthStatus, EligibilityReason>
 > = {
-  [HorseHealthStatus.UNDER_OBSERVATION]:
-    EligibilityReason.HEALTH_UNDER_OBSERVATION,
   [HorseHealthStatus.INJURED]: EligibilityReason.HEALTH_INJURED,
   [HorseHealthStatus.QUARANTINED]: EligibilityReason.HEALTH_QUARANTINED,
 };

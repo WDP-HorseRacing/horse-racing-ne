@@ -76,7 +76,7 @@ export class HorseProfilesController {
   @ApiOperation({
     summary: 'Get horse profile detail',
     description:
-      'Thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập/được đua và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.',
+      'Thông tin hồ sơ: mọi vai trò nhận cùng nhóm thông tin, kèm được tập và lý do. Horse Owner không nhận id khu và ô. Chỉ Club Manager mở được hồ sơ đã xóa, vai trò khác nhận 404. Quyền thao tác lấy ở GET /horses/{id}/permissions.',
   })
   @ApiOkResponse({ type: HorseDetailResponseDto })
   getHorse(
@@ -149,7 +149,7 @@ export class HorseProfilesController {
 
   @Access(HORSE_READER_ROLES)
   @Get('horses/:horseId/eligibility')
-  @ApiOperation({ summary: 'Get current training and racing eligibility' })
+  @ApiOperation({ summary: 'Get current training eligibility' })
   @ApiOkResponse({ type: HorseEligibilityResponseDto })
   getEligibility(
     @CurrentUser() actor: Actor,

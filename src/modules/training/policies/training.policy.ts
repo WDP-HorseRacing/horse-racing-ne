@@ -2,7 +2,10 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import { toClubDate, toDisplayDate } from '../../../common/utils/club-date';
 import { EligibilityReason } from '../../horses/enums/eligibility-reason.enum';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../../horses/enums/horse-status.enum';
 import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
 import type {
   ReadOnlyLifecycleStatus,
@@ -370,9 +373,8 @@ export function eligibilityForSession(
   eligibility: EligibilityResult,
   intensity: TrainingIntensity,
 ): EligibilityResult {
-  const underObservation = eligibility.reasons.includes(
-    EligibilityReason.HEALTH_UNDER_OBSERVATION,
-  );
+  const underObservation =
+    eligibility.healthStatus === HorseHealthStatus.UNDER_OBSERVATION;
   if (!underObservation || intensity !== TrainingIntensity.HEAVY) {
     return eligibility;
   }

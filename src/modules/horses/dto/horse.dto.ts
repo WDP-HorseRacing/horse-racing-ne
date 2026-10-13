@@ -150,27 +150,10 @@ export class HorseEligibilityDto {
   @ApiProperty()
   trainingEligible!: boolean;
 
-  @ApiProperty()
-  racingEligible!: boolean;
-
   @ApiProperty({
     enum: EligibilityReason,
     isArray: true,
     description: 'Lý do không được tập, rỗng khi trainingEligible = true',
   })
   trainingReasons!: EligibilityReason[];
-
-  @ApiProperty({
-    enum: EligibilityReason,
-    isArray: true,
-    description: 'Lý do không được đua, rỗng khi racingEligible = true',
-  })
-  racingReasons!: EligibilityReason[];
-
-  @ApiProperty({
-    enum: EligibilityReason,
-    isArray: true,
-    description: 'Mọi lý do, bằng racingReasons',
-  })
-  reasons!: EligibilityReason[];
 }

@@ -679,59 +679,48 @@ export function nonRaceAptitudeFieldsIn(fields: object): string[] {
 }
 
 /**
- * Tính "được tập" và "được đua" của ngựa kèm mọi lý do chặn; không lưu DB, tính lại mỗi lần gọi
+ * Tính "được tập" của ngựa kèm mọi lý do chặn; không lưu DB, tính lại mỗi lần gọi
  *
  * - Được tập: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE hoặc UNDER_OBSERVATION, không có lệnh khóa huấn luyện
- * - Được đua: hồ sơ chưa xóa, vòng đời ACTIVE, sức khỏe ELIGIBLE, không có lệnh khóa huấn luyện
  * - Lý do vòng đời tách riêng Đã giải nghệ (LIFECYCLE_RETIRED), Đã chuyển nhượng (LIFECYCLE_TRANSFERRED) và Đã mất (LIFECYCLE_DECEASED)
  * - trainingReasons: lý do không được tập, rỗng khi được tập
- * - racingReasons: lý do không được đua, rỗng khi được đua
- * - reasons: mọi lý do, bằng racingReasons
+ * - healthStatus: sức khỏe hiện tại, để nơi gọi xét thêm theo cường độ buổi tập
  *
  * @param input Trạng thái hồ sơ, vòng đời, sức khỏe và cờ khóa huấn luyện của ngựa
- * @returns Hai cờ được tập, được đua và lý do chặn của từng cờ (rỗng nếu không bị chặn gì)
+ * @returns Cờ được tập, lý do chặn (rỗng nếu không bị chặn gì) và sức khỏe hiện tại
  */
 export function evaluateEligibility(
   input: EligibilityInput,
 ): EligibilityResult {
-  const reasons: EligibilityReason[] = [];
-  if (input.isDeleted) reasons.push(EligibilityReason.PROFILE_DELETED);
+  const trainingReasons: EligibilityReason[] = [];
+  if (input.isDeleted) trainingReasons.push(EligibilityReason.PROFILE_DELETED);
   if (input.lifecycleStatus === HorseLifecycleStatus.RETIRED) {
-    reasons.push(EligibilityReason.LIFECYCLE_RETIRED);
+    trainingReasons.push(EligibilityReason.LIFECYCLE_RETIRED);
   }
   if (input.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED) {
-    reasons.push(EligibilityReason.LIFECYCLE_TRANSFERRED);
+    trainingReasons.push(EligibilityReason.LIFECYCLE_TRANSFERRED);
   }
   if (input.lifecycleStatus === HorseLifecycleStatus.DECEASED) {
-    reasons.push(EligibilityReason.LIFECYCLE_DECEASED);
+    trainingReasons.push(EligibilityReason.LIFECYCLE_DECEASED);
   }
   const active =
     !input.isDeleted && input.lifecycleStatus === HorseLifecycleStatus.ACTIVE;
 
   const healthReason = HEALTH_REASONS[input.healthStatus];
-  if (healthReason) reasons.push(healthReason);
+  if (healthReason) trainingReasons.push(healthReason);
 
   if (input.hasActiveTrainingLock) {
-    reasons.push(EligibilityReason.ACTIVE_TRAINING_LOCK);
+    trainingReasons.push(EligibilityReason.ACTIVE_TRAINING_LOCK);
   }
 
   const trainableHealth =
     input.healthStatus === HorseHealthStatus.ELIGIBLE ||
     input.healthStatus === HorseHealthStatus.UNDER_OBSERVATION;
 
-  const trainingReasons = reasons.filter(
-    (reason) => reason !== EligibilityReason.HEALTH_UNDER_OBSERVATION,
-  );
-
   return {
     trainingEligible: active && trainableHealth && !input.hasActiveTrainingLock,
-    racingEligible:
-      active &&
-      input.healthStatus === HorseHealthStatus.ELIGIBLE &&
-      !input.hasActiveTrainingLock,
     trainingReasons,
-    racingReasons: reasons,
-    reasons,
+    healthStatus: input.healthStatus,
   };
 }
 
@@ -984,11 +973,6 @@ export function evaluateHorsePermissions(
       UserRole.CLUB_MANAGER,
       UserRole.HEAD_TRAINER,
       UserRole.VETERINARIAN,
-      UserRole.HORSE_OWNER,
-    ),
-    canViewPerformanceTab: has(
-      UserRole.CLUB_MANAGER,
-      UserRole.HEAD_TRAINER,
       UserRole.HORSE_OWNER,
     ),
   };

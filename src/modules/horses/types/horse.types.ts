@@ -248,7 +248,7 @@ export interface ChildProfile {
 }
 
 /**
- * Trạng thái ngựa cần để tính điều kiện được tập và được đua
+ * Trạng thái ngựa cần để tính điều kiện được tập
  */
 export interface EligibilityInput {
   isDeleted: boolean;
@@ -258,17 +258,14 @@ export interface EligibilityInput {
 }
 
 /**
- * Điều kiện được tập, được đua của ngựa kèm lý do chặn
+ * Điều kiện được tập của ngựa kèm lý do chặn và sức khỏe hiện tại
  */
 export interface EligibilityResult {
   trainingEligible: boolean;
-  racingEligible: boolean;
   /** Lý do không được tập, rỗng khi được tập */
   trainingReasons: EligibilityReason[];
-  /** Lý do không được đua, rỗng khi được đua */
-  racingReasons: EligibilityReason[];
-  /** Mọi lý do, bằng racingReasons */
-  reasons: EligibilityReason[];
+  /** Sức khỏe hiện tại, để xét thêm theo cường độ buổi tập */
+  healthStatus: HorseHealthStatus;
 }
 
 /**
@@ -314,7 +311,6 @@ export interface HorsePermissions {
   canDeleteMeasurement: boolean;
   canViewMedicalTab: boolean;
   canViewTrainingTab: boolean;
-  canViewPerformanceTab: boolean;
 }
 
 /**

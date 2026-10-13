@@ -43,7 +43,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | PUT | `/api/v1/horses/{horseId}/barn` | Assign or change the barn of a horse |
 | GET | `/api/v1/horses/{horseId}/barn-preview` | Preview the consequences of changing the barn of a horse |
 | GET | `/api/v1/horses/{horseId}/deletion-preview` | Preview whether a horse profile can be deleted |
-| GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
+| GET | `/api/v1/horses/{horseId}/eligibility` | Get current training eligibility |
 | PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
 | GET | `/api/v1/horses/{horseId}/lifecycle-status/preview` | Preview the consequences of a lifecycle change |
 | GET | `/api/v1/horses/{horseId}/measurements` | List horse measurement history |

@@ -304,12 +304,6 @@ export class HorseListItemDto extends HorseResponseDto {
   photoUrl!: string | null;
 
   @ApiProperty({
-    description:
-      'Tính lúc đọc: true khi hồ sơ chưa xóa, ngựa ACTIVE, sức khỏe ELIGIBLE và không có lệnh khóa huấn luyện',
-  })
-  canRegisterRace!: boolean;
-
-  @ApiProperty({
     description: 'true nếu hồ sơ đã xóa (chỉ Club Manager thấy được)',
   })
   isDeleted!: boolean;

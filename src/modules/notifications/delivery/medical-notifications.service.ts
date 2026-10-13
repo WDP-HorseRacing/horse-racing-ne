@@ -108,7 +108,7 @@ export class MedicalNotificationsService {
       NotificationPriority.HIGH,
       (horse) => ({
         title: `Ngựa ${horse} bị khóa huấn luyện`,
-        message: `Bác sĩ đã khóa huấn luyện ngựa ${horse}: ${event.reason}.${until} Ngựa không được tập và không được đua cho tới khi gỡ khóa.`,
+        message: `Bác sĩ đã khóa huấn luyện ngựa ${horse}: ${event.reason}.${until} Ngựa không được tập cho tới khi gỡ khóa.`,
       }),
     );
   }
@@ -159,7 +159,7 @@ export class MedicalNotificationsService {
         NotificationPriority.NORMAL,
         (horse) => ({
           title: `Ngựa ${horse}: ${HEALTH_LABELS[event.to]}`,
-          message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa không được đua cho tới khi bác sĩ kết luận lại.`,
+          message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa chỉ được tập buổi cường độ Nhẹ hoặc Trung bình cho tới khi bác sĩ kết luận lại.`,
         }),
       );
     }
@@ -178,7 +178,7 @@ export class MedicalNotificationsService {
       NotificationPriority.HIGH,
       (horse) => ({
         title: `Ngựa ${horse}: ${HEALTH_LABELS[event.to]}`,
-        message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa không được tập và không được đua.`,
+        message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa không được tập.`,
       }),
     );
   }

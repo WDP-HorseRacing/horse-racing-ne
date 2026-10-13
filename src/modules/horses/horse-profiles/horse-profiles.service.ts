@@ -102,7 +102,7 @@ export class HorseProfilesService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Từ khóa, bộ lọc, sắp xếp và phân trang
-   * @returns Promise trả về một trang danh sách ngựa kèm vị trí, cờ được đua và cờ đã xóa
+   * @returns Promise trả về một trang danh sách ngựa kèm vị trí và cờ đã xóa
    * @throws ForbiddenException Nếu người gọi không phải Club Manager mà bật includeDeleted
    */
   async list(
@@ -148,7 +148,7 @@ export class HorseProfilesService {
   }
 
   /**
-   * Lấy thông tin chi tiết hồ sơ ngựa: định danh, trạng thái, được tập/được đua, vị trí, groom, chủ (kèm ngày bắt đầu sở hữu) và chỉ số mới nhất.
+   * Lấy thông tin chi tiết hồ sơ ngựa: định danh, trạng thái, được tập, vị trí, groom, chủ (kèm ngày bắt đầu sở hữu) và chỉ số mới nhất.
    *
    * - Mọi vai trò trong phạm vi xem đều nhận cùng nhóm thông tin này
    * - Horse Owner không nhận id khu và ô
@@ -445,11 +445,11 @@ export class HorseProfilesService {
   }
 
   /**
-   * Tính "được tập" và "được đua" của ngựa kèm lý do.
+   * Tính "được tập" của ngựa kèm lý do.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns Promise trả về hai cờ, trạng thái hiện tại và lý do chặn
+   * @returns Promise trả về cờ được tập, trạng thái hiện tại và lý do chặn
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */

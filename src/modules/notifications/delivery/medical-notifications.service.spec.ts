@@ -141,7 +141,7 @@ describe('MedicalNotificationsService', () => {
       priority: NotificationPriority.NORMAL,
       title: 'Ngựa Winx: Cần theo dõi',
       message:
-        'Trạng thái sức khỏe của ngựa Winx chuyển từ Đủ điều kiện sang Cần theo dõi. Ngựa không được đua cho tới khi bác sĩ kết luận lại.',
+        'Trạng thái sức khỏe của ngựa Winx chuyển từ Đủ điều kiện sang Cần theo dõi. Ngựa chỉ được tập buổi cường độ Nhẹ hoặc Trung bình cho tới khi bác sĩ kết luận lại.',
     });
   });
 
