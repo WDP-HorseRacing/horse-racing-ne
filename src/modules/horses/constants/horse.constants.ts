@@ -306,7 +306,6 @@ export const HORSE_BUSINESS_TABLES: Readonly<Record<string, string>> = {
   stall_assignments: 'xếp ô chuồng',
   groom_assignments: 'phân công groom',
   horse_enrollments: 'lớp học',
-  race_registrations: 'đăng ký thi đấu',
   feeding_plans: 'khẩu phần ăn',
   daily_checklists: 'checklist hằng ngày',
   incidents: 'báo cáo sự cố',

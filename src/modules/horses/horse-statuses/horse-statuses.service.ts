@@ -9,7 +9,6 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { MedicalLifecycleService } from '../../medical/shared/medical-lifecycle.service';
 import { TrainingLockService } from '../../medical/training-locks/training-locks.service';
-import { RaceRegistrationsRepository } from '../../racing/race-registrations/race-registrations.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { IncidentWritesService } from '../../stable/shared/incident-writes.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
@@ -100,7 +99,6 @@ export class HorseStatusesService {
     private readonly trainingLocks: TrainingLockService,
     private readonly medicalLifecycle: MedicalLifecycleService,
     private readonly incidentWrites: IncidentWritesService,
-    private readonly racing: RaceRegistrationsRepository,
     private readonly events: DomainEventPublisher,
     private readonly training: TrainingOperationsFacade,
     private readonly ownerships: HorseOwnershipService,
@@ -110,15 +108,15 @@ export class HorseStatusesService {
    * Đổi vòng đời ngựa và xử lý toàn bộ hệ quả trong cùng một transaction.
    *
    * - Khóa row ngựa trước khi kiểm tra
-   * - Giải nghệ: rút khỏi lớp đang học (training), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
-   * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical); ghi HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT vào outbox trong cùng transaction để báo Groom vừa bị kết thúc phân công; rút khỏi lớp đang học (training), đang ACTIVE thì rút thêm đăng ký thi đấu chưa diễn ra (racing); trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); đóng sự cố tại chuồng đang mở với kết quả "Ngựa đã chuyển nhượng" (stable); bỏ khu; giữ chủ sở hữu
+   * - Giải nghệ: rút khỏi lớp đang học (training); giữ khu, ô, groom, y tế
+   * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical); ghi HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT vào outbox trong cùng transaction để báo Groom vừa bị kết thúc phân công; rút khỏi lớp đang học (training); trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); đóng sự cố tại chuồng đang mở với kết quả "Ngựa đã chuyển nhượng" (stable); bỏ khu; giữ chủ sở hữu
    * - Ghi nhận đã mất (từ ACTIVE hoặc RETIRED): bắt buộc ngày mất (không ở tương lai, không trước ngày sinh); làm như chuyển nhượng từ trạng thái đó, gỡ khóa huấn luyện với lý do "Gỡ do ngựa mất", lý do hủy y tế "Do ngựa mất", đóng sự cố với kết quả "Ngựa đã mất"; giữ chủ sở hữu; ghi HORSE_DECEASED_EVENT vào outbox (kèm khu và Groom trước khi dọn) thay cho HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT
    * - Ngựa đã mất: mọi lần đổi vòng đời bị chặn 409
    * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe; từ chuyển nhượng thì sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ và đóng giai đoạn sở hữu của chủ cũ (khóa chia sẻ row tài khoản chủ khi kiểm)
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
    * - Ngựa đang tập hoặc đang đua vẫn đổi được
    * - Bắt buộc lý do; ghi nhật ký kèm lý do. Gửi đúng trạng thái hiện tại thì không đổi gì
-   * - Nhật ký ghi thêm hệ quả thực sự xảy ra: số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, incidentsClosed, raceRegistrationsWithdrawn, chủ bị bỏ trống (ownerId); hệ quả không chạy thì không có key
+   * - Nhật ký ghi thêm hệ quả thực sự xảy ra: số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, incidentsClosed, chủ bị bỏ trống (ownerId); hệ quả không chạy thì không có key
    * - Hồ sơ đã xóa: Club Manager nhận 409, phải khôi phục trước (qua HorseAccessService.lockWritableHorse)
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -391,7 +389,7 @@ export class HorseStatusesService {
   /**
    * Chạy các hệ quả của việc đổi vòng đời trong transaction đang mở
    *
-   * - Thứ tự chạy: xử lý y tế khi chuyển nhượng, đóng sự cố tại chuồng đang mở, rút khỏi lớp đang học, kiểm chủ khi kích hoạt lại từ chuyển nhượng (khóa chia sẻ row tài khoản chủ), rút đăng ký thi đấu chưa diễn ra, trả ô, kết thúc groom, gỡ lệnh khóa huấn luyện
+   * - Thứ tự chạy: xử lý y tế khi chuyển nhượng, đóng sự cố tại chuồng đang mở, rút khỏi lớp đang học, kiểm chủ khi kích hoạt lại từ chuyển nhượng (khóa chia sẻ row tài khoản chủ), trả ô, kết thúc groom, gỡ lệnh khóa huấn luyện
    * - Hệ quả không chạy theo effects thì bỏ qua và không có key trong before/after
    * - Ô hoặc groom không có gì để đóng thì không ghi key tương ứng
    *
@@ -448,10 +446,6 @@ export class HorseStatusesService {
     if (shouldClearOwner) {
       before.ownerId = horse.ownerId;
       after.ownerId = null;
-    }
-    if (effects.withdrawRegistrations) {
-      after.raceRegistrationsWithdrawn =
-        await this.racing.withdrawOpenRegistrationsByHorse(manager, id);
     }
     // thả ô 
     if (effects.releaseStall) {

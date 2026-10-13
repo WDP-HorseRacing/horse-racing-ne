@@ -333,7 +333,6 @@ export interface HorseDetailParts {
  * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa. Mỗi cờ đúng một việc.
  *
  * - withdrawFromClasses: rút ngựa khỏi mọi lớp đang học (training).
- * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra.
  * - releaseStall: trả ô chuồng đang giữ về trống.
  * - endGroom: kết thúc phân công groom đang mở.
  * - clearBarn: bỏ khu chuồng (horses.barn_id = null).
@@ -346,7 +345,6 @@ export interface HorseDetailParts {
  */
 export interface LifecycleSideEffects {
   withdrawFromClasses: boolean;
-  withdrawRegistrations: boolean;
   releaseStall: boolean;
   endGroom: boolean;
   clearBarn: boolean;
@@ -362,7 +360,6 @@ export interface LifecycleSideEffects {
  */
 export interface LifecycleImpactRow {
   activeClasses: number;
-  openRaceRegistrations: number;
   stallCode: string | null;
   groomName: string | null;
   barnName: string | null;

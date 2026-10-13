@@ -525,16 +525,16 @@ export function assertLifecycleTransition(
  *
  * Các kịch bản chính:
  * 1. Giải nghệ (ACTIVE -> RETIRED): 
- *    - Rút khỏi lớp đang học và giải đua chưa diễn ra.
+ *    - Rút khỏi lớp đang học.
  *    - Các tài nguyên thực tế (khu, ô chuồng, groom và bệnh án y tế) được giữ nguyên.
  * 2. Đang giải nghệ đem chuyển nhượng (RETIRED -> TRANSFERRED): 
  *    - Rút khỏi lớp (để phòng hờ). 
  *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế, đóng sự cố đang mở.
  * 3. Đang hoạt động đem chuyển nhượng (ACTIVE -> TRANSFERRED): 
- *    - Gộp cả (1) và (2): rút khỏi lớp, rút giải đua, và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế, đóng sự cố).
+ *    - Gộp cả (1) và (2): rút khỏi lớp và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế, đóng sự cố).
  * 4. Ghi nhận ngựa mất (ACTIVE/RETIRED -> DECEASED): làm như chuyển nhượng từ trạng thái đó.
  * 5. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE): 
- *    - Lớp học và giải đua cũ không tự khôi phục. 
+ *    - Lớp học cũ không tự khôi phục. 
  *    - Từ RETIRED: giữ nguyên trạng thái sức khỏe hiện tại. 
  *    - Từ TRANSFERRED: tự động đặt sức khỏe về UNDER_OBSERVATION, đưa ngựa vào trạng thái "Chờ xếp khu".
  *
@@ -557,7 +557,6 @@ export function lifecycleSideEffects(
     to === HorseLifecycleStatus.ACTIVE;
   return {
     withdrawFromClasses: retiringFromActive || becomesReadOnly,
-    withdrawRegistrations: retiringFromActive,
     releaseStall: becomesReadOnly,
     endGroom: becomesReadOnly,
     clearBarn: becomesReadOnly,
@@ -572,7 +571,7 @@ export function lifecycleSideEffects(
 /**
  * Tạo câu tóm tắt hệ quả khi đổi vòng đời
  *
- * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."
+ * - Câu 1 liệt kê những gì ngựa đang có và sẽ bị ảnh hưởng, câu 2 nói sẽ làm gì. Ví dụ: "Winx đang có 2 lớp đang học. Nếu giải nghệ sẽ rút khỏi lớp."
  * - Chỉ nhắc mục thật sự có dữ liệu; không có gì thì chỉ còn câu 2
  *
  * @param horseName Tên ngựa
@@ -592,10 +591,6 @@ export function lifecycleImpactSummary(
   if (effects.withdrawFromClasses && impact.activeClasses > 0) {
     facts.push(`${impact.activeClasses} lớp đang học`);
     actions.push('rút khỏi lớp');
-  }
-  if (effects.withdrawRegistrations && impact.openRaceRegistrations > 0) {
-    facts.push(`${impact.openRaceRegistrations} đăng ký thi đấu chưa diễn ra`);
-    actions.push('rút khỏi giải');
   }
   if (effects.releaseStall && impact.stallCode) {
     facts.push(`ô chuồng ${impact.stallCode}`);

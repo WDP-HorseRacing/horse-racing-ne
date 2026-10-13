@@ -404,7 +404,6 @@ describe('horse.policy', () => {
   describe('lifecycleSideEffects', () => {
     const none = {
       withdrawFromClasses: false,
-      withdrawRegistrations: false,
       releaseStall: false,
       endGroom: false,
       clearBarn: false,
@@ -423,7 +422,7 @@ describe('horse.policy', () => {
       closeIncidents: true,
     };
 
-    it('retires an ACTIVE horse by cancelling training and withdrawing registrations only', () => {
+    it('retires an ACTIVE horse by cancelling training only', () => {
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.ACTIVE,
@@ -432,7 +431,6 @@ describe('horse.policy', () => {
       ).toEqual({
         ...none,
         withdrawFromClasses: true,
-        withdrawRegistrations: true,
       });
     });
 
@@ -446,11 +444,10 @@ describe('horse.policy', () => {
         ...none,
         ...transferEffects,
         withdrawFromClasses: true,
-        withdrawRegistrations: true,
       });
     });
 
-    it('transfers a RETIRED horse withdrawing its classes but not its registrations', () => {
+    it('transfers a RETIRED horse withdrawing its classes', () => {
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.RETIRED,
@@ -809,7 +806,6 @@ describe('horse.policy', () => {
   describe('lifecycleImpactSummary', () => {
     const impact = {
       activeClasses: 2,
-      openRaceRegistrations: 1,
       stallCode: 'A-01',
       groomName: 'Lan',
       barnName: 'Khu A',
@@ -831,9 +827,7 @@ describe('horse.policy', () => {
           ),
           impact,
         ),
-      ).toBe(
-        'Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.',
-      );
+      ).toBe('Winx đang có 2 lớp đang học. Nếu giải nghệ sẽ rút khỏi lớp.');
     });
 
     it('mentions the medical work closed by a transfer', () => {

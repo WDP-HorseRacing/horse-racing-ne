@@ -67,7 +67,7 @@ training/
 └── trainging-evaluations/
 ```
 
-Tên thư mục feature nên dùng danh từ số nhiều (`training-plans`, `races`,
+Tên thư mục feature nên dùng danh từ số nhiều (`training-plans`, `incidents`,
 `supplies`). Khi tạo mới nên dùng chính tả đúng; thư mục
 `trainging-evaluations` trong code hiện tại là tên cũ cần giữ để tránh làm hỏng
 import, nhưng feature mới nên đặt là `training-evaluations`.
@@ -394,7 +394,7 @@ Quy tắc:
 
 ## 10. Quy trình tạo feature mới
 
-Ví dụ thêm `race-results` vào module Racing:
+Ví dụ thêm `incidents` vào module Stable:
 
 1. Tạo entity, enum và migration nếu feature có bảng mới.
 2. Tạo DTO input/output và mapper.
@@ -403,29 +403,29 @@ Ví dụ thêm `race-results` vào module Racing:
 5. Tạo service cho từng use case và thêm transaction khi cần.
 6. Tạo controller mỏng với `@CurrentUser`, `@Access`, pipe và Swagger.
 7. Tạo feature module với `forFeature`, providers, controllers, exports.
-8. Import feature module vào `racing.module.ts`.
-9. Nếu có access logic dùng chung, cập nhật `racing-shared.module.ts`.
+8. Import feature module vào `stable.module.ts`.
+9. Nếu có access logic dùng chung, cập nhật `stable-shared.module.ts`.
 10. Viết unit test cho policy/service và cập nhật API docs.
 
 Khung module tối thiểu:
 
 ```ts
 @Module({
-  imports: [TypeOrmModule.forFeature([RaceRegistrationEntity])],
-  controllers: [RaceResultsController],
-  providers: [RaceResultsService],
-  exports: [RaceResultsService],
+  imports: [TypeOrmModule.forFeature([IncidentEntity])],
+  controllers: [IncidentsController],
+  providers: [IncidentsService],
+  exports: [IncidentsService],
 })
-export class RaceResultsModule {}
+export class IncidentsModule {}
 ```
 
 Sau đó thêm module con vào module cha:
 
 ```ts
 @Module({
-  imports: [RaceResultsModule, RacesModule],
+  imports: [IncidentsModule, StallsModule],
 })
-export class RacingModule {}
+export class StableModule {}
 ```
 
 ## 11. Checklist trước khi mở PR

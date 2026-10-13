@@ -22,7 +22,6 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | Performance   | `performance_metrics`, `performance_thresholds`, `performance_evaluations`               |
 | Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
 | Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `care_task_types`, `horse_care_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
-| Racing        | `races`, `race_registrations`                                                            |
 | Supplies      | `supply_items`, `supply_stock_movements`, `supply_requests`                              |
 | Notifications | `notifications`                                                                          |
 | Audit         | `audit_logs`                                                                             |
@@ -45,10 +44,10 @@ Nghiệp vụ, quyền và state machine của nhóm bảng này mô tả trong 
 - `lifecycle_reason`, `lifecycle_changed_at`: lý do và thời điểm của lần đổi vòng đời gần nhất (lịch sử đầy đủ ở `audit_logs`). `deleted_reason`: lý do xóa mềm hồ sơ tạo nhầm.
 - Index: `horses_microchip_uq` (microchip unique với bản ghi chưa xóa).
 - Đổi vòng đời (`PATCH /horses/:horseId/lifecycle-status`, Club Manager, bắt buộc `reason`): ACTIVE → RETIRED/TRANSFERRED, RETIRED → ACTIVE/TRANSFERRED, TRANSFERRED → ACTIVE (CLB mua lại). Chạy trong 1 transaction có khóa dòng `horses`:
-  - RETIRED: hủy giáo án SCHEDULED/ACTIVE cùng buổi tập SCHEDULED, rút đăng ký thi đấu còn mở ở race PLANNED/OPEN (`WITHDRAWN`); giữ ô chuồng, lịch chăm sóc, khóa huấn luyện.
+  - RETIRED: hủy giáo án SCHEDULED/ACTIVE cùng buổi tập SCHEDULED; giữ ô chuồng, lịch chăm sóc, khóa huấn luyện.
   - TRANSFERRED: như RETIRED, thêm đóng sở hữu, groom, xếp chuồng (ô về AVAILABLE) và tự gỡ khóa huấn luyện (`released_by = null`).
   - Ngựa đang có buổi tập IN_PROGRESS hoặc race IN_PROGRESS thì trả 409.
-- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `medical_cases`, `medical_exam_requests`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `horse_ownerships`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`, `performance_thresholds`.
+- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `medical_cases`, `medical_exam_requests`, `care_schedules`, `training_locks`, `training_plans`, `horse_ownerships`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`, `performance_thresholds`.
 
 Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_id`/`dam_id`, giới hạn `depth` 1–4 (mặc định 2).
 
@@ -56,7 +55,7 @@ Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_i
 
 - Foreign keys: `horse_id -> horses.id`, `owner_id -> users.id`.
 - Lưu `percentage`, `start_at`, `end_at` (`timestamptz`), khoảng nửa mở `[start_at, end_at)`. Bản ghi `end_at IS NULL` là sở hữu hiện tại.
-- `is_representative`: chủ đại diện, không bắt buộc, mỗi ngựa tối đa một đại diện đang active (`horse_ownerships_active_rep_uq (horse_id) WHERE is_representative AND end_at IS NULL`). Bắt buộc có đại diện khi đăng ký thi đấu thuộc module racing.
+- `is_representative`: chủ đại diện, không bắt buộc, mỗi ngựa tối đa một đại diện đang active (`horse_ownerships_active_rep_uq (horse_id) WHERE is_representative AND end_at IS NULL`).
 - Đổi chủ/chuyển nhượng (`PUT /horses/:id/owners`, `transferredAt` tùy chọn, mặc định hiện tại): không sửa bản ghi cũ. Chủ giữ nguyên tỉ lệ và cờ đại diện thì giữ bản ghi; bản ghi thay đổi hoặc bị bỏ đóng với `end_at = transferredAt`, phần mới tạo bản ghi `start_at = transferredAt`. Một khoản phát sinh lúc t thuộc bản ghi có `start_at <= t < end_at`, nên không tính trùng cho hai chủ. `transferredAt` không ở tương lai và phải sau `start_at` mới nhất của các bản ghi đang mở. Chạy trong một transaction có khóa dòng `horses` và các bản ghi đang mở.
 - Xem (`GET /horses/:id/owners`): Club Manager thấy toàn bộ lịch sử; Horse Owner thấy đầy đủ các bản ghi của mình, đồng chủ đang sở hữu chỉ có tên, tỉ lệ, cờ đại diện, không thấy chủ cũ.
 
@@ -146,7 +145,7 @@ Ngựa thuộc khu của Head Trainer khi `horses.barn_id` trỏ tới khu (chư
 | Nhóm                | Phạm vi                     | Nội dung                                                                                                                                                                                                           |
 | ------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | A. Công khai        | Mọi Head Trainer trong club | Hồ sơ ngựa, pedigree, nhãn sức khỏe, lifecycle, measurements, eligibility; tiến độ giáo án và lịch buổi tập; metrics, performance, workload, time trial; thành tích và lịch giải; sơ đồ khu/stall; báo cáo tiến độ |
-| B. Nhạy cảm         | Head Trainer của khu        | Đánh giá chuyên môn buổi tập; ngưỡng và cảnh báo thể lực; feeding plan, checklist, sự cố; đăng ký thi đấu                                                    |
+| B. Nhạy cảm         | Head Trainer của khu        | Đánh giá chuyên môn buổi tập; ngưỡng và cảnh báo thể lực; feeding plan, checklist, sự cố                                                                     |
 | C. Ghi / quyết định | Head Trainer của khu        | Tạo/sửa/kích hoạt/hoàn thành/hủy giáo án; tạo/sửa/start/complete/cancel buổi tập; time trial, metrics, đánh giá; measurement; ngưỡng; duyệt feeding plan; đăng ký giải; xử lý sự cố                                |
 | D. Không xem        | —                           | Chủ sở hữu và tỷ lệ sở hữu; tài chính, chi phí, doanh thu                                                                                                                                                          |
 

@@ -62,7 +62,7 @@
 ### Nice to have
 
 - Flow 4: Luồng Chăm sóc Chuồng trại & Dinh dưỡng Hàng ngày (OPTIONAL)
-- Flow 5: Luồng Đăng ký Thi đấu & Báo cáo Thành tích (OPTIONAL)
+- Flow 5: Luồng Đăng ký Thi đấu & Báo cáo Thành tích: không làm, đã gỡ module và bảng.
 
 ---
 
@@ -160,7 +160,6 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 | Flow 2 (Huấn luyện) | Cung cấp danh mục khu chuồng, ô chuồng và việc gán HEAD TRAINER phụ trách khu. Cung cấp lớp học và buổi tập. Flow 1 chỉ xếp ngựa vào khu, vào ô chứ không tạo khu và ô. |
 | Flow 3 (Y tế) | Cập nhật trạng thái sức khỏe, lệnh khóa huấn luyện, bệnh án và các buổi khám. Ghi số đo vào bảng chỉ số cơ thể của F1.5. |
 | Flow 4 (Chăm sóc) | Đọc điểm thể trạng từ F1.5 để tính khẩu phần. Quản lý gói chăm sóc do chủ ngựa chọn. |
-| Flow 5 (Thi đấu) | Cung cấp lịch sử thành tích hiển thị trong F1.3. |
 
 ### 6. Nhật ký thao tác
 
@@ -169,7 +168,7 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 3. Truy cập ngoài phạm vi trả về 404. Mã 403 chỉ dùng khi người dùng xem được con ngựa nhưng không được thực hiện một thao tác cụ thể, hoặc vai trò không có quyền làm thao tác đó. Có quyền nhưng trạng thái dữ liệu không cho phép (ví dụ hồ sơ đã chuyển nhượng, khu hết chỗ, hai người cùng lưu) thì trả 409 kèm lý do. *(BA chốt)*
    - CLUB MANAGER thao tác ghi trên hồ sơ đã xóa: 409 "Hồ sơ đã xóa, chỉ xem được. Khôi phục hồ sơ trước khi thao tác". Vai trò khác không thấy hồ sơ đã xóa nên nhận 404. *(BA chốt)*
    - Chọn một tài khoản (chủ sở hữu, HEAD TRAINER phụ trách khu, GROOM) mà tài khoản đó không còn hoạt động: 409. Chọn sai tài khoản hoặc tài khoản sai vai trò: 400. *(BA chốt)*
-4. Đổi vòng đời ghi một dòng nhật ký cho con ngựa, kèm đủ các hệ quả đã xảy ra: ô chuồng được trả, GROOM bị kết thúc phân công, lệnh khóa huấn luyện được gỡ, số yêu cầu khám bị bỏ qua, lịch hẹn khám và lịch chăm sóc bị hủy, số đăng ký thi đấu bị rút, số lớp bị rút, chủ bị bỏ trống, ngày mất (khi ghi nhận ngựa mất). *(BA chốt)*
+4. Đổi vòng đời ghi một dòng nhật ký cho con ngựa, kèm đủ các hệ quả đã xảy ra: ô chuồng được trả, GROOM bị kết thúc phân công, lệnh khóa huấn luyện được gỡ, số yêu cầu khám bị bỏ qua, lịch hẹn khám và lịch chăm sóc bị hủy, số lớp bị rút, chủ bị bỏ trống, ngày mất (khi ghi nhận ngựa mất). *(BA chốt)*
 
 ## Phụ lục: Thay đổi so với bản trước
 
@@ -594,7 +593,6 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
 
 1. **Giải nghệ (ACTIVE sang RETIRED):**
    - Rút ngựa khỏi các lớp đang học. Các buổi chưa diễn ra biến mất khỏi lịch, các buổi đã học giữ nguyên lịch sử.
-   - Hủy các đăng ký thi đấu chưa diễn ra.
    - Giữ nguyên khu chuồng, ô chuồng, GROOM phụ trách, chế độ chăm sóc và y tế.
 2. **Chuyển nhượng (ACTIVE hoặc RETIRED sang TRANSFERRED):**
    - Làm hết phần của giải nghệ nếu ngựa đang ở trạng thái Đang hoạt động.
@@ -608,19 +606,19 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
    - Bắt buộc nhập ngày mất (không ở tương lai, không trước ngày sinh nếu biết) và nguyên nhân (dùng ô lý do). Không nhập ngày mất khi chuyển sang trạng thái khác.
    - Bị chặn (409) nếu con ngựa còn bệnh án đang mở; bác sĩ đóng bệnh án với kết luận và chi phí thật trước (Flow 3). Hệ thống không tự đóng bệnh án.
    - Ngựa mất trong lúc điều trị: VETERINARIAN đóng bệnh án kèm ngày mất (F3.9). Hệ thống đóng bệnh án rồi ghi nhận ngựa mất trong cùng một thao tác, lấy kết luận cuối của bệnh án làm nguyên nhân mất. CLUB MANAGER không phải làm thêm bước nào.
-   - Làm như chuyển nhượng: rút khỏi lớp, rút đăng ký thi đấu chưa diễn ra, trả ô, bỏ khu, kết thúc phân công GROOM, gỡ lệnh khóa huấn luyện với lý do "Gỡ do ngựa mất", yêu cầu khám đang chờ và lịch chưa làm tự hủy với lý do "Do ngựa mất". Không đặt lại trạng thái sức khỏe.
+   - Làm như chuyển nhượng: rút khỏi lớp, trả ô, bỏ khu, kết thúc phân công GROOM, gỡ lệnh khóa huấn luyện với lý do "Gỡ do ngựa mất", yêu cầu khám đang chờ và lịch chưa làm tự hủy với lý do "Do ngựa mất". Không đặt lại trạng thái sức khỏe.
    - Giữ chủ sở hữu, chủ vẫn xem được hồ sơ. Hồ sơ chỉ đọc. Ngựa vẫn hiện là cha mẹ trong phả hệ và vẫn chọn làm cha mẹ được. Số chip vẫn giữ chỗ.
    - Đã mất là trạng thái cuối: không kích hoạt lại, không đổi sang trạng thái khác, không xóa hồ sơ.
    - Thông báo "Ngựa X đã mất" (kèm ngày mất và nguyên nhân) cho chủ ngựa nếu còn hoạt động, HEAD TRAINER của khu cũ, GROOM cũ và mọi CLUB MANAGER đang hoạt động (kể cả người vừa ghi nhận). Áp dụng cho cả hai luồng: CLUB MANAGER ghi nhận và VETERINARIAN ghi nhận khi đóng bệnh án. GROOM không nhận thêm thông báo "đã chuyển nhượng".
 3. **Kích hoạt lại (RETIRED hoặc TRANSFERRED quay về ACTIVE):**
    - Dùng cho trường hợp ngựa quay lại tập luyện hoặc câu lạc bộ mua lại con ngựa đã bán. Luôn kích hoạt lại hồ sơ cũ, không tạo hồ sơ mới, vì số chip định danh gắn với con vật ngoài đời thật và mọi dữ liệu lịch sử, phả hệ đang gắn với hồ sơ này.
    - Toàn bộ dữ liệu cũ được giữ nguyên: bệnh án, chỉ số cơ thể, thành tích, phả hệ, số chip định danh.
-   - Lớp học và đăng ký thi đấu đã hủy không tự khôi phục.
+   - Lớp học đã rút không tự khôi phục.
    - Nếu kích hoạt lại từ Đã chuyển nhượng: CLUB MANAGER phải xếp lại khu (F1.6), HEAD TRAINER xếp lại ô và GROOM (F1.7). Chủ mới khác chủ cũ thì dùng chuyển nhượng nội bộ (F1.4 mục 9). Nếu chủ cũ không còn là tài khoản HORSE OWNER đang hoạt động thì hệ thống bỏ trống chủ và đóng giai đoạn sở hữu của chủ cũ; bảng xác nhận báo trước "sẽ bỏ trống chủ X", sau đó gán chủ bằng F1.4. *(BA chốt)*
    - Kích hoạt lại từ Đã chuyển nhượng: trạng thái sức khỏe được đặt về "Cần theo dõi" cho tới khi bác sĩ khám lại, vì dữ liệu sức khỏe trong thời gian ngựa ở ngoài câu lạc bộ không còn đáng tin. Kích hoạt lại từ Đã giải nghệ: giữ nguyên trạng thái sức khỏe, vì ngựa vẫn ở câu lạc bộ và vẫn được khám định kỳ. *(BA chốt)*
 4. **Xóa hồ sơ (xóa mềm):**
    - Chỉ dành cho hồ sơ vừa tạo nhầm và chưa dùng vào việc gì.
-   - Bị chặn nếu con ngựa đã phát sinh bất kỳ dữ liệu nghiệp vụ nào: bệnh án, buổi khám, yêu cầu khám, lịch chăm sóc y tế, lệnh khóa huấn luyện, chỉ số cơ thể, xếp ô chuồng, phân công GROOM, lớp học, đăng ký thi đấu, ngưỡng hiệu suất, khẩu phần ăn, checklist hằng ngày, báo cáo sự cố. Cũng bị chặn nếu con ngựa đang là cha hoặc mẹ của con khác, đã chuyển nhượng hoặc đã mất. *(BA chốt)*
+   - Bị chặn nếu con ngựa đã phát sinh bất kỳ dữ liệu nghiệp vụ nào: bệnh án, buổi khám, yêu cầu khám, lịch chăm sóc y tế, lệnh khóa huấn luyện, chỉ số cơ thể, xếp ô chuồng, phân công GROOM, lớp học, ngưỡng hiệu suất, khẩu phần ăn, checklist hằng ngày, báo cáo sự cố. Cũng bị chặn nếu con ngựa đang là cha hoặc mẹ của con khác, đã chuyển nhượng hoặc đã mất. *(BA chốt)*
    - Hồ sơ bị ẩn khỏi mọi vai trò trừ CLUB MANAGER. Số chip định danh vẫn bị coi là đã sử dụng.
    - Dữ liệu lịch sử và nhật ký thao tác không bao giờ bị xóa theo.
    - CLUB MANAGER khôi phục được hồ sơ đã xóa, hồ sơ trở về trạng thái trước khi xóa. Riêng khu chuồng: khôi phục luôn bỏ khu, ngựa vào danh sách "Chờ xếp khu", bất kể khu cũ còn chỗ hay không, vì khi xóa hồ sơ chỗ của ngựa trong khu đã được nhả cho ngựa khác. Trước khi khôi phục, hệ thống hiện bảng xem trước hệ quả (bỏ khu, bỏ trống chủ nếu có). *(BA chốt)* Riêng chủ sở hữu: nếu chủ cũ không còn là tài khoản HORSE OWNER đang hoạt động thì bỏ trống chủ và đóng giai đoạn sở hữu của chủ cũ, CLUB MANAGER chọn chủ mới sau. *(BA chốt)*

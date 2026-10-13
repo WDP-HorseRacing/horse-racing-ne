@@ -76,9 +76,6 @@ export class HorseLifecyclePreviewResponseDto {
   @ApiProperty({ description: 'Số lớp đang học mà ngựa sẽ bị rút khỏi' })
   classesWithdrawn!: number;
 
-  @ApiProperty({ description: 'Số đăng ký thi đấu chưa diễn ra sẽ bị rút' })
-  raceRegistrationsWithdrawn!: number;
-
   @ApiPropertyOptional({
     nullable: true,
     type: String,
@@ -148,7 +145,7 @@ export class HorseLifecyclePreviewResponseDto {
     nullable: true,
     type: String,
     description:
-      'Câu tóm tắt hệ quả, ví dụ "Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải."; null nếu allowed = false',
+      'Câu tóm tắt hệ quả, ví dụ "Winx đang có 2 lớp đang học. Nếu giải nghệ sẽ rút khỏi lớp."; null nếu allowed = false',
   })
   summary!: string | null;
 }

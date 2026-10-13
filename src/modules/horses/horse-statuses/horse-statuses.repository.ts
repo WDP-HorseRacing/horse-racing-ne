@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import {
-  OPEN_REGISTRATION_STATUSES,
-  UPCOMING_RACE_STATUSES,
-} from '../../racing/constants/racing.constants';
 import { IncidentStatus } from '../../stable/constants/incident-status.enum';
 import { HorseEnrollmentStatus } from '../../training/enums/horse-enrollment-status.enum';
 import type { LifecycleImpactRow } from '../types/horse.types';
@@ -13,7 +9,7 @@ export class HorseStatusesRepository {
   /**
    * Đếm những gì sẽ bị ảnh hưởng khi đổi vòng đời. Chỉ đọc.
    *
-   * - Số lớp ngựa đang học (enrollment ACTIVE) và đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra
+   * - Số lớp ngựa đang học (enrollment ACTIVE)
    * - Ô chuồng, groom và khu hiện tại
    * - Số sự cố tại chuồng đang mở
    * - Không đếm lệnh khóa huấn luyện đang ACTIVE
@@ -31,9 +27,6 @@ export class HorseStatusesRepository {
         `SELECT
          (SELECT count(DISTINCT he.class_id)::int FROM horse_enrollments he
            WHERE he.horse_id = $1 AND he.status = $2) AS "activeClasses",
-         (SELECT count(*)::int FROM race_registrations rr
-           JOIN races r ON r.id = rr.race_id
-           WHERE rr.horse_id = $1 AND rr.status = ANY($3) AND r.status = ANY($4)) AS "openRaceRegistrations",
          (SELECT s.code FROM stall_assignments sa JOIN stalls s ON s.id = sa.stall_id
            WHERE sa.horse_id = $1 AND sa.end_at IS NULL LIMIT 1) AS "stallCode",
          (SELECT u.full_name FROM groom_assignments ga JOIN users u ON u.id = ga.groom_id
@@ -41,14 +34,8 @@ export class HorseStatusesRepository {
          (SELECT b.name FROM horses h JOIN barns b ON b.id = h.barn_id
            WHERE h.id = $1) AS "barnName",
          (SELECT count(*)::int FROM incidents i
-           WHERE i.horse_id = $1 AND i.status = $5) AS "openIncidents"`,
-        [
-          horseId,
-          HorseEnrollmentStatus.ACTIVE,
-          OPEN_REGISTRATION_STATUSES,
-          UPCOMING_RACE_STATUSES,
-          IncidentStatus.OPEN,
-        ],
+           WHERE i.horse_id = $1 AND i.status = $3) AS "openIncidents"`,
+        [horseId, HorseEnrollmentStatus.ACTIVE, IncidentStatus.OPEN],
       );
     return rows[0];
   }

@@ -50,9 +50,6 @@ export function toLifecyclePreviewResponse({
     allowed: blockedReason === null,
     blockedReason,
     classesWithdrawn: effects.withdrawFromClasses ? impact.activeClasses : 0,
-    raceRegistrationsWithdrawn: effects.withdrawRegistrations
-      ? impact.openRaceRegistrations
-      : 0,
     stallReleased: effects.releaseStall ? impact.stallCode : null,
     groomEnded: effects.endGroom ? impact.groomName : null,
     barnCleared: effects.clearBarn ? impact.barnName : null,

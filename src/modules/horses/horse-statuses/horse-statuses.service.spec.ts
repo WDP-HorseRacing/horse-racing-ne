@@ -74,7 +74,6 @@ describe('HorseStatusesService', () => {
     readOnlyImpact: jest.Mock;
   };
   let incidentWrites: { closeOpenIncidentsByHorse: jest.Mock };
-  let racing: { withdrawOpenRegistrationsByHorse: jest.Mock };
   let events: { publish: jest.Mock };
   let service: HorseStatusesService;
 
@@ -82,7 +81,6 @@ describe('HorseStatusesService', () => {
 
   const sideEffectMocks = () => [
     training.withdrawHorseFromClasses,
-    racing.withdrawOpenRegistrationsByHorse,
     stalls.closeOpenStallAssignment,
     grooms.endOpenGroomAssignment,
     trainingLocks.releaseActiveLockByHorse,
@@ -115,7 +113,6 @@ describe('HorseStatusesService', () => {
     };
     impact = {
       activeClasses: 2,
-      openRaceRegistrations: 3,
       stallCode: 'A-01',
       groomName: 'Groom A',
       barnName: 'Khu A',
@@ -178,9 +175,6 @@ describe('HorseStatusesService', () => {
     incidentWrites = {
       closeOpenIncidentsByHorse: jest.fn().mockResolvedValue(0),
     };
-    racing = {
-      withdrawOpenRegistrationsByHorse: jest.fn().mockResolvedValue(3),
-    };
     service = new HorseStatusesService(
       statuses,
       access as unknown as HorseAccessService,
@@ -191,7 +185,6 @@ describe('HorseStatusesService', () => {
       trainingLocks as unknown as TrainingLockService,
       medicalLifecycle as unknown as MedicalLifecycleService,
       incidentWrites,
-      racing,
       events,
       training as unknown as TrainingOperationsFacade,
       ownerships,
@@ -257,7 +250,6 @@ describe('HorseStatusesService', () => {
           HORSE_ID,
           { reason: 'Ngựa mất: Đau bụng cấp', at: anyDate },
         );
-        expect(racing.withdrawOpenRegistrationsByHorse).toHaveBeenCalled();
         expect(stalls.closeOpenStallAssignment).toHaveBeenCalled();
         expect(grooms.endOpenGroomAssignment).toHaveBeenCalled();
         expect(trainingLocks.releaseActiveLockByHorse).toHaveBeenCalledWith(
@@ -365,10 +357,6 @@ describe('HorseStatusesService', () => {
         HORSE_ID,
         { reason: 'Ngựa chuyển nhượng: Bán cho CLB khác', at: anyDate },
       );
-      expect(racing.withdrawOpenRegistrationsByHorse).toHaveBeenCalledWith(
-        manager,
-        HORSE_ID,
-      );
       expect(stalls.closeOpenStallAssignment).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
@@ -466,7 +454,6 @@ describe('HorseStatusesService', () => {
           examRequestsDismissed: 0,
           careSchedulesCancelled: 0,
           incidentsClosed: 0,
-          raceRegistrationsWithdrawn: 3,
         },
         reason: 'Bán cho CLB khác',
         feature: 'F1.8',
@@ -501,8 +488,7 @@ describe('HorseStatusesService', () => {
       );
     });
 
-    it('audits the withdrawn race registrations when retiring', async () => {
-      racing.withdrawOpenRegistrationsByHorse.mockResolvedValue(2);
+    it('audits the withdrawn classes when retiring', async () => {
       await change(HorseLifecycleStatus.RETIRED, 'Chấn thương');
       expect(audit.record).toHaveBeenCalledWith(
         manager,
@@ -515,13 +501,12 @@ describe('HorseStatusesService', () => {
             lifecycleStatus: HorseLifecycleStatus.RETIRED,
             lifecycleReason: 'Chấn thương',
             classesWithdrawn: 2,
-            raceRegistrationsWithdrawn: 2,
           },
         }),
       );
     });
 
-    it('transfers a RETIRED horse withdrawing its classes but not its registrations', async () => {
+    it('transfers a RETIRED horse withdrawing its classes', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
       await change(HorseLifecycleStatus.TRANSFERRED);
       expect(training.withdrawHorseFromClasses).toHaveBeenCalledWith(
@@ -529,7 +514,6 @@ describe('HorseStatusesService', () => {
         HORSE_ID,
         { reason: 'Ngựa chuyển nhượng: Bán', at: anyDate },
       );
-      expect(racing.withdrawOpenRegistrationsByHorse).not.toHaveBeenCalled();
       expect(stalls.closeOpenStallAssignment).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
@@ -548,10 +532,6 @@ describe('HorseStatusesService', () => {
         manager,
         HORSE_ID,
         { reason: 'Ngựa giải nghệ: Chấn thương dài hạn', at: anyDate },
-      );
-      expect(racing.withdrawOpenRegistrationsByHorse).toHaveBeenCalledWith(
-        manager,
-        HORSE_ID,
       );
       expect(stalls.closeOpenStallAssignment).not.toHaveBeenCalled();
       expect(grooms.endOpenGroomAssignment).not.toHaveBeenCalled();
@@ -683,14 +663,10 @@ describe('HorseStatusesService', () => {
     });
 
     it.each([HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.TRANSFERRED])(
-      'allows %s even while the horse is training or racing (BA 2026-09-23)',
+      'allows %s even while the horse is training (BA 2026-09-23)',
       async (to) => {
         await change(to);
         expect(training.withdrawHorseFromClasses).toHaveBeenCalled();
-        expect(racing.withdrawOpenRegistrationsByHorse).toHaveBeenCalledWith(
-          manager,
-          HORSE_ID,
-        );
         expect(horseRepository.update).toHaveBeenCalledWith(
           { id: HORSE_ID },
           expect.objectContaining({ lifecycleStatus: to }),
@@ -742,7 +718,6 @@ describe('HorseStatusesService', () => {
         trainingLocks as unknown as TrainingLockService,
         medicalLifecycle as unknown as MedicalLifecycleService,
         incidentWrites,
-        racing,
         events,
         training as unknown as TrainingOperationsFacade,
         ownerships,
@@ -814,7 +789,6 @@ describe('HorseStatusesService', () => {
         allowed: true,
         blockedReason: null,
         classesWithdrawn: 2,
-        raceRegistrationsWithdrawn: 3,
         stallReleased: 'A-01',
         groomEnded: 'Groom A',
         barnCleared: 'Khu A',
@@ -826,35 +800,33 @@ describe('HorseStatusesService', () => {
         pendingBarnAfter: false,
         ownerCleared: null,
         summary:
-          'Winx đang có 2 lớp đang học, 3 đăng ký thi đấu chưa diễn ra, ô chuồng A-01, Groom Groom A phụ trách, lệnh khóa huấn luyện. Nếu chuyển nhượng sẽ rút khỏi lớp, rút khỏi giải, trả ô chuồng, kết thúc phân công Groom, bỏ khu Khu A, gỡ khóa huấn luyện.',
+          'Winx đang có 2 lớp đang học, ô chuồng A-01, Groom Groom A phụ trách, lệnh khóa huấn luyện. Nếu chuyển nhượng sẽ rút khỏi lớp, trả ô chuồng, kết thúc phân công Groom, bỏ khu Khu A, gỡ khóa huấn luyện.',
       });
       expectNothingWritten();
     });
 
     it('summarises a retirement like the BA example', async () => {
       impact.activeClasses = 2;
-      impact.openRaceRegistrations = 1;
       await expect(preview(HorseLifecycleStatus.RETIRED)).resolves.toEqual(
         expect.objectContaining({
           summary:
-            'Winx đang có 2 lớp đang học, 1 đăng ký thi đấu chưa diễn ra. Nếu giải nghệ sẽ rút khỏi lớp, rút khỏi giải.',
+            'Winx đang có 2 lớp đang học. Nếu giải nghệ sẽ rút khỏi lớp.',
         }),
       );
     });
 
-    it('allows retiring in the preview while the horse is training or racing', async () => {
+    it('allows retiring in the preview while the horse is training', async () => {
       await expect(preview(HorseLifecycleStatus.RETIRED)).resolves.toEqual(
         expect.objectContaining({ allowed: true, blockedReason: null }),
       );
     });
 
-    it('reports the class withdrawal but no registration effect for a RETIRED horse being transferred', async () => {
+    it('reports the class withdrawal for a RETIRED horse being transferred', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
       await expect(preview(HorseLifecycleStatus.TRANSFERRED)).resolves.toEqual(
         expect.objectContaining({
           allowed: true,
           classesWithdrawn: 2,
-          raceRegistrationsWithdrawn: 0,
           stallReleased: 'A-01',
           barnCleared: 'Khu A',
         }),
@@ -871,7 +843,6 @@ describe('HorseStatusesService', () => {
         allowed: true,
         blockedReason: null,
         classesWithdrawn: 0,
-        raceRegistrationsWithdrawn: 0,
         stallReleased: null,
         groomEnded: null,
         barnCleared: null,

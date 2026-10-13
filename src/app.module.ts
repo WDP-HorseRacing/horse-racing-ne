@@ -24,7 +24,6 @@ import { MediaModule } from './modules/media/media.module';
 import { MedicalModule } from './modules/medical/medical.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PerformanceModule } from './modules/performance/performance.module';
-import { RacingModule } from './modules/racing/racing.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { StableModule } from './modules/stable/stable.module';
@@ -67,7 +66,6 @@ import { UsersModule } from './modules/users/users.module';
     PerformanceModule,
     MedicalModule,
     StableModule,
-    RacingModule,
     SuppliesModule,
     ReportsModule,
     NotificationsModule,

@@ -1,7 +1,0 @@
-export enum RaceStatus {
-  PLANNED = 'PLANNED',
-  OPEN = 'OPEN',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-}

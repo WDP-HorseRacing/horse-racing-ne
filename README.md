@@ -1,6 +1,6 @@
 # Race-horse API
 
-NestJS modular monolith for the Racehorse Training and Management System. The repository contains the domain modules, PostgreSQL migrations and implemented read/write slices for users, horses, medical history, racing history and performance.
+NestJS modular monolith for the Racehorse Training and Management System. The repository contains the domain modules, PostgreSQL migrations and implemented read/write slices for users, horses, medical history and performance.
 
 ## Stack and boundaries
 
@@ -10,7 +10,7 @@ NestJS modular monolith for the Racehorse Training and Management System. The re
 - S3-compatible object storage through AWS SDK v3, with MinIO for local development
 - Internal domain events via `@nestjs/event-emitter`
 - Global DTO validation, consistent HTTP error format, and correlation ID header
-- Modules: Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Notifications, Audit, Media, and Realtime
+- Modules: Auth, Users, Horses, Training, Performance, Medical, Stable, Supplies, Reports, Notifications, Audit, Media, and Realtime
 
 The implemented modules follow the `entity → repository → service → DTO mapper` structure. Users and Training have persistence and business services; the remaining contract-only routes return HTTP `501 Not Implemented` until their workflows are added. Review the complete [endpoint catalog](docs/api-catalog.md), [OpenAPI JSON](docs/openapi.contracts.json), or the detailed [Flow 2 training guide](docs/flow2-training.md). Regenerate API documentation with `pnpm docs:api` without a database connection.
 
@@ -21,7 +21,7 @@ The implemented modules follow the `entity → repository → service → DTO ma
 | Training       | Plans, sessions, start, complete, cancel and evaluation                 |
 | Performance    | Metric ingestion, session metrics and horse summary                     |
 | Medical        | Records, prescriptions, injuries, training lock and release             |
-| Operations     | Stalls, assignments, feeding, checklists, incidents, races and supplies |
+| Operations     | Stalls, assignments, feeding, checklists, incidents and supplies        |
 | Supporting     | Notifications, audit, media upload/download URL contracts and reports   |
 
 See `/docs` for exact paths and request schemas. A listed contract does not imply implementation unless its module documentation says otherwise.

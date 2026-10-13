@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 202 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 191 REST operations are registered under `/api/v1`.
 
 The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -132,22 +132,6 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/session-participants/{id}/metrics` | Nhận một điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra |
 | POST | `/api/v1/session-participants/{id}/metrics/batch` | Nhận một lô điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra |
 | GET | `/api/v1/session-participants/{id}/performance-summary` | Tổng kết nhịp tim, tốc độ và số cảnh báo của lượt tập |
-
-## racing
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/v1/horses/{horseId}/race-results` | Get horse race history |
-| GET | `/api/v1/races` | List races |
-| POST | `/api/v1/races` | Create race |
-| GET | `/api/v1/races/{id}` | Get race and conditions |
-| PATCH | `/api/v1/races/{id}` | Update race before registration closes |
-| GET | `/api/v1/races/{id}/registrations` | List race registrations |
-| POST | `/api/v1/races/{id}/registrations` | Register eligible horse for race |
-| GET | `/api/v1/races/{id}/registrations/{registrationId}` | Get race registration and approvals |
-| PATCH | `/api/v1/races/{id}/registrations/{registrationId}` | Approve or reject race registration |
-| PATCH | `/api/v1/races/{id}/registrations/{registrationId}/result` | Record race result for registration |
-| GET | `/api/v1/races/{id}/results` | Get race results |
 
 ## reports
 
