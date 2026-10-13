@@ -100,7 +100,7 @@ export function isHorseInScope(
  * @param childId UUID của ngựa con, undefined khi đang tạo ngựa mới
  * @param sireId UUID của cha, null nếu bỏ trống
  * @param damId UUID của mẹ, null nếu bỏ trống
- * @throws BadRequestException Nếu cha hoặc mẹ là chính ngựa con, hoặc cha trùng mẹ
+ * @throws BadRequestException Nếu cha hoặc mẹ là chính ngựa con (lỗi gắn ô `sireId` hoặc `damId` tương ứng), hoặc cha trùng mẹ (lỗi gắn ô `damId`)
  */
 export function assertParentIds(
   childId: string | undefined,
@@ -108,10 +108,13 @@ export function assertParentIds(
   damId: string | null,
 ): void {
   if (childId && (sireId === childId || damId === childId)) {
-    throw new BadRequestException('Ngựa không thể là cha/mẹ của chính nó');
+    throw fieldBadRequest(
+      sireId === childId ? 'sireId' : 'damId',
+      'Ngựa không thể là cha/mẹ của chính nó',
+    );
   }
   if (sireId && damId && sireId === damId) {
-    throw new BadRequestException('Ngựa cha và ngựa mẹ không được trùng nhau');
+    throw fieldBadRequest('damId', 'Ngựa cha và ngựa mẹ không được trùng nhau');
   }
 }
 

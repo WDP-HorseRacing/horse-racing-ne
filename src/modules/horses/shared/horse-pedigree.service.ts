@@ -1,9 +1,9 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EntityManager, IsNull, Not } from 'typeorm';
+import {
+  fieldBadRequest,
+  fieldConflict,
+} from '../../../common/utils/field-errors';
 import { HorseEntity } from '../entities/horse.entity';
 import {
   assertBornBeforeChildren,
@@ -16,14 +16,17 @@ import { HorseAccessService } from './horse-access.service';
 import { HorsePedigreeRepository } from './horse-pedigree.repository';
 
 /**
- * Nhãn của cha trong thông báo lỗi
+ * Ô cha/mẹ của request body
  */
-const SIRE_LABEL = 'Ngựa cha';
+type ParentField = 'sireId' | 'damId';
 
 /**
- * Nhãn của mẹ trong thông báo lỗi
+ * Nhãn của cha, mẹ trong thông báo lỗi, theo ô của request body
  */
-const DAM_LABEL = 'Ngựa mẹ';
+const PARENT_LABELS: Record<ParentField, string> = {
+  sireId: 'Ngựa cha',
+  damId: 'Ngựa mẹ',
+};
 
 /**
  * Kiểm tra luật phả hệ khi tạo, sửa và xóa hồ sơ ngựa.
@@ -78,8 +81,8 @@ export class HorsePedigreeService {
    * @param sireId UUID của cha, null nếu bỏ trống
    * @param damId UUID của mẹ, null nếu bỏ trống
    * @returns Promise hoàn tất khi kiểm tra xong
-   * @throws BadRequestException Nếu cha/mẹ là chính ngựa con, trùng nhau, không tồn tại, sai giới tính hoặc không sinh trước con
-   * @throws ConflictException Nếu cha/mẹ tạo vòng lặp phả hệ
+   * @throws BadRequestException Nếu cha/mẹ là chính ngựa con, trùng nhau, không tồn tại, sai giới tính hoặc không sinh trước con (lỗi gắn ô `sireId` hoặc `damId`)
+   * @throws ConflictException Nếu cha/mẹ tạo vòng lặp phả hệ (lỗi gắn ô của cha/mẹ đó)
    */
   async validateParents(
     manager: EntityManager,
@@ -90,19 +93,23 @@ export class HorsePedigreeService {
     // Kiểm tra cha/mẹ không trùng nhau, không phải chính con ngựa
     assertParentIds(child.id, sireId, damId);
     const sire = sireId
-      ? await this.findParent(manager, sireId, SIRE_LABEL)
+      ? await this.findParent(manager, sireId, 'sireId')
       : null;
-    const dam = damId ? await this.findParent(manager, damId, DAM_LABEL) : null;
+    const dam = damId ? await this.findParent(manager, damId, 'damId') : null;
     // Kiểm tra cha/mẹ có hồ sơ, đúng giới tính, sinh trước con
     assertParentProfiles(child, sire, dam);
     const childId = child.id;
     if (!childId) return;
-    for (const parent of [sire, dam]) {
+    const parents: Array<[ParentField, HorseEntity | null]> = [
+      ['sireId', sire],
+      ['damId', dam],
+    ];
+    for (const [field, parent] of parents) {
       if (
         parent &&
         (await this.pedigree.wouldCreateCycle(manager, childId, parent.id))
       ) {
-        throw new ConflictException('Quan hệ cha/mẹ tạo thành vòng lặp phả hệ');
+        throw fieldConflict(field, 'Quan hệ cha/mẹ tạo thành vòng lặp phả hệ');
       }
     }
   }
@@ -238,18 +245,18 @@ export class HorsePedigreeService {
    *
    * @param manager EntityManager của transaction đang giữ khóa phả hệ
    * @param id UUID của ngựa được chọn
-   * @param label Nhãn ngựa cha/ngựa mẹ dùng trong thông báo lỗi
+   * @param field Ô cha/mẹ của request body, dùng để gắn lỗi và chọn nhãn trong câu báo lỗi
    * @returns Promise trả về hồ sơ cha/mẹ
-   * @throws BadRequestException Nếu ngựa được chọn không tồn tại hoặc đã xóa
+   * @throws BadRequestException Nếu ngựa được chọn không tồn tại hoặc đã xóa (lỗi gắn ô `field`)
    */
   private async findParent(
     manager: EntityManager,
     id: string,
-    label: string,
+    field: ParentField,
   ): Promise<HorseEntity> {
     const parent = await this.access.findById(id, manager);
     if (!parent) {
-      throw new BadRequestException(`${label} không tồn tại`);
+      throw fieldBadRequest(field, `${PARENT_LABELS[field]} không tồn tại`);
     }
     return parent;
   }

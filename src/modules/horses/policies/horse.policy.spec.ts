@@ -549,6 +549,25 @@ describe('horse.policy', () => {
         new BadRequestException('Ngựa cha và ngựa mẹ không được trùng nhau'),
       );
     });
+
+    it.each([
+      ['sireId', 'c', null, 'Ngựa không thể là cha/mẹ của chính nó'],
+      ['damId', null, 'c', 'Ngựa không thể là cha/mẹ của chính nó'],
+      ['damId', 'x', 'x', 'Ngựa cha và ngựa mẹ không được trùng nhau'],
+    ])(
+      'attaches the parent error to the %s field',
+      (field, sireId, damId, message) => {
+        try {
+          assertParentIds('c', sireId, damId);
+          throw new Error('expected assertParentIds to throw');
+        } catch (error) {
+          expect((error as BadRequestException).getResponse()).toEqual({
+            message,
+            errors: [{ field, message }],
+          });
+        }
+      },
+    );
   });
 
   describe('assertParentProfiles', () => {
