@@ -437,7 +437,7 @@ Ghi lại các phép đo định kỳ của con ngựa: cân nặng, chiều cao
 | Vai trò | Quyền | Phạm vi | Ghi chú |
 |---|---|---|---|
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | Không ghi số đo, vì đây là công việc chuyên môn. |
-| HEAD TRAINER | Thêm, Xem | Ngựa thuộc khu phụ trách | Ghi được cả bốn loại chỉ số. |
+| HEAD TRAINER | Thêm, Xem | Thêm: ngựa thuộc khu phụ trách. Xem: toàn câu lạc bộ | Ghi được cả bốn loại chỉ số. |
 | VETERINARIAN | Thêm, Xóa, Xem | Toàn câu lạc bộ | Vai trò duy nhất được xóa bản ghi sai. |
 | GROOM | Thêm, Xem | Ngựa được phân công | Ghi được cả bốn loại chỉ số. |
 | HORSE OWNER | Xem | Ngựa sở hữu | |
@@ -486,7 +486,7 @@ CLUB MANAGER quyết định con ngựa thuộc khu chuồng nào. Khu chuồng 
 | Vai trò | Quyền | Phạm vi | Ghi chú |
 |---|---|---|---|
 | CLUB MANAGER | Sửa, Xem | Toàn câu lạc bộ | Vai trò duy nhất xếp khu và đổi khu cho ngựa. |
-| HEAD TRAINER | Xem | Toàn câu lạc bộ | Nhận thông báo khi có ngựa mới vào khu mình phụ trách. |
+| HEAD TRAINER | Xem | Khu của từng con ngựa: toàn câu lạc bộ. Danh sách khu chuồng: chỉ khu mình phụ trách (kiêm CLUB MANAGER hoặc VETERINARIAN thì không giới hạn, như III.1) | Nhận thông báo khi có ngựa mới vào khu mình phụ trách. |
 | VETERINARIAN | Xem | Toàn câu lạc bộ | Đề xuất đổi khu bằng ghi chú y tế. |
 | GROOM | Xem | Toàn câu lạc bộ | |
 | HORSE OWNER | Xem | Ngựa sở hữu | Chỉ thấy tên khu, không thấy sơ đồ chuồng trại. |
