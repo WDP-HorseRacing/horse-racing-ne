@@ -9,6 +9,7 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import type { Actor } from '../../../common/types/actor';
 import type { FieldError } from '../../../common/utils/field-errors';
+import { containsPattern } from '../../../common/utils/like-pattern';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
@@ -71,7 +72,7 @@ export class SupplyItemsService {
       where: {
         deletedAt: IsNull(),
         ...(query.category ? { category: query.category } : {}),
-        ...(search ? { name: ILike(`%${search}%`) } : {}),
+        ...(search ? { name: ILike(containsPattern(search)) } : {}),
       },
       relations: ITEM_RELATIONS,
       withDeleted: true,

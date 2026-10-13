@@ -1,4 +1,4 @@
-# Báo FE: thay đổi API Flow 1 (hồ sơ ngựa)
+# Báo FE: thay đổi API (hồ sơ ngựa, tìm kiếm)
 
 > Cập nhật: 13/10/2026. Nhánh `truong-flow1-align`.
 
@@ -35,15 +35,19 @@ Ví dụ body 409:
 
 FE cần làm: đọc `errors[].field` (như đang làm với `dateOfBirth`, `ownerId`) để hiện lỗi dưới ô chọn cha/mẹ. Lưu ý lỗi vòng lặp là 409 nhưng vẫn có `errors`.
 
-## 2. Ô tìm kiếm ngựa: `%`, `_`, `\` là ký tự thường
+## 2. Ô tìm kiếm: `%`, `_`, `\` là ký tự thường
 
-API: `GET /api/v1/horses?search=...`
+API:
 
-Trước đây gõ `_` khớp mọi ký tự, gõ `%` khớp mọi ngựa. Giờ tìm đúng chuỗi người dùng gõ.
+- `GET /api/v1/horses?search=...` (tên, số chip)
+- `GET /api/v1/users?search=...` (họ tên, email)
+- `GET /api/v1/supplies/items?search=...` (tên vật tư)
+
+Trước đây gõ `_` khớp mọi ký tự, gõ `%` khớp tất cả. Giờ tìm đúng chuỗi người dùng gõ.
 
 | Gõ | Trước | Nay |
 |---|---|---|
 | `o_m` | `Sao_Mai`, `SaoXMai` | chỉ `Sao_Mai` |
-| `%` | mọi ngựa | chỉ ngựa có `%` trong tên hoặc số chip |
+| `%` | mọi dòng | chỉ dòng có `%` trong chuỗi được tìm |
 
 FE cần làm: không cần đổi gì. Gửi nguyên chuỗi người dùng gõ, không tự escape (nếu FE đang tự thêm `\` trước `%` hay `_` thì bỏ, tránh escape hai lần).

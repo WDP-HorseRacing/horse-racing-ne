@@ -14,6 +14,7 @@ import {
   Repository,
 } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
+import { containsPattern } from '../../../common/utils/like-pattern';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
 import { fieldConflict } from '../../../common/utils/field-errors';
@@ -92,7 +93,7 @@ export class UsersService {
     if (query.search) {
       queryBuilder.andWhere(
         '(user.fullName ILIKE :search OR user.email ILIKE :search)',
-        { search: `%${query.search}%` },
+        { search: containsPattern(query.search) },
       );
     }
     const [users, total] = await queryBuilder

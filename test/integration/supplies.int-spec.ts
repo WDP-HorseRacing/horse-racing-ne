@@ -204,6 +204,31 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       expect(result.meta.total).toBe(1);
     });
 
+    it('treats %, _ and \\ in the name search as plain characters', async () => {
+      for (const name of ['Muối_khoáng', 'MuốiXkhoáng', 'Đạm 20%']) {
+        await items.create(manager, {
+          name,
+          category: SupplyCategory.SUPPLEMENT,
+          unit: 'kg',
+          reorderThreshold: 0,
+        });
+      }
+      const search = async (text: string) =>
+        (
+          await items.list(
+            groom,
+            Object.assign(new SupplyItemListQueryDto(), {
+              page: 1,
+              limit: 20,
+              search: text,
+            }),
+          )
+        ).items.map((row) => row.name);
+
+      await expect(search('i_k')).resolves.toEqual(['Muối_khoáng']);
+      await expect(search('%')).resolves.toEqual(['Đạm 20%']);
+    });
+
     it('hides a deleted item but keeps its ledger readable', async () => {
       const item = await oats(40);
       await items.remove(manager, item.id);
