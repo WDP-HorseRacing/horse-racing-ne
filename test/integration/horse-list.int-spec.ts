@@ -159,6 +159,17 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
     await expect(names({ search: '123' })).resolves.toEqual(['Mây']);
   });
 
+  it('treats %, _ and \\ in the search as plain characters', async () => {
+    await seed.horse('Sao_Mai');
+    await seed.horse('SaoXMai');
+    await seed.horse('100% Lửa');
+    await seed.horse('Gió\\Bắc');
+
+    await expect(names({ search: 'o_m' })).resolves.toEqual(['Sao_Mai']);
+    await expect(names({ search: '%' })).resolves.toEqual(['100% Lửa']);
+    await expect(names({ search: '\\' })).resolves.toEqual(['Gió\\Bắc']);
+  });
+
   it('filters by placement status', async () => {
     const barn = await barnLedBy('Khu A', caller);
     await seed.horse('Chờ khu');
