@@ -105,7 +105,7 @@ export class TrainingSessionsService {
    *
    * - Loại buổi lấy theo môn của buổi; gửi kèm loại buổi thì phải trùng loại buổi của môn
    * - Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly theo cự ly dự kiến, thời gian mục tiêu) trong cùng transaction
-   * - Ghi nhật ký kèm lớp, trạng thái và nội dung buổi
+   * - Ghi nhật ký kèm lớp, trạng thái và nội dung buổi; buổi chạy thử kèm thời gian mục tiêu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param classId UUID của lớp
@@ -204,6 +204,9 @@ export class TrainingSessionsService {
           classId,
           status: session.status,
           ...sessionAuditData(session),
+          ...(session.sessionType === TrainingSessionType.TIME_TRIAL && {
+            targetTimeMs,
+          }),
         },
         feature: AuditFeature.TRAIN_SESSION,
       });

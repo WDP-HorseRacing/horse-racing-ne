@@ -207,6 +207,7 @@ describe('Time trial config of a training session (Postgres)', () => {
           location: null,
           surface: null,
           notes: null,
+          targetTimeMs: 62000,
         },
         null,
       ],
