@@ -4,6 +4,7 @@ import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
 import { toQueryBoolean } from '../../../common/utils/query-boolean';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ReportPeriodDto } from './report-period.dto';
+import { ReportWeekDto } from './report-week.dto';
 
 export class DashboardQueryDto extends ReportPeriodDto {
   @ApiPropertyOptional({ format: 'uuid', description: 'Chỉ ngựa của một khu' })
@@ -69,31 +70,6 @@ export class DashboardTrainingDto {
   completedByIntensity!: DashboardIntensityCountsDto;
 }
 
-export class DashboardWeekDto {
-  @ApiProperty({ format: 'date', description: 'Thứ Hai đầu tuần (lịch CLB)' })
-  weekStart!: string;
-
-  @ApiProperty({ description: 'Số lượt hoàn thành trong tuần' })
-  completed!: number;
-
-  @ApiProperty({
-    type: Number,
-    nullable: true,
-    description: 'Nhịp tim trung bình (bpm); null khi không có điểm đo',
-  })
-  avgHeartRateBpm!: number | null;
-
-  @ApiProperty({
-    type: Number,
-    nullable: true,
-    description: 'Tốc độ trung bình (m/s); null khi không có điểm đo',
-  })
-  avgSpeedMps!: number | null;
-
-  @ApiProperty({ description: 'Số điểm đo vượt ngưỡng (WARNING, CRITICAL)' })
-  alertCount!: number;
-}
-
 export class DashboardHorseDto {
   @ApiProperty({ format: 'uuid' }) horseId!: string;
   @ApiProperty() horseName!: string;
@@ -140,6 +116,6 @@ export class DashboardResponseDto {
   @ApiProperty({ format: 'date' }) to!: string;
   @ApiProperty({ type: DashboardHerdDto }) herd!: DashboardHerdDto;
   @ApiProperty({ type: DashboardTrainingDto }) training!: DashboardTrainingDto;
-  @ApiProperty({ type: [DashboardWeekDto] }) weekly!: DashboardWeekDto[];
+  @ApiProperty({ type: [ReportWeekDto] }) weekly!: ReportWeekDto[];
   @ApiProperty({ type: [DashboardHorseDto] }) horses!: DashboardHorseDto[];
 }

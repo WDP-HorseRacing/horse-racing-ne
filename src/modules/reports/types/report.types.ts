@@ -1,6 +1,15 @@
+import type { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import type { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import type {
+  InjuryBodyRegion,
+  InjuryType,
+  RecoveryStatus,
+} from '../../medical/constants/injury-marker.enum';
+import type { MedicalCaseStatus } from '../../medical/constants/medical-case.enum';
+import type { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
 import type { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import type { TrainingIntensity } from '../../training/enums/training-intensity.enum';
+import type { TrainingSessionType } from '../../training/enums/training-session-type.enum';
 
 /**
  * Khoảng ngày của một báo cáo theo lịch CLB, kèm hai mốc thời điểm để truy vấn
@@ -59,4 +68,63 @@ export interface MetricGroupRow {
   sumSpeedMps: string;
   maxSpeedMps: string;
   alertCount: number;
+}
+
+/**
+ * Một lượt tập của ngựa trong kỳ kèm buổi, đánh giá và thời gian chạy thử tốt nhất, đọc từ DB
+ */
+export interface HorseProgressRow {
+  participantId: string;
+  sessionId: string;
+  sessionName: string;
+  scheduledStartAt: Date;
+  sessionType: TrainingSessionType;
+  intensity: TrainingIntensity;
+  plannedDistanceM: number;
+  status: SessionParticipantStatus;
+  trainedSeconds: number | null;
+  score: number | null;
+  comment: string | null;
+  bestTrialMs: string | null;
+  weekStart: string;
+}
+
+/**
+ * Lịch sử sức khỏe của ngựa trong kỳ, đọc từ DB
+ */
+export interface HorseHealthRows {
+  statusChanges: Array<{
+    changedAt: Date;
+    from: HorseHealthStatus | null;
+    to: HorseHealthStatus;
+    reason: string | null;
+  }>;
+  measurements: Array<{
+    type: HorseMeasurementType;
+    value: string;
+    measuredAt: Date;
+    isAbnormal: boolean;
+  }>;
+  medicalCases: Array<{
+    caseId: string;
+    status: MedicalCaseStatus;
+    openedAt: Date;
+    closedAt: Date | null;
+    initialDiagnosis: string;
+    finalConclusion: string | null;
+  }>;
+  injuries: Array<{
+    examDate: Date;
+    bodyRegion: InjuryBodyRegion;
+    injuryType: InjuryType;
+    recoveryStatus: RecoveryStatus;
+  }>;
+  trainingLocks: Array<{
+    lockId: string;
+    status: TrainingLockStatus;
+    reason: string;
+    lockStart: Date;
+    lockEnd: Date | null;
+    releasedAt: Date | null;
+  }>;
 }

@@ -165,8 +165,8 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/reports/club/medical` | (501) Get club medical activity report |
 | GET | `/api/v1/reports/club/training` | (501) Get club training activity report |
 | GET | `/api/v1/reports/dashboard` | Tiến độ tập luyện và thể lực của ngựa trong CLB theo khoảng ngày |
-| GET | `/api/v1/reports/horses/{horseId}/health` | (501) Get horse health history report |
-| GET | `/api/v1/reports/horses/{horseId}/progress` | (501) Get horse training progress report |
+| GET | `/api/v1/reports/horses/{horseId}/health` | Lịch sử sức khỏe của một con ngựa theo khoảng ngày |
+| GET | `/api/v1/reports/horses/{horseId}/progress` | Tiến độ tập luyện của một con ngựa theo khoảng ngày |
 
 ## stable
 

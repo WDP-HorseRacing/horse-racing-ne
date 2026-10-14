@@ -4737,8 +4737,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseProgressResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4746,11 +4753,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse training progress report",
+        "summary": "Tiến độ tập luyện của một con ngựa theo khoảng ngày",
         "tags": [
           "reports"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/reports/horses/{horseId}/health": {
@@ -4787,8 +4793,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseHealthResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4796,11 +4809,10 @@
             "bearer": []
           }
         ],
-        "summary": "Get horse health history report",
+        "summary": "Lịch sử sức khỏe của một con ngựa theo khoảng ngày",
         "tags": [
           "reports"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/barns": {
@@ -14349,7 +14361,7 @@
           "completedByIntensity"
         ]
       },
-      "DashboardWeekDto": {
+      "ReportWeekDto": {
         "type": "object",
         "properties": {
           "weekStart": {
@@ -14481,7 +14493,7 @@
           "weekly": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/DashboardWeekDto"
+              "$ref": "#/components/schemas/ReportWeekDto"
             }
           },
           "horses": {
@@ -14498,6 +14510,483 @@
           "training",
           "weekly",
           "horses"
+        ]
+      },
+      "HorseProgressTotalsDto": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "type": "number",
+            "description": "Số lượt hoàn thành"
+          },
+          "absent": {
+            "type": "number",
+            "description": "Số lượt vắng"
+          },
+          "ineligible": {
+            "type": "number",
+            "description": "Số lượt không đủ điều kiện (kể cả hủy do khóa huấn luyện)"
+          },
+          "plannedDistanceM": {
+            "type": "number",
+            "description": "Tổng cự ly dự kiến của các lượt hoàn thành (m)"
+          },
+          "trainedMinutes": {
+            "type": "number",
+            "description": "Tổng thời gian tập thực tế của các lượt hoàn thành (phút)"
+          },
+          "completedByIntensity": {
+            "$ref": "#/components/schemas/DashboardIntensityCountsDto"
+          }
+        },
+        "required": [
+          "completed",
+          "absent",
+          "ineligible",
+          "plannedDistanceM",
+          "trainedMinutes",
+          "completedByIntensity"
+        ]
+      },
+      "HorseProgressEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "score",
+          "comment"
+        ]
+      },
+      "HorseProgressSessionDto": {
+        "type": "object",
+        "properties": {
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionName": {
+            "type": "string"
+          },
+          "scheduledStartAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "REGULAR",
+              "TIME_TRIAL"
+            ]
+          },
+          "intensity": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "MODERATE",
+              "HEAVY"
+            ]
+          },
+          "plannedDistanceM": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "PRESENT",
+              "READY",
+              "ONGOING",
+              "COMPLETED",
+              "ABSENT",
+              "SKIPPED",
+              "INELIGIBLE",
+              "CANCELLED_BY_LOCK",
+              "CANCELLED"
+            ]
+          },
+          "avgHeartRateBpm": {
+            "type": "number",
+            "nullable": true
+          },
+          "maxHeartRateBpm": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgSpeedMps": {
+            "type": "number",
+            "nullable": true
+          },
+          "maxSpeedMps": {
+            "type": "number",
+            "nullable": true
+          },
+          "alertCount": {
+            "type": "number",
+            "description": "Số điểm đo vượt ngưỡng"
+          },
+          "evaluation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HorseProgressEvaluationDto"
+              }
+            ]
+          },
+          "bestTrialMs": {
+            "type": "number",
+            "nullable": true,
+            "description": "Thời gian chạy thử tốt nhất của lượt (ms)"
+          }
+        },
+        "required": [
+          "participantId",
+          "sessionId",
+          "sessionName",
+          "scheduledStartAt",
+          "sessionType",
+          "intensity",
+          "plannedDistanceM",
+          "status",
+          "avgHeartRateBpm",
+          "maxHeartRateBpm",
+          "avgSpeedMps",
+          "maxSpeedMps",
+          "alertCount",
+          "evaluation",
+          "bestTrialMs"
+        ]
+      },
+      "HorseProgressResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HorseProgressTotalsDto"
+          },
+          "weekly": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportWeekDto"
+            }
+          },
+          "sessions": {
+            "description": "Các lượt tập trong kỳ, theo giờ bắt đầu buổi",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseProgressSessionDto"
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "from",
+          "to",
+          "totals",
+          "weekly",
+          "sessions"
+        ]
+      },
+      "HorseHealthChangeDto": {
+        "type": "object",
+        "properties": {
+          "changedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ],
+            "nullable": true
+          },
+          "to": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "changedAt",
+          "from",
+          "to",
+          "reason"
+        ]
+      },
+      "HorseMeasurementPointDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "WEIGHT",
+              "HEIGHT",
+              "BODY_CONDITION",
+              "TEMPERATURE"
+            ]
+          },
+          "value": {
+            "type": "number"
+          },
+          "measuredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "isAbnormal": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "measuredAt",
+          "isAbnormal"
+        ]
+      },
+      "HorseMedicalCaseItemDto": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "CLOSED",
+              "CANCELLED"
+            ]
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "closedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "initialDiagnosis": {
+            "type": "string"
+          },
+          "finalConclusion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "caseId",
+          "status",
+          "openedAt",
+          "closedAt",
+          "initialDiagnosis",
+          "finalConclusion"
+        ]
+      },
+      "HorseInjuryItemDto": {
+        "type": "object",
+        "properties": {
+          "examDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "bodyRegion": {
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ]
+          },
+          "injuryType": {
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ]
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          }
+        },
+        "required": [
+          "examDate",
+          "bodyRegion",
+          "injuryType",
+          "recoveryStatus"
+        ]
+      },
+      "HorseTrainingLockItemDto": {
+        "type": "object",
+        "properties": {
+          "lockId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RELEASED"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "lockStart": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lockEnd": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "releasedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "lockId",
+          "status",
+          "reason",
+          "lockStart",
+          "lockEnd",
+          "releasedAt"
+        ]
+      },
+      "HorseHealthResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "currentHealthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "statusChanges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseHealthChangeDto"
+            }
+          },
+          "measurements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseMeasurementPointDto"
+            }
+          },
+          "medicalCases": {
+            "description": "Bệnh án mở trong kỳ hoặc còn mở trong một phần của kỳ",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseMedicalCaseItemDto"
+            }
+          },
+          "injuries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseInjuryItemDto"
+            }
+          },
+          "trainingLocks": {
+            "description": "Lệnh khóa huấn luyện có hiệu lực trong một phần của kỳ",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseTrainingLockItemDto"
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "from",
+          "to",
+          "currentHealthStatus",
+          "statusChanges",
+          "measurements",
+          "medicalCases",
+          "injuries",
+          "trainingLocks"
         ]
       },
       "BarnListItemDto": {

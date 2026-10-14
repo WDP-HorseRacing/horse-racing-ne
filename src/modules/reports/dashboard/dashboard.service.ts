@@ -5,6 +5,7 @@ import { clubToday } from '../../../common/utils/club-date';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { DashboardQueryDto, DashboardResponseDto } from '../dto/dashboard.dto';
 import { toDashboard } from '../mappers/dashboard.mapper';
+import { ReportsAccessService } from '../shared/reports-access.service';
 import { resolveReportPeriod } from '../utils/report-period';
 import { DashboardRepository } from './dashboard.repository';
 
@@ -15,6 +16,7 @@ import { DashboardRepository } from './dashboard.repository';
 export class DashboardService {
   constructor(
     private readonly repository: DashboardRepository,
+    private readonly reportsAccess: ReportsAccessService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -45,8 +47,8 @@ export class DashboardService {
       await Promise.all([
         this.repository.participantCounts(horseIds, period),
         this.repository.sessionCount(horseIds, period),
-        this.repository.metricsByHorse(horseIds, period),
-        this.repository.metricsByWeek(horseIds, period),
+        this.reportsAccess.groupMetrics(horseIds, period, 'HORSE'),
+        this.reportsAccess.groupMetrics(horseIds, period, 'WEEK'),
       ]);
     return toDashboard({
       period,

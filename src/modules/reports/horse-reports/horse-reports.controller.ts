@@ -1,37 +1,61 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser } from '../../../common/decorators';
-import { PendingApi } from '../../../common/openapi/pending-api';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { UserRole } from '../../../common/enums';
 import type { Actor } from '../../../common/types/actor';
+import {
+  HorseHealthResponseDto,
+  HorseProgressResponseDto,
+} from '../dto/horse-report.dto';
 import { ReportPeriodDto } from '../dto/report-period.dto';
+import { HorseReportsService } from './horse-reports.service';
 
 @ApiTags('reports')
 @ApiBearerAuth()
-@ApiResponse({ status: 501, description: 'Contract only' })
 @Controller('reports')
-export class HorseReportsController extends PendingApi {
+export class HorseReportsController {
+  constructor(private readonly reports: HorseReportsService) {}
+
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.HORSE_OWNER,
+  ])
   @Get('horses/:horseId/progress')
-  @ApiOperation({ summary: 'Get horse training progress report' })
+  @ApiOperation({
+    summary: 'Tiến độ tập luyện của một con ngựa theo khoảng ngày',
+  })
+  @ApiOkResponse({ type: HorseProgressResponseDto })
   progress(
-    @CurrentUser() _actor: Actor,
-    @Param('horseId', ParseUUIDPipe) _horseId: string,
-    @Query() _period: ReportPeriodDto,
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Query() query: ReportPeriodDto,
   ) {
-    return this.pending();
+    return this.reports.progress(actor, horseId, query);
   }
 
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.HORSE_OWNER,
+  ])
   @Get('horses/:horseId/health')
-  @ApiOperation({ summary: 'Get horse health history report' })
+  @ApiOperation({
+    summary: 'Lịch sử sức khỏe của một con ngựa theo khoảng ngày',
+  })
+  @ApiOkResponse({ type: HorseHealthResponseDto })
   health(
-    @CurrentUser() _actor: Actor,
-    @Param('horseId', ParseUUIDPipe) _horseId: string,
-    @Query() _period: ReportPeriodDto,
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Query() query: ReportPeriodDto,
   ) {
-    return this.pending();
+    return this.reports.health(actor, horseId, query);
   }
 }

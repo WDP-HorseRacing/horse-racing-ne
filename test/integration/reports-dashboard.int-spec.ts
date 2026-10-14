@@ -14,6 +14,7 @@ import {
 } from '../../src/modules/performance/schemas/performance-metric.schema';
 import { DashboardRepository } from '../../src/modules/reports/dashboard/dashboard.repository';
 import { DashboardService } from '../../src/modules/reports/dashboard/dashboard.service';
+import { ReportsAccessService } from '../../src/modules/reports/shared/reports-access.service';
 import { fixtures } from './fixtures';
 import {
   clearAllMongoCollections,
@@ -56,7 +57,8 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
     );
     await metrics.init();
     service = new DashboardService(
-      new DashboardRepository(dataSource, metrics),
+      new DashboardRepository(dataSource),
+      new ReportsAccessService(metrics),
       dataSource,
     );
   });

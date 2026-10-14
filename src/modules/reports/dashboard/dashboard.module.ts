@@ -1,19 +1,11 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import {
-  PerformanceMetric,
-  PerformanceMetricSchema,
-} from '../../performance/schemas/performance-metric.schema';
+import { ReportsSharedModule } from '../shared/reports-shared.module';
 import { DashboardController } from './dashboard.controller';
 import { DashboardRepository } from './dashboard.repository';
 import { DashboardService } from './dashboard.service';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: PerformanceMetric.name, schema: PerformanceMetricSchema },
-    ]),
-  ],
+  imports: [ReportsSharedModule],
   controllers: [DashboardController],
   providers: [DashboardService, DashboardRepository],
 })

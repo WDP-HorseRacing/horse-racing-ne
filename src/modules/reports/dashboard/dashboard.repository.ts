@@ -1,32 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import type { Model, Types } from 'mongoose';
 import { DataSource } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { MetricAlertLevel } from '../../performance/enums/metric-alert-level.enum';
-import { PerformanceMetric } from '../../performance/schemas/performance-metric.schema';
 import { TrainingSessionStatus } from '../../training/enums/training-session-status.enum';
 import type {
   DashboardHorseFilter,
   DashboardHorseRow,
   DashboardParticipantCountRow,
-  MetricGroupRow,
   ReportPeriod,
 } from '../types/report.types';
 
 /**
- * Truy vấn tổng hợp cho dashboard: ngựa trong phạm vi, số lượt tập, điểm đo nhịp tim và tốc độ
+ * Truy vấn tổng hợp cho dashboard: ngựa trong phạm vi và số lượt tập
  */
 @Injectable()
 export class DashboardRepository {
-  constructor(
-    private readonly dataSource: DataSource,
-    @InjectModel(PerformanceMetric.name)
-    private readonly metrics: Model<PerformanceMetric>,
-  ) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   /**
    * Lấy các ngựa đang hoạt động trong phạm vi, kèm khu, trạng thái sức khỏe, cờ khóa huấn luyện và cân nặng gần nhất
@@ -138,102 +129,5 @@ export class DashboardRepository {
       ],
     );
     return row.count;
-  }
-
-  /**
-   * Tổng hợp điểm đo của các ngựa trong kỳ theo từng ngựa
-   *
-   * @param horseIds UUID các ngựa
-   * @param period Khoảng ngày của báo cáo
-   * @returns Promise trả về một nhóm cho mỗi ngựa có điểm đo, key là horseId
-   */
-  metricsByHorse(
-    horseIds: string[],
-    period: ReportPeriod,
-  ): Promise<MetricGroupRow[]> {
-    return this.groupMetrics(horseIds, period, '$meta.horseId');
-  }
-
-  /**
-   * Tổng hợp điểm đo của các ngựa trong kỳ theo tuần (lịch CLB, bắt đầu thứ Hai)
-   *
-   * @param horseIds UUID các ngựa
-   * @param period Khoảng ngày của báo cáo
-   * @returns Promise trả về một nhóm cho mỗi tuần có điểm đo, key là ngày thứ Hai đầu tuần (YYYY-MM-DD)
-   */
-  metricsByWeek(
-    horseIds: string[],
-    period: ReportPeriod,
-  ): Promise<MetricGroupRow[]> {
-    return this.groupMetrics(horseIds, period, {
-      $dateToString: {
-        format: '%Y-%m-%d',
-        timezone: CLUB_TIME_ZONE,
-        date: {
-          $dateTrunc: {
-            date: '$recordedAt',
-            unit: 'week',
-            timezone: CLUB_TIME_ZONE,
-            startOfWeek: 'monday',
-          },
-        },
-      },
-    });
-  }
-
-  /**
-   * Gộp điểm đo của các ngựa trong kỳ theo một khóa nhóm
-   *
-   * @param horseIds UUID các ngựa
-   * @param period Khoảng ngày của báo cáo
-   * @param key Biểu thức khóa nhóm của MongoDB
-   * @returns Promise trả về các nhóm; danh sách ngựa rỗng thì trả mảng rỗng
-   */
-  private async groupMetrics(
-    horseIds: string[],
-    period: ReportPeriod,
-    key: string | Record<string, unknown>,
-  ): Promise<MetricGroupRow[]> {
-    if (horseIds.length === 0) return [];
-    const groups = await this.metrics.aggregate<{
-      _id: string;
-      count: number;
-      sumHeartRateBpm: number;
-      maxHeartRateBpm: number;
-      sumSpeedMps: Types.Decimal128;
-      maxSpeedMps: Types.Decimal128;
-      alertCount: number;
-    }>([
-      {
-        $match: {
-          'meta.horseId': { $in: horseIds },
-          recordedAt: { $gte: period.start, $lt: period.end },
-        },
-      },
-      {
-        $group: {
-          _id: key,
-          count: { $sum: 1 },
-          sumHeartRateBpm: { $sum: '$heartRateBpm' },
-          maxHeartRateBpm: { $max: '$heartRateBpm' },
-          sumSpeedMps: { $sum: '$speedMps' },
-          maxSpeedMps: { $max: '$speedMps' },
-          alertCount: {
-            $sum: {
-              $cond: [{ $ne: ['$alertLevel', MetricAlertLevel.NORMAL] }, 1, 0],
-            },
-          },
-        },
-      },
-    ]);
-    return groups.map((group) => ({
-      key: group._id,
-      count: group.count,
-      sumHeartRateBpm: group.sumHeartRateBpm,
-      maxHeartRateBpm: group.maxHeartRateBpm,
-      sumSpeedMps: group.sumSpeedMps.toString(),
-      maxSpeedMps: group.maxSpeedMps.toString(),
-      alertCount: group.alertCount,
-    }));
   }
 }

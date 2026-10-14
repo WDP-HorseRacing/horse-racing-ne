@@ -1,12 +1,9 @@
-import { averageDecimal, roundDecimal } from '../../../common/utils/decimal';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { SPEED_SCALE } from '../../performance/constants/performance.constants';
 import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import { TrainingIntensity } from '../../training/enums/training-intensity.enum';
 import type {
   DashboardHorseDto,
   DashboardResponseDto,
-  DashboardWeekDto,
 } from '../dto/dashboard.dto';
 import type {
   DashboardHorseRow,
@@ -14,6 +11,7 @@ import type {
   MetricGroupRow,
   ReportPeriod,
 } from '../types/report.types';
+import { metricFigures, toWeeks } from './report-metrics.mapper';
 
 /**
  * Số liệu đã đọc để dựng dashboard
@@ -103,68 +101,5 @@ export function toDashboard(source: DashboardSource): DashboardResponseDto {
       latestWeightKg:
         horse.latestWeightKg === null ? null : Number(horse.latestWeightKg),
     })),
-  };
-}
-
-/**
- * Dựng biểu đồ tuần từ số lượt hoàn thành và tổng hợp điểm đo theo tuần
- *
- * @param completed Số lượt hoàn thành theo ngựa, cường độ và tuần
- * @param metricsByWeek Tổng hợp điểm đo theo tuần
- * @returns Các tuần có lượt hoàn thành hoặc có điểm đo, sắp theo tuần
- */
-function toWeeks(
-  completed: DashboardParticipantCountRow[],
-  metricsByWeek: MetricGroupRow[],
-): DashboardWeekDto[] {
-  const metricsOfWeek = new Map(
-    metricsByWeek.map((group) => [group.key, group]),
-  );
-  const weeks = [
-    ...new Set([
-      ...completed.map((row) => row.weekStart),
-      ...metricsOfWeek.keys(),
-    ]),
-  ].sort();
-  return weeks.map((weekStart) => {
-    const figures = metricFigures(metricsOfWeek.get(weekStart));
-    return {
-      weekStart,
-      completed: completed
-        .filter((row) => row.weekStart === weekStart)
-        .reduce((sum, row) => sum + row.count, 0),
-      avgHeartRateBpm: figures.avgHeartRateBpm,
-      avgSpeedMps: figures.avgSpeedMps,
-      alertCount: figures.alertCount,
-    };
-  });
-}
-
-/**
- * Đổi một nhóm điểm đo thành các chỉ số hiển thị
- *
- * @param group Nhóm điểm đo, hoặc undefined nếu không có điểm đo
- * @returns Nhịp tim, tốc độ trung bình và cao nhất, số cảnh báo; không có điểm đo thì các chỉ số là null, cảnh báo là 0
- */
-function metricFigures(group: MetricGroupRow | undefined) {
-  if (!group || group.count === 0) {
-    return {
-      avgHeartRateBpm: null,
-      maxHeartRateBpm: null,
-      avgSpeedMps: null,
-      maxSpeedMps: null,
-      alertCount: 0,
-    };
-  }
-  return {
-    avgHeartRateBpm: Number(
-      averageDecimal(String(group.sumHeartRateBpm), group.count, 0),
-    ),
-    maxHeartRateBpm: group.maxHeartRateBpm,
-    avgSpeedMps: Number(
-      averageDecimal(group.sumSpeedMps, group.count, SPEED_SCALE),
-    ),
-    maxSpeedMps: Number(roundDecimal(group.maxSpeedMps, SPEED_SCALE)),
-    alertCount: group.alertCount,
   };
 }
