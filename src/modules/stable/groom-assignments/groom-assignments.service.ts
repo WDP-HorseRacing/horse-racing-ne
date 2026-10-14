@@ -87,6 +87,7 @@ export class GroomAssignmentsService {
    * - Lock row user của groom trong transaction rồi mới kiểm groom còn là GROOM đang ACTIVE.
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist từ hôm nay trở đi của groom cũ sang groom mới, kể cả checklist đã hoàn thành.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
+   * - Ngựa chưa có checklist hôm nay thì sinh cho groom mới.
    * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); nhật ký ghi thêm movedParticipantIds.
    * - Ghi GROOM_ASSIGNMENT_CHANGED_EVENT vào outbox trong cùng transaction để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách.
    *
@@ -126,6 +127,7 @@ export class GroomAssignmentsService {
   /**
    * Giao hoặc đổi groom cho ngựa, chạy trong transaction của nơi gọi (luật như assign)
    *
+   * - Ngựa chưa có checklist hôm nay thì sinh cho groom mới
    * - Không ghi event; nơi gọi ghi GROOM_ASSIGNMENT_CHANGED_EVENT với changedEvent trả về vào outbox trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
@@ -203,6 +205,7 @@ export class GroomAssignmentsService {
           endAt: null,
         }),
       );
+      await this.dailyChecklists.ensureChecklist(manager, horseId, clubToday());
       // Ghi log audit
       await this.recordGroomChangeAudit(manager, {
         callerId,

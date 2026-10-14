@@ -148,6 +148,8 @@ describe('GroomAssignmentsService', () => {
     );
     const dataSource = { manager, transaction } as unknown as DataSource;
     const horseAccess = new HorseAccessService(dataSource);
+    const dailyChecklists = new DailyChecklistsService(events);
+    jest.spyOn(dailyChecklists, 'ensureChecklist').mockResolvedValue(null);
     service = new GroomAssignmentsService(
       groomAssignments as unknown as Repository<GroomAssignmentEntity>,
       dataSource,
@@ -155,7 +157,7 @@ describe('GroomAssignmentsService', () => {
       events,
       new StableAccessService(horseAccess),
       horseAccess,
-      new DailyChecklistsService(events),
+      dailyChecklists,
       training as unknown as TrainingOperationsFacade,
       workloads as unknown as GroomAssignmentsRepository,
     );

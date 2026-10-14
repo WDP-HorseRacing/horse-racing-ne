@@ -19,6 +19,10 @@ import { DailyChecklistEntity } from '../../src/modules/stable/entities/daily-ch
 import { HorseCareTaskEntity } from '../../src/modules/stable/entities/horse-care-task.entity';
 import { DailyChecklistsService } from '../../src/modules/stable/shared/daily-checklists.service';
 import { StableAccessService } from '../../src/modules/stable/shared/stable-access.service';
+import { GroomAssignmentEntity } from '../../src/modules/stable/entities/groom-assignment.entity';
+import { GroomAssignmentsRepository } from '../../src/modules/stable/groom-assignments/groom-assignments.repository';
+import { GroomAssignmentsService } from '../../src/modules/stable/groom-assignments/groom-assignments.service';
+import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -69,8 +73,19 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       [horseId, id],
     );
 
-  const todayOf = async (actor: Actor, horseId: string) =>
-    (await checklists.listForHorse(actor, horseId, {}))[0];
+  const todayOf = async (actor: Actor, horseId: string) => {
+    await checklists.runDaily();
+    return (await checklists.listForHorse(actor, horseId, {}))[0];
+  };
+
+  const checklistCounts = () =>
+    dataSource.query<
+      { horse_id: string; checklist_date: string; items: number }[]
+    >(
+      `SELECT c.horse_id, to_char(c.checklist_date, 'YYYY-MM-DD') AS checklist_date,
+              (SELECT COUNT(*) FROM daily_checklist_items i WHERE i.checklist_id = c.id)::int AS items
+         FROM daily_checklists c`,
+    );
 
   beforeAll(async () => {
     db = await startTestPostgres();
@@ -131,7 +146,61 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     }
   });
 
-  describe('generating on read', () => {
+  describe('generating each day', () => {
+    it('creates today for every horse with a groom on the daily run, once', async () => {
+      await checklists.runDaily();
+      await checklists.onApplicationBootstrap();
+
+      expect(await checklistCounts()).toEqual([
+        { horse_id: gio, checklist_date: today, items: 3 },
+      ]);
+    });
+
+    it('does not create anything when the checklist is read', async () => {
+      expect(await checklists.listForHorse(groom, gio, {})).toEqual([]);
+      expect(await checklistCounts()).toEqual([]);
+    });
+
+    it('creates today when a groom takes a horse that has none', async () => {
+      const assignments = new GroomAssignmentsService(
+        dataSource.getRepository(GroomAssignmentEntity),
+        dataSource,
+        new AuditService(),
+        new DomainEventPublisher(),
+        new StableAccessService(new HorseAccessService(dataSource)),
+        new HorseAccessService(dataSource),
+        daily,
+        new TrainingOperationsFacade(dataSource),
+        new GroomAssignmentsRepository(dataSource),
+      );
+
+      await assignments.assign(trainer, may, { groomId: otherGroomId });
+
+      expect(await checklistCounts()).toEqual([
+        { horse_id: may, checklist_date: today, items: 3 },
+      ]);
+    });
+
+    it('creates today when a horse task starts on a day that had nothing to do', async () => {
+      for (const name of ['Cho ăn', 'Vệ sinh chuồng', 'Tắm rửa']) {
+        await careTasks.updateType(manager, types[name], { active: false });
+      }
+      await checklists.runDaily();
+      expect(await checklistCounts()).toEqual([]);
+
+      await careTasks.createForHorse(trainer, gio, {
+        taskTypeId: types['Ngâm chân nước đá'],
+        fromDate: today,
+        toDate: today,
+      });
+
+      expect(await checklistCounts()).toEqual([
+        { horse_id: gio, checklist_date: today, items: 1 },
+      ]);
+    });
+  });
+
+  describe('generating', () => {
     it('builds today from the types that apply to every horse', async () => {
       const checklist = await todayOf(groom, gio);
 

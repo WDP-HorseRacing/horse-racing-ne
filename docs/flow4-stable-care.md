@@ -30,7 +30,7 @@ KHẨU PHẦN (theo từng ngựa)        DRAFT → ACTIVE → ARCHIVED
 
 LOẠI VIỆC (danh mục CM)           cờ "áp mọi ngựa"
 VIỆC RIÊNG CỦA NGỰA               HT gắn loại việc cho ngựa, từ ngày → đến ngày
-CHECKLIST (ngựa × ngày)           sinh khi đọc, giao cho Groom phụ trách
+CHECKLIST (ngựa × ngày)           hệ thống sinh lúc 00:05, giao cho Groom phụ trách
  └─ DÒNG CHECKLIST                một việc: xong chưa, ai tick, lúc nào
 
 SỰ CỐ                             Groom báo, HT khu đóng
@@ -93,13 +93,17 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 1. Club Manager thêm, sửa loại việc (tên duy nhất, cờ "áp mọi ngựa", đang dùng hay ngưng). Không xóa; ngưng dùng thì checklist sinh sau đó (kể cả trong ngày) không còn việc này, checklist đã sinh giữ nguyên.
 2. Head Trainer của khu gắn loại việc cho một ngựa trong khoảng ngày (từ ngày ≤ đến ngày, từ ngày không ở quá khứ, dài tối đa 366 ngày). Một loại việc không gắn trùng khoảng ngày cho cùng một ngựa (409). Loại việc đã ngưng hoặc đã "áp mọi ngựa" thì không gắn riêng được (409).
-3. Gắn việc có hiệu lực hôm nay khi checklist hôm nay đã sinh: thêm dòng vào checklist hôm nay; checklist đang `COMPLETED` quay về `IN_PROGRESS`; báo Groom phụ trách.
+3. Gắn việc có hiệu lực hôm nay khi checklist hôm nay đã có: thêm dòng vào checklist hôm nay; checklist đang `COMPLETED` quay về `IN_PROGRESS`; báo Groom phụ trách.
 4. Gỡ việc riêng: chưa tới ngày bắt đầu thì xóa; đã bắt đầu thì kết thúc ở hôm nay. Checklist đã sinh không đổi.
 
 ### 5. Checklist hằng ngày
 
 1. Checklist thuộc một ngựa, một ngày, giao cho Groom đang phụ trách ngựa. Ngựa chưa có Groom thì không có checklist.
-2. Sinh khi đọc: lần đầu có người xem checklist hôm nay của ngựa (Groom mở màn Hôm nay, hoặc xem theo ngựa), hệ thống tạo checklist từ các loại việc "áp mọi ngựa" đang dùng cộng việc riêng của ngựa có hiệu lực hôm nay. Đọc lại hoặc hai người đọc cùng lúc không tạo trùng. Chỉ sinh cho hôm nay, không sinh ngày tương lai.
+2. Sinh sẵn mỗi ngày: lúc 00:05 (giờ CLB) và một lần khi khởi động, hệ thống tạo checklist hôm nay cho mọi ngựa đang có Groom, từ các loại việc "áp mọi ngựa" đang dùng cộng việc riêng của ngựa có hiệu lực hôm nay. Chạy lại hoặc chạy cùng lúc không tạo trùng. Chỉ sinh cho hôm nay, không sinh ngày tương lai. Xem checklist không bao giờ tạo checklist.
+   - Ngày không có việc nào thì không có checklist.
+   - Ngựa được giao Groom trong ngày mà chưa có checklist hôm nay: sinh ngay lúc giao.
+   - Gắn việc riêng bắt đầu hôm nay cho ngựa chưa có checklist hôm nay (ví dụ sáng nay không có việc nào): sinh ngay lúc gắn.
+   - Nhờ sinh sẵn, ngày không ai mở checklist vẫn có dòng để chuyển `INCOMPLETE` (luật 6).
 3. Trạng thái (lưu cột, tính lại trong cùng transaction mỗi lần tick, gỡ tick, thêm việc):
    - `PENDING`: chưa việc nào xong.
    - `IN_PROGRESS`: xong một phần.
@@ -130,7 +134,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 `GET /grooms/me/today` trả từng ngựa Groom đang phụ trách:
 
 - Khu, ô chuồng hiện tại.
-- Checklist hôm nay (sinh nếu chưa có, luật 5.2).
+- Checklist hôm nay (đã sinh theo luật 5.2; chưa có thì để trống).
 - Khẩu phần `ACTIVE` theo bữa.
 - Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu; bỏ buổi nháp và buổi đã hủy, bỏ lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện.
 - Lịch chăm sóc giao cho Groom (Flow 3) đến hạn tới hết hôm nay mà chưa làm, kể cả lịch quá hạn (đánh dấu `overdue`).

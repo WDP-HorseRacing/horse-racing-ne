@@ -21,7 +21,6 @@ import { StallAssignmentEntity } from '../entities/stall-assignment.entity';
 import { toDailyChecklistResponse } from '../mappers/daily-checklist.mapper';
 import { toFeedingPlanResponse } from '../mappers/feeding-plan.mapper';
 import { toGroomTodayResponse } from '../mappers/groom-today.mapper';
-import { DailyChecklistsService } from '../shared/daily-checklists.service';
 
 const CHECKLIST_RELATIONS = {
   horse: true,
@@ -54,16 +53,13 @@ const VISIBLE_RUN_STATUSES = [
  */
 @Injectable()
 export class GroomTodayService {
-  constructor(
-    private readonly dailyChecklists: DailyChecklistsService,
-    private readonly dataSource: DataSource,
-  ) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   /**
    * Gom việc hôm nay của từng ngựa Groom đang phụ trách, ngựa theo tên
    *
    * - Khu, ô chuồng hiện tại
-   * - Checklist hôm nay, sinh nếu chưa có
+   * - Checklist hôm nay (nếu đã sinh)
    * - Khẩu phần đang áp dụng
    * - Lượt tập hôm nay Groom được giao dắt, bỏ buổi nháp và buổi đã hủy
    * - Lịch chăm sóc giao cho Groom, đến hạn tới hết hôm nay mà chưa làm
@@ -87,11 +83,6 @@ export class GroomTodayService {
       .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
     const horseIds = horses.map((horse) => horse.id);
     if (horseIds.length === 0) return toGroomTodayResponse(date, dayStart, []);
-    await this.dataSource.transaction(async (tx) => {
-      for (const horseId of horseIds) {
-        await this.dailyChecklists.ensureChecklist(tx, horseId, date);
-      }
-    });
     const [stalls, checklists, plans, runs, schedules] = await Promise.all([
       manager.find(StallAssignmentEntity, {
         where: { horseId: In(horseIds), endAt: IsNull() },

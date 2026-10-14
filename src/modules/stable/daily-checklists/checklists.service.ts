@@ -6,7 +6,14 @@ import {
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, DataSource, EntityManager, In, Repository } from 'typeorm';
+import {
+  Between,
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Repository,
+} from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import type { Actor } from '../../../common/types/actor';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
@@ -26,6 +33,7 @@ import {
   TickChecklistItemDto,
 } from '../dto/daily-checklist.dto';
 import { DailyChecklistItemEntity } from '../entities/daily-checklist-item.entity';
+import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
 import { toDailyChecklistResponse } from '../mappers/daily-checklist.mapper';
 import {
@@ -45,7 +53,7 @@ const CHECKLIST_RELATIONS = {
 const CHECKLIST_ITEM_NOT_FOUND = 'Không tìm thấy việc trong checklist';
 
 /**
- * Checklist chăm sóc hằng ngày: xem theo ngựa, Groom tick việc, đóng các ngày đã qua
+ * Checklist chăm sóc hằng ngày: xem theo ngựa, Groom tick việc, đóng các ngày đã qua, sinh checklist mỗi ngày
  */
 @Injectable()
 export class ChecklistsService implements OnApplicationBootstrap {
@@ -61,7 +69,7 @@ export class ChecklistsService implements OnApplicationBootstrap {
   ) {}
 
   /**
-   * Liệt kê checklist của ngựa trong khoảng ngày, mới nhất trước; khoảng có hôm nay thì sinh checklist hôm nay nếu chưa có
+   * Liệt kê checklist của ngựa trong khoảng ngày, mới nhất trước
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -87,11 +95,6 @@ export class ChecklistsService implements OnApplicationBootstrap {
       horseId,
     );
     assertChecklistRange(from, to);
-    if (from <= today && today <= to) {
-      await this.dataSource.transaction((manager) =>
-        this.dailyChecklists.ensureChecklist(manager, horseId, today),
-      );
-    }
     const rows = await this.checklists.find({
       where: { horseId, checklistDate: Between(from, to) },
       relations: CHECKLIST_RELATIONS,
@@ -170,7 +173,7 @@ export class ChecklistsService implements OnApplicationBootstrap {
   }
 
   /**
-   * Chạy bù một lần khi ứng dụng khởi động: đóng checklist của các ngày đã qua còn mở
+   * Chạy bù một lần khi ứng dụng khởi động: đóng checklist của các ngày đã qua còn mở, sinh checklist hôm nay
    *
    * - Lỗi chỉ được log, không làm dừng ứng dụng
    *
@@ -181,23 +184,61 @@ export class ChecklistsService implements OnApplicationBootstrap {
   }
 
   /**
-   * Chạy lúc 00:05 giờ CLB: chuyển checklist của các ngày đã qua còn mở sang INCOMPLETE
+   * Chạy lúc 00:05 giờ CLB: chuyển checklist của các ngày đã qua còn mở sang INCOMPLETE, rồi sinh checklist hôm nay
    *
    * - Lỗi chỉ được log, không làm dừng scheduler
    *
    * @returns Promise hoàn tất khi đã chạy xong
    */
   @Cron('5 0 * * *', {
-    name: 'daily-checklists-close-past-days',
+    name: 'daily-checklists-close-and-generate',
     timeZone: CLUB_TIME_ZONE,
   })
   async runDaily(): Promise<void> {
+    const today = clubToday();
     try {
-      const closed = await this.closePastDays(clubToday());
+      const closed = await this.closePastDays(today);
       this.logger.log(`Đóng checklist ngày đã qua: ${closed}`);
     } catch (error) {
       this.logger.error('Đóng checklist ngày đã qua lỗi', error as Error);
     }
+    try {
+      const generated = await this.generateDay(today);
+      this.logger.log(`Ngựa có checklist ngày ${today}: ${generated}`);
+    } catch (error) {
+      this.logger.error(`Sinh checklist ngày ${today} lỗi`, error as Error);
+    }
+  }
+
+  /**
+   * Sinh checklist của một ngày cho mọi ngựa đang có Groom phụ trách
+   *
+   * - Mỗi ngựa sinh trong một transaction riêng; ngựa đã có checklist ngày đó thì bỏ qua
+   * - Ngựa lỗi chỉ được log, các ngựa khác vẫn được sinh
+   *
+   * @param date Ngày cần sinh, YYYY-MM-DD
+   * @returns Promise trả về số ngựa có checklist ngày đó sau khi chạy
+   */
+  async generateDay(date: string): Promise<number> {
+    const assignments = await this.dataSource.manager.find(
+      GroomAssignmentEntity,
+      { where: { endAt: IsNull() }, select: { horseId: true } },
+    );
+    let generated = 0;
+    for (const { horseId } of assignments) {
+      try {
+        const id = await this.dataSource.transaction((manager) =>
+          this.dailyChecklists.ensureChecklist(manager, horseId, date),
+        );
+        if (id) generated += 1;
+      } catch (error) {
+        this.logger.error(
+          `Sinh checklist ngày ${date} cho ngựa ${horseId} lỗi`,
+          error as Error,
+        );
+      }
+    }
+    return generated;
   }
 
   /**

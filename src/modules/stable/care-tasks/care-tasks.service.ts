@@ -198,7 +198,7 @@ export class CareTasksService {
   }
 
   /**
-   * Gắn một loại việc cho ngựa trong khoảng ngày; bắt đầu hôm nay thì thêm ngay vào checklist hôm nay đã sinh
+   * Gắn một loại việc cho ngựa trong khoảng ngày; bắt đầu hôm nay thì thêm ngay vào checklist hôm nay (chưa có thì sinh)
    *
    * - Ghi nhật ký kèm ngựa, loại việc, khoảng ngày, ghi chú
    *
@@ -252,6 +252,7 @@ export class CareTasksService {
         }),
       );
       if (body.fromDate === today) {
+        await this.checklists.ensureChecklist(manager, horseId, today);
         await this.checklists.addTaskToChecklist(manager, horseId, today, type);
       }
       await this.auditService.record(manager, {

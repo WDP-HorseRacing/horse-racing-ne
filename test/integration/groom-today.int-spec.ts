@@ -96,10 +96,7 @@ describe('Groom today view (Postgres)', () => {
     db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
-    service = new GroomTodayService(
-      new DailyChecklistsService(new DomainEventPublisher()),
-      dataSource,
-    );
+    service = new GroomTodayService(dataSource);
   });
 
   afterAll(() => stopTestPostgres(db));
@@ -148,6 +145,8 @@ describe('Groom today view (Postgres)', () => {
        VALUES (1, $1, $2, now())`,
       [gio, stall.id],
     );
+    const daily = new DailyChecklistsService(new DomainEventPublisher());
+    await dataSource.transaction((tx) => daily.ensureChecklist(tx, gio, today));
 
     const result = await service.today(groom);
 
@@ -168,6 +167,15 @@ describe('Groom today view (Postgres)', () => {
     expect(result.horses[0].checklist?.items.map((item) => item.name)).toEqual([
       'Cho ăn',
     ]);
+  });
+
+  it('shows no checklist before it is generated and creates none on read', async () => {
+    const result = await service.today(groom);
+
+    expect(result.horses.map((horse) => horse.checklist)).toEqual([null, null]);
+    expect(await dataSource.query('SELECT id FROM daily_checklists')).toEqual(
+      [],
+    );
   });
 
   it('shows only the active feeding plan', async () => {
