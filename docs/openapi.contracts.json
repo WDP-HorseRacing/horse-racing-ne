@@ -4510,132 +4510,6 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/reports/club/training": {
-      "get": {
-        "operationId": "ClubReportsController_clubTraining",
-        "parameters": [
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          },
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get club training activity report",
-        "tags": [
-          "reports"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/reports/club/medical": {
-      "get": {
-        "operationId": "ClubReportsController_clubMedical",
-        "parameters": [
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          },
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get club medical activity report",
-        "tags": [
-          "reports"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/reports/club/finance": {
-      "get": {
-        "operationId": "ClubReportsController_clubFinance",
-        "parameters": [
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          },
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get later-phase manual finance summary",
-        "tags": [
-          "reports"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/reports/dashboard": {
       "get": {
         "operationId": "DashboardController_get",
@@ -4698,6 +4572,113 @@
           }
         ],
         "summary": "Tiến độ tập luyện và thể lực của ngựa trong CLB theo khoảng ngày",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/club/finance": {
+      "get": {
+        "operationId": "FinanceReportsController_clubFinance",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClubFinanceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Khoản thu từ chủ ngựa, giá trị vật tư và tiền thưởng của CLB theo khoảng ngày",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/owner/costs": {
+      "get": {
+        "description": "Club Manager bắt buộc truyền ownerId (thiếu: 400, không có tài khoản: 404).",
+        "operationId": "FinanceReportsController_ownerCost",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerId",
+            "required": false,
+            "in": "query",
+            "description": "Chủ cần xem; Club Manager bắt buộc truyền, Horse Owner luôn xem của chính mình",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCostResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Phí nuôi và chi phí y tế của một chủ ngựa theo khoảng ngày",
         "tags": [
           "reports"
         ]
@@ -14509,6 +14490,214 @@
           "herd",
           "training",
           "weekly",
+          "horses"
+        ]
+      },
+      "FinanceOwnerChargesDto": {
+        "type": "object",
+        "properties": {
+          "dailyFee": {
+            "type": "number",
+            "description": "Phí nuôi theo ngày (VND)"
+          },
+          "medicalCost": {
+            "type": "number",
+            "description": "Chi phí y tế (VND)"
+          },
+          "total": {
+            "type": "number",
+            "description": "Phí nuôi + chi phí y tế (VND)"
+          }
+        },
+        "required": [
+          "dailyFee",
+          "medicalCost",
+          "total"
+        ]
+      },
+      "FinanceSuppliesDto": {
+        "type": "object",
+        "properties": {
+          "purchased": {
+            "type": "number",
+            "description": "Giá trị vật tư nhập vào (VND)"
+          },
+          "used": {
+            "type": "number",
+            "description": "Giá trị vật tư đã xuất dùng (VND)"
+          }
+        },
+        "required": [
+          "purchased",
+          "used"
+        ]
+      },
+      "FinanceOwnerDto": {
+        "type": "object",
+        "properties": {
+          "dailyFee": {
+            "type": "number",
+            "description": "Phí nuôi theo ngày (VND)"
+          },
+          "medicalCost": {
+            "type": "number",
+            "description": "Chi phí y tế (VND)"
+          },
+          "total": {
+            "type": "number",
+            "description": "Phí nuôi + chi phí y tế (VND)"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dailyFee",
+          "medicalCost",
+          "total",
+          "ownerId",
+          "ownerName"
+        ]
+      },
+      "ClubFinanceResponseDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "ownerCharges": {
+            "description": "Khoản thu từ chủ ngựa; chi phí y tế gồm cả bệnh án đóng lúc ngựa không có chủ",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinanceOwnerChargesDto"
+              }
+            ]
+          },
+          "supplies": {
+            "$ref": "#/components/schemas/FinanceSuppliesDto"
+          },
+          "prizeMoney": {
+            "type": "number",
+            "description": "Tiền thưởng giải đấu (VND), luôn 0"
+          },
+          "owners": {
+            "description": "Từng chủ có ngựa trong kỳ, sắp theo tên",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceOwnerDto"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "ownerCharges",
+          "supplies",
+          "prizeMoney",
+          "owners"
+        ]
+      },
+      "OwnerCostHorseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "billedDays": {
+            "type": "number",
+            "description": "Số ngày tính phí nuôi"
+          },
+          "dailyFee": {
+            "type": "number",
+            "description": "Phí nuôi theo ngày (VND)"
+          },
+          "caseCount": {
+            "type": "number",
+            "description": "Số bệnh án đóng trong kỳ"
+          },
+          "medicalCost": {
+            "type": "number",
+            "description": "Chi phí y tế (VND)"
+          },
+          "total": {
+            "type": "number",
+            "description": "Phí nuôi + chi phí y tế (VND)"
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "billedDays",
+          "dailyFee",
+          "caseCount",
+          "medicalCost",
+          "total"
+        ]
+      },
+      "OwnerCostResponseDto": {
+        "type": "object",
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "dailyFee": {
+            "type": "number",
+            "description": "Tổng phí nuôi theo ngày (VND)"
+          },
+          "medicalCost": {
+            "type": "number",
+            "description": "Tổng chi phí y tế (VND)"
+          },
+          "total": {
+            "type": "number",
+            "description": "Phí nuôi + chi phí y tế (VND)"
+          },
+          "prizeMoney": {
+            "type": "number",
+            "description": "Tiền thưởng giải đấu (VND), luôn 0"
+          },
+          "horses": {
+            "description": "Các ngựa chủ sở hữu trong kỳ, sắp theo tên",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerCostHorseDto"
+            }
+          }
+        },
+        "required": [
+          "ownerId",
+          "ownerName",
+          "from",
+          "to",
+          "dailyFee",
+          "medicalCost",
+          "total",
+          "prizeMoney",
           "horses"
         ]
       },

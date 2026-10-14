@@ -128,3 +128,41 @@ export interface HorseHealthRows {
     releasedAt: Date | null;
   }>;
 }
+
+/**
+ * Phí ngày của một con ngựa tính cho một chủ trong kỳ, đọc từ DB
+ */
+export interface DailyFeeRow {
+  ownerId: string;
+  horseId: string;
+  billedDays: number;
+  dailyFee: string;
+}
+
+/**
+ * Chi phí các bệnh án đã đóng của một con ngựa trong kỳ, tính cho chủ lúc đóng, đọc từ DB
+ */
+export interface MedicalChargeRow {
+  ownerId: string | null;
+  horseId: string;
+  caseCount: number;
+  medicalCost: string;
+}
+
+/**
+ * Giá trị vật tư nhập vào và đã dùng trong kỳ, đọc từ DB
+ */
+export interface SupplyValueRow {
+  purchased: string;
+  used: string;
+}
+
+/**
+ * Một con ngựa và chủ của nó có giai đoạn sở hữu giao với kỳ, đọc từ DB
+ */
+export interface OwnedHorseRow {
+  ownerId: string;
+  ownerName: string;
+  horseId: string;
+  horseName: string;
+}

@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 207 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 206 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -161,12 +161,11 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/reports/club/finance` | (501) Get later-phase manual finance summary |
-| GET | `/api/v1/reports/club/medical` | (501) Get club medical activity report |
-| GET | `/api/v1/reports/club/training` | (501) Get club training activity report |
+| GET | `/api/v1/reports/club/finance` | Khoản thu từ chủ ngựa, giá trị vật tư và tiền thưởng của CLB theo khoảng ngày |
 | GET | `/api/v1/reports/dashboard` | Tiến độ tập luyện và thể lực của ngựa trong CLB theo khoảng ngày |
 | GET | `/api/v1/reports/horses/{horseId}/health` | Lịch sử sức khỏe của một con ngựa theo khoảng ngày |
 | GET | `/api/v1/reports/horses/{horseId}/progress` | Tiến độ tập luyện của một con ngựa theo khoảng ngày |
+| GET | `/api/v1/reports/owner/costs` | Phí nuôi và chi phí y tế của một chủ ngựa theo khoảng ngày |
 
 ## stable
 
