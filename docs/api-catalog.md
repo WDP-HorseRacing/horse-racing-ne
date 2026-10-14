@@ -2,16 +2,16 @@
 
 Generated from NestJS controller metadata. 202 REST operations are registered under `/api/v1`.
 
-The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
+Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
-Socket.IO uses the `/events` namespace. Its gateway currently rejects connections until JWT handshake authorization and room policies are implemented. Refresh sessions, audit writes, and domain events are internal operations rather than public REST endpoints.
+Socket.IO uses the `/events` namespace. The gateway verifies the access token on handshake and joins each user to the room `user:<userId>`. Refresh sessions, audit writes, and domain events are internal operations rather than public REST endpoints.
 
 ## audit
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/audit-logs` | List club audit records |
-| GET | `/api/v1/audit-logs/{id}` | Get club audit record |
+| GET | `/api/v1/audit-logs` | (501) List club audit records |
+| GET | `/api/v1/audit-logs/{id}` | (501) Get club audit record |
 
 ## auth
 
@@ -138,27 +138,27 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/v1/horses/{horseId}/race-results` | Get horse race history |
-| GET | `/api/v1/races` | List races |
-| POST | `/api/v1/races` | Create race |
-| GET | `/api/v1/races/{id}` | Get race and conditions |
-| PATCH | `/api/v1/races/{id}` | Update race before registration closes |
-| GET | `/api/v1/races/{id}/registrations` | List race registrations |
-| POST | `/api/v1/races/{id}/registrations` | Register eligible horse for race |
-| GET | `/api/v1/races/{id}/registrations/{registrationId}` | Get race registration and approvals |
-| PATCH | `/api/v1/races/{id}/registrations/{registrationId}` | Approve or reject race registration |
-| PATCH | `/api/v1/races/{id}/registrations/{registrationId}/result` | Record race result for registration |
-| GET | `/api/v1/races/{id}/results` | Get race results |
+| GET | `/api/v1/races` | (501) List races |
+| POST | `/api/v1/races` | (501) Create race |
+| GET | `/api/v1/races/{id}` | (501) Get race and conditions |
+| PATCH | `/api/v1/races/{id}` | (501) Update race before registration closes |
+| GET | `/api/v1/races/{id}/registrations` | (501) List race registrations |
+| POST | `/api/v1/races/{id}/registrations` | (501) Register eligible horse for race |
+| GET | `/api/v1/races/{id}/registrations/{registrationId}` | (501) Get race registration and approvals |
+| PATCH | `/api/v1/races/{id}/registrations/{registrationId}` | (501) Approve or reject race registration |
+| PATCH | `/api/v1/races/{id}/registrations/{registrationId}/result` | (501) Record race result for registration |
+| GET | `/api/v1/races/{id}/results` | (501) Get race results |
 
 ## reports
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/reports/club/finance` | Get later-phase manual finance summary |
-| GET | `/api/v1/reports/club/medical` | Get club medical activity report |
-| GET | `/api/v1/reports/club/training` | Get club training activity report |
-| GET | `/api/v1/reports/dashboard` | Get role-scoped dashboard summary |
-| GET | `/api/v1/reports/horses/{horseId}/health` | Get horse health history report |
-| GET | `/api/v1/reports/horses/{horseId}/progress` | Get horse training progress report |
+| GET | `/api/v1/reports/club/finance` | (501) Get later-phase manual finance summary |
+| GET | `/api/v1/reports/club/medical` | (501) Get club medical activity report |
+| GET | `/api/v1/reports/club/training` | (501) Get club training activity report |
+| GET | `/api/v1/reports/dashboard` | (501) Get role-scoped dashboard summary |
+| GET | `/api/v1/reports/horses/{horseId}/health` | (501) Get horse health history report |
+| GET | `/api/v1/reports/horses/{horseId}/progress` | (501) Get horse training progress report |
 
 ## stable
 

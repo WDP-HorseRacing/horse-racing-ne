@@ -59,6 +59,7 @@ async function main() {
         method: method.toUpperCase(),
         path,
         summary: operation.summary ?? '',
+        pending: operation['x-implementation-status'] === 'contract-only',
       });
     }
   }
@@ -72,9 +73,9 @@ async function main() {
     '',
     `Generated from NestJS controller metadata. ${count} REST operations are registered under \`/api/v1\`.`,
     '',
-    'The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.',
+    'Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.',
     '',
-    'Socket.IO uses the `/events` namespace. Its gateway currently rejects connections until JWT handshake authorization and room policies are implemented. Refresh sessions, audit writes, and domain events are internal operations rather than public REST endpoints.',
+    'Socket.IO uses the `/events` namespace. The gateway verifies the access token on handshake and joins each user to the room `user:<userId>`. Refresh sessions, audit writes, and domain events are internal operations rather than public REST endpoints.',
     '',
   ];
   for (const group of [...groups.keys()].sort()) {
@@ -91,7 +92,7 @@ async function main() {
           a.path.localeCompare(b.path) || a.method.localeCompare(b.method),
       )) {
       lines.push(
-        `| ${row.method} | \`${row.path}\` | ${row.summary.replaceAll('|', '\\|')} |`,
+        `| ${row.method} | \`${row.path}\` | ${row.pending ? '(501) ' : ''}${row.summary.replaceAll('|', '\\|')} |`,
       );
     }
     lines.push('');

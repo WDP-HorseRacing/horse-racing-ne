@@ -186,6 +186,25 @@ describe('MedicalCheckupsService (Postgres)', () => {
       await expect(names({ barnIds: [] })).resolves.toEqual([]);
     });
 
+    it('names the barn of each horse, null when the horse has no barn', async () => {
+      const east = await seed.barn('Khu Đông');
+      await seed.horse('In barn', { barnId: east });
+      await seed.horse('No barn');
+
+      const rows = await repository.herdCheckupAnchors();
+
+      expect(
+        rows.map(({ horseName, barnId, barnName }) => ({
+          horseName,
+          barnId,
+          barnName,
+        })),
+      ).toEqual([
+        { horseName: 'In barn', barnId: east, barnName: 'Khu Đông' },
+        { horseName: 'No barn', barnId: null, barnName: null },
+      ]);
+    });
+
     it('takes the latest visit that was not voided, on the club calendar', async () => {
       const horse = await seed.horse('Winx');
       const vet = await seed.user(UserRole.VETERINARIAN);

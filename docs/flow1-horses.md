@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 12/10/2026
+> Cập nhật: 14/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -63,6 +63,10 @@
 
 - Flow 4: Luồng Chăm sóc Chuồng trại & Dinh dưỡng Hàng ngày (OPTIONAL)
 - Flow 5: Luồng Đăng ký Thi đấu & Báo cáo Thành tích (OPTIONAL)
+
+### Cách hiểu đề bài
+
+- Horse Owner "theo dõi chỉ số sức khỏe, cân nặng và trạng thái sẵn sàng thi đấu theo thời gian thực": mở hồ sơ ngựa là thấy số mới nhất (trạng thái sức khỏe, cân nặng, được tập / được đua). Khi trạng thái sức khỏe đổi hoặc bệnh án được mở, hủy, đóng, hệ thống gửi thông báo ngay qua socket và push. Chủ ngựa không xem luồng nhịp tim, tốc độ trong buổi tập.
 
 ---
 

@@ -26,6 +26,13 @@ export class PerformanceEvaluationsController {
     return this.evaluations.create(actor, id, body);
   }
 
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.VETERINARIAN,
+    UserRole.HEAD_TRAINER,
+    UserRole.GROOM,
+    UserRole.HORSE_OWNER,
+  ])
   @Get('session-participants/:id/evaluation')
   @ApiOkResponse({ type: PerformanceEvaluationResponseDto })
   get(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {

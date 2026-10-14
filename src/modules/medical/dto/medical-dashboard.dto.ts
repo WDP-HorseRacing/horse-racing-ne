@@ -33,6 +33,9 @@ export class HerdHorseDto {
   @ApiProperty({ format: 'uuid', nullable: true })
   barnId!: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  barnName!: string | null;
+
   @ApiProperty({
     format: 'uuid',
     nullable: true,

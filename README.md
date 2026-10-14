@@ -12,7 +12,7 @@ NestJS modular monolith for the Racehorse Training and Management System. The re
 - Global DTO validation, consistent HTTP error format, and correlation ID header
 - Modules: Auth, Users, Horses, Training, Performance, Medical, Stable, Racing, Supplies, Reports, Notifications, Audit, Media, and Realtime
 
-The implemented modules follow the `entity → repository → service → DTO mapper` structure. Users and Training have persistence and business services; the remaining contract-only routes return HTTP `501 Not Implemented` until their workflows are added. Review the complete [endpoint catalog](docs/api-catalog.md), [OpenAPI JSON](docs/openapi.contracts.json), or the detailed [Flow 2 training guide](docs/flow2-training.md). Regenerate API documentation with `pnpm docs:api` without a database connection.
+The implemented modules follow the `entity → repository → service → DTO mapper` structure. Flows 1–4 have persistence and business services; the remaining contract-only routes (marked `(501)` in the catalog) return HTTP `501 Not Implemented` until their workflows are added. Review the complete [endpoint catalog](docs/api-catalog.md), [OpenAPI JSON](docs/openapi.contracts.json), or the detailed [Flow 2 training guide](docs/flow2-training.md). Regenerate API documentation with `pnpm docs:api` without a database connection.
 
 | API group      | Prepared routes                                                         |
 | -------------- | ----------------------------------------------------------------------- |
@@ -38,7 +38,7 @@ For each new use case, place HTTP or socket handling in `controllers/`, orchestr
 
 Check `GET http://localhost:3000/api/v1/health` for `{ "status": "ok" }` and open `http://localhost:3000/docs` for Swagger. Database configuration is required at startup. Redis connects lazily when a feature first uses it.
 
-MinIO's S3 API is available at `http://localhost:9000` and its management console at `http://localhost:9001`. Docker Compose creates the configured `S3_BUCKET` automatically. `ObjectStorageService` exposes presigned upload/download URLs, object metadata lookup, and deletion; the public Media API remains contract-only until its authentication and media metadata workflow is implemented.
+MinIO's S3 API is available at `http://localhost:9000` and its management console at `http://localhost:9001`. Docker Compose creates the configured `S3_BUCKET` automatically. `ObjectStorageService` exposes presigned upload/download URLs, object metadata lookup, and deletion; the Media API uses it for presigned uploads of horse photos, incident photos and trial videos.
 
 ## Commands
 
@@ -53,6 +53,6 @@ MinIO's S3 API is available at `http://localhost:9000` and its management consol
 | `pnpm db:generate src/migrations/Name` | Generate a migration from entity changes              |
 | `pnpm docs:api`                        | Regenerate the REST endpoint catalog from controllers |
 
-The current schema is managed by the versioned migrations and documented in [docs/entity-model.md](docs/entity-model.md) and [docs/database-schema.html](docs/database-schema.html). The Socket.IO gateway currently rejects connections until JWT handshake authorization and room policies are added. The HTTP route contracts are visible in Swagger; consult [docs/flow1-overview.html](docs/flow1-overview.html) and [docs/flow1-checklist.html](docs/flow1-checklist.html) for the current Flow 1 scope and remaining work.
+The current schema is managed by the versioned migrations and documented in [docs/entity-model.md](docs/entity-model.md) and [docs/database-schema.html](docs/database-schema.html). The Socket.IO gateway verifies the access token on handshake and joins each user to the room `user:<userId>`. The HTTP route contracts are visible in Swagger; consult [docs/flow1-overview.html](docs/flow1-overview.html) and [docs/flow1-checklist.html](docs/flow1-checklist.html) for the current Flow 1 scope and remaining work.
 
 For the recommended structure and implementation workflow for large domain modules, see [docs/module-development-guide.md](docs/module-development-guide.md).

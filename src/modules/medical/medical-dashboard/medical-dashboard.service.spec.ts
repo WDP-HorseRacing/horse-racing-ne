@@ -13,6 +13,7 @@ const horse = (horseId: string, healthStatus: HorseHealthStatus) => ({
   horseId,
   horseName: horseId,
   barnId: 'b1',
+  barnName: 'Khu A',
   healthStatus,
   stallId: null,
   stallCode: null,

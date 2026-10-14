@@ -77,7 +77,7 @@ export class MedicalCheckupsService {
    * - lastVisitDate: buổi khám chưa hủy có thời điểm khám lớn nhất
    * - reactivatedDate: lần kích hoạt lại gần nhất từ Đã chuyển nhượng (nhật ký HORSE chuyển TRANSFERRED sang ACTIVE), vẫn giữ được khi ngựa sau đó giải nghệ; giải nghệ quay lại không tính
    * - Mọi ngày đổi sang lịch câu lạc bộ dạng YYYY-MM-DD
-   * - Kèm ô chuồng đang xếp (stall_assignments còn mở)
+   * - Kèm tên khu và ô chuồng đang xếp (stall_assignments còn mở)
    *
    * @param filter Giới hạn theo danh sách ngựa, một khu, danh sách khu (rỗng thì không có ngựa nào), trạng thái sức khỏe; bỏ trống để lấy cả đàn
    * @param manager EntityManager dùng để query, mặc định là manager của DataSource
@@ -115,6 +115,7 @@ export class MedicalCheckupsService {
       `SELECT h.id AS "horseId",
               h.name AS "horseName",
               h.barn_id AS "barnId",
+              b.name AS "barnName",
               st.id AS "stallId",
               st.code AS "stallCode",
               h.health_status AS "healthStatus",
@@ -133,10 +134,11 @@ export class MedicalCheckupsService {
          LEFT JOIN stall_assignments sa
                 ON sa.horse_id = h.id AND sa.end_at IS NULL
          LEFT JOIN stalls st ON st.id = sa.stall_id
+         LEFT JOIN barns b ON b.id = h.barn_id
         WHERE h.deleted_at IS NULL
           AND h.lifecycle_status IN ($2, $3)
           ${conditions.join(' ')}
-        GROUP BY h.id, st.id
+        GROUP BY h.id, st.id, b.id
         ORDER BY h.name`,
       params,
     );

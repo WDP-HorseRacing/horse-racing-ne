@@ -1,6 +1,6 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-> Cập nhật: 12/10/2026
+> Cập nhật: 14/10/2026
 
 ## I. Đề bài liên quan
 
@@ -14,6 +14,11 @@
 **HORSE OWNER**: xem lịch trình tập luyện và nhận xét của Head Trainer.
 
 **CLUB MANAGER**: quản lý danh mục, xem báo cáo hiệu suất huấn luyện.
+
+**Cách hiểu đề bài**
+
+- "Giáo án cho từng con ngựa": giáo án gắn với lớp, mỗi con ngựa ghi danh vào lớp có giáo án hợp với nó. Ngựa cần bài khác thì vào lớp khác.
+- "Khối lượng": thể hiện bằng cường độ của môn (Nhẹ / Trung bình / Nặng), cùng thời lượng buổi và cự ly dự kiến.
 
 ## II. Mô hình
 

@@ -9,6 +9,7 @@ export interface HorseCheckupAnchorRow extends CheckupAnchors {
   horseId: string;
   horseName: string;
   barnId: string | null;
+  barnName: string | null;
   stallId: string | null;
   stallCode: string | null;
   healthStatus: HorseHealthStatus;

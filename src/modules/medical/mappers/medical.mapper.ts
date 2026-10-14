@@ -375,6 +375,7 @@ export function toHerdBlock(
       horseId: row.horseId,
       horseName: row.horseName,
       barnId: row.barnId,
+      barnName: row.barnName,
       stallId: row.stallId,
       stallCode: row.stallCode,
       healthStatus: row.healthStatus,

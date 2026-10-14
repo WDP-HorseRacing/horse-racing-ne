@@ -11520,6 +11520,10 @@
             "format": "uuid",
             "nullable": true
           },
+          "barnName": {
+            "type": "string",
+            "nullable": true
+          },
           "stallId": {
             "type": "object",
             "format": "uuid",
@@ -11544,6 +11548,7 @@
           "horseId",
           "horseName",
           "barnId",
+          "barnName",
           "stallId",
           "stallCode",
           "healthStatus"

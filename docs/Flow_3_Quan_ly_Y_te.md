@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 12/10/2026
+> Cập nhật: 14/10/2026
 
 ## I. Những main feature liên quan
 
@@ -96,6 +96,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 3. Khóa huấn luyện là một lệnh riêng của bác sĩ, độc lập với trạng thái sức khỏe. Một con ngựa ở trạng thái Cần theo dõi vẫn có thể bị khóa, và ngược lại một con Đủ điều kiện cũng có thể đang bị khóa trong thời gian hồi phục. Hệ thống **cho phép** đặt Đủ điều kiện khi ngựa đang bị khóa.
 4. Quy tắc tính "được tập" và "được đua" nằm ở Flow 1, mục III.4. Flow 3 chỉ cung cấp dữ liệu đầu vào, không tự tính lại.
 5. Trạng thái Cách ly không bắt buộc hệ thống chuyển ngựa sang loại ô riêng. Nếu cần tách đàn, HEAD TRAINER chuyển ô bằng F1.7.
+6. Đề bài ghi khóa huấn luyện để "ngăn chặn xếp lịch bài tập nặng". Hệ thống chặn chặt hơn: khi đang khóa, ngựa không được tập ở mọi cường độ, vì ngựa chấn thương tập nhẹ vẫn có rủi ro. Mức chỉ chặn buổi Nặng dành cho trạng thái Cần theo dõi (Flow 1, mục III.4).
 
 ### 5. Chỉ số cơ thể
 
