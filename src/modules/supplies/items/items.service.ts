@@ -10,6 +10,7 @@ import { PaginationResponseDto } from '../../../common/dto/pagination-response.d
 import type { Actor } from '../../../common/types/actor';
 import type { FieldError } from '../../../common/utils/field-errors';
 import { containsPattern } from '../../../common/utils/like-pattern';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -224,20 +225,14 @@ export class SupplyItemsService {
               body.reorderThreshold?.toString() ?? item.reorderThreshold,
           });
           await manager.save(item);
-          const after = auditedItemFields(item);
-          const changed = (Object.keys(after) as (keyof typeof after)[]).filter(
-            (key) => after[key] !== before[key],
-          );
-          if (changed.length === 0) return;
+          const diff = changedFieldsDiff(before, auditedItemFields(item));
+          if (!diff) return;
           await this.auditService.record(manager, {
             actorId: caller.id,
             action: AuditAction.UPDATE,
             entityType: AuditEntityType.SUPPLY_ITEM,
             entityId: id,
-            before: Object.fromEntries(
-              changed.map((key) => [key, before[key]]),
-            ),
-            after: Object.fromEntries(changed.map((key) => [key, after[key]])),
+            ...diff,
             feature: AuditFeature.SUPPLY_ITEM,
           });
         }),

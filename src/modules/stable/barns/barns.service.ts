@@ -12,6 +12,7 @@ import {
   fieldConflict,
   type FieldError,
 } from '../../../common/utils/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -39,7 +40,6 @@ import {
   assertCapacityFitsStalls,
   assertHeadTrainerReplaceable,
   assertBarnRemovable,
-  changedFieldsDiff,
   EMPTY_CAPACITY,
   isActiveHeadTrainer,
   remainingStallCount,

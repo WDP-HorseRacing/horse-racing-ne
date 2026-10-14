@@ -4,6 +4,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
@@ -186,18 +187,17 @@ export class SupplyRequestsService {
         request.note = body.note.trim() || null;
       }
       await manager.save(request);
-      const after = { quantity: Number(request.quantity), note: request.note };
-      const changed = (Object.keys(after) as (keyof typeof after)[]).filter(
-        (key) => after[key] !== before[key],
-      );
-      if (changed.length) {
+      const diff = changedFieldsDiff(before, {
+        quantity: Number(request.quantity),
+        note: request.note,
+      });
+      if (diff) {
         await this.auditService.record(manager, {
           actorId: caller.id,
           action: AuditAction.UPDATE,
           entityType: AuditEntityType.SUPPLY_REQUEST,
           entityId: request.id,
-          before: Object.fromEntries(changed.map((key) => [key, before[key]])),
-          after: Object.fromEntries(changed.map((key) => [key, after[key]])),
+          ...diff,
           feature: AuditFeature.SUPPLY_REQUEST,
         });
       }

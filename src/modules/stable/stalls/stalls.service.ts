@@ -17,6 +17,7 @@ import {
   fieldConflict,
   type FieldError,
 } from '../../../common/utils/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import {
   mapAnyUniqueViolation,
   mapUniqueViolation,
@@ -50,7 +51,6 @@ import {
   assertFreeStallRemovable,
   assertManualStallStatusChange,
   assertStallBarnChangeable,
-  changedFieldsDiff,
   isStallFree,
 } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
