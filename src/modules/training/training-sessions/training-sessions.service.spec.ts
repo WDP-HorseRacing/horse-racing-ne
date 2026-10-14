@@ -57,6 +57,7 @@ function setup() {
     {} as Repository<TrainingSessionEntity>,
     access as unknown as TrainingAccessService,
     dataSource,
+    { record: jest.fn() },
   );
   return { service, session };
 }
@@ -151,6 +152,7 @@ function setupCreate(
     {} as Repository<TrainingSessionEntity>,
     access as unknown as TrainingAccessService,
     dataSource,
+    { record: jest.fn() },
   );
   return { service, manager };
 }

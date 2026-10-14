@@ -8,6 +8,11 @@ import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import type { Actor } from '../../../common/types/actor';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
 import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
@@ -50,6 +55,7 @@ import {
   initialParticipantEligibility,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
+import { sessionAuditData } from '../utils/training-audit';
 import type {
   SessionWindow,
   SkippedHorse,
@@ -62,6 +68,7 @@ export class TrainingSessionsService {
     private readonly sessions: Repository<TrainingSessionEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -98,6 +105,7 @@ export class TrainingSessionsService {
    *
    * - Loại buổi lấy theo môn của buổi; gửi kèm loại buổi thì phải trùng loại buổi của môn
    * - Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly theo cự ly dự kiến, thời gian mục tiêu) trong cùng transaction
+   * - Ghi nhật ký kèm lớp, trạng thái và nội dung buổi
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param classId UUID của lớp
@@ -186,6 +194,19 @@ export class TrainingSessionsService {
           }),
         );
       }
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.TRAINING_SESSION,
+        entityId: session.id,
+        before: null,
+        after: {
+          classId,
+          status: session.status,
+          ...sessionAuditData(session),
+        },
+        feature: AuditFeature.TRAIN_SESSION,
+      });
       return session;
     });
     return toTrainingSessionResponse(row);
@@ -210,6 +231,7 @@ export class TrainingSessionsService {
       );
       assertClassOpenForSessions(trainingClass.status);
       assertSessionEditable(session.status);
+      const before = sessionAuditData(session);
       const nextSessionType = body.sessionType ?? session.sessionType;
       if (nextSessionType !== session.sessionType) {
         const configuredTrial = await manager.findOneBy(TimeTrialEntity, {
@@ -276,7 +298,19 @@ export class TrainingSessionsService {
         surface: body.surface === undefined ? session.surface : body.surface,
         notes: body.notes === undefined ? session.notes : body.notes,
       });
-      return manager.save(session);
+      const saved = await manager.save(session);
+      const diff = changedFieldsDiff(before, sessionAuditData(saved));
+      if (diff) {
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.TRAINING_SESSION,
+          entityId: sessionId,
+          ...diff,
+          feature: AuditFeature.TRAIN_SESSION,
+        });
+      }
+      return saved;
     });
     return toTrainingSessionResponse(row);
   }
@@ -409,6 +443,7 @@ export class TrainingSessionsService {
    *
    * - Khóa row từng con ngựa trước khi tạo lượt
    * - Ngựa đang giữ chỗ ở lớp khác trùng giờ với buổi: không tạo lượt, đưa vào danh sách bị bỏ qua
+   * - Ghi nhật ký đổi trạng thái buổi kèm số lượt đã tạo và số ngựa bị bỏ qua
    *
    * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
@@ -447,6 +482,7 @@ export class TrainingSessionsService {
     );
 
     const skipped: SkippedHorse[] = [];
+    let created = 0;
     for (const enrollment of enrollments) {
       const horse = await this.access.lockedHorse(
         manager,
@@ -507,9 +543,25 @@ export class TrainingSessionsService {
           ...initialParticipantEligibility(eligibility, !!activeLock),
         }),
       );
+      created += 1;
     }
+    const previousStatus = session.status;
     session.status = TrainingSessionStatus.SCHEDULED;
-    return { session: await manager.save(session), skipped };
+    const saved = await manager.save(session);
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.TRAINING_SESSION,
+      entityId: session.id,
+      before: { status: previousStatus },
+      after: {
+        status: saved.status,
+        participantsCreated: created,
+        horsesSkipped: skipped.length,
+      },
+      feature: AuditFeature.TRAIN_SESSION,
+    });
+    return { session: saved, skipped };
   }
 
   async cancelSession(
@@ -530,6 +582,7 @@ export class TrainingSessionsService {
         trainingClass.headTrainerId,
       );
       assertSessionCancellable(session.status);
+      const previousStatus = session.status;
       const ongoing = await manager.countBy(SessionParticipantEntity, {
         sessionId,
         status: SessionParticipantStatus.ONGOING,
@@ -558,7 +611,18 @@ export class TrainingSessionsService {
       session.cancelledAt = new Date();
       session.cancelledBy = caller.id;
       session.cancelReason = body.reason;
-      return manager.save(session);
+      const saved = await manager.save(session);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.TRAINING_SESSION,
+        entityId: sessionId,
+        before: { status: previousStatus },
+        after: { status: saved.status },
+        reason: body.reason,
+        feature: AuditFeature.TRAIN_SESSION,
+      });
+      return saved;
     });
     return toTrainingSessionResponse(row);
   }

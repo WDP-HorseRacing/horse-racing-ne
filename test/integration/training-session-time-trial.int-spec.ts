@@ -43,11 +43,13 @@ describe('Time trial config of a training session (Postgres)', () => {
       dataSource.getRepository(TrainingSessionEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     timeTrials = new TimeTrialsService(
       dataSource.getRepository(TimeTrialEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     subjects = new TrainingSubjectsService(
       dataSource.getRepository(TrainingSubjectEntity),
@@ -144,5 +146,82 @@ describe('Time trial config of a training session (Postgres)', () => {
         }),
       ).resolves.toMatchObject({ sessionId, targetTimeMs: null });
     });
+  });
+
+  const auditsOf = (entityId: string) =>
+    dataSource.query<
+      Array<{
+        action: string;
+        entity_type: string;
+        before_data: Record<string, unknown> | null;
+        after_data: Record<string, unknown> | null;
+        reason: string | null;
+        feature: string | null;
+      }>
+    >(
+      `SELECT action, entity_type, before_data, after_data, reason, feature
+         FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+      [entityId],
+    );
+
+  it('logs creating, editing and cancelling a session and editing its time trial config', async () => {
+    const created = await sessions.createSession(trainer, classId, {
+      subjectId: trial,
+      sessionType: TrainingSessionType.TIME_TRIAL,
+      name: 'Chạy thử giữa kỳ',
+      intensity: TrainingIntensity.HEAVY,
+      plannedDistanceM: 1000,
+      targetTimeMs: 62000,
+      scheduledStartAt: '2030-01-10T01:00:00Z',
+      scheduledEndAt: '2030-01-10T02:00:00Z',
+    });
+    await sessions.updateSession(trainer, created.id, { name: 'Chạy thử 1' });
+    await sessions.updateSession(trainer, created.id, { name: 'Chạy thử 1' });
+    const config = await timeTrials.update(trainer, created.id, {
+      distanceM: 1100,
+    });
+    await sessions.cancelSession(trainer, created.id, { reason: 'Mưa lớn' });
+
+    const sessionRows = await auditsOf(created.id);
+    expect(
+      sessionRows.map((row) => [
+        row.action,
+        row.before_data,
+        row.after_data,
+        row.reason,
+      ]),
+    ).toEqual([
+      [
+        'CREATE',
+        null,
+        {
+          classId,
+          status: 'DRAFT',
+          subjectId: trial,
+          name: 'Chạy thử giữa kỳ',
+          sessionType: TrainingSessionType.TIME_TRIAL,
+          intensity: TrainingIntensity.HEAVY,
+          plannedDistanceM: 1000,
+          scheduledStartAt: '2030-01-10T01:00:00.000Z',
+          scheduledEndAt: '2030-01-10T02:00:00.000Z',
+          location: null,
+          surface: null,
+          notes: null,
+        },
+        null,
+      ],
+      ['UPDATE', { name: 'Chạy thử giữa kỳ' }, { name: 'Chạy thử 1' }, null],
+      ['UPDATE', { status: 'DRAFT' }, { status: 'CANCELLED' }, 'Mưa lớn'],
+    ]);
+    await expect(auditsOf(config.id)).resolves.toEqual([
+      {
+        action: 'UPDATE',
+        entity_type: 'TIME_TRIAL',
+        before_data: { distanceM: 1000 },
+        after_data: { distanceM: 1100 },
+        reason: null,
+        feature: 'TIME_TRIAL',
+      },
+    ]);
   });
 });

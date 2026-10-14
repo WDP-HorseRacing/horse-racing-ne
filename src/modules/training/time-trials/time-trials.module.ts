@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { MediaModule } from '../../media/media.module';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
@@ -22,6 +23,7 @@ import { TimeTrialsService } from './time-trials.service';
       TrainingClassEntity,
     ]),
     TrainingSharedModule,
+    AuditModule,
     MediaModule,
   ],
   controllers: [TimeTrialsController, TrialResultsController],

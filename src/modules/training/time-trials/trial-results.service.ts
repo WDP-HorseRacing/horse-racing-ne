@@ -6,6 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { MediaService } from '../../media/services/media.service';
 import {
   CreateTrialResultDto,
@@ -29,6 +33,7 @@ export class TrialResultsService {
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
     private readonly media: MediaService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -75,6 +80,7 @@ export class TrialResultsService {
    * - Chỉ Head Trainer phụ trách lớp, buổi TIME_TRIAL đang IN_PROGRESS, lượt tập ONGOING hoặc COMPLETED
    * - Video (videoMediaId) phải do chính người ghi tải lên với mục đích TRIAL_VIDEO và đã có trên storage đúng như khai báo; kiểm trước khi mở transaction
    * - Mỗi lần chạy (attemptNo) của một lượt tập chỉ ghi một lần
+   * - Ghi nhật ký kèm lượt tập, số lần chạy, thời gian, ghi chú, video
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia buổi tập
@@ -150,7 +156,7 @@ export class TrialResultsService {
       if (duplicate) {
         throw new ConflictException('Lần chạy này đã được ghi');
       }
-      return manager.save(
+      const result = await manager.save(
         manager.create(TrialResultEntity, {
           timeTrialId: trial.id,
           sessionParticipantId: participantId,
@@ -162,6 +168,22 @@ export class TrialResultsService {
           recordedAt: new Date(),
         }),
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.TRIAL_RESULT,
+        entityId: result.id,
+        before: null,
+        after: {
+          sessionParticipantId: participantId,
+          attemptNo: result.attemptNo,
+          elapsedMs: body.elapsedMs,
+          notes: result.notes,
+          videoMediaId: result.videoMediaId,
+        },
+        feature: AuditFeature.TIME_TRIAL,
+      });
+      return result;
     });
     const videoUrl = row.videoMediaId
       ? await this.media.signDownloadUrl(row.videoMediaId)
@@ -177,6 +199,7 @@ export class TrialResultsService {
    * - videoMediaId null: gỡ video khỏi lần chạy, tệp cũ vẫn nằm trên storage
    * - Buổi đã hủy hoặc quá 7 ngày kể từ giờ kết thúc dự kiến: 409
    * - Chỉ đổi video, giữ nguyên thời gian, ghi chú và người ghi
+   * - Video đổi khác: ghi nhật ký video trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia buổi tập
@@ -225,8 +248,21 @@ export class TrialResultsService {
         session.scheduledEndAt,
         new Date(),
       );
+      const previousVideoId = result.videoMediaId;
       result.videoMediaId = body.videoMediaId;
-      return manager.save(result);
+      const saved = await manager.save(result);
+      if (previousVideoId !== saved.videoMediaId) {
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.TRIAL_RESULT,
+          entityId: saved.id,
+          before: { videoMediaId: previousVideoId },
+          after: { videoMediaId: saved.videoMediaId },
+          feature: AuditFeature.TIME_TRIAL,
+        });
+      }
+      return saved;
     });
     const videoUrl = row.videoMediaId
       ? await this.media.signDownloadUrl(row.videoMediaId)

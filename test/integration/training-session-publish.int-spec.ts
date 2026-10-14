@@ -19,6 +19,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('TrainingSessionsService publishing (Postgres)', () => {
   let db: TestPostgres;
@@ -37,6 +38,7 @@ describe('TrainingSessionsService publishing (Postgres)', () => {
       dataSource.getRepository(TrainingSessionEntity),
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -216,5 +218,44 @@ describe('TrainingSessionsService publishing (Postgres)', () => {
         service.publishClassSessions(other, classId, {}),
       ).rejects.toThrow(ForbiddenException);
     });
+  });
+
+  const auditsOf = (entityId: string) =>
+    dataSource.query<
+      Array<{
+        action: string;
+        entity_type: string;
+        before_data: Record<string, unknown> | null;
+        after_data: Record<string, unknown> | null;
+        reason: string | null;
+        feature: string | null;
+      }>
+    >(
+      `SELECT action, entity_type, before_data, after_data, reason, feature
+         FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+      [entityId],
+    );
+
+  it('logs publishing with the number of runs created', async () => {
+    await enroll('Winx');
+    await enroll('Gió');
+    const session = await draft('2026-10-10T01:00:00Z');
+
+    await service.publishSession(trainer, session);
+
+    await expect(auditsOf(session)).resolves.toEqual([
+      {
+        action: 'UPDATE',
+        entity_type: 'TRAINING_SESSION',
+        before_data: { status: 'DRAFT' },
+        after_data: {
+          status: 'SCHEDULED',
+          participantsCreated: 2,
+          horsesSkipped: 0,
+        },
+        reason: null,
+        feature: 'TRAIN_SESSION',
+      },
+    ]);
   });
 });

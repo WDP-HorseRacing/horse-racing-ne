@@ -46,6 +46,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       dataSource.getRepository(TrainingSessionEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),

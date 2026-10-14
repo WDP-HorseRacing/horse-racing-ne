@@ -42,6 +42,7 @@ describe('TrialResultsService', () => {
     create: jest.Mock;
     save: jest.Mock;
   };
+  let audit: { record: jest.Mock };
   let service: TrialResultsService;
 
   beforeEach(() => {
@@ -80,11 +81,13 @@ describe('TrialResultsService', () => {
     transaction = jest.fn((work: (m: typeof manager) => Promise<unknown>) =>
       work(manager),
     );
+    audit = { record: jest.fn() };
     service = new TrialResultsService(
       results as unknown as Repository<TrialResultEntity>,
       access as unknown as TrainingAccessService,
       { transaction, manager: {} } as unknown as DataSource,
       media as unknown as MediaService,
+      audit,
     );
   });
 
@@ -119,6 +122,21 @@ describe('TrialResultsService', () => {
         videoUrl: 'https://s3/video',
       });
       expect(media.signDownloadUrl).toHaveBeenCalledWith(VIDEO_ID);
+      expect(audit.record).toHaveBeenCalledWith(manager, {
+        actorId: 'ht-1',
+        action: 'CREATE',
+        entityType: 'TRIAL_RESULT',
+        entityId: 'r1',
+        before: null,
+        after: {
+          sessionParticipantId: 'p1',
+          attemptNo: 1,
+          elapsedMs: 61000,
+          notes: null,
+          videoMediaId: VIDEO_ID,
+        },
+        feature: 'TIME_TRIAL',
+      });
     });
 
     it('skips the media checks and returns a null videoUrl without video', async () => {
@@ -207,6 +225,23 @@ describe('TrialResultsService', () => {
         videoMediaId: VIDEO_ID,
         videoUrl: 'https://s3/video',
       });
+      expect(audit.record).toHaveBeenCalledWith(manager, {
+        actorId: 'ht-1',
+        action: 'UPDATE',
+        entityType: 'TRIAL_RESULT',
+        entityId: 'r1',
+        before: { videoMediaId: null },
+        after: { videoMediaId: VIDEO_ID },
+        feature: 'TIME_TRIAL',
+      });
+    });
+
+    it('writes no audit row when the video stays the same', async () => {
+      manager.findOne.mockResolvedValue({ id: 'r1', videoMediaId: null });
+
+      await service.updateVideo(actor, 'p1', 2, { videoMediaId: null });
+
+      expect(audit.record).not.toHaveBeenCalled();
     });
 
     it('removes the video with null without media checks or signing', async () => {

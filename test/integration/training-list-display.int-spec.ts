@@ -55,6 +55,7 @@ describe('Training list endpoints return horse name, photo and groom name (Postg
       new TrainingOperationsFacade(),
       dataSource,
       media,
+      new AuditService(),
     );
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),

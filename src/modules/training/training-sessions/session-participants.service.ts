@@ -2,6 +2,10 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { MediaService } from '../../media/services/media.service';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -50,6 +54,7 @@ export class SessionParticipantsService {
     private readonly operations: TrainingOperationsFacade,
     private readonly dataSource: DataSource,
     private readonly media: MediaService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -193,8 +198,19 @@ export class SessionParticipantsService {
         );
       }
       if (body.groomId) await this.access.assertGroom(manager, body.groomId);
+      const previousGroomId = participant.assignedGroomId;
       participant.assignedGroomId = body.groomId ?? null;
-      return manager.save(participant);
+      const saved = await manager.save(participant);
+      if (previousGroomId !== saved.assignedGroomId) {
+        await this.recordRun(
+          manager,
+          caller.id,
+          participantId,
+          { assignedGroomId: previousGroomId },
+          { assignedGroomId: saved.assignedGroomId },
+        );
+      }
+      return saved;
     });
     return toSessionParticipantResponse(saved);
   }
@@ -206,6 +222,7 @@ export class SessionParticipantsService {
    * - Ngựa không được tập vì lý do khác: lưu lượt thành INELIGIBLE rồi trả 409
    * - Ngựa được tập: lượt chuyển PRESENT
    * - Chỉ trong khung giờ từ CHECK_IN_OPENS_BEFORE_MS trước giờ bắt đầu tới giờ kết thúc buổi tập
+   * - Ghi nhật ký trạng thái lượt trước và sau, kể cả khi lượt bị đánh không được tập
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia
@@ -247,12 +264,20 @@ export class SessionParticipantsService {
         new Date(),
       );
       assertParticipantCheckIn(participant.status);
+      const previousStatus = participant.status;
       if (await this.markIfIneligible(manager, horse, session, participant)) {
+        await this.recordStatusChange(
+          manager,
+          caller.id,
+          participant,
+          previousStatus,
+        );
         return { rejected: true as const };
       }
       participant.status = SessionParticipantStatus.PRESENT;
       participant.checkedInAt = new Date();
       const saved = await manager.save(participant);
+      await this.recordStatusChange(manager, caller.id, saved, previousStatus);
       await this.operations.refreshSessionStatus(
         manager,
         participant.sessionId,
@@ -312,6 +337,7 @@ export class SessionParticipantsService {
    * - Ngựa không được tập vì lý do khác: lưu lượt thành INELIGIBLE rồi trả 409
    * - Ngựa được tập: lượt chuyển ONGOING, buổi SCHEDULED chuyển IN_PROGRESS
    * - Chỉ trong khung giờ từ START_OPENS_BEFORE_MS trước giờ bắt đầu tới giờ kết thúc buổi tập
+   * - Ghi nhật ký trạng thái lượt trước và sau, kể cả khi lượt bị đánh không được tập
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia
@@ -365,7 +391,14 @@ export class SessionParticipantsService {
         );
       }
       assertParticipantActionWindow(session, START_OPENS_BEFORE_MS, new Date());
+      const previousStatus = participant.status;
       if (await this.markIfIneligible(manager, horse, session, participant)) {
+        await this.recordStatusChange(
+          manager,
+          caller.id,
+          participant,
+          previousStatus,
+        );
         return { rejected: true as const };
       }
       if (
@@ -380,6 +413,12 @@ export class SessionParticipantsService {
       participant.status = SessionParticipantStatus.ONGOING;
       participant.startedAt = new Date();
       await manager.save(participant);
+      await this.recordStatusChange(
+        manager,
+        caller.id,
+        participant,
+        previousStatus,
+      );
       if (session.status === TrainingSessionStatus.SCHEDULED) {
         session.status = TrainingSessionStatus.IN_PROGRESS;
         await manager.save(session);
@@ -422,9 +461,16 @@ export class SessionParticipantsService {
       if (session.status !== TrainingSessionStatus.IN_PROGRESS) {
         throw new ConflictException('Buổi tập chưa ở trạng thái đang diễn ra');
       }
+      const previousStatus = participant.status;
       participant.status = SessionParticipantStatus.COMPLETED;
       participant.completedAt = new Date();
       await manager.save(participant);
+      await this.recordStatusChange(
+        manager,
+        caller.id,
+        participant,
+        previousStatus,
+      );
       await this.operations.refreshSessionStatus(
         manager,
         participant.sessionId,
@@ -437,6 +483,8 @@ export class SessionParticipantsService {
 
   /**
    * Đổi trạng thái một lượt tập trong transaction sau khi kiểm buổi còn thực thi và quyền thao tác, rồi cập nhật trạng thái buổi
+   *
+   * - Ghi nhật ký trạng thái lượt trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia
@@ -476,8 +524,10 @@ export class SessionParticipantsService {
         caller.id,
         context,
       );
+      const previousStatus = participant.status;
       mutate(participant, session);
       const saved = await manager.save(participant);
+      await this.recordStatusChange(manager, caller.id, saved, previousStatus);
       await this.operations.refreshSessionStatus(
         manager,
         participant.sessionId,
@@ -485,6 +535,75 @@ export class SessionParticipantsService {
       return saved;
     });
     return toSessionParticipantResponse(saved);
+  }
+
+  /**
+   * Ghi nhật ký một lần đổi trạng thái lượt tập
+   *
+   * - Lượt vắng: lý do vắng ghi vào cột lý do
+   * - Lượt bị đánh không được tập: kèm lý do không được tập
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID người thao tác
+   * @param participant Lượt tập sau khi đổi trạng thái
+   * @param previousStatus Trạng thái trước khi đổi
+   * @returns Promise hoàn tất khi đã ghi
+   */
+  private async recordStatusChange(
+    manager: EntityManager,
+    callerId: string,
+    participant: SessionParticipantEntity,
+    previousStatus: SessionParticipantStatus,
+  ): Promise<void> {
+    const ineligible =
+      participant.status === SessionParticipantStatus.INELIGIBLE ||
+      participant.status === SessionParticipantStatus.CANCELLED_BY_LOCK;
+    await this.recordRun(
+      manager,
+      callerId,
+      participant.id,
+      { status: previousStatus },
+      {
+        status: participant.status,
+        ...(ineligible && {
+          ineligibilityReason: participant.ineligibilityReason,
+        }),
+      },
+      participant.status === SessionParticipantStatus.ABSENT
+        ? participant.absenceReason
+        : null,
+    );
+  }
+
+  /**
+   * Ghi một dòng nhật ký cho lượt tập
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID người thao tác
+   * @param participantId UUID của lượt tập
+   * @param before Giá trị trước khi đổi
+   * @param after Giá trị sau khi đổi
+   * @param reason Lý do kèm theo, bỏ trống thì lưu null
+   * @returns Promise hoàn tất khi đã ghi
+   */
+  private async recordRun(
+    manager: EntityManager,
+    callerId: string,
+    participantId: string,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+    reason: string | null = null,
+  ): Promise<void> {
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.SESSION_PARTICIPANT,
+      entityId: participantId,
+      before,
+      after,
+      reason,
+      feature: AuditFeature.TRAIN_RUN,
+    });
   }
 
   /**

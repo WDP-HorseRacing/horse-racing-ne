@@ -94,6 +94,8 @@
                 "TRAINING_SUBJECT",
                 "TRAINING_CLASS",
                 "CLASS_ENROLLMENT",
+                "SESSION_PARTICIPANT",
+                "TRIAL_RESULT",
                 "REFRESH_SESSION"
               ]
             }
@@ -8930,6 +8932,8 @@
               "TRAINING_SUBJECT",
               "TRAINING_CLASS",
               "CLASS_ENROLLMENT",
+              "SESSION_PARTICIPANT",
+              "TRIAL_RESULT",
               "REFRESH_SESSION"
             ]
           },
@@ -9071,6 +9075,8 @@
               "TRAINING_SUBJECT",
               "TRAINING_CLASS",
               "CLASS_ENROLLMENT",
+              "SESSION_PARTICIPANT",
+              "TRIAL_RESULT",
               "REFRESH_SESSION"
             ]
           },
@@ -11762,7 +11768,10 @@
               "TRAIN_SUBJECT",
               "TRAIN_PLAN",
               "TRAIN_CLASS",
-              "TRAIN_ENROLL"
+              "TRAIN_ENROLL",
+              "TRAIN_SESSION",
+              "TRAIN_RUN",
+              "TIME_TRIAL"
             ],
             "nullable": true,
             "description": "Chức năng gây ra thay đổi"

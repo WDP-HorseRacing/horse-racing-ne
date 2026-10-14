@@ -18,6 +18,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('SessionParticipantsService eligibility at check-in and start (Postgres)', () => {
   let db: TestPostgres;
@@ -37,6 +38,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
       {
         signDownloadUrls: () => Promise.resolve(new Map()),
       } as unknown as MediaService,
+      new AuditService(),
     );
   });
 
@@ -245,6 +247,80 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
 
       expect(result.status).toBe('PRESENT');
       expect((await participantRow(participantId)).status).toBe('PRESENT');
+    });
+  });
+
+  const auditsOf = (entityId: string) =>
+    dataSource.query<
+      Array<{
+        action: string;
+        entity_type: string;
+        before_data: Record<string, unknown> | null;
+        after_data: Record<string, unknown> | null;
+        reason: string | null;
+        feature: string | null;
+      }>
+    >(
+      `SELECT action, entity_type, before_data, after_data, reason, feature
+         FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+      [entityId],
+    );
+
+  describe('audit trail', () => {
+    it('logs each status change of a run from check-in to completion', async () => {
+      const actor = await groomActor();
+      const { participantId } = await seedParticipant('PLANNED');
+
+      await service.checkIn(actor, participantId);
+      await service.ready(actor, participantId);
+      await service.start(actor, participantId);
+      await service.complete(actor, participantId);
+
+      const rows = await auditsOf(participantId);
+      expect(rows.map((row) => [row.before_data, row.after_data])).toEqual([
+        [{ status: 'PLANNED' }, { status: 'PRESENT' }],
+        [{ status: 'PRESENT' }, { status: 'READY' }],
+        [{ status: 'READY' }, { status: 'ONGOING' }],
+        [{ status: 'ONGOING' }, { status: 'COMPLETED' }],
+      ]);
+      expect(
+        rows.every(
+          (row) =>
+            row.entity_type === 'SESSION_PARTICIPANT' &&
+            row.feature === 'TRAIN_RUN',
+        ),
+      ).toBe(true);
+    });
+
+    it('logs a run marked absent with its reason', async () => {
+      const actor = await groomActor();
+      const { participantId } = await seedParticipant('PLANNED');
+
+      await service.absent(actor, participantId, { reason: 'Ngựa bỏ ăn' });
+
+      await expect(auditsOf(participantId)).resolves.toEqual([
+        expect.objectContaining({
+          before_data: { status: 'PLANNED' },
+          after_data: { status: 'ABSENT' },
+          reason: 'Ngựa bỏ ăn',
+        }),
+      ]);
+    });
+
+    it('logs a check-in that turned the run ineligible, although the call answered 409', async () => {
+      const actor = await groomActor();
+      const { participantId } = await seedParticipant('PLANNED', {
+        health: HorseHealthStatus.QUARANTINED,
+      });
+
+      await expect(service.checkIn(actor, participantId)).rejects.toThrow(
+        ConflictException,
+      );
+
+      const [row] = await auditsOf(participantId);
+      expect(row.before_data).toEqual({ status: 'PLANNED' });
+      expect(row.after_data).toMatchObject({ status: 'INELIGIBLE' });
+      expect(row.after_data?.ineligibilityReason).toEqual(expect.any(String));
     });
   });
 });

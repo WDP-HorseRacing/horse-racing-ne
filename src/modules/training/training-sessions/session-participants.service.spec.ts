@@ -70,6 +70,7 @@ describe('SessionParticipantsService.list', () => {
       {} as TrainingOperationsFacade,
       { manager } as unknown as DataSource,
       media as unknown as MediaService,
+      { record: jest.fn() },
     );
   });
 
@@ -201,6 +202,7 @@ describe('SessionParticipantsService.absent', () => {
         ),
       } as unknown as DataSource,
       {} as MediaService,
+      { record: jest.fn() },
     );
     return { service, row, refresh, manager };
   }

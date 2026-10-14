@@ -6,6 +6,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import {
   CreateTimeTrialDto,
   TimeTrialResponseDto,
@@ -20,6 +25,7 @@ import {
   assertSessionEditable,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
+import { timeTrialAuditData } from '../utils/training-audit';
 
 @Injectable()
 export class TimeTrialsService {
@@ -28,6 +34,7 @@ export class TimeTrialsService {
     private readonly timeTrials: Repository<TimeTrialEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   async getBySession(
@@ -72,7 +79,7 @@ export class TimeTrialsService {
       const existing = await manager.findOneBy(TimeTrialEntity, { sessionId });
       if (existing)
         throw new ConflictException('Buổi tập đã có cấu hình chạy thử');
-      return manager.save(
+      const trial = await manager.save(
         manager.create(TimeTrialEntity, {
           sessionId,
           distanceM: String(body.distanceM),
@@ -81,6 +88,16 @@ export class TimeTrialsService {
           notes: body.notes ?? null,
         }),
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.TIME_TRIAL,
+        entityId: trial.id,
+        before: null,
+        after: { sessionId, ...timeTrialAuditData(trial) },
+        feature: AuditFeature.TIME_TRIAL,
+      });
+      return trial;
     });
     return toTimeTrialResponse(row);
   }
@@ -89,6 +106,7 @@ export class TimeTrialsService {
    * Sửa cấu hình chạy thử của một buổi còn nháp
    *
    * - Field không gửi giữ giá trị cũ; gửi null để xóa thời gian mục tiêu hoặc ghi chú
+   * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param sessionId UUID của buổi tập
@@ -120,6 +138,7 @@ export class TimeTrialsService {
       const trial = await manager.findOneBy(TimeTrialEntity, { sessionId });
       if (!trial)
         throw new NotFoundException('Không tìm thấy cấu hình chạy thử');
+      const before = timeTrialAuditData(trial);
       if (body.distanceM !== undefined) {
         trial.distanceM = String(body.distanceM);
       }
@@ -128,7 +147,19 @@ export class TimeTrialsService {
           body.targetTimeMs === null ? null : String(body.targetTimeMs);
       }
       if (body.notes !== undefined) trial.notes = body.notes;
-      return manager.save(trial);
+      const saved = await manager.save(trial);
+      const diff = changedFieldsDiff(before, timeTrialAuditData(saved));
+      if (diff) {
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.TIME_TRIAL,
+          entityId: saved.id,
+          ...diff,
+          feature: AuditFeature.TIME_TRIAL,
+        });
+      }
+      return saved;
     });
     return toTimeTrialResponse(row);
   }

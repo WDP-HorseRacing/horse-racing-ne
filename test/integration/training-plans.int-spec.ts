@@ -71,6 +71,7 @@ describe('Training plans and classes built from them (Postgres)', () => {
       dataSource.getRepository(TimeTrialEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     subjects = new TrainingSubjectsService(
       dataSource.getRepository(TrainingSubjectEntity),

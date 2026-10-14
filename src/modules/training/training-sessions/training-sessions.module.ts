@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { MediaModule } from '../../media/media.module';
 import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
@@ -28,6 +29,7 @@ import { TrainingSessionsService } from './training-sessions.service';
       HorseEntity,
     ]),
     TrainingSharedModule,
+    AuditModule,
     MediaModule,
   ],
   controllers: [TrainingSessionsController, SessionParticipantsController],
