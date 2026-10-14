@@ -18,6 +18,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Time trial config of a training session (Postgres)', () => {
   let db: TestPostgres;
@@ -52,6 +53,7 @@ describe('Time trial config of a training session (Postgres)', () => {
       dataSource.getRepository(TrainingSubjectEntity),
       access,
       dataSource,
+      new AuditService(),
     );
   });
 

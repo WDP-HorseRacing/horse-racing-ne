@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { MediaModule } from '../../media/media.module';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
@@ -14,6 +15,7 @@ import { TrainingClassesController } from './training-classes.controller';
   imports: [
     TypeOrmModule.forFeature([TrainingClassEntity, HorseEnrollmentEntity]),
     TrainingSharedModule,
+    AuditModule,
     MediaModule,
   ],
   controllers: [TrainingClassesController],

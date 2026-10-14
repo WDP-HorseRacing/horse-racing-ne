@@ -91,6 +91,9 @@
                 "TIME_TRIAL",
                 "TRAINING_PLAN",
                 "TRAINING_SESSION",
+                "TRAINING_SUBJECT",
+                "TRAINING_CLASS",
+                "CLASS_ENROLLMENT",
                 "REFRESH_SESSION"
               ]
             }
@@ -8924,6 +8927,9 @@
               "TIME_TRIAL",
               "TRAINING_PLAN",
               "TRAINING_SESSION",
+              "TRAINING_SUBJECT",
+              "TRAINING_CLASS",
+              "CLASS_ENROLLMENT",
               "REFRESH_SESSION"
             ]
           },
@@ -9062,6 +9068,9 @@
               "TIME_TRIAL",
               "TRAINING_PLAN",
               "TRAINING_SESSION",
+              "TRAINING_SUBJECT",
+              "TRAINING_CLASS",
+              "CLASS_ENROLLMENT",
               "REFRESH_SESSION"
             ]
           },
@@ -11749,7 +11758,11 @@
               "HT_HANDOVER",
               "SUPPLY_ITEM",
               "SUPPLY_STOCK",
-              "SUPPLY_REQUEST"
+              "SUPPLY_REQUEST",
+              "TRAIN_SUBJECT",
+              "TRAIN_PLAN",
+              "TRAIN_CLASS",
+              "TRAIN_ENROLL"
             ],
             "nullable": true,
             "description": "Chức năng gây ra thay đổi"

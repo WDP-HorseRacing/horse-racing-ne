@@ -22,6 +22,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Creating a class with its sessions (Postgres)', () => {
   let db: TestPostgres;
@@ -48,16 +49,19 @@ describe('Creating a class with its sessions (Postgres)', () => {
       dataSource.getRepository(TrainingPlanEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     classes = new TrainingClassesService(
       dataSource.getRepository(TrainingClassEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     subjects = new TrainingSubjectsService(
       dataSource.getRepository(TrainingSubjectEntity),
       access,
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -232,6 +236,7 @@ describe('Creating a class with its sessions (Postgres)', () => {
       training_classes: 1,
       training_sessions: 3,
       time_trials: 1,
+      audit_logs: 1,
     });
   });
 

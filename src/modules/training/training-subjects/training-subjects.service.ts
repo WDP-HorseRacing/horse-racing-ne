@@ -7,7 +7,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import type { FieldError } from '../../../common/utils/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import {
   CreateTrainingSubjectDto,
   TrainingSubjectResponseDto,
@@ -19,6 +24,7 @@ import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingSubjectResponse } from '../mappers/training-subject.mapper';
 import { assertSubjectExercise } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
+import { subjectAuditData } from '../utils/training-audit';
 
 const SUBJECT_NAME_TAKEN: FieldError = {
   field: 'name',
@@ -36,6 +42,7 @@ export class TrainingSubjectsService {
     private readonly subjects: Repository<TrainingSubjectEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -64,6 +71,8 @@ export class TrainingSubjectsService {
   /**
    * Thêm môn học mới
    *
+   * - Ghi nhật ký kèm nội dung bài tập của môn
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Nội dung bài tập của môn
    * @returns Promise trả về môn học vừa tạo
@@ -75,7 +84,7 @@ export class TrainingSubjectsService {
     actor: Actor,
     body: CreateTrainingSubjectDto,
   ): Promise<TrainingSubjectResponseDto> {
-    await this.access.currentUser(actor);
+    const caller = await this.access.currentUser(actor);
     const targetTimeMs = body.targetTimeMs ?? null;
     assertSubjectExercise(
       body.sessionType,
@@ -84,17 +93,29 @@ export class TrainingSubjectsService {
     );
     const saved = await mapAnyUniqueViolation(
       () =>
-        this.subjects.save(
-          this.subjects.create({
-            name: body.name.trim(),
-            description: body.description ?? null,
-            sessionType: body.sessionType,
-            intensity: body.intensity,
-            plannedDistanceM: body.plannedDistanceM,
-            surface: body.surface ?? null,
-            targetTimeMs,
-          }),
-        ),
+        this.dataSource.transaction(async (manager) => {
+          const row = await manager.save(
+            manager.create(TrainingSubjectEntity, {
+              name: body.name.trim(),
+              description: body.description ?? null,
+              sessionType: body.sessionType,
+              intensity: body.intensity,
+              plannedDistanceM: body.plannedDistanceM,
+              surface: body.surface ?? null,
+              targetTimeMs,
+            }),
+          );
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.CREATE,
+            entityType: AuditEntityType.TRAINING_SUBJECT,
+            entityId: row.id,
+            before: null,
+            after: subjectAuditData(row),
+            feature: AuditFeature.TRAIN_SUBJECT,
+          });
+          return row;
+        }),
       SUBJECT_NAME_TAKEN,
     );
     return toTrainingSubjectResponse(saved);
@@ -104,6 +125,7 @@ export class TrainingSubjectsService {
    * Sửa môn học; các buổi tập đã tạo từ môn này giữ nguyên
    *
    * - Field không gửi giữ giá trị cũ; gửi targetTimeMs null để xóa thời gian mục tiêu
+   * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param subjectId UUID của môn học
@@ -119,7 +141,7 @@ export class TrainingSubjectsService {
     subjectId: string,
     body: UpdateTrainingSubjectDto,
   ): Promise<TrainingSubjectResponseDto> {
-    await this.access.currentUser(actor);
+    const caller = await this.access.currentUser(actor);
     const saved = await mapAnyUniqueViolation(
       () =>
         this.dataSource.transaction(async (manager) => {
@@ -128,6 +150,7 @@ export class TrainingSubjectsService {
             lock: { mode: 'pessimistic_write' },
           });
           if (!row) throw new NotFoundException(SUBJECT_NOT_FOUND);
+          const before = subjectAuditData(row);
           Object.assign(row, {
             name: body.name?.trim() ?? row.name,
             description:
@@ -148,7 +171,19 @@ export class TrainingSubjectsService {
             row.plannedDistanceM,
             row.targetTimeMs,
           );
-          return manager.save(row);
+          const saved = await manager.save(row);
+          const diff = changedFieldsDiff(before, subjectAuditData(saved));
+          if (diff) {
+            await this.auditService.record(manager, {
+              actorId: caller.id,
+              action: AuditAction.UPDATE,
+              entityType: AuditEntityType.TRAINING_SUBJECT,
+              entityId: subjectId,
+              ...diff,
+              feature: AuditFeature.TRAIN_SUBJECT,
+            });
+          }
+          return saved;
         }),
       SUBJECT_NAME_TAKEN,
     );
@@ -158,6 +193,8 @@ export class TrainingSubjectsService {
   /**
    * Xóa môn học chưa được giáo án hay buổi tập nào dùng
    *
+   * - Ghi nhật ký kèm nội dung môn bị xóa
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param subjectId UUID của môn học
    * @returns Promise hoàn tất khi đã xóa
@@ -166,7 +203,7 @@ export class TrainingSubjectsService {
    * @throws ConflictException Nếu môn đang có trong giáo án hoặc buổi tập
    */
   async remove(actor: Actor, subjectId: string): Promise<void> {
-    await this.access.currentUser(actor);
+    const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
       const row = await manager.findOne(TrainingSubjectEntity, {
         where: { id: subjectId },
@@ -179,7 +216,17 @@ export class TrainingSubjectsService {
       ) {
         throw new ConflictException('Môn học đang được dùng, không xóa được');
       }
+      const before = subjectAuditData(row);
       await manager.remove(row);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.DELETE,
+        entityType: AuditEntityType.TRAINING_SUBJECT,
+        entityId: subjectId,
+        before,
+        after: null,
+        feature: AuditFeature.TRAIN_SUBJECT,
+      });
     });
   }
 }

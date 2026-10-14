@@ -80,6 +80,7 @@ function setup(
     operations,
     dataSource,
     {} as MediaService,
+    { record: jest.fn() },
   );
   return { service, qb, save, access, refresh, manager };
 }
@@ -305,6 +306,7 @@ describe('TrainingClassEnrollmentsService.list', () => {
       new TrainingOperationsFacade(),
       { manager: {} } as unknown as DataSource,
       media as unknown as MediaService,
+      { record: jest.fn() },
     );
     return { service, access, media };
   }

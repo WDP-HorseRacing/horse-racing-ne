@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { TrainingPlanPhaseEntity } from '../entities/training-plan-phase.entity';
 import { TrainingPlanSubjectEntity } from '../entities/training-plan-subject.entity';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
@@ -18,6 +19,7 @@ import { TrainingPlansService } from './training-plans.service';
       TrainingPlanSubjectEntity,
     ]),
     TrainingSharedModule,
+    AuditModule,
   ],
   controllers: [TrainingPlansController],
   providers: [TrainingPlansService],

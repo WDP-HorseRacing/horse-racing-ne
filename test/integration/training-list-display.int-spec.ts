@@ -18,6 +18,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Training list endpoints return horse name, photo and groom name (Postgres)', () => {
   let db: TestPostgres;
@@ -61,6 +62,7 @@ describe('Training list endpoints return horse name, photo and groom name (Postg
       new TrainingOperationsFacade(),
       dataSource,
       media,
+      new AuditService(),
     );
   });
 

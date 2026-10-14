@@ -31,6 +31,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Training plans and classes built from them (Postgres)', () => {
   let db: TestPostgres;
@@ -58,11 +59,13 @@ describe('Training plans and classes built from them (Postgres)', () => {
       dataSource.getRepository(TrainingPlanEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     classes = new TrainingClassesService(
       dataSource.getRepository(TrainingClassEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     timeTrials = new TimeTrialsService(
       dataSource.getRepository(TimeTrialEntity),
@@ -73,6 +76,7 @@ describe('Training plans and classes built from them (Postgres)', () => {
       dataSource.getRepository(TrainingSubjectEntity),
       access,
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -633,5 +637,191 @@ describe('Training plans and classes built from them (Postgres)', () => {
         status: TrainingClassStatus.ACTIVE,
       }),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  describe('audit trail', () => {
+    const auditsOf = (entityId: string) =>
+      dataSource.query<
+        Array<{
+          actor_id: string | null;
+          action: string;
+          entity_type: string;
+          before_data: Record<string, unknown> | null;
+          after_data: Record<string, unknown> | null;
+          reason: string | null;
+          feature: string | null;
+        }>
+      >(
+        `SELECT actor_id, action, entity_type, before_data, after_data, reason, feature
+           FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+        [entityId],
+      );
+
+    it('logs creating, editing and deleting a subject, skipping edits that change nothing', async () => {
+      const [managerRow] = await dataSource.query<Array<{ id: string }>>(
+        'SELECT id FROM users WHERE keycloak_id = $1',
+        [manager.sub],
+      );
+      const created = await subjects.create(manager, {
+        name: 'Phi nước kiệu',
+        sessionType: TrainingSessionType.REGULAR,
+        intensity: TrainingIntensity.LIGHT,
+        plannedDistanceM: 2000,
+      });
+      await subjects.update(manager, created.id, { plannedDistanceM: 2400 });
+      await subjects.update(manager, created.id, { plannedDistanceM: 2400 });
+      await subjects.remove(manager, created.id);
+
+      const rows = await auditsOf(created.id);
+      expect(
+        rows.map((row) => [row.action, row.before_data, row.after_data]),
+      ).toEqual([
+        [
+          'CREATE',
+          null,
+          {
+            name: 'Phi nước kiệu',
+            description: null,
+            sessionType: TrainingSessionType.REGULAR,
+            intensity: TrainingIntensity.LIGHT,
+            plannedDistanceM: 2000,
+            surface: null,
+            targetTimeMs: null,
+          },
+        ],
+        ['UPDATE', { plannedDistanceM: 2000 }, { plannedDistanceM: 2400 }],
+        ['DELETE', expect.objectContaining({ name: 'Phi nước kiệu' }), null],
+      ]);
+      expect(
+        rows.every(
+          (row) =>
+            row.actor_id === managerRow.id &&
+            row.entity_type === 'TRAINING_SUBJECT' &&
+            row.feature === 'TRAIN_SUBJECT',
+        ),
+      ).toBe(true);
+    });
+
+    it('logs the whole plan before and after a replace, and its deletion', async () => {
+      const plan = await plans.create(trainer, twoPhases());
+      await plans.update(trainer, plan.id, mixedPhase());
+      await plans.remove(trainer, plan.id);
+
+      const rows = await auditsOf(plan.id);
+      const sorted = [endurance, sprint].sort();
+      expect(
+        rows.map((row) => [row.action, row.before_data, row.after_data]),
+      ).toEqual([
+        [
+          'CREATE',
+          null,
+          {
+            name: 'Chuẩn bị đua 1200m',
+            description: null,
+            phases: [
+              {
+                weeks: 4,
+                subjects: [{ subjectId: endurance, weekdays: [1, 3, 5] }],
+              },
+              {
+                weeks: 2,
+                subjects: [{ subjectId: sprint, weekdays: [1, 3, 5] }],
+              },
+            ],
+          },
+        ],
+        [
+          'UPDATE',
+          expect.objectContaining({ name: 'Chuẩn bị đua 1200m' }),
+          {
+            name: 'Sức bền xen nước rút',
+            description: null,
+            phases: [
+              {
+                weeks: 1,
+                subjects: sorted.map((subjectId) =>
+                  subjectId === sprint
+                    ? { subjectId, weekdays: [5, 2] }
+                    : { subjectId, weekdays: [3, 1] },
+                ),
+              },
+            ],
+          },
+        ],
+        ['DELETE', { name: 'Sức bền xen nước rút', description: null }, null],
+      ]);
+      expect(rows[1].before_data).toEqual(rows[0].after_data);
+      expect(rows.every((row) => row.actor_id === trainerId)).toBe(true);
+      expect(rows.every((row) => row.feature === 'TRAIN_PLAN')).toBe(true);
+    });
+
+    it('logs creating, editing and the status changes of a class', async () => {
+      const plan = await plans.create(trainer, twoPhases());
+      const created = await classes.create(trainer, {
+        code: 'K1',
+        name: 'K1',
+        planId: plan.id,
+        startDate: '2026-10-05',
+        sessions: [oneSession()],
+      });
+      await classes.update(trainer, created.id, { maxHorses: 6 });
+      await classes.update(trainer, created.id, { maxHorses: 6 });
+      await classes.updateStatus(trainer, created.id, {
+        status: TrainingClassStatus.ACTIVE,
+      });
+      await classes.updateStatus(trainer, created.id, {
+        status: TrainingClassStatus.CANCELLED,
+        cancelReason: 'Thiếu ngựa',
+      });
+
+      const rows = await auditsOf(created.id);
+      expect(
+        rows.map((row) => [
+          row.action,
+          row.before_data,
+          row.after_data,
+          row.reason,
+        ]),
+      ).toEqual([
+        [
+          'CREATE',
+          null,
+          {
+            code: 'K1',
+            name: 'K1',
+            description: null,
+            raceAptitude: null,
+            maxHorses: 10,
+            startDate: '2026-10-05',
+            endDate: '2026-11-15',
+            planId: plan.id,
+            status: TrainingClassStatus.DRAFT,
+            sessionsCreated: 1,
+          },
+          null,
+        ],
+        ['UPDATE', { maxHorses: 10 }, { maxHorses: 6 }, null],
+        [
+          'UPDATE',
+          { status: TrainingClassStatus.DRAFT },
+          { status: TrainingClassStatus.ACTIVE },
+          null,
+        ],
+        [
+          'UPDATE',
+          { status: TrainingClassStatus.ACTIVE },
+          { status: TrainingClassStatus.CANCELLED },
+          'Thiếu ngựa',
+        ],
+      ]);
+      expect(
+        rows.every(
+          (row) =>
+            row.actor_id === trainerId &&
+            row.entity_type === 'TRAINING_CLASS' &&
+            row.feature === 'TRAIN_CLASS',
+        ),
+      ).toBe(true);
+    });
   });
 });

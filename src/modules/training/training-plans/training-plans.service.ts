@@ -8,6 +8,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import {
   SaveTrainingPlanDto,
   TrainingPlanResponseDto,
@@ -20,6 +24,7 @@ import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingPlanResponse } from '../mappers/training-plan.mapper';
 import { assertPlanPhases } from '../policies/training-plan.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
+import { planAuditData } from '../utils/training-audit';
 
 const PLAN_NOT_FOUND = 'Không tìm thấy giáo án';
 
@@ -33,6 +38,7 @@ export class TrainingPlansService {
     private readonly plans: Repository<TrainingPlanEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -85,6 +91,8 @@ export class TrainingPlansService {
   /**
    * Tạo giáo án cho chính Head Trainer gọi
    *
+   * - Ghi nhật ký kèm tên, mô tả và các giai đoạn
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Tên, mô tả và các giai đoạn theo thứ tự
    * @returns Promise trả về giáo án vừa tạo
@@ -107,6 +115,15 @@ export class TrainingPlansService {
         }),
       );
       await this.savePhases(manager, plan.id, body);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.TRAINING_PLAN,
+        entityId: plan.id,
+        before: null,
+        after: planAuditData(plan.name, plan.description, body.phases),
+        feature: AuditFeature.TRAIN_PLAN,
+      });
       return plan.id;
     });
     return this.get(actor, planId);
@@ -114,6 +131,8 @@ export class TrainingPlansService {
 
   /**
    * Thay toàn bộ tên, mô tả và các giai đoạn của giáo án; lớp đã tạo từ giáo án giữ nguyên buổi tập
+   *
+   * - Ghi nhật ký toàn bộ nội dung giáo án trước và sau khi thay
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param planId UUID của giáo án
@@ -133,17 +152,34 @@ export class TrainingPlansService {
       const plan = await this.lockedOwnPlan(manager, planId, caller.id);
       await this.assertSubjectsExist(manager, body);
       assertPlanPhases(body.phases);
+      const oldPhases = await manager.find(TrainingPlanPhaseEntity, {
+        where: { planId },
+        relations: { subjects: true },
+        order: { position: 'ASC' },
+      });
+      const before = planAuditData(plan.name, plan.description, oldPhases);
       plan.name = body.name.trim();
       plan.description = body.description ?? null;
       await manager.save(plan);
       await manager.delete(TrainingPlanPhaseEntity, { planId });
       await this.savePhases(manager, planId, body);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.TRAINING_PLAN,
+        entityId: planId,
+        before,
+        after: planAuditData(plan.name, plan.description, body.phases),
+        feature: AuditFeature.TRAIN_PLAN,
+      });
     });
     return this.get(actor, planId);
   }
 
   /**
    * Xóa giáo án chưa có lớp nào dùng
+   *
+   * - Ghi nhật ký kèm tên và mô tả giáo án bị xóa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param planId UUID của giáo án
@@ -155,11 +191,20 @@ export class TrainingPlansService {
   async remove(actor: Actor, planId: string): Promise<void> {
     const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
-      await this.lockedOwnPlan(manager, planId, caller.id);
+      const plan = await this.lockedOwnPlan(manager, planId, caller.id);
       if (await manager.existsBy(TrainingClassEntity, { planId })) {
         throw new ConflictException('Giáo án đã có lớp dùng, không xóa được');
       }
       await manager.delete(TrainingPlanEntity, { id: planId });
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.DELETE,
+        entityType: AuditEntityType.TRAINING_PLAN,
+        entityId: planId,
+        before: { name: plan.name, description: plan.description },
+        after: null,
+        feature: AuditFeature.TRAIN_PLAN,
+      });
     });
   }
 

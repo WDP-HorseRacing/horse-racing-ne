@@ -8,6 +8,11 @@ import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
 import type { Actor } from '../../../../common/types/actor';
 import { fieldConflict } from '../../../../common/utils/field-errors';
+import { changedFieldsDiff } from '../../../../common/utils/record-diff';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
 import {
   ClassSchedulePreviewDto,
   ClassScheduleInputDto,
@@ -46,6 +51,7 @@ import {
 } from '../../policies/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
 import { buildClassSchedule } from '../../utils/class-schedule';
+import { classAuditData } from '../../utils/training-audit';
 
 /**
  * Số dòng tối đa trong một câu INSERT khi lưu nhiều buổi tập hoặc cấu hình chạy thử một lượt
@@ -59,6 +65,7 @@ export class TrainingClassesService {
     private readonly classes: Repository<TrainingClassEntity>,
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -112,6 +119,7 @@ export class TrainingClassesService {
    * - Buổi tập lưu ở trạng thái DRAFT
    * - Kiểm hết mọi buổi trước khi lưu; một buổi sai thì không lưu gì
    * - Buổi tập và cấu hình chạy thử lưu theo lô, mỗi câu INSERT tối đa 100 dòng
+   * - Ghi nhật ký kèm thông tin lớp, giáo án và số buổi tập đã tạo
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin lớp, giáo án, ngày bắt đầu và các buổi tập
@@ -223,6 +231,20 @@ export class TrainingClassesService {
         }),
         { chunk: SAVE_CHUNK_SIZE },
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.TRAINING_CLASS,
+        entityId: saved.id,
+        before: null,
+        after: {
+          ...classAuditData(saved),
+          planId: saved.planId,
+          status: saved.status,
+          sessionsCreated: sessions.length,
+        },
+        feature: AuditFeature.TRAIN_CLASS,
+      });
       return saved;
     });
     return toTrainingClassResponse(row);
@@ -282,13 +304,16 @@ export class TrainingClassesService {
       const row = await this.access.lockedTrainingClass(manager, classId);
       this.access.assertCanManageClass(actor, caller.id, row.headTrainerId);
       assertClassActivatable(row.status);
+      const previousStatus = row.status;
       if (!row.headTrainerId) {
         throw new ConflictException(
           'Phải phân công Huấn luyện viên trưởng trước khi kích hoạt lớp',
         );
       }
       row.status = TrainingClassStatus.ACTIVE;
-      return manager.save(row);
+      const saved = await manager.save(row);
+      await this.recordStatusChange(manager, caller.id, saved, previousStatus);
+      return saved;
     });
     return toTrainingClassResponse(saved);
   }
@@ -302,6 +327,7 @@ export class TrainingClassesService {
       const row = await this.access.lockedTrainingClass(manager, classId);
       this.access.assertCanManageClass(actor, caller.id, row.headTrainerId);
       assertClassCompletable(row.status);
+      const previousStatus = row.status;
 
       const unfinishedSessions = await manager
         .getRepository(TrainingSessionEntity)
@@ -327,7 +353,9 @@ export class TrainingClassesService {
       );
       row.status = TrainingClassStatus.COMPLETED;
       row.completedAt = now;
-      return manager.save(row);
+      const saved = await manager.save(row);
+      await this.recordStatusChange(manager, caller.id, saved, previousStatus);
+      return saved;
     });
     return toTrainingClassResponse(saved);
   }
@@ -342,6 +370,7 @@ export class TrainingClassesService {
       const row = await this.access.lockedTrainingClass(manager, classId);
       this.access.assertCanManageClass(actor, caller.id, row.headTrainerId);
       assertClassCancellable(row.status);
+      const previousStatus = row.status;
 
       const ongoingParticipants = await manager
         .getRepository(SessionParticipantEntity)
@@ -410,7 +439,9 @@ export class TrainingClassesService {
       row.status = TrainingClassStatus.CANCELLED;
       row.cancelledAt = now;
       row.cancelReason = reason;
-      return manager.save(row);
+      const saved = await manager.save(row);
+      await this.recordStatusChange(manager, caller.id, saved, previousStatus);
+      return saved;
     });
     return toTrainingClassResponse(saved);
   }
@@ -425,6 +456,7 @@ export class TrainingClassesService {
       const row = await this.access.lockedTrainingClass(manager, classId);
       this.access.assertCanManageClass(actor, caller.id, row.headTrainerId);
       assertClassEditable(row.status);
+      const before = classAuditData(row);
       if (body.code && body.code.trim().toUpperCase() !== row.code) {
         const nextCode = body.code.trim().toUpperCase();
         const dup = await manager.findOneBy(TrainingClassEntity, {
@@ -500,9 +532,50 @@ export class TrainingClassesService {
         startDate,
         endDate,
       });
-      return manager.save(row);
+      const saved = await manager.save(row);
+      const diff = changedFieldsDiff(before, classAuditData(saved));
+      if (diff) {
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.TRAINING_CLASS,
+          entityId: classId,
+          ...diff,
+          feature: AuditFeature.TRAIN_CLASS,
+        });
+      }
+      return saved;
     });
     return toTrainingClassResponse(updated);
+  }
+
+  /**
+   * Ghi nhật ký một lần đổi trạng thái lớp
+   *
+   * - Lớp đã hủy: lý do hủy ghi vào cột lý do
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID người đổi trạng thái
+   * @param row Lớp sau khi đổi trạng thái
+   * @param previousStatus Trạng thái trước khi đổi
+   * @returns Promise hoàn tất khi đã ghi
+   */
+  private async recordStatusChange(
+    manager: EntityManager,
+    callerId: string,
+    row: TrainingClassEntity,
+    previousStatus: TrainingClassStatus,
+  ): Promise<void> {
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.TRAINING_CLASS,
+      entityId: row.id,
+      before: { status: previousStatus },
+      after: { status: row.status },
+      reason: row.cancelReason,
+      feature: AuditFeature.TRAIN_CLASS,
+    });
   }
 
   /**

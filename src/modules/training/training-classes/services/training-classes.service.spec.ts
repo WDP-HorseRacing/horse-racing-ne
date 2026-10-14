@@ -52,6 +52,7 @@ function setup(
     } as unknown as Repository<TrainingClassEntity>,
     access as unknown as TrainingAccessService,
     dataSource,
+    { record: jest.fn() },
   );
   return { service, manager };
 }

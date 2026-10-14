@@ -19,6 +19,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Training class queries over its sessions (Postgres)', () => {
   let db: TestPostgres;
@@ -40,6 +41,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
       dataSource.getRepository(TrainingClassEntity),
       access,
       dataSource,
+      new AuditService(),
     );
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),
@@ -49,6 +51,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
       {
         signDownloadUrls: () => Promise.resolve(new Map()),
       } as unknown as MediaService,
+      new AuditService(),
     );
   });
 
@@ -206,6 +209,57 @@ describe('Training class queries over its sessions (Postgres)', () => {
       [horse],
     );
     expect(rows.map((row) => row.session_id)).toEqual([futureA]);
+  });
+
+  it('logs enrolling a horse and taking it out of the class', async () => {
+    const a = await seedClass('A');
+    const horse = await seed.horse('Winx', { barnId: a.barnId });
+
+    const enrolled = await enrollments.create(a.trainer, a.classId, {
+      horseId: horse,
+      enrolledAt: '2026-06-01T00:00:00Z',
+    });
+    await enrollments.leave(a.trainer, enrolled.id, {
+      leftAt: '2026-07-01T00:00:00Z',
+      reason: 'Chuyển lớp',
+    });
+
+    const rows = await dataSource.query<
+      Array<{
+        action: string;
+        entity_type: string;
+        before_data: Record<string, unknown> | null;
+        after_data: Record<string, unknown> | null;
+        reason: string | null;
+        feature: string | null;
+      }>
+    >(
+      `SELECT action, entity_type, before_data, after_data, reason, feature
+         FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+      [enrolled.id],
+    );
+    expect(rows).toEqual([
+      {
+        action: 'CREATE',
+        entity_type: 'CLASS_ENROLLMENT',
+        before_data: null,
+        after_data: {
+          classId: a.classId,
+          horseId: horse,
+          enrolledAt: '2026-06-01T00:00:00.000Z',
+        },
+        reason: null,
+        feature: 'TRAIN_ENROLL',
+      },
+      {
+        action: 'UPDATE',
+        entity_type: 'CLASS_ENROLLMENT',
+        before_data: { status: 'ACTIVE' },
+        after_data: { status: 'LEFT', leftAt: '2026-07-01T00:00:00.000Z' },
+        reason: 'Chuyển lớp',
+        feature: 'TRAIN_ENROLL',
+      },
+    ]);
   });
 
   it('lets a groom read only the classes where they lead a participant', async () => {

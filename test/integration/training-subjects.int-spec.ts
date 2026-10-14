@@ -15,6 +15,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('TrainingSubjectsService (Postgres)', () => {
   let db: TestPostgres;
@@ -39,6 +40,7 @@ describe('TrainingSubjectsService (Postgres)', () => {
       dataSource.getRepository(TrainingSubjectEntity),
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
       dataSource,
+      new AuditService(),
     );
   });
 

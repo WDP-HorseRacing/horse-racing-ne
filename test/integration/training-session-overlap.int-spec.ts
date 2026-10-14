@@ -20,6 +20,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Overlapping training sessions of a horse (Postgres)', () => {
   let db: TestPostgres;
@@ -54,6 +55,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       {
         signDownloadUrls: () => Promise.resolve(new Map()),
       } as unknown as MediaService,
+      new AuditService(),
     );
   });
 

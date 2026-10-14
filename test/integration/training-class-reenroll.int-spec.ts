@@ -15,6 +15,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Re-enrolling a horse that left a class (Postgres)', () => {
   let db: TestPostgres;
@@ -37,6 +38,7 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
       {
         signDownloadUrls: () => Promise.resolve(new Map()),
       } as unknown as MediaService,
+      new AuditService(),
     );
   });
 

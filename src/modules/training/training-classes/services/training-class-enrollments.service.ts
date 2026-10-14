@@ -2,6 +2,10 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
 import {
   clubDateTimeToInstant,
   shiftDays,
@@ -49,6 +53,7 @@ export class TrainingClassEnrollmentsService {
     private readonly operations: TrainingOperationsFacade,
     private readonly dataSource: DataSource,
     private readonly media: MediaService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -174,6 +179,19 @@ export class TrainingClassEnrollmentsService {
         }),
       );
       await this.addToFuturePublishedSessions(manager, row, horse);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.CLASS_ENROLLMENT,
+        entityId: row.id,
+        before: null,
+        after: {
+          classId,
+          horseId: horse.id,
+          enrolledAt: enrolledAt.toISOString(),
+        },
+        feature: AuditFeature.TRAIN_ENROLL,
+      });
       return row;
     });
     return toHorseEnrollmentResponse(saved);
@@ -224,6 +242,16 @@ export class TrainingClassEnrollmentsService {
         leftAt,
         body.reason ?? 'Ngựa đã rời lớp',
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.CLASS_ENROLLMENT,
+        entityId: enrollmentId,
+        before: { status: HorseEnrollmentStatus.ACTIVE },
+        after: { status: updated.status, leftAt: leftAt.toISOString() },
+        reason: body.reason ?? null,
+        feature: AuditFeature.TRAIN_ENROLL,
+      });
       return updated;
     });
     return toHorseEnrollmentResponse(saved);
