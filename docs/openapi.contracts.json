@@ -14590,7 +14590,7 @@
             "description": "Tiền thưởng giải đấu (VND), luôn 0"
           },
           "owners": {
-            "description": "Từng chủ có ngựa trong kỳ, sắp theo tên",
+            "description": "Từng chủ có ngựa còn ở CLB hoặc có bệnh án đóng trong kỳ, sắp theo tên",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FinanceOwnerDto"
@@ -14682,7 +14682,7 @@
             "description": "Tiền thưởng giải đấu (VND), luôn 0"
           },
           "horses": {
-            "description": "Các ngựa chủ sở hữu trong kỳ, sắp theo tên",
+            "description": "Các ngựa còn ở CLB dưới tên chủ ít nhất một ngày trong kỳ, sắp theo tên",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OwnerCostHorseDto"

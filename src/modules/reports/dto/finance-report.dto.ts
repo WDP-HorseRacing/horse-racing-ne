@@ -36,7 +36,8 @@ export class OwnerCostResponseDto {
   prizeMoney!: number;
   @ApiProperty({
     type: [OwnerCostHorseDto],
-    description: 'Các ngựa chủ sở hữu trong kỳ, sắp theo tên',
+    description:
+      'Các ngựa còn ở CLB dưới tên chủ ít nhất một ngày trong kỳ, sắp theo tên',
   })
   horses!: OwnerCostHorseDto[];
 }
@@ -73,7 +74,8 @@ export class ClubFinanceResponseDto {
   prizeMoney!: number;
   @ApiProperty({
     type: [FinanceOwnerDto],
-    description: 'Từng chủ có ngựa trong kỳ, sắp theo tên',
+    description:
+      'Từng chủ có ngựa còn ở CLB hoặc có bệnh án đóng trong kỳ, sắp theo tên',
   })
   owners!: FinanceOwnerDto[];
 }

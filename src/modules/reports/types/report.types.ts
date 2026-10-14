@@ -134,7 +134,9 @@ export interface HorseHealthRows {
  */
 export interface DailyFeeRow {
   ownerId: string;
+  ownerName: string;
   horseId: string;
+  horseName: string;
   billedDays: number;
   dailyFee: string;
 }
@@ -144,7 +146,9 @@ export interface DailyFeeRow {
  */
 export interface MedicalChargeRow {
   ownerId: string | null;
+  ownerName: string | null;
   horseId: string;
+  horseName: string;
   caseCount: number;
   medicalCost: string;
 }
@@ -155,14 +159,4 @@ export interface MedicalChargeRow {
 export interface SupplyValueRow {
   purchased: string;
   used: string;
-}
-
-/**
- * Một con ngựa và chủ của nó có giai đoạn sở hữu giao với kỳ, đọc từ DB
- */
-export interface OwnedHorseRow {
-  ownerId: string;
-  ownerName: string;
-  horseId: string;
-  horseName: string;
 }

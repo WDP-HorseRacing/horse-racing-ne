@@ -7,7 +7,6 @@ import type {
 import type {
   DailyFeeRow,
   MedicalChargeRow,
-  OwnedHorseRow,
   ReportPeriod,
   SupplyValueRow,
 } from '../types/report.types';
@@ -17,7 +16,6 @@ import type {
  */
 export interface FinanceSource {
   period: ReportPeriod;
-  ownedHorses: OwnedHorseRow[];
   dailyFees: DailyFeeRow[];
   medicalCharges: MedicalChargeRow[];
 }
@@ -25,10 +23,10 @@ export interface FinanceSource {
 /**
  * Dựng báo cáo chi phí của một chủ ngựa
  *
- * - Mỗi ngựa chủ sở hữu trong kỳ một dòng, kể cả khi không phát sinh chi phí
+ * - Mỗi ngựa có ít nhất một ngày còn ở CLB dưới tên chủ trong kỳ, hoặc có bệnh án của chủ đóng trong kỳ, một dòng; kể cả khi không phát sinh chi phí
  *
  * @param owner Chủ của báo cáo
- * @param source Ngựa sở hữu, phí ngày và chi phí y tế của chủ trong kỳ
+ * @param source Phí ngày và chi phí y tế của chủ trong kỳ
  * @returns OwnerCostResponseDto
  */
 export function toOwnerCost(
@@ -36,7 +34,12 @@ export function toOwnerCost(
   source: FinanceSource,
 ): OwnerCostResponseDto {
   const horses = [
-    ...new Map(source.ownedHorses.map((row) => [row.horseId, row.horseName])),
+    ...new Map(
+      [...source.dailyFees, ...source.medicalCharges].map((row) => [
+        row.horseId,
+        row.horseName,
+      ]),
+    ),
   ]
     .map(([horseId, horseName]): OwnerCostHorseDto => {
       const fee = source.dailyFees.filter((row) => row.horseId === horseId);
@@ -79,9 +82,9 @@ export function toOwnerCost(
  * Dựng báo cáo tài chính CLB
  *
  * - Chi phí y tế toàn CLB gồm cả bệnh án đóng lúc ngựa không có chủ; bảng từng chủ chỉ cộng bệnh án của chủ đó
- * - Bảng từng chủ gồm mọi chủ có ngựa trong kỳ
+ * - Bảng từng chủ gồm mọi chủ có ngựa còn ở CLB trong kỳ hoặc có bệnh án đóng trong kỳ, sắp theo tên
  *
- * @param source Ngựa sở hữu, phí ngày và chi phí y tế của mọi chủ trong kỳ
+ * @param source Phí ngày và chi phí y tế của mọi chủ trong kỳ
  * @param supplies Giá trị vật tư nhập vào và đã dùng trong kỳ
  * @returns ClubFinanceResponseDto
  */
@@ -90,26 +93,35 @@ export function toClubFinance(
   supplies: SupplyValueRow,
 ): ClubFinanceResponseDto {
   const owners = [
-    ...new Map(source.ownedHorses.map((row) => [row.ownerId, row.ownerName])),
-  ].map(([ownerId, ownerName]): FinanceOwnerDto => {
-    const dailyFee = sumOf(
-      source.dailyFees
-        .filter((row) => row.ownerId === ownerId)
-        .map((row) => row.dailyFee),
-    );
-    const medicalCost = sumOf(
-      source.medicalCharges
-        .filter((row) => row.ownerId === ownerId)
-        .map((row) => row.medicalCost),
-    );
-    return {
-      ownerId,
-      ownerName,
-      dailyFee,
-      medicalCost,
-      total: dailyFee + medicalCost,
-    };
-  });
+    ...new Map(
+      [...source.dailyFees, ...source.medicalCharges].flatMap((row) =>
+        row.ownerId === null ? [] : [[row.ownerId, row.ownerName ?? '']],
+      ),
+    ),
+  ]
+    .sort(
+      ([aId, aName], [bId, bName]) =>
+        aName.localeCompare(bName) || aId.localeCompare(bId),
+    )
+    .map(([ownerId, ownerName]): FinanceOwnerDto => {
+      const dailyFee = sumOf(
+        source.dailyFees
+          .filter((row) => row.ownerId === ownerId)
+          .map((row) => row.dailyFee),
+      );
+      const medicalCost = sumOf(
+        source.medicalCharges
+          .filter((row) => row.ownerId === ownerId)
+          .map((row) => row.medicalCost),
+      );
+      return {
+        ownerId,
+        ownerName,
+        dailyFee,
+        medicalCost,
+        total: dailyFee + medicalCost,
+      };
+    });
   const dailyFee = sumOf(source.dailyFees.map((row) => row.dailyFee));
   const medicalCost = sumOf(
     source.medicalCharges.map((row) => row.medicalCost),

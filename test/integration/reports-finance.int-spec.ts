@@ -97,6 +97,11 @@ describe('Reports finance (Postgres)', () => {
     gio = await seed.horse('Gió', { ownerId: bId });
     may = await seed.horse('Mây', { ownerId: aId });
     const sao = await seed.horse('Sao');
+    const sold = await seed.horse('Đã bán', {
+      ownerId: aId,
+      lifecycle: HorseLifecycleStatus.TRANSFERRED,
+    });
+    await seed.ownership(sold, aId, '2026-09-01T00:00:00Z');
     const deleted = await seed.horse('Nhập nhầm', {
       ownerId: aId,
       deleted: true,
@@ -272,12 +277,33 @@ describe('Reports finance (Postgres)', () => {
     expect(await fees('2026-10-11T05:00:00Z')).toEqual([
       {
         ownerId: lan,
+        ownerName: 'Lan',
         horseId: suong,
+        horseName: 'Sương',
         billedDays: 1,
         dailyFee: '200000',
       },
     ]);
     expect(await fees('2026-10-10T16:00:00Z')).toEqual([]);
+
+    const beforeAnyFee = await repository.dailyFees(
+      {
+        from: '2026-10-01',
+        to: '2026-10-04',
+        start: new Date('2026-09-30T17:00:00Z'),
+        end: new Date('2026-10-04T17:00:00Z'),
+      },
+      new Date('2026-10-13T00:00:00Z'),
+      aId,
+    );
+    expect(
+      beforeAnyFee
+        .map((row) => [row.horseName, row.billedDays, row.dailyFee])
+        .sort(),
+    ).toEqual([
+      ['Gió', 0, '0'],
+      ['Mây', 0, '0'],
+    ]);
   });
 
   it('sums the club charges, the supply values and each owner', async () => {

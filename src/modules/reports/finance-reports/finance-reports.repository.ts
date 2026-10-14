@@ -8,7 +8,6 @@ import { SupplyStockMovementType } from '../../supplies/enums/supply-stock-movem
 import type {
   DailyFeeRow,
   MedicalChargeRow,
-  OwnedHorseRow,
   ReportPeriod,
   SupplyValueRow,
 } from '../types/report.types';
@@ -26,18 +25,18 @@ export class FinanceReportsRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Tính phí ngày theo từng chủ và từng con ngựa trong kỳ
+   * Tính phí ngày theo từng chủ và từng con ngựa có ít nhất một ngày còn ở CLB trong kỳ
    *
    * - Mỗi ngày (lịch CLB) từ ngày đầu kỳ tới ngày cuối kỳ, không quá ngày của asOf, xét trạng thái ngay trước lúc hết ngày; ngày của asOf xét ngay trước asOf
    * - Ngày được tính cho người đang là chủ lúc hết ngày, nên ngày chuyển chủ tính cho chủ mới
    * - Bỏ hồ sơ ngựa đang bị xóa
-   * - Chỉ tính ngày ngựa còn ở CLB (đang hoạt động hoặc đã giải nghệ) lúc hết ngày; trạng thái lấy từ nhật ký thao tác, chưa đổi lần nào là đang hoạt động
-   * - Mỗi ngày lấy mức phí có ngày hiệu lực gần nhất không sau ngày đó; ngày chưa có mức phí nào thì không tính
+   * - Chỉ tính ngày ngựa còn ở CLB (đang hoạt động hoặc đã giải nghệ) lúc hết ngày; trạng thái lấy từ nhật ký thao tác, chưa có dòng nhật ký nào thì lấy trạng thái hiện tại của ngựa
+   * - Mỗi ngày lấy mức phí có ngày hiệu lực gần nhất không sau ngày đó; ngày chưa có mức phí nào thì không tính phí nhưng ngựa vẫn có dòng
    *
    * @param period Khoảng ngày của báo cáo
    * @param asOf Thời điểm hiện tại
    * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi chủ
-   * @returns Promise trả về số ngày tính phí và tổng phí theo chủ và ngựa
+   * @returns Promise trả về tên, số ngày tính phí và tổng phí theo chủ và ngựa
    */
   dailyFees(
     period: ReportPeriod,
@@ -51,7 +50,6 @@ export class FinanceReportsRepository {
       CLUB_TIME_ZONE,
       AuditEntityType.HORSE,
       ON_SITE_STATUSES,
-      HorseLifecycleStatus.ACTIVE,
     ];
     if (ownerId) params.push(ownerId);
     return this.dataSource.query(
@@ -61,20 +59,23 @@ export class FinanceReportsRepository {
            FROM generate_series($1::date, LEAST($2::date, ($3::timestamptz AT TIME ZONE $4)::date), interval '1 day') d
        )
        SELECT o.owner_id AS "ownerId",
+              u.full_name AS "ownerName",
               o.horse_id AS "horseId",
-              COUNT(*)::int AS "billedDays",
-              SUM(fee.daily_fee)::text AS "dailyFee"
+              h.name AS "horseName",
+              COUNT(fee.daily_fee)::int AS "billedDays",
+              COALESCE(SUM(fee.daily_fee), 0)::text AS "dailyFee"
          FROM days
          JOIN horse_ownerships o
            ON o.started_at < days.at
           AND (o.ended_at IS NULL OR o.ended_at >= days.at)
          JOIN horses h ON h.id = o.horse_id AND h.deleted_at IS NULL
-         CROSS JOIN LATERAL (
+         JOIN users u ON u.id = o.owner_id
+         LEFT JOIN LATERAL (
            SELECT f.daily_fee FROM daily_fees f
             WHERE f.effective_from <= days.day
             ORDER BY f.effective_from DESC
             LIMIT 1
-         ) fee
+         ) fee ON TRUE
         WHERE COALESCE(
                 (SELECT a.after_data->>'lifecycleStatus' FROM audit_logs a
                   WHERE a.entity_type = $5
@@ -83,10 +84,10 @@ export class FinanceReportsRepository {
                     AND a.created_at < days.at
                   ORDER BY a.created_at DESC
                   LIMIT 1),
-                $7
+                h.lifecycle_status
               ) = ANY($6::text[])
-          ${ownerId ? 'AND o.owner_id = $8' : ''}
-        GROUP BY 1, 2`,
+          ${ownerId ? 'AND o.owner_id = $7' : ''}
+        GROUP BY 1, 2, 3, 4`,
       params,
     );
   }
@@ -98,7 +99,7 @@ export class FinanceReportsRepository {
    *
    * @param period Khoảng ngày của báo cáo
    * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi bệnh án
-   * @returns Promise trả về số bệnh án và tổng chi phí theo chủ và ngựa
+   * @returns Promise trả về tên, số bệnh án và tổng chi phí theo chủ và ngựa
    */
   medicalCharges(
     period: ReportPeriod,
@@ -112,7 +113,9 @@ export class FinanceReportsRepository {
     if (ownerId) params.push(ownerId);
     return this.dataSource.query(
       `SELECT o.owner_id AS "ownerId",
+              u.full_name AS "ownerName",
               c.horse_id AS "horseId",
+              h.name AS "horseName",
               COUNT(*)::int AS "caseCount",
               COALESCE(SUM(c.total_cost), 0)::text AS "medicalCost"
          FROM medical_cases c
@@ -120,44 +123,13 @@ export class FinanceReportsRepository {
            ON o.horse_id = c.horse_id
           AND o.started_at <= c.closed_at
           AND (o.ended_at IS NULL OR c.closed_at < o.ended_at)
+         LEFT JOIN users u ON u.id = o.owner_id
+         JOIN horses h ON h.id = c.horse_id
         WHERE c.status = $3
           AND c.closed_at >= $1
           AND c.closed_at < $2
           ${ownerId ? 'AND o.owner_id = $4' : ''}
-        GROUP BY 1, 2`,
-      params,
-    );
-  }
-
-  /**
-   * Lấy các con ngựa và chủ có giai đoạn sở hữu giao với kỳ, tính tới thời điểm hiện tại
-   *
-   * - Bỏ hồ sơ ngựa đang bị xóa
-   *
-   * @param period Khoảng ngày của báo cáo
-   * @param asOf Thời điểm hiện tại
-   * @param ownerId Chỉ ngựa của một chủ; bỏ trống là mọi chủ
-   * @returns Promise trả về các cặp chủ và ngựa, sắp theo tên chủ rồi tên ngựa
-   */
-  ownedHorses(
-    period: ReportPeriod,
-    asOf: Date,
-    ownerId?: string,
-  ): Promise<OwnedHorseRow[]> {
-    const params: unknown[] = [period.start, period.end, asOf];
-    if (ownerId) params.push(ownerId);
-    return this.dataSource.query(
-      `SELECT DISTINCT o.owner_id AS "ownerId",
-              u.full_name AS "ownerName",
-              h.id AS "horseId",
-              h.name AS "horseName"
-         FROM horse_ownerships o
-         JOIN horses h ON h.id = o.horse_id AND h.deleted_at IS NULL
-         JOIN users u ON u.id = o.owner_id
-        WHERE o.started_at < LEAST($2::timestamptz, $3::timestamptz)
-          AND (o.ended_at IS NULL OR o.ended_at > $1)
-          ${ownerId ? 'AND o.owner_id = $4' : ''}
-        ORDER BY 2, 1, 4, 3`,
+        GROUP BY 1, 2, 3, 4`,
       params,
     );
   }

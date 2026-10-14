@@ -44,17 +44,12 @@ export class FinanceReportsService {
     await currentUserForActor(this.dataSource.manager, actor);
     const asOf = new Date();
     const period = resolveReportPeriod(query, toClubDate(asOf));
-    const [ownedHorses, dailyFees, medicalCharges, supplies] =
-      await Promise.all([
-        this.repository.ownedHorses(period, asOf),
-        this.repository.dailyFees(period, asOf),
-        this.repository.medicalCharges(period),
-        this.repository.supplyValues(period),
-      ]);
-    return toClubFinance(
-      { period, ownedHorses, dailyFees, medicalCharges },
-      supplies,
-    );
+    const [dailyFees, medicalCharges, supplies] = await Promise.all([
+      this.repository.dailyFees(period, asOf),
+      this.repository.medicalCharges(period),
+      this.repository.supplyValues(period),
+    ]);
+    return toClubFinance({ period, dailyFees, medicalCharges }, supplies);
   }
 
   /**
@@ -82,14 +77,12 @@ export class FinanceReportsService {
       caller.role === UserRole.HORSE_OWNER
         ? caller
         : await this.findOwner(query.ownerId);
-    const [ownedHorses, dailyFees, medicalCharges] = await Promise.all([
-      this.repository.ownedHorses(period, asOf, owner.id),
+    const [dailyFees, medicalCharges] = await Promise.all([
       this.repository.dailyFees(period, asOf, owner.id),
       this.repository.medicalCharges(period, owner.id),
     ]);
     return toOwnerCost(owner, {
       period,
-      ownedHorses,
       dailyFees,
       medicalCharges,
     });
