@@ -19,6 +19,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('PerformanceThresholdsService (Postgres)', () => {
   let db: TestPostgres;
@@ -41,6 +42,7 @@ describe('PerformanceThresholdsService (Postgres)', () => {
       new HorseAccessService(dataSource),
       new PerformanceAccessService(dataSource),
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -171,5 +173,45 @@ describe('PerformanceThresholdsService (Postgres)', () => {
         limits,
       }),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('logs each new threshold version', async () => {
+    const trainer = await actorOf(UserRole.HEAD_TRAINER);
+    const horseId = await horseInBarnOf(trainer.id);
+
+    const profile = await service.upsert(trainer.actor, horseId, {
+      profileName: 'Nền',
+      effectiveFrom: '2026-01-01T00:00:00Z',
+      limits,
+    });
+
+    const rows = await dataSource.query<
+      Array<{
+        actor_id: string;
+        action: string;
+        entity_type: string;
+        after_data: Record<string, unknown>;
+        feature: string;
+      }>
+    >(
+      'SELECT actor_id, action, entity_type, after_data, feature FROM audit_logs WHERE entity_id = $1',
+      [profile.id],
+    );
+    expect(rows).toEqual([
+      {
+        actor_id: trainer.id,
+        action: 'CREATE',
+        entity_type: 'PERFORMANCE_THRESHOLD',
+        after_data: {
+          horseId,
+          profileName: 'Nền',
+          ruleVersion: 1,
+          effectiveFrom: '2026-01-01T00:00:00.000Z',
+          effectiveTo: null,
+          limits,
+        },
+        feature: 'PERF_THRESHOLD',
+      },
+    ]);
   });
 });

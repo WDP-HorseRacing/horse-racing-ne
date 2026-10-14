@@ -6,6 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import {
   CreatePerformanceEvaluationDto,
   PerformanceEvaluationResponseDto,
@@ -23,6 +27,7 @@ export class PerformanceEvaluationsService {
     private readonly access: TrainingAccessService,
     private readonly training: TrainingOperationsFacade,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(
@@ -47,7 +52,7 @@ export class PerformanceEvaluationsService {
         sessionParticipantId: participantId,
       });
       if (existing) throw new ConflictException('Lượt tập đã có đánh giá');
-      return manager.save(
+      const evaluation = await manager.save(
         manager.create(PerformanceEvaluationEntity, {
           sessionParticipantId: participantId,
           evaluatorId: caller.id,
@@ -55,6 +60,20 @@ export class PerformanceEvaluationsService {
           comment: body.comment ?? null,
         }),
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.PERFORMANCE_EVALUATION,
+        entityId: evaluation.id,
+        before: null,
+        after: {
+          sessionParticipantId: participantId,
+          score: evaluation.score,
+          comment: evaluation.comment,
+        },
+        feature: AuditFeature.PERF_EVAL,
+      });
+      return evaluation;
     });
     return toPerformanceEvaluationResponse(row);
   }

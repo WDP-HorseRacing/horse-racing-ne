@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { SupplyItemEntity } from '../../supplies/entities/supply-item.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { FeedingPlanStatus } from '../constants/feeding-plan-status.enum';
@@ -52,6 +56,7 @@ export class FeedingPlansService {
     private readonly plans: Repository<FeedingPlanEntity>,
     private readonly access: StableAccessService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -91,6 +96,7 @@ export class FeedingPlansService {
    *
    * - Dòng lấy từ items, hoặc sao từ khẩu phần copyFromPlanId mà người gọi được xem
    * - Khóa các ngựa theo thứ tự id trước khi ghi
+   * - Mỗi bản nháp ghi một dòng nhật ký kèm ngựa, ghi chú và các dòng khẩu phần
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Các ngựa, nguồn dòng khẩu phần và ghi chú
@@ -128,6 +134,20 @@ export class FeedingPlansService {
           }),
         );
         await this.insertLines(manager, plan.id, lines);
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.CREATE,
+          entityType: AuditEntityType.FEEDING_PLAN,
+          entityId: plan.id,
+          before: null,
+          after: {
+            horseId,
+            status: plan.status,
+            note: plan.note,
+            items: rationAuditData(lines),
+          },
+          feature: AuditFeature.FEEDING_PLAN,
+        });
         created.set(horseId, plan.id);
       }
       return body.horseIds.map((horseId) => created.get(horseId) as string);
@@ -167,6 +187,8 @@ export class FeedingPlansService {
   /**
    * Thay toàn bộ dòng và ghi chú của một bản nháp
    *
+   * - Ghi nhật ký ghi chú và các dòng khẩu phần trước và sau khi thay
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của khẩu phần
    * @param body Các dòng mới và ghi chú (null để xóa ghi chú)
@@ -186,16 +208,32 @@ export class FeedingPlansService {
       const plan = await this.lockDraftForTrainer(manager, caller.id, id);
       const lines = toRationLines(body.items);
       await this.assertFeedableLines(manager, lines);
+      const oldLines = await manager.find(FeedingPlanItemEntity, {
+        where: { planId: plan.id },
+        order: { position: 'ASC' },
+      });
+      const before = { note: plan.note, items: rationAuditData(oldLines) };
       await manager.delete(FeedingPlanItemEntity, { planId: plan.id });
       await this.insertLines(manager, plan.id, lines);
       if (body.note !== undefined) plan.note = body.note?.trim() || null;
       await manager.save(plan);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.FEEDING_PLAN,
+        entityId: plan.id,
+        before,
+        after: { note: plan.note, items: rationAuditData(lines) },
+        feature: AuditFeature.FEEDING_PLAN,
+      });
     });
     return this.get(actor, id);
   }
 
   /**
    * Xóa một bản nháp
+   *
+   * - Ghi nhật ký kèm ngựa và ghi chú của bản nháp bị xóa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của khẩu phần
@@ -208,12 +246,28 @@ export class FeedingPlansService {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
       const plan = await this.lockDraftForTrainer(manager, caller.id, id);
+      const before = {
+        horseId: plan.horseId,
+        status: plan.status,
+        note: plan.note,
+      };
       await manager.remove(plan);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.DELETE,
+        entityType: AuditEntityType.FEEDING_PLAN,
+        entityId: id,
+        before,
+        after: null,
+        feature: AuditFeature.FEEDING_PLAN,
+      });
     });
   }
 
   /**
    * Duyệt bản nháp thành khẩu phần đang áp dụng; bản ACTIVE cũ của ngựa chuyển ARCHIVED
+   *
+   * - Ghi nhật ký trạng thái trước và sau, kèm số bản ACTIVE cũ đã chuyển ARCHIVED
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của khẩu phần
@@ -241,15 +295,25 @@ export class FeedingPlansService {
         .getMany();
       assertNoDeletedSupplies(deleted.map((supply) => supply.name));
       const now = new Date();
-      await manager.update(
+      const archived = await manager.update(
         FeedingPlanEntity,
         { horseId: plan.horseId, status: FeedingPlanStatus.ACTIVE },
         { status: FeedingPlanStatus.ARCHIVED, archivedAt: now },
       );
+      const previousStatus = plan.status;
       plan.status = FeedingPlanStatus.ACTIVE;
       plan.approvedBy = caller.id;
       plan.approvedAt = now;
       await manager.save(plan);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.FEEDING_PLAN,
+        entityId: plan.id,
+        before: { status: previousStatus },
+        after: { status: plan.status, plansArchived: archived.affected ?? 0 },
+        feature: AuditFeature.FEEDING_PLAN,
+      });
     });
     return this.get(actor, id);
   }
@@ -407,5 +471,20 @@ function toRationLines(
     supplyItemId: item.supplyItemId,
     quantity: item.quantity.toString(),
     note: item.note?.trim() || null,
+  }));
+}
+
+/**
+ * Dựng các dòng khẩu phần để ghi nhật ký, số lượng đã đổi sang number
+ *
+ * @param lines Các dòng khẩu phần theo thứ tự
+ * @returns Bữa, vật tư, số lượng, ghi chú của từng dòng
+ */
+function rationAuditData(lines: RationLine[]) {
+  return lines.map((line) => ({
+    meal: line.meal,
+    supplyItemId: line.supplyItemId,
+    quantity: Number(line.quantity),
+    note: line.note,
   }));
 }

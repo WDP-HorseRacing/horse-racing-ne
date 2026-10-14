@@ -96,6 +96,9 @@
                 "CLASS_ENROLLMENT",
                 "SESSION_PARTICIPANT",
                 "TRIAL_RESULT",
+                "CARE_TASK_TYPE",
+                "HORSE_CARE_TASK",
+                "CHECKLIST_ITEM",
                 "REFRESH_SESSION"
               ]
             }
@@ -8934,6 +8937,9 @@
               "CLASS_ENROLLMENT",
               "SESSION_PARTICIPANT",
               "TRIAL_RESULT",
+              "CARE_TASK_TYPE",
+              "HORSE_CARE_TASK",
+              "CHECKLIST_ITEM",
               "REFRESH_SESSION"
             ]
           },
@@ -9077,6 +9083,9 @@
               "CLASS_ENROLLMENT",
               "SESSION_PARTICIPANT",
               "TRIAL_RESULT",
+              "CARE_TASK_TYPE",
+              "HORSE_CARE_TASK",
+              "CHECKLIST_ITEM",
               "REFRESH_SESSION"
             ]
           },
@@ -11771,7 +11780,13 @@
               "TRAIN_ENROLL",
               "TRAIN_SESSION",
               "TRAIN_RUN",
-              "TIME_TRIAL"
+              "TIME_TRIAL",
+              "CARE_TASK",
+              "FEEDING_PLAN",
+              "INCIDENT",
+              "CHECKLIST",
+              "PERF_EVAL",
+              "PERF_THRESHOLD"
             ],
             "nullable": true,
             "description": "Chức năng gây ra thay đổi"

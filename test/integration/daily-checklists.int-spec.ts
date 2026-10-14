@@ -26,6 +26,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 const DEFAULT_TYPES = [
   { name: 'Cho ăn', appliesToAll: true },
@@ -82,6 +83,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       access,
       daily,
       dataSource,
+      new AuditService(),
     );
     careTasks = new CareTasksService(
       dataSource.getRepository(CareTaskTypeEntity),
@@ -89,6 +91,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       access,
       daily,
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -511,5 +514,106 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     expect(moved.items.map((item) => item.doer?.id)).toEqual(
       checklist.items.map(() => groomId),
     );
+  });
+
+  const auditsOf = (entityId: string) =>
+    dataSource.query<
+      Array<{
+        actor_id: string | null;
+        action: string;
+        entity_type: string;
+        before_data: Record<string, unknown> | null;
+        after_data: Record<string, unknown> | null;
+        reason: string | null;
+        feature: string | null;
+      }>
+    >(
+      `SELECT actor_id, action, entity_type, before_data, after_data, reason, feature
+         FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+      [entityId],
+    );
+
+  describe('audit trail', () => {
+    it('logs creating and switching off a care task type', async () => {
+      const ice = types['Ngâm chân nước đá'];
+      await careTasks.updateType(manager, ice, { active: false });
+      await careTasks.updateType(manager, ice, { active: false });
+
+      const rows = await auditsOf(ice);
+      expect(
+        rows.map((row) => [row.action, row.before_data, row.after_data]),
+      ).toEqual([
+        [
+          'CREATE',
+          null,
+          { name: 'Ngâm chân nước đá', appliesToAll: false, active: true },
+        ],
+        ['UPDATE', { active: true }, { active: false }],
+      ]);
+      expect(
+        rows.every(
+          (row) =>
+            row.entity_type === 'CARE_TASK_TYPE' && row.feature === 'CARE_TASK',
+        ),
+      ).toBe(true);
+    });
+
+    it('logs giving a horse its own task and taking it back before it starts', async () => {
+      const fromDate = shiftDays(today, 2);
+      const toDate = shiftDays(today, 5);
+      const task = await careTasks.createForHorse(trainer, gio, {
+        taskTypeId: types['Ngâm chân nước đá'],
+        fromDate,
+        toDate,
+      });
+      await careTasks.removeForHorse(trainer, task.id);
+
+      const rows = await auditsOf(task.id);
+      expect(
+        rows.map((row) => [row.action, row.before_data, row.after_data]),
+      ).toEqual([
+        [
+          'CREATE',
+          null,
+          {
+            horseId: gio,
+            taskTypeId: types['Ngâm chân nước đá'],
+            fromDate,
+            toDate,
+            note: null,
+          },
+        ],
+        [
+          'DELETE',
+          {
+            horseId: gio,
+            taskTypeId: types['Ngâm chân nước đá'],
+            fromDate,
+            toDate,
+          },
+          null,
+        ],
+      ]);
+    });
+
+    it('logs a tick that changes the item and skips one that changes nothing', async () => {
+      const checklist = await todayOf(groom, gio);
+      const feed = checklist.items[0];
+
+      await checklists.tick(groom, feed.id, { done: true, note: 'Ăn hết' });
+      await checklists.tick(groom, feed.id, { done: true });
+
+      await expect(auditsOf(feed.id)).resolves.toEqual([
+        {
+          actor_id: groomId,
+          action: 'UPDATE',
+          entity_type: 'CHECKLIST_ITEM',
+          before_data: { done: false, note: null },
+          after_data: { done: true, note: 'Ăn hết' },
+          reason: null,
+          feature: 'CHECKLIST',
+        },
+      ]);
+    });
   });
 });

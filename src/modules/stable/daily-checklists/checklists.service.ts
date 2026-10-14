@@ -9,6 +9,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, DataSource, EntityManager, In, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import type { Actor } from '../../../common/types/actor';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { clubToday } from '../../../common/utils/club-date';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
@@ -52,6 +57,7 @@ export class ChecklistsService implements OnApplicationBootstrap {
     private readonly access: StableAccessService,
     private readonly dailyChecklists: DailyChecklistsService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -99,6 +105,7 @@ export class ChecklistsService implements OnApplicationBootstrap {
    * Groom của checklist tick hoặc gỡ tick một việc trong ngày, rồi tính lại trạng thái checklist
    *
    * - Tick lại việc đã xong giữ thời điểm và người tick cũ
+   * - Đổi trạng thái xong hoặc ghi chú: ghi nhật ký giá trị trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param itemId UUID của việc trong checklist
@@ -129,6 +136,7 @@ export class ChecklistsService implements OnApplicationBootstrap {
       const item = await manager.findOneByOrFail(DailyChecklistItemEntity, {
         id: itemId,
       });
+      const before = { done: item.doneAt !== null, note: item.note };
       if (body.done && !item.doneAt) {
         item.doneAt = new Date();
         item.doneBy = caller.id;
@@ -139,6 +147,20 @@ export class ChecklistsService implements OnApplicationBootstrap {
       }
       if (body.note !== undefined) item.note = body.note?.trim() || null;
       await manager.save(item);
+      const diff = changedFieldsDiff(before, {
+        done: item.doneAt !== null,
+        note: item.note,
+      });
+      if (diff) {
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.CHECKLIST_ITEM,
+          entityId: item.id,
+          ...diff,
+          feature: AuditFeature.CHECKLIST,
+        });
+      }
       await this.dailyChecklists.refreshStatus(manager, checklist);
       return checklist.id;
     });

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { DailyChecklistItemEntity } from '../entities/daily-checklist-item.entity';
 import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
 import { StableSharedModule } from '../shared/stable-shared.module';
@@ -9,6 +10,7 @@ import { GroomTodayService } from './groom-today.service';
 
 @Module({
   imports: [
+    AuditModule,
     TypeOrmModule.forFeature([DailyChecklistEntity, DailyChecklistItemEntity]),
     StableSharedModule,
   ],

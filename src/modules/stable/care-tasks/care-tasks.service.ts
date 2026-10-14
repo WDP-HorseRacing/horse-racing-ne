@@ -10,7 +10,12 @@ import {
 import type { Actor } from '../../../common/types/actor';
 import { clubToday } from '../../../common/utils/club-date';
 import type { FieldError } from '../../../common/utils/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
   CareTaskTypeResponseDto,
@@ -55,6 +60,7 @@ export class CareTasksService {
     private readonly access: StableAccessService,
     private readonly checklists: DailyChecklistsService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -72,6 +78,8 @@ export class CareTasksService {
   /**
    * Thêm loại việc; loại mới đang dùng
    *
+   * - Ghi nhật ký kèm tên, cờ áp mọi ngựa, trạng thái dùng
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Tên và cờ áp mọi ngựa
    * @returns Promise trả về loại việc vừa thêm
@@ -82,16 +90,28 @@ export class CareTasksService {
     actor: Actor,
     body: CreateCareTaskTypeDto,
   ): Promise<CareTaskTypeResponseDto> {
-    await currentUserForActor(this.dataSource.manager, actor);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const saved = await mapAnyUniqueViolation(
       () =>
-        this.types.save(
-          this.types.create({
-            name: body.name.trim(),
-            appliesToAll: body.appliesToAll,
-            active: true,
-          }),
-        ),
+        this.dataSource.transaction(async (manager) => {
+          const type = await manager.save(
+            manager.create(CareTaskTypeEntity, {
+              name: body.name.trim(),
+              appliesToAll: body.appliesToAll,
+              active: true,
+            }),
+          );
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.CREATE,
+            entityType: AuditEntityType.CARE_TASK_TYPE,
+            entityId: type.id,
+            before: null,
+            after: careTaskTypeAuditData(type),
+            feature: AuditFeature.CARE_TASK,
+          });
+          return type;
+        }),
       CARE_TASK_TYPE_NAME_TAKEN,
     );
     return toCareTaskTypeResponse(saved);
@@ -99,6 +119,8 @@ export class CareTasksService {
 
   /**
    * Sửa tên, cờ áp mọi ngựa hoặc ngưng/dùng lại loại việc; checklist đã sinh không đổi
+   *
+   * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của loại việc
@@ -113,7 +135,7 @@ export class CareTasksService {
     id: string,
     body: UpdateCareTaskTypeDto,
   ): Promise<CareTaskTypeResponseDto> {
-    await currentUserForActor(this.dataSource.manager, actor);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const saved = await mapAnyUniqueViolation(
       () =>
         this.dataSource.transaction(async (manager) => {
@@ -122,12 +144,28 @@ export class CareTasksService {
             lock: { mode: 'pessimistic_write' },
           });
           if (!type) throw new NotFoundException(CARE_TASK_TYPE_NOT_FOUND);
+          const before = careTaskTypeAuditData(type);
           Object.assign(type, {
             name: body.name?.trim() ?? type.name,
             appliesToAll: body.appliesToAll ?? type.appliesToAll,
             active: body.active ?? type.active,
           });
-          return manager.save(type);
+          const updated = await manager.save(type);
+          const diff = changedFieldsDiff(
+            before,
+            careTaskTypeAuditData(updated),
+          );
+          if (diff) {
+            await this.auditService.record(manager, {
+              actorId: caller.id,
+              action: AuditAction.UPDATE,
+              entityType: AuditEntityType.CARE_TASK_TYPE,
+              entityId: id,
+              ...diff,
+              feature: AuditFeature.CARE_TASK,
+            });
+          }
+          return updated;
         }),
       CARE_TASK_TYPE_NAME_TAKEN,
     );
@@ -161,6 +199,8 @@ export class CareTasksService {
 
   /**
    * Gắn một loại việc cho ngựa trong khoảng ngày; bắt đầu hôm nay thì thêm ngay vào checklist hôm nay đã sinh
+   *
+   * - Ghi nhật ký kèm ngựa, loại việc, khoảng ngày, ghi chú
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -214,6 +254,21 @@ export class CareTasksService {
       if (body.fromDate === today) {
         await this.checklists.addTaskToChecklist(manager, horseId, today, type);
       }
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.HORSE_CARE_TASK,
+        entityId: saved.id,
+        before: null,
+        after: {
+          horseId,
+          taskTypeId: type.id,
+          fromDate: saved.fromDate,
+          toDate: saved.toDate,
+          note: saved.note,
+        },
+        feature: AuditFeature.CARE_TASK,
+      });
       return saved.id;
     });
     return toHorseCareTaskResponse(
@@ -223,6 +278,8 @@ export class CareTasksService {
 
   /**
    * Gỡ việc riêng: chưa bắt đầu thì xóa, đang hiệu lực thì kết thúc ở hôm nay; checklist đã sinh không đổi
+   *
+   * - Ghi nhật ký: xóa kèm nội dung việc, hoặc kết thúc kèm ngày kết thúc trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của việc riêng
@@ -245,9 +302,32 @@ export class CareTasksService {
       );
       if (careTaskRemovalOf(task.fromDate, task.toDate, today) === 'DELETE') {
         await manager.delete(HorseCareTaskEntity, { id });
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.DELETE,
+          entityType: AuditEntityType.HORSE_CARE_TASK,
+          entityId: id,
+          before: {
+            horseId: task.horseId,
+            taskTypeId: task.taskTypeId,
+            fromDate: task.fromDate,
+            toDate: task.toDate,
+          },
+          after: null,
+          feature: AuditFeature.CARE_TASK,
+        });
         return;
       }
       await manager.update(HorseCareTaskEntity, { id }, { toDate: today });
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.HORSE_CARE_TASK,
+        entityId: id,
+        before: { toDate: task.toDate },
+        after: { toDate: today },
+        feature: AuditFeature.CARE_TASK,
+      });
     });
   }
 
@@ -271,4 +351,18 @@ export class CareTasksService {
     if (!task) throw new NotFoundException(HORSE_CARE_TASK_NOT_FOUND);
     return task;
   }
+}
+
+/**
+ * Lấy các field của loại việc được ghi nhật ký
+ *
+ * @param type Loại việc
+ * @returns Tên, cờ áp mọi ngựa, trạng thái dùng
+ */
+function careTaskTypeAuditData(type: CareTaskTypeEntity) {
+  return {
+    name: type.name,
+    appliesToAll: type.appliesToAll,
+    active: type.active,
+  };
 }

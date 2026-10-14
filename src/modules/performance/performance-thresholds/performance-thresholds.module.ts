@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
 import { PerformanceThresholdEntity } from '../entities/performance-threshold.entity';
 import { PerformanceSharedModule } from '../shared/performance-shared.module';
@@ -11,6 +12,7 @@ import { PerformanceThresholdsService } from './performance-thresholds.service';
  */
 @Module({
   imports: [
+    AuditModule,
     TypeOrmModule.forFeature([PerformanceThresholdEntity]),
     HorsesSharedModule,
     PerformanceSharedModule,

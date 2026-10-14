@@ -9,6 +9,10 @@ import { PaginationResponseDto } from '../../../common/dto/pagination-response.d
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { mapUniqueViolation } from '../../../common/utils/unique-violation';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -59,6 +63,7 @@ export class IncidentsService {
     private readonly examRequests: ExamRequestsService,
     private readonly events: DomainEventPublisher,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -126,6 +131,7 @@ export class IncidentsService {
    * - Kiểm ngựa và phân công trước khi kiểm ảnh, kiểm lại sau khi khóa ngựa
    * - Sự cố khẩn: tạo yêu cầu khám khẩn gắn sự cố và báo mọi bác sĩ trong cùng transaction
    * - Ghi INCIDENT_REPORTED_EVENT vào outbox để báo Head Trainer của khu
+   * - Ghi nhật ký kèm ngựa, mô tả, ảnh, cờ khẩn và yêu cầu khám (nếu có)
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Ngựa, mô tả, cờ khẩn, ảnh
@@ -171,6 +177,7 @@ export class IncidentsService {
               status: IncidentStatus.OPEN,
             }),
           );
+          let examRequestId: string | null = null;
           if (urgent) {
             const exam = await this.examRequests.createFromIncident(manager, {
               horseId: horse.id,
@@ -180,7 +187,23 @@ export class IncidentsService {
               urgent: true,
             });
             await this.examRequests.announceCreated(manager, exam);
+            examRequestId = exam.id;
           }
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.CREATE,
+            entityType: AuditEntityType.INCIDENT,
+            entityId: incident.id,
+            before: null,
+            after: {
+              horseId: horse.id,
+              description,
+              photoMediaId: incident.mediaAssetId,
+              urgent,
+              examRequestId,
+            },
+            feature: AuditFeature.INCIDENT,
+          });
           const event: IncidentReportedEvent = {
             eventId: incident.id,
             incidentId: incident.id,
@@ -228,6 +251,7 @@ export class IncidentsService {
    * Head Trainer của khu chuyển sự cố đang mở cho bác sĩ: tạo yêu cầu khám gắn sự cố
    *
    * - Khẩn: ghi event báo mọi bác sĩ vào outbox trong cùng transaction
+   * - Ghi nhật ký kèm yêu cầu khám vừa tạo và mức khẩn
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của sự cố
@@ -265,12 +289,23 @@ export class IncidentsService {
         urgent: body.urgent === true,
       });
       await this.examRequests.announceCreated(manager, exam);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before: { examRequestId: null },
+        after: { examRequestId: exam.id, urgent: exam.urgent },
+        feature: AuditFeature.INCIDENT,
+      });
     });
     return this.get(actor, id);
   }
 
   /**
    * Head Trainer của khu đóng sự cố kèm kết quả xử lý
+   *
+   * - Ghi nhật ký trạng thái trước và sau, kết quả xử lý ghi vào cột lý do
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của sự cố
@@ -298,11 +333,22 @@ export class IncidentsService {
         incidentId: incident.id,
       });
       assertIncidentResolvable(exam?.status ?? null);
+      const previousStatus = incident.status;
       incident.status = IncidentStatus.RESOLVED;
       incident.resolution = body.resolution.trim();
       incident.resolvedBy = caller.id;
       incident.resolvedAt = new Date();
       await manager.save(incident);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before: { status: previousStatus },
+        after: { status: incident.status },
+        reason: incident.resolution,
+        feature: AuditFeature.INCIDENT,
+      });
     });
     return this.get(actor, id);
   }

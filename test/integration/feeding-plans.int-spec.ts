@@ -22,6 +22,7 @@ import {
   truncateAllTables,
   type TestPostgres,
 } from './postgres';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 
 describe('Feeding plans per horse (Postgres)', () => {
   let db: TestPostgres;
@@ -72,6 +73,7 @@ describe('Feeding plans per horse (Postgres)', () => {
       dataSource.getRepository(FeedingPlanEntity),
       new StableAccessService(new HorseAccessService(dataSource)),
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -401,6 +403,97 @@ describe('Feeding plans per horse (Postgres)', () => {
           copyFromPlanId: activeId,
         }),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  const auditsOf = (entityId: string) =>
+    dataSource.query<
+      Array<{
+        actor_id: string | null;
+        action: string;
+        entity_type: string;
+        before_data: Record<string, unknown> | null;
+        after_data: Record<string, unknown> | null;
+        reason: string | null;
+        feature: string | null;
+      }>
+    >(
+      `SELECT actor_id, action, entity_type, before_data, after_data, reason, feature
+         FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+      [entityId],
+    );
+
+  describe('audit trail', () => {
+    it('logs drafting, replacing and approving a plan, and deleting a draft', async () => {
+      const [plan] = await plans.create(trainer, {
+        horseIds: [gio],
+        items: ration(),
+        note: 'Tuần đầu',
+      });
+      await plans.replace(trainer, plan.id, {
+        items: [{ meal: FeedingMeal.EVENING, supplyItemId: hay, quantity: 4 }],
+      });
+      await plans.approve(trainer, plan.id);
+      const [draft] = await plans.create(trainer, {
+        horseIds: [gio],
+        items: ration(),
+      });
+      await plans.remove(trainer, draft.id);
+
+      const rows = await auditsOf(plan.id);
+      expect(
+        rows.map((row) => [row.action, row.before_data, row.after_data]),
+      ).toEqual([
+        [
+          'CREATE',
+          null,
+          expect.objectContaining({
+            horseId: gio,
+            status: FeedingPlanStatus.DRAFT,
+            note: 'Tuần đầu',
+          }),
+        ],
+        [
+          'UPDATE',
+          expect.objectContaining({ note: 'Tuần đầu' }),
+          {
+            note: 'Tuần đầu',
+            items: [
+              {
+                meal: FeedingMeal.EVENING,
+                supplyItemId: hay,
+                quantity: 4,
+                note: null,
+              },
+            ],
+          },
+        ],
+        [
+          'UPDATE',
+          { status: FeedingPlanStatus.DRAFT },
+          { status: FeedingPlanStatus.ACTIVE, plansArchived: 0 },
+        ],
+      ]);
+      expect(rows[0].after_data?.items).toEqual(rows[1].before_data?.items);
+      expect(rows[1].before_data?.items).toContainEqual({
+        meal: FeedingMeal.EVENING,
+        supplyItemId: oats,
+        quantity: 2,
+        note: null,
+      });
+      await expect(auditsOf(draft.id)).resolves.toEqual([
+        expect.objectContaining({ action: 'CREATE' }),
+        expect.objectContaining({
+          action: 'DELETE',
+          before_data: {
+            horseId: gio,
+            status: FeedingPlanStatus.DRAFT,
+            note: null,
+          },
+          after_data: null,
+          feature: 'FEEDING_PLAN',
+        }),
+      ]);
     });
   });
 });

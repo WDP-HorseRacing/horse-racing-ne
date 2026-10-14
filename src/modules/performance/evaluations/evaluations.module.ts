@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { TrainingSharedModule } from '../../training/shared/training-shared.module';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import { PerformanceEvaluationsController } from './performance-evaluations.controller';
@@ -7,6 +8,7 @@ import { PerformanceEvaluationsService } from './performance-evaluations.service
 
 @Module({
   imports: [
+    AuditModule,
     TypeOrmModule.forFeature([PerformanceEvaluationEntity]),
     TrainingSharedModule,
   ],

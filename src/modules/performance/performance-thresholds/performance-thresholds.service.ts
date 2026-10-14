@@ -3,6 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
@@ -29,6 +33,7 @@ export class PerformanceThresholdsService {
     private readonly horseAccess: HorseAccessService,
     private readonly performanceAccess: PerformanceAccessService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -77,6 +82,7 @@ export class PerformanceThresholdsService {
    *
    * - Số phiên bản bằng phiên bản lớn nhất hiện có của ngựa cộng 1
    * - Chỉ Head Trainer, và chỉ cho ngựa thuộc khu mình phụ trách
+   * - Ghi nhật ký kèm ngựa, tên, số phiên bản, khoảng hiệu lực và bộ ngưỡng
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -117,7 +123,7 @@ export class PerformanceThresholdsService {
         where: { horseId: horse.id },
         order: { ruleVersion: 'DESC' },
       });
-      return manager.save(
+      const profile = await manager.save(
         manager.create(PerformanceThresholdEntity, {
           horseId: horse.id,
           profileName: body.profileName,
@@ -131,6 +137,23 @@ export class PerformanceThresholdsService {
           },
         }),
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.PERFORMANCE_THRESHOLD,
+        entityId: profile.id,
+        before: null,
+        after: {
+          horseId: horse.id,
+          profileName: profile.profileName,
+          ruleVersion: profile.ruleVersion,
+          effectiveFrom: effectiveFrom.toISOString(),
+          effectiveTo: effectiveTo?.toISOString() ?? null,
+          limits: { ...profile.limits },
+        },
+        feature: AuditFeature.PERF_THRESHOLD,
+      });
+      return profile;
     });
     return toThresholdProfileResponse(saved);
   }

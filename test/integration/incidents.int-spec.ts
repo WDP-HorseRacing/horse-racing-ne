@@ -111,6 +111,7 @@ describe('Stable incidents (Postgres)', () => {
       ),
       events,
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -504,6 +505,86 @@ describe('Stable incidents (Postgres)', () => {
       expect((await incidents.get(manager, other.id)).status).toBe(
         IncidentStatus.OPEN,
       );
+    });
+  });
+
+  const auditsOf = (entityId: string) =>
+    dataSource.query<
+      Array<{
+        actor_id: string | null;
+        action: string;
+        entity_type: string;
+        before_data: Record<string, unknown> | null;
+        after_data: Record<string, unknown> | null;
+        reason: string | null;
+        feature: string | null;
+      }>
+    >(
+      `SELECT actor_id, action, entity_type, before_data, after_data, reason, feature
+         FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+      [entityId],
+    );
+
+  describe('audit trail', () => {
+    it('logs reporting and resolving an incident', async () => {
+      const reported = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Bỏ ăn một bữa',
+      });
+      await incidents.resolve(trainer, reported.id, {
+        resolution: 'Đã ăn lại',
+      });
+
+      const rows = await auditsOf(reported.id);
+      expect(
+        rows.map((row) => [
+          row.actor_id === groomId,
+          row.action,
+          row.before_data,
+          row.after_data,
+          row.reason,
+        ]),
+      ).toEqual([
+        [
+          true,
+          'CREATE',
+          null,
+          {
+            horseId: gio,
+            description: 'Bỏ ăn một bữa',
+            photoMediaId: null,
+            urgent: false,
+            examRequestId: null,
+          },
+          null,
+        ],
+        [
+          false,
+          'UPDATE',
+          { status: 'OPEN' },
+          { status: 'RESOLVED' },
+          'Đã ăn lại',
+        ],
+      ]);
+      expect(rows.every((row) => row.feature === 'INCIDENT')).toBe(true);
+    });
+
+    it('logs referring an incident to a vet with the exam request', async () => {
+      const reported = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Móng bị xước',
+      });
+
+      const referred = await incidents.refer(trainer, reported.id, {
+        urgent: true,
+      });
+
+      const rows = await auditsOf(reported.id);
+      expect(rows[1]).toMatchObject({
+        action: 'UPDATE',
+        before_data: { examRequestId: null },
+        after_data: { examRequestId: referred.examRequest?.id, urgent: true },
+      });
     });
   });
 });
