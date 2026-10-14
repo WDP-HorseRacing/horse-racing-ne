@@ -3,6 +3,7 @@ import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { SupplyStockMovementType } from '../enums/supply-stock-movement-type.enum';
 import { SupplyItemEntity } from './supply-item.entity';
+import { SupplyLotEntity } from './supply-lot.entity';
 import { SupplyRequestEntity } from './supply-request.entity';
 
 /**
@@ -33,6 +34,16 @@ export class SupplyStockMovementEntity extends BaseRecordEntity {
 
   @Column({ type: 'varchar', length: 32 })
   type!: SupplyStockMovementType;
+
+  @Column({ name: 'lot_id', type: 'uuid', nullable: true })
+  lotId!: string | null;
+
+  @ManyToOne(() => SupplyLotEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'lot_id',
+    foreignKeyConstraintName: 'supply_stock_movements_lot_fk',
+  })
+  lot!: SupplyLotEntity | null;
 
   @Column({ name: 'request_id', type: 'uuid', nullable: true })
   requestId!: string | null;

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -12,6 +13,7 @@ import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { SupplyItemListQueryDto } from '../../src/modules/supplies/dto/supply-item.dto';
 import { SupplyRequestListQueryDto } from '../../src/modules/supplies/dto/supply-request.dto';
 import { SupplyItemEntity } from '../../src/modules/supplies/entities/supply-item.entity';
+import { SupplyLotEntity } from '../../src/modules/supplies/entities/supply-lot.entity';
 import { SupplyRequestEntity } from '../../src/modules/supplies/entities/supply-request.entity';
 import { SupplyStockMovementEntity } from '../../src/modules/supplies/entities/supply-stock-movement.entity';
 import { SupplyCategory } from '../../src/modules/supplies/enums/supply-category.enum';
@@ -75,6 +77,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     items = new SupplyItemsService(
       dataSource.getRepository(SupplyItemEntity),
       dataSource.getRepository(SupplyStockMovementEntity),
+      dataSource.getRepository(SupplyLotEntity),
       stock,
       dataSource,
       new AuditService(),
@@ -97,67 +100,49 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     trainer = await actorOf(UserRole.HEAD_TRAINER);
   });
 
-  describe('items and stock counts', () => {
-    it('records the opening stock as a count adjustment', async () => {
+  describe('items and lots', () => {
+    it('opens the first lot from the opening stock', async () => {
       const item = await oats(40);
 
       expect(item.quantityOnHand).toBe(40);
       expect(item.lowStock).toBe(true);
-      expect(item.lastCountedAt).not.toBeNull();
       expect(await ledger(item.id)).toEqual([
-        { delta: '40.00', balance_after: '40.00', type: 'COUNT_ADJUST' },
+        { delta: '40.00', balance_after: '40.00', type: 'OPENING' },
+      ]);
+      expect(await items.lotsOf(manager, item.id)).toEqual([
+        expect.objectContaining({ quantity: 40, remaining: 40, unitPrice: 0 }),
       ]);
     });
 
-    it('writes no ledger row when the item starts empty', async () => {
+    it('takes the opening price when one is given', async () => {
+      const item = await items.create(manager, {
+        name: 'Cỏ khô',
+        category: SupplyCategory.FEED,
+        unit: 'kg',
+        quantityOnHand: 12,
+        openingUnitPrice: 8000,
+        reorderThreshold: 5,
+      });
+
+      const [lot] = await items.lotsOf(manager, item.id);
+      expect(lot).toMatchObject({
+        quantity: 12,
+        remaining: 12,
+        unitPrice: 8000,
+      });
+    });
+
+    it('writes no ledger row and no lot when the item starts empty', async () => {
       const item = await oats();
 
       expect(item.quantityOnHand).toBe(0);
-      expect(item.lastCountedAt).toBeNull();
       expect(await ledger(item.id)).toEqual([]);
+      expect(await items.lotsOf(manager, item.id)).toEqual([]);
     });
 
     it('rejects a duplicate name with 409', async () => {
       await oats();
       await expect(oats()).rejects.toBeInstanceOf(ConflictException);
-    });
-
-    it('records a count as the signed difference and keeps who counted', async () => {
-      const item = await oats(40);
-
-      const counted = await items.count(groom, item.id, {
-        quantityOnHand: 27.5,
-        note: 'Kiểm kê sáng',
-      });
-
-      expect(counted.quantityOnHand).toBe(27.5);
-      expect(counted.lastCounter?.id).toBeDefined();
-      const movements = await items.movementsOf(groom, item.id, page());
-      expect(movements.items[0]).toMatchObject({
-        delta: -12.5,
-        balanceAfter: 27.5,
-        type: SupplyStockMovementType.COUNT_ADJUST,
-        note: 'Kiểm kê sáng',
-      });
-    });
-
-    it('still shows who counted after that account is deleted', async () => {
-      const item = await oats(40);
-      await items.count(groom, item.id, { quantityOnHand: 30 });
-      await dataSource.query(
-        'UPDATE users SET deleted_at = now() WHERE keycloak_id = $1',
-        [groom.sub],
-      );
-
-      const shown = await items.get(manager, item.id);
-      const listed = await items.list(
-        manager,
-        Object.assign(new SupplyItemListQueryDto(), { page: 1, limit: 20 }),
-      );
-
-      expect(shown.lastCounter).not.toBeNull();
-      expect(listed.items[0].lastCounter?.id).toBe(shown.lastCounter?.id);
-      expect((await items.lowStock(manager))[0].lastCounter).not.toBeNull();
     });
 
     it('does not change the stock when editing the item', async () => {
@@ -240,7 +225,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         NotFoundException,
       );
       await expect(
-        items.count(groom, item.id, { quantityOnHand: 1 }),
+        items.use(groom, item.id, { quantity: 1 }),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect((await items.movementsOf(groom, item.id, page())).meta.total).toBe(
         1,
@@ -261,6 +246,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       });
       const fulfilled = await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.FULFILLED,
+        unitPrice: 20000,
       });
 
       expect(fulfilled.status).toBe(SupplyRequestStatus.FULFILLED);
@@ -285,6 +271,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       await expect(
         requests.updateStatus(manager, request.id, {
           status: SupplyRequestStatus.FULFILLED,
+          unitPrice: 20000,
         }),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(await ledger(item.id)).toHaveLength(1);
@@ -367,6 +354,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       );
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.FULFILLED,
+        unitPrice: 20000,
       });
       await expect(items.remove(manager, item.id)).resolves.toBeUndefined();
     });
@@ -392,7 +380,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     });
   });
 
-  it('keeps the ledger consistent when counts and restocks race', async () => {
+  it('keeps the ledger and the lots consistent when usages and restocks race', async () => {
     const item = await oats(10);
     const approved = await Promise.all(
       [1, 2, 3].map(async (quantity) => {
@@ -411,10 +399,11 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       ...approved.map((id) =>
         requests.updateStatus(manager, id, {
           status: SupplyRequestStatus.FULFILLED,
+          unitPrice: 20000,
         }),
       ),
-      items.count(groom, item.id, { quantityOnHand: 8 }),
-      items.count(trainer, item.id, { quantityOnHand: 9 }),
+      items.use(groom, item.id, { quantity: 2 }),
+      items.use(trainer, item.id, { quantity: 3 }),
     ]);
 
     const rows = await ledger(item.id);
@@ -425,6 +414,12 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     }
     const final = await items.get(manager, item.id);
     expect(Number(final.quantityOnHand)).toBeCloseTo(running, 2);
+    const remaining = (await items.lotsOf(manager, item.id)).reduce(
+      (sum, lot) => sum + lot.remaining,
+      0,
+    );
+    expect(remaining).toBeCloseTo(final.quantityOnHand, 2);
+    expect(final.quantityOnHand).toBe(11);
   });
 
   describe('audit trail', () => {
@@ -453,16 +448,14 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         [entityId],
       );
 
-    it('logs creating, editing, counting and deleting an item', async () => {
+    it('logs creating, editing, using and deleting an item', async () => {
       const managerId = await idOf(manager);
       const groomId = await idOf(groom);
       const item = await oats(40);
       await items.update(manager, item.id, { reorderThreshold: 60 });
       await items.update(manager, item.id, { unit: 'kg' });
-      await items.count(groom, item.id, {
-        quantityOnHand: 35,
-        note: 'Hao hụt',
-      });
+      await items.use(groom, item.id, { quantity: 5, note: 'Bữa sáng' });
+      const [lot] = await items.lotsOf(manager, item.id);
       await items.remove(manager, item.id);
 
       await expect(auditsOf(item.id)).resolves.toEqual([
@@ -476,6 +469,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
             category: SupplyCategory.FEED,
             unit: 'kg',
             quantityOnHand: 40,
+            openingUnitPrice: 0,
             reorderThreshold: 50,
           },
           reason: null,
@@ -495,8 +489,12 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
           action: 'UPDATE',
           entity_type: 'SUPPLY_ITEM',
           before_data: { quantityOnHand: 40 },
-          after_data: { quantityOnHand: 35 },
-          reason: 'Hao hụt',
+          after_data: {
+            quantityOnHand: 35,
+            used: 5,
+            lots: [{ lotId: lot.id, quantity: 5, unitPrice: 0 }],
+          },
+          reason: 'Bữa sáng',
           feature: 'SUPPLY_STOCK',
         },
         {
@@ -531,6 +529,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       });
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.FULFILLED,
+        unitPrice: 20000,
       });
 
       const rows = await auditsOf(request.id);
@@ -564,7 +563,11 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
           managerId,
           'UPDATE',
           { status: SupplyRequestStatus.APPROVED },
-          { status: SupplyRequestStatus.FULFILLED, quantity: 7 },
+          {
+            status: SupplyRequestStatus.FULFILLED,
+            quantity: 7,
+            unitPrice: 20000,
+          },
         ],
       ]);
       expect(
@@ -594,6 +597,181 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         after_data: { status: SupplyRequestStatus.REJECTED },
         reason: 'Kho tổng còn đủ',
       });
+    });
+  });
+
+  describe('unit price', () => {
+    it('keeps the price paid on each lot', async () => {
+      const item = await oats(10);
+      const fulfil = async (quantity: number, unitPrice: number) => {
+        const request = await requests.create(groom, {
+          itemId: item.id,
+          quantity,
+        });
+        await requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.APPROVED,
+        });
+        await requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          unitPrice,
+        });
+      };
+
+      await fulfil(100, 20000);
+      await items.receive(manager, item.id, { quantity: 50, unitPrice: 25000 });
+
+      const movements = await items.movementsOf(manager, item.id, page());
+      expect(
+        movements.items.map((row) => [row.type, row.delta, row.unitPrice]),
+      ).toEqual([
+        [SupplyStockMovementType.RESTOCK, 50, 25000],
+        [SupplyStockMovementType.RESTOCK, 100, 20000],
+        [SupplyStockMovementType.OPENING, 10, 0],
+      ]);
+      expect(
+        (await items.lotsOf(manager, item.id)).map((lot) => [
+          lot.quantity,
+          lot.unitPrice,
+        ]),
+      ).toEqual([
+        [10, 0],
+        [100, 20000],
+        [50, 25000],
+      ]);
+    });
+
+    it('refuses to fulfil a request without the price paid', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, {
+        itemId: item.id,
+        quantity: 5,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(0);
+    });
+  });
+
+  describe('receipts and usages', () => {
+    it('adds a direct receipt with the price of the moment and logs it', async () => {
+      const item = await items.create(manager, {
+        name: 'Cám',
+        category: SupplyCategory.FEED,
+        unit: 'kg',
+        reorderThreshold: 5,
+      });
+
+      const received = await items.receive(manager, item.id, {
+        quantity: 80,
+        unitPrice: 12000,
+        note: 'Mua đợt 1',
+      });
+
+      expect(received.quantityOnHand).toBe(80);
+      const [line] = (await items.movementsOf(manager, item.id, page())).items;
+      expect(line).toMatchObject({
+        type: SupplyStockMovementType.RESTOCK,
+        delta: 80,
+        balanceAfter: 80,
+        unitPrice: 12000,
+        amount: 960000,
+        requestId: null,
+        note: 'Mua đợt 1',
+      });
+      const [audit] = await dataSource.query<
+        Array<{ before_data: unknown; after_data: unknown; reason: string }>
+      >(
+        `SELECT before_data, after_data, reason FROM audit_logs
+          WHERE entity_id = $1 AND feature = 'SUPPLY_STOCK'`,
+        [item.id],
+      );
+      expect(audit).toEqual({
+        before_data: { quantityOnHand: 0 },
+        after_data: {
+          quantityOnHand: 80,
+          received: 80,
+          unitPrice: 12000,
+          lotId: line.lotId,
+        },
+        reason: 'Mua đợt 1',
+      });
+    });
+
+    it('takes stock out at once and refuses more than what is left', async () => {
+      const item = await oats(40);
+
+      const used = await items.use(groom, item.id, {
+        quantity: 2.5,
+        note: 'Bữa sáng',
+      });
+
+      expect(used.quantityOnHand).toBe(37.5);
+      const [line] = (await items.movementsOf(manager, item.id, page())).items;
+      expect(line).toMatchObject({
+        type: SupplyStockMovementType.USAGE,
+        delta: -2.5,
+        balanceAfter: 37.5,
+        unitPrice: 0,
+        amount: 0,
+        note: 'Bữa sáng',
+      });
+      await expect(
+        items.use(groom, item.id, { quantity: 38 }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(37.5);
+    });
+
+    it('takes from the oldest lot first and splits across lots', async () => {
+      const item = await items.create(manager, {
+        name: 'Băng gạc',
+        category: SupplyCategory.EQUIPMENT,
+        unit: 'cuộn',
+        reorderThreshold: 5,
+      });
+      await items.receive(manager, item.id, { quantity: 20, unitPrice: 20000 });
+      await items.receive(manager, item.id, { quantity: 30, unitPrice: 15000 });
+
+      await items.use(groom, item.id, { quantity: 25 });
+
+      expect(
+        (await items.lotsOf(manager, item.id)).map((lot) => [
+          lot.unitPrice,
+          lot.remaining,
+        ]),
+      ).toEqual([
+        [20000, 0],
+        [15000, 25],
+      ]);
+      const usages = (await items.movementsOf(manager, item.id, page())).items
+        .filter((row) => row.type === SupplyStockMovementType.USAGE)
+        .map((row) => [row.delta, row.unitPrice, row.amount, row.balanceAfter]);
+      expect(usages).toEqual([
+        [-5, 15000, -75000, 25],
+        [-20, 20000, -400000, 30],
+      ]);
+    });
+
+    it('answers 404 to a receipt or a lot list for a missing item, and to a receipt for a deleted one', async () => {
+      const item = await oats(5);
+      await items.remove(manager, item.id);
+
+      await expect(
+        items.receive(manager, item.id, { quantity: 1, unitPrice: 1000 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        items.receive(manager, randomUUID(), { quantity: 1, unitPrice: 1000 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(items.lotsOf(manager, randomUUID())).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(items.lotsOf(manager, item.id)).resolves.toHaveLength(1);
     });
   });
 });

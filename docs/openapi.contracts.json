@@ -6461,9 +6461,9 @@
         ]
       }
     },
-    "/api/v1/supplies/items/{id}/stock-counts": {
+    "/api/v1/supplies/items/{id}/receipts": {
       "post": {
-        "operationId": "SupplyItemsController_count",
+        "operationId": "SupplyItemsController_receive",
         "parameters": [
           {
             "name": "id",
@@ -6479,7 +6479,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SupplyStockCountDto"
+                "$ref": "#/components/schemas/SupplyReceiptDto"
               }
             }
           }
@@ -6501,7 +6501,92 @@
             "bearer": []
           }
         ],
-        "summary": "Kiểm kê: ghi số đếm thực tế của vật tư",
+        "summary": "Nhập hàng trực tiếp vào kho, không qua đề xuất",
+        "tags": [
+          "supplies"
+        ]
+      }
+    },
+    "/api/v1/supplies/items/{id}/usages": {
+      "post": {
+        "operationId": "SupplyItemsController_use",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplyUsageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyItemResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lấy vật tư ra dùng, trừ tồn ngay",
+        "tags": [
+          "supplies"
+        ]
+      }
+    },
+    "/api/v1/supplies/items/{id}/lots": {
+      "get": {
+        "operationId": "SupplyItemsController_lots",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupplyLotResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Các lô của vật tư, lô nhập sớm nhất trước",
         "tags": [
           "supplies"
         ]
@@ -15213,27 +15298,6 @@
           "stallId"
         ]
       },
-      "SupplyUserSummaryResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "fullName": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          }
-        },
-        "required": [
-          "id",
-          "fullName",
-          "email"
-        ]
-      },
       "SupplyItemResponseDto": {
         "type": "object",
         "properties": {
@@ -15267,22 +15331,6 @@
           "lowStock": {
             "type": "boolean",
             "description": "Số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu"
-          },
-          "lastCountedAt": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Lần kiểm kê gần nhất"
-          },
-          "lastCounter": {
-            "nullable": true,
-            "description": "Người kiểm kê gần nhất",
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
-              }
-            ]
           },
           "deletedAt": {
             "type": "object",
@@ -15357,7 +15405,14 @@
             "minimum": 0,
             "maximum": 1000000000,
             "default": 0,
-            "description": "Số tồn ban đầu; khác 0 thì ghi một dòng sổ kiểm kê"
+            "description": "Số tồn ban đầu; khác 0 thì tạo lô đầu tiên"
+          },
+          "openingUnitPrice": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "default": 0,
+            "description": "Đơn giá (VND) của lô tồn ban đầu; bỏ trống là 0"
           },
           "reorderThreshold": {
             "type": "number",
@@ -15404,23 +15459,103 @@
           }
         }
       },
-      "SupplyStockCountDto": {
+      "SupplyReceiptDto": {
         "type": "object",
         "properties": {
-          "quantityOnHand": {
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1000000000,
+            "description": "Số lượng nhập kho"
+          },
+          "unitPrice": {
             "type": "number",
             "minimum": 0,
             "maximum": 1000000000,
-            "description": "Số đếm thực tế"
+            "description": "Đơn giá (VND) thực trả cho một đơn vị của lần nhập này"
           },
           "note": {
             "type": "string",
             "maxLength": 500,
-            "description": "Ghi chú kiểm kê"
+            "description": "Ghi chú lần nhập"
           }
         },
         "required": [
-          "quantityOnHand"
+          "quantity",
+          "unitPrice"
+        ]
+      },
+      "SupplyUsageDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1000000000,
+            "description": "Số lượng lấy ra dùng"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Ghi chú lần lấy"
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      },
+      "SupplyLotResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Số lượng nhập của lô"
+          },
+          "remaining": {
+            "type": "number",
+            "description": "Số còn lại trong lô"
+          },
+          "unitPrice": {
+            "type": "number",
+            "description": "Đơn giá (VND) của lô"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Thời điểm nhập lô"
+          }
+        },
+        "required": [
+          "id",
+          "quantity",
+          "remaining",
+          "unitPrice",
+          "createdAt"
+        ]
+      },
+      "SupplyUserSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email"
         ]
       },
       "SupplyStockMovementResponseDto": {
@@ -15445,9 +15580,27 @@
           "type": {
             "type": "string",
             "enum": [
+              "OPENING",
               "RESTOCK",
+              "USAGE",
               "COUNT_ADJUST"
             ]
+          },
+          "lotId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Lô của dòng sổ; null với dòng ghi trước khi có lô"
+          },
+          "unitPrice": {
+            "type": "number",
+            "nullable": true,
+            "description": "Đơn giá (VND) của lô; null với dòng ghi trước khi có lô"
+          },
+          "amount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Tiền của dòng sổ (VND) = chênh lệch × đơn giá lô, âm là xuất; null với dòng ghi trước khi có lô"
           },
           "requestId": {
             "type": "string",
@@ -15473,6 +15626,9 @@
           "delta",
           "balanceAfter",
           "type",
+          "lotId",
+          "unitPrice",
+          "amount",
           "creator",
           "createdAt"
         ]
@@ -15664,6 +15820,12 @@
           "reason": {
             "type": "string",
             "description": "Required when status is REJECTED"
+          },
+          "unitPrice": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "description": "Đơn giá (VND) thực trả cho một đơn vị của lần cấp này; bắt buộc khi status là FULFILLED"
           }
         },
         "required": [

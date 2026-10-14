@@ -1,7 +1,11 @@
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
-import { CreateSupplyItemDto, UpdateSupplyItemDto } from './supply-item.dto';
+import {
+  CreateSupplyItemDto,
+  SupplyReceiptDto,
+  UpdateSupplyItemDto,
+} from './supply-item.dto';
 import {
   EditSupplyRequestDto,
   UpdateSupplyRequestStatusDto,
@@ -51,5 +55,32 @@ describe('EditSupplyRequestDto', () => {
     await expect(
       failedFields(EditSupplyRequestDto, { quantity: null, note: null }),
     ).resolves.toEqual(['quantity', 'note']);
+  });
+});
+
+describe('supplies DTO unit price', () => {
+  it('requires a whole VND price on a receipt', async () => {
+    await expect(
+      failedFields(SupplyReceiptDto, { quantity: 10, unitPrice: 20000 }),
+    ).resolves.toEqual([]);
+    await expect(
+      failedFields(SupplyReceiptDto, { quantity: 10 }),
+    ).resolves.toEqual(['unitPrice']);
+    await expect(
+      failedFields(SupplyReceiptDto, { quantity: 10, unitPrice: 1.5 }),
+    ).resolves.toEqual(['unitPrice']);
+  });
+
+  it('requires the price only when fulfilling a request', async () => {
+    await expect(
+      failedFields(UpdateSupplyRequestStatusDto, {
+        status: SupplyRequestStatus.FULFILLED,
+      }),
+    ).resolves.toEqual(['unitPrice']);
+    await expect(
+      failedFields(UpdateSupplyRequestStatusDto, {
+        status: SupplyRequestStatus.APPROVED,
+      }),
+    ).resolves.toEqual([]);
   });
 });

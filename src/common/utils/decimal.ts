@@ -80,3 +80,20 @@ export function addDecimal(left: string, right: string, scale: number): string {
 export function compareDecimal(left: string, right: string): -1 | 0 | 1 {
   return new ExactDecimal(left).cmp(right) as -1 | 0 | 1;
 }
+
+/**
+ * Tích của hai số thập phân, định dạng đúng scale chữ số thập phân, làm tròn nửa xa số 0
+ *
+ * @param left Thừa số thứ nhất, dạng chuỗi
+ * @param right Thừa số thứ hai, dạng chuỗi
+ * @param scale Số chữ số thập phân của kết quả
+ * @returns Tích dạng chuỗi, vd "50000"
+ * @throws Error Nếu một trong hai giá trị không phải số thập phân
+ */
+export function multiplyDecimal(
+  left: string,
+  right: string,
+  scale: number,
+): string {
+  return new ExactDecimal(left).times(right).toFixed(scale);
+}

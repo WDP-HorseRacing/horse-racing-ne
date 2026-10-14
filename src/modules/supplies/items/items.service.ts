@@ -22,16 +22,21 @@ import {
   SupplyItemListQueryDto,
   SupplyItemPageResponseDto,
   SupplyItemResponseDto,
-  SupplyStockCountDto,
+  SupplyLotResponseDto,
+  SupplyReceiptDto,
+  SupplyUsageDto,
   SupplyStockMovementPageResponseDto,
   UpdateSupplyItemDto,
 } from '../dto/supply-item.dto';
 import { SupplyItemEntity } from '../entities/supply-item.entity';
+import { SupplyLotEntity } from '../entities/supply-lot.entity';
 import { SupplyRequestEntity } from '../entities/supply-request.entity';
 import { SupplyStockMovementEntity } from '../entities/supply-stock-movement.entity';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
+import { SupplyStockMovementType } from '../enums/supply-stock-movement-type.enum';
 import {
   toSupplyItemResponse,
+  toSupplyLotResponse,
   toSupplyStockMovementResponse,
 } from '../mappers/supply-item.mapper';
 import {
@@ -43,10 +48,9 @@ const SUPPLY_ITEM_NAME_TAKEN: FieldError = {
   field: 'name',
   message: 'Tên vật tư đã tồn tại',
 };
-const ITEM_RELATIONS = { lastCounter: true } as const;
 
 /**
- * Danh mục vật tư của kho chung CLB: thêm, sửa, xóa, kiểm kê và sổ nhập xuất
+ * Danh mục vật tư của kho chung CLB: thêm, sửa, xóa, nhập hàng, xuất dùng, lô và sổ nhập xuất
  */
 @Injectable()
 export class SupplyItemsService {
@@ -55,6 +59,8 @@ export class SupplyItemsService {
     private readonly items: Repository<SupplyItemEntity>,
     @InjectRepository(SupplyStockMovementEntity)
     private readonly movements: Repository<SupplyStockMovementEntity>,
+    @InjectRepository(SupplyLotEntity)
+    private readonly lots: Repository<SupplyLotEntity>,
     private readonly stock: SupplyStockService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
@@ -80,7 +86,6 @@ export class SupplyItemsService {
         ...(query.category ? { category: query.category } : {}),
         ...(search ? { name: ILike(containsPattern(search)) } : {}),
       },
-      relations: ITEM_RELATIONS,
       withDeleted: true,
       order: { name: 'ASC' },
       skip: query.skip,
@@ -106,7 +111,6 @@ export class SupplyItemsService {
     const rows = await this.items
       .createQueryBuilder('item')
       .withDeleted()
-      .leftJoinAndSelect('item.lastCounter', 'lastCounter')
       .where('item.deletedAt IS NULL')
       .andWhere('item.quantityOnHand <= item.reorderThreshold')
       .orderBy('item.name', 'ASC')
@@ -115,12 +119,12 @@ export class SupplyItemsService {
   }
 
   /**
-   * Thêm vật tư; số tồn ban đầu khác 0 thì ghi một dòng sổ kiểm kê
+   * Thêm vật tư; số tồn ban đầu khác 0 thì tạo lô đầu tiên với dòng sổ OPENING
    *
-   * - Ghi nhật ký kèm tên, loại, đơn vị, số tồn ban đầu, ngưỡng báo thiếu
+   * - Ghi nhật ký kèm tên, loại, đơn vị, số tồn ban đầu, đơn giá lô đầu, ngưỡng báo thiếu
    *
    * @param actor Thông tin danh tính từ Access Token
-   * @param body Tên, loại, đơn vị, số tồn ban đầu, ngưỡng báo thiếu
+   * @param body Tên, loại, đơn vị, số tồn ban đầu, đơn giá lô đầu, ngưỡng báo thiếu
    * @returns Promise trả về vật tư vừa thêm
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws ConflictException Nếu tên vật tư đã tồn tại
@@ -142,14 +146,16 @@ export class SupplyItemsService {
               reorderThreshold: body.reorderThreshold.toString(),
             }),
           );
+          const openingUnitPrice = body.openingUnitPrice ?? 0;
           if (body.quantityOnHand) {
-            await this.stock.recordCount(
-              manager,
-              item,
-              body.quantityOnHand.toString(),
-              caller.id,
-              null,
-            );
+            await this.stock.addLot(manager, item, {
+              quantity: body.quantityOnHand.toString(),
+              unitPrice: openingUnitPrice.toString(),
+              type: SupplyStockMovementType.OPENING,
+              actorId: caller.id,
+              requestId: null,
+              note: null,
+            });
           }
           await this.auditService.record(manager, {
             actorId: caller.id,
@@ -162,6 +168,7 @@ export class SupplyItemsService {
               category: item.category,
               unit: item.unit,
               quantityOnHand: Number(item.quantityOnHand),
+              openingUnitPrice,
               reorderThreshold: Number(item.reorderThreshold),
             },
             feature: AuditFeature.SUPPLY_ITEM,
@@ -186,7 +193,6 @@ export class SupplyItemsService {
     await currentUserForActor(this.dataSource.manager, actor);
     const row = await this.items.findOne({
       where: { id, deletedAt: IsNull() },
-      relations: ITEM_RELATIONS,
       withDeleted: true,
     });
     if (!row) throw new NotFoundException(SUPPLY_ITEM_NOT_FOUND);
@@ -283,31 +289,84 @@ export class SupplyItemsService {
   }
 
   /**
-   * Kiểm kê: ghi số đếm thực tế, phần chênh lệch vào sổ nhập xuất
+   * Club Manager nhập hàng trực tiếp, không qua đề xuất
    *
-   * - Ghi nhật ký số tồn trước và sau, ghi chú kiểm kê làm lý do
+   * - Tạo một lô với đơn giá của lần nhập, cộng tồn, ghi dòng sổ RESTOCK
+   * - Ghi nhật ký số tồn trước và sau, ghi chú làm lý do
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của vật tư
-   * @param body Số đếm thực tế và ghi chú
-   * @returns Promise trả về vật tư sau khi kiểm kê
+   * @param body Số lượng nhập, đơn giá và ghi chú
+   * @returns Promise trả về vật tư sau khi nhập
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có vật tư hoặc vật tư đã xóa
    */
-  async count(
+  async receive(
     actor: Actor,
     id: string,
-    body: SupplyStockCountDto,
+    body: SupplyReceiptDto,
+  ): Promise<SupplyItemResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    await this.dataSource.transaction(async (manager) => {
+      const note = body.note?.trim() || null;
+      const { previousQuantity, item, lot } = await this.stock.restock(
+        manager,
+        id,
+        {
+          quantity: body.quantity.toString(),
+          unitPrice: body.unitPrice.toString(),
+          actorId: caller.id,
+          requestId: null,
+          note,
+        },
+      );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.SUPPLY_ITEM,
+        entityId: id,
+        before: { quantityOnHand: Number(previousQuantity) },
+        after: {
+          quantityOnHand: Number(item.quantityOnHand),
+          received: body.quantity,
+          unitPrice: body.unitPrice,
+          lotId: lot.id,
+        },
+        reason: note,
+        feature: AuditFeature.SUPPLY_STOCK,
+      });
+    });
+    return this.get(actor, id);
+  }
+
+  /**
+   * Lấy vật tư ra dùng: trừ tồn ngay theo nhập trước xuất trước, không cần duyệt
+   *
+   * - Trừ các lô nhập sớm nhất trước; mỗi lô bị trừ ghi một dòng sổ USAGE
+   * - Ghi nhật ký số tồn trước và sau, phần lấy từ từng lô, ghi chú làm lý do
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của vật tư
+   * @param body Số lượng lấy và ghi chú
+   * @returns Promise trả về vật tư sau khi trừ tồn
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws NotFoundException Nếu không có vật tư hoặc vật tư đã xóa
+   * @throws ConflictException Nếu số lượng lấy lớn hơn số tồn
+   */
+  async use(
+    actor: Actor,
+    id: string,
+    body: SupplyUsageDto,
   ): Promise<SupplyItemResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
       const item = await this.stock.lockItem(manager, id);
       const before = Number(item.quantityOnHand);
       const note = body.note?.trim() || null;
-      await this.stock.recordCount(
+      const { item: saved, takings } = await this.stock.consume(
         manager,
         item,
-        body.quantityOnHand.toString(),
+        body.quantity.toString(),
         caller.id,
         note,
       );
@@ -317,7 +376,15 @@ export class SupplyItemsService {
         entityType: AuditEntityType.SUPPLY_ITEM,
         entityId: id,
         before: { quantityOnHand: before },
-        after: { quantityOnHand: Number(item.quantityOnHand) },
+        after: {
+          quantityOnHand: Number(saved.quantityOnHand),
+          used: body.quantity,
+          lots: takings.map((taking) => ({
+            lotId: taking.lotId,
+            quantity: Number(taking.quantity),
+            unitPrice: Number(taking.unitPrice),
+          })),
+        },
         reason: note,
         feature: AuditFeature.SUPPLY_STOCK,
       });
@@ -350,7 +417,7 @@ export class SupplyItemsService {
     if (!exists) throw new NotFoundException(SUPPLY_ITEM_NOT_FOUND);
     const [rows, total] = await this.movements.findAndCount({
       where: { itemId: id },
-      relations: { creator: true },
+      relations: { creator: true, lot: true },
       withDeleted: true,
       order: { createdAt: 'DESC', id: 'DESC' },
       skip: query.skip,
@@ -362,6 +429,32 @@ export class SupplyItemsService {
       query.page,
       query.limit,
     );
+  }
+
+  /**
+   * Liệt kê các lô của một vật tư theo thứ tự nhập, lô nhập sớm nhất trước
+   *
+   * - Vật tư đã xóa vẫn xem được lô
+   * - Lô đã hết hàng vẫn hiện với số còn 0
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của vật tư
+   * @returns Promise trả về các lô của vật tư
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws NotFoundException Nếu không có vật tư
+   */
+  async lotsOf(actor: Actor, id: string): Promise<SupplyLotResponseDto[]> {
+    await currentUserForActor(this.dataSource.manager, actor);
+    const exists = await this.items.exists({
+      where: { id },
+      withDeleted: true,
+    });
+    if (!exists) throw new NotFoundException(SUPPLY_ITEM_NOT_FOUND);
+    const rows = await this.lots.find({
+      where: { itemId: id },
+      order: { createdAt: 'ASC', id: 'ASC' },
+    });
+    return rows.map(toSupplyLotResponse);
   }
 }
 

@@ -1,6 +1,6 @@
 # Flow 4 — Chăm sóc chuồng trại và dinh dưỡng hằng ngày
 
-> Cập nhật: 12/10/2026
+> Cập nhật: 14/10/2026
 
 ## I. Đề bài liên quan
 
@@ -13,6 +13,10 @@
 - Theo dõi danh sách vật tư (Thức ăn, Thuốc, Dụng cụ) để đề xuất bổ sung.
 
 **CLUB MANAGER**: quản lý danh mục vật tư y tế và thức ăn.
+
+**Cách hiểu đề bài**
+
+- "Theo dõi danh sách vật tư tại khu vực phụ trách": CLB dùng một kho chung, nên khu vực phụ trách của Groom là toàn bộ kho chung. Groom xem số tồn, các món sắp hết và gửi đề xuất bổ sung.
 
 ## II. Mô hình
 
@@ -36,7 +40,8 @@ SỰ CỐ                             Groom báo, HT khu đóng
 | Khái niệm | Bảng | Ai tạo, sửa | Ghi chú |
 |---|---|---|---|
 | Vật tư | `supply_items` | Club Manager | Vừa là danh mục vừa giữ số tồn chung CLB. Loại: `FEED`, `SUPPLEMENT`, `MEDICINE`, `EQUIPMENT`. |
-| Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Ghi khi cấp theo đề xuất (`RESTOCK`) hoặc kiểm kê (`COUNT_ADJUST`). Không sửa, không xóa. |
+| Lô vật tư | `supply_lots` | Hệ thống | Một lần hàng vào kho: số nhập, số còn, đơn giá. Xuất dùng trừ lô nhập sớm nhất trước. |
+| Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Mỗi dòng gắn một lô: tồn ban đầu (`OPENING`), nhập hàng (`RESTOCK`), xuất dùng (`USAGE`). Không sửa, không xóa. Dòng ghi trước khi có lô (`COUNT_ADJUST` và `RESTOCK` cũ) không gắn lô, không có tiền. |
 | Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`. |
 | Khẩu phần | `feeding_plans`, `feeding_plan_items` | Head Trainer của khu | Mỗi ngựa tối đa một bản `ACTIVE`; bản cũ giữ lại làm lịch sử. |
 | Loại việc | `care_task_types` | Club Manager | Seed sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). |
@@ -53,13 +58,16 @@ SỰ CỐ                             Groom báo, HT khu đóng
 1. Kho chung cả CLB, không chia theo khu.
 2. Tên vật tư duy nhất trong CLB (không tính bản đã xóa). Số tồn và ngưỡng báo thiếu không âm.
 3. Chỉ Club Manager thêm, sửa (tên, loại, đơn vị, ngưỡng), xóa mềm vật tư. Sửa vật tư không đổi được số tồn.
-4. Số tồn chỉ đổi qua hai đường, và mỗi lần đổi ghi một dòng sổ (số chênh lệch, số tồn sau, người làm, ghi chú) trong cùng transaction:
-   1. Kiểm kê: Club Manager, Head Trainer hoặc Groom nhập số đếm thực tế; hệ thống ghi chênh lệch `COUNT_ADJUST` và lưu lần kiểm kê gần nhất (ai, lúc nào). Thêm vật tư có số tồn ban đầu khác 0 cũng ghi một dòng `COUNT_ADJUST`.
-   2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp, cộng số lượng đề xuất vào tồn và ghi `RESTOCK` gắn mã đề xuất.
+4. Kho quản lý theo lô, nhập trước xuất trước. Số tồn của vật tư luôn bằng tổng số còn của các lô. Số tồn chỉ đổi qua các đường sau, và mỗi lần đổi ghi dòng sổ (số chênh lệch, số tồn sau, lô, người làm, ghi chú) trong cùng transaction:
+   1. Tồn ban đầu: thêm vật tư có số tồn khác 0 thì tạo lô đầu tiên, đơn giá do Club Manager nhập (bỏ trống là 0); ghi `OPENING`.
+   2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp kèm đơn giá thực trả; tạo một lô, ghi `RESTOCK` gắn mã đề xuất.
+   3. Nhập hàng trực tiếp: Club Manager nhập số lượng mua về và đơn giá, không cần đề xuất; tạo một lô, ghi `RESTOCK` không gắn đề xuất.
+   4. Xuất dùng: Club Manager, Head Trainer, bác sĩ hoặc Groom lấy hàng ra dùng thì ghi số lượng và ghi chú; tồn trừ ngay, không cần duyệt. Hệ thống trừ các lô còn hàng nhập sớm nhất trước, mỗi lô bị trừ ghi một dòng `USAGE`. Lấy nhiều hơn số tồn: 409.
 5. Sắp hết: số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu.
-6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc.
+6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Không có kiểm kê.
 7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối hoặc cấp xong trước.
 8. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
+9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE`; giá trị tồn kho = tổng số còn × đơn giá của các lô. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
 
 ### 2. Đề xuất bổ sung
 
@@ -132,9 +140,10 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
 
 | Thao tác | CM | HT | VET | GROOM | OWNER |
 |---|---|---|---|---|---|
-| Xem vật tư, sắp hết, sổ nhập xuất | Có | Có | Có | Có | Không |
+| Xem vật tư, sắp hết, lô, sổ nhập xuất | Có | Có | Có | Có | Không |
 | Thêm, sửa, xóa vật tư | Có | Không | Không | Không | Không |
-| Kiểm kê | Có | Có | Không | Có | Không |
+| Nhập hàng trực tiếp | Có | Không | Không | Không | Không |
+| Xuất dùng | Có | Có | Có | Có | Không |
 | Gửi, sửa đề xuất | Không | Của mình | Không | Của mình | Không |
 | Xem đề xuất | Tất cả | Của mình | Không | Của mình | Không |
 | Duyệt, từ chối, cấp | Có | Không | Không | Không | Không |
@@ -157,16 +166,18 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | GET | `/supplies/items` | CM, HT, VET, GROOM | Danh sách vật tư `?category&search&page&limit` |
 | GET | `/supplies/items/low-stock` | CM, HT, VET, GROOM | Vật tư sắp hết |
 | GET | `/supplies/items/:id` | CM, HT, VET, GROOM | Một vật tư |
-| POST | `/supplies/items` | CM | Thêm `{ name, category, unit, quantityOnHand?, reorderThreshold }` |
+| POST | `/supplies/items` | CM | Thêm `{ name, category, unit, quantityOnHand?, openingUnitPrice?, reorderThreshold }` |
 | PATCH | `/supplies/items/:id` | CM | Sửa tên, loại, đơn vị, ngưỡng |
 | DELETE | `/supplies/items/:id` | CM | Xóa mềm |
-| POST | `/supplies/items/:id/stock-counts` | CM, HT, GROOM | Kiểm kê `{ quantityOnHand, note? }` |
-| GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư, mới nhất trước `?page&limit` |
+| POST | `/supplies/items/:id/receipts` | CM | Nhập hàng trực tiếp `{ quantity, unitPrice, note? }` |
+| POST | `/supplies/items/:id/usages` | CM, HT, VET, GROOM | Xuất dùng `{ quantity, note? }` |
+| GET | `/supplies/items/:id/lots` | CM, HT, VET, GROOM | Các lô của vật tư (số nhập, số còn, đơn giá), lô nhập sớm nhất trước |
+| GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư kèm lô, đơn giá, tiền của dòng; mới nhất trước `?page&limit` |
 | GET | `/supplies/requests` | CM (tất cả), HT, GROOM (của mình) | Danh sách đề xuất `?status&page&limit` |
 | GET | `/supplies/requests/:id` | như trên | Một đề xuất |
 | POST | `/supplies/requests` | HT, GROOM | Gửi `{ itemId, quantity, note? }` |
 | PATCH | `/supplies/requests/:id` | Người gửi | Sửa đề xuất `PENDING` |
-| PATCH | `/supplies/requests/:id/status` | CM | `{ status: APPROVED \| REJECTED \| FULFILLED, reason? }` |
+| PATCH | `/supplies/requests/:id/status` | CM | `{ status: APPROVED \| REJECTED \| FULFILLED, reason?, unitPrice? }`; `unitPrice` bắt buộc khi FULFILLED |
 | GET | `/horses/:horseId/feeding-plans` | CM, HT, VET, GROOM | Khẩu phần của ngựa `?status` (GROOM chỉ nhận bản `ACTIVE`) |
 | POST | `/feeding-plans` | HT | Lập nháp `{ horseIds, items? \| copyFromPlanId?, note? }` |
 | GET | `/feeding-plans/:id` | theo quyền xem | Một khẩu phần |
@@ -193,7 +204,7 @@ Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 ## Phụ lục 1: Thay đổi API cần báo FE
 
 1. Bỏ các route stub cũ: `POST /horses/:horseId/feeding-plans`, `POST /horses/:horseId/checklists`, `PATCH /checklists/:id/complete`, `PATCH /incidents/:id/status`.
-2. `PATCH /supplies/items/:id` không còn đổi số tồn; dùng kiểm kê.
+2. `PATCH /supplies/items/:id` không đổi số tồn; số tồn đổi qua nhập hàng hoặc xuất dùng.
 3. Sự cố bỏ trạng thái `IN_REVIEW`.
 4. Groom gọi `POST /horses/:horseId/exam-requests` nhận 403; dùng `POST /incidents`.
 5. Loại vật tư mới `SUPPLEMENT`; `purpose` upload mới `INCIDENT_PHOTO`.

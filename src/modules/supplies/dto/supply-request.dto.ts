@@ -3,6 +3,7 @@ import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsEnum,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -10,6 +11,7 @@ import {
   IsUUID,
   Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -18,6 +20,7 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
 import {
+  MAX_UNIT_PRICE_VND,
   SupplyItemResponseDto,
   SupplyUserSummaryResponseDto,
 } from './supply-item.dto';
@@ -87,6 +90,21 @@ export class UpdateSupplyRequestStatusDto {
   @MinLength(1)
   @MaxLength(500)
   reason?: string;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: MAX_UNIT_PRICE_VND,
+    description:
+      'Đơn giá (VND) thực trả cho một đơn vị của lần cấp này; bắt buộc khi status là FULFILLED',
+  })
+  @ValidateIf(
+    (request: { status?: SupplyRequestStatus }) =>
+      request.status === SupplyRequestStatus.FULFILLED,
+  )
+  @IsInt()
+  @Min(0)
+  @Max(MAX_UNIT_PRICE_VND)
+  unitPrice?: number;
 }
 
 export class SupplyRequestListQueryDto extends PaginationQueryDto {

@@ -1,6 +1,7 @@
 import {
   addDecimal,
   compareDecimal,
+  multiplyDecimal,
   averageDecimal,
   roundDecimal,
   subtractDecimal,
@@ -59,4 +60,18 @@ describe('compareDecimal', () => {
   ])('compares %s with %s as %d', (left, right, expected) => {
     expect(compareDecimal(left, right)).toBe(expected);
   });
+});
+
+describe('multiplyDecimal', () => {
+  it.each([
+    ['2.50', '20000', 0, '50000'],
+    ['-0.25', '15000', 0, '-3750'],
+    ['0.33', '10', 0, '3'],
+    ['0.35', '10', 0, '4'],
+  ])(
+    'multiplies %s by %s at scale %d as %s',
+    (left, right, scale, expected) => {
+      expect(multiplyDecimal(left, right, scale)).toBe(expected);
+    },
+  );
 });

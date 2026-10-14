@@ -27,8 +27,10 @@ import {
   SupplyItemListQueryDto,
   SupplyItemPageResponseDto,
   SupplyItemResponseDto,
-  SupplyStockCountDto,
+  SupplyLotResponseDto,
+  SupplyReceiptDto,
   SupplyStockMovementPageResponseDto,
+  SupplyUsageDto,
   UpdateSupplyItemDto,
 } from '../dto/supply-item.dto';
 import { SupplyItemsService } from './items.service';
@@ -117,16 +119,36 @@ export class SupplyItemsController {
     return this.items.remove(actor, id);
   }
 
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.GROOM])
-  @Post('items/:id/stock-counts')
-  @ApiOperation({ summary: 'Kiểm kê: ghi số đếm thực tế của vật tư' })
+  @Access([UserRole.CLUB_MANAGER])
+  @Post('items/:id/receipts')
+  @ApiOperation({ summary: 'Nhập hàng trực tiếp vào kho, không qua đề xuất' })
   @ApiCreatedResponse({ type: SupplyItemResponseDto })
-  count(
+  receive(
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: SupplyStockCountDto,
+    @Body() body: SupplyReceiptDto,
   ) {
-    return this.items.count(actor, id, body);
+    return this.items.receive(actor, id, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Post('items/:id/usages')
+  @ApiOperation({ summary: 'Lấy vật tư ra dùng, trừ tồn ngay' })
+  @ApiCreatedResponse({ type: SupplyItemResponseDto })
+  use(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: SupplyUsageDto,
+  ) {
+    return this.items.use(actor, id, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Get('items/:id/lots')
+  @ApiOperation({ summary: 'Các lô của vật tư, lô nhập sớm nhất trước' })
+  @ApiOkResponse({ type: [SupplyLotResponseDto] })
+  lots(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.items.lotsOf(actor, id);
   }
 
   @Access(ITEM_READERS)

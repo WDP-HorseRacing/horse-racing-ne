@@ -1,6 +1,5 @@
-import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Check, Column, Entity, Index } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
-import { UserEntity } from '../../users/entities/user.entity';
 import { SupplyCategory } from '../enums/supply-category.enum';
 
 /**
@@ -49,17 +48,4 @@ export class SupplyItemEntity extends SoftDeletableRecordEntity {
     default: 0,
   })
   reorderThreshold!: string;
-
-  @Column({ name: 'last_counted_at', type: 'timestamptz', nullable: true })
-  lastCountedAt!: Date | null;
-
-  @Column({ name: 'last_counted_by', type: 'uuid', nullable: true })
-  lastCountedBy!: string | null;
-
-  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'RESTRICT' })
-  @JoinColumn({
-    name: 'last_counted_by',
-    foreignKeyConstraintName: 'supply_items_last_counted_by_fk',
-  })
-  lastCounter!: UserEntity | null;
 }

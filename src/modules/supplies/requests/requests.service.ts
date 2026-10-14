@@ -4,6 +4,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -30,7 +31,7 @@ import {
 import { SupplyStockService } from '../shared/supply-stock.service';
 
 const REQUEST_RELATIONS = {
-  item: { lastCounter: true },
+  item: true,
   requester: true,
   reviewer: true,
   fulfiller: true,
@@ -210,17 +211,17 @@ export class SupplyRequestsService {
    * Club Manager duyệt, từ chối hoặc cấp đề xuất
    *
    * - REJECTED: bắt buộc lý do, lý do ghi kèm nhật ký
-   * - FULFILLED: cộng số lượng đề xuất vào tồn và ghi dòng sổ RESTOCK; nhật ký ghi kèm số lượng cấp
+   * - FULFILLED: cộng số lượng đề xuất vào tồn và ghi dòng sổ RESTOCK kèm đơn giá của lần cấp; nhật ký ghi kèm số lượng và đơn giá
    * - Ghi nhật ký trạng thái trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của đề xuất
-   * @param body Trạng thái mới và lý do từ chối
+   * @param body Trạng thái mới, lý do từ chối, đơn giá khi cấp
    * @returns Promise trả về đề xuất sau khi đổi trạng thái
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có đề xuất, hoặc vật tư đã xóa khi cấp
    * @throws ConflictException Nếu chuyển trạng thái sai thứ tự
-   * @throws BadRequestException Nếu từ chối mà lý do rỗng
+   * @throws BadRequestException Nếu từ chối mà lý do rỗng, hoặc cấp hàng mà thiếu đơn giá
    */
   async updateStatus(
     actor: Actor,
@@ -234,13 +235,16 @@ export class SupplyRequestsService {
       assertSupplyRequestTransition(request.status, body.status);
       const now = new Date();
       if (body.status === SupplyRequestStatus.FULFILLED) {
-        await this.stock.restock(
-          manager,
-          request.itemId,
-          request.quantity,
-          request.id,
-          caller.id,
-        );
+        if (body.unitPrice === undefined) {
+          throw fieldBadRequest('unitPrice', 'Phải nhập đơn giá khi cấp hàng');
+        }
+        await this.stock.restock(manager, request.itemId, {
+          quantity: request.quantity,
+          unitPrice: String(body.unitPrice),
+          actorId: caller.id,
+          requestId: request.id,
+          note: null,
+        });
         request.fulfilledBy = caller.id;
         request.fulfilledAt = now;
       } else {
@@ -262,7 +266,10 @@ export class SupplyRequestsService {
         before: { status: previousStatus },
         after: {
           status: request.status,
-          ...(fulfilled && { quantity: Number(request.quantity) }),
+          ...(fulfilled && {
+            quantity: Number(request.quantity),
+            unitPrice: body.unitPrice,
+          }),
         },
         reason: request.rejectionReason,
         feature: AuditFeature.SUPPLY_REQUEST,

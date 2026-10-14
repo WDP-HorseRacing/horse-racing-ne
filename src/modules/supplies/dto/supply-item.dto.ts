@@ -2,8 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
+  IsPositive,
   IsString,
   Max,
   MaxLength,
@@ -17,6 +19,7 @@ import { SupplyCategory } from '../enums/supply-category.enum';
 import { SupplyStockMovementType } from '../enums/supply-stock-movement-type.enum';
 
 const MAX_QUANTITY = 1_000_000_000;
+export const MAX_UNIT_PRICE_VND = 1_000_000_000;
 
 export class CreateSupplyItemDto {
   @ApiProperty({
@@ -44,13 +47,25 @@ export class CreateSupplyItemDto {
     minimum: 0,
     maximum: MAX_QUANTITY,
     default: 0,
-    description: 'Số tồn ban đầu; khác 0 thì ghi một dòng sổ kiểm kê',
+    description: 'Số tồn ban đầu; khác 0 thì tạo lô đầu tiên',
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(MAX_QUANTITY)
   quantityOnHand?: number;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: MAX_UNIT_PRICE_VND,
+    default: 0,
+    description: 'Đơn giá (VND) của lô tồn ban đầu; bỏ trống là 0',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(MAX_UNIT_PRICE_VND)
+  openingUnitPrice?: number;
 
   @ApiProperty({
     minimum: 0,
@@ -100,18 +115,46 @@ export class UpdateSupplyItemDto {
   reorderThreshold?: number;
 }
 
-export class SupplyStockCountDto {
+export class SupplyReceiptDto {
   @ApiProperty({
-    minimum: 0,
+    minimum: 0.01,
     maximum: MAX_QUANTITY,
-    description: 'Số đếm thực tế',
+    description: 'Số lượng nhập kho',
   })
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
+  @IsPositive()
   @Max(MAX_QUANTITY)
-  quantityOnHand!: number;
+  quantity!: number;
 
-  @ApiPropertyOptional({ maxLength: 500, description: 'Ghi chú kiểm kê' })
+  @ApiProperty({
+    minimum: 0,
+    maximum: MAX_UNIT_PRICE_VND,
+    description: 'Đơn giá (VND) thực trả cho một đơn vị của lần nhập này',
+  })
+  @IsInt()
+  @Min(0)
+  @Max(MAX_UNIT_PRICE_VND)
+  unitPrice!: number;
+
+  @ApiPropertyOptional({ maxLength: 500, description: 'Ghi chú lần nhập' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class SupplyUsageDto {
+  @ApiProperty({
+    minimum: 0.01,
+    maximum: MAX_QUANTITY,
+    description: 'Số lượng lấy ra dùng',
+  })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  @Max(MAX_QUANTITY)
+  quantity!: number;
+
+  @ApiPropertyOptional({ maxLength: 500, description: 'Ghi chú lần lấy' })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -178,23 +221,6 @@ export class SupplyItemResponseDto {
   @ApiPropertyOptional({
     format: 'date-time',
     nullable: true,
-    description: 'Lần kiểm kê gần nhất',
-  })
-  lastCountedAt!: Date | null;
-
-  @Expose()
-  @Type(() => SupplyUserSummaryResponseDto)
-  @ApiPropertyOptional({
-    type: SupplyUserSummaryResponseDto,
-    nullable: true,
-    description: 'Người kiểm kê gần nhất',
-  })
-  lastCounter!: SupplyUserSummaryResponseDto | null;
-
-  @Expose()
-  @ApiPropertyOptional({
-    format: 'date-time',
-    nullable: true,
     description: 'Thời điểm xóa; null nếu vật tư còn dùng',
   })
   deletedAt!: Date | null;
@@ -239,6 +265,32 @@ export class SupplyStockMovementResponseDto {
   type!: SupplyStockMovementType;
 
   @Expose()
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    type: String,
+    description: 'Lô của dòng sổ; null với dòng ghi trước khi có lô',
+  })
+  lotId!: string | null;
+
+  @Expose()
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: 'Đơn giá (VND) của lô; null với dòng ghi trước khi có lô',
+  })
+  unitPrice!: number | null;
+
+  @Expose()
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      'Tiền của dòng sổ (VND) = chênh lệch × đơn giá lô, âm là xuất; null với dòng ghi trước khi có lô',
+  })
+  amount!: number | null;
+
+  @Expose()
   @ApiPropertyOptional({
     format: 'uuid',
     nullable: true,
@@ -268,4 +320,26 @@ export class SupplyStockMovementPageResponseDto {
   @ApiProperty({ type: PaginationMetaDto })
   @Type(() => PaginationMetaDto)
   meta!: PaginationMetaDto;
+}
+
+export class SupplyLotResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @Expose()
+  @ApiProperty({ type: Number, description: 'Số lượng nhập của lô' })
+  quantity!: number;
+
+  @Expose()
+  @ApiProperty({ type: Number, description: 'Số còn lại trong lô' })
+  remaining!: number;
+
+  @Expose()
+  @ApiProperty({ type: Number, description: 'Đơn giá (VND) của lô' })
+  unitPrice!: number;
+
+  @Expose()
+  @ApiProperty({ format: 'date-time', description: 'Thời điểm nhập lô' })
+  createdAt!: Date;
 }

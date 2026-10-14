@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 202 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 204 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -211,8 +211,10 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | DELETE | `/api/v1/supplies/items/{id}` | Xóa mềm vật tư |
 | GET | `/api/v1/supplies/items/{id}` | Xem một vật tư |
 | PATCH | `/api/v1/supplies/items/{id}` | Sửa tên, loại, đơn vị, ngưỡng báo thiếu của vật tư |
+| GET | `/api/v1/supplies/items/{id}/lots` | Các lô của vật tư, lô nhập sớm nhất trước |
 | GET | `/api/v1/supplies/items/{id}/movements` | Sổ nhập xuất của vật tư, mới nhất trước |
-| POST | `/api/v1/supplies/items/{id}/stock-counts` | Kiểm kê: ghi số đếm thực tế của vật tư |
+| POST | `/api/v1/supplies/items/{id}/receipts` | Nhập hàng trực tiếp vào kho, không qua đề xuất |
+| POST | `/api/v1/supplies/items/{id}/usages` | Lấy vật tư ra dùng, trừ tồn ngay |
 | GET | `/api/v1/supplies/items/low-stock` | Liệt kê vật tư sắp hết |
 | GET | `/api/v1/supplies/requests` | Liệt kê đề xuất bổ sung vật tư |
 | POST | `/api/v1/supplies/requests` | Gửi đề xuất bổ sung vật tư |
