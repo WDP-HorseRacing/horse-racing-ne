@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -14,33 +14,7 @@ import { ReportPeriodDto } from '../dto/report-period.dto';
 @ApiBearerAuth()
 @ApiResponse({ status: 501, description: 'Contract only' })
 @Controller('reports')
-export class ReportsController extends PendingApi {
-  @Get('dashboard')
-  @ApiOperation({ summary: 'Get role-scoped dashboard summary' })
-  dashboard(@CurrentUser() _actor: Actor, @Query() _period: ReportPeriodDto) {
-    return this.pending();
-  }
-
-  @Get('horses/:horseId/progress')
-  @ApiOperation({ summary: 'Get horse training progress report' })
-  progress(
-    @CurrentUser() _actor: Actor,
-    @Param('horseId', ParseUUIDPipe) _horseId: string,
-    @Query() _period: ReportPeriodDto,
-  ) {
-    return this.pending();
-  }
-
-  @Get('horses/:horseId/health')
-  @ApiOperation({ summary: 'Get horse health history report' })
-  health(
-    @CurrentUser() _actor: Actor,
-    @Param('horseId', ParseUUIDPipe) _horseId: string,
-    @Query() _period: ReportPeriodDto,
-  ) {
-    return this.pending();
-  }
-
+export class ClubReportsController extends PendingApi {
   @Get('club/training')
   @ApiOperation({ summary: 'Get club training activity report' })
   clubTraining(

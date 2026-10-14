@@ -4510,150 +4510,15 @@
         "x-implementation-status": "contract-only"
       }
     },
-    "/api/v1/reports/dashboard": {
-      "get": {
-        "operationId": "ReportsController_dashboard",
-        "parameters": [
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          },
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get role-scoped dashboard summary",
-        "tags": [
-          "reports"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/reports/horses/{horseId}/progress": {
-      "get": {
-        "operationId": "ReportsController_progress",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          },
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get horse training progress report",
-        "tags": [
-          "reports"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
-    "/api/v1/reports/horses/{horseId}/health": {
-      "get": {
-        "operationId": "ReportsController_health",
-        "parameters": [
-          {
-            "name": "horseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          },
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "501": {
-            "description": "Contract only"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get horse health history report",
-        "tags": [
-          "reports"
-        ],
-        "x-implementation-status": "contract-only"
-      }
-    },
     "/api/v1/reports/club/training": {
       "get": {
-        "operationId": "ReportsController_clubTraining",
+        "operationId": "ClubReportsController_clubTraining",
         "parameters": [
           {
             "name": "from",
             "required": false,
             "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
             "schema": {
               "format": "date",
               "type": "string"
@@ -4663,6 +4528,7 @@
             "name": "to",
             "required": false,
             "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
             "schema": {
               "format": "date",
               "type": "string"
@@ -4688,12 +4554,13 @@
     },
     "/api/v1/reports/club/medical": {
       "get": {
-        "operationId": "ReportsController_clubMedical",
+        "operationId": "ClubReportsController_clubMedical",
         "parameters": [
           {
             "name": "from",
             "required": false,
             "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
             "schema": {
               "format": "date",
               "type": "string"
@@ -4703,6 +4570,7 @@
             "name": "to",
             "required": false,
             "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
             "schema": {
               "format": "date",
               "type": "string"
@@ -4728,12 +4596,13 @@
     },
     "/api/v1/reports/club/finance": {
       "get": {
-        "operationId": "ReportsController_clubFinance",
+        "operationId": "ClubReportsController_clubFinance",
         "parameters": [
           {
             "name": "from",
             "required": false,
             "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
             "schema": {
               "format": "date",
               "type": "string"
@@ -4743,6 +4612,7 @@
             "name": "to",
             "required": false,
             "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
             "schema": {
               "format": "date",
               "type": "string"
@@ -4760,6 +4630,173 @@
           }
         ],
         "summary": "Get later-phase manual finance summary",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/dashboard": {
+      "get": {
+        "operationId": "DashboardController_get",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "barnId",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ ngựa của một khu",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "mine",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ ngựa thuộc các khu người gọi phụ trách",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tiến độ tập luyện và thể lực của ngựa trong CLB theo khoảng ngày",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/horses/{horseId}/progress": {
+      "get": {
+        "operationId": "HorseReportsController_progress",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse training progress report",
+        "tags": [
+          "reports"
+        ],
+        "x-implementation-status": "contract-only"
+      }
+    },
+    "/api/v1/reports/horses/{horseId}/health": {
+      "get": {
+        "operationId": "HorseReportsController_health",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "description": "Contract only"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get horse health history report",
         "tags": [
           "reports"
         ],
@@ -14212,6 +14249,256 @@
             "additionalProperties": true
           }
         }
+      },
+      "DashboardHealthCountsDto": {
+        "type": "object",
+        "properties": {
+          "ELIGIBLE": {
+            "type": "number"
+          },
+          "UNDER_OBSERVATION": {
+            "type": "number"
+          },
+          "INJURED": {
+            "type": "number"
+          },
+          "QUARANTINED": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ELIGIBLE",
+          "UNDER_OBSERVATION",
+          "INJURED",
+          "QUARANTINED"
+        ]
+      },
+      "DashboardHerdDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Số ngựa đang hoạt động trong phạm vi"
+          },
+          "byHealthStatus": {
+            "$ref": "#/components/schemas/DashboardHealthCountsDto"
+          },
+          "trainingLocked": {
+            "type": "number",
+            "description": "Số ngựa đang bị khóa huấn luyện"
+          }
+        },
+        "required": [
+          "total",
+          "byHealthStatus",
+          "trainingLocked"
+        ]
+      },
+      "DashboardIntensityCountsDto": {
+        "type": "object",
+        "properties": {
+          "LIGHT": {
+            "type": "number"
+          },
+          "MODERATE": {
+            "type": "number"
+          },
+          "HEAVY": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "LIGHT",
+          "MODERATE",
+          "HEAVY"
+        ]
+      },
+      "DashboardTrainingDto": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "number",
+            "description": "Số buổi đang diễn ra hoặc đã xong trong kỳ có ngựa trong phạm vi"
+          },
+          "completed": {
+            "type": "number",
+            "description": "Số lượt hoàn thành"
+          },
+          "absent": {
+            "type": "number",
+            "description": "Số lượt vắng"
+          },
+          "ineligible": {
+            "type": "number",
+            "description": "Số lượt không đủ điều kiện (kể cả hủy do khóa huấn luyện)"
+          },
+          "completedByIntensity": {
+            "description": "Số lượt hoàn thành theo cường độ buổi",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardIntensityCountsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sessions",
+          "completed",
+          "absent",
+          "ineligible",
+          "completedByIntensity"
+        ]
+      },
+      "DashboardWeekDto": {
+        "type": "object",
+        "properties": {
+          "weekStart": {
+            "type": "string",
+            "format": "date",
+            "description": "Thứ Hai đầu tuần (lịch CLB)"
+          },
+          "completed": {
+            "type": "number",
+            "description": "Số lượt hoàn thành trong tuần"
+          },
+          "avgHeartRateBpm": {
+            "type": "number",
+            "nullable": true,
+            "description": "Nhịp tim trung bình (bpm); null khi không có điểm đo"
+          },
+          "avgSpeedMps": {
+            "type": "number",
+            "nullable": true,
+            "description": "Tốc độ trung bình (m/s); null khi không có điểm đo"
+          },
+          "alertCount": {
+            "type": "number",
+            "description": "Số điểm đo vượt ngưỡng (WARNING, CRITICAL)"
+          }
+        },
+        "required": [
+          "weekStart",
+          "completed",
+          "avgHeartRateBpm",
+          "avgSpeedMps",
+          "alertCount"
+        ]
+      },
+      "DashboardHorseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "barnId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "barnName": {
+            "type": "string",
+            "nullable": true
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "trainingLocked": {
+            "type": "boolean"
+          },
+          "completed": {
+            "type": "number",
+            "description": "Số lượt hoàn thành trong kỳ"
+          },
+          "avgHeartRateBpm": {
+            "type": "number",
+            "nullable": true
+          },
+          "maxHeartRateBpm": {
+            "type": "number",
+            "nullable": true
+          },
+          "avgSpeedMps": {
+            "type": "number",
+            "nullable": true
+          },
+          "maxSpeedMps": {
+            "type": "number",
+            "nullable": true
+          },
+          "alertCount": {
+            "type": "number",
+            "description": "Số điểm đo vượt ngưỡng trong kỳ"
+          },
+          "latestWeightKg": {
+            "type": "number",
+            "nullable": true,
+            "description": "Cân nặng gần nhất (kg)"
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "barnId",
+          "barnName",
+          "healthStatus",
+          "trainingLocked",
+          "completed",
+          "avgHeartRateBpm",
+          "maxHeartRateBpm",
+          "avgSpeedMps",
+          "maxSpeedMps",
+          "alertCount",
+          "latestWeightKg"
+        ]
+      },
+      "DashboardResponseDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "herd": {
+            "$ref": "#/components/schemas/DashboardHerdDto"
+          },
+          "training": {
+            "$ref": "#/components/schemas/DashboardTrainingDto"
+          },
+          "weekly": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardWeekDto"
+            }
+          },
+          "horses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardHorseDto"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "herd",
+          "training",
+          "weekly",
+          "horses"
+        ]
       },
       "BarnListItemDto": {
         "type": "object",
