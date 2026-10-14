@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { UserRole } from '../../../common/enums/role.enum';
 import { MEASUREMENT_BACKDATE_MAX_DAYS } from '../../horses/constants/horse.constants';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
@@ -85,13 +86,13 @@ export const MEDICAL_READER_ROLES = [
  * Mã chức năng ghi vào cột feature của nhật ký thao tác, theo từng nhóm use case y tế
  */
 export const MEDICAL_AUDIT_FEATURE = {
-  CHECKUP_SCHEDULE: 'F3.2',
-  STANDALONE_VISIT: 'F3.3',
-  EXAM_REQUEST: 'F3.4',
-  OPEN_CASE: 'F3.5',
-  CASE_VISIT: 'F3.6',
-  HEALTH_STATUS: 'F3.7',
-  TRAINING_LOCK: 'F3.8',
-  CLOSE_CASE: 'F3.9',
-  CARE_SCHEDULE: 'F3.11',
+  CHECKUP_SCHEDULE: AuditFeature.MED_CHECKUP,
+  STANDALONE_VISIT: AuditFeature.MED_VISIT,
+  EXAM_REQUEST: AuditFeature.MED_EXAM_REQUEST,
+  OPEN_CASE: AuditFeature.MED_CASE_OPEN,
+  CASE_VISIT: AuditFeature.MED_CASE_VISIT,
+  HEALTH_STATUS: AuditFeature.MED_HEALTH,
+  TRAINING_LOCK: AuditFeature.MED_TRAIN_LOCK,
+  CLOSE_CASE: AuditFeature.MED_CASE_CLOSE,
+  CARE_SCHEDULE: AuditFeature.MED_CARE,
 } as const;

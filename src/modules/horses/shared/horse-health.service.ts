@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -41,7 +42,7 @@ export class HorseHealthService {
       to: HorseHealthStatus;
       actorId: string;
       reason: string;
-      feature: string;
+      feature: AuditFeature;
     },
   ): Promise<HealthStatusChange> {
     const horse = await manager.findOneOrFail(HorseEntity, {

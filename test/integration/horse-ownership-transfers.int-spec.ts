@@ -131,7 +131,7 @@ describe('HorseOwnershipsService (Postgres)', () => {
         before: { ownerId: a },
         after: { ownerId: b },
         reason: 'HĐ 12',
-        feature: 'F1.4',
+        feature: 'HORSE_UPDATE',
       },
     ]);
   });

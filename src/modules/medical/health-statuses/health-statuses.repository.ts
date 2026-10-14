@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -11,7 +12,7 @@ export interface HealthHistoryRow {
   from: HorseHealthStatus | null;
   to: HorseHealthStatus;
   reason: string | null;
-  feature: string | null;
+  feature: AuditFeature | null;
   actorId: string | null;
 }
 

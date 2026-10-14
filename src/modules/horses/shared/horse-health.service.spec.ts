@@ -1,5 +1,6 @@
 import { EntityManager } from 'typeorm';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseEntity } from '../entities/horse.entity';
 import { HorseHealthStatus } from '../enums/horse-status.enum';
@@ -16,7 +17,7 @@ describe('HorseHealthService.applyHealthStatus', () => {
     to,
     actorId: 'vet-1',
     reason: 'Viêm gân chân trước',
-    feature: 'F3.7',
+    feature: AuditFeature.MED_HEALTH,
   });
 
   beforeEach(() => {
@@ -56,7 +57,7 @@ describe('HorseHealthService.applyHealthStatus', () => {
       before: { healthStatus: HorseHealthStatus.ELIGIBLE },
       after: { healthStatus: HorseHealthStatus.INJURED },
       reason: 'Viêm gân chân trước',
-      feature: 'F3.7',
+      feature: 'MED_HEALTH',
     });
   });
 

@@ -469,7 +469,7 @@ describe('HorseStatusesService', () => {
           raceRegistrationsWithdrawn: 3,
         },
         reason: 'Bán cho CLB khác',
-        feature: 'F1.8',
+        feature: 'HORSE_LIFECYCLE',
       });
     });
 
@@ -601,7 +601,7 @@ describe('HorseStatusesService', () => {
               healthStatus: HorseHealthStatus.UNDER_OBSERVATION,
             }) as unknown,
             reason: 'Quay lại thi đấu',
-            feature: 'F1.8',
+            feature: 'HORSE_LIFECYCLE',
           }),
         );
         for (const mock of sideEffectMocks()) {

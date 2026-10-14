@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { FieldError } from '../../../common/utils/field-errors';
 import type {
@@ -359,9 +360,9 @@ export const RACE_APTITUDE_FIELD = 'raceAptitude';
  * Mã chức năng ghi vào cột feature của nhật ký thao tác, theo từng nhóm use case hồ sơ ngựa
  */
 export const HORSE_AUDIT_FEATURE = {
-  CREATE_PROFILE: 'F1.2',
-  UPDATE_PROFILE: 'F1.4',
-  MEASUREMENT: 'F1.5',
-  BARN_PLACEMENT: 'F1.6',
-  LIFECYCLE_AND_DELETION: 'F1.8',
+  CREATE_PROFILE: AuditFeature.HORSE_CREATE,
+  UPDATE_PROFILE: AuditFeature.HORSE_UPDATE,
+  MEASUREMENT: AuditFeature.HORSE_MEASURE,
+  BARN_PLACEMENT: AuditFeature.HORSE_BARN,
+  LIFECYCLE_AND_DELETION: AuditFeature.HORSE_LIFECYCLE,
 } as const;

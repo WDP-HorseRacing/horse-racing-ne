@@ -223,7 +223,7 @@ describe('HorseDeletionsService', () => {
           action: AuditAction.DELETE,
           entityId: HORSE_ID,
           reason: 'Tạo nhầm',
-          feature: 'F1.8',
+          feature: 'HORSE_LIFECYCLE',
         }),
       );
     });
@@ -315,7 +315,7 @@ describe('HorseDeletionsService', () => {
         before: { deletedAt, deletedReason: 'Tạo nhầm', barnId: 'b1' },
         after: { deletedAt: null, deletedReason: null, barnId: null },
         reason: 'Xóa nhầm',
-        feature: 'F1.8',
+        feature: 'HORSE_LIFECYCLE',
       });
       expect(ownerships.recordOwnerChange).not.toHaveBeenCalled();
     });

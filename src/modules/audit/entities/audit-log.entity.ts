@@ -3,6 +3,7 @@ import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { AuditAction } from '../constants/audit-action.enum';
 import { AuditEntityType } from '../constants/audit-entity-type.enum';
+import { AuditFeature } from '../constants/audit-feature.enum';
 
 /**
  * AuditLogEntity: nhật ký thay đổi dữ liệu.
@@ -45,5 +46,5 @@ export class AuditLogEntity extends BaseRecordEntity {
   reason!: string | null;
 
   @Column({ type: 'varchar', length: 16, nullable: true })
-  feature!: string | null;
+  feature!: AuditFeature | null;
 }

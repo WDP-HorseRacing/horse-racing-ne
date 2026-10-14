@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AuditAction } from '../constants/audit-action.enum';
 import { AuditEntityType } from '../constants/audit-entity-type.enum';
+import { AuditFeature } from '../constants/audit-feature.enum';
 import { AuditLogEntity } from '../entities/audit-log.entity';
 
 /**
@@ -16,8 +17,8 @@ export interface AuditEntry {
   after: Record<string, unknown> | null;
   /** Lý do người dùng nhập cho thao tác (vd lý do xóa, khôi phục); bỏ trống thì lưu null */
   reason?: string | null;
-  /** Mã chức năng của thao tác, tối đa 16 ký tự; bỏ trống thì lưu null */
-  feature?: string | null;
+  /** Mã chức năng của thao tác; bỏ trống thì lưu null */
+  feature?: AuditFeature | null;
 }
 
 @Injectable()

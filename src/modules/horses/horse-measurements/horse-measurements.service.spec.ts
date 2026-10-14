@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import {
   BadRequestException,
   ConflictException,
@@ -272,7 +273,7 @@ describe('HorseMeasurementsService', () => {
           isAbnormal: true,
           abnormalConfirmed: true,
         },
-        feature: 'F1.5',
+        feature: 'HORSE_MEASURE',
       });
       expect(events.publish).toHaveBeenCalledWith(
         manager,
@@ -509,7 +510,7 @@ describe('HorseMeasurementsService', () => {
       measuredAt: new Date(),
       values: [{ type: HorseMeasurementType.TEMPERATURE, value: 39 }],
       confirmAbnormal,
-      feature: 'F3.3',
+      feature: AuditFeature.MED_VISIT,
     });
 
     it('saves exam values as MEDICAL_EXAM with the visit id and returns alerts without publishing', async () => {
@@ -526,7 +527,7 @@ describe('HorseMeasurementsService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         manager,
         expect.objectContaining({
-          feature: 'F3.3',
+          feature: 'MED_VISIT',
           after: expect.objectContaining({
             source: HorseMeasurementSource.MEDICAL_EXAM,
             medicalRecordId: 'visit-1',
@@ -618,7 +619,7 @@ describe('HorseMeasurementsService', () => {
         medicalRecordId: 'visit-1',
         reason: 'Gõ nhầm cân nặng',
         actorId: CALLER_ID,
-        feature: 'F3.6',
+        feature: AuditFeature.MED_CASE_VISIT,
       });
 
       expect(count).toBe(2);
@@ -638,7 +639,7 @@ describe('HorseMeasurementsService', () => {
         expect.objectContaining({
           action: AuditAction.DELETE,
           reason: 'Gõ nhầm cân nặng',
-          feature: 'F3.6',
+          feature: 'MED_CASE_VISIT',
         }),
       );
     });

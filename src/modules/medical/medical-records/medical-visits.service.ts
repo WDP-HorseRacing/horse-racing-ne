@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -88,7 +89,7 @@ interface VisitWrite {
   requests: MedicalExamRequestEntity[];
   nextStatus: HorseHealthStatus;
   healthChanged: boolean;
-  feature: string;
+  feature: AuditFeature;
 }
 
 /**

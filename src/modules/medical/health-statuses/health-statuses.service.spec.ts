@@ -100,7 +100,7 @@ describe('HealthStatusesService', () => {
       expect.objectContaining({
         to: HorseHealthStatus.QUARANTINED,
         reason: 'Nghi cúm ngựa',
-        feature: 'F3.7',
+        feature: 'MED_HEALTH',
       }),
     );
     expect(result).toEqual({

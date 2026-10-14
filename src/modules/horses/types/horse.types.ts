@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import type { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import type { EligibilityReason } from '../enums/eligibility-reason.enum';
 import type { HorseGender } from '../enums/horse-gender.enum';
@@ -125,7 +126,7 @@ export interface ExamMeasurementInput {
   measuredAt: Date;
   values: Array<{ type: HorseMeasurementType; value: number }>;
   confirmAbnormal: boolean;
-  feature: string;
+  feature: AuditFeature;
 }
 
 /**

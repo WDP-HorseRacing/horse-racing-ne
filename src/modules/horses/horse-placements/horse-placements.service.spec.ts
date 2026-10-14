@@ -251,7 +251,7 @@ describe('HorsePlacementsService', () => {
       before: { barnId: 'b1', stallCode: 'A-01' },
       after: { barnId: 'b2', stallCode: null, classesWithdrawn: 1 },
       reason: 'Cân bằng khu',
-      feature: 'F1.6',
+      feature: 'HORSE_BARN',
     });
     expect(events.publish).toHaveBeenCalledWith(
       manager,
@@ -309,7 +309,7 @@ describe('HorsePlacementsService', () => {
     );
     expect(audit.record).toHaveBeenCalledWith(
       manager,
-      expect.objectContaining({ reason: null, feature: 'F1.6' }),
+      expect.objectContaining({ reason: null, feature: 'HORSE_BARN' }),
     );
   });
 

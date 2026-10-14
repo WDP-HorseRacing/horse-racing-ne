@@ -156,7 +156,7 @@ describe('CareSchedulesService', () => {
       });
       expect(audit.record).toHaveBeenCalledWith(
         manager,
-        expect.objectContaining({ feature: 'F3.11' }),
+        expect.objectContaining({ feature: 'MED_CARE' }),
       );
     });
   });

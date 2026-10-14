@@ -289,7 +289,7 @@ describe('MedicalVisitsService', () => {
         expect.objectContaining({
           horseId: HORSE_ID,
           medicalRecordId: result.id,
-          feature: 'F3.3',
+          feature: 'MED_VISIT',
         }),
       );
       expect(updatesOn(CareScheduleEntity)[0][2]).toMatchObject({
@@ -521,7 +521,7 @@ describe('MedicalVisitsService', () => {
       });
       expect(measurements.recordExamMeasurements).toHaveBeenCalledWith(
         manager,
-        expect.objectContaining({ feature: 'F3.6' }),
+        expect.objectContaining({ feature: 'MED_CASE_VISIT' }),
       );
     });
   });

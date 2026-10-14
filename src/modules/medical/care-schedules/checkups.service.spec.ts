@@ -129,7 +129,7 @@ describe('CheckupsService', () => {
         manager,
         expect.objectContaining({
           action: AuditAction.CREATE,
-          feature: 'F3.2',
+          feature: 'MED_CHECKUP',
         }),
       );
       expect(result.id).toBe('appt-1');

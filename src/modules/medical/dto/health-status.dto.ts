@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
@@ -54,11 +55,11 @@ export class HealthHistoryItemDto {
   reason!: string | null;
 
   @ApiProperty({
-    type: String,
+    enum: AuditFeature,
     nullable: true,
-    description: 'Chức năng gây ra thay đổi, ví dụ F3.3, F3.6, F3.7, F1.8',
+    description: 'Chức năng gây ra thay đổi',
   })
-  feature!: string | null;
+  feature!: AuditFeature | null;
 
   @ApiProperty({
     format: 'uuid',

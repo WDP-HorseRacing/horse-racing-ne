@@ -1,0 +1,21 @@
+/**
+ * Mã chức năng ghi vào cột feature của nhật ký thao tác, mỗi giá trị là một nhóm use case
+ */
+export enum AuditFeature {
+  HORSE_CREATE = 'HORSE_CREATE',
+  HORSE_UPDATE = 'HORSE_UPDATE',
+  HORSE_MEASURE = 'HORSE_MEASURE',
+  HORSE_BARN = 'HORSE_BARN',
+  HORSE_LIFECYCLE = 'HORSE_LIFECYCLE',
+  BARN = 'BARN',
+  STALL_GROOM = 'STALL_GROOM',
+  MED_CHECKUP = 'MED_CHECKUP',
+  MED_VISIT = 'MED_VISIT',
+  MED_EXAM_REQUEST = 'MED_EXAM_REQUEST',
+  MED_CASE_OPEN = 'MED_CASE_OPEN',
+  MED_CASE_VISIT = 'MED_CASE_VISIT',
+  MED_HEALTH = 'MED_HEALTH',
+  MED_TRAIN_LOCK = 'MED_TRAIN_LOCK',
+  MED_CASE_CLOSE = 'MED_CASE_CLOSE',
+  MED_CARE = 'MED_CARE',
+}

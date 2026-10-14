@@ -226,7 +226,7 @@ describe('MedicalCheckupsService (Postgres)', () => {
       });
       await dataSource.query(
         `INSERT INTO audit_logs (action, entity_type, entity_id, before_data, after_data, created_at, feature)
-         VALUES ('CREATE', $1, $2, NULL, $3, '2026-09-01T03:00:00Z', 'F1.2')`,
+         VALUES ('CREATE', $1, $2, NULL, $3, '2026-09-01T03:00:00Z', 'HORSE_CREATE')`,
         [
           AuditEntityType.HORSE,
           horse,

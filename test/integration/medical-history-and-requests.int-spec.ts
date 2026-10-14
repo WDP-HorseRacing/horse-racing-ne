@@ -58,14 +58,14 @@ describe('Health history and exam request queries (Postgres)', () => {
         { healthStatus: ELIGIBLE },
         { healthStatus: INJURED },
         '2026-09-10T02:00:00Z',
-        { reason: 'Viêm gân', feature: 'F3.7', actorId: actor },
+        { reason: 'Viêm gân', feature: 'MED_HEALTH', actorId: actor },
       );
       await seed.horseAudit(
         winx,
         { healthStatus: INJURED },
         { healthStatus: UNDER_OBSERVATION },
         '2026-09-20T02:00:00Z',
-        { feature: 'F3.6' },
+        { feature: 'MED_CASE_VISIT' },
       );
       await seed.horseAudit(
         winx,
@@ -100,14 +100,14 @@ describe('Health history and exam request queries (Postgres)', () => {
           changedAt: new Date('2026-09-20T02:00:00Z'),
           from: INJURED,
           to: UNDER_OBSERVATION,
-          feature: 'F3.6',
+          feature: 'MED_CASE_VISIT',
         }),
         {
           changedAt: new Date('2026-09-10T02:00:00Z'),
           from: ELIGIBLE,
           to: INJURED,
           reason: 'Viêm gân',
-          feature: 'F3.7',
+          feature: 'MED_HEALTH',
           actorId: actor,
         },
       ]);

@@ -298,7 +298,7 @@ describe('GroomAssignmentsService', () => {
             movedChecklistIds: [],
             movedParticipantIds: ['p1', 'p2'],
           },
-          feature: 'F1.7',
+          feature: 'STALL_GROOM',
         }),
       );
       expect(result).toMatchObject({ groomId: 'g-new' });
@@ -405,7 +405,7 @@ describe('GroomAssignmentsService', () => {
               endedAssignmentId: 'ga-old',
             },
             after: auditAfter,
-            feature: 'F1.7',
+            feature: 'STALL_GROOM',
           }),
         );
       });

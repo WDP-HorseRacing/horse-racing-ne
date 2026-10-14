@@ -446,7 +446,7 @@ describe('StallsService', () => {
         expect.objectContaining({
           entityType: AuditEntityType.STALL_ASSIGNMENT,
           entityId: 'sa-1',
-          feature: 'F1.7',
+          feature: 'STALL_GROOM',
         }),
       );
       expect(result).toMatchObject({ id: 'sa-1', endAt: anyDate });
@@ -569,7 +569,7 @@ describe('StallsService', () => {
         actorId: 'user-1',
         action: AuditAction.UPDATE,
         entityType: AuditEntityType.STALL_ASSIGNMENT,
-        feature: 'F1.7',
+        feature: 'STALL_GROOM',
         entityId: 'sa-1',
         before: {
           horseId: 'h1',
@@ -720,7 +720,7 @@ describe('StallsService', () => {
             description: null,
             hasCamera: false,
           },
-          feature: 'F1.7',
+          feature: 'STALL_GROOM',
         });
       });
 
@@ -980,7 +980,7 @@ describe('StallsService', () => {
           entityId: 's1',
           before: { code: 'A-01' },
           after: { code: 'A-11' },
-          feature: 'F1.7',
+          feature: 'STALL_GROOM',
         });
       });
 
@@ -1088,7 +1088,7 @@ describe('StallsService', () => {
             hasCamera: undefined,
           },
           after: null,
-          feature: 'F1.7',
+          feature: 'STALL_GROOM',
         });
       });
 

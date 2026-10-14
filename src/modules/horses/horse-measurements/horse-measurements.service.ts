@@ -1,3 +1,4 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import {
   ForbiddenException,
   Injectable,
@@ -229,7 +230,7 @@ export class HorseMeasurementsService {
       medicalRecordId: string;
       reason: string;
       actorId: string;
-      feature: string;
+      feature: AuditFeature;
     },
   ): Promise<number> {
     const measurements = await manager.find(HorseMeasurementEntity, {
@@ -359,7 +360,7 @@ export class HorseMeasurementsService {
     input: {
       actorId: string;
       reason: string;
-      feature: string;
+      feature: AuditFeature;
       before: Record<string, unknown>;
     },
   ): Promise<void> {
@@ -400,7 +401,7 @@ export class HorseMeasurementsService {
       source: HorseMeasurementSource;
       medicalRecordId: string | null;
       confirmAbnormal: boolean;
-      feature: string;
+      feature: AuditFeature;
     },
   ): Promise<SavedMeasurementWithAlerts[]> {
     const repository = manager.getRepository(HorseMeasurementEntity);

@@ -66,7 +66,7 @@ describe('AuditLogsService (Postgres)', () => {
   ): Promise<string> => {
     const [row] = await dataSource.query<{ id: string }[]>(
       `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, before_data, after_data, reason, feature, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Lý do', 'F1.2', $7)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Lý do', 'HORSE_CREATE', $7)
        RETURNING id`,
       [
         options.actorId ?? null,
@@ -106,7 +106,7 @@ describe('AuditLogsService (Postgres)', () => {
         action: AuditAction.UPDATE,
         entityType: AuditEntityType.HORSE,
         reason: 'Lý do',
-        feature: 'F1.2',
+        feature: 'HORSE_CREATE',
         actor: { id: vet, role: UserRole.VETERINARIAN },
       });
       expect(page.items[2]).not.toHaveProperty('before');

@@ -11728,8 +11728,26 @@
           },
           "feature": {
             "type": "string",
+            "enum": [
+              "HORSE_CREATE",
+              "HORSE_UPDATE",
+              "HORSE_MEASURE",
+              "HORSE_BARN",
+              "HORSE_LIFECYCLE",
+              "BARN",
+              "STALL_GROOM",
+              "MED_CHECKUP",
+              "MED_VISIT",
+              "MED_EXAM_REQUEST",
+              "MED_CASE_OPEN",
+              "MED_CASE_VISIT",
+              "MED_HEALTH",
+              "MED_TRAIN_LOCK",
+              "MED_CASE_CLOSE",
+              "MED_CARE"
+            ],
             "nullable": true,
-            "description": "Chức năng gây ra thay đổi, ví dụ F3.3, F3.6, F3.7, F1.8"
+            "description": "Chức năng gây ra thay đổi"
           },
           "actorId": {
             "type": "object",

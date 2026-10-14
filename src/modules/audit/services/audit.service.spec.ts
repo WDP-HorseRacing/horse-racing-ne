@@ -1,5 +1,6 @@
 import { EntityManager } from 'typeorm';
 import { AuditAction } from '../constants/audit-action.enum';
+import { AuditFeature } from '../constants/audit-feature.enum';
 import { AuditEntityType } from '../constants/audit-entity-type.enum';
 import { AuditLogEntity } from '../entities/audit-log.entity';
 import { AuditService } from './audit.service';
@@ -47,14 +48,14 @@ describe('AuditService.record', () => {
       before: null,
       after: { deletedAt: null },
       reason: 'Nhập nhầm, khôi phục lại',
-      feature: 'F1.4',
+      feature: AuditFeature.HORSE_UPDATE,
     });
 
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AuditAction.RESTORE,
         reason: 'Nhập nhầm, khôi phục lại',
-        feature: 'F1.4',
+        feature: 'HORSE_UPDATE',
       }),
     );
   });

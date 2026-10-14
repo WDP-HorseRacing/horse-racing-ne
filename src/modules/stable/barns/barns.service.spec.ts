@@ -441,7 +441,7 @@ describe('BarnsService', () => {
             status: BarnStatus.ACTIVE,
             headTrainerId: null,
           },
-          feature: 'F1.6',
+          feature: 'BARN',
         });
       });
     });
@@ -638,7 +638,7 @@ describe('BarnsService', () => {
           entityId: 'b1',
           before: { name: 'Khu A', status: BarnStatus.ACTIVE },
           after: { name: 'Khu A2', status: BarnStatus.MAINTENANCE },
-          feature: 'F1.6',
+          feature: 'BARN',
         });
       });
 
@@ -693,7 +693,7 @@ describe('BarnsService', () => {
             entityType: AuditEntityType.BARN,
             entityId: 'b1',
             after: null,
-            feature: 'F1.6',
+            feature: 'BARN',
           }),
         );
       });
