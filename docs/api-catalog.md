@@ -10,8 +10,8 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/audit-logs` | (501) List club audit records |
-| GET | `/api/v1/audit-logs/{id}` | (501) Get club audit record |
+| GET | `/api/v1/audit-logs` | List club audit records |
+| GET | `/api/v1/audit-logs/{id}` | Get club audit record |
 
 ## auth
 

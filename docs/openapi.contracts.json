@@ -6,17 +6,136 @@
         "operationId": "AuditController_list",
         "parameters": [
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Trang hiện tại",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
             "name": "limit",
-            "required": true,
+            "required": false,
+            "in": "query",
+            "description": "Số lượng phần tử mỗi trang",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "actorId",
+            "required": false,
+            "in": "query",
+            "description": "Người thực hiện",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "number"
+              "type": "string",
+              "enum": [
+                "CREATE",
+                "UPDATE",
+                "DELETE",
+                "LOGIN",
+                "LOGOUT",
+                "RESTORE"
+              ]
+            }
+          },
+          {
+            "name": "entityType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "USER",
+                "HORSE",
+                "HORSE_OWNERSHIP",
+                "HORSE_MEASUREMENT",
+                "MEDIA_ASSET",
+                "MEDICAL_RECORD",
+                "MEDICAL_CASE",
+                "MEDICAL_EXAM_REQUEST",
+                "CARE_SCHEDULE",
+                "INJURY_MARKER",
+                "PRESCRIPTION",
+                "TRAINING_LOCK",
+                "NOTIFICATION",
+                "PERFORMANCE_EVALUATION",
+                "PERFORMANCE_METRIC",
+                "PERFORMANCE_THRESHOLD",
+                "RACE",
+                "RACE_REGISTRATION",
+                "DAILY_CHECKLIST",
+                "FEEDING_PLAN",
+                "INCIDENT",
+                "STALL_ASSIGNMENT",
+                "GROOM_ASSIGNMENT",
+                "STALL",
+                "BARN",
+                "SUPPLY_ITEM",
+                "SUPPLY_REQUEST",
+                "TIME_TRIAL",
+                "TRAINING_PLAN",
+                "TRAINING_SESSION",
+                "REFRESH_SESSION"
+              ]
+            }
+          },
+          {
+            "name": "entityId",
+            "required": false,
+            "in": "query",
+            "description": "Id đối tượng bị thay đổi",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Từ ngày (lịch câu lạc bộ), YYYY-MM-DD",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD",
+            "schema": {
+              "format": "date",
+              "type": "string"
             }
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogPageDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -27,8 +146,7 @@
         "summary": "List club audit records",
         "tags": [
           "audit"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/audit-logs/{id}": {
@@ -45,8 +163,15 @@
           }
         ],
         "responses": {
-          "501": {
-            "description": "Contract only"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogDetailDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -57,8 +182,7 @@
         "summary": "Get club audit record",
         "tags": [
           "audit"
-        ],
-        "x-implementation-status": "contract-only"
+        ]
       }
     },
     "/api/v1/auth/login": {
@@ -8707,6 +8831,275 @@
       }
     },
     "schemas": {
+      "AuditLogActorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "VETERINARIAN",
+              "GROOM",
+              "HORSE_OWNER",
+              "CLUB_MANAGER"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "role"
+        ]
+      },
+      "AuditLogSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "actor": {
+            "nullable": true,
+            "description": "null là thao tác do hệ thống tự làm",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditLogActorDto"
+              }
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE",
+              "LOGIN",
+              "LOGOUT",
+              "RESTORE"
+            ]
+          },
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "HORSE",
+              "HORSE_OWNERSHIP",
+              "HORSE_MEASUREMENT",
+              "MEDIA_ASSET",
+              "MEDICAL_RECORD",
+              "MEDICAL_CASE",
+              "MEDICAL_EXAM_REQUEST",
+              "CARE_SCHEDULE",
+              "INJURY_MARKER",
+              "PRESCRIPTION",
+              "TRAINING_LOCK",
+              "NOTIFICATION",
+              "PERFORMANCE_EVALUATION",
+              "PERFORMANCE_METRIC",
+              "PERFORMANCE_THRESHOLD",
+              "RACE",
+              "RACE_REGISTRATION",
+              "DAILY_CHECKLIST",
+              "FEEDING_PLAN",
+              "INCIDENT",
+              "STALL_ASSIGNMENT",
+              "GROOM_ASSIGNMENT",
+              "STALL",
+              "BARN",
+              "SUPPLY_ITEM",
+              "SUPPLY_REQUEST",
+              "TIME_TRIAL",
+              "TRAINING_PLAN",
+              "TRAINING_SESSION",
+              "REFRESH_SESSION"
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "feature": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mã chức năng của thao tác"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "actor",
+          "action",
+          "entityType",
+          "entityId",
+          "reason",
+          "feature"
+        ]
+      },
+      "PaginationMetaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "Tổng số phần tử"
+          },
+          "page": {
+            "type": "number",
+            "description": "Trang hiện tại"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Số phần tử mỗi trang"
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "Tổng số trang"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "AuditLogPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogSummaryDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
+      "AuditLogDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "actor": {
+            "nullable": true,
+            "description": "null là thao tác do hệ thống tự làm",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditLogActorDto"
+              }
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE",
+              "LOGIN",
+              "LOGOUT",
+              "RESTORE"
+            ]
+          },
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "HORSE",
+              "HORSE_OWNERSHIP",
+              "HORSE_MEASUREMENT",
+              "MEDIA_ASSET",
+              "MEDICAL_RECORD",
+              "MEDICAL_CASE",
+              "MEDICAL_EXAM_REQUEST",
+              "CARE_SCHEDULE",
+              "INJURY_MARKER",
+              "PRESCRIPTION",
+              "TRAINING_LOCK",
+              "NOTIFICATION",
+              "PERFORMANCE_EVALUATION",
+              "PERFORMANCE_METRIC",
+              "PERFORMANCE_THRESHOLD",
+              "RACE",
+              "RACE_REGISTRATION",
+              "DAILY_CHECKLIST",
+              "FEEDING_PLAN",
+              "INCIDENT",
+              "STALL_ASSIGNMENT",
+              "GROOM_ASSIGNMENT",
+              "STALL",
+              "BARN",
+              "SUPPLY_ITEM",
+              "SUPPLY_REQUEST",
+              "TIME_TRIAL",
+              "TRAINING_PLAN",
+              "TRAINING_SESSION",
+              "REFRESH_SESSION"
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "feature": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mã chức năng của thao tác"
+          },
+          "before": {
+            "type": "object",
+            "nullable": true
+          },
+          "after": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "actor",
+          "action",
+          "entityType",
+          "entityId",
+          "reason",
+          "feature",
+          "before",
+          "after"
+        ]
+      },
       "LoginDto": {
         "type": "object",
         "properties": {
@@ -9098,33 +9491,6 @@
           "measuredBy",
           "measuredByName",
           "source"
-        ]
-      },
-      "PaginationMetaDto": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "number",
-            "description": "Tổng số phần tử"
-          },
-          "page": {
-            "type": "number",
-            "description": "Trang hiện tại"
-          },
-          "limit": {
-            "type": "number",
-            "description": "Số phần tử mỗi trang"
-          },
-          "totalPages": {
-            "type": "number",
-            "description": "Tổng số trang"
-          }
-        },
-        "required": [
-          "total",
-          "page",
-          "limit",
-          "totalPages"
         ]
       },
       "HorseMeasurementPageDto": {
