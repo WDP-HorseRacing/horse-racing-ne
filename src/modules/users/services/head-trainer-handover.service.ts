@@ -8,6 +8,10 @@ import { DataSource, EntityManager } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { BarnsService } from '../../stable/barns/barns.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import {
@@ -26,6 +30,7 @@ export class HeadTrainerHandoverService {
     private readonly dataSource: DataSource,
     private readonly barns: BarnsService,
     private readonly training: TrainingOperationsFacade,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -33,6 +38,7 @@ export class HeadTrainerHandoverService {
    *
    * - Lớp đã hoàn thành hoặc đã hủy giữ Head Trainer cũ
    * - Mỗi khu chuồng được chuyển ghi một dòng nhật ký
+   * - Ghi thêm một dòng nhật ký tổng trên Head Trainer bàn giao: người nhận và số khu, giáo án, lớp đã chuyển
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param fromHeadTrainerId UUID của Head Trainer bàn giao
@@ -81,7 +87,17 @@ export class HeadTrainerHandoverService {
         from.id,
         to.id,
       );
-      return { barnsMoved, ...work };
+      const result = { barnsMoved, ...work };
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.USER,
+        entityId: from.id,
+        before: null,
+        after: { toHeadTrainerId: to.id, ...result },
+        feature: AuditFeature.HT_HANDOVER,
+      });
+      return result;
     });
   }
 

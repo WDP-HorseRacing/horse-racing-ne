@@ -11744,7 +11744,12 @@
               "MED_HEALTH",
               "MED_TRAIN_LOCK",
               "MED_CASE_CLOSE",
-              "MED_CARE"
+              "MED_CARE",
+              "USER_ACCOUNT",
+              "HT_HANDOVER",
+              "SUPPLY_ITEM",
+              "SUPPLY_STOCK",
+              "SUPPLY_REQUEST"
             ],
             "nullable": true,
             "description": "Chức năng gây ra thay đổi"

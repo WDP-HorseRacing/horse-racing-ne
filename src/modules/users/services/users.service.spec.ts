@@ -93,7 +93,7 @@ describe('UsersService', () => {
       count: jest.fn().mockResolvedValue(1),
       update: jest.fn(() => {
         events.push('db:update');
-        return Promise.resolve(undefined);
+        return Promise.resolve({ affected: 1 });
       }),
     };
     getRepository = jest.fn((entity: unknown) => {
@@ -137,6 +137,7 @@ describe('UsersService', () => {
       users as unknown as Repository<UserEntity>,
       keycloakUsers as unknown as KeycloakUserService,
       { manager, transaction } as unknown as DataSource,
+      { record: jest.fn() },
     );
   });
 

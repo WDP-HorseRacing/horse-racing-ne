@@ -11,6 +11,10 @@ import type { Actor } from '../../../common/types/actor';
 import type { FieldError } from '../../../common/utils/field-errors';
 import { containsPattern } from '../../../common/utils/like-pattern';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
   CreateSupplyItemDto,
@@ -52,6 +56,7 @@ export class SupplyItemsService {
     private readonly movements: Repository<SupplyStockMovementEntity>,
     private readonly stock: SupplyStockService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -111,6 +116,8 @@ export class SupplyItemsService {
   /**
    * Thêm vật tư; số tồn ban đầu khác 0 thì ghi một dòng sổ kiểm kê
    *
+   * - Ghi nhật ký kèm tên, loại, đơn vị, số tồn ban đầu, ngưỡng báo thiếu
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Tên, loại, đơn vị, số tồn ban đầu, ngưỡng báo thiếu
    * @returns Promise trả về vật tư vừa thêm
@@ -143,6 +150,21 @@ export class SupplyItemsService {
               null,
             );
           }
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.CREATE,
+            entityType: AuditEntityType.SUPPLY_ITEM,
+            entityId: item.id,
+            before: null,
+            after: {
+              name: item.name,
+              category: item.category,
+              unit: item.unit,
+              quantityOnHand: Number(item.quantityOnHand),
+              reorderThreshold: Number(item.reorderThreshold),
+            },
+            feature: AuditFeature.SUPPLY_ITEM,
+          });
           return item.id;
         }),
       SUPPLY_ITEM_NAME_TAKEN,
@@ -173,6 +195,8 @@ export class SupplyItemsService {
   /**
    * Sửa tên, loại, đơn vị, ngưỡng báo thiếu; không đổi số tồn
    *
+   * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của vật tư
    * @param body Các field cần sửa, field không gửi giữ giá trị cũ
@@ -186,11 +210,12 @@ export class SupplyItemsService {
     id: string,
     body: UpdateSupplyItemDto,
   ): Promise<SupplyItemResponseDto> {
-    await currentUserForActor(this.dataSource.manager, actor);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     await mapAnyUniqueViolation(
       () =>
         this.dataSource.transaction(async (manager) => {
           const item = await this.stock.lockItem(manager, id);
+          const before = auditedItemFields(item);
           Object.assign(item, {
             name: body.name?.trim() ?? item.name,
             category: body.category ?? item.category,
@@ -199,6 +224,22 @@ export class SupplyItemsService {
               body.reorderThreshold?.toString() ?? item.reorderThreshold,
           });
           await manager.save(item);
+          const after = auditedItemFields(item);
+          const changed = (Object.keys(after) as (keyof typeof after)[]).filter(
+            (key) => after[key] !== before[key],
+          );
+          if (changed.length === 0) return;
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.UPDATE,
+            entityType: AuditEntityType.SUPPLY_ITEM,
+            entityId: id,
+            before: Object.fromEntries(
+              changed.map((key) => [key, before[key]]),
+            ),
+            after: Object.fromEntries(changed.map((key) => [key, after[key]])),
+            feature: AuditFeature.SUPPLY_ITEM,
+          });
         }),
       SUPPLY_ITEM_NAME_TAKEN,
     );
@@ -208,6 +249,8 @@ export class SupplyItemsService {
   /**
    * Xóa mềm vật tư; đề xuất và sổ nhập xuất cũ vẫn giữ
    *
+   * - Ghi nhật ký kèm tên, loại, đơn vị của vật tư bị xóa
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của vật tư
    * @returns Promise hoàn tất khi đã xóa
@@ -216,9 +259,9 @@ export class SupplyItemsService {
    * @throws ConflictException Nếu vật tư còn đề xuất PENDING hoặc APPROVED
    */
   async remove(actor: Actor, id: string): Promise<void> {
-    await currentUserForActor(this.dataSource.manager, actor);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
-      await this.stock.lockItem(manager, id);
+      const item = await this.stock.lockItem(manager, id);
       const hasOpenRequest = await manager.exists(SupplyRequestEntity, {
         where: {
           itemId: id,
@@ -232,11 +275,22 @@ export class SupplyItemsService {
         throw new ConflictException('Vật tư còn đề xuất chưa xử lý');
       }
       await manager.softDelete(SupplyItemEntity, { id });
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.DELETE,
+        entityType: AuditEntityType.SUPPLY_ITEM,
+        entityId: id,
+        before: { name: item.name, category: item.category, unit: item.unit },
+        after: null,
+        feature: AuditFeature.SUPPLY_ITEM,
+      });
     });
   }
 
   /**
    * Kiểm kê: ghi số đếm thực tế, phần chênh lệch vào sổ nhập xuất
+   *
+   * - Ghi nhật ký số tồn trước và sau, ghi chú kiểm kê làm lý do
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của vật tư
@@ -253,13 +307,25 @@ export class SupplyItemsService {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
       const item = await this.stock.lockItem(manager, id);
+      const before = Number(item.quantityOnHand);
+      const note = body.note?.trim() || null;
       await this.stock.recordCount(
         manager,
         item,
         body.quantityOnHand.toString(),
         caller.id,
-        body.note?.trim() || null,
+        note,
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.SUPPLY_ITEM,
+        entityId: id,
+        before: { quantityOnHand: before },
+        after: { quantityOnHand: Number(item.quantityOnHand) },
+        reason: note,
+        feature: AuditFeature.SUPPLY_STOCK,
+      });
     });
     return this.get(actor, id);
   }
@@ -302,4 +368,19 @@ export class SupplyItemsService {
       query.limit,
     );
   }
+}
+
+/**
+ * Lấy các field của vật tư được ghi nhật ký khi sửa, số đã đổi sang number
+ *
+ * @param item Vật tư
+ * @returns Tên, loại, đơn vị, ngưỡng báo thiếu
+ */
+function auditedItemFields(item: SupplyItemEntity) {
+  return {
+    name: item.name,
+    category: item.category,
+    unit: item.unit,
+    reorderThreshold: Number(item.reorderThreshold),
+  };
 }

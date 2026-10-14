@@ -4,6 +4,10 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
   CreateSupplyRequestDto,
@@ -43,6 +47,7 @@ export class SupplyRequestsService {
     private readonly requests: Repository<SupplyRequestEntity>,
     private readonly stock: SupplyStockService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -85,6 +90,8 @@ export class SupplyRequestsService {
   /**
    * Gửi đề xuất bổ sung cho một vật tư chưa xóa
    *
+   * - Ghi nhật ký kèm vật tư, số lượng, ghi chú, trạng thái
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Vật tư, số lượng, ghi chú
    * @returns Promise trả về đề xuất vừa gửi, trạng thái PENDING
@@ -107,6 +114,20 @@ export class SupplyRequestsService {
           note: body.note?.trim() || null,
         }),
       );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.SUPPLY_REQUEST,
+        entityId: saved.id,
+        before: null,
+        after: {
+          itemId: saved.itemId,
+          quantity: Number(saved.quantity),
+          note: saved.note,
+          status: saved.status,
+        },
+        feature: AuditFeature.SUPPLY_REQUEST,
+      });
       return this.findWithRelations(manager, saved.id);
     });
     return toSupplyRequestResponse(created);
@@ -131,6 +152,8 @@ export class SupplyRequestsService {
   /**
    * Người gửi sửa số lượng, ghi chú của đề xuất còn chờ duyệt
    *
+   * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
+   *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của đề xuất
    * @param body Các field cần sửa, field không gửi giữ giá trị cũ
@@ -152,6 +175,10 @@ export class SupplyRequestsService {
         request.requestedBy,
         request.status,
       );
+      const before = {
+        quantity: Number(request.quantity),
+        note: request.note,
+      };
       if (body.quantity !== undefined) {
         request.quantity = body.quantity.toString();
       }
@@ -159,6 +186,21 @@ export class SupplyRequestsService {
         request.note = body.note.trim() || null;
       }
       await manager.save(request);
+      const after = { quantity: Number(request.quantity), note: request.note };
+      const changed = (Object.keys(after) as (keyof typeof after)[]).filter(
+        (key) => after[key] !== before[key],
+      );
+      if (changed.length) {
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.SUPPLY_REQUEST,
+          entityId: request.id,
+          before: Object.fromEntries(changed.map((key) => [key, before[key]])),
+          after: Object.fromEntries(changed.map((key) => [key, after[key]])),
+          feature: AuditFeature.SUPPLY_REQUEST,
+        });
+      }
       return this.findWithRelations(manager, request.id);
     });
     return toSupplyRequestResponse(updated);
@@ -167,8 +209,9 @@ export class SupplyRequestsService {
   /**
    * Club Manager duyệt, từ chối hoặc cấp đề xuất
    *
-   * - REJECTED: bắt buộc lý do
-   * - FULFILLED: cộng số lượng đề xuất vào tồn và ghi dòng sổ RESTOCK
+   * - REJECTED: bắt buộc lý do, lý do ghi kèm nhật ký
+   * - FULFILLED: cộng số lượng đề xuất vào tồn và ghi dòng sổ RESTOCK; nhật ký ghi kèm số lượng cấp
+   * - Ghi nhật ký trạng thái trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của đề xuất
@@ -187,6 +230,7 @@ export class SupplyRequestsService {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const updated = await this.dataSource.transaction(async (manager) => {
       const request = await this.findLocked(manager, id);
+      const previousStatus = request.status;
       assertSupplyRequestTransition(request.status, body.status);
       const now = new Date();
       if (body.status === SupplyRequestStatus.FULFILLED) {
@@ -209,6 +253,20 @@ export class SupplyRequestsService {
       }
       request.status = body.status;
       await manager.save(request);
+      const fulfilled = body.status === SupplyRequestStatus.FULFILLED;
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.SUPPLY_REQUEST,
+        entityId: request.id,
+        before: { status: previousStatus },
+        after: {
+          status: request.status,
+          ...(fulfilled && { quantity: Number(request.quantity) }),
+        },
+        reason: request.rejectionReason,
+        feature: AuditFeature.SUPPLY_REQUEST,
+      });
       return this.findWithRelations(manager, request.id);
     });
     return toSupplyRequestResponse(updated);

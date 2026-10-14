@@ -18,6 +18,10 @@ import { containsPattern } from '../../../common/utils/like-pattern';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
 import { fieldConflict } from '../../../common/utils/field-errors';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { BarnEntity } from '../../stable/entities/barn.entity';
@@ -47,6 +51,11 @@ import { splitFullName } from '../utils/name';
 const EMAIL_TAKEN_MESSAGE = 'Email này đã được dùng cho tài khoản khác';
 
 /**
+ * Lý do ghi vào nhật ký khi hệ thống trả lại thay đổi vì Keycloak không đồng bộ được
+ */
+const KEYCLOAK_REVERT_REASON = 'Hoàn tác do không đồng bộ được Keycloak';
+
+/**
  * Thao tác bắt user phải bàn giao hết trách nhiệm trước, kèm cụm từ hiển thị trong message lỗi
  */
 const RELEASE_ACTION_LABEL = {
@@ -68,6 +77,7 @@ export class UsersService {
     private readonly users: Repository<UserEntity>,
     private readonly keycloakUsers: KeycloakUserService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -123,6 +133,7 @@ export class UsersService {
   /**
    * Tạo user và đăng ký tài khoản tương ứng trên Keycloak
    *
+   * - Ghi user và nhật ký trong cùng transaction; nhật ký không chứa mật khẩu
    * - Gán vai trò trên Keycloak hoặc ghi DB lỗi: xóa tài khoản Keycloak vừa tạo rồi ném lại lỗi
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -132,7 +143,7 @@ export class UsersService {
    * @throws ConflictException Nếu email đã được dùng ở DB hoặc trên Keycloak
    */
   async create(actor: Actor, body: CreateUserDto): Promise<UserResponseDto> {
-    await currentUserForActor(this.dataSource.manager, actor);
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
     const email = body.email.trim().toLowerCase();
     const fullName = body.fullName.trim();
 
@@ -157,16 +168,28 @@ export class UsersService {
 
     try {
       await this.keycloakUsers.assignRealmRole(keycloakId, body.role);
-      const created = await this.users.save(
-        this.users.create({
-          keycloakId,
-          fullName,
-          email,
-          role: body.role,
-          status: UserStatus.ACTIVE,
-          passwordHash: null,
-        }),
-      );
+      const created = await this.dataSource.transaction(async (manager) => {
+        const user = await manager.save(
+          manager.create(UserEntity, {
+            keycloakId,
+            fullName,
+            email,
+            role: body.role,
+            status: UserStatus.ACTIVE,
+            passwordHash: null,
+          }),
+        );
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.CREATE,
+          entityType: AuditEntityType.USER,
+          entityId: user.id,
+          before: null,
+          after: { fullName, email, role: body.role, status: user.status },
+          feature: AuditFeature.USER_ACCOUNT,
+        });
+        return user;
+      });
       return toUserResponse(created);
     } catch (error) {
       await this.compensate(keycloakId, email);
@@ -177,6 +200,8 @@ export class UsersService {
   /**
    * Sửa họ tên hoặc vai trò của user
    *
+   * - Không field nào đổi giá trị: không ghi gì
+   * - Có đổi: ghi nhật ký giá trị trước và sau của các field đã đổi
    * - Đổi vai trò: đồng bộ sang Keycloak sau khi commit rồi thu hồi phiên đăng nhập của user
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -206,8 +231,11 @@ export class UsersService {
         await this.assertResponsibilitiesReleased(manager, user, 'ROLE_CHANGE');
       }
 
-      const changes: Partial<UserEntity> = {};
-      if (body.fullName !== undefined) changes.fullName = body.fullName.trim();
+      const changes: Partial<Pick<UserEntity, 'fullName' | 'role'>> = {};
+      const fullName = body.fullName?.trim();
+      if (fullName !== undefined && fullName !== user.fullName) {
+        changes.fullName = fullName;
+      }
       if (roleChanged) changes.role = newRole;
       if (Object.keys(changes).length === 0) return user;
 
@@ -215,6 +243,18 @@ export class UsersService {
         await this.assertAnotherActiveManager(manager, user.id);
       }
       await manager.getRepository(UserEntity).update({ id }, changes);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.USER,
+        entityId: id,
+        before: {
+          ...(changes.fullName !== undefined && { fullName: user.fullName }),
+          ...(changes.role !== undefined && { role: user.role }),
+        },
+        after: changes,
+        feature: AuditFeature.USER_ACCOUNT,
+      });
       return user;
     });
 
@@ -229,6 +269,7 @@ export class UsersService {
    * Đổi trạng thái tài khoản của user và đồng bộ sang Keycloak
    *
    * - Trạng thái không đổi: trả user hiện tại, không ghi gì
+   * - Có đổi: ghi nhật ký trạng thái trước và sau
    * - Chuyển sang trạng thái khác ACTIVE: thu hồi phiên đăng nhập của user
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -264,6 +305,15 @@ export class UsersService {
         await this.assertAnotherActiveManager(manager, user.id);
       }
       await manager.getRepository(UserEntity).update({ id }, { status });
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.USER,
+        entityId: id,
+        before: { status: user.status },
+        after: { status },
+        feature: AuditFeature.USER_ACCOUNT,
+      });
       return user;
     });
 
@@ -478,7 +528,7 @@ export class UsersService {
    * Bù trừ một thay đổi vai trò/trạng thái đã commit khi Keycloak không đồng bộ được, lỗi thì chỉ log
    *
    * - Chạy trong transaction mới
-   * - Chỉ ghi đè khi row vẫn còn đúng giá trị vừa ghi
+   * - Chỉ ghi đè khi row vẫn còn đúng giá trị vừa ghi; có ghi đè thì ghi thêm nhật ký hoàn tác do hệ thống (không có người thực hiện)
    * - Lỗi khi hoàn tác chỉ ghi log, không ném ra
    *
    * @param id UUID của user cần hoàn tác
@@ -492,9 +542,22 @@ export class UsersService {
     original: Partial<Pick<UserEntity, 'role' | 'status'>>,
   ): Promise<void> {
     try {
-      await this.dataSource.transaction((manager) =>
-        manager.getRepository(UserEntity).update({ id, ...applied }, original),
-      );
+      await this.dataSource.transaction(async (manager) => {
+        const result = await manager
+          .getRepository(UserEntity)
+          .update({ id, ...applied }, original);
+        if (!result.affected) return;
+        await this.auditService.record(manager, {
+          actorId: null,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.USER,
+          entityId: id,
+          before: applied,
+          after: original,
+          reason: KEYCLOAK_REVERT_REASON,
+          feature: AuditFeature.USER_ACCOUNT,
+        });
+      });
     } catch {
       this.logger.error(
         `Keycloak khong dong bo duoc va hoan tac DB cua user ${id} cung that bai: DB dang giu ${JSON.stringify(applied)}, can sua tay ve ${JSON.stringify(original)}.`,

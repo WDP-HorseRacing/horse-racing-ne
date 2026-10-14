@@ -49,6 +49,7 @@ describe('HeadTrainerHandoverService (Postgres)', () => {
         ),
       ),
       new TrainingOperationsFacade(),
+      new AuditService(),
     );
   });
 

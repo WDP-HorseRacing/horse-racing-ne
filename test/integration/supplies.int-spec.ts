@@ -8,6 +8,7 @@ import { DataSource } from 'typeorm';
 import { PaginationQueryDto } from '../../src/common/dto/pagination-query.dto';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { SupplyItemListQueryDto } from '../../src/modules/supplies/dto/supply-item.dto';
 import { SupplyRequestListQueryDto } from '../../src/modules/supplies/dto/supply-request.dto';
 import { SupplyItemEntity } from '../../src/modules/supplies/entities/supply-item.entity';
@@ -76,11 +77,13 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       dataSource.getRepository(SupplyStockMovementEntity),
       stock,
       dataSource,
+      new AuditService(),
     );
     requests = new SupplyRequestsService(
       dataSource.getRepository(SupplyRequestEntity),
       stock,
       dataSource,
+      new AuditService(),
     );
   });
 
@@ -422,5 +425,175 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     }
     const final = await items.get(manager, item.id);
     expect(Number(final.quantityOnHand)).toBeCloseTo(running, 2);
+  });
+
+  describe('audit trail', () => {
+    const idOf = async (actor: Actor) =>
+      (
+        await dataSource.query<{ id: string }[]>(
+          'SELECT id FROM users WHERE keycloak_id = $1',
+          [actor.sub],
+        )
+      )[0].id;
+
+    const auditsOf = (entityId: string) =>
+      dataSource.query<
+        {
+          actor_id: string | null;
+          action: string;
+          entity_type: string;
+          before_data: Record<string, unknown> | null;
+          after_data: Record<string, unknown> | null;
+          reason: string | null;
+          feature: string | null;
+        }[]
+      >(
+        `SELECT actor_id, action, entity_type, before_data, after_data, reason, feature
+           FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+        [entityId],
+      );
+
+    it('logs creating, editing, counting and deleting an item', async () => {
+      const managerId = await idOf(manager);
+      const groomId = await idOf(groom);
+      const item = await oats(40);
+      await items.update(manager, item.id, { reorderThreshold: 60 });
+      await items.update(manager, item.id, { unit: 'kg' });
+      await items.count(groom, item.id, {
+        quantityOnHand: 35,
+        note: 'Hao hụt',
+      });
+      await items.remove(manager, item.id);
+
+      await expect(auditsOf(item.id)).resolves.toEqual([
+        {
+          actor_id: managerId,
+          action: 'CREATE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: null,
+          after_data: {
+            name: 'Yến mạch',
+            category: SupplyCategory.FEED,
+            unit: 'kg',
+            quantityOnHand: 40,
+            reorderThreshold: 50,
+          },
+          reason: null,
+          feature: 'SUPPLY_ITEM',
+        },
+        {
+          actor_id: managerId,
+          action: 'UPDATE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: { reorderThreshold: 50 },
+          after_data: { reorderThreshold: 60 },
+          reason: null,
+          feature: 'SUPPLY_ITEM',
+        },
+        {
+          actor_id: groomId,
+          action: 'UPDATE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: { quantityOnHand: 40 },
+          after_data: { quantityOnHand: 35 },
+          reason: 'Hao hụt',
+          feature: 'SUPPLY_STOCK',
+        },
+        {
+          actor_id: managerId,
+          action: 'DELETE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: {
+            name: 'Yến mạch',
+            category: SupplyCategory.FEED,
+            unit: 'kg',
+          },
+          after_data: null,
+          reason: null,
+          feature: 'SUPPLY_ITEM',
+        },
+      ]);
+    });
+
+    it('logs a request from creation to fulfilment', async () => {
+      const managerId = await idOf(manager);
+      const groomId = await idOf(groom);
+      const item = await oats(40);
+      const request = await requests.create(groom, {
+        itemId: item.id,
+        quantity: 5,
+        note: 'Sắp hết',
+      });
+      await requests.edit(groom, request.id, { quantity: 7 });
+      await requests.edit(groom, request.id, { quantity: 7 });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.FULFILLED,
+      });
+
+      const rows = await auditsOf(request.id);
+      expect(
+        rows.map((row) => [
+          row.actor_id,
+          row.action,
+          row.before_data,
+          row.after_data,
+        ]),
+      ).toEqual([
+        [
+          groomId,
+          'CREATE',
+          null,
+          {
+            itemId: item.id,
+            quantity: 5,
+            note: 'Sắp hết',
+            status: SupplyRequestStatus.PENDING,
+          },
+        ],
+        [groomId, 'UPDATE', { quantity: 5 }, { quantity: 7 }],
+        [
+          managerId,
+          'UPDATE',
+          { status: SupplyRequestStatus.PENDING },
+          { status: SupplyRequestStatus.APPROVED },
+        ],
+        [
+          managerId,
+          'UPDATE',
+          { status: SupplyRequestStatus.APPROVED },
+          { status: SupplyRequestStatus.FULFILLED, quantity: 7 },
+        ],
+      ]);
+      expect(
+        rows.every(
+          (row) =>
+            row.entity_type === 'SUPPLY_REQUEST' &&
+            row.feature === 'SUPPLY_REQUEST',
+        ),
+      ).toBe(true);
+    });
+
+    it('keeps the rejection reason on the audit row', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, {
+        itemId: item.id,
+        quantity: 5,
+      });
+
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.REJECTED,
+        reason: 'Kho tổng còn đủ',
+      });
+
+      const rows = await auditsOf(request.id);
+      expect(rows[1]).toMatchObject({
+        before_data: { status: SupplyRequestStatus.PENDING },
+        after_data: { status: SupplyRequestStatus.REJECTED },
+        reason: 'Kho tổng còn đủ',
+      });
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../../audit/audit.module';
 import { SupplyRequestEntity } from '../entities/supply-request.entity';
 import { SuppliesSharedModule } from '../shared/supplies-shared.module';
 import { SupplyRequestsController } from './requests.controller';
@@ -9,6 +10,7 @@ import { SupplyRequestsService } from './requests.service';
   imports: [
     TypeOrmModule.forFeature([SupplyRequestEntity]),
     SuppliesSharedModule,
+    AuditModule,
   ],
   controllers: [SupplyRequestsController],
   providers: [SupplyRequestsService],

@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import type { KeycloakUserService } from '../../src/common/infrastructure/keycloak/user.service';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { UserListQueryDto } from '../../src/modules/users/dto/user.dto';
 import { UserEntity } from '../../src/modules/users/entities/user.entity';
 import { UsersService } from '../../src/modules/users/services/users.service';
@@ -26,6 +27,7 @@ describe('UsersService.list search (Postgres)', () => {
       dataSource.getRepository(UserEntity),
       {} as KeycloakUserService,
       dataSource,
+      new AuditService(),
     );
   });
 
