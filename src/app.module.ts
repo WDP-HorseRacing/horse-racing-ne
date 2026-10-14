@@ -18,6 +18,7 @@ import { ObjectStorageModule } from './common/infrastructure/storage/object-stor
 import { validateEnvironment } from './config/env.validation';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { HorsesModule } from './modules/horses/horses.module';
 import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
@@ -61,6 +62,7 @@ import { UsersModule } from './modules/users/users.module';
     KeycloakModule,
     ObjectStorageModule,
     AuthModule,
+    BillingModule,
     UsersModule,
     HorsesModule,
     TrainingModule,

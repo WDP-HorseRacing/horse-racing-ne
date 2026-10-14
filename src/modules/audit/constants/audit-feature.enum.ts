@@ -36,4 +36,5 @@ export enum AuditFeature {
   CHECKLIST = 'CHECKLIST',
   PERF_EVAL = 'PERF_EVAL',
   PERF_THRESHOLD = 'PERF_THRESHOLD',
+  DAILY_FEE = 'DAILY_FEE',
 }

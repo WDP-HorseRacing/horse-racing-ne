@@ -99,6 +99,7 @@
                 "CARE_TASK_TYPE",
                 "HORSE_CARE_TASK",
                 "CHECKLIST_ITEM",
+                "DAILY_FEE",
                 "REFRESH_SESSION"
               ]
             }
@@ -429,6 +430,100 @@
         "summary": "Diem identity provider redirect ve",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/daily-fees": {
+      "get": {
+        "operationId": "DailyFeesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DailyFeeResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lịch sử mức phí nuôi ngựa theo ngày",
+        "tags": [
+          "billing"
+        ]
+      },
+      "post": {
+        "operationId": "DailyFeesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDailyFeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyFeeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Đặt mức phí nuôi theo ngày áp dụng từ một ngày",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/daily-fees/{id}": {
+      "delete": {
+        "operationId": "DailyFeesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xóa mức phí chưa có hiệu lực",
+        "tags": [
+          "billing"
         ]
       }
     },
@@ -9025,6 +9120,7 @@
               "CARE_TASK_TYPE",
               "HORSE_CARE_TASK",
               "CHECKLIST_ITEM",
+              "DAILY_FEE",
               "REFRESH_SESSION"
             ]
           },
@@ -9171,6 +9267,7 @@
               "CARE_TASK_TYPE",
               "HORSE_CARE_TASK",
               "CHECKLIST_ITEM",
+              "DAILY_FEE",
               "REFRESH_SESSION"
             ]
           },
@@ -9326,6 +9423,58 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ]
+      },
+      "DailyFeeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "dailyFee": {
+            "type": "number",
+            "description": "VND mỗi con mỗi ngày"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "effectiveFrom",
+          "dailyFee",
+          "createdBy",
+          "createdAt"
+        ]
+      },
+      "CreateDailyFeeDto": {
+        "type": "object",
+        "properties": {
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày bắt đầu áp dụng (lịch câu lạc bộ), từ hôm nay trở đi"
+          },
+          "dailyFee": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "description": "Phí nuôi một con ngựa trong một ngày (VND)"
+          }
+        },
+        "required": [
+          "effectiveFrom",
+          "dailyFee"
         ]
       },
       "HorseDeletionPreviewResponseDto": {
@@ -11871,7 +12020,8 @@
               "INCIDENT",
               "CHECKLIST",
               "PERF_EVAL",
-              "PERF_THRESHOLD"
+              "PERF_THRESHOLD",
+              "DAILY_FEE"
             ],
             "nullable": true,
             "description": "Chức năng gây ra thay đổi"
