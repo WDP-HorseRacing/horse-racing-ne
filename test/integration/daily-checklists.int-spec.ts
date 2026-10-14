@@ -475,7 +475,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
         toDate: today,
       });
       await dataSource.query(
-        'UPDATE horse_care_tasks SET from_date = $1, to_date = $1 WHERE id = $2',
+        'UPDATE horse_daily_tasks SET from_date = $1, to_date = $1 WHERE id = $2',
         [shiftDays(today, -2), task.id],
       );
 
@@ -492,7 +492,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     await attach.query('SELECT id FROM horses WHERE id = $1 FOR UPDATE', [gio]);
     const creatorId = await seed.user(UserRole.HEAD_TRAINER);
     await attach.query(
-      `INSERT INTO horse_care_tasks (horse_id, task_type_id, from_date, to_date, created_by)
+      `INSERT INTO horse_daily_tasks (horse_id, task_type_id, from_date, to_date, created_by)
        VALUES ($1, $2, $3, $3, $4)`,
       [gio, types['Ngâm chân nước đá'], today, creatorId],
     );

@@ -21,7 +21,7 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | Training      | `training_plans`, `training_sessions`, `time_trials`                                     |
 | Performance   | `performance_metrics`, `performance_thresholds`, `performance_evaluations`               |
 | Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
-| Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `care_task_types`, `horse_care_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
+| Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `daily_task_types`, `horse_daily_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
 | Racing        | `races`, `race_registrations`                                                            |
 | Supplies      | `supply_items`, `supply_stock_movements`, `supply_requests`                              |
 | Notifications | `notifications`                                                                          |

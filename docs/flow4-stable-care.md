@@ -44,8 +44,8 @@ SỰ CỐ                             Groom báo, HT khu đóng
 | Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Mỗi dòng gắn một lô: tồn ban đầu (`OPENING`), nhập hàng (`RESTOCK`), xuất dùng (`USAGE`). Không sửa, không xóa. Dòng ghi trước khi có lô (`COUNT_ADJUST` và `RESTOCK` cũ) không gắn lô, không có tiền. |
 | Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`. |
 | Khẩu phần | `feeding_plans`, `feeding_plan_items` | Head Trainer của khu | Mỗi ngựa tối đa một bản `ACTIVE`; bản cũ giữ lại làm lịch sử. |
-| Loại việc | `care_task_types` | Club Manager | Seed sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). |
-| Việc riêng của ngựa | `horse_care_tasks` | Head Trainer của khu | Việc phát sinh một ngày thì từ ngày = đến ngày. |
+| Loại việc | `daily_task_types` | Club Manager | Seed sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). |
+| Việc riêng của ngựa | `horse_daily_tasks` | Head Trainer của khu | Việc phát sinh một ngày thì từ ngày = đến ngày. |
 | Checklist | `daily_checklists`, `daily_checklist_items` | Hệ thống sinh, Groom tick | Mỗi ngựa mỗi ngày một checklist. |
 | Sự cố | `incidents` | Groom báo, Head Trainer của khu xử lý | `OPEN` → `RESOLVED`. |
 

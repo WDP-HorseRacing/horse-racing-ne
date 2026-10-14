@@ -116,7 +116,7 @@ describe('Groom today view (Postgres)', () => {
     await assign(gio, groomId);
     await assign(other, otherGroomId);
     await dataSource.query(
-      `INSERT INTO care_task_types (version, name, applies_to_all) VALUES (1, 'Cho ăn', true)`,
+      `INSERT INTO daily_task_types (version, name, applies_to_all) VALUES (1, 'Cho ăn', true)`,
     );
   });
 

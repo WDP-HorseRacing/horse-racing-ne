@@ -15,11 +15,11 @@ import type { ChecklistTaskAddedEvent } from '../types/stable-events.types';
  * Loại việc của một ngày cho một con ngựa: việc chung đang dùng cộng việc riêng còn hiệu lực, theo thứ tự tạo loại việc
  */
 const TASK_TYPES_FOR_DAY_SQL = `SELECT t.id
-  FROM care_task_types t
+  FROM daily_task_types t
  WHERE t.active
    AND (t.applies_to_all
         OR EXISTS (SELECT 1
-                     FROM horse_care_tasks h
+                     FROM horse_daily_tasks h
                     WHERE h.task_type_id = t.id
                       AND h.horse_id = $1
                       AND h.from_date <= $2::date
