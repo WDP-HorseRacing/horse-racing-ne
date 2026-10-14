@@ -63,7 +63,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
    2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp kèm đơn giá thực trả; tạo một lô, ghi `RESTOCK` gắn mã đề xuất.
    3. Nhập hàng trực tiếp: Club Manager nhập số lượng mua về và đơn giá, không cần đề xuất; tạo một lô, ghi `RESTOCK` không gắn đề xuất.
    4. Xuất dùng: Club Manager, Head Trainer, bác sĩ hoặc Groom lấy hàng ra dùng thì ghi số lượng và ghi chú; tồn trừ ngay, không cần duyệt. Hệ thống trừ các lô còn hàng nhập sớm nhất trước, mỗi lô bị trừ ghi một dòng `USAGE`. Lấy nhiều hơn số tồn: 409.
-5. Sắp hết: số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu.
+5. Sắp hết: số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu. Xuất dùng làm số tồn xuống từ trên ngưỡng tới hoặc dưới ngưỡng thì báo mọi Club Manager một lần; các lần xuất tiếp theo khi đã dưới ngưỡng không báo lại.
 6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Không có kiểm kê.
 7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối hoặc cấp xong trước.
 8. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
@@ -76,6 +76,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 3. Club Manager duyệt hoặc từ chối đề xuất `PENDING`; từ chối bắt buộc lý do.
 4. Club Manager đánh dấu đã cấp đề xuất `APPROVED` (luật 1.4.2).
 5. Chuyển trạng thái sai thứ tự: 409.
+6. Thông báo: đề xuất mới báo mọi Club Manager; duyệt, từ chối (kèm lý do) hoặc đã cấp báo người gửi.
 
 ### 3. Khẩu phần
 

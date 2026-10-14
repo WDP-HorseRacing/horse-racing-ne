@@ -14,6 +14,7 @@
  * - PERFORMANCE_ALERT: nhịp tim của ngựa vượt ngưỡng nguy hiểm khi đang tập
  * - DAILY_CHECKLIST: có việc mới trong checklist chăm sóc hôm nay
  * - INCIDENT: Groom báo sự cố tại chuồng
+ * - SUPPLY: đề xuất bổ sung vật tư mới, đổi trạng thái, hoặc vật tư sắp hết
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -29,4 +30,5 @@ export enum NotificationCategory {
   PERFORMANCE_ALERT = 'PERFORMANCE_ALERT',
   DAILY_CHECKLIST = 'DAILY_CHECKLIST',
   INCIDENT = 'INCIDENT',
+  SUPPLY = 'SUPPLY',
 }

@@ -4,6 +4,8 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
+import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -29,6 +31,14 @@ import {
   assertSupplyRequestTransition,
 } from '../policies/supplies.policy';
 import { SupplyStockService } from '../shared/supply-stock.service';
+import {
+  SUPPLY_REQUEST_CREATED_EVENT,
+  SUPPLY_REQUEST_STATUS_CHANGED_EVENT,
+} from '../constants/supply-events.constants';
+import type {
+  SupplyRequestCreatedEvent,
+  SupplyRequestStatusChangedEvent,
+} from '../types/supply-events.types';
 
 const REQUEST_RELATIONS = {
   item: true,
@@ -50,6 +60,7 @@ export class SupplyRequestsService {
     private readonly stock: SupplyStockService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
@@ -93,6 +104,7 @@ export class SupplyRequestsService {
    * Gửi đề xuất bổ sung cho một vật tư chưa xóa
    *
    * - Ghi nhật ký kèm vật tư, số lượng, ghi chú, trạng thái
+   * - Ghi SUPPLY_REQUEST_CREATED_EVENT vào outbox để báo Club Manager
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Vật tư, số lượng, ghi chú
@@ -106,7 +118,7 @@ export class SupplyRequestsService {
   ): Promise<SupplyRequestResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const created = await this.dataSource.transaction(async (manager) => {
-      await this.stock.lockItem(manager, body.itemId);
+      const item = await this.stock.lockItem(manager, body.itemId);
       const saved = await manager.save(
         manager.create(SupplyRequestEntity, {
           itemId: body.itemId,
@@ -130,6 +142,15 @@ export class SupplyRequestsService {
         },
         feature: AuditFeature.SUPPLY_REQUEST,
       });
+      const event: SupplyRequestCreatedEvent = {
+        eventId: saved.id,
+        requestId: saved.id,
+        itemName: item.name,
+        unit: item.unit,
+        quantity: Number(saved.quantity),
+        requesterName: caller.fullName,
+      };
+      await this.events.publish(manager, SUPPLY_REQUEST_CREATED_EVENT, event);
       return this.findWithRelations(manager, saved.id);
     });
     return toSupplyRequestResponse(created);
@@ -213,6 +234,7 @@ export class SupplyRequestsService {
    * - REJECTED: bắt buộc lý do, lý do ghi kèm nhật ký
    * - FULFILLED: cộng số lượng đề xuất vào tồn và ghi dòng sổ RESTOCK kèm đơn giá của lần cấp; nhật ký ghi kèm số lượng và đơn giá
    * - Ghi nhật ký trạng thái trước và sau
+   * - Ghi SUPPLY_REQUEST_STATUS_CHANGED_EVENT vào outbox để báo người gửi
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của đề xuất
@@ -274,7 +296,25 @@ export class SupplyRequestsService {
         reason: request.rejectionReason,
         feature: AuditFeature.SUPPLY_REQUEST,
       });
-      return this.findWithRelations(manager, request.id);
+      const result = await this.findWithRelations(manager, request.id);
+      const event: SupplyRequestStatusChangedEvent = {
+        eventId: deterministicUuid(
+          `supply-request:${request.id}:${request.status}`,
+        ),
+        requestId: request.id,
+        requesterId: request.requestedBy,
+        itemName: result.item.name,
+        unit: result.item.unit,
+        quantity: Number(request.quantity),
+        status: request.status,
+        reason: request.rejectionReason,
+      };
+      await this.events.publish(
+        manager,
+        SUPPLY_REQUEST_STATUS_CHANGED_EVENT,
+        event,
+      );
+      return result;
     });
     return toSupplyRequestResponse(updated);
   }

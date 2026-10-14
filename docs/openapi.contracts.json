@@ -13233,7 +13233,8 @@
               "OWNERSHIP",
               "PERFORMANCE_ALERT",
               "DAILY_CHECKLIST",
-              "INCIDENT"
+              "INCIDENT",
+              "SUPPLY"
             ]
           },
           "priority": {

@@ -9,6 +9,7 @@ import { DataSource } from 'typeorm';
 import { PaginationQueryDto } from '../../src/common/dto/pagination-query.dto';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { SupplyItemListQueryDto } from '../../src/modules/supplies/dto/supply-item.dto';
 import { SupplyRequestListQueryDto } from '../../src/modules/supplies/dto/supply-request.dto';
@@ -81,12 +82,14 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       stock,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     requests = new SupplyRequestsService(
       dataSource.getRepository(SupplyRequestEntity),
       stock,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
   });
 
@@ -772,6 +775,73 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         NotFoundException,
       );
       await expect(items.lotsOf(manager, item.id)).resolves.toHaveLength(1);
+    });
+  });
+
+  describe('notification events', () => {
+    const outbox = (name: string) =>
+      dataSource.query<{ payload: Record<string, unknown> }[]>(
+        'SELECT payload FROM outbox_events WHERE event_name = $1 ORDER BY created_at, id',
+        [name],
+      );
+
+    it('announces a new request and each decision on it', async () => {
+      const item = await oats(10);
+      const request = await requests.create(groom, {
+        itemId: item.id,
+        quantity: 50,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.FULFILLED,
+        unitPrice: 20000,
+      });
+
+      const [created] = await outbox('supplies.request.created');
+      expect(created.payload).toMatchObject({
+        eventId: request.id,
+        requestId: request.id,
+        itemName: 'Yến mạch',
+        unit: 'kg',
+        quantity: 50,
+      });
+      const changes = await outbox('supplies.request.status-changed');
+      expect(changes.map((row) => row.payload.status)).toEqual([
+        SupplyRequestStatus.APPROVED,
+        SupplyRequestStatus.FULFILLED,
+      ]);
+      expect(new Set(changes.map((row) => row.payload.eventId)).size).toBe(2);
+      expect(changes[0].payload).toMatchObject({
+        requestId: request.id,
+        quantity: 50,
+        reason: null,
+      });
+    });
+
+    it('warns once when a usage takes the stock down to the threshold', async () => {
+      const item = await items.create(manager, {
+        name: 'Cám',
+        category: SupplyCategory.FEED,
+        unit: 'kg',
+        quantityOnHand: 20,
+        reorderThreshold: 10,
+      });
+
+      await items.use(groom, item.id, { quantity: 5 });
+      await items.use(groom, item.id, { quantity: 5 });
+      await items.use(groom, item.id, { quantity: 2 });
+
+      const warnings = await outbox('supplies.item.low-stock');
+      expect(warnings.map((row) => row.payload)).toEqual([
+        expect.objectContaining({
+          itemId: item.id,
+          itemName: 'Cám',
+          quantityOnHand: 10,
+          reorderThreshold: 10,
+        }),
+      ]);
     });
   });
 });

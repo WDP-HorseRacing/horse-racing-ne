@@ -6,10 +6,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, ILike, In, IsNull, Repository } from 'typeorm';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { randomUUID } from 'node:crypto';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import type { FieldError } from '../../../common/utils/field-errors';
 import { containsPattern } from '../../../common/utils/like-pattern';
+import { compareDecimal } from '../../../common/utils/decimal';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -28,6 +31,7 @@ import {
   SupplyStockMovementPageResponseDto,
   UpdateSupplyItemDto,
 } from '../dto/supply-item.dto';
+import { SUPPLY_LOW_STOCK_EVENT } from '../constants/supply-events.constants';
 import { SupplyItemEntity } from '../entities/supply-item.entity';
 import { SupplyLotEntity } from '../entities/supply-lot.entity';
 import { SupplyRequestEntity } from '../entities/supply-request.entity';
@@ -43,6 +47,7 @@ import {
   SUPPLY_ITEM_NOT_FOUND,
   SupplyStockService,
 } from '../shared/supply-stock.service';
+import type { SupplyLowStockEvent } from '../types/supply-events.types';
 
 const SUPPLY_ITEM_NAME_TAKEN: FieldError = {
   field: 'name',
@@ -64,6 +69,7 @@ export class SupplyItemsService {
     private readonly stock: SupplyStockService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
@@ -344,6 +350,7 @@ export class SupplyItemsService {
    *
    * - Trừ các lô nhập sớm nhất trước; mỗi lô bị trừ ghi một dòng sổ USAGE
    * - Ghi nhật ký số tồn trước và sau, phần lấy từ từng lô, ghi chú làm lý do
+   * - Số tồn xuống từ trên ngưỡng báo thiếu tới hoặc dưới ngưỡng: ghi SUPPLY_LOW_STOCK_EVENT vào outbox để báo Club Manager
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của vật tư
@@ -362,6 +369,8 @@ export class SupplyItemsService {
     await this.dataSource.transaction(async (manager) => {
       const item = await this.stock.lockItem(manager, id);
       const before = Number(item.quantityOnHand);
+      const wasAboveThreshold =
+        compareDecimal(item.quantityOnHand, item.reorderThreshold) > 0;
       const note = body.note?.trim() || null;
       const { item: saved, takings } = await this.stock.consume(
         manager,
@@ -388,6 +397,20 @@ export class SupplyItemsService {
         reason: note,
         feature: AuditFeature.SUPPLY_STOCK,
       });
+      if (
+        wasAboveThreshold &&
+        compareDecimal(saved.quantityOnHand, saved.reorderThreshold) <= 0
+      ) {
+        const event: SupplyLowStockEvent = {
+          eventId: randomUUID(),
+          itemId: saved.id,
+          itemName: saved.name,
+          unit: saved.unit,
+          quantityOnHand: Number(saved.quantityOnHand),
+          reorderThreshold: Number(saved.reorderThreshold),
+        };
+        await this.events.publish(manager, SUPPLY_LOW_STOCK_EVENT, event);
+      }
     });
     return this.get(actor, id);
   }

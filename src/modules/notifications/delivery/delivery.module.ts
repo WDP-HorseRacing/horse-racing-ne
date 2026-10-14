@@ -33,6 +33,8 @@ import { NotificationPushProcessor } from './notification-push.processor';
 import { NotificationRecipientsRepository } from './notification-recipients.repository';
 import { PushChannel } from './push.channel';
 import { RealtimeChannel } from './realtime.channel';
+import { SupplyEventsListener } from './supply-events.listener';
+import { SupplyNotificationsService } from './supply-notifications.service';
 
 @Module({
   imports: [
@@ -72,6 +74,8 @@ import { RealtimeChannel } from './realtime.channel';
     MedicalEventsListener,
     PerformanceNotificationsService,
     PerformanceMetricCriticalListener,
+    SupplyNotificationsService,
+    SupplyEventsListener,
   ],
 })
 export class NotificationDeliveryModule {}
