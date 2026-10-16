@@ -191,7 +191,7 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
     const week2 = await session('2026-10-12T01:00:00Z', 'LIGHT');
     await run(week2, gio, gioEnrollment, 'COMPLETED');
     await run(week2, sao, saoEnrollment, 'ABSENT');
-    const before = await session('2026-09-01T01:00:00Z', 'MODERATE');
+    const before = await session('2026-09-01T01:00:00Z', 'HEAVY');
     await run(before, gio, gioEnrollment, 'COMPLETED');
 
     await point(gio, '2026-10-05T01:10:00Z', 150, '14.000');
@@ -223,7 +223,7 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
         completed: 2,
         absent: 1,
         ineligible: 1,
-        completedByIntensity: { LIGHT: 1, MODERATE: 0, HEAVY: 1 },
+        completedByIntensity: { LIGHT: 1, HEAVY: 1 },
       },
       weekly: [
         {

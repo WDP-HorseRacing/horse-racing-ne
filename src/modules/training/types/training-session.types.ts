@@ -1,3 +1,5 @@
+import type { TrainingIntensity } from '../enums/training-intensity.enum';
+
 /**
  * Khoảng giờ của một buổi tập, tính từ giờ bắt đầu tới trước giờ kết thúc.
  */
@@ -7,19 +9,25 @@ export interface SessionWindow {
 }
 
 /**
- * Buổi tập của một ngựa ở một lớp, kèm mã lớp của buổi.
+ * Buổi tập kèm mã lớp và cường độ, dùng để xét giới hạn tập trong ngày.
  */
-export interface HorseClassSession extends SessionWindow {
-  horseId: string;
+export interface ClassSessionLoad extends SessionWindow {
+  sessionId: string;
   classCode: string;
+  intensity: TrainingIntensity;
+}
+
+/**
+ * Buổi tập của một ngựa ở một lớp, kèm mã lớp và cường độ của buổi.
+ */
+export interface HorseClassSession extends ClassSessionLoad {
+  horseId: string;
 }
 
 /**
  * Buổi tập ngựa đang giữ chỗ, kèm mã lớp của buổi.
  */
-export interface HorseSessionHolding extends HorseClassSession {
-  sessionId: string;
-}
+export type HorseSessionHolding = HorseClassSession;
 
 /**
  * Tên và mã ảnh đại diện của ngựa để hiện trên danh sách.

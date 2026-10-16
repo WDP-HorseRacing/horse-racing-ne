@@ -91,7 +91,7 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
 
   const create = (
     startAt: string,
-    intensity = TrainingIntensity.MODERATE,
+    intensity = TrainingIntensity.HEAVY,
     actor = trainer,
   ) =>
     service.createSession(actor, classId, {
@@ -143,7 +143,10 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
 
   it('re-checks eligibility when the intensity changes', async () => {
     const watched = await enroll('Gió', HorseHealthStatus.UNDER_OBSERVATION);
-    const created = await create('2026-11-10T01:00:00Z');
+    const created = await create(
+      '2026-11-10T01:00:00Z',
+      TrainingIntensity.LIGHT,
+    );
     expect(await statusByHorse(created.id)).toEqual({ [watched]: 'PLANNED' });
 
     await service.updateSession(trainer, created.id, {

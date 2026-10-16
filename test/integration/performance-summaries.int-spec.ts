@@ -81,7 +81,7 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
       const sessionId = randomUUID();
       await dataSource.query(
         `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m)
-         VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', 'MODERATE', 3000)`,
+         VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', 'HEAVY', 3000)`,
         [sessionId, classId, scheduledAt],
       );
       const participantId = randomUUID();

@@ -31,6 +31,8 @@ import {
   assertSubjectExercise,
   classEndDate,
   classPhaseOn,
+  findDailyLoadConflict,
+  dailyLoadMessage,
   eligibilityForSession,
   initialParticipantEligibility,
   totalPlanWeeks,
@@ -219,28 +221,30 @@ describe('eligibilityForSession', () => {
       hasActiveTrainingLock,
     });
 
-  it('blocks an UNDER_OBSERVATION horse from a HEAVY session', () => {
-    const result = eligibilityForSession(
-      eligibilityOf(HorseHealthStatus.UNDER_OBSERVATION),
-      TrainingIntensity.HEAVY,
-    );
-
-    expect(result.trainingEligible).toBe(false);
-    expect(result.trainingReasons).toEqual(['HEALTH_UNDER_OBSERVATION']);
-    expect(initialParticipantEligibility(result, false)).toEqual({
-      status: SessionParticipantStatus.INELIGIBLE,
-      ineligibilityReason: 'HEALTH_UNDER_OBSERVATION',
-    });
-  });
-
-  it.each([TrainingIntensity.LIGHT, TrainingIntensity.MODERATE])(
-    'lets an UNDER_OBSERVATION horse train in a %s session',
+  it.each([TrainingIntensity.HEAVY])(
+    'blocks an UNDER_OBSERVATION horse from a %s session',
     (intensity) => {
-      const eligibility = eligibilityOf(HorseHealthStatus.UNDER_OBSERVATION);
+      const result = eligibilityForSession(
+        eligibilityOf(HorseHealthStatus.UNDER_OBSERVATION),
+        intensity,
+      );
 
-      expect(eligibilityForSession(eligibility, intensity)).toBe(eligibility);
+      expect(result.trainingEligible).toBe(false);
+      expect(result.trainingReasons).toEqual(['HEALTH_UNDER_OBSERVATION']);
+      expect(initialParticipantEligibility(result, false)).toEqual({
+        status: SessionParticipantStatus.INELIGIBLE,
+        ineligibilityReason: 'HEALTH_UNDER_OBSERVATION',
+      });
     },
   );
+
+  it('lets an UNDER_OBSERVATION horse train in a LIGHT session', () => {
+    const eligibility = eligibilityOf(HorseHealthStatus.UNDER_OBSERVATION);
+
+    expect(eligibilityForSession(eligibility, TrainingIntensity.LIGHT)).toBe(
+      eligibility,
+    );
+  });
 
   it('lets an ELIGIBLE horse train in a HEAVY session', () => {
     const eligibility = eligibilityOf(HorseHealthStatus.ELIGIBLE);
@@ -382,6 +386,7 @@ describe('session overlap policy', () => {
       horseId: 'h1',
       sessionId: 's2',
       classCode: 'B',
+      intensity: TrainingIntensity.LIGHT,
     };
     expect(findOverlappingHolding(base, [holding])).toBe(holding);
     expect(
@@ -398,6 +403,7 @@ describe('session overlap policy', () => {
       horseId: 'h1',
       sessionId: 's2',
       classCode: 'B',
+      intensity: TrainingIntensity.LIGHT,
     };
     expect(() => assertNoHoldingOverlap('Winx', [base], [holding])).toThrow(
       new ConflictException('Ngựa Winx đã có buổi tập trùng giờ ở lớp B'),
@@ -414,7 +420,9 @@ describe('session overlap policy', () => {
     ) => ({
       ...window(start, end),
       horseId,
+      sessionId: `${horseId}-${start}`,
       classCode,
+      intensity: TrainingIntensity.LIGHT,
     });
 
     it('lists every clashing horse once with its earliest clash, sorted by name, in club time', () => {
@@ -469,7 +477,9 @@ describe('session overlap policy', () => {
     const at = (horseId: string, start: string, end: string) => ({
       ...window(start, end),
       horseId,
+      sessionId: `${horseId}-${start}`,
       classCode: 'B',
+      intensity: TrainingIntensity.LIGHT,
     });
     const draft = window('2026-10-11T01:00:00Z', '2026-10-11T02:00:00Z');
 
@@ -590,5 +600,108 @@ describe('classPhaseOn', () => {
   it('returns nothing before the start or after the last phase', () => {
     expect(classPhaseOn('2026-10-05', phases, '2026-10-04')).toBeUndefined();
     expect(classPhaseOn('2026-10-05', phases, '2026-10-26')).toBeUndefined();
+  });
+});
+
+describe('findDailyLoadConflict', () => {
+  const load = (
+    start: string,
+    end: string,
+    intensity = TrainingIntensity.LIGHT,
+    classCode = 'K2',
+  ) => ({
+    sessionId: `${classCode}-${start}`,
+    classCode,
+    intensity,
+    scheduledStartAt: new Date(start),
+    scheduledEndAt: new Date(end),
+  });
+  const session = (
+    start: string,
+    end: string,
+    intensity = TrainingIntensity.LIGHT,
+  ) => ({
+    scheduledStartAt: new Date(start),
+    scheduledEndAt: new Date(end),
+    intensity,
+  });
+
+  it('needs 3 hours from the end of one session to the start of the other, across midnight', () => {
+    const other = load('2026-10-10T14:00:00Z', '2026-10-10T15:00:00Z');
+
+    expect(
+      findDailyLoadConflict(
+        session('2026-10-10T17:59:00Z', '2026-10-10T19:00:00Z'),
+        [other],
+      ),
+    ).toEqual({ other, reason: 'REST' });
+    expect(
+      findDailyLoadConflict(
+        session('2026-10-10T18:00:00Z', '2026-10-10T19:00:00Z'),
+        [other],
+      ),
+    ).toBeUndefined();
+    expect(
+      findDailyLoadConflict(
+        session('2026-10-10T10:00:00Z', '2026-10-10T11:00:00Z'),
+        [other],
+      ),
+    ).toBeUndefined();
+  });
+
+  it('allows two sessions a club day, only one of them HEAVY', () => {
+    const morning = load(
+      '2026-10-09T23:00:00Z',
+      '2026-10-10T00:00:00Z',
+      TrainingIntensity.HEAVY,
+    );
+    const noon = load('2026-10-10T05:00:00Z', '2026-10-10T06:00:00Z');
+
+    expect(
+      findDailyLoadConflict(
+        session('2026-10-10T10:00:00Z', '2026-10-10T11:00:00Z'),
+        [morning, noon],
+      ),
+    ).toEqual({ other: morning, reason: 'DAY_LIMIT' });
+    expect(
+      findDailyLoadConflict(
+        session(
+          '2026-10-10T10:00:00Z',
+          '2026-10-10T11:00:00Z',
+          TrainingIntensity.HEAVY,
+        ),
+        [morning],
+      ),
+    ).toEqual({ other: morning, reason: 'HEAVY_DAY_LIMIT' });
+    expect(
+      findDailyLoadConflict(
+        session('2026-10-10T10:00:00Z', '2026-10-10T11:00:00Z'),
+        [morning],
+      ),
+    ).toBeUndefined();
+    expect(
+      findDailyLoadConflict(
+        session(
+          '2026-10-10T18:00:00Z',
+          '2026-10-10T19:00:00Z',
+          TrainingIntensity.HEAVY,
+        ),
+        [morning, noon],
+      ),
+    ).toBeUndefined();
+  });
+
+  it('describes each conflict with the class and club time of the other session', () => {
+    const other = load('2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z');
+
+    expect(dailyLoadMessage({ other, reason: 'REST' })).toBe(
+      'chưa nghỉ đủ 3 giờ so với buổi khác (lớp K2, 08:00 ngày 10/10/2026)',
+    );
+    expect(dailyLoadMessage({ other, reason: 'DAY_LIMIT' })).toBe(
+      'đã đủ 2 buổi trong ngày (lớp K2, 08:00 ngày 10/10/2026)',
+    );
+    expect(dailyLoadMessage({ other, reason: 'HEAVY_DAY_LIMIT' })).toBe(
+      'đã có buổi Nặng trong ngày (lớp K2, 08:00 ngày 10/10/2026)',
+    );
   });
 });

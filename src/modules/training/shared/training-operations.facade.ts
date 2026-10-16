@@ -231,7 +231,7 @@ export class TrainingOperationsFacade {
    *
    * - Chỉ xét lượt PLANNED, CANCELLED_BY_LOCK hoặc INELIGIBLE của buổi SCHEDULED chưa tới giờ bắt đầu
    * - Ngựa đang bị khóa huấn luyện: CANCELLED_BY_LOCK
-   * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi HEAVY: INELIGIBLE kèm lý do
+   * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi không phải LIGHT: INELIGIBLE kèm lý do
    * - Ngựa được tập: PLANNED, xóa lý do không đủ điều kiện
    * - Khóa theo thứ tự ngựa → buổi → lượt; chạy lại nhiều lần cho cùng kết quả
    * - Hồ sơ ngựa đã xóa vẫn được chấm (thành INELIGIBLE); không có ngựa thì không làm gì

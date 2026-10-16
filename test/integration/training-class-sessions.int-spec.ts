@@ -97,7 +97,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
     const id = randomUUID();
     await dataSource.query(
       `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
-       VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', $4, 'MODERATE', 3000)`,
+       VALUES ($1, 1, $2, 'Buổi', $3::timestamptz, $3::timestamptz + interval '1 hour', $4, 'HEAVY', 3000)`,
       [id, owner.classId, startAt, status],
     );
     return id;

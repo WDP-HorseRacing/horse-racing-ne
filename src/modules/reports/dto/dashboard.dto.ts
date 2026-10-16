@@ -41,7 +41,6 @@ export class DashboardHerdDto {
 
 export class DashboardIntensityCountsDto {
   @ApiProperty() LIGHT!: number;
-  @ApiProperty() MODERATE!: number;
   @ApiProperty() HEAVY!: number;
 }
 

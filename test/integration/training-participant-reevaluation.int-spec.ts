@@ -62,7 +62,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
 
   const session = async (
     startOffsetHours: number,
-    intensity: TrainingIntensity = TrainingIntensity.MODERATE,
+    intensity: TrainingIntensity = TrainingIntensity.HEAVY,
   ) => {
     const id = randomUUID();
     const start = new Date(Date.now() + startOffsetHours * HOUR);

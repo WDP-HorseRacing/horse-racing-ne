@@ -610,7 +610,7 @@ export class SessionParticipantsService {
    * Đánh lượt tham gia là không được tập nếu ngựa không còn đủ điều kiện, chạy trong transaction của nơi gọi
    *
    * - Ngựa đang bị khóa huấn luyện: lượt chuyển CANCELLED_BY_LOCK
-   * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi HEAVY: lượt chuyển INELIGIBLE
+   * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi không phải LIGHT: lượt chuyển INELIGIBLE
    * - Lượt bị đánh thì ghi lý do và cập nhật trạng thái buổi tập
    *
    * @param manager EntityManager của transaction đang chạy

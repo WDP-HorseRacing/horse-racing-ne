@@ -21,7 +21,13 @@ import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import {
+  MAX_HEAVY_SESSIONS_PER_HORSE_DAY,
+  MAX_SESSIONS_PER_HORSE_DAY,
+  MIN_REST_BETWEEN_SESSIONS_MS,
+} from '../constants/horse-daily-load.constants';
 import type {
+  ClassSessionLoad,
   HorseBrief,
   HorseClassSession,
   SessionWindow,
@@ -258,6 +264,156 @@ export function horseScheduleClashError(
   );
 }
 
+/**
+ * Một buổi trong lịch làm buổi đang xét vượt giới hạn tập trong ngày của ngựa, kèm cách vượt
+ */
+export interface DailyLoadConflict {
+  other: ClassSessionLoad;
+  reason: 'REST' | 'DAY_LIMIT' | 'HEAVY_DAY_LIMIT';
+}
+
+/**
+ * Tìm buổi trong lịch làm một buổi vượt giới hạn tập trong ngày của ngựa
+ *
+ * - Hai buổi cách nhau dưới 3 giờ (kết thúc buổi trước tới bắt đầu buổi sau, kể cả qua nửa đêm): REST
+ * - Cùng ngày theo lịch CLB đã có đủ 2 buổi: DAY_LIMIT
+ * - Buổi đang xét là HEAVY và cùng ngày đã có buổi HEAVY: HEAVY_DAY_LIMIT
+ * - Xét theo thứ tự trên; mỗi cách lấy buổi bắt đầu sớm nhất
+ *
+ * @param session Khoảng giờ và cường độ của buổi đang xét
+ * @param others Các buổi khác trong lịch, không gồm chính buổi đang xét
+ * @returns Buổi gây vướng kèm cách vượt, hoặc undefined nếu không vượt
+ */
+export function findDailyLoadConflict(
+  session: SessionWindow & { intensity: TrainingIntensity },
+  others: ReadonlyArray<ClassSessionLoad>,
+): DailyLoadConflict | undefined {
+  const ordered = [...others].sort(
+    (a, b) => a.scheduledStartAt.getTime() - b.scheduledStartAt.getTime(),
+  );
+  const rest = ordered.find(
+    (other) =>
+      session.scheduledStartAt.getTime() <
+        other.scheduledEndAt.getTime() + MIN_REST_BETWEEN_SESSIONS_MS &&
+      other.scheduledStartAt.getTime() <
+        session.scheduledEndAt.getTime() + MIN_REST_BETWEEN_SESSIONS_MS,
+  );
+  if (rest) return { other: rest, reason: 'REST' };
+  const day = toClubDate(session.scheduledStartAt);
+  const sameDay = ordered.filter(
+    (other) => toClubDate(other.scheduledStartAt) === day,
+  );
+  if (sameDay.length >= MAX_SESSIONS_PER_HORSE_DAY) {
+    return { other: sameDay[0], reason: 'DAY_LIMIT' };
+  }
+  const heavy = sameDay.filter(
+    (other) => other.intensity === TrainingIntensity.HEAVY,
+  );
+  if (
+    session.intensity === TrainingIntensity.HEAVY &&
+    heavy.length >= MAX_HEAVY_SESSIONS_PER_HORSE_DAY
+  ) {
+    return { other: heavy[0], reason: 'HEAVY_DAY_LIMIT' };
+  }
+  return undefined;
+}
+
+/**
+ * Diễn giải một lần vượt giới hạn tập trong ngày thành câu báo
+ *
+ * @param conflict Buổi gây vướng kèm cách vượt
+ * @returns Câu báo nêu cách vượt, mã lớp và giờ bắt đầu (giờ CLB) của buổi gây vướng
+ */
+export function dailyLoadMessage(conflict: DailyLoadConflict): string {
+  const at = `lớp ${conflict.other.classCode}, ${formatClubDateTime(conflict.other.scheduledStartAt)}`;
+  switch (conflict.reason) {
+    case 'REST':
+      return `chưa nghỉ đủ 3 giờ so với buổi khác (${at})`;
+    case 'DAY_LIMIT':
+      return `đã đủ ${MAX_SESSIONS_PER_HORSE_DAY} buổi trong ngày (${at})`;
+    case 'HEAVY_DAY_LIMIT':
+      return `đã có buổi Nặng trong ngày (${at})`;
+  }
+}
+
+/**
+ * Tạo lỗi 409 khi buổi vượt giới hạn tập trong ngày của các ngựa đang học lớp
+ *
+ * - Mỗi ngựa ghi tên và cách vượt; sắp theo tên ngựa; không có tên thì ghi UUID
+ *
+ * @param conflicts Mỗi ngựa vượt một lần
+ * @param horseBriefs Map từ UUID ngựa sang tên và mã ảnh
+ * @returns ConflictException liệt kê các ngựa vượt giới hạn
+ */
+export function horseDailyLoadError(
+  conflicts: ReadonlyArray<{ horseId: string; conflict: DailyLoadConflict }>,
+  horseBriefs: ReadonlyMap<string, HorseBrief>,
+): ConflictException {
+  const items = conflicts
+    .map((item) => ({
+      name: horseBriefs.get(item.horseId)?.name ?? item.horseId,
+      message: dailyLoadMessage(item.conflict),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    .map(({ name, message }) => `${name} ${message}`);
+  return new ConflictException(
+    `Vượt giới hạn tập trong ngày của ngựa: ${items.join('; ')}`,
+  );
+}
+
+/**
+ * Gom lịch ở lớp khác và các buổi đang giữ chỗ của nhiều ngựa theo từng ngựa, bỏ buổi lặp
+ *
+ * @param sessions Lịch ở lớp khác và buổi giữ chỗ của nhiều ngựa
+ * @returns Map từ UUID ngựa sang các buổi không lặp của ngựa đó
+ */
+export function sessionsByHorse(
+  sessions: ReadonlyArray<HorseClassSession>,
+): Map<string, HorseClassSession[]> {
+  const result = new Map<string, Map<string, HorseClassSession>>();
+  for (const item of sessions) {
+    const own =
+      result.get(item.horseId) ?? new Map<string, HorseClassSession>();
+    own.set(item.sessionId, item);
+    result.set(item.horseId, own);
+  }
+  return new Map(
+    [...result].map(([horseId, own]) => [horseId, [...own.values()]]),
+  );
+}
+
+/**
+ * Chặn buổi vượt giới hạn tập trong ngày so với các buổi khác của cùng lớp (mọi ngựa trong lớp đều học các buổi này)
+ *
+ * @param classCode Mã lớp
+ * @param session Khoảng giờ và cường độ của buổi đang thêm hoặc sửa
+ * @param classSessions Các buổi chưa hủy khác của lớp
+ * @throws ConflictException Nếu buổi vượt giới hạn tập trong ngày so với lịch của lớp
+ */
+export function assertClassDailyLoad(
+  classCode: string,
+  session: SessionWindow & { intensity: TrainingIntensity },
+  classSessions: ReadonlyArray<
+    SessionWindow & { id: string; intensity: TrainingIntensity }
+  >,
+): void {
+  const conflict = findDailyLoadConflict(
+    session,
+    classSessions.map((item) => ({
+      sessionId: item.id,
+      classCode,
+      intensity: item.intensity,
+      scheduledStartAt: item.scheduledStartAt,
+      scheduledEndAt: item.scheduledEndAt,
+    })),
+  );
+  if (conflict) {
+    throw new ConflictException(
+      `Buổi vượt giới hạn tập trong ngày của lớp: ${dailyLoadMessage(conflict)}`,
+    );
+  }
+}
+
 export function assertTrainableHorse(isReference: boolean): void {
   if (isReference) {
     throw new BadRequestException(
@@ -393,7 +549,7 @@ export function assertParticipantComplete(
 /**
  * Áp cường độ buổi tập lên điều kiện tập của con ngựa
  *
- * - Ngựa Cần theo dõi gặp buổi HEAVY: không được tập, thêm lý do HEALTH_UNDER_OBSERVATION
+ * - Ngựa Cần theo dõi gặp buổi không phải LIGHT: không được tập, thêm lý do HEALTH_UNDER_OBSERVATION
  * - Các trường hợp khác: giữ nguyên kết quả
  *
  * @param eligibility Kết quả evaluateEligibility của con ngựa
@@ -407,7 +563,7 @@ export function eligibilityForSession(
   const underObservation = eligibility.reasons.includes(
     EligibilityReason.HEALTH_UNDER_OBSERVATION,
   );
-  if (!underObservation || intensity !== TrainingIntensity.HEAVY) {
+  if (!underObservation || intensity === TrainingIntensity.LIGHT) {
     return eligibility;
   }
   return {

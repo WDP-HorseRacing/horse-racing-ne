@@ -69,7 +69,6 @@ export function toHorseProgress(
       ),
       completedByIntensity: {
         LIGHT: byIntensity(TrainingIntensity.LIGHT),
-        MODERATE: byIntensity(TrainingIntensity.MODERATE),
         HEAVY: byIntensity(TrainingIntensity.HEAVY),
       },
     },

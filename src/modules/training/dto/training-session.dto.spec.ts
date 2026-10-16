@@ -20,7 +20,7 @@ function create(overrides: Record<string, unknown>): CreateTrainingSessionDto {
     sessionType: TrainingSessionType.REGULAR,
     scheduledStartAt: '2026-10-10T01:00:00Z',
     scheduledEndAt: '2026-10-10T02:00:00Z',
-    intensity: TrainingIntensity.MODERATE,
+    intensity: TrainingIntensity.HEAVY,
     plannedDistanceM: 3000,
     ...overrides,
   });

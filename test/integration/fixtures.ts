@@ -338,7 +338,7 @@ export function fixtures(dataSource: DataSource) {
     const subjectId = randomUUID();
     await dataSource.query(
       `INSERT INTO training_subjects (id, version, name, session_type, intensity, planned_distance_m)
-       VALUES ($1, 1, $2, 'REGULAR', 'MODERATE', 3000)`,
+       VALUES ($1, 1, $2, 'REGULAR', 'HEAVY', 3000)`,
       [subjectId, `Môn ${subjectId.slice(0, 8)}`],
     );
     const planId = randomUUID();

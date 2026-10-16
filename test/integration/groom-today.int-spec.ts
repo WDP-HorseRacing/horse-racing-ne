@@ -65,7 +65,7 @@ describe('Groom today view (Postgres)', () => {
     const sessionId = randomUUID();
     await dataSource.query(
       `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
-       VALUES ($1, 1, $2, $3, $4, $5, $6, 'MODERATE', 3000)`,
+       VALUES ($1, 1, $2, $3, $4, $5, $6, 'HEAVY', 3000)`,
       [
         sessionId,
         classId,

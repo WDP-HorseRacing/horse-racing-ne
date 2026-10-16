@@ -136,7 +136,7 @@ describe('Flow 1 read queries (Postgres)', () => {
     const end = new Date(new Date(startAt).getTime() + 3_600_000);
     await dataSource.query(
       `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, intensity, planned_distance_m)
-       VALUES ($1, 1, $2, $3, $4, $5, 'MODERATE', 3000)`,
+       VALUES ($1, 1, $2, $3, $4, $5, 'HEAVY', 3000)`,
       [id, classId, `Buổi ${startAt}`, startAt, end],
     );
     return id;

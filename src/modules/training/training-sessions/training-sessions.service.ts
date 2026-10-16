@@ -28,6 +28,7 @@ import {
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
@@ -46,7 +47,11 @@ import {
   assertSubjectExercise,
   classPhaseOn,
   eligibilityForSession,
+  assertClassDailyLoad,
+  findDailyLoadConflict,
   findHorseScheduleClashes,
+  horseDailyLoadError,
+  sessionsByHorse,
   horseScheduleClashError,
   initialParticipantEligibility,
 } from '../policies/training.policy';
@@ -324,13 +329,21 @@ export class TrainingSessionsService {
       scheduledStartAt: new Date(body.scheduledStartAt),
       scheduledEndAt: new Date(body.scheduledEndAt),
     };
-    assertNoOverlappingClassSession(
-      window,
-      await manager.find(TrainingSessionEntity, {
-        where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
-      }),
+    const classSessions = await manager.find(TrainingSessionEntity, {
+      where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
+    });
+    assertNoOverlappingClassSession(window, classSessions);
+    assertClassDailyLoad(
+      trainingClass.code,
+      { ...window, intensity: body.intensity },
+      classSessions,
     );
-    await this.assertNoHorseScheduleClash(manager, classId, window);
+    await this.assertHorseSchedule(
+      manager,
+      classId,
+      { ...window, intensity: body.intensity },
+      true,
+    );
     const session = await manager.save(
       manager.create(TrainingSessionEntity, {
         classId,
@@ -475,26 +488,31 @@ export class TrainingSessionsService {
           start,
         );
       }
-      if (body.scheduledStartAt || body.scheduledEndAt) {
-        assertNoOverlappingClassSession(
-          { scheduledStartAt: start, scheduledEndAt: end },
-          await manager.find(TrainingSessionEntity, {
-            where: {
-              classId: session.classId,
-              id: Not(sessionId),
-              status: Not(TrainingSessionStatus.CANCELLED),
-            },
-          }),
-        );
-      }
-      if (
+      const timeChanged =
         start.getTime() !== session.scheduledStartAt.getTime() ||
-        end.getTime() !== session.scheduledEndAt.getTime()
-      ) {
-        await this.assertNoHorseScheduleClash(manager, session.classId, {
+        end.getTime() !== session.scheduledEndAt.getTime();
+      const nextIntensity = body.intensity ?? session.intensity;
+      if (timeChanged || nextIntensity !== session.intensity) {
+        const classSessions = await manager.find(TrainingSessionEntity, {
+          where: {
+            classId: session.classId,
+            id: Not(sessionId),
+            status: Not(TrainingSessionStatus.CANCELLED),
+          },
+        });
+        const next = {
           scheduledStartAt: start,
           scheduledEndAt: end,
-        });
+          intensity: nextIntensity,
+        };
+        if (timeChanged) assertNoOverlappingClassSession(next, classSessions);
+        assertClassDailyLoad(trainingClass.code, next, classSessions);
+        await this.assertHorseSchedule(
+          manager,
+          session.classId,
+          next,
+          timeChanged,
+        );
       }
       Object.assign(session, {
         subjectId: body.subjectId ?? session.subjectId,
@@ -591,41 +609,60 @@ export class TrainingSessionsService {
   }
 
   /**
-   * Chặn buổi tập của lớp trùng giờ với lịch ở lớp khác của những ngựa đang học lớp vào giờ đó
+   * Chặn buổi tập của lớp vướng lịch ở lớp khác của những ngựa đang học lớp vào giờ đó
    *
    * - Ngựa xét: có khoảng ghi danh chưa hủy ở lớp chứa giờ bắt đầu của buổi
    * - Khóa các ngựa xét trước khi đọc lịch
-   * - Trùng khi buổi chồng giờ với lịch của ngựa ở lớp khác hoặc với buổi ngựa đang giữ chỗ ở lớp khác
+   * - Lịch xét: lịch của ngựa ở lớp khác và buổi ngựa đang giữ chỗ ở lớp khác
+   * - Kiểm trùng giờ trước (nếu checkClash), rồi giới hạn tập trong ngày (findDailyLoadConflict)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param classId UUID của lớp
-   * @param window Khoảng giờ của buổi đang thêm hoặc sửa
-   * @returns Promise hoàn tất khi không ngựa nào bị trùng giờ
-   * @throws ConflictException Nếu có ngựa bị trùng giờ; câu báo liệt kê mọi ngựa trùng kèm mã lớp và giờ bắt đầu của buổi trùng
+   * @param session Khoảng giờ và cường độ của buổi đang thêm hoặc sửa
+   * @param checkClash Có kiểm trùng giờ không; sửa buổi không đổi giờ thì không kiểm
+   * @returns Promise hoàn tất khi không ngựa nào vướng
+   * @throws ConflictException Nếu có ngựa bị trùng giờ hoặc vượt giới hạn tập trong ngày; câu báo liệt kê mọi ngựa vướng kèm mã lớp và giờ bắt đầu của buổi gây vướng
    */
-  private async assertNoHorseScheduleClash(
+  private async assertHorseSchedule(
     manager: EntityManager,
     classId: string,
-    window: SessionWindow,
+    session: SessionWindow & { intensity: TrainingIntensity },
+    checkClash: boolean,
   ): Promise<void> {
     const horseIds = (
-      await this.enrollmentsAt(manager, classId, window.scheduledStartAt)
+      await this.enrollmentsAt(manager, classId, session.scheduledStartAt)
     ).map((enrollment) => enrollment.horseId);
     if (horseIds.length === 0) return;
     await this.access.lockHorses(manager, horseIds);
-    const clashes = findHorseScheduleClashes(window, [
+    const others = [
       ...(await this.access.horseScheduledSessionsInOtherClasses(
         manager,
         horseIds,
         classId,
       )),
       ...(await this.access.horseSessionHoldings(manager, horseIds, classId)),
-    ]);
+    ];
+    const clashes = checkClash ? findHorseScheduleClashes(session, others) : [];
     if (clashes.length > 0) {
       throw horseScheduleClashError(
         clashes,
         await this.access.horseBriefs(
           clashes.map((clash) => clash.horseId),
+          manager,
+        ),
+      );
+    }
+    const overloaded = [...sessionsByHorse(others)].flatMap(
+      ([horseId, own]) => {
+        const conflict = findDailyLoadConflict(session, own);
+        return conflict ? [{ horseId, conflict }] : [];
+      },
+    );
+    if (overloaded.length > 0) {
+      throw horseDailyLoadError(
+        overloaded,
+        await this.access.horseBriefs(
+          overloaded.map((item) => item.horseId),
           manager,
         ),
       );

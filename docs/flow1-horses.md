@@ -134,7 +134,7 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 
 1. Bốn giá trị:
    - **Đủ điều kiện (ELIGIBLE):** khỏe mạnh, tập và đua bình thường.
-   - **Cần theo dõi (UNDER_OBSERVATION):** có dấu hiệu bất thường nhưng chưa xác định bệnh. Chỉ tập cường độ Nhẹ và Trung bình, không được đăng ký đua.
+   - **Cần theo dõi (UNDER_OBSERVATION):** có dấu hiệu bất thường nhưng chưa xác định bệnh. Chỉ tập cường độ Nhẹ, không được đăng ký đua.
    - **Chấn thương (INJURED):** đang có tổn thương. Không tập, không đua.
    - **Cách ly (QUARANTINED):** nghi nhiễm bệnh truyền nhiễm. Không tập, không đua.
 2. Trạng thái Cách ly là trạng thái y tế, không bắt buộc hệ thống phải chuyển ngựa sang một loại ô chuồng riêng. Nếu cần tách ngựa khỏi đàn, HEAD TRAINER phụ trách khu chuyển ngựa sang ô trống bằng F1.7.

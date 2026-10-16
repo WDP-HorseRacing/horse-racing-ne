@@ -68,7 +68,7 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
     const id = randomUUID();
     await dataSource.query(
       `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
-       VALUES ($1, 1, $2, 'Buổi', $3, $4, 'SCHEDULED', 'MODERATE', 3000)`,
+       VALUES ($1, 1, $2, 'Buổi', $3, $4, 'SCHEDULED', 'HEAVY', 3000)`,
       [id, classId, start, end],
     );
     return id;

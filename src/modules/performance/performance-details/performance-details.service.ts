@@ -120,7 +120,6 @@ export class PerformanceDetailsService {
     const loads = await this.repository.completedLoads(horseId, from, to);
     const byIntensity = {
       [TrainingIntensity.LIGHT]: 0,
-      [TrainingIntensity.MODERATE]: 0,
       [TrainingIntensity.HEAVY]: 0,
     };
     for (const load of loads) byIntensity[load.intensity] += 1;

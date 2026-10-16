@@ -27,7 +27,7 @@ describe('TrainingSubjectsService (Postgres)', () => {
   const endurance = {
     name: 'Sức bền',
     sessionType: TrainingSessionType.REGULAR,
-    intensity: TrainingIntensity.MODERATE,
+    intensity: TrainingIntensity.HEAVY,
     plannedDistanceM: 4000,
     durationMinutes: 90,
     surface: 'Cát',
@@ -97,7 +97,7 @@ describe('TrainingSubjectsService (Postgres)', () => {
 
     expect(updated).toMatchObject({
       name: 'Sức bền',
-      intensity: TrainingIntensity.MODERATE,
+      intensity: TrainingIntensity.HEAVY,
       plannedDistanceM: 5000,
       durationMinutes: 90,
       surface: null,

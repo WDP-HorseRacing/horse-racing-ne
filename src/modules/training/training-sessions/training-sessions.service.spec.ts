@@ -27,7 +27,7 @@ function setup() {
     subjectId: null,
     name: 'Buổi 1',
     sessionType: TrainingSessionType.REGULAR,
-    intensity: TrainingIntensity.MODERATE,
+    intensity: TrainingIntensity.HEAVY,
     plannedDistanceM: 3000,
     scheduledStartAt: new Date('2099-10-10T01:00:00.000Z'),
     scheduledEndAt: new Date('2099-10-10T02:00:00.000Z'),

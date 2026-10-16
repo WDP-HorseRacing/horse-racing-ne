@@ -42,7 +42,10 @@ import {
   assertNoHoldingOverlap,
   HORSE_SCHEDULE_SESSION_STATUSES,
   eligibilityForSession,
+  findDailyLoadConflict,
+  horseDailyLoadError,
   horsesClashingWithClass,
+  sessionsByHorse,
   initialParticipantEligibility,
 } from '../../policies/training.policy';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
@@ -206,7 +209,7 @@ export class TrainingClassEnrollmentsService {
    *
    * - Ngựa xét: thuộc khu do người gọi phụ trách, đang hoạt động, chưa xóa
    * - Bỏ ngựa đang có khoảng ghi danh mở ở lớp này
-   * - Bỏ ngựa trùng giờ với lớp khác theo đúng luật ghi danh
+   * - Bỏ ngựa trùng giờ với lớp khác hoặc vượt giới hạn tập trong ngày theo đúng luật ghi danh
    * - Không xét sĩ số của lớp
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -256,19 +259,33 @@ export class TrainingClassEnrollmentsService {
     if (candidates.length === 0) return [];
     const candidateIds = candidates.map((horse) => horse.id);
     const schedule = await this.upcomingSchedule(manager, classId, now);
+    const holdings = await this.access.horseSessionHoldings(
+      manager,
+      candidateIds,
+      classId,
+    );
+    const otherSchedule =
+      await this.access.horseScheduledSessionsInOtherClasses(
+        manager,
+        candidateIds,
+        classId,
+      );
     const clashing = horsesClashingWithClass(
       schedule.filter(
         (session) => session.status === TrainingSessionStatus.SCHEDULED,
       ),
       schedule,
-      await this.access.horseSessionHoldings(manager, candidateIds, classId),
-      await this.access.horseScheduledSessionsInOtherClasses(
-        manager,
-        candidateIds,
-        classId,
-      ),
+      holdings,
+      otherSchedule,
     );
-    const shown = candidates.filter((horse) => !clashing.has(horse.id));
+    const othersByHorse = sessionsByHorse([...holdings, ...otherSchedule]);
+    const shown = candidates.filter(
+      (horse) =>
+        !clashing.has(horse.id) &&
+        !schedule.some((session) =>
+          findDailyLoadConflict(session, othersByHorse.get(horse.id) ?? []),
+        ),
+    );
     const photoUrls = await this.media.signDownloadUrls(
       shown
         .map((horse) => horse.mediaId)
@@ -352,7 +369,8 @@ export class TrainingClassEnrollmentsService {
    * Thêm ngựa vào các buổi đã công bố chưa tới giờ của lớp kể từ lúc ghi danh
    *
    * - Từ chối cả lần ghi danh nếu ngựa đang giữ buổi ở lớp khác trùng giờ với một buổi đã công bố
-   * - Từ chối cả lần ghi danh nếu lịch của ngựa ở lớp này (buổi DRAFT, SCHEDULED, IN_PROGRESS chưa tới giờ, kể từ lúc ghi danh) trùng giờ với lịch của ngựa ở lớp khác
+   * - Từ chối cả lần ghi danh nếu lịch của ngựa ở lớp này (buổi SCHEDULED, IN_PROGRESS chưa tới giờ, kể từ lúc ghi danh) trùng giờ với lịch của ngựa ở lớp khác
+   * - Từ chối cả lần ghi danh nếu một buổi trong lịch đó vượt giới hạn tập trong ngày so với lịch và buổi giữ chỗ của ngựa ở lớp khác
    * - Buổi chưa có lượt của ngựa: tạo lượt mới theo điều kiện huấn luyện hiện tại
    * - Buổi có lượt cũ CANCELLED (do rời lớp): dùng lại lượt đó, gắn ghi danh mới và đặt lại như lượt mới tạo
    * - Buổi có lượt cũ ở trạng thái khác: giữ nguyên
@@ -361,7 +379,7 @@ export class TrainingClassEnrollmentsService {
    * @param enrollment Lượt ghi danh vừa tạo
    * @param horse Ngựa được ghi danh, đã khóa
    * @returns Promise hoàn tất khi các lượt tham gia đã được lưu
-   * @throws ConflictException Nếu ngựa đã có buổi tập trùng giờ ở lớp khác
+   * @throws ConflictException Nếu ngựa đã có buổi tập trùng giờ ở lớp khác, hoặc vượt giới hạn tập trong ngày
    */
   private async addToFuturePublishedSessions(
     manager: EntityManager,
@@ -376,24 +394,30 @@ export class TrainingClassEnrollmentsService {
     const sessions = schedule.filter(
       (session) => session.status === TrainingSessionStatus.SCHEDULED,
     );
-    assertNoHoldingOverlap(
-      horse.name,
-      sessions,
-      await this.access.horseSessionHoldings(
-        manager,
-        [horse.id],
-        enrollment.classId,
-      ),
+    const holdings = await this.access.horseSessionHoldings(
+      manager,
+      [horse.id],
+      enrollment.classId,
     );
-    assertNoHoldingOverlap(
-      horse.name,
-      schedule,
+    const otherSchedule =
       await this.access.horseScheduledSessionsInOtherClasses(
         manager,
         [horse.id],
         enrollment.classId,
-      ),
-    );
+      );
+    assertNoHoldingOverlap(horse.name, sessions, holdings);
+    assertNoHoldingOverlap(horse.name, schedule, otherSchedule);
+    const others =
+      sessionsByHorse([...holdings, ...otherSchedule]).get(horse.id) ?? [];
+    for (const session of schedule) {
+      const conflict = findDailyLoadConflict(session, others);
+      if (conflict) {
+        throw horseDailyLoadError(
+          [{ horseId: horse.id, conflict }],
+          new Map([[horse.id, { name: horse.name, mediaId: horse.mediaId }]]),
+        );
+      }
+    }
     for (const session of sessions) {
       const exists = await manager.findOneBy(SessionParticipantEntity, {
         sessionId: session.id,

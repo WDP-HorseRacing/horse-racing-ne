@@ -90,7 +90,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     await dataSource.query(
       `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
        VALUES ($1, 1, $2, 'Buổi 1', now() - interval '10 minutes', now() + interval '50 minutes', 'SCHEDULED', $3, 3000)`,
-      [sessionId, classId, options.intensity ?? TrainingIntensity.MODERATE],
+      [sessionId, classId, options.intensity ?? TrainingIntensity.HEAVY],
     );
     const participantId = randomUUID();
     await dataSource.query(
@@ -241,6 +241,7 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
       const actor = await groomActor();
       const { participantId } = await seedParticipant('PLANNED', {
         health: HorseHealthStatus.UNDER_OBSERVATION,
+        intensity: TrainingIntensity.LIGHT,
       });
 
       const result = await service.checkIn(actor, participantId);

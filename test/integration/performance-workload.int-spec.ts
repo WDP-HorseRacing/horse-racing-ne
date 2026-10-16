@@ -154,7 +154,7 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
       status: 'ONGOING',
     });
     await participant('2026-10-20T01:00:00Z', {
-      intensity: 'MODERATE',
+      intensity: 'HEAVY',
       distance: 5000,
     });
     await point(heavy, '2026-10-05T01:00:00Z', '10');
@@ -172,7 +172,7 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
       from: '2026-10-05',
       to: '2026-10-11',
       sessionsCompleted: 2,
-      byIntensity: { LIGHT: 1, MODERATE: 0, HEAVY: 1 },
+      byIntensity: { LIGHT: 1, HEAVY: 1 },
       plannedDistanceM: 5000,
       actualDurationSeconds: 3000,
       actualDistanceM: 72,

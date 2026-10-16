@@ -24,9 +24,6 @@ export class WorkloadByIntensityDto {
   LIGHT!: number;
 
   @ApiProperty()
-  MODERATE!: number;
-
-  @ApiProperty()
   HEAVY!: number;
 }
 

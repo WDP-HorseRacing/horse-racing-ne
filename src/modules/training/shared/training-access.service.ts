@@ -208,6 +208,7 @@ export class TrainingAccessService {
       horseId,
       sessionId: session.id,
       classCode: session.trainingClass.code,
+      intensity: session.intensity,
       scheduledStartAt: session.scheduledStartAt,
       scheduledEndAt: session.scheduledEndAt,
     }));
@@ -238,6 +239,8 @@ export class TrainingAccessService {
         'enrollment.class_id = session.class_id',
       )
       .select('enrollment.horse_id', 'horseId')
+      .addSelect('session.id', 'sessionId')
+      .addSelect('session.intensity', 'intensity')
       .addSelect('class.code', 'classCode')
       .addSelect('session.scheduled_start_at', 'scheduledStartAt')
       .addSelect('session.scheduled_end_at', 'scheduledEndAt')

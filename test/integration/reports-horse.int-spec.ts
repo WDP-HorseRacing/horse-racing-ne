@@ -178,12 +178,12 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
       '2026-10-12T01:20:00Z',
     );
     await run(
-      await session('2026-10-13T01:00:00Z', 'MODERATE', 2000),
+      await session('2026-10-13T01:00:00Z', 'HEAVY', 2000),
       enrollmentId,
       'CANCELLED_BY_LOCK',
     );
     await run(
-      await session('2026-10-08T01:00:00Z', 'MODERATE', 2000),
+      await session('2026-10-08T01:00:00Z', 'HEAVY', 2000),
       enrollmentId,
       'ABSENT',
     );
@@ -238,7 +238,7 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
         ineligible: 1,
         plannedDistanceM: 4200,
         trainedMinutes: 65,
-        completedByIntensity: { LIGHT: 1, MODERATE: 0, HEAVY: 1 },
+        completedByIntensity: { LIGHT: 1, HEAVY: 1 },
       },
       weekly: [
         {

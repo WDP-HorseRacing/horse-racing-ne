@@ -13692,16 +13692,12 @@
           "LIGHT": {
             "type": "number"
           },
-          "MODERATE": {
-            "type": "number"
-          },
           "HEAVY": {
             "type": "number"
           }
         },
         "required": [
           "LIGHT",
-          "MODERATE",
           "HEAVY"
         ]
       },
@@ -14332,16 +14328,12 @@
           "LIGHT": {
             "type": "number"
           },
-          "MODERATE": {
-            "type": "number"
-          },
           "HEAVY": {
             "type": "number"
           }
         },
         "required": [
           "LIGHT",
-          "MODERATE",
           "HEAVY"
         ]
       },
@@ -14821,7 +14813,6 @@
             "type": "string",
             "enum": [
               "LIGHT",
-              "MODERATE",
               "HEAVY"
             ]
           },
@@ -17582,7 +17573,6 @@
             "type": "string",
             "enum": [
               "LIGHT",
-              "MODERATE",
               "HEAVY"
             ]
           },
@@ -18396,7 +18386,6 @@
             "type": "string",
             "enum": [
               "LIGHT",
-              "MODERATE",
               "HEAVY"
             ],
             "description": "Cường độ buổi tập"
@@ -18478,7 +18467,6 @@
             "type": "string",
             "enum": [
               "LIGHT",
-              "MODERATE",
               "HEAVY"
             ],
             "description": "Cường độ buổi tập"
@@ -18565,7 +18553,6 @@
             "type": "string",
             "enum": [
               "LIGHT",
-              "MODERATE",
               "HEAVY"
             ],
             "description": "Cường độ buổi tập"
@@ -18637,7 +18624,6 @@
             "type": "string",
             "enum": [
               "LIGHT",
-              "MODERATE",
               "HEAVY"
             ],
             "description": "Cường độ bài tập"
@@ -18698,7 +18684,6 @@
             "type": "string",
             "enum": [
               "LIGHT",
-              "MODERATE",
               "HEAVY"
             ],
             "description": "Cường độ bài tập"

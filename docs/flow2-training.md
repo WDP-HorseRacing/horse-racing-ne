@@ -18,7 +18,7 @@
 **Cách hiểu đề bài**
 
 - "Giáo án cho từng con ngựa": giáo án gắn với lớp, mỗi con ngựa ghi danh vào lớp có giáo án hợp với nó. Ngựa cần bài khác thì vào lớp khác.
-- "Khối lượng": thể hiện bằng cường độ của môn (Nhẹ / Trung bình / Nặng), cùng thời lượng một buổi của môn và cự ly dự kiến.
+- "Khối lượng": thể hiện bằng cường độ của môn (Nhẹ = buổi phụ / Nặng = buổi chính), cùng thời lượng một buổi của môn và cự ly dự kiến.
 
 ## II. Mô hình
 
@@ -92,6 +92,9 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    4. Ghi danh: chặn 409 cả thao tác ("Ngựa {tên} đã có buổi tập trùng giờ ở lớp {mã lớp}") khi ngựa đang giữ chỗ ở lớp khác trùng giờ với một buổi đã lên lịch chưa tới giờ của lớp này, hoặc lịch của ngựa ở lớp này (tính từ lúc ghi danh) trùng giờ với lịch của ngựa ở lớp khác.
    4a. Danh sách ngựa ghi danh được (`GET /classes/:classId/enrollable-horses`, chỉ Head Trainer của lớp, lớp phải đang chạy, không thì 409): ngựa đang hoạt động thuộc khu người gọi phụ trách, bỏ ngựa đang ghi danh ở lớp và ngựa trùng giờ theo luật 4; sắp theo tên, kèm `horseName`, `horsePhotoUrl`. Không xét sĩ số. Ngựa trong danh sách vẫn có thể bị 409 nếu lịch đổi giữa lúc xem và lúc ghi danh.
    5. Thêm buổi hoặc đổi giờ buổi: kiểm sau luật 8.1. Xét mọi ngựa có khoảng ghi danh chưa hủy ở lớp chứa giờ bắt đầu của buổi. Buổi trùng giờ với lịch hoặc lượt giữ chỗ của các ngựa đó ở lớp khác thì chặn 409, câu báo liệt kê mọi ngựa trùng theo tên, mỗi ngựa kèm mã lớp và giờ bắt đầu của buổi trùng sớm nhất: "Trùng giờ với lịch của ngựa: Công Phá (lớp KD-01, 06:00 ngày 10/10/2026), Giả Nhân (lớp KD-03, 06:00 ngày 10/10/2026)". Sửa buổi mà không đổi giờ thì không kiểm.
+   6. Giới hạn tập trong ngày của mỗi ngựa (xét lịch của ngựa ở mọi lớp, cùng định nghĩa lịch và lượt giữ chỗ như luật 2, 3): tối đa 2 buổi một ngày theo lịch CLB, trong đó tối đa 1 buổi Nặng; hai buổi bất kỳ cách nhau tối thiểu 3 giờ tính từ lúc kết thúc buổi trước tới lúc bắt đầu buổi sau, kể cả qua nửa đêm.
+      - Thêm buổi, đổi giờ hoặc đổi cường độ: buổi phải đạt giới hạn so với các buổi chưa hủy khác của chính lớp (409 "Buổi vượt giới hạn tập trong ngày của lớp: …"), và so với lịch ở lớp khác của mọi ngựa đang học lớp vào giờ đó (409 "Vượt giới hạn tập trong ngày của ngựa: {tên} {cách vượt} (lớp {mã}, {giờ})", liệt kê mọi ngựa vướng, sắp theo tên). Cách vượt: "chưa nghỉ đủ 3 giờ so với buổi khác", "đã đủ 2 buổi trong ngày", "đã có buổi Nặng trong ngày".
+      - Ghi danh: mỗi buổi trong lịch của ngựa ở lớp này phải đạt giới hạn so với lịch ở lớp khác của ngựa, không thì 409 cả thao tác. Danh sách ngựa ghi danh được (4a) tự bỏ ngựa vướng.
 7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
    1. Head Trainer phụ trách lớp gắn, đổi hoặc gỡ (`videoMediaId = null`) video của một lần chạy thử bằng `PATCH /session-participants/:id/trial-results/:attemptNo`, không kiểm khu của ngựa. Làm được tới 7 ngày sau giờ kết thúc dự kiến của buổi; buổi đã hủy thì 409. Chỉ video thay đổi, các số đo giữ nguyên.
 8. Danh sách lượt tập của buổi (`GET /training-sessions/:sessionId/participants`) kèm `horseName`, `horsePhotoUrl` (link có hạn, null nếu ngựa chưa có ảnh) và `assignedGroomName` (null nếu chưa giao Groom); danh sách ghi danh của lớp (`GET /classes/:classId/enrollments`) kèm `horseName`, `horsePhotoUrl`. Ngựa hoặc Groom đã xóa mềm vẫn hiện tên; các endpoint ghi giữ response cũ.
@@ -102,7 +105,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 
 1. Ngựa đang bị khóa huấn luyện: lượt thành Hủy do khóa (`CANCELLED_BY_LOCK`).
 2. Ngựa không được tập (chấn thương, cách ly, giải nghệ...): lượt thành Không đủ điều kiện (`INELIGIBLE`).
-3. Ngựa Cần theo dõi gặp buổi cường độ Nặng: lượt thành Không đủ điều kiện, lý do `HEALTH_UNDER_OBSERVATION`. Buổi Nhẹ và Trung bình tập bình thường.
+3. Ngựa Cần theo dõi chỉ tập buổi Nhẹ: gặp buổi Nặng thì lượt thành Không đủ điều kiện, lý do `HEALTH_UNDER_OBSERVATION`. Thang cường độ theo tình trạng: Đủ điều kiện tập cả hai mức; Cần theo dõi chỉ Nhẹ; bị khóa huấn luyện không tập mức nào (khóa chặn mọi cường độ, bao luôn yêu cầu "ngăn xếp lịch bài tập nặng" của đề).
 4. Điểm danh hoặc bắt đầu bị chặn thì vẫn lưu trạng thái trên rồi báo lỗi 409.
 5. Bắt đầu lượt cần lớp đang chạy.
 6. Chấm lại ngay khi bác sĩ đặt khóa, gỡ khóa, hoặc sức khỏe ngựa đổi (xấu đi hay tốt lên): mọi lượt Chờ điểm danh (`PLANNED`), Hủy do khóa, Không đủ điều kiện của ngựa đó ở buổi đã lên lịch chưa tới giờ bắt đầu được chấm lại theo luật 1–3; ổn hết thì về Chờ điểm danh và xóa lý do. Lượt đã điểm danh, sẵn sàng, đang tập, đã kết thúc, và buổi đã tới giờ giữ nguyên.

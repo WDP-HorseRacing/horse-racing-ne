@@ -91,7 +91,7 @@ describe('Training plans and classes built from them (Postgres)', () => {
       subjects.create(manager, {
         name,
         sessionType: TrainingSessionType.REGULAR,
-        intensity: TrainingIntensity.MODERATE,
+        intensity: TrainingIntensity.HEAVY,
         plannedDistanceM: 3000,
         durationMinutes,
       });
