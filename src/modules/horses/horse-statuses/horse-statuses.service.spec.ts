@@ -29,6 +29,7 @@ import type { LifecycleImpactRow } from '../types/horse.types';
 import {
   HORSE_DECEASED_EVENT,
   HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
+  HORSE_LIFECYCLE_CHANGED_EVENT,
 } from '../constants/horse.constants';
 import { HorseStatusesService } from './horse-statuses.service';
 
@@ -227,7 +228,7 @@ describe('HorseStatusesService', () => {
       );
       expect(events.publish).toHaveBeenCalledWith(
         manager,
-        HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
+        HORSE_LIFECYCLE_CHANGED_EVENT,
         expect.anything(),
       );
     });
@@ -235,12 +236,25 @@ describe('HorseStatusesService', () => {
     it('tells no groom when the transferred horse had none', async () => {
       grooms.endOpenGroomAssignment.mockResolvedValue(null);
       await change(HorseLifecycleStatus.TRANSFERRED);
-      expect(events.publish).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalledWith(
+        manager,
+        HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
+        expect.anything(),
+      );
     });
 
-    it('tells no groom on retirement because the groom stays', async () => {
+    it('tells no groom on retirement because the groom stays, but tells the owner the new lifecycle', async () => {
       await change(HorseLifecycleStatus.RETIRED);
-      expect(events.publish).not.toHaveBeenCalled();
+      expect(events.publish).toHaveBeenCalledTimes(1);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        HORSE_LIFECYCLE_CHANGED_EVENT,
+        expect.objectContaining({
+          horseId: HORSE_ID,
+          from: HorseLifecycleStatus.ACTIVE,
+          to: HorseLifecycleStatus.RETIRED,
+        }),
+      );
     });
 
     describe('recording a death', () => {

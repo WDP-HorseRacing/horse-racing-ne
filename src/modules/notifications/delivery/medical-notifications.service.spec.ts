@@ -65,7 +65,7 @@ describe('MedicalNotificationsService', () => {
     });
   });
 
-  it('sends a lock to the barn head trainer and club managers with HIGH priority', async () => {
+  it('sends a lock to the barn head trainer, club managers and the owner with HIGH priority', async () => {
     await service.notifyLockSet({
       eventId: 'e2',
       horseId: 'h1',
@@ -74,7 +74,7 @@ describe('MedicalNotificationsService', () => {
       expectedEnd: null,
     });
     expect(sentDraft()).toMatchObject({
-      recipientIds: ['cm-1', 'ht-1'],
+      recipientIds: ['cm-1', 'ht-1', 'owner-1'],
       priority: NotificationPriority.HIGH,
       resource: {
         type: NotificationResourceType.TRAINING_LOCK,
@@ -96,7 +96,7 @@ describe('MedicalNotificationsService', () => {
       lockId: 'l1',
       conclusion: 'Đã hồi phục',
     });
-    expect(sentDraft().recipientIds).toEqual(['cm-1']);
+    expect(sentDraft().recipientIds).toEqual(['cm-1', 'owner-1']);
   });
 
   it.each([HorseHealthStatus.INJURED, HorseHealthStatus.QUARANTINED])(
@@ -115,19 +115,22 @@ describe('MedicalNotificationsService', () => {
     },
   );
 
-  it('sends nothing when the horse becomes eligible again', async () => {
-    await expect(
-      service.notifyHealthChanged({
-        eventId: 'e5',
-        horseId: 'h1',
-        from: HorseHealthStatus.INJURED,
-        to: HorseHealthStatus.ELIGIBLE,
-      }),
-    ).resolves.toEqual([]);
-    expect(notifications.send).not.toHaveBeenCalled();
+  it('tells only the owner at NORMAL level when the horse becomes eligible again', async () => {
+    await service.notifyHealthChanged({
+      eventId: 'e5',
+      horseId: 'h1',
+      from: HorseHealthStatus.INJURED,
+      to: HorseHealthStatus.ELIGIBLE,
+    });
+    expect(sentDraft()).toMatchObject({
+      recipientIds: ['owner-1'],
+      priority: NotificationPriority.NORMAL,
+      message:
+        'Trạng thái sức khỏe của ngựa Winx chuyển từ Chấn thương sang Đủ điều kiện. Ngựa tập và đua lại được.',
+    });
   });
 
-  it('tells only the barn head trainer at NORMAL level when the horse goes under observation', async () => {
+  it('tells the barn head trainer and the owner at NORMAL level when the horse goes under observation', async () => {
     await service.notifyHealthChanged({
       eventId: 'e5b',
       horseId: 'h1',
@@ -136,7 +139,7 @@ describe('MedicalNotificationsService', () => {
     });
     expect(sentDraft()).toMatchObject({
       eventId: 'e5b',
-      recipientIds: ['ht-1'],
+      recipientIds: ['ht-1', 'owner-1'],
       category: NotificationCategory.HEALTH_STATUS,
       priority: NotificationPriority.NORMAL,
       title: 'Ngựa Winx: Cần theo dõi',

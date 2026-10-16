@@ -20,6 +20,7 @@ export class PerformanceNotificationsService {
    * Báo khẩn khi nhịp tim của ngựa vượt ngưỡng nguy hiểm trong lượt tập
    *
    * - Người nhận: mọi Veterinarian đang ACTIVE và Head Trainer của lớp nếu còn ACTIVE với vai trò HEAD_TRAINER
+   * - Chủ ngựa đang ACTIVE nhận một thông báo riêng (cùng eventId), báo bác sĩ và Head Trainer đã được báo
    * - Mức ưu tiên URGENT, trỏ tới lượt tập
    * - Idempotent theo event.eventId: mỗi lượt tập chỉ có một thông báo
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
@@ -30,7 +31,7 @@ export class PerformanceNotificationsService {
   async notifyCriticalMetric(
     event: PerformanceMetricCriticalEvent,
   ): Promise<string[]> {
-    const horse = await this.recipients.findHorseBarnContact(event.horseId);
+    const horse = await this.recipients.findHorseMedicalContact(event.horseId);
     if (!horse) {
       this.logger.warn(
         `Bỏ qua cảnh báo thể lực của lượt tập ${event.sessionParticipantId}: không tìm thấy ngựa ${event.horseId}`,
@@ -49,18 +50,31 @@ export class PerformanceNotificationsService {
     ) {
       recipientIds.push(event.headTrainerId);
     }
-    return this.notifications.send({
+    const resource = {
+      type: NotificationResourceType.SESSION_PARTICIPANT,
+      id: event.sessionParticipantId,
+      horseId: event.horseId,
+    };
+    const toStaff = await this.notifications.send({
       eventId: event.eventId,
       recipientIds,
       category: NotificationCategory.PERFORMANCE_ALERT,
       priority: NotificationPriority.URGENT,
       title: `KHẨN: Ngựa ${horse.horseName} vượt ngưỡng thể lực`,
       message: `Ngựa ${horse.horseName} có nhịp tim ${event.heartRateBpm} bpm, tốc độ ${event.speedMps} m/s khi đang tập. Cần dừng bài tập và kiểm tra ngay.`,
-      resource: {
-        type: NotificationResourceType.SESSION_PARTICIPANT,
-        id: event.sessionParticipantId,
-        horseId: event.horseId,
-      },
+      resource,
     });
+    const toOwner = horse.ownerId
+      ? await this.notifications.send({
+          eventId: event.eventId,
+          recipientIds: [horse.ownerId],
+          category: NotificationCategory.PERFORMANCE_ALERT,
+          priority: NotificationPriority.HIGH,
+          title: `Ngựa ${horse.horseName} vượt ngưỡng thể lực khi đang tập`,
+          message: `Nhịp tim ${event.heartRateBpm} bpm, tốc độ ${event.speedMps} m/s. Bác sĩ và Huấn luyện viên trưởng đã được báo để kiểm tra.`,
+          resource,
+        })
+      : [];
+    return [...toStaff, ...toOwner];
   }
 }

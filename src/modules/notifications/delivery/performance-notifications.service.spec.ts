@@ -7,19 +7,27 @@ import { NotificationDeliveryService } from './notification-delivery.service';
 import { NotificationRecipientsRepository } from './notification-recipients.repository';
 import { PerformanceNotificationsService } from './performance-notifications.service';
 
-function setup(options: { headTrainerActive?: boolean; horse?: boolean } = {}) {
+function setup(
+  options: {
+    headTrainerActive?: boolean;
+    horse?: boolean;
+    owner?: boolean;
+  } = {},
+) {
   const recipients = {
     findActiveUserIdsByRole: jest.fn().mockResolvedValue(['vet-1']),
     isActiveUserWithRole: jest
       .fn()
       .mockResolvedValue(options.headTrainerActive ?? true),
-    findHorseBarnContact: jest
-      .fn()
-      .mockResolvedValue(
-        options.horse === false
-          ? null
-          : { horseName: 'Winx', headTrainerId: 'barn-ht' },
-      ),
+    findHorseMedicalContact: jest.fn().mockResolvedValue(
+      options.horse === false
+        ? null
+        : {
+            horseName: 'Winx',
+            headTrainerId: 'barn-ht',
+            ownerId: options.owner === false ? null : 'owner-1',
+          },
+    ),
   };
   const notifications = { send: jest.fn().mockResolvedValue(['vet-1']) };
   const service = new PerformanceNotificationsService(
@@ -62,10 +70,29 @@ describe('PerformanceNotificationsService.notifyCriticalMetric', () => {
         },
       }),
     );
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'event-1',
+        recipientIds: ['owner-1'],
+        priority: NotificationPriority.HIGH,
+        title: 'Ngựa Winx vượt ngưỡng thể lực khi đang tập',
+      }),
+    );
+  });
+
+  it('sends no owner notice when the horse has no active owner', async () => {
+    const { service, notifications } = setup({ owner: false });
+
+    await service.notifyCriticalMetric(event);
+
+    expect(notifications.send).toHaveBeenCalledTimes(1);
   });
 
   it('leaves out a class head trainer who is no longer active', async () => {
-    const { service, notifications } = setup({ headTrainerActive: false });
+    const { service, notifications } = setup({
+      headTrainerActive: false,
+      owner: false,
+    });
 
     await service.notifyCriticalMetric(event);
 
@@ -80,7 +107,8 @@ describe('PerformanceNotificationsService.notifyCriticalMetric', () => {
     await service.notifyCriticalMetric({ ...event, headTrainerId: null });
 
     expect(recipients.isActiveUserWithRole).not.toHaveBeenCalled();
-    expect(notifications.send).toHaveBeenCalledWith(
+    expect(notifications.send).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({ recipientIds: ['vet-1'] }),
     );
   });

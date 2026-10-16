@@ -124,7 +124,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 3. Ngưỡng mặc định CLB: nhịp tim cảnh báo 220 bpm, nguy hiểm 240 bpm, tốc độ tối đa 18 m/s. Chỉ Head Trainer của khu đặt ngưỡng riêng cho từng ngựa theo phiên bản có khoảng hiệu lực.
 4. Mức cảnh báo mỗi điểm: vượt ngưỡng nguy hiểm là `CRITICAL`; vượt ngưỡng cảnh báo nhịp tim hoặc tốc độ tối đa là `WARNING`; còn lại `NORMAL`.
 5. Head Trainer của lớp nhận điểm đo realtime qua socket, sự kiện `performance.metrics`.
-6. Có điểm `CRITICAL`: thông báo KHẨN cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần.
+6. Có điểm `CRITICAL`: thông báo KHẨN cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần; chủ ngựa nhận một thông báo riêng mức HIGH báo bác sĩ và Head Trainer đã được báo.
 7. Lịch sử cảnh báo của ngựa (`GET /horses/:id/alerts`): mọi điểm đo `WARNING`/`CRITICAL` qua các buổi, mới nhất trước, lọc theo mức và khoảng ngày lịch CLB, phân trang, kèm tên buổi. Club Manager, bác sĩ và Head Trainer của khu chứa ngựa xem.
 8. Khối lượng tập của ngựa (`GET /horses/:id/workload?from&to`, mặc định 7 ngày gần nhất theo lịch CLB): chỉ tính lượt đã hoàn thành có buổi trong khoảng ngày; trả số lượt, số lượt theo cường độ, tổng cự ly dự kiến, tổng thời lượng thực (bắt đầu tới hoàn thành) và cự ly thực tính từ tốc độ cảm biến (khoảng giữa hai điểm đo tính tối đa 5 giây). Ai xem được hồ sơ ngựa thì xem được.
 

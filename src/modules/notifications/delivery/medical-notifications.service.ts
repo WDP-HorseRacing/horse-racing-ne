@@ -86,7 +86,7 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu và Club Manager khi bác sĩ đặt khóa huấn luyện
+   * Báo Head Trainer của khu, Club Manager và chủ ngựa khi bác sĩ đặt khóa huấn luyện
    *
    * @param event Payload của MEDICAL_TRAINING_LOCK_SET_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -103,7 +103,7 @@ export class MedicalNotificationsService {
         id: event.lockId,
         horseId: event.horseId,
       },
-      { headTrainer: true, clubManagers: true },
+      { headTrainer: true, clubManagers: true, owner: true },
       NotificationCategory.TRAINING_LOCK,
       NotificationPriority.HIGH,
       (horse) => ({
@@ -114,7 +114,7 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu và Club Manager khi bác sĩ gỡ khóa huấn luyện
+   * Báo Head Trainer của khu, Club Manager và chủ ngựa khi bác sĩ gỡ khóa huấn luyện
    *
    * @param event Payload của MEDICAL_TRAINING_LOCK_RELEASED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -128,7 +128,7 @@ export class MedicalNotificationsService {
         id: event.lockId,
         horseId: event.horseId,
       },
-      { headTrainer: true, clubManagers: true },
+      { headTrainer: true, clubManagers: true, owner: true },
       NotificationCategory.TRAINING_LOCK,
       NotificationPriority.NORMAL,
       (horse) => ({
@@ -142,8 +142,8 @@ export class MedicalNotificationsService {
    * Báo khi trạng thái sức khỏe đổi
    *
    * - Sang Chấn thương hoặc Cách ly: báo Head Trainer của khu, Club Manager và chủ ngựa, mức HIGH
-   * - Sang Cần theo dõi: chỉ báo Head Trainer của khu, mức NORMAL
-   * - Sang trạng thái khác: không gửi gì
+   * - Sang Cần theo dõi: báo Head Trainer của khu và chủ ngựa, mức NORMAL
+   * - Về Đủ điều kiện: báo chủ ngựa, mức NORMAL
    *
    * @param event Payload của MEDICAL_HEALTH_CHANGED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới, rỗng nếu không cần báo
@@ -154,7 +154,7 @@ export class MedicalNotificationsService {
         event.eventId,
         event.horseId,
         horseResource(event.horseId),
-        { headTrainer: true },
+        { headTrainer: true, owner: true },
         NotificationCategory.HEALTH_STATUS,
         NotificationPriority.NORMAL,
         (horse) => ({
@@ -163,11 +163,19 @@ export class MedicalNotificationsService {
         }),
       );
     }
-    if (
-      event.to !== HorseHealthStatus.INJURED &&
-      event.to !== HorseHealthStatus.QUARANTINED
-    ) {
-      return [];
+    if (event.to === HorseHealthStatus.ELIGIBLE) {
+      return this.sendForHorse(
+        event.eventId,
+        event.horseId,
+        horseResource(event.horseId),
+        { owner: true },
+        NotificationCategory.HEALTH_STATUS,
+        NotificationPriority.NORMAL,
+        (horse) => ({
+          title: `Ngựa ${horse}: ${HEALTH_LABELS[event.to]}`,
+          message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa tập và đua lại được.`,
+        }),
+      );
     }
     return this.sendForHorse(
       event.eventId,

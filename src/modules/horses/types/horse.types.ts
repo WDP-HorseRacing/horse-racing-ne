@@ -224,6 +224,20 @@ export interface HorseDeceasedEvent {
 }
 
 /**
+ * Payload của domain event HORSE_LIFECYCLE_CHANGED_EVENT, ghi vào outbox trong transaction đổi vòng đời.
+ *
+ * - eventId: sinh mới cho mỗi lần đổi, dùng để chống gửi trùng thông báo
+ * - from, to: vòng đời trước và sau; reason: lý do Club Manager nhập
+ */
+export interface HorseLifecycleChangedEvent {
+  eventId: string;
+  horseId: string;
+  from: HorseLifecycleStatus;
+  to: HorseLifecycleStatus;
+  reason: string;
+}
+
+/**
  * Các field của ngựa cần để kiểm tra cha hoặc mẹ
  */
 export interface ParentCandidate {

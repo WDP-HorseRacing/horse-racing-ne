@@ -6,13 +6,17 @@ import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
 } from '../../horses/enums/horse-measurement-alert.enum';
-import { WEIGHT_DROP_WINDOW_DAYS } from '../../horses/constants/horse.constants';
+import {
+  HORSE_LIFECYCLE_LABELS,
+  WEIGHT_DROP_WINDOW_DAYS,
+} from '../../horses/constants/horse.constants';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { formatMeasurement } from '../../horses/utils/measurement-format';
 import type {
   HorseBarnAssignedEvent,
   HorseDeceasedEvent,
   HorseGroomReleasedEvent,
+  HorseLifecycleChangedEvent,
   HorseOwnershipTransferredEvent,
   HorseMeasurementAlertEvent,
 } from '../../horses/types/horse.types';
@@ -42,8 +46,8 @@ export class HorseNotificationsService {
   /**
    * Gửi thông báo cho một cảnh báo chỉ số cơ thể.
    *
-   * - Người nhận: mọi Veterinarian đang ACTIVE và Head Trainer đang ACTIVE phụ trách khu hiện tại của ngựa
-   * - Ngựa chưa có khu (hoặc khu chưa có Head Trainer) thì chỉ gửi cho Veterinarian
+   * - Người nhận: mọi Veterinarian đang ACTIVE, Head Trainer đang ACTIVE phụ trách khu hiện tại của ngựa và chủ ngựa đang ACTIVE
+   * - Ngựa chưa có khu (hoặc khu chưa có Head Trainer), hoặc chưa có chủ, thì bỏ người đó
    * - Mức ưu tiên lấy theo severity của event: URGENT → URGENT, WARNING → HIGH
    * - eventId của thông báo là measurementId: event phát lại không sinh thông báo trùng
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
@@ -54,7 +58,7 @@ export class HorseNotificationsService {
   async notifyMeasurementAlert(
     event: HorseMeasurementAlertEvent,
   ): Promise<string[]> {
-    const horse = await this.recipients.findHorseBarnContact(event.horseId);
+    const horse = await this.recipients.findHorseMedicalContact(event.horseId);
     if (!horse) {
       this.logger.warn(
         `Bỏ qua cảnh báo ${event.alert} của bản ghi ${event.measurementId}: không tìm thấy ngựa ${event.horseId}`,
@@ -67,6 +71,9 @@ export class HorseNotificationsService {
     );
     if (horse.headTrainerId) {
       recipientIds.push(horse.headTrainerId);
+    }
+    if (horse.ownerId) {
+      recipientIds.push(horse.ownerId);
     }
 
     return this.notifications.send({
@@ -195,25 +202,41 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu chứa ngựa có phụ phí chăm sóc riêng mới, để chỉnh khẩu phần và việc riêng theo nội dung
+   * Báo Head Trainer của khu chứa ngựa và chủ ngựa khi có phụ phí chăm sóc riêng mới
    *
-   * - Ngựa không có khu hoặc khu không có Head Trainer đang hoạt động thì không gửi
+   * - Head Trainer: để sắp xếp chăm sóc theo nội dung; ngựa không có khu hoặc khu không có Head Trainer đang hoạt động thì bỏ
+   * - Chủ ngựa đang ACTIVE: để biết khoản phí; ngựa chưa có chủ thì bỏ
    *
    * @param notice Payload do module billing phát khi Club Manager ghi phụ phí
    * @returns Promise trả về id các thông báo đã gửi; không gửi thì trả mảng rỗng
    */
   async notifySurchargeAdded(notice: SurchargeAddedEvent): Promise<string[]> {
-    const horse = await this.recipients.findHorseBarnContact(notice.horseId);
-    if (!horse?.headTrainerId) return [];
-    return this.notifications.send({
-      eventId: notice.eventId,
-      recipientIds: [horse.headTrainerId],
-      category: NotificationCategory.SURCHARGE,
-      priority: NotificationPriority.NORMAL,
-      title: 'Ngựa có chế độ chăm sóc riêng',
-      message: `Ngựa ${horse.horseName} từ ${toDisplayDate(notice.startDate)} đến ${toDisplayDate(notice.endDate)}: ${notice.description}`,
-      resource: horseResource(notice.horseId),
-    });
+    const horse = await this.recipients.findHorseMedicalContact(notice.horseId);
+    if (!horse) return [];
+    const period = `từ ${toDisplayDate(notice.startDate)} đến ${toDisplayDate(notice.endDate)}`;
+    const toTrainer = horse.headTrainerId
+      ? await this.notifications.send({
+          eventId: notice.eventId,
+          recipientIds: [horse.headTrainerId],
+          category: NotificationCategory.SURCHARGE,
+          priority: NotificationPriority.NORMAL,
+          title: 'Ngựa có chế độ chăm sóc riêng',
+          message: `Ngựa ${horse.horseName} ${period}: ${notice.description}`,
+          resource: horseResource(notice.horseId),
+        })
+      : [];
+    const toOwner = horse.ownerId
+      ? await this.notifications.send({
+          eventId: notice.eventId,
+          recipientIds: [horse.ownerId],
+          category: NotificationCategory.SURCHARGE,
+          priority: NotificationPriority.NORMAL,
+          title: `Phụ phí chăm sóc riêng cho ngựa ${horse.horseName}`,
+          message: `${notice.description}, ${period}, ${notice.dailyAmount.toLocaleString('vi-VN')} đồng mỗi ngày`,
+          resource: horseResource(notice.horseId),
+        })
+      : [];
+    return [...toTrainer, ...toOwner];
   }
 
   /**
@@ -302,6 +325,33 @@ export class HorseNotificationsService {
       title: 'Ngựa đã chuyển nhượng',
       message: `Ngựa ${horseName} đã chuyển nhượng, bạn không còn phụ trách con ngựa này. Bạn vẫn xem được hồ sơ nhưng không thao tác được.`,
       resource: horseResource(notice.horseId),
+    });
+  }
+
+  /**
+   * Báo chủ ngựa khi ngựa giải nghệ, chuyển nhượng hoặc hoạt động trở lại
+   *
+   * - Chủ ngựa chỉ nhận khi còn là HORSE_OWNER đang ACTIVE; không có chủ thì không gửi
+   * - Idempotent theo event.eventId
+   *
+   * @param event Payload của HORSE_LIFECYCLE_CHANGED_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  async notifyLifecycleChanged(
+    event: HorseLifecycleChangedEvent,
+  ): Promise<string[]> {
+    const contact = await this.recipients.findHorseMedicalContact(
+      event.horseId,
+    );
+    if (!contact?.ownerId) return [];
+    return this.notifications.send({
+      eventId: event.eventId,
+      recipientIds: [contact.ownerId],
+      category: NotificationCategory.HORSE_LIFECYCLE,
+      priority: NotificationPriority.NORMAL,
+      title: `Ngựa ${contact.horseName}: ${HORSE_LIFECYCLE_LABELS[event.to]}`,
+      message: `Vòng đời của ngựa ${contact.horseName} chuyển từ ${HORSE_LIFECYCLE_LABELS[event.from]} sang ${HORSE_LIFECYCLE_LABELS[event.to]}. Lý do: ${event.reason}`,
+      resource: horseResource(event.horseId),
     });
   }
 

@@ -29,6 +29,7 @@ import {
   DECEASED_LOCK_RELEASE_CONCLUSION,
   HORSE_AUDIT_FEATURE,
   HORSE_DECEASED_EVENT,
+  HORSE_LIFECYCLE_CHANGED_EVENT,
   HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT,
   TRANSFER_INCIDENT_RESOLUTION,
   TRANSFER_LOCK_RELEASE_CONCLUSION,
@@ -50,6 +51,7 @@ import type {
   HorseDeath,
   HorseDeceasedEvent,
   HorseGroomReleasedEvent,
+  HorseLifecycleChangedEvent,
   LifecycleSideEffects,
 } from '../types/horse.types';
 import { HorseStatusesRepository } from './horse-statuses.repository';
@@ -133,6 +135,7 @@ export class HorseStatusesService {
    * - Giải nghệ: rút khỏi lớp đang học (training), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
    * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical); ghi HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT vào outbox trong cùng transaction để báo Groom vừa bị kết thúc phân công; rút khỏi lớp đang học (training), đang ACTIVE thì rút thêm đăng ký thi đấu chưa diễn ra (racing); trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); đóng sự cố tại chuồng đang mở với kết quả "Ngựa đã chuyển nhượng" (stable); bỏ khu; giữ chủ sở hữu
    * - Ghi nhận đã mất (từ ACTIVE hoặc RETIRED): bắt buộc ngày mất (không ở tương lai, không trước ngày sinh); làm như chuyển nhượng từ trạng thái đó, gỡ khóa huấn luyện với lý do "Gỡ do ngựa mất", lý do hủy y tế "Do ngựa mất", đóng sự cố với kết quả "Ngựa đã mất"; giữ chủ sở hữu; ghi HORSE_DECEASED_EVENT vào outbox (kèm khu và Groom trước khi dọn) thay cho HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT
+   * - Giải nghệ, chuyển nhượng, kích hoạt lại: ghi HORSE_LIFECYCLE_CHANGED_EVENT vào outbox để báo chủ ngựa
    * - Ngựa đã mất: mọi lần đổi vòng đời bị chặn 409
    * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe; từ chuyển nhượng thì sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ và đóng giai đoạn sở hữu của chủ cũ (khóa chia sẻ row tài khoản chủ khi kiểm)
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
@@ -410,7 +413,24 @@ export class HorseStatusesService {
         reason: body.reason,
       };
       await this.events.publish(manager, HORSE_DECEASED_EVENT, event);
-    } else if (applied.endedGroomId) {
+    } else {
+      const changed: HorseLifecycleChangedEvent = {
+        eventId: randomUUID(),
+        horseId: id,
+        from: horse.lifecycleStatus,
+        to: body.lifecycleStatus,
+        reason: body.reason,
+      };
+      await this.events.publish(
+        manager,
+        HORSE_LIFECYCLE_CHANGED_EVENT,
+        changed,
+      );
+    }
+    if (
+      body.lifecycleStatus !== HorseLifecycleStatus.DECEASED &&
+      applied.endedGroomId
+    ) {
       const event: HorseGroomReleasedEvent = {
         eventId: randomUUID(),
         horseId: id,

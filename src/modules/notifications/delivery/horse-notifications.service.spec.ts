@@ -1,3 +1,4 @@
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import {
@@ -69,19 +70,20 @@ const weightDropEvent: HorseMeasurementAlertEvent = {
 };
 
 describe('HorseNotificationsService.notifyMeasurementAlert', () => {
-  it('sends an URGENT fever notice to every active vet and the barn head trainer', async () => {
+  it('sends an URGENT fever notice to every active vet, the barn head trainer and the owner', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseBarnContact.mockResolvedValue({
+    recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: 'ht-1',
+      ownerId: 'owner-1',
     });
 
     await service.notifyMeasurementAlert(feverEvent);
 
-    expect(recipients.findHorseBarnContact).toHaveBeenCalledWith('horse-1');
+    expect(recipients.findHorseMedicalContact).toHaveBeenCalledWith('horse-1');
     expect(notifications.send).toHaveBeenCalledWith({
       eventId: 'measurement-1',
-      recipientIds: ['vet-1', 'vet-2', 'ht-1'],
+      recipientIds: ['vet-1', 'vet-2', 'ht-1', 'owner-1'],
       category: NotificationCategory.MEASUREMENT_ALERT,
       priority: NotificationPriority.URGENT,
       title: 'KHẨN: Ngựa Sao Mai bị sốt',
@@ -95,11 +97,12 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
     });
   });
 
-  it('sends only to vets when the horse has no barn head trainer', async () => {
+  it('sends only to vets when the horse has no barn head trainer and no owner', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseBarnContact.mockResolvedValue({
+    recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: null,
+      ownerId: null,
     });
 
     await service.notifyMeasurementAlert(feverEvent);
@@ -111,9 +114,10 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
 
   it('sends a HIGH weight-drop notice with horse name, drop percent and values', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseBarnContact.mockResolvedValue({
+    recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Gió Bắc',
       headTrainerId: 'ht-1',
+      ownerId: null,
     });
 
     await service.notifyMeasurementAlert(weightDropEvent);
@@ -132,7 +136,7 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
 
   it('sends nothing when the horse cannot be found', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseBarnContact.mockResolvedValue(null);
+    recipients.findHorseMedicalContact.mockResolvedValue(null);
 
     await expect(service.notifyMeasurementAlert(feverEvent)).resolves.toEqual(
       [],
@@ -359,15 +363,17 @@ describe('HorseNotificationsService.notifySurchargeAdded', () => {
     eventId: 'surcharge-1',
     horseId: 'horse-1',
     description: 'Thức ăn loại 1',
+    dailyAmount: 50000,
     startDate: '2026-11-01',
     endDate: '2026-11-30',
   };
 
-  it('tells the barn head trainer what care the horse now gets', async () => {
+  it('tells the barn head trainer what care the horse now gets, and the owner what it costs', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseBarnContact.mockResolvedValue({
+    recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: 'trainer-1',
+      ownerId: 'owner-1',
     });
 
     await service.notifySurchargeAdded(notice);
@@ -380,16 +386,69 @@ describe('HorseNotificationsService.notifySurchargeAdded', () => {
         message: 'Ngựa Sao Mai từ 01/11/2026 đến 30/11/2026: Thức ăn loại 1',
       }),
     );
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'surcharge-1',
+        recipientIds: ['owner-1'],
+        message:
+          'Thức ăn loại 1, từ 01/11/2026 đến 30/11/2026, 50.000 đồng mỗi ngày',
+      }),
+    );
   });
 
-  it('sends nothing when the barn has no head trainer', async () => {
+  it('sends nothing when the horse has neither a barn head trainer nor an owner', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseBarnContact.mockResolvedValue({
+    recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: null,
+      ownerId: null,
     });
 
     await expect(service.notifySurchargeAdded(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
+describe('HorseNotificationsService.notifyLifecycleChanged', () => {
+  const event = {
+    eventId: 'life-1',
+    horseId: 'horse-1',
+    from: HorseLifecycleStatus.ACTIVE,
+    to: HorseLifecycleStatus.RETIRED,
+    reason: 'Hết tuổi đua',
+  };
+
+  it('tells the owner the new lifecycle and the reason', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'trainer-1',
+      ownerId: 'owner-1',
+    });
+
+    await service.notifyLifecycleChanged(event);
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'life-1',
+        recipientIds: ['owner-1'],
+        category: NotificationCategory.HORSE_LIFECYCLE,
+        title: 'Ngựa Sao Mai: Đã giải nghệ',
+        message:
+          'Vòng đời của ngựa Sao Mai chuyển từ Đang hoạt động sang Đã giải nghệ. Lý do: Hết tuổi đua',
+      }),
+    );
+  });
+
+  it('sends nothing when the horse has no active owner', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+    });
+
+    await expect(service.notifyLifecycleChanged(event)).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();
   });
 });

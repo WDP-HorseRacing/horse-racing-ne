@@ -129,12 +129,13 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Sự kiện | Mức | Người nhận |
 |---|---|---|
 | Yêu cầu khám mức Khẩn được tạo bởi người dùng, hoặc bác sĩ nâng một yêu cầu (kể cả yêu cầu tự động) lên Khẩn | URGENT | Mọi VETERINARIAN đang hoạt động |
-| Đặt khóa huấn luyện | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER |
+| Đặt khóa huấn luyện | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
 | Trạng thái sức khỏe chuyển sang Chấn thương hoặc Cách ly | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
-| Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) *(BA chốt)* | NORMAL | HEAD TRAINER phụ trách khu |
+| Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) | NORMAL | HEAD TRAINER phụ trách khu, HORSE OWNER |
+| Trạng thái sức khỏe về Đủ điều kiện | NORMAL | HORSE OWNER |
 | Quá hạn khám định kỳ trên 7 ngày | HIGH | Mọi VETERINARIAN đang hoạt động, CLUB MANAGER |
 | Mở bệnh án | NORMAL | CLUB MANAGER, HORSE OWNER |
-| Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER |
+| Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
 | Đóng bệnh án | NORMAL | HORSE OWNER, CLUB MANAGER |
 | Hủy bệnh án mở nhầm | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Điều chỉnh chi phí bệnh án đã đóng | NORMAL | HORSE OWNER của giai đoạn chứa bệnh án (III.6.8), CLUB MANAGER |
@@ -483,7 +484,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Hệ thống gửi thông báo mức HIGH cho HEAD TRAINER phụ trách khu, CLUB MANAGER và HORSE OWNER.
    - Hệ thống **KHÔNG** tự rút ngựa khỏi lớp học và không tự rút đăng ký thi đấu. Ngựa vẫn còn trong lớp nhưng không tham gia được buổi tập; HEAD TRAINER quyết định giữ hay rút.
    - Hệ thống không tự chuyển ô. Cần tách đàn thì HEAD TRAINER chuyển ô bằng F1.7 (Flow 1 mục III.2.2).
-4. Chuyển sang Cần theo dõi: ngựa mất quyền đua và chỉ được tập cường độ Nhẹ và Trung bình (Flow 1 mục III.2); gửi thông báo mức NORMAL cho HEAD TRAINER phụ trách khu.
+4. Chuyển sang Cần theo dõi: ngựa mất quyền đua và chỉ được tập cường độ Nhẹ (Flow 2 mục III.5); gửi thông báo mức NORMAL cho HEAD TRAINER phụ trách khu và HORSE OWNER. Về Đủ điều kiện: báo HORSE OWNER mức NORMAL.
 5. Chuyển sang Đủ điều kiện được phép cả khi đang có lệnh khóa huấn luyện, và không tự gỡ khóa. Khóa chỉ được gỡ ở F3.8.
 6. Không đổi trạng thái cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 7. Ghi nhật ký kèm giá trị trước, giá trị sau và lý do. Lịch sử trạng thái sức khỏe (F3.10) được dựng từ nhật ký này.

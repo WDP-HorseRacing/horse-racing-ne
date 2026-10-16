@@ -156,6 +156,12 @@ export const HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT =
 export const HORSE_DECEASED_EVENT = 'horse.deceased';
 
 /**
+ * Tên domain event phát ra khi ngựa đổi vòng đời sang giải nghệ, chuyển nhượng hoặc hoạt động trở lại, ghi vào outbox trong cùng transaction.
+ * Payload là HorseLifecycleChangedEvent. Ghi nhận ngựa mất dùng HORSE_DECEASED_EVENT.
+ */
+export const HORSE_LIFECYCLE_CHANGED_EVENT = 'horse.lifecycle-changed';
+
+/**
  * Tên domain event phát ra khi chuyển nhượng nội bộ ngựa sang chủ khác, ghi vào outbox trong cùng transaction.
  * Payload là HorseOwnershipTransferredEvent.
  */

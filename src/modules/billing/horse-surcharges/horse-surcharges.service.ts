@@ -219,6 +219,7 @@ export class HorseSurchargesService {
         eventId: row.id,
         horseId,
         description: row.description,
+        dailyAmount: body.dailyAmount,
         startDate: row.startDate,
         endDate: row.endDate,
       };

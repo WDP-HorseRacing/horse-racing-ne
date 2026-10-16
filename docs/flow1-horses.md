@@ -458,8 +458,8 @@ Ghi lại các phép đo định kỳ của con ngựa: cân nặng, chiều cao
 4. Bản ghi đo không được sửa. Ghi sai thì VETERINARIAN xóa (bắt buộc nhập lý do) rồi đo lại. Mục đích là bảo vệ tính trung thực của dữ liệu.
 5. Mỗi bản ghi lưu kèm nguồn: nhập tay tại F1.5 hoặc ghi từ một buổi khám của Flow 3. Bản ghi có nguồn từ buổi khám không xóa được ở đây, phải xử lý bên Flow 3.
 6. Cảnh báo tự động:
-   - Thân nhiệt trên 38.6 độ C: thông báo khẩn cho VETERINARIAN và HEAD TRAINER phụ trách khu.
-   - Cân nặng giảm quá 5% trong 14 ngày: thông báo cho VETERINARIAN và HEAD TRAINER phụ trách khu.
+   - Thân nhiệt trên 38.6 độ C: thông báo khẩn cho VETERINARIAN, HEAD TRAINER phụ trách khu và HORSE OWNER.
+   - Cân nặng giảm quá 5% trong 14 ngày: thông báo cho VETERINARIAN, HEAD TRAINER phụ trách khu và HORSE OWNER.
 7. Không ghi chỉ số cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa. Riêng VETERINARIAN vẫn xóa được bản ghi đo sai của ngựa đã chuyển nhượng hoặc đã mất (bắt buộc lý do, ghi nhật ký). *(BA chốt)*
 8. Ghi nhật ký cho thao tác thêm và xóa.
 
@@ -631,7 +631,8 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
    - Hồ sơ đã xóa không đổi vòng đời được, kể cả mở bảng xem trước hệ quả; CLUB MANAGER phải khôi phục hồ sơ trước. *(BA chốt)*
 5. Mọi thao tác trong chức năng này bắt buộc nhập lý do, phải hiện bảng liệt kê hệ quả để xác nhận trước khi thực hiện, và phải thành công hoặc thất bại cùng nhau (Atomic).
 6. Ghi nhật ký thao tác kèm lý do.
-7. Buổi tập đang diễn ra lúc đổi vòng đời: giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt Đang tập bị chặn 409 ("Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng"), xem trước cũng báo lý do này; ghi nhận đã mất thì lượt Đang tập bị hủy với lý do "Ngựa đã mất" (nhật ký ghi `ongoingRunsCancelled`). Các buổi chưa diễn ra bị hủy như trước.
+7. Giải nghệ, chuyển nhượng, kích hoạt lại: báo HORSE OWNER (đang hoạt động) vòng đời mới kèm lý do. Ghi nhận đã mất báo như trước (chủ, HEAD TRAINER khu cũ, Groom cũ, CLUB MANAGER).
+8. Buổi tập đang diễn ra lúc đổi vòng đời: giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt Đang tập bị chặn 409 ("Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng"), xem trước cũng báo lý do này; ghi nhận đã mất thì lượt Đang tập bị hủy với lý do "Ngựa đã mất" (nhật ký ghi `ongoingRunsCancelled`). Các buổi chưa diễn ra bị hủy như trước.
 
 ### Bảng use case
 
