@@ -1,10 +1,8 @@
-import { ConflictException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
-import { PostgresQueryRunner } from 'typeorm/driver/postgres/PostgresQueryRunner';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import type { ClassSessionInputDto } from '../../src/modules/training/dto/class-schedule.dto';
 import { TrainingClassEntity } from '../../src/modules/training/entities/training-class.entity';
 import { TrainingPlanEntity } from '../../src/modules/training/entities/training-plan.entity';
 import { TrainingSubjectEntity } from '../../src/modules/training/entities/training-subject.entity';
@@ -15,6 +13,7 @@ import { TrainingAccessService } from '../../src/modules/training/shared/trainin
 import { TrainingClassesService } from '../../src/modules/training/training-classes/services/training-classes.service';
 import { TrainingPlansService } from '../../src/modules/training/training-plans/training-plans.service';
 import { TrainingSubjectsService } from '../../src/modules/training/training-subjects/training-subjects.service';
+import { TrainingPlanMinSessions1789827000000 } from '../../src/migrations/1789827000000-TrainingPlanMinSessions';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -24,18 +23,17 @@ import {
 } from './postgres';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 
-describe('Creating a class with its sessions (Postgres)', () => {
+describe('Creating a class from a plan (Postgres)', () => {
   let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let plans: TrainingPlansService;
   let classes: TrainingClassesService;
   let subjects: TrainingSubjectsService;
+  let manager: Actor;
   let trainer: Actor;
-  let trainerId: string;
-  let regular: string;
-  let trial: string;
-  let planId: string;
+  let endurance: string;
+  let walk: string;
 
   beforeAll(async () => {
     db = await startTestPostgres();
@@ -78,170 +76,131 @@ describe('Creating a class with its sessions (Postgres)', () => {
 
   beforeEach(async () => {
     await truncateAllTables(dataSource);
-    const manager = await actorOf(UserRole.CLUB_MANAGER);
-    trainerId = await seed.user(UserRole.HEAD_TRAINER);
-    trainer = await actorOf(UserRole.HEAD_TRAINER, trainerId);
-    regular = (
-      await subjects.create(manager, {
-        name: 'Sức bền',
-        sessionType: TrainingSessionType.REGULAR,
-        intensity: TrainingIntensity.MODERATE,
-        plannedDistanceM: 3000,
-      })
-    ).id;
-    trial = (
-      await subjects.create(manager, {
-        name: 'Chạy thử 1200',
-        sessionType: TrainingSessionType.TIME_TRIAL,
-        intensity: TrainingIntensity.HEAVY,
-        plannedDistanceM: 1200,
-        targetTimeMs: 75000,
-      })
-    ).id;
-    planId = (
-      await plans.create(trainer, {
-        name: 'Giáo án dài',
-        phases: [
-          {
-            weeks: 22,
-            subjects: [{ subjectId: regular, weekdays: [1, 3, 5] }],
-          },
-        ],
-      })
-    ).id;
+    manager = await actorOf(UserRole.CLUB_MANAGER);
+    trainer = await actorOf(UserRole.HEAD_TRAINER);
+    const subject = async (name: string, durationMinutes: number) =>
+      (
+        await subjects.create(manager, {
+          name,
+          sessionType: TrainingSessionType.REGULAR,
+          intensity: TrainingIntensity.LIGHT,
+          plannedDistanceM: 2000,
+          durationMinutes,
+        })
+      ).id;
+    endurance = await subject('Sức bền', 60);
+    walk = await subject('Đi bộ', 30);
   });
 
-  async function count(table: string): Promise<number> {
-    const [row] = await dataSource.query<Array<{ count: string }>>(
-      `SELECT count(*) FROM ${table}`,
-    );
-    return Number(row.count);
-  }
+  const createPlan = () =>
+    plans.create(trainer, {
+      name: 'Hai giai đoạn',
+      phases: [
+        {
+          weeks: 2,
+          subjects: [
+            { subjectId: endurance, minSessionsPerWeek: 3 },
+            { subjectId: walk, minSessionsPerWeek: 2 },
+          ],
+        },
+        { weeks: 1, subjects: [{ subjectId: walk, minSessionsPerWeek: 5 }] },
+      ],
+    });
 
-  async function insertsDuring(
-    run: () => Promise<unknown>,
-  ): Promise<Record<string, number>> {
-    const spy = jest.spyOn(PostgresQueryRunner.prototype, 'query');
-    try {
-      await run();
-      const counts: Record<string, number> = {};
-      for (const [sql] of spy.mock.calls) {
-        const table = /^\s*INSERT INTO "(\w+)"/.exec(sql)?.[1];
-        if (table) counts[table] = (counts[table] ?? 0) + 1;
-      }
-      return counts;
-    } finally {
-      spy.mockRestore();
-    }
-  }
-
-  const session = (
-    k: number,
-    overrides: Partial<ClassSessionInputDto> = {},
-  ): ClassSessionInputDto => {
-    const day = new Date(Date.UTC(2027, 0, 4 + Math.floor(k / 2)));
-    const hour = k % 2 === 0 ? 1 : 3;
-    const at = (h: number) =>
-      new Date(day.getTime() + h * 3_600_000).toISOString();
-    const isTrial = k % 10 === 9;
-    return {
-      subjectId: isTrial ? trial : regular,
-      name: `Buổi ${k}`,
-      intensity: isTrial ? TrainingIntensity.HEAVY : TrainingIntensity.LIGHT,
-      plannedDistanceM: isTrial ? 1200 : 2000 + k,
-      surface: k % 3 === 0 ? undefined : 'Cỏ',
-      location: k % 4 === 0 ? undefined : `Sân ${k % 4}`,
-      notes: k % 5 === 0 ? undefined : `Ghi chú ${k}`,
-      targetTimeMs: isTrial ? (k % 20 === 19 ? null : 70000 + k) : undefined,
-      scheduledStartAt: at(hour),
-      scheduledEndAt: at(hour + 1),
-      ...overrides,
-    };
-  };
-
-  const createClass = (sessionInputs: ClassSessionInputDto[]) =>
+  const createClass = (planId: string) =>
     classes.create(trainer, {
       code: 'K1',
       name: 'K1',
       planId,
       startDate: '2027-01-04',
-      sessions: sessionInputs,
     });
 
-  it('saves nothing when one session of the body overlaps another one', async () => {
-    await expect(
-      createClass([
-        session(0),
-        session(1),
-        session(2, {
-          scheduledStartAt: '2027-01-04T01:30:00.000Z',
-          scheduledEndAt: '2027-01-04T02:30:00.000Z',
-        }),
-      ]),
-    ).rejects.toThrow(
-      new ConflictException(
-        'Trùng giờ với buổi tập lúc 08:00 ngày 04/01/2027 của lớp',
-      ),
-    );
+  it('copies the plan phases into a running class with their dates and minimum minutes, without sessions', async () => {
+    const created = await createClass((await createPlan()).id);
 
-    expect(await count('training_classes')).toBe(0);
-    expect(await count('training_sessions')).toBe(0);
-    expect(await count('time_trials')).toBe(0);
+    expect(created).toMatchObject({
+      startDate: '2027-01-04',
+      endDate: '2027-01-24',
+      status: TrainingClassStatus.ACTIVE,
+    });
+    const plan = await classes.getPlan(trainer, created.id);
+    expect(plan.minTotalMinutes).toBe(2 * (3 * 60 + 2 * 30) + 5 * 30);
+    expect(
+      plan.phases.map((phase) => [
+        phase.position,
+        phase.startDate,
+        phase.endDate,
+        phase.subjects.map((item) => [
+          item.subject.name,
+          item.minSessionsPerWeek,
+        ]),
+      ]),
+    ).toEqual([
+      [
+        1,
+        '2027-01-04',
+        '2027-01-17',
+        [
+          ['Đi bộ', 2],
+          ['Sức bền', 3],
+        ],
+      ],
+      [2, '2027-01-18', '2027-01-24', [['Đi bộ', 5]]],
+    ]);
+    const [{ count }] = await dataSource.query<Array<{ count: string }>>(
+      'SELECT count(*) FROM training_sessions',
+    );
+    expect(count).toBe('0');
   });
 
-  it('saves 300 sessions and their time trial configs in a few batched inserts', async () => {
-    const inputs = Array.from({ length: 300 }, (_, k) => session(k));
+  it('keeps the class copy when the plan is edited later, also when moving the start date', async () => {
+    const plan = await createPlan();
+    const created = await createClass(plan.id);
 
-    let classId = '';
-    const inserts = await insertsDuring(async () => {
-      classId = (await createClass(inputs)).id;
+    await plans.update(trainer, plan.id, {
+      name: 'Một giai đoạn dài',
+      phases: [
+        {
+          weeks: 8,
+          subjects: [{ subjectId: endurance, minSessionsPerWeek: 1 }],
+        },
+      ],
+    });
+    const moved = await classes.update(trainer, created.id, {
+      startDate: '2027-02-01',
     });
 
-    const rows = await dataSource.query<Array<Record<string, unknown>>>(
-      `SELECT s.subject_id, s.name, s.session_type, s.intensity, s.planned_distance_m,
-              s.scheduled_start_at, s.scheduled_end_at, s.location, s.surface, s.notes, s.status,
-              t.distance_m, t.target_time_ms, t.notes AS trial_notes
-         FROM training_sessions s
-         LEFT JOIN time_trials t ON t.session_id = s.id
-        WHERE s.class_id = $1
-        ORDER BY s.scheduled_start_at`,
-      [classId],
-    );
-    expect(rows).toEqual(
-      inputs.map((input) => {
-        const isTrial = input.subjectId === trial;
-        return {
-          subject_id: input.subjectId,
-          name: input.name,
-          session_type: isTrial ? 'TIME_TRIAL' : 'REGULAR',
-          intensity: input.intensity,
-          planned_distance_m: input.plannedDistanceM,
-          scheduled_start_at: new Date(input.scheduledStartAt),
-          scheduled_end_at: new Date(input.scheduledEndAt),
-          location: input.location ?? null,
-          surface: input.surface ?? null,
-          notes: input.notes ?? null,
-          status: 'DRAFT',
-          distance_m: isTrial ? '1200.00' : null,
-          target_time_ms:
-            isTrial && input.targetTimeMs != null
-              ? String(input.targetTimeMs)
-              : null,
-          trial_notes: null,
-        };
-      }),
-    );
-    expect(await count('time_trials')).toBe(30);
-    expect(inserts).toEqual({
-      training_classes: 1,
-      training_sessions: 3,
-      time_trials: 1,
-      audit_logs: 1,
+    expect(moved.endDate).toBe('2027-02-21');
+    const copy = await classes.getPlan(trainer, created.id);
+    expect(copy.phases.map((phase) => phase.weeks)).toEqual([2, 1]);
+    expect(copy.phases[0].startDate).toBe('2027-02-01');
+  });
+
+  it('refuses to delete a subject still used by a class copy', async () => {
+    const plan = await createPlan();
+    await createClass(plan.id);
+    await plans.update(trainer, plan.id, {
+      name: 'Bỏ đi bộ',
+      phases: [
+        {
+          weeks: 1,
+          subjects: [{ subjectId: endurance, minSessionsPerWeek: 1 }],
+        },
+      ],
     });
+
+    await expect(subjects.remove(manager, walk)).rejects.toThrow(
+      'Môn học đang được dùng, không xóa được',
+    );
   });
 
   it('marks the open sessions of a cancelled class with the class cancel reason', async () => {
-    const created = await createClass([session(0)]);
+    const created = await createClass((await createPlan()).id);
+    await dataSource.query(
+      `INSERT INTO training_sessions (id, version, class_id, subject_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
+       VALUES ($1, 1, $2, $3, 'Buổi', '2027-01-05T01:00:00Z', '2027-01-05T02:00:00Z', 'SCHEDULED', 'LIGHT', 2000)`,
+      [randomUUID(), created.id, endurance],
+    );
 
     await classes.updateStatus(trainer, created.id, {
       status: TrainingClassStatus.CANCELLED,
@@ -258,19 +217,62 @@ describe('Creating a class with its sessions (Postgres)', () => {
     ]);
   });
 
-  describe('a null target time means no target', () => {
-    it('creates the class time trial config without a target', async () => {
-      const created = await createClass([session(9, { targetTimeMs: null })]);
+  describe('TrainingPlanMinSessions migration', () => {
+    const migration = new TrainingPlanMinSessions1789827000000();
 
-      const [row] = await dataSource.query<
-        Array<{ target_time_ms: string | null }>
-      >(
-        `SELECT t.target_time_ms FROM time_trials t
-           JOIN training_sessions s ON s.id = t.session_id
-          WHERE s.class_id = $1`,
-        [created.id],
-      );
-      expect(row).toEqual({ target_time_ms: null });
+    it('turns weekdays into a minimum count and copies the plan of existing classes', async () => {
+      const runner = dataSource.createQueryRunner();
+      try {
+        await migration.down(runner);
+        const trainerId = await seed.user(UserRole.HEAD_TRAINER);
+        const planId = randomUUID();
+        await runner.query(
+          `INSERT INTO training_plans (id, version, name, head_trainer_id) VALUES ($1, 1, 'Cũ', $2)`,
+          [planId, trainerId],
+        );
+        const phaseId = randomUUID();
+        await runner.query(
+          `INSERT INTO training_plan_phases (id, plan_id, position, weeks) VALUES ($1, $2, 1, 3)`,
+          [phaseId, planId],
+        );
+        await runner.query(
+          `INSERT INTO training_plan_subjects (phase_id, subject_id, weekdays) VALUES ($1, $2, '{1,3,5}')`,
+          [phaseId, endurance],
+        );
+        const classId = randomUUID();
+        await runner.query(
+          `INSERT INTO training_classes (id, version, name, code, head_trainer_id, plan_id, start_date, end_date, status)
+           VALUES ($1, 1, 'Cũ', 'OLD', $2, $3, '2027-01-04', '2027-01-24', 'ACTIVE')`,
+          [classId, trainerId, planId],
+        );
+
+        await migration.up(runner);
+
+        await expect(
+          runner.query(
+            'SELECT min_sessions_per_week FROM training_plan_subjects WHERE phase_id = $1',
+            [phaseId],
+          ),
+        ).resolves.toEqual([{ min_sessions_per_week: 3 }]);
+        await expect(
+          runner.query(
+            `SELECT p.position, p.weeks, s.subject_id, s.min_sessions_per_week
+               FROM training_class_phases p
+               JOIN training_class_phase_subjects s ON s.phase_id = p.id
+              WHERE p.class_id = $1`,
+            [classId],
+          ),
+        ).resolves.toEqual([
+          {
+            position: 1,
+            weeks: 3,
+            subject_id: endurance,
+            min_sessions_per_week: 3,
+          },
+        ]);
+      } finally {
+        await runner.release();
+      }
     });
   });
 });

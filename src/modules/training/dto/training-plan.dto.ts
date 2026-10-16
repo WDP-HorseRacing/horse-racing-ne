@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
-  ArrayUnique,
   IsArray,
   IsInt,
   IsOptional,
@@ -23,20 +22,14 @@ export class TrainingPlanSubjectInputDto {
   subjectId!: string;
 
   @ApiProperty({
-    type: [Number],
-    minItems: 1,
-    maxItems: 7,
-    description:
-      'Các thứ học môn này theo ISO: 1 là thứ Hai, 7 là Chủ nhật; trong một giai đoạn mỗi thứ chỉ thuộc một môn',
+    minimum: 1,
+    maximum: 14,
+    description: 'Số buổi tối thiểu mỗi tuần của môn trong giai đoạn',
   })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(7)
-  @ArrayUnique()
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  @Max(7, { each: true })
-  weekdays!: number[];
+  @IsInt()
+  @Min(1)
+  @Max(14)
+  minSessionsPerWeek!: number;
 }
 
 export class TrainingPlanPhaseInputDto {
@@ -94,12 +87,8 @@ export class TrainingPlanSubjectResponseDto {
   @ApiProperty({ type: TrainingSubjectResponseDto })
   subject!: TrainingSubjectResponseDto;
 
-  @ApiProperty({
-    type: [Number],
-    description:
-      'Các thứ học môn theo ISO (1 là thứ Hai, 7 là Chủ nhật), tăng dần',
-  })
-  weekdays!: number[];
+  @ApiProperty({ description: 'Số buổi tối thiểu mỗi tuần' })
+  minSessionsPerWeek!: number;
 }
 
 export class TrainingPlanPhaseResponseDto {
@@ -113,8 +102,14 @@ export class TrainingPlanPhaseResponseDto {
   weeks!: number;
 
   @ApiProperty({
+    description:
+      'Thời lượng tối thiểu của giai đoạn (phút): số tuần × tổng (số buổi tối thiểu × thời lượng môn)',
+  })
+  minTotalMinutes!: number;
+
+  @ApiProperty({
     type: [TrainingPlanSubjectResponseDto],
-    description: 'Các môn của giai đoạn, sắp theo thứ nhỏ nhất trong tuần',
+    description: 'Các môn của giai đoạn, sắp theo tên môn',
   })
   subjects!: TrainingPlanSubjectResponseDto[];
 }
@@ -134,6 +129,11 @@ export class TrainingPlanResponseDto {
 
   @ApiProperty({ description: 'Tổng số tuần của giáo án' })
   totalWeeks!: number;
+
+  @ApiProperty({
+    description: 'Thời lượng tối thiểu của cả giáo án (phút)',
+  })
+  minTotalMinutes!: number;
 
   @ApiProperty({ type: [TrainingPlanPhaseResponseDto] })
   phases!: TrainingPlanPhaseResponseDto[];

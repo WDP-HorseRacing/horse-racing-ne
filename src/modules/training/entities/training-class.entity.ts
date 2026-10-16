@@ -56,7 +56,7 @@ export class TrainingClassEntity extends MutableRecordEntity {
   @Column({
     type: 'varchar',
     length: 32,
-    default: TrainingClassStatus.DRAFT,
+    default: TrainingClassStatus.ACTIVE,
     enum: TrainingClassStatus,
   })
   status!: TrainingClassStatus;

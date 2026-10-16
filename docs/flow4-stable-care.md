@@ -136,7 +136,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 - Khu, ô chuồng hiện tại.
 - Checklist hôm nay (đã sinh theo luật 5.2; chưa có thì để trống).
 - Khẩu phần `ACTIVE` theo bữa.
-- Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu; bỏ buổi nháp và buổi đã hủy, bỏ lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện.
+- Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu; bỏ buổi đã hủy, bỏ lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện.
 - Lịch chăm sóc giao cho Groom (Flow 3) đến hạn tới hết hôm nay mà chưa làm, kể cả lịch quá hạn (đánh dấu `overdue`).
 
 Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.

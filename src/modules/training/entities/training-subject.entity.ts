@@ -1,13 +1,17 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Check, Column, Entity, Index } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 
 /**
- * TrainingSubjectEntity: một môn học là một bài tập cố định (loại buổi, cường độ, cự ly, mặt sân), dùng chung toàn CLB.
+ * TrainingSubjectEntity: một môn học là một bài tập cố định (loại buổi, cường độ, cự ly, thời lượng, mặt sân), dùng chung toàn CLB.
  */
 @Entity({ name: 'training_subjects' })
 @Index('training_subjects_name_uq', ['name'], { unique: true })
+@Check(
+  'training_subjects_duration_minutes_ck',
+  '"duration_minutes" BETWEEN 15 AND 480',
+)
 export class TrainingSubjectEntity extends MutableRecordEntity {
   @Column({ type: 'varchar', length: 160 })
   name!: string;
@@ -28,6 +32,9 @@ export class TrainingSubjectEntity extends MutableRecordEntity {
 
   @Column({ name: 'planned_distance_m', type: 'integer' })
   plannedDistanceM!: number;
+
+  @Column({ name: 'duration_minutes', type: 'integer', default: 60 })
+  durationMinutes!: number;
 
   @Column({ type: 'varchar', length: 80, nullable: true })
   surface!: string | null;

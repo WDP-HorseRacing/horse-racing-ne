@@ -663,7 +663,7 @@ export class UsersService {
         .existsBy({ headTrainerId: userId })) ||
       (await manager.getRepository(TrainingClassEntity).existsBy({
         headTrainerId: userId,
-        status: In([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE]),
+        status: TrainingClassStatus.ACTIVE,
       }))
     );
   }

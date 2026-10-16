@@ -204,7 +204,7 @@ describe('Groom today view (Postgres)', () => {
     expect(second.feedingPlan).toBeNull();
   });
 
-  it('shows today runs the groom leads, skipping drafts, cancelled and other days', async () => {
+  it('shows today runs the groom leads, skipping cancelled ones and other days', async () => {
     const { classId } = await seed.trainingClass(trainerId);
     for (const horseId of [gio, may]) {
       await dataSource.query(
@@ -217,7 +217,6 @@ describe('Groom today view (Postgres)', () => {
       clubDateTimeToInstant(date, time);
     await run(classId, gio, { start: at('15:00'), name: 'Chiều' });
     await run(classId, gio, { start: at('06:00'), name: 'Sáng' });
-    await run(classId, gio, { start: at('09:00'), status: 'DRAFT' });
     await run(classId, gio, { start: at('10:00'), status: 'CANCELLED' });
     await run(classId, gio, { start: at('06:00', shiftDays(today, 1)) });
     await run(classId, may, { start: at('07:00'), groomId: otherGroomId });

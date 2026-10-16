@@ -4,18 +4,18 @@ import type { TrainingSessionEntity } from '../entities/training-session.entity'
 import type { TrainingSubjectEntity } from '../entities/training-subject.entity';
 
 /**
- * Một giai đoạn của giáo án dùng cho nhật ký: số tuần và các môn kèm thứ trong tuần
+ * Một giai đoạn của giáo án dùng cho nhật ký: số tuần và các môn kèm số buổi tối thiểu mỗi tuần
  */
 interface PlanPhaseInput {
   weeks: number;
-  subjects: Array<{ subjectId: string; weekdays: number[] }>;
+  subjects: Array<{ subjectId: string; minSessionsPerWeek: number }>;
 }
 
 /**
  * Lấy các field của môn học được ghi nhật ký
  *
  * @param subject Môn học
- * @returns Tên, mô tả, loại buổi, cường độ, cự ly, mặt sân, thời gian mục tiêu
+ * @returns Tên, mô tả, loại buổi, cường độ, cự ly, thời lượng, mặt sân, thời gian mục tiêu
  */
 export function subjectAuditData(subject: TrainingSubjectEntity) {
   return {
@@ -24,6 +24,7 @@ export function subjectAuditData(subject: TrainingSubjectEntity) {
     sessionType: subject.sessionType,
     intensity: subject.intensity,
     plannedDistanceM: subject.plannedDistanceM,
+    durationMinutes: subject.durationMinutes,
     surface: subject.surface,
     targetTimeMs: subject.targetTimeMs,
   };
@@ -37,7 +38,7 @@ export function subjectAuditData(subject: TrainingSubjectEntity) {
  * @param name Tên giáo án
  * @param description Mô tả giáo án
  * @param phases Các giai đoạn theo thứ tự
- * @returns Tên, mô tả và các giai đoạn kèm số tuần, môn, thứ trong tuần
+ * @returns Tên, mô tả và các giai đoạn kèm số tuần, môn, số buổi tối thiểu mỗi tuần
  */
 export function planAuditData(
   name: string,
@@ -50,7 +51,10 @@ export function planAuditData(
     phases: phases.map((phase) => ({
       weeks: phase.weeks,
       subjects: phase.subjects
-        .map((item) => ({ subjectId: item.subjectId, weekdays: item.weekdays }))
+        .map((item) => ({
+          subjectId: item.subjectId,
+          minSessionsPerWeek: item.minSessionsPerWeek,
+        }))
         .sort((a, b) => a.subjectId.localeCompare(b.subjectId)),
     })),
   };

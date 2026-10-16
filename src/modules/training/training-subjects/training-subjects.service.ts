@@ -18,6 +18,7 @@ import {
   TrainingSubjectResponseDto,
   UpdateTrainingSubjectDto,
 } from '../dto/training-subject.dto';
+import { TrainingClassPhaseSubjectEntity } from '../entities/training-class-phase-subject.entity';
 import { TrainingPlanSubjectEntity } from '../entities/training-plan-subject.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
@@ -101,6 +102,7 @@ export class TrainingSubjectsService {
               sessionType: body.sessionType,
               intensity: body.intensity,
               plannedDistanceM: body.plannedDistanceM,
+              durationMinutes: body.durationMinutes,
               surface: body.surface ?? null,
               targetTimeMs,
             }),
@@ -160,6 +162,7 @@ export class TrainingSubjectsService {
             sessionType: body.sessionType ?? row.sessionType,
             intensity: body.intensity ?? row.intensity,
             plannedDistanceM: body.plannedDistanceM ?? row.plannedDistanceM,
+            durationMinutes: body.durationMinutes ?? row.durationMinutes,
             surface: body.surface === undefined ? row.surface : body.surface,
             targetTimeMs:
               body.targetTimeMs === undefined
@@ -200,7 +203,7 @@ export class TrainingSubjectsService {
    * @returns Promise hoàn tất khi đã xóa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có môn học
-   * @throws ConflictException Nếu môn đang có trong giáo án hoặc buổi tập
+   * @throws ConflictException Nếu môn đang có trong giáo án, giáo án của lớp hoặc buổi tập
    */
   async remove(actor: Actor, subjectId: string): Promise<void> {
     const caller = await this.access.currentUser(actor);
@@ -212,6 +215,9 @@ export class TrainingSubjectsService {
       if (!row) throw new NotFoundException(SUBJECT_NOT_FOUND);
       if (
         (await manager.existsBy(TrainingPlanSubjectEntity, { subjectId })) ||
+        (await manager.existsBy(TrainingClassPhaseSubjectEntity, {
+          subjectId,
+        })) ||
         (await manager.existsBy(TrainingSessionEntity, { subjectId }))
       ) {
         throw new ConflictException('Môn học đang được dùng, không xóa được');

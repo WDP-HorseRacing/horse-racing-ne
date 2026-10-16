@@ -22,16 +22,6 @@ export interface HorseSessionHolding extends HorseClassSession {
 }
 
 /**
- * Ngựa không được tạo lượt khi publish buổi vì trùng giờ với buổi ở lớp khác.
- */
-export interface SkippedHorse {
-  horseId: string;
-  horseName: string;
-  conflictClassCode: string;
-  conflictStartAt: Date;
-}
-
-/**
  * Tên và mã ảnh đại diện của ngựa để hiện trên danh sách.
  */
 export interface HorseBrief {

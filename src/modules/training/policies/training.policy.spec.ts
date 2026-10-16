@@ -10,12 +10,13 @@ import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
-  assertClassActivatable,
+  assertSessionEditable,
   assertNoHoldingOverlap,
   assertNoOverlappingClassSession,
   findHorseScheduleClashes,
   findOverlappingHolding,
   horseScheduleClashError,
+  horsesClashingWithClass,
   sessionWindowsOverlap,
   assertParticipantAbsent,
   assertParticipantActionWindow,
@@ -43,13 +44,27 @@ describe('training policy', () => {
     expect(() => assertTrainableHorse(false)).not.toThrow();
   });
 
-  it('only activates a draft class', () => {
+  it('edits a scheduled session only before it starts', () => {
+    const now = new Date('2026-10-10T01:00:00Z');
+    const at = (iso: string, status = TrainingSessionStatus.SCHEDULED) => ({
+      status,
+      scheduledStartAt: new Date(iso),
+    });
+
     expect(() =>
-      assertClassActivatable(TrainingClassStatus.DRAFT),
+      assertSessionEditable(at('2026-10-10T01:00:01Z'), now),
     ).not.toThrow();
-    expect(() => assertClassActivatable(TrainingClassStatus.ACTIVE)).toThrow(
-      ConflictException,
-    );
+    for (const session of [
+      at('2026-10-10T01:00:00Z'),
+      at('2026-10-10T02:00:00Z', TrainingSessionStatus.IN_PROGRESS),
+      at('2026-10-10T02:00:00Z', TrainingSessionStatus.CANCELLED),
+    ]) {
+      expect(() => assertSessionEditable(session, now)).toThrow(
+        new ConflictException(
+          'Chỉ sửa được buổi tập đã lên lịch và chưa tới giờ bắt đầu',
+        ),
+      );
+    }
   });
 
   it('only allows participant operations while a session is executable', () => {
@@ -59,9 +74,9 @@ describe('training policy', () => {
     expect(() =>
       assertSessionOperational(TrainingSessionStatus.IN_PROGRESS),
     ).not.toThrow();
-    expect(() => assertSessionOperational(TrainingSessionStatus.DRAFT)).toThrow(
-      ConflictException,
-    );
+    expect(() =>
+      assertSessionOperational(TrainingSessionStatus.COMPLETED),
+    ).toThrow(ConflictException);
     expect(() =>
       assertSessionOperational(TrainingSessionStatus.COMPLETED),
     ).toThrow(ConflictException);
@@ -286,12 +301,11 @@ describe('plan weeks and class end date', () => {
 });
 
 describe('assertClassOpenForSessions', () => {
-  it.each([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE])(
-    'accepts a %s class',
-    (status) => {
-      expect(() => assertClassOpenForSessions(status)).not.toThrow();
-    },
-  );
+  it('accepts an active class', () => {
+    expect(() =>
+      assertClassOpenForSessions(TrainingClassStatus.ACTIVE),
+    ).not.toThrow();
+  });
 
   it.each([TrainingClassStatus.COMPLETED, TrainingClassStatus.CANCELLED])(
     'rejects a %s class',
@@ -447,6 +461,40 @@ describe('session overlap policy', () => {
       ).toBe(
         'Trùng giờ với lịch của ngựa: h9 (lớp KD-01, 08:00 ngày 10/10/2026)',
       );
+    });
+  });
+
+  describe('horsesClashingWithClass', () => {
+    const at = (horseId: string, start: string, end: string) => ({
+      ...window(start, end),
+      horseId,
+      classCode: 'B',
+    });
+    const draft = window('2026-10-11T01:00:00Z', '2026-10-11T02:00:00Z');
+
+    it('flags holdings against published sessions and other schedules against the whole schedule', () => {
+      const clashing = horsesClashingWithClass(
+        [base],
+        [base, draft],
+        [
+          at('held', '2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+          at('heldOnDraft', '2026-10-11T01:30:00Z', '2026-10-11T02:30:00Z'),
+        ],
+        [at('planned', '2026-10-11T01:30:00Z', '2026-10-11T02:30:00Z')],
+      );
+
+      expect([...clashing].sort()).toEqual(['held', 'planned']);
+    });
+
+    it('ignores sessions that only touch the edge', () => {
+      expect(
+        horsesClashingWithClass(
+          [base],
+          [base],
+          [at('h1', '2026-10-10T02:00:00Z', '2026-10-10T03:00:00Z')],
+          [at('h2', '2026-10-10T00:00:00Z', '2026-10-10T01:00:00Z')],
+        ).size,
+      ).toBe(0);
     });
   });
 

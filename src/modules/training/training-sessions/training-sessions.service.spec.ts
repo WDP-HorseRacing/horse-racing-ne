@@ -28,15 +28,28 @@ function setup() {
     sessionType: TrainingSessionType.REGULAR,
     intensity: TrainingIntensity.MODERATE,
     plannedDistanceM: 3000,
-    scheduledStartAt: new Date('2026-10-10T01:00:00.000Z'),
-    scheduledEndAt: new Date('2026-10-10T02:00:00.000Z'),
+    scheduledStartAt: new Date('2099-10-10T01:00:00.000Z'),
+    scheduledEndAt: new Date('2099-10-10T02:00:00.000Z'),
     location: 'Sân A',
     surface: 'Cỏ',
     notes: 'Ghi chú cũ',
-    status: TrainingSessionStatus.DRAFT,
+    status: TrainingSessionStatus.SCHEDULED,
   };
   const manager = {
     save: jest.fn((row: unknown) => Promise.resolve(row)),
+    existsBy: jest.fn().mockResolvedValue(false),
+    find: jest.fn().mockResolvedValue([]),
+    getRepository: jest.fn(() => ({
+      createQueryBuilder: () => {
+        const qb = {
+          where: () => qb,
+          andWhere: () => qb,
+          orderBy: () => qb,
+          getMany: () => Promise.resolve([]),
+        };
+        return qb;
+      },
+    })),
   } as unknown as EntityManager;
   const dataSource = {
     transaction: jest.fn((cb: (m: EntityManager) => unknown) => cb(manager)),
@@ -48,8 +61,8 @@ function setup() {
       id: 'c1',
       status: TrainingClassStatus.ACTIVE,
       headTrainerId: 'ht',
-      startDate: '2026-10-01',
-      endDate: '2026-10-31',
+      startDate: '2099-10-01',
+      endDate: '2099-10-31',
     }),
     assertCanManageClass: jest.fn(),
   };
@@ -141,10 +154,10 @@ function setupCreate(
     currentUser: jest.fn().mockResolvedValue({ id: 'ht' }),
     lockedTrainingClass: jest.fn().mockResolvedValue({
       id: 'c1',
-      status: TrainingClassStatus.DRAFT,
+      status: TrainingClassStatus.ACTIVE,
       headTrainerId: 'ht',
-      startDate: '2026-10-01',
-      endDate: '2026-10-31',
+      startDate: '2099-10-01',
+      endDate: '2099-10-31',
     }),
     assertCanManageClass: jest.fn(),
   };
@@ -164,8 +177,8 @@ const newSession = (
   name: 'Buổi mới',
   intensity: TrainingIntensity.HEAVY,
   plannedDistanceM: 1200,
-  scheduledStartAt: '2026-10-10T01:00:00.000Z',
-  scheduledEndAt: '2026-10-10T02:00:00.000Z',
+  scheduledStartAt: '2099-10-10T01:00:00.000Z',
+  scheduledEndAt: '2099-10-10T02:00:00.000Z',
   ...overrides,
 });
 

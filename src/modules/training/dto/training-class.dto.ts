@@ -4,13 +4,11 @@ import {
   OmitType,
   PartialType,
 } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -19,11 +17,10 @@ import {
   Min,
   MinLength,
   ValidateIf,
-  ValidateNested,
 } from 'class-validator';
 import { RaceAptitude } from '../../horses/enums/race-aptitude.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
-import { ClassSessionInputDto } from './class-schedule.dto';
+import { TrainingPlanSubjectResponseDto } from './training-plan.dto';
 
 export class CreateTrainingClassDto {
   @ApiProperty({
@@ -78,29 +75,18 @@ export class CreateTrainingClassDto {
   })
   @IsDateString()
   startDate!: string;
-
-  @ApiProperty({
-    type: [ClassSessionInputDto],
-    minItems: 1,
-    maxItems: 500,
-    description: 'Các buổi tập lấy từ xem trước lịch, đã chỉnh trên màn hình',
-  })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(500)
-  @ValidateNested({ each: true })
-  @Type(() => ClassSessionInputDto)
-  sessions!: ClassSessionInputDto[];
 }
 
 export class UpdateTrainingClassDto extends PartialType(
-  OmitType(CreateTrainingClassDto, ['planId', 'sessions'] as const),
+  OmitType(CreateTrainingClassDto, ['planId'] as const),
 ) {}
 
 export class UpdateTrainingClassStatusDto {
-  @ApiProperty({ enum: TrainingClassStatus })
-  @IsEnum(TrainingClassStatus)
-  status!: TrainingClassStatus;
+  @ApiProperty({
+    enum: [TrainingClassStatus.COMPLETED, TrainingClassStatus.CANCELLED],
+  })
+  @IsIn([TrainingClassStatus.COMPLETED, TrainingClassStatus.CANCELLED])
+  status!: TrainingClassStatus.COMPLETED | TrainingClassStatus.CANCELLED;
 
   @ApiPropertyOptional({
     minLength: 1,
@@ -179,4 +165,41 @@ export class TrainingClassResponseDto {
   @ApiProperty({ format: 'date-time' })
   @Expose()
   updatedAt!: Date;
+}
+
+export class TrainingClassPhaseResponseDto {
+  @ApiProperty({ description: 'Thứ tự giai đoạn, bắt đầu từ 1' })
+  position!: number;
+
+  @ApiProperty({ description: 'Số tuần của giai đoạn' })
+  weeks!: number;
+
+  @ApiProperty({ format: 'date', description: 'Ngày đầu của giai đoạn' })
+  startDate!: string;
+
+  @ApiProperty({ format: 'date', description: 'Ngày cuối của giai đoạn' })
+  endDate!: string;
+
+  @ApiProperty({ description: 'Thời lượng tối thiểu của giai đoạn (phút)' })
+  minTotalMinutes!: number;
+
+  @ApiProperty({
+    type: [TrainingPlanSubjectResponseDto],
+    description: 'Các môn của giai đoạn, sắp theo tên môn',
+  })
+  subjects!: TrainingPlanSubjectResponseDto[];
+}
+
+export class TrainingClassPlanResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  classId!: string;
+
+  @ApiProperty({ format: 'uuid', description: 'Giáo án gốc đã chép' })
+  planId!: string;
+
+  @ApiProperty({ description: 'Thời lượng tối thiểu của cả lớp (phút)' })
+  minTotalMinutes!: number;
+
+  @ApiProperty({ type: [TrainingClassPhaseResponseDto] })
+  phases!: TrainingClassPhaseResponseDto[];
 }

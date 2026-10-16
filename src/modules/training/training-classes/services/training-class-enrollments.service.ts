@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
@@ -14,10 +14,12 @@ import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment
 import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
 import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
 import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
 import { MediaService } from '../../../media/services/media.service';
 import { evaluateEligibility } from '../../../horses/policies/horse.policy';
 import {
   CreateHorseEnrollmentDto,
+  EnrollableHorseDto,
   HorseEnrollmentListItemDto,
   HorseEnrollmentResponseDto,
   LeaveHorseEnrollmentDto,
@@ -30,6 +32,7 @@ import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import {
+  toEnrollableHorse,
   toHorseEnrollmentListItem,
   toHorseEnrollmentResponse,
 } from '../../mappers/horse-enrollment.mapper';
@@ -39,6 +42,7 @@ import {
   assertNoHoldingOverlap,
   HORSE_SCHEDULE_SESSION_STATUSES,
   eligibilityForSession,
+  horsesClashingWithClass,
   initialParticipantEligibility,
 } from '../../policies/training.policy';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
@@ -197,6 +201,93 @@ export class TrainingClassEnrollmentsService {
     return toHorseEnrollmentResponse(saved);
   }
 
+  /**
+   * Liệt kê các ngựa Head Trainer của lớp ghi danh được vào lớp ngay lúc này, mỗi ngựa kèm tên và ảnh
+   *
+   * - Ngựa xét: thuộc khu do người gọi phụ trách, đang hoạt động, chưa xóa
+   * - Bỏ ngựa đang có khoảng ghi danh mở ở lớp này
+   * - Bỏ ngựa trùng giờ với lớp khác theo đúng luật ghi danh
+   * - Không xét sĩ số của lớp
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @returns Promise trả về các ngựa theo tên
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, người gọi không phải Head Trainer của lớp hoặc lớp chưa có Head Trainer
+   * @throws NotFoundException Nếu không có lớp
+   * @throws ConflictException Nếu lớp không ở trạng thái đang chạy
+   */
+  async listEnrollableHorses(
+    actor: Actor,
+    classId: string,
+  ): Promise<EnrollableHorseDto[]> {
+    const manager = this.dataSource.manager;
+    const caller = await this.access.currentUser(actor, manager);
+    const trainingClass = await this.access.findTrainingClass(manager, classId);
+    this.access.assertCanManageClass(
+      actor,
+      caller.id,
+      trainingClass.headTrainerId,
+    );
+    if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
+      throw new ConflictException('Chỉ lớp đang chạy mới nhận thêm ngựa');
+    }
+    const now = new Date();
+    const horses = await manager.find(HorseEntity, {
+      where: {
+        lifecycleStatus: HorseLifecycleStatus.ACTIVE,
+        barn: { headTrainerId: caller.id },
+      },
+      order: { name: 'ASC' },
+    });
+    if (horses.length === 0) return [];
+    const enrolled = await manager.find(HorseEnrollmentEntity, {
+      where: {
+        classId,
+        horseId: In(horses.map((horse) => horse.id)),
+        status: Not(HorseEnrollmentStatus.CANCELLED),
+      },
+    });
+    const enrolledIds = new Set(
+      enrolled
+        .filter((period) => !period.leftAt || now < period.leftAt)
+        .map((period) => period.horseId),
+    );
+    const candidates = horses.filter((horse) => !enrolledIds.has(horse.id));
+    if (candidates.length === 0) return [];
+    const candidateIds = candidates.map((horse) => horse.id);
+    const schedule = await this.upcomingSchedule(manager, classId, now);
+    const clashing = horsesClashingWithClass(
+      schedule.filter(
+        (session) => session.status === TrainingSessionStatus.SCHEDULED,
+      ),
+      schedule,
+      await this.access.horseSessionHoldings(manager, candidateIds, classId),
+      await this.access.horseScheduledSessionsInOtherClasses(
+        manager,
+        candidateIds,
+        classId,
+      ),
+    );
+    const shown = candidates.filter((horse) => !clashing.has(horse.id));
+    const photoUrls = await this.media.signDownloadUrls(
+      shown
+        .map((horse) => horse.mediaId)
+        .filter((id): id is string => id !== null),
+    );
+    const briefs = new Map(
+      shown.map((horse) => [
+        horse.id,
+        { name: horse.name, mediaId: horse.mediaId },
+      ]),
+    );
+    return shown.map((horse) =>
+      toEnrollableHorse(
+        horse.id,
+        horseListDisplay(horse.id, briefs, photoUrls),
+      ),
+    );
+  }
+
   async leave(
     actor: Actor,
     enrollmentId: string,
@@ -277,22 +368,11 @@ export class TrainingClassEnrollmentsService {
     enrollment: HorseEnrollmentEntity,
     horse: HorseEntity,
   ): Promise<void> {
-    const now = new Date();
-    const schedule = await manager
-      .getRepository(TrainingSessionEntity)
-      .createQueryBuilder('session')
-      .where('session.class_id = :classId', {
-        classId: enrollment.classId,
-      })
-      .andWhere('session.status IN (:...statuses)', {
-        statuses: HORSE_SCHEDULE_SESSION_STATUSES,
-      })
-      .andWhere('session.scheduled_start_at >= :enrolledAt', {
-        enrolledAt: enrollment.enrolledAt,
-      })
-      .andWhere('session.scheduled_start_at > :now', { now })
-      .orderBy('session.scheduled_start_at', 'ASC')
-      .getMany();
+    const schedule = await this.upcomingSchedule(
+      manager,
+      enrollment.classId,
+      enrollment.enrolledAt,
+    );
     const sessions = schedule.filter(
       (session) => session.status === TrainingSessionStatus.SCHEDULED,
     );
@@ -359,6 +439,34 @@ export class TrainingClassEnrollmentsService {
         }),
       );
     }
+  }
+
+  /**
+   * Lấy lịch còn tới của lớp tính từ một thời điểm
+   *
+   * - Buổi nháp, đã công bố, đang diễn ra, bắt đầu sau hiện tại và không trước thời điểm from
+   *
+   * @param manager EntityManager dùng để query
+   * @param classId UUID của lớp
+   * @param from Thời điểm bắt đầu xét, thường là lúc ghi danh
+   * @returns Promise trả về các buổi sớm nhất trước
+   */
+  private upcomingSchedule(
+    manager: EntityManager,
+    classId: string,
+    from: Date,
+  ): Promise<TrainingSessionEntity[]> {
+    return manager
+      .getRepository(TrainingSessionEntity)
+      .createQueryBuilder('session')
+      .where('session.class_id = :classId', { classId })
+      .andWhere('session.status IN (:...statuses)', {
+        statuses: HORSE_SCHEDULE_SESSION_STATUSES,
+      })
+      .andWhere('session.scheduled_start_at >= :from', { from })
+      .andWhere('session.scheduled_start_at > :now', { now: new Date() })
+      .orderBy('session.scheduled_start_at', 'ASC')
+      .getMany();
   }
 
   private findGroomAt(manager: EntityManager, horseId: string, at: Date) {

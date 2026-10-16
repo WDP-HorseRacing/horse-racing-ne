@@ -11,7 +11,7 @@ import { TrainingPlanSubjectEntity } from './training-plan-subject.entity';
 import { TrainingPlanEntity } from './training-plan.entity';
 
 /**
- * TrainingPlanPhaseEntity: một giai đoạn của giáo án, kéo dài `weeks` tuần liên tiếp theo thứ tự `position`; mỗi giai đoạn có các môn học theo thứ trong tuần.
+ * TrainingPlanPhaseEntity: một giai đoạn của giáo án, kéo dài `weeks` tuần liên tiếp theo thứ tự `position`; mỗi giai đoạn có các môn học kèm số buổi tối thiểu mỗi tuần.
  */
 @Entity({ name: 'training_plan_phases' })
 @Index('training_plan_phases_position_uq', ['planId', 'position'], {

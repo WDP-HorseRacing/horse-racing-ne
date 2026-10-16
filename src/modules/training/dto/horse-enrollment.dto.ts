@@ -80,3 +80,21 @@ export class HorseEnrollmentListItemDto extends HorseEnrollmentResponseDto {
   @Expose()
   horsePhotoUrl!: string | null;
 }
+
+export class EnrollableHorseDto {
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  horseId!: string;
+
+  @ApiProperty()
+  @Expose()
+  horseName!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh',
+  })
+  @Expose()
+  horsePhotoUrl!: string | null;
+}

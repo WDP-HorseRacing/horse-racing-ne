@@ -174,7 +174,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
   it('blocks completing a class only by its own unfinished sessions', async () => {
     const a = await seedClass('A');
     const b = await seedClass('B');
-    await seedSession(b, 'DRAFT');
+    await seedSession(b, 'SCHEDULED');
 
     await expect(
       classes.updateStatus(a.trainer, a.classId, {
@@ -195,7 +195,6 @@ describe('Training class queries over its sessions (Postgres)', () => {
     const a = await seedClass('A');
     const b = await seedClass('B');
     const futureA = await seedSession(a, 'SCHEDULED');
-    await seedSession(a, 'DRAFT');
     await seedSession(b, 'SCHEDULED');
     const horse = await seed.horse('Winx', { barnId: a.barnId });
 
@@ -281,12 +280,8 @@ describe('Training class queries over its sessions (Postgres)', () => {
   it('rejects a new start date only when the recomputed range leaves out a session of that class', async () => {
     const a = await seedClass('A');
     const b = await seedClass('B');
-    await dataSource.query(
-      `UPDATE training_classes SET status = 'DRAFT' WHERE id IN ($1, $2)`,
-      [a.classId, b.classId],
-    );
-    await seedSession(b, 'DRAFT', '2026-03-10T01:00:00Z');
-    await seedSession(a, 'DRAFT', '2026-12-01T01:00:00Z');
+    await seedSession(b, 'SCHEDULED', '2026-03-10T01:00:00Z');
+    await seedSession(a, 'SCHEDULED', '2026-12-01T01:00:00Z');
 
     await expect(
       classes.update(b.trainer, b.classId, { startDate: '2026-03-02' }),

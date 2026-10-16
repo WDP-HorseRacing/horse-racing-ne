@@ -595,7 +595,7 @@ export class TrainingOperationsFacade {
    * Chuyển mọi giáo án và các lớp chưa kết thúc của một Head Trainer sang Head Trainer khác, chạy trong transaction của nơi gọi
    *
    * - Giáo án: mọi giáo án của người bàn giao
-   * - Lớp: DRAFT hoặc ACTIVE; lớp COMPLETED hoặc CANCELLED giữ người cũ
+   * - Lớp: ACTIVE; lớp COMPLETED hoặc CANCELLED giữ người cũ
    * - Không kiểm quyền và không kiểm người nhận, nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
@@ -617,7 +617,7 @@ export class TrainingOperationsFacade {
       TrainingClassEntity,
       {
         headTrainerId: fromHeadTrainerId,
-        status: In([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE]),
+        status: TrainingClassStatus.ACTIVE,
       },
       { headTrainerId: toHeadTrainerId },
     );

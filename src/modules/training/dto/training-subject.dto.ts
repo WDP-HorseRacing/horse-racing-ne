@@ -50,6 +50,16 @@ export class CreateTrainingSubjectDto {
   @Max(20000)
   plannedDistanceM!: number;
 
+  @ApiProperty({
+    minimum: 15,
+    maximum: 480,
+    description: 'Thời lượng một buổi của môn (phút)',
+  })
+  @IsInt()
+  @Min(15)
+  @Max(480)
+  durationMinutes!: number;
+
   @ApiPropertyOptional({ maxLength: 80, description: 'Mặt sân' })
   @IsOptional()
   @IsString()
@@ -96,6 +106,10 @@ export class TrainingSubjectResponseDto {
   @ApiProperty({ description: 'Cự ly dự kiến (mét)' })
   @Expose()
   plannedDistanceM!: number;
+
+  @ApiProperty({ description: 'Thời lượng một buổi của môn (phút)' })
+  @Expose()
+  durationMinutes!: number;
 
   @ApiPropertyOptional({ nullable: true })
   @Expose()

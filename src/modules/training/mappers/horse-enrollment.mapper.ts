@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  EnrollableHorseDto,
   HorseEnrollmentListItemDto,
   HorseEnrollmentResponseDto,
 } from '../dto/horse-enrollment.dto';
@@ -28,6 +29,24 @@ export function toHorseEnrollmentListItem(
   return plainToInstance(
     HorseEnrollmentListItemDto,
     { ...row, ...display },
+    MAPPER_OPTIONS,
+  );
+}
+
+/**
+ * Chuyển một ngựa ghi danh được sang dòng của danh sách chọn ngựa
+ *
+ * @param horseId UUID của ngựa
+ * @param display Tên ngựa và link ảnh đã ký
+ * @returns Dòng danh sách ngựa ghi danh được
+ */
+export function toEnrollableHorse(
+  horseId: string,
+  display: HorseListDisplay,
+): EnrollableHorseDto {
+  return plainToInstance(
+    EnrollableHorseDto,
+    { horseId, ...display },
     MAPPER_OPTIONS,
   );
 }

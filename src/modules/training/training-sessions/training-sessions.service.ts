@@ -4,8 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Not, Repository } from 'typeorm';
-import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
@@ -20,46 +19,54 @@ import { evaluateEligibility } from '../../horses/policies/horse.policy';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
-  PublishClassSessionsDto,
-  PublishedSessionResponseDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
 } from '../dto/training-session.dto';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
-import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
-import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
-import {
-  toPublishedSessionResponse,
-  toTrainingSessionResponse,
-} from '../mappers/training-session.mapper';
+import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
 import {
   assertNoOverlappingClassSession,
   assertSessionCancellable,
   assertSessionEditable,
-  assertSessionPublishable,
   assertClassOpenForSessions,
   assertSessionWindowInClass,
   assertSubjectExercise,
   eligibilityForSession,
   findHorseScheduleClashes,
-  findOverlappingHolding,
   horseScheduleClashError,
   initialParticipantEligibility,
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { sessionAuditData } from '../utils/training-audit';
-import type {
-  SessionWindow,
-  SkippedHorse,
-} from '../types/training-session.types';
+import type { SessionWindow } from '../types/training-session.types';
+
+/**
+ * Lượt tập được đồng bộ lại khi buổi đổi giờ hoặc cường độ
+ */
+const SYNCED_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
+];
+
+/**
+ * Lượt tập đã điểm danh trở đi, chặn sửa buổi
+ */
+const CHECKED_IN_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.PRESENT,
+  SessionParticipantStatus.READY,
+  SessionParticipantStatus.ONGOING,
+];
+
+const NOT_ENROLLED_AT_START_REASON = 'Ngựa không học lớp vào giờ mới của buổi';
 
 @Injectable()
 export class TrainingSessionsService {
@@ -101,17 +108,18 @@ export class TrainingSessionsService {
   }
 
   /**
-   * Thêm một buổi tập nháp vào lớp
+   * Thêm một buổi tập đã lên lịch vào lớp, kèm lượt tập cho các ngựa đang học lớp vào giờ bắt đầu
    *
    * - Loại buổi lấy theo môn của buổi; gửi kèm loại buổi thì phải trùng loại buổi của môn
    * - Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly theo cự ly dự kiến, thời gian mục tiêu) trong cùng transaction
-   * - Ghi nhật ký kèm lớp, trạng thái và nội dung buổi; buổi chạy thử kèm thời gian mục tiêu
+   * - Lượt tập tạo theo điều kiện tập hiện tại của từng ngựa, như luật của syncParticipants
+   * - Ghi nhật ký kèm lớp, trạng thái, nội dung buổi và số lượt đã tạo; buổi chạy thử kèm thời gian mục tiêu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param classId UUID của lớp
    * @param body Nội dung buổi tập và môn học của buổi
-   * @returns Promise trả về buổi tập vừa tạo ở trạng thái DRAFT
-   * @throws ForbiddenException Nếu người gọi không quản lý lớp
+   * @returns Promise trả về buổi tập vừa tạo ở trạng thái SCHEDULED
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có lớp
    * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, buổi trùng giờ với buổi chưa hủy khác của lớp, hoặc trùng giờ với lịch ở lớp khác của ngựa đang học lớp vào giờ đó
    * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, môn học không tồn tại, loại buổi gửi lên khác loại buổi của môn, hoặc nội dung buổi sai theo loại môn
@@ -181,7 +189,7 @@ export class TrainingSessionsService {
           location: body.location ?? null,
           surface: body.surface ?? null,
           notes: body.notes ?? null,
-          status: TrainingSessionStatus.DRAFT,
+          status: TrainingSessionStatus.SCHEDULED,
         }),
       );
       if (subject.sessionType === TrainingSessionType.TIME_TRIAL) {
@@ -194,6 +202,12 @@ export class TrainingSessionsService {
           }),
         );
       }
+      const participantsCreated = await this.syncParticipants(
+        manager,
+        actor,
+        caller.id,
+        session,
+      );
       await this.auditService.record(manager, {
         actorId: caller.id,
         action: AuditAction.CREATE,
@@ -207,6 +221,7 @@ export class TrainingSessionsService {
           ...(session.sessionType === TrainingSessionType.TIME_TRIAL && {
             targetTimeMs,
           }),
+          participantsCreated,
         },
         feature: AuditFeature.TRAIN_SESSION,
       });
@@ -215,6 +230,23 @@ export class TrainingSessionsService {
     return toTrainingSessionResponse(row);
   }
 
+  /**
+   * Sửa buổi tập đã lên lịch chưa tới giờ bắt đầu, rồi đồng bộ lại lượt tập
+   *
+   * - Chặn khi đã có ngựa điểm danh, sẵn sàng hoặc đang tập
+   * - Đổi giờ: kiểm trùng giờ trong lớp và trùng giờ của ngựa như khi thêm buổi
+   * - Sau khi lưu, lượt tập được đồng bộ theo giờ bắt đầu và cường độ mới (syncParticipants)
+   * - Ghi nhật ký các field nội dung đã đổi
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @param body Các field cần sửa
+   * @returns Promise trả về buổi tập sau khi sửa
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
+   * @throws NotFoundException Nếu không có buổi tập hoặc lớp
+   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ, đã có ngựa điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, hoặc trùng giờ
+   * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp hoặc môn học không tồn tại
+   */
   async updateSession(
     actor: Actor,
     sessionId: string,
@@ -233,7 +265,17 @@ export class TrainingSessionsService {
         trainingClass.headTrainerId,
       );
       assertClassOpenForSessions(trainingClass.status);
-      assertSessionEditable(session.status);
+      assertSessionEditable(session, new Date());
+      if (
+        await manager.existsBy(SessionParticipantEntity, {
+          sessionId,
+          status: In(CHECKED_IN_PARTICIPANT_STATUSES),
+        })
+      ) {
+        throw new ConflictException(
+          'Buổi tập đã có ngựa điểm danh, không sửa được',
+        );
+      }
       const before = sessionAuditData(session);
       const nextSessionType = body.sessionType ?? session.sessionType;
       if (nextSessionType !== session.sessionType) {
@@ -302,6 +344,7 @@ export class TrainingSessionsService {
         notes: body.notes === undefined ? session.notes : body.notes,
       });
       const saved = await manager.save(session);
+      await this.syncParticipants(manager, actor, caller.id, saved);
       const diff = changedFieldsDiff(before, sessionAuditData(saved));
       if (diff) {
         await this.auditService.record(manager, {
@@ -316,255 +359,6 @@ export class TrainingSessionsService {
       return saved;
     });
     return toTrainingSessionResponse(row);
-  }
-
-  /**
-   * Publish một buổi nháp của lớp và tạo lượt tập cho từng ngựa đang học lớp
-   *
-   * - Ngựa đang giữ chỗ ở lớp khác trùng giờ với buổi: không tạo lượt, trả trong skippedHorses
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param sessionId UUID của buổi tập
-   * @returns Promise trả về buổi vừa publish kèm các ngựa bị bỏ qua vì trùng giờ
-   * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
-   * @throws NotFoundException Nếu không có buổi tập hoặc lớp
-   * @throws ConflictException Nếu buổi không còn nháp, lớp không còn ACTIVE, hoặc buổi chạy thử chưa cấu hình chạy thử
-   */
-  async publishSession(
-    actor: Actor,
-    sessionId: string,
-  ): Promise<PublishedSessionResponseDto> {
-    const published = await this.dataSource.transaction(async (manager) => {
-      const caller = await this.access.currentUser(actor, manager);
-      const session = await this.access.lockedSession(manager, sessionId);
-      const trainingClass = await this.access.lockedTrainingClass(
-        manager,
-        session.classId,
-      );
-      this.access.assertCanManageClass(
-        actor,
-        caller.id,
-        trainingClass.headTrainerId,
-      );
-      return this.publishLocked(
-        manager,
-        actor,
-        caller.id,
-        trainingClass,
-        session,
-      );
-    });
-    return toPublishedSessionResponse(published.session, published.skipped);
-  }
-
-  /**
-   * Publish một lần mọi buổi nháp của lớp, hoặc chỉ các buổi có ngày bắt đầu (theo lịch CLB) trong khoảng from–to
-   *
-   * - Chạy trong một transaction: một buổi lỗi thì không buổi nào được publish
-   * - Mỗi buổi áp đúng luật của publish từng buổi, theo thứ tự giờ bắt đầu
-   * - Không có buổi nháp nào khớp thì trả danh sách rỗng
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param classId UUID của lớp
-   * @param body Khoảng ngày tùy chọn
-   * @returns Promise trả về các buổi vừa publish, sớm nhất trước, mỗi buổi kèm ngựa bị bỏ qua vì trùng giờ
-   * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
-   * @throws NotFoundException Nếu không có lớp
-   * @throws BadRequestException Nếu from sau to
-   * @throws ConflictException Nếu lớp không còn ACTIVE, hoặc có buổi chạy thử chưa cấu hình chạy thử
-   */
-  async publishClassSessions(
-    actor: Actor,
-    classId: string,
-    body: PublishClassSessionsDto,
-  ): Promise<PublishedSessionResponseDto[]> {
-    if (body.from && body.to && body.from > body.to) {
-      throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
-    }
-    const rows = await this.dataSource.transaction(async (manager) => {
-      const caller = await this.access.currentUser(actor, manager);
-      const query = manager
-        .getRepository(TrainingSessionEntity)
-        .createQueryBuilder('session')
-        .where('session.class_id = :classId', { classId })
-        .andWhere('session.status = :status', {
-          status: TrainingSessionStatus.DRAFT,
-        })
-        .setParameter('timeZone', CLUB_TIME_ZONE);
-      if (body.from) {
-        query.andWhere(
-          '(session.scheduled_start_at AT TIME ZONE :timeZone)::date >= :from',
-          { from: body.from.slice(0, 10) },
-        );
-      }
-      if (body.to) {
-        query.andWhere(
-          '(session.scheduled_start_at AT TIME ZONE :timeZone)::date <= :to',
-          { to: body.to.slice(0, 10) },
-        );
-      }
-      const drafts = await query
-        .orderBy('session.id', 'ASC')
-        .setLock('pessimistic_write')
-        .getMany();
-      const trainingClass = await this.access.lockedTrainingClass(
-        manager,
-        classId,
-      );
-      this.access.assertCanManageClass(
-        actor,
-        caller.id,
-        trainingClass.headTrainerId,
-      );
-      const ordered = [...drafts].sort(
-        (a, b) => a.scheduledStartAt.getTime() - b.scheduledStartAt.getTime(),
-      );
-      const published: Array<{
-        session: TrainingSessionEntity;
-        skipped: SkippedHorse[];
-      }> = [];
-      for (const session of ordered) {
-        published.push(
-          await this.publishLocked(
-            manager,
-            actor,
-            caller.id,
-            trainingClass,
-            session,
-          ),
-        );
-      }
-      return published;
-    });
-    return rows.map((row) =>
-      toPublishedSessionResponse(row.session, row.skipped),
-    );
-  }
-
-  /**
-   * Publish một buổi đã khóa: kiểm trạng thái buổi và lớp, cấu hình chạy thử, rồi tạo lượt tập cho từng ngựa đang học lớp
-   *
-   * - Khóa row từng con ngựa trước khi tạo lượt
-   * - Ngựa đang giữ chỗ ở lớp khác trùng giờ với buổi: không tạo lượt, đưa vào danh sách bị bỏ qua
-   * - Ghi nhật ký đổi trạng thái buổi kèm số lượt đã tạo và số ngựa bị bỏ qua
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param actor Thông tin danh tính từ Access Token
-   * @param callerId UUID của người gọi
-   * @param trainingClass Lớp của buổi, đã khóa
-   * @param session Buổi tập, đã khóa
-   * @returns Promise trả về buổi sau khi chuyển SCHEDULED và các ngựa bị bỏ qua vì trùng giờ
-   * @throws ConflictException Nếu buổi không còn nháp, lớp không còn ACTIVE, hoặc buổi chạy thử chưa có cấu hình chạy thử
-   * @throws ForbiddenException Nếu Head Trainer gặp ngựa ngoài khu mình phụ trách
-   */
-  private async publishLocked(
-    manager: EntityManager,
-    actor: Actor,
-    callerId: string,
-    trainingClass: TrainingClassEntity,
-    session: TrainingSessionEntity,
-  ): Promise<{ session: TrainingSessionEntity; skipped: SkippedHorse[] }> {
-    assertSessionPublishable(session.status);
-    if (trainingClass.status !== TrainingClassStatus.ACTIVE) {
-      throw new ConflictException('Lớp không còn ở trạng thái đang chạy');
-    }
-    if (session.sessionType === TrainingSessionType.TIME_TRIAL) {
-      const configuredTrial = await manager.findOneBy(TimeTrialEntity, {
-        sessionId: session.id,
-      });
-      if (!configuredTrial) {
-        throw new ConflictException(
-          'Buổi chạy thử phải có cấu hình chạy thử trước khi công bố',
-        );
-      }
-    }
-    const enrollments = await this.enrollmentsAt(
-      manager,
-      trainingClass.id,
-      session.scheduledStartAt,
-    );
-
-    const skipped: SkippedHorse[] = [];
-    let created = 0;
-    for (const enrollment of enrollments) {
-      const horse = await this.access.lockedHorse(
-        manager,
-        enrollment.horseId,
-      );
-      await this.access.assertTrainerBarn(
-        manager,
-        actor,
-        callerId,
-        horse.id,
-      );
-      const existing = await manager.findOneBy(SessionParticipantEntity, {
-        sessionId: session.id,
-        horseId: horse.id,
-      });
-      if (existing) continue;
-      const clash = findOverlappingHolding(
-        session,
-        await this.access.horseSessionHoldings(
-          manager,
-          [horse.id],
-          trainingClass.id,
-        ),
-      );
-      if (clash) {
-        skipped.push({
-          horseId: horse.id,
-          horseName: horse.name,
-          conflictClassCode: clash.classCode,
-          conflictStartAt: clash.scheduledStartAt,
-        });
-        continue;
-      }
-      const activeLock = await manager.findOneBy(TrainingLockEntity, {
-        horseId: horse.id,
-        status: TrainingLockStatus.ACTIVE,
-      });
-      const eligibility = eligibilityForSession(
-        evaluateEligibility({
-          isDeleted: Boolean(horse.deletedAt),
-          lifecycleStatus: horse.lifecycleStatus,
-          healthStatus: horse.healthStatus,
-          hasActiveTrainingLock: !!activeLock,
-        }),
-        session.intensity,
-      );
-      const groom = await this.findGroomAt(
-        manager,
-        horse.id,
-        session.scheduledStartAt,
-      );
-      await manager.save(
-        manager.create(SessionParticipantEntity, {
-          sessionId: session.id,
-          horseId: horse.id,
-          horseEnrollmentId: enrollment.id,
-          assignedGroomId: groom?.groomId ?? null,
-          ...initialParticipantEligibility(eligibility, !!activeLock),
-        }),
-      );
-      created += 1;
-    }
-    const previousStatus = session.status;
-    session.status = TrainingSessionStatus.SCHEDULED;
-    const saved = await manager.save(session);
-    await this.auditService.record(manager, {
-      actorId: callerId,
-      action: AuditAction.UPDATE,
-      entityType: AuditEntityType.TRAINING_SESSION,
-      entityId: session.id,
-      before: { status: previousStatus },
-      after: {
-        status: saved.status,
-        participantsCreated: created,
-        horsesSkipped: skipped.length,
-      },
-      feature: AuditFeature.TRAIN_SESSION,
-    });
-    return { session: saved, skipped };
   }
 
   async cancelSession(
@@ -701,6 +495,117 @@ export class TrainingSessionsService {
       )
       .orderBy('enrollment.horse_id', 'ASC')
       .getMany();
+  }
+
+  /**
+   * Đồng bộ lượt tập của một buổi đã lên lịch với các ngựa đang học lớp vào giờ bắt đầu của buổi
+   *
+   * - Ngựa có khoảng ghi danh chưa hủy chứa giờ bắt đầu mà chưa có lượt: tạo lượt mới; lượt cũ đã hủy thì dùng lại và đặt lại như lượt mới
+   * - Lượt chờ điểm danh, hủy do khóa, không đủ điều kiện: chấm lại điều kiện tập theo cường độ của buổi, gắn Groom phụ trách ngựa lúc bắt đầu
+   * - Lượt chờ điểm danh, hủy do khóa, không đủ điều kiện của ngựa không còn học lớp vào giờ bắt đầu: hủy
+   * - Lượt đã điểm danh trở đi giữ nguyên
+   * - Khóa từng con ngựa theo thứ tự UUID trước khi ghi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param session Buổi tập đã khóa và đã lưu
+   * @returns Promise trả về số lượt mới tạo hoặc dùng lại
+   * @throws ForbiddenException Nếu Head Trainer gặp ngựa ngoài khu mình phụ trách
+   */
+  private async syncParticipants(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    session: TrainingSessionEntity,
+  ): Promise<number> {
+    const enrollments = new Map(
+      (
+        await this.enrollmentsAt(
+          manager,
+          session.classId,
+          session.scheduledStartAt,
+        )
+      ).map((enrollment) => [enrollment.horseId, enrollment]),
+    );
+    const participants = new Map(
+      (
+        await manager.find(SessionParticipantEntity, {
+          where: { sessionId: session.id },
+        })
+      ).map((participant) => [participant.horseId, participant]),
+    );
+    const horseIds = [
+      ...new Set([...enrollments.keys(), ...participants.keys()]),
+    ].sort();
+    let created = 0;
+    for (const horseId of horseIds) {
+      const participant = participants.get(horseId);
+      const reusable =
+        !participant ||
+        participant.status === SessionParticipantStatus.CANCELLED;
+      if (
+        participant &&
+        !reusable &&
+        !SYNCED_PARTICIPANT_STATUSES.includes(participant.status)
+      ) {
+        continue;
+      }
+      const enrollment = enrollments.get(horseId);
+      if (!enrollment) {
+        if (participant && !reusable) {
+          Object.assign(participant, {
+            status: SessionParticipantStatus.CANCELLED,
+            cancelReason: NOT_ENROLLED_AT_START_REASON,
+            ineligibilityReason: null,
+          });
+          await manager.save(participant);
+        }
+        continue;
+      }
+      const horse = await this.access.lockedHorse(manager, horseId);
+      await this.access.assertTrainerBarn(manager, actor, callerId, horseId);
+      const activeLock = await manager.existsBy(TrainingLockEntity, {
+        horseId,
+        status: TrainingLockStatus.ACTIVE,
+      });
+      const eligibility = eligibilityForSession(
+        evaluateEligibility({
+          isDeleted: Boolean(horse.deletedAt),
+          lifecycleStatus: horse.lifecycleStatus,
+          healthStatus: horse.healthStatus,
+          hasActiveTrainingLock: activeLock,
+        }),
+        session.intensity,
+      );
+      const groom = await this.findGroomAt(
+        manager,
+        horseId,
+        session.scheduledStartAt,
+      );
+      const row =
+        participant ??
+        manager.create(SessionParticipantEntity, {
+          sessionId: session.id,
+          horseId,
+        });
+      if (reusable) created += 1;
+      await manager.save(
+        Object.assign(row, {
+          horseEnrollmentId: enrollment.id,
+          assignedGroomId: groom?.groomId ?? null,
+          ...(reusable && {
+            checkedInAt: null,
+            startedAt: null,
+            completedAt: null,
+            absenceReason: null,
+          }),
+          cancelReason: null,
+          ...initialParticipantEligibility(eligibility, activeLock),
+        }),
+      );
+    }
+    return created;
   }
 
   private findGroomAt(manager: EntityManager, horseId: string, at: Date) {

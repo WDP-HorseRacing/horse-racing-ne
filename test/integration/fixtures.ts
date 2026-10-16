@@ -318,7 +318,7 @@ export function fixtures(dataSource: DataSource) {
   };
 
   /**
-   * Tạo môn học, giáo án một giai đoạn gồm môn đó (thứ Hai, Tư, Sáu) và lớp dùng giáo án, cùng Head Trainer
+   * Tạo môn học, giáo án một giai đoạn gồm môn đó (tối thiểu 3 buổi/tuần) và lớp dùng giáo án kèm bản chép giáo án, cùng Head Trainer
    *
    * @param headTrainerId Id Head Trainer sở hữu giáo án và phụ trách lớp
    * @param options Mã, tên, trạng thái, ngày bắt đầu và kết thúc của lớp; số tuần của giai đoạn duy nhất trong giáo án
@@ -354,8 +354,8 @@ export function fixtures(dataSource: DataSource) {
       [phaseId, planId, options.weeks ?? 4],
     );
     await dataSource.query(
-      `INSERT INTO training_plan_subjects (phase_id, subject_id, weekdays)
-       VALUES ($1, $2, '{1,3,5}')`,
+      `INSERT INTO training_plan_subjects (phase_id, subject_id, min_sessions_per_week)
+       VALUES ($1, $2, 3)`,
       [phaseId, subjectId],
     );
     const classId = randomUUID();
@@ -373,6 +373,17 @@ export function fixtures(dataSource: DataSource) {
         options.endDate ?? '2026-12-31',
         options.status ?? 'ACTIVE',
       ],
+    );
+    const classPhaseId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO training_class_phases (id, class_id, position, weeks)
+       VALUES ($1, $2, 1, $3)`,
+      [classPhaseId, classId, options.weeks ?? 4],
+    );
+    await dataSource.query(
+      `INSERT INTO training_class_phase_subjects (phase_id, subject_id, min_sessions_per_week)
+       VALUES ($1, $2, 3)`,
+      [classPhaseId, subjectId],
     );
     return { classId, planId };
   };

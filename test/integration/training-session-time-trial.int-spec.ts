@@ -86,7 +86,6 @@ describe('Time trial config of a training session (Postgres)', () => {
     ({ classId } = await seed.trainingClass(trainerId, {
       startDate: '2030-01-01',
       endDate: '2030-12-31',
-      status: 'DRAFT',
     }));
   });
 
@@ -134,7 +133,7 @@ describe('Time trial config of a training session (Postgres)', () => {
     it('configures a time trial on a session without a target', async () => {
       const [{ id: sessionId }] = await dataSource.query<Array<{ id: string }>>(
         `INSERT INTO training_sessions (version, class_id, subject_id, name, session_type, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
-         VALUES (1, $1, $2, 'Chạy thử', 'TIME_TRIAL', '2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z', 'DRAFT', 'HEAVY', 1200)
+         VALUES (1, $1, $2, 'Chạy thử', 'TIME_TRIAL', '2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z', 'SCHEDULED', 'HEAVY', 1200)
          RETURNING id`,
         [classId, trial],
       );
@@ -196,7 +195,7 @@ describe('Time trial config of a training session (Postgres)', () => {
         null,
         {
           classId,
-          status: 'DRAFT',
+          status: 'SCHEDULED',
           subjectId: trial,
           name: 'Chạy thử giữa kỳ',
           sessionType: TrainingSessionType.TIME_TRIAL,
@@ -208,11 +207,12 @@ describe('Time trial config of a training session (Postgres)', () => {
           surface: null,
           notes: null,
           targetTimeMs: 62000,
+          participantsCreated: 0,
         },
         null,
       ],
       ['UPDATE', { name: 'Chạy thử giữa kỳ' }, { name: 'Chạy thử 1' }, null],
-      ['UPDATE', { status: 'DRAFT' }, { status: 'CANCELLED' }, 'Mưa lớn'],
+      ['UPDATE', { status: 'SCHEDULED' }, { status: 'CANCELLED' }, 'Mưa lớn'],
     ]);
     await expect(auditsOf(config.id)).resolves.toEqual([
       {

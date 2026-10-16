@@ -1,8 +1,9 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
+import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingSessionType } from '../../src/modules/training/enums/training-session-type.enum';
@@ -190,7 +191,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         await newSession('2030-01-10T02:00:00Z', '2030-01-10T03:00:00Z'),
       );
 
-      expect(created.status).toBe('DRAFT');
+      expect(created.status).toBe('SCHEDULED');
     });
 
     it('refuses moving a session onto another one of the class', async () => {
@@ -199,7 +200,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         classA,
         '2030-01-11T01:00:00Z',
         '2030-01-11T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
 
       await expect(
@@ -255,20 +256,98 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
     });
   });
 
+  describe('horses that can be enrolled', () => {
+    it('lists active horses of the trainer barns, without enrolled or clashing ones, by name', async () => {
+      const held = await seed.horse('Held', { barnId });
+      await hold(held, '2030-01-10T01:30:00Z', '2030-01-10T02:30:00Z');
+      const planned = await seed.horse('Planned', { barnId });
+      await enroll(classC, planned);
+      await session(
+        classC,
+        '2030-01-11T01:30:00Z',
+        '2030-01-11T02:30:00Z',
+        'SCHEDULED',
+      );
+      await session(classA, '2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z');
+      await session(
+        classA,
+        '2030-01-11T01:00:00Z',
+        '2030-01-11T02:00:00Z',
+        'SCHEDULED',
+      );
+      await enroll(classA, await seed.horse('Enrolled', { barnId }));
+      await leftEnrollment(
+        classA,
+        await seed.horse('Left', { barnId }),
+        '2026-06-01T00:00:00Z',
+      );
+      await seed.horse('Free', { barnId });
+      await seed.horse('Retired', {
+        barnId,
+        lifecycle: HorseLifecycleStatus.RETIRED,
+      });
+      await seed.horse('Deleted', { barnId, deleted: true });
+      await seed.horse('Elsewhere', { barnId: await seed.barn('Khu B') });
+
+      const rows = await enrollments.listEnrollableHorses(trainer, classA);
+
+      expect(rows.map((row) => row.horseName)).toEqual(['Free', 'Left']);
+      expect(rows[0]).toMatchObject({ horseName: 'Free', horsePhotoUrl: null });
+      expect(Object.keys(rows[0]).sort()).toEqual([
+        'horseId',
+        'horseName',
+        'horsePhotoUrl',
+      ]);
+      for (const row of rows) {
+        await expect(
+          enrollments.create(trainer, classA, { horseId: row.horseId }),
+        ).resolves.toBeDefined();
+      }
+      for (const horseId of [held, planned]) {
+        await expect(
+          enrollments.create(trainer, classA, { horseId }),
+        ).rejects.toThrow(ConflictException);
+      }
+    });
+
+    it('refuses another head trainer and a class that is not running', async () => {
+      const otherId = await seed.user(UserRole.HEAD_TRAINER);
+      const [row] = await dataSource.query<Array<{ keycloak_id: string }>>(
+        'SELECT keycloak_id FROM users WHERE id = $1',
+        [otherId],
+      );
+      await expect(
+        enrollments.listEnrollableHorses(
+          { sub: row.keycloak_id, roles: [UserRole.HEAD_TRAINER] },
+          classA,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await dataSource.query(
+        `UPDATE training_classes SET status = 'COMPLETED' WHERE id = $1`,
+        [classA],
+      );
+      await expect(
+        enrollments.listEnrollableHorses(trainer, classA),
+      ).rejects.toThrow(
+        new ConflictException('Chỉ lớp đang chạy mới nhận thêm ngựa'),
+      );
+    });
+  });
+
   describe('schedule of a horse across classes', () => {
-    it('refuses enrolling a horse whose draft sessions overlap its draft sessions in another class', async () => {
+    it('refuses enrolling a horse whose sessions overlap its sessions in another class', async () => {
       const winx = await seed.horse('Winx', { barnId });
       await session(
         classA,
         '2030-01-10T01:00:00Z',
         '2030-01-10T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
       await session(
         classB,
         '2030-01-10T01:30:00Z',
         '2030-01-10T02:30:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
       await enrollments.create(trainer, classA, { horseId: winx });
 
@@ -297,7 +376,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         classA,
         '2030-01-10T01:00:00Z',
         '2030-01-10T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
       await session(classC, '2030-01-10T01:30:00Z', '2030-01-10T02:30:00Z');
 
@@ -364,7 +443,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       );
     });
 
-    it('refuses moving a draft session onto the schedule of a horse in another class', async () => {
+    it('refuses moving a session onto the schedule of a horse in another class', async () => {
       const winx = await seed.horse('Winx', { barnId });
       await enroll(classA, winx);
       await enroll(classB, winx);
@@ -372,13 +451,13 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         classA,
         '2030-01-10T01:00:00Z',
         '2030-01-10T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
       const moved = await session(
         classB,
         '2030-01-11T01:00:00Z',
         '2030-01-11T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
 
       await expect(
@@ -401,7 +480,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         classA,
         '2030-01-10T01:00:00Z',
         '2030-01-10T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
 
       const created = await sessions.createSession(
@@ -410,7 +489,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
       );
 
-      expect(created.status).toBe('DRAFT');
+      expect(created.status).toBe('SCHEDULED');
     });
 
     it('ignores a horse that left this class before the new session', async () => {
@@ -421,7 +500,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         classA,
         '2030-01-10T01:00:00Z',
         '2030-01-10T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
 
       const created = await sessions.createSession(
@@ -430,7 +509,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
       );
 
-      expect(created.status).toBe('DRAFT');
+      expect(created.status).toBe('SCHEDULED');
     });
 
     it('ignores cancelled, completed and past sessions in the other class', async () => {
@@ -453,7 +532,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         classA,
         '2026-02-01T01:00:00Z',
         '2026-02-01T02:00:00Z',
-        'DRAFT',
+        'SCHEDULED',
       );
 
       for (const [start, end] of [
@@ -466,86 +545,43 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
           classB,
           await newSession(start, end),
         );
-        expect(created.status).toBe('DRAFT');
+        expect(created.status).toBe('SCHEDULED');
       }
     });
   });
 
-  describe('publishing', () => {
-    it('skips a horse holding an overlapping session, even INELIGIBLE, and plans the others', async () => {
+  describe('horses of a new session', () => {
+    it('plans a horse whose other session only touches the edge', async () => {
       const winx = await seed.horse('Winx', { barnId });
-      const blue = await seed.horse('Blue', { barnId });
       await enroll(classA, winx);
-      await enroll(classA, blue);
+      await hold(winx, '2030-01-10T00:00:00Z', '2030-01-10T01:00:00Z');
+
+      const created = await sessions.createSession(
+        trainer,
+        classA,
+        await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
+      );
+
+      expect(await participantsOf(created.id)).toEqual([{ horse_id: winx }]);
+    });
+
+    it('refuses a session overlapping a seat the horse holds, even INELIGIBLE', async () => {
+      const winx = await seed.horse('Winx', { barnId });
+      await enroll(classA, winx);
       await hold(
         winx,
         '2030-01-10T01:30:00Z',
         '2030-01-10T02:30:00Z',
         'INELIGIBLE',
       );
-      const draft = await session(
-        classA,
-        '2030-01-10T01:00:00Z',
-        '2030-01-10T02:00:00Z',
-        'DRAFT',
-      );
 
-      const result = await sessions.publishSession(trainer, draft);
-
-      expect(result.status).toBe('SCHEDULED');
-      expect(result.skippedHorses).toEqual([
-        {
-          horseId: winx,
-          horseName: 'Winx',
-          conflictClassCode: 'B',
-          conflictStartAt: new Date('2030-01-10T01:30:00Z'),
-        },
-      ]);
-      expect(await participantsOf(draft)).toEqual([{ horse_id: blue }]);
-    });
-
-    it('plans a horse whose other session only touches the edge', async () => {
-      const winx = await seed.horse('Winx', { barnId });
-      await enroll(classA, winx);
-      await hold(winx, '2030-01-10T00:00:00Z', '2030-01-10T01:00:00Z');
-      const draft = await session(
-        classA,
-        '2030-01-10T01:00:00Z',
-        '2030-01-10T02:00:00Z',
-        'DRAFT',
-      );
-
-      const result = await sessions.publishSession(trainer, draft);
-
-      expect(result.skippedHorses).toEqual([]);
-      expect(await participantsOf(draft)).toEqual([{ horse_id: winx }]);
-    });
-
-    it('reports skipped horses per session when publishing many sessions', async () => {
-      const winx = await seed.horse('Winx', { barnId });
-      await enroll(classA, winx);
-      await hold(winx, '2030-01-10T01:30:00Z', '2030-01-10T02:30:00Z');
-      const clashing = await session(
-        classA,
-        '2030-01-10T01:00:00Z',
-        '2030-01-10T02:00:00Z',
-        'DRAFT',
-      );
-      const free = await session(
-        classA,
-        '2030-01-11T01:00:00Z',
-        '2030-01-11T02:00:00Z',
-        'DRAFT',
-      );
-
-      const result = await sessions.publishClassSessions(trainer, classA, {});
-
-      expect(result.map((row) => [row.id, row.skippedHorses.length])).toEqual([
-        [clashing, 1],
-        [free, 0],
-      ]);
-      expect(await participantsOf(clashing)).toEqual([]);
-      expect(await participantsOf(free)).toEqual([{ horse_id: winx }]);
+      await expect(
+        sessions.createSession(
+          trainer,
+          classA,
+          await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
+        ),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

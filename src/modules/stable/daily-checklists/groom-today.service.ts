@@ -35,10 +35,7 @@ const PLAN_RELATIONS = {
   items: { supplyItem: true },
 } as const;
 
-const HIDDEN_SESSION_STATUSES = [
-  TrainingSessionStatus.DRAFT,
-  TrainingSessionStatus.CANCELLED,
-];
+const HIDDEN_SESSION_STATUSES = [TrainingSessionStatus.CANCELLED];
 
 const VISIBLE_RUN_STATUSES = [
   SessionParticipantStatus.PLANNED,

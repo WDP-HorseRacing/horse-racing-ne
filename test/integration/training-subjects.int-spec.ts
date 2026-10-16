@@ -29,6 +29,7 @@ describe('TrainingSubjectsService (Postgres)', () => {
     sessionType: TrainingSessionType.REGULAR,
     intensity: TrainingIntensity.MODERATE,
     plannedDistanceM: 4000,
+    durationMinutes: 90,
     surface: 'Cát',
   };
 
@@ -63,13 +64,19 @@ describe('TrainingSubjectsService (Postgres)', () => {
       sessionType: TrainingSessionType.TIME_TRIAL,
       intensity: TrainingIntensity.HEAVY,
       plannedDistanceM: 1200,
+      durationMinutes: 30,
       targetTimeMs: 75000,
     });
 
     const rows = await service.list();
 
     expect(rows.map((row) => row.name)).toEqual(['Chạy thử 1200', 'Sức bền']);
-    expect(rows[0]).toMatchObject({ targetTimeMs: 75000, surface: null });
+    expect(rows[0]).toMatchObject({
+      targetTimeMs: 75000,
+      surface: null,
+      durationMinutes: 30,
+    });
+    expect(rows[1]).toMatchObject({ durationMinutes: 90 });
   });
 
   it('rejects a duplicate subject name with 409', async () => {
@@ -92,6 +99,7 @@ describe('TrainingSubjectsService (Postgres)', () => {
       name: 'Sức bền',
       intensity: TrainingIntensity.MODERATE,
       plannedDistanceM: 5000,
+      durationMinutes: 90,
       surface: null,
     });
   });
@@ -102,6 +110,7 @@ describe('TrainingSubjectsService (Postgres)', () => {
       sessionType: TrainingSessionType.TIME_TRIAL,
       intensity: TrainingIntensity.HEAVY,
       plannedDistanceM: 1200,
+      durationMinutes: 30,
       targetTimeMs: 75000,
     });
 

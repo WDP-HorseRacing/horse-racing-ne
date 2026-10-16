@@ -102,16 +102,6 @@ describe('BarnsService.update đổi Head Trainer (Postgres)', () => {
     expect(await headTrainerOfBarn()).toBe(oldId);
   });
 
-  it('allows the change when the only class holding horses of the barn is a DRAFT', async () => {
-    const horse = await seed.horse('Ngựa 1', { barnId });
-    const draft = await seed.trainingClass(oldId, { status: 'DRAFT' });
-    await enroll(draft.classId, horse);
-
-    await service.update(actor, barnId, { headTrainerId: newId });
-
-    expect(await headTrainerOfBarn()).toBe(newId);
-  });
-
   it('allows the change when the ACTIVE class only holds horses of another barn', async () => {
     const otherBarn = await seed.barn('Khu B');
     const horse = await seed.horse('Ngựa khác khu', { barnId: otherBarn });

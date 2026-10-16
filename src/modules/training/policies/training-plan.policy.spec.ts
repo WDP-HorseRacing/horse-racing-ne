@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { assertPlanPhases } from './training-plan.policy';
+import { assertPlanPhases, phaseMinMinutes } from './training-plan.policy';
 
 function errorOf(run: () => void): unknown {
   try {
@@ -12,83 +12,28 @@ function errorOf(run: () => void): unknown {
 }
 
 describe('assertPlanPhases', () => {
-  it('accepts several subjects on different weekdays in one phase', () => {
+  it('accepts several subjects in one phase and the same subject in another phase', () => {
     expect(() =>
       assertPlanPhases([
-        {
-          weeks: 4,
-          subjects: [
-            { subjectId: 'a', weekdays: [1, 3, 5] },
-            { subjectId: 'b', weekdays: [2, 4] },
-          ],
-        },
-        { weeks: 2, subjects: [{ subjectId: 'a', weekdays: [1, 2, 3] }] },
+        { weeks: 4, subjects: [{ subjectId: 'a' }, { subjectId: 'b' }] },
+        { weeks: 2, subjects: [{ subjectId: 'a' }] },
       ]),
     ).not.toThrow();
-  });
-
-  it('rejects a weekday chosen for two subjects in the same phase', () => {
-    expect(
-      errorOf(() =>
-        assertPlanPhases([
-          { weeks: 1, subjects: [{ subjectId: 'a', weekdays: [1] }] },
-          {
-            weeks: 1,
-            subjects: [
-              { subjectId: 'a', weekdays: [1, 7] },
-              { subjectId: 'b', weekdays: [2, 7] },
-            ],
-          },
-        ]),
-      ),
-    ).toEqual({
-      message: 'Giai đoạn 2: Chủ nhật bị chọn cho hơn một môn',
-      errors: [
-        {
-          field: 'phases.1.subjects.1.weekdays',
-          message: 'Giai đoạn 2: Chủ nhật bị chọn cho hơn một môn',
-        },
-      ],
-    });
-  });
-
-  it('names Monday for weekday 1', () => {
-    expect(
-      errorOf(() =>
-        assertPlanPhases([
-          {
-            weeks: 1,
-            subjects: [
-              { subjectId: 'a', weekdays: [1] },
-              { subjectId: 'b', weekdays: [1] },
-            ],
-          },
-        ]),
-      ),
-    ).toMatchObject({
-      message: 'Giai đoạn 1: Thứ Hai bị chọn cho hơn một môn',
-    });
   });
 
   it('rejects the same subject twice in one phase', () => {
     expect(
       errorOf(() =>
         assertPlanPhases([
-          {
-            weeks: 1,
-            subjects: [
-              { subjectId: 'a', weekdays: [1] },
-              { subjectId: 'a', weekdays: [2] },
-            ],
-          },
+          { weeks: 1, subjects: [{ subjectId: 'a' }, { subjectId: 'a' }] },
         ]),
       ),
     ).toEqual({
-      message: 'Giai đoạn 1: môn học bị lặp, gộp thứ vào một dòng',
+      message: 'Giai đoạn 1: môn học bị lặp',
       errors: [
         {
           field: 'phases.0.subjects.1.subjectId',
-          message: 'Giai đoạn 1: môn học bị lặp, gộp thứ vào một dòng',
+          message: 'Giai đoạn 1: môn học bị lặp',
         },
       ],
     });
@@ -97,7 +42,7 @@ describe('assertPlanPhases', () => {
   it('accepts 104 weeks in total and rejects 105', () => {
     const phase = (weeks: number) => ({
       weeks,
-      subjects: [{ subjectId: 'a', weekdays: [1] }],
+      subjects: [{ subjectId: 'a' }],
     });
 
     expect(() => assertPlanPhases([phase(52), phase(52)])).not.toThrow();
@@ -112,5 +57,19 @@ describe('assertPlanPhases', () => {
         },
       ],
     });
+  });
+});
+
+describe('phaseMinMinutes', () => {
+  it('multiplies weeks by the minimum sessions and durations of every subject', () => {
+    expect(
+      phaseMinMinutes({
+        weeks: 4,
+        subjects: [
+          { minSessionsPerWeek: 3, subject: { durationMinutes: 60 } },
+          { minSessionsPerWeek: 1, subject: { durationMinutes: 30 } },
+        ],
+      }),
+    ).toBe(4 * (3 * 60 + 30));
   });
 });

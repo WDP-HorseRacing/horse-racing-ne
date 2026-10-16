@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -19,17 +18,15 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../users/user.enums';
 import {
-  ClassScheduleInputDto,
-  ClassSchedulePreviewDto,
-} from '../dto/class-schedule.dto';
-import {
   CreateHorseEnrollmentDto,
+  EnrollableHorseDto,
   HorseEnrollmentListItemDto,
   HorseEnrollmentResponseDto,
   LeaveHorseEnrollmentDto,
 } from '../dto/horse-enrollment.dto';
 import {
   CreateTrainingClassDto,
+  TrainingClassPlanResponseDto,
   TrainingClassResponseDto,
   UpdateTrainingClassStatusDto,
   UpdateTrainingClassDto,
@@ -55,20 +52,6 @@ export class TrainingClassesController {
     return this.classes.list(actor);
   }
 
-  @Access([UserRole.HEAD_TRAINER])
-  @Post('classes/schedule-preview')
-  @HttpCode(200)
-  @ApiOperation({
-    summary: 'Xem trước lịch buổi tập sinh từ giáo án, không lưu',
-  })
-  @ApiOkResponse({ type: ClassSchedulePreviewDto })
-  previewSchedule(
-    @CurrentUser() actor: Actor,
-    @Body() body: ClassScheduleInputDto,
-  ) {
-    return this.classes.previewSchedule(actor, body);
-  }
-
   // create class
   @Access([UserRole.HEAD_TRAINER])
   @Post('classes')
@@ -85,6 +68,19 @@ export class TrainingClassesController {
     @Param('classId', ParseUUIDPipe) classId: string,
   ) {
     return this.classes.get(actor, classId);
+  }
+
+  @Get('classes/:classId/plan')
+  @ApiOperation({
+    summary:
+      'Giáo án của lớp (bản chép lúc tạo lớp) kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn',
+  })
+  @ApiOkResponse({ type: TrainingClassPlanResponseDto })
+  getPlan(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+  ) {
+    return this.classes.getPlan(actor, classId);
   }
 
   // update class
@@ -119,6 +115,20 @@ export class TrainingClassesController {
     @Param('classId', ParseUUIDPipe) classId: string,
   ) {
     return this.enrollments.list(actor, classId);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
+  @Get('classes/:classId/enrollable-horses')
+  @ApiOperation({
+    summary:
+      'Ngựa trong khu của Head Trainer ghi danh được vào lớp lúc này (bỏ ngựa đã ghi danh và ngựa trùng giờ)',
+  })
+  @ApiOkResponse({ type: [EnrollableHorseDto] })
+  listEnrollableHorses(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+  ) {
+    return this.enrollments.listEnrollableHorses(actor, classId);
   }
 
   // create enrollment

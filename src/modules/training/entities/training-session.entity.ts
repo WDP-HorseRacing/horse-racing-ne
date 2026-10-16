@@ -70,7 +70,7 @@ export class TrainingSessionEntity extends MutableRecordEntity {
   @Column({
     type: 'varchar',
     length: 32,
-    default: TrainingSessionStatus.DRAFT,
+    default: TrainingSessionStatus.SCHEDULED,
     enum: TrainingSessionStatus,
   })
   status!: TrainingSessionStatus;

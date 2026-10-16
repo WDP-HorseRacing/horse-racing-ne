@@ -29,7 +29,7 @@ import { planAuditData } from '../utils/training-audit';
 const PLAN_NOT_FOUND = 'Không tìm thấy giáo án';
 
 /**
- * Giáo án của Head Trainer: chia giai đoạn theo thứ tự, mỗi giai đoạn có số tuần và các môn theo thứ trong tuần; dùng lại cho các lớp của Head Trainer đó
+ * Giáo án của Head Trainer: chia giai đoạn theo thứ tự, mỗi giai đoạn có số tuần và các môn kèm số buổi tối thiểu mỗi tuần; lớp tạo từ giáo án giữ bản chép riêng
  */
 @Injectable()
 export class TrainingPlansService {
@@ -97,7 +97,7 @@ export class TrainingPlansService {
    * @param body Tên, mô tả và các giai đoạn theo thứ tự
    * @returns Promise trả về giáo án vừa tạo
    * @throws ForbiddenException Nếu tài khoản không hoạt động
-   * @throws BadRequestException Nếu có môn học không tồn tại, môn bị lặp hoặc thứ bị trùng trong một giai đoạn, hoặc tổng số tuần vượt giới hạn
+   * @throws BadRequestException Nếu có môn học không tồn tại, môn bị lặp trong một giai đoạn, hoặc tổng số tuần vượt giới hạn
    */
   async create(
     actor: Actor,
@@ -130,7 +130,7 @@ export class TrainingPlansService {
   }
 
   /**
-   * Thay toàn bộ tên, mô tả và các giai đoạn của giáo án; lớp đã tạo từ giáo án giữ nguyên buổi tập
+   * Thay toàn bộ tên, mô tả và các giai đoạn của giáo án; lớp đã tạo từ giáo án giữ nguyên bản chép của lớp
    *
    * - Ghi nhật ký toàn bộ nội dung giáo án trước và sau khi thay
    *
@@ -140,7 +140,7 @@ export class TrainingPlansService {
    * @returns Promise trả về giáo án sau khi sửa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có giáo án hoặc giáo án của Head Trainer khác
-   * @throws BadRequestException Nếu có môn học không tồn tại, môn bị lặp hoặc thứ bị trùng trong một giai đoạn, hoặc tổng số tuần vượt giới hạn
+   * @throws BadRequestException Nếu có môn học không tồn tại, môn bị lặp trong một giai đoạn, hoặc tổng số tuần vượt giới hạn
    */
   async update(
     actor: Actor,
@@ -258,7 +258,7 @@ export class TrainingPlansService {
   }
 
   /**
-   * Lưu các giai đoạn của giáo án theo thứ tự gửi lên, vị trí bắt đầu từ 1, kèm các môn và thứ trong tuần của từng giai đoạn
+   * Lưu các giai đoạn của giáo án theo thứ tự gửi lên, vị trí bắt đầu từ 1, kèm các môn và số buổi tối thiểu mỗi tuần của từng giai đoạn
    *
    * @param manager EntityManager của transaction đang chạy
    * @param planId UUID của giáo án
@@ -285,7 +285,7 @@ export class TrainingPlansService {
           manager.create(TrainingPlanSubjectEntity, {
             phaseId: phases[index].id,
             subjectId: item.subjectId,
-            weekdays: item.weekdays,
+            minSessionsPerWeek: item.minSessionsPerWeek,
           }),
         ),
       ),

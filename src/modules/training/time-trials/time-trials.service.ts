@@ -68,10 +68,7 @@ export class TimeTrialsService {
       if (session.sessionType !== TrainingSessionType.TIME_TRIAL) {
         throw new ConflictException('Buổi tập không phải buổi chạy thử');
       }
-      if (
-        session.status !== TrainingSessionStatus.DRAFT &&
-        session.status !== TrainingSessionStatus.SCHEDULED
-      ) {
+      if (session.status !== TrainingSessionStatus.SCHEDULED) {
         throw new ConflictException(
           'Chỉ được cấu hình chạy thử trước khi buổi tập bắt đầu',
         );
@@ -134,7 +131,7 @@ export class TimeTrialsService {
         trainingClass.headTrainerId,
       );
       assertClassOpenForSessions(trainingClass.status);
-      assertSessionEditable(session.status);
+      assertSessionEditable(session, new Date());
       const trial = await manager.findOneBy(TimeTrialEntity, { sessionId });
       if (!trial)
         throw new NotFoundException('Không tìm thấy cấu hình chạy thử');

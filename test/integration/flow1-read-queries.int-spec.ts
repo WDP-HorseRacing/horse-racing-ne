@@ -430,7 +430,7 @@ describe('Flow 1 read queries (Postgres)', () => {
           planName: 'Giáo án',
           subjectName: null,
           sessionType: 'REGULAR',
-          sessionStatus: 'DRAFT',
+          sessionStatus: 'SCHEDULED',
           participantStatus: 'PLANNED',
           groomName: 'Groom Lan',
           classId: classA,

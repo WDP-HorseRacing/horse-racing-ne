@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 206 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 205 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -237,13 +237,13 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | POST | `/api/v1/classes` |  |
 | GET | `/api/v1/classes/{classId}` |  |
 | PATCH | `/api/v1/classes/{classId}` |  |
+| GET | `/api/v1/classes/{classId}/enrollable-horses` | Ngựa trong khu của Head Trainer ghi danh được vào lớp lúc này (bỏ ngựa đã ghi danh và ngựa trùng giờ) |
 | GET | `/api/v1/classes/{classId}/enrollments` |  |
 | POST | `/api/v1/classes/{classId}/enrollments` |  |
+| GET | `/api/v1/classes/{classId}/plan` | Giáo án của lớp (bản chép lúc tạo lớp) kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn |
 | GET | `/api/v1/classes/{classId}/sessions` |  |
 | POST | `/api/v1/classes/{classId}/sessions` |  |
-| POST | `/api/v1/classes/{classId}/sessions/publish` | Publish một lần mọi buổi nháp của lớp, hoặc trong một khoảng ngày |
 | PATCH | `/api/v1/classes/{classId}/status` |  |
-| POST | `/api/v1/classes/schedule-preview` | Xem trước lịch buổi tập sinh từ giáo án, không lưu |
 | PATCH | `/api/v1/enrollments/{id}/leave` |  |
 | GET | `/api/v1/horses/{horseId}/training/classes` | List classes of a horse |
 | GET | `/api/v1/horses/{horseId}/training/sessions` | List training sessions of a horse |
@@ -269,7 +269,6 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | PATCH | `/api/v1/training-sessions/{sessionId}` |  |
 | POST | `/api/v1/training-sessions/{sessionId}/cancel` |  |
 | GET | `/api/v1/training-sessions/{sessionId}/participants` |  |
-| POST | `/api/v1/training-sessions/{sessionId}/publish` |  |
 | GET | `/api/v1/training-subjects` | Liệt kê danh mục môn học |
 | POST | `/api/v1/training-subjects` | Thêm môn học |
 | DELETE | `/api/v1/training-subjects/{subjectId}` | Xóa môn học |

@@ -404,7 +404,7 @@ describe('UsersService', () => {
       expect(keycloakUsers.setUserEnabled).not.toHaveBeenCalled();
     });
 
-    it('returns 409 when locking a head trainer who still runs a draft or active class', async () => {
+    it('returns 409 when locking a head trainer who still runs an active class', async () => {
       target = { ...owner, role: UserRole.HEAD_TRAINER };
       classRepository.existsBy.mockResolvedValue(true);
 
@@ -413,7 +413,7 @@ describe('UsersService', () => {
       ).rejects.toThrow(ConflictException);
       expect(classRepository.existsBy).toHaveBeenCalledWith({
         headTrainerId: owner.id,
-        status: In([TrainingClassStatus.DRAFT, TrainingClassStatus.ACTIVE]),
+        status: TrainingClassStatus.ACTIVE,
       });
     });
 

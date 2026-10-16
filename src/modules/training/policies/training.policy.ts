@@ -31,16 +31,9 @@ import type {
  * Trạng thái buổi tập được tính vào lịch của ngựa ở một lớp
  */
 export const HORSE_SCHEDULE_SESSION_STATUSES = [
-  TrainingSessionStatus.DRAFT,
   TrainingSessionStatus.SCHEDULED,
   TrainingSessionStatus.IN_PROGRESS,
 ];
-
-export function assertClassActivatable(status: TrainingClassStatus): void {
-  if (status !== TrainingClassStatus.DRAFT) {
-    throw new ConflictException('Chỉ lớp nháp mới được kích hoạt');
-  }
-}
 
 export function assertClassCompletable(status: TrainingClassStatus): void {
   if (status !== TrainingClassStatus.ACTIVE) {
@@ -181,6 +174,38 @@ export function assertNoHoldingOverlap(
 }
 
 /**
+ * Tìm các ngựa không ghi danh được vào một lớp vì trùng giờ với buổi ở lớp khác
+ *
+ * - Trùng khi một buổi đã công bố của lớp chồng giờ với buổi ngựa đang giữ chỗ ở lớp khác
+ * - Trùng khi một buổi trong lịch của lớp chồng giờ với lịch của ngựa ở lớp khác
+ *
+ * @param publishedSessions Các buổi đã công bố của lớp còn tới
+ * @param schedule Các buổi trong lịch của lớp còn tới (nháp, đã công bố, đang diễn ra)
+ * @param holdings Các buổi nhiều ngựa đang giữ chỗ ở lớp khác
+ * @param otherClassSessions Lịch của nhiều ngựa ở lớp khác
+ * @returns UUID các ngựa bị trùng giờ
+ */
+export function horsesClashingWithClass(
+  publishedSessions: ReadonlyArray<SessionWindow>,
+  schedule: ReadonlyArray<SessionWindow>,
+  holdings: ReadonlyArray<HorseClassSession>,
+  otherClassSessions: ReadonlyArray<HorseClassSession>,
+): Set<string> {
+  const clashing = new Set<string>();
+  for (const holding of holdings) {
+    if (publishedSessions.some((s) => sessionWindowsOverlap(s, holding))) {
+      clashing.add(holding.horseId);
+    }
+  }
+  for (const other of otherClassSessions) {
+    if (schedule.some((s) => sessionWindowsOverlap(s, other))) {
+      clashing.add(other.horseId);
+    }
+  }
+  return clashing;
+}
+
+/**
  * Tìm các ngựa có buổi ở lớp khác trùng giờ với một buổi tập
  *
  * - Mỗi ngựa lấy một buổi trùng, buổi bắt đầu sớm nhất
@@ -241,15 +266,24 @@ export function assertTrainableHorse(isReference: boolean): void {
   }
 }
 
-export function assertSessionEditable(status: TrainingSessionStatus): void {
-  if (status !== TrainingSessionStatus.DRAFT) {
-    throw new ConflictException('Chỉ được sửa buổi tập nháp');
-  }
-}
-
-export function assertSessionPublishable(status: TrainingSessionStatus): void {
-  if (status !== TrainingSessionStatus.DRAFT) {
-    throw new ConflictException('Chỉ buổi tập nháp mới được công bố');
+/**
+ * Chỉ sửa buổi tập đã lên lịch và chưa tới giờ bắt đầu
+ *
+ * @param session Trạng thái và giờ bắt đầu của buổi
+ * @param now Thời điểm hiện tại
+ * @throws ConflictException Nếu buổi không còn ở trạng thái đã lên lịch, hoặc đã tới giờ bắt đầu
+ */
+export function assertSessionEditable(
+  session: { status: TrainingSessionStatus; scheduledStartAt: Date },
+  now: Date,
+): void {
+  if (
+    session.status !== TrainingSessionStatus.SCHEDULED ||
+    session.scheduledStartAt <= now
+  ) {
+    throw new ConflictException(
+      'Chỉ sửa được buổi tập đã lên lịch và chưa tới giờ bắt đầu',
+    );
   }
 }
 
@@ -488,16 +522,13 @@ export function classEndDate(startDate: string, totalWeeks: number): string {
 }
 
 /**
- * Chỉ thêm hoặc sửa buổi tập khi lớp còn nháp hoặc đang chạy
+ * Chỉ thêm hoặc sửa buổi tập khi lớp đang chạy
  *
  * @param status Trạng thái của lớp
  * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy
  */
 export function assertClassOpenForSessions(status: TrainingClassStatus): void {
-  if (
-    status !== TrainingClassStatus.DRAFT &&
-    status !== TrainingClassStatus.ACTIVE
-  ) {
+  if (status !== TrainingClassStatus.ACTIVE) {
     throw new ConflictException(
       'Lớp đã kết thúc, không thêm hoặc sửa buổi tập được',
     );
