@@ -2,11 +2,15 @@ import { plainToInstance } from 'class-transformer';
 import { shiftDays } from '../../../common/utils/club-date';
 import {
   TrainingClassPlanResponseDto,
+  TrainingClassProgressResponseDto,
   TrainingClassResponseDto,
 } from '../dto/training-class.dto';
 import type { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
-import { phaseMinMinutes } from '../policies/training-plan.policy';
+import {
+  type ClassWeekProgress,
+  phaseMinMinutes,
+} from '../policies/training-plan.policy';
 import { toTrainingSubjectResponse } from './training-subject.mapper';
 
 const MAPPER_OPTIONS = { excludeExtraneousValues: true } as const;
@@ -56,5 +60,36 @@ export function toTrainingClassPlanResponse(
     planId: row.planId,
     minTotalMinutes: mapped.reduce((sum, p) => sum + p.minTotalMinutes, 0),
     phases: mapped,
+  };
+}
+
+/**
+ * Chuyển tiến độ xếp lịch của lớp sang response DTO, kèm tên môn
+ *
+ * @param classId UUID của lớp
+ * @param minTotalMinutes Thời lượng tối thiểu của cả lớp (phút)
+ * @param scheduledMinutes Tổng thời lượng các buổi chưa hủy (phút)
+ * @param weeks Tiến độ từng tuần
+ * @param subjectNames Map từ UUID môn sang tên môn
+ * @returns Tiến độ để trả ra API
+ */
+export function toTrainingClassProgressResponse(
+  classId: string,
+  minTotalMinutes: number,
+  scheduledMinutes: number,
+  weeks: ClassWeekProgress[],
+  subjectNames: Map<string, string>,
+): TrainingClassProgressResponseDto {
+  return {
+    classId,
+    minTotalMinutes,
+    scheduledMinutes,
+    weeks: weeks.map((week) => ({
+      ...week,
+      subjects: week.subjects.map((item) => ({
+        ...item,
+        subjectName: subjectNames.get(item.subjectId) ?? '',
+      })),
+    })),
   };
 }

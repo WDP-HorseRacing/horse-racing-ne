@@ -27,6 +27,7 @@ import {
 import {
   CreateTrainingClassDto,
   TrainingClassPlanResponseDto,
+  TrainingClassProgressResponseDto,
   TrainingClassResponseDto,
   UpdateTrainingClassStatusDto,
   UpdateTrainingClassDto,
@@ -81,6 +82,19 @@ export class TrainingClassesController {
     @Param('classId', ParseUUIDPipe) classId: string,
   ) {
     return this.classes.getPlan(actor, classId);
+  }
+
+  @Get('classes/:classId/progress')
+  @ApiOperation({
+    summary:
+      'Tiến độ xếp lịch theo tuần: mỗi môn đã xếp bao nhiêu buổi so với số buổi tối thiểu',
+  })
+  @ApiOkResponse({ type: TrainingClassProgressResponseDto })
+  getProgress(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+  ) {
+    return this.classes.getProgress(actor, classId);
   }
 
   // update class

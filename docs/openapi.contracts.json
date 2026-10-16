@@ -7640,6 +7640,42 @@
         ]
       }
     },
+    "/api/v1/classes/{classId}/progress": {
+      "get": {
+        "operationId": "TrainingClassesController_getProgress",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingClassProgressResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tiến độ xếp lịch theo tuần: mỗi môn đã xếp bao nhiêu buổi so với số buổi tối thiểu",
+        "tags": [
+          "training"
+        ]
+      }
+    },
     "/api/v1/classes/{classId}/status": {
       "patch": {
         "operationId": "TrainingClassesController_updateStatus",
@@ -17668,6 +17704,95 @@
           "planId",
           "minTotalMinutes",
           "phases"
+        ]
+      },
+      "ClassWeekSubjectProgressDto": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "minSessions": {
+            "type": "number",
+            "description": "Số buổi tối thiểu trong tuần"
+          },
+          "scheduledSessions": {
+            "type": "number",
+            "description": "Số buổi chưa hủy đã xếp trong tuần"
+          }
+        },
+        "required": [
+          "subjectId",
+          "subjectName",
+          "minSessions",
+          "scheduledSessions"
+        ]
+      },
+      "ClassWeekProgressDto": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": "number",
+            "description": "Tuần thứ mấy của lớp, bắt đầu từ 1"
+          },
+          "phasePosition": {
+            "type": "number",
+            "description": "Giai đoạn chứa tuần này"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassWeekSubjectProgressDto"
+            }
+          }
+        },
+        "required": [
+          "week",
+          "phasePosition",
+          "startDate",
+          "endDate",
+          "subjects"
+        ]
+      },
+      "TrainingClassProgressResponseDto": {
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minTotalMinutes": {
+            "type": "number",
+            "description": "Thời lượng tối thiểu của cả lớp (phút)"
+          },
+          "scheduledMinutes": {
+            "type": "number",
+            "description": "Tổng thời lượng các buổi chưa hủy đã xếp (phút)"
+          },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassWeekProgressDto"
+            }
+          }
+        },
+        "required": [
+          "classId",
+          "minTotalMinutes",
+          "scheduledMinutes",
+          "weeks"
         ]
       },
       "UpdateTrainingClassDto": {

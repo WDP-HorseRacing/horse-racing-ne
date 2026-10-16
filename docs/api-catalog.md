@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 206 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 207 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -241,6 +241,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/classes/{classId}/enrollments` |  |
 | POST | `/api/v1/classes/{classId}/enrollments` |  |
 | GET | `/api/v1/classes/{classId}/plan` | Giáo án của lớp (bản chép lúc tạo lớp) kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn |
+| GET | `/api/v1/classes/{classId}/progress` | Tiến độ xếp lịch theo tuần: mỗi môn đã xếp bao nhiêu buổi so với số buổi tối thiểu |
 | GET | `/api/v1/classes/{classId}/sessions` |  |
 | POST | `/api/v1/classes/{classId}/sessions` |  |
 | POST | `/api/v1/classes/{classId}/sessions/bulk` | Thêm nhiều buổi vào lớp cùng lúc (vd lặp hằng tuần); một buổi lỗi thì không lưu buổi nào |

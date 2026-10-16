@@ -203,3 +203,50 @@ export class TrainingClassPlanResponseDto {
   @ApiProperty({ type: [TrainingClassPhaseResponseDto] })
   phases!: TrainingClassPhaseResponseDto[];
 }
+
+export class ClassWeekSubjectProgressDto {
+  @ApiProperty({ format: 'uuid' })
+  subjectId!: string;
+
+  @ApiProperty()
+  subjectName!: string;
+
+  @ApiProperty({ description: 'Số buổi tối thiểu trong tuần' })
+  minSessions!: number;
+
+  @ApiProperty({ description: 'Số buổi chưa hủy đã xếp trong tuần' })
+  scheduledSessions!: number;
+}
+
+export class ClassWeekProgressDto {
+  @ApiProperty({ description: 'Tuần thứ mấy của lớp, bắt đầu từ 1' })
+  week!: number;
+
+  @ApiProperty({ description: 'Giai đoạn chứa tuần này' })
+  phasePosition!: number;
+
+  @ApiProperty({ format: 'date' })
+  startDate!: string;
+
+  @ApiProperty({ format: 'date' })
+  endDate!: string;
+
+  @ApiProperty({ type: [ClassWeekSubjectProgressDto] })
+  subjects!: ClassWeekSubjectProgressDto[];
+}
+
+export class TrainingClassProgressResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  classId!: string;
+
+  @ApiProperty({ description: 'Thời lượng tối thiểu của cả lớp (phút)' })
+  minTotalMinutes!: number;
+
+  @ApiProperty({
+    description: 'Tổng thời lượng các buổi chưa hủy đã xếp (phút)',
+  })
+  scheduledMinutes!: number;
+
+  @ApiProperty({ type: [ClassWeekProgressDto] })
+  weeks!: ClassWeekProgressDto[];
+}

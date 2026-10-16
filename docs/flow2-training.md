@@ -68,6 +68,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 1. Chỉ Head Trainer tạo lớp, và lớp luôn do chính Head Trainer đó phụ trách.
 2. Tạo lớp chỉ cần giáo án và ngày bắt đầu. Lớp chép các giai đoạn và môn của giáo án (`GET /classes/:classId/plan`, kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn). Không tạo buổi tập nào; Head Trainer thêm buổi sau.
 3. Ngày kết thúc lớp = ngày bắt đầu + tổng số tuần của giáo án − 1 ngày. Giai đoạn nối tiếp nhau từ ngày bắt đầu, mỗi tuần 7 ngày.
+   - Tiến độ xếp lịch (`GET /classes/:classId/progress`): từng tuần của lớp (tuần thứ n gồm 7 ngày từ ngày bắt đầu + (n − 1) × 7), mỗi môn của giai đoạn đã xếp bao nhiêu buổi chưa hủy so với số buổi tối thiểu; buổi tính vào tuần theo ngày bắt đầu (lịch CLB). Kèm thời lượng tối thiểu của lớp và tổng thời lượng các buổi chưa hủy đã xếp (phút). Thiếu hay vượt chỉ để hiển thị, không chặn.
 4. Mỗi buổi phải nằm trong thời gian của lớp, so theo ngày lịch CLB (giờ Việt Nam).
 5. Loại buổi lấy theo môn của buổi. Thêm buổi vào lớp bắt buộc có môn; loại buổi gửi kèm (nếu có) phải khớp môn. Khi thêm buổi chạy thử vào lớp, cấu hình chạy thử được tạo ngay trong cùng request (`targetTimeMs` không bắt buộc, `null` là không có mục tiêu).
 6. Lớp tạo ra là Đang chạy (không có nháp, không có bước kích hoạt). Lớp chỉ đổi sang Hoàn thành hoặc Đã hủy (`PATCH /classes/:classId/status`, gửi trạng thái khác là 400).
@@ -160,6 +161,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | GET | `/classes` | Theo quyền xem lớp | Danh sách lớp |
 | GET | `/classes/:classId` | Theo quyền xem lớp | Một lớp |
 | GET | `/classes/:classId/plan` | Theo quyền xem lớp | Giáo án của lớp kèm khoảng ngày, thời lượng tối thiểu từng giai đoạn |
+| GET | `/classes/:classId/progress` | Theo quyền xem lớp | Tiến độ xếp lịch theo tuần so với số buổi tối thiểu |
 | POST | `/classes` | HT | Tạo lớp `{ code, name, ..., planId, startDate }`, chưa có buổi |
 | PATCH | `/classes/:classId` | HT | Sửa lớp (không đổi giáo án, Head Trainer) |
 | PATCH | `/classes/:classId/status` | HT | Hoàn thành, hủy lớp |

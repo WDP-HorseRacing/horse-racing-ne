@@ -4,9 +4,10 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
 import type { Actor } from '../../../../common/types/actor';
+import { toClubDate } from '../../../../common/utils/club-date';
 import { fieldConflict } from '../../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../../common/utils/record-diff';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
@@ -16,6 +17,7 @@ import { AuditService } from '../../../audit/services/audit.service';
 import {
   CreateTrainingClassDto,
   TrainingClassPlanResponseDto,
+  TrainingClassProgressResponseDto,
   TrainingClassResponseDto,
   UpdateTrainingClassStatusDto,
   UpdateTrainingClassDto,
@@ -33,7 +35,12 @@ import { TrainingPlanPhaseEntity } from '../../entities/training-plan-phase.enti
 import { TrainingPlanEntity } from '../../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import {
+  classWeeklyProgress,
+  phaseMinMinutes,
+} from '../../policies/training-plan.policy';
+import {
   toTrainingClassPlanResponse,
+  toTrainingClassProgressResponse,
   toTrainingClassResponse,
 } from '../../mappers/training-class.mapper';
 import {
@@ -173,6 +180,56 @@ export class TrainingClassesService {
       },
     );
     return toTrainingClassPlanResponse(row, phases);
+  }
+
+  /**
+   * Xem tiến độ xếp lịch của lớp theo từng tuần, so với số buổi tối thiểu của giáo án lớp
+   *
+   * - Chỉ tính buổi chưa hủy; tuần của buổi theo ngày bắt đầu (lịch CLB)
+   * - Thời lượng đã xếp = tổng (giờ kết thúc − giờ bắt đầu) của các buổi chưa hủy
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @returns Promise trả về thời lượng tối thiểu, thời lượng đã xếp và tiến độ từng tuần
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws NotFoundException Nếu không có lớp hoặc lớp nằm ngoài phạm vi xem của người gọi
+   */
+  async getProgress(
+    actor: Actor,
+    classId: string,
+  ): Promise<TrainingClassProgressResponseDto> {
+    const row = await this.access.assertCanReadClass(actor, classId);
+    const manager = this.dataSource.manager;
+    const phases = await manager.find(TrainingClassPhaseEntity, {
+      where: { classId },
+      relations: { subjects: { subject: true } },
+    });
+    const sessions = await manager.find(TrainingSessionEntity, {
+      where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
+    });
+    return toTrainingClassProgressResponse(
+      classId,
+      phases.reduce((sum, phase) => sum + phaseMinMinutes(phase), 0),
+      sessions.reduce(
+        (sum, s) =>
+          sum +
+          (s.scheduledEndAt.getTime() - s.scheduledStartAt.getTime()) / 60_000,
+        0,
+      ),
+      classWeeklyProgress(
+        row.startDate,
+        phases,
+        sessions.map((s) => ({
+          date: toClubDate(s.scheduledStartAt),
+          subjectId: s.subjectId,
+        })),
+      ),
+      new Map(
+        phases.flatMap((phase) =>
+          phase.subjects.map((item) => [item.subjectId, item.subject.name]),
+        ),
+      ),
+    );
   }
 
   /**

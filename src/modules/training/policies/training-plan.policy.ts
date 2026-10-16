@@ -61,3 +61,72 @@ export function phaseMinMinutes(phase: {
     )
   );
 }
+
+/**
+ * Một tuần trong tiến độ xếp lịch của lớp
+ */
+export interface ClassWeekProgress {
+  week: number;
+  phasePosition: number;
+  startDate: string;
+  endDate: string;
+  subjects: Array<{
+    subjectId: string;
+    minSessions: number;
+    scheduledSessions: number;
+  }>;
+}
+
+/**
+ * Tính tiến độ xếp lịch của lớp theo từng tuần: mỗi môn của giai đoạn đã xếp bao nhiêu buổi so với số buổi tối thiểu
+ *
+ * - Tuần thứ n gồm 7 ngày từ ngày bắt đầu lớp + (n − 1) × 7; giai đoạn sắp theo `position`
+ * - Buổi tính vào tuần chứa ngày bắt đầu của buổi (lịch CLB); buổi ngoài các tuần của lớp bị bỏ
+ * - Môn trong tuần giữ thứ tự của `subjects` trong giai đoạn
+ *
+ * @param classStartDate Ngày bắt đầu của lớp dạng YYYY-MM-DD
+ * @param phases Các giai đoạn của lớp kèm môn và số buổi tối thiểu mỗi tuần
+ * @param sessions Ngày bắt đầu (lịch CLB) và môn của các buổi chưa hủy
+ * @returns Các tuần theo thứ tự
+ */
+export function classWeeklyProgress(
+  classStartDate: string,
+  phases: ReadonlyArray<{
+    position: number;
+    weeks: number;
+    subjects: ReadonlyArray<{ subjectId: string; minSessionsPerWeek: number }>;
+  }>,
+  sessions: ReadonlyArray<{ date: string; subjectId: string | null }>,
+): ClassWeekProgress[] {
+  const start = Date.parse(`${classStartDate}T00:00:00Z`);
+  const dayOf = (offset: number) =>
+    new Date(start + offset * 86_400_000).toISOString().slice(0, 10);
+  const counts = new Map<string, number>();
+  for (const session of sessions) {
+    if (!session.subjectId) continue;
+    const week =
+      Math.floor(
+        (Date.parse(`${session.date}T00:00:00Z`) - start) / (7 * 86_400_000),
+      ) + 1;
+    const key = `${week}:${session.subjectId}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const result: ClassWeekProgress[] = [];
+  for (const phase of [...phases].sort((a, b) => a.position - b.position)) {
+    for (let i = 0; i < phase.weeks; i += 1) {
+      const week = result.length + 1;
+      result.push({
+        week,
+        phasePosition: phase.position,
+        startDate: dayOf((week - 1) * 7),
+        endDate: dayOf(week * 7 - 1),
+        subjects: phase.subjects.map((item) => ({
+          subjectId: item.subjectId,
+          minSessions: item.minSessionsPerWeek,
+          scheduledSessions: counts.get(`${week}:${item.subjectId}`) ?? 0,
+        })),
+      });
+    }
+  }
+  return result;
+}

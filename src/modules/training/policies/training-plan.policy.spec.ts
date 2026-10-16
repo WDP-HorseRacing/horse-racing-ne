@@ -1,5 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import { assertPlanPhases, phaseMinMinutes } from './training-plan.policy';
+import {
+  assertPlanPhases,
+  classWeeklyProgress,
+  phaseMinMinutes,
+} from './training-plan.policy';
 
 function errorOf(run: () => void): unknown {
   try {
@@ -71,5 +75,66 @@ describe('phaseMinMinutes', () => {
         ],
       }),
     ).toBe(4 * (3 * 60 + 30));
+  });
+});
+
+describe('classWeeklyProgress', () => {
+  it('counts sessions per subject in the week of their club day', () => {
+    const weeks = classWeeklyProgress(
+      '2026-10-05',
+      [
+        {
+          position: 1,
+          weeks: 2,
+          subjects: [
+            { subjectId: 'a', minSessionsPerWeek: 3 },
+            { subjectId: 'b', minSessionsPerWeek: 1 },
+          ],
+        },
+        {
+          position: 2,
+          weeks: 1,
+          subjects: [{ subjectId: 'c', minSessionsPerWeek: 2 }],
+        },
+      ],
+      [
+        { date: '2026-10-05', subjectId: 'a' },
+        { date: '2026-10-11', subjectId: 'a' },
+        { date: '2026-10-12', subjectId: 'a' },
+        { date: '2026-10-19', subjectId: 'c' },
+        { date: '2026-10-26', subjectId: 'c' },
+        { date: '2026-10-06', subjectId: null },
+      ],
+    );
+
+    expect(weeks).toEqual([
+      {
+        week: 1,
+        phasePosition: 1,
+        startDate: '2026-10-05',
+        endDate: '2026-10-11',
+        subjects: [
+          { subjectId: 'a', minSessions: 3, scheduledSessions: 2 },
+          { subjectId: 'b', minSessions: 1, scheduledSessions: 0 },
+        ],
+      },
+      {
+        week: 2,
+        phasePosition: 1,
+        startDate: '2026-10-12',
+        endDate: '2026-10-18',
+        subjects: [
+          { subjectId: 'a', minSessions: 3, scheduledSessions: 1 },
+          { subjectId: 'b', minSessions: 1, scheduledSessions: 0 },
+        ],
+      },
+      {
+        week: 3,
+        phasePosition: 2,
+        startDate: '2026-10-19',
+        endDate: '2026-10-25',
+        subjects: [{ subjectId: 'c', minSessions: 2, scheduledSessions: 1 }],
+      },
+    ]);
   });
 });

@@ -194,6 +194,59 @@ describe('Creating a class from a plan (Postgres)', () => {
     );
   });
 
+  it('shows the weekly progress of the schedule against the minimum sessions', async () => {
+    const created = await createClass((await createPlan()).id);
+    const add = (subjectId: string, start: string, status = 'SCHEDULED') =>
+      dataSource.query(
+        `INSERT INTO training_sessions (id, version, class_id, subject_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
+         VALUES ($1, 1, $2, $3, 'Buổi', $4::timestamptz, $4::timestamptz + interval '1 hour', $5, 'LIGHT', 2000)`,
+        [randomUUID(), created.id, subjectId, start, status],
+      );
+    await add(endurance, '2027-01-04T01:00:00Z');
+    await add(endurance, '2027-01-10T16:30:00Z');
+    await add(endurance, '2027-01-10T17:30:00Z');
+    await add(walk, '2027-01-05T01:00:00Z', 'CANCELLED');
+
+    const progress = await classes.getProgress(trainer, created.id);
+
+    expect(progress).toMatchObject({
+      minTotalMinutes: 2 * (3 * 60 + 2 * 30) + 5 * 30,
+      scheduledMinutes: 3 * 60,
+    });
+    expect(
+      progress.weeks.map((week) => [
+        week.week,
+        week.phasePosition,
+        week.startDate,
+        week.subjects.map((item) => [
+          item.subjectName,
+          item.scheduledSessions,
+          item.minSessions,
+        ]),
+      ]),
+    ).toEqual([
+      [
+        1,
+        1,
+        '2027-01-04',
+        [
+          ['Sức bền', 2, 3],
+          ['Đi bộ', 0, 2],
+        ],
+      ],
+      [
+        2,
+        1,
+        '2027-01-11',
+        [
+          ['Sức bền', 1, 3],
+          ['Đi bộ', 0, 2],
+        ],
+      ],
+      [3, 2, '2027-01-18', [['Đi bộ', 0, 5]]],
+    ]);
+  });
+
   it('marks the open sessions of a cancelled class with the class cancel reason', async () => {
     const created = await createClass((await createPlan()).id);
     await dataSource.query(
