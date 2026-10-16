@@ -4,8 +4,11 @@ import {
   OmitType,
   PartialType,
 } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -16,6 +19,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import {
   MAX_TRIAL_TIME_MESSAGE,
@@ -93,6 +97,22 @@ export class CreateTrainingSessionDto {
   @Min(1)
   @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
   targetTimeMs?: number | null;
+}
+
+export class CreateTrainingSessionsDto {
+  @ApiProperty({
+    type: [CreateTrainingSessionDto],
+    minItems: 1,
+    maxItems: 100,
+    description:
+      'Các buổi cần thêm, lưu cùng lúc; một buổi lỗi thì không lưu buổi nào',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => CreateTrainingSessionDto)
+  sessions!: CreateTrainingSessionDto[];
 }
 
 export class UpdateTrainingSessionDto extends PartialType(

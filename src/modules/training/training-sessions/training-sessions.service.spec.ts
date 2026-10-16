@@ -13,6 +13,7 @@ import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
+import { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TrainingSessionsService } from './training-sessions.service';
@@ -130,7 +131,13 @@ function setupCreate(
 ) {
   const manager = {
     findOneBy: jest.fn().mockResolvedValue(subject),
-    find: jest.fn().mockResolvedValue([]),
+    find: jest.fn((target: unknown) =>
+      Promise.resolve(
+        target === TrainingClassPhaseEntity && subject
+          ? [{ position: 1, weeks: 52, subjects: [{ subjectId: subject.id }] }]
+          : [],
+      ),
+    ),
     create: jest.fn((target: unknown, row: object) => ({ target, ...row })),
     save: jest.fn((row: object) => Promise.resolve({ id: 'new', ...row })),
     getRepository: jest.fn(() => ({

@@ -579,3 +579,32 @@ export function assertTrialVideoEditable(
     throw new ConflictException('Quá hạn gắn video chạy thử');
   }
 }
+
+/**
+ * Tìm giai đoạn của lớp chứa một ngày, theo các giai đoạn nối tiếp nhau từ ngày bắt đầu của lớp
+ *
+ * - Mỗi tuần 7 ngày; giai đoạn sắp theo `position`
+ * - Ngày trước ngày bắt đầu hoặc sau giai đoạn cuối: undefined
+ *
+ * @param classStartDate Ngày bắt đầu của lớp dạng YYYY-MM-DD
+ * @param phases Các giai đoạn của lớp
+ * @param date Ngày cần xét dạng YYYY-MM-DD (lịch CLB)
+ * @returns Giai đoạn chứa ngày đó, hoặc undefined
+ */
+export function classPhaseOn<T extends { position: number; weeks: number }>(
+  classStartDate: string,
+  phases: ReadonlyArray<T>,
+  date: string,
+): T | undefined {
+  const days =
+    (Date.parse(`${date}T00:00:00Z`) -
+      Date.parse(`${dateOnly(classStartDate)}T00:00:00Z`)) /
+    86_400_000;
+  if (days < 0) return undefined;
+  let weekEnd = 0;
+  for (const phase of [...phases].sort((a, b) => a.position - b.position)) {
+    weekEnd += phase.weeks;
+    if (days < weekEnd * 7) return phase;
+  }
+  return undefined;
+}

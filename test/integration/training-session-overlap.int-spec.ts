@@ -145,12 +145,15 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       [sessionId],
     );
 
-  const newSession = async (start: string, end: string) => ({
+  const newSession = async (classId: string, start: string, end: string) => ({
     subjectId: (
-      await dataSource.query<Array<{ id: string }>>(
-        'SELECT id FROM training_subjects LIMIT 1',
+      await dataSource.query<Array<{ subject_id: string }>>(
+        `SELECT s.subject_id FROM training_class_phase_subjects s
+           JOIN training_class_phases p ON p.id = s.phase_id
+          WHERE p.class_id = $1`,
+        [classId],
       )
-    )[0].id,
+    )[0].subject_id,
     name: 'Buổi mới',
     sessionType: TrainingSessionType.REGULAR,
     intensity: TrainingIntensity.MODERATE,
@@ -167,7 +170,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         sessions.createSession(
           trainer,
           classA,
-          await newSession('2030-01-10T01:30:00Z', '2030-01-10T02:30:00Z'),
+          await newSession(
+            classA,
+            '2030-01-10T01:30:00Z',
+            '2030-01-10T02:30:00Z',
+          ),
         ),
       ).rejects.toThrow(
         new ConflictException(
@@ -188,7 +195,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       const created = await sessions.createSession(
         trainer,
         classA,
-        await newSession('2030-01-10T02:00:00Z', '2030-01-10T03:00:00Z'),
+        await newSession(
+          classA,
+          '2030-01-10T02:00:00Z',
+          '2030-01-10T03:00:00Z',
+        ),
       );
 
       expect(created.status).toBe('SCHEDULED');
@@ -384,7 +395,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         sessions.createSession(
           trainer,
           classB,
-          await newSession('2030-01-10T01:15:00Z', '2030-01-10T02:15:00Z'),
+          await newSession(
+            classB,
+            '2030-01-10T01:15:00Z',
+            '2030-01-10T02:15:00Z',
+          ),
         ),
       ).rejects.toThrow(
         new ConflictException(
@@ -404,6 +419,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
             trainer,
             classA,
             await newSession(
+              classA,
               `2030-01-${day}T01:00:00Z`,
               `2030-01-${day}T02:00:00Z`,
             ),
@@ -412,6 +428,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
             trainer,
             classB,
             await newSession(
+              classB,
               `2030-01-${day}T01:30:00Z`,
               `2030-01-${day}T02:30:00Z`,
             ),
@@ -434,7 +451,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         sessions.createSession(
           trainer,
           classA,
-          await newSession('2026-02-01T01:30:00Z', '2026-02-01T02:30:00Z'),
+          await newSession(
+            classA,
+            '2026-02-01T01:30:00Z',
+            '2026-02-01T02:30:00Z',
+          ),
         ),
       ).rejects.toThrow(
         new ConflictException(
@@ -486,7 +507,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       const created = await sessions.createSession(
         trainer,
         classB,
-        await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
+        await newSession(
+          classB,
+          '2030-01-10T01:00:00Z',
+          '2030-01-10T02:00:00Z',
+        ),
       );
 
       expect(created.status).toBe('SCHEDULED');
@@ -506,7 +531,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       const created = await sessions.createSession(
         trainer,
         classB,
-        await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
+        await newSession(
+          classB,
+          '2030-01-10T01:00:00Z',
+          '2030-01-10T02:00:00Z',
+        ),
       );
 
       expect(created.status).toBe('SCHEDULED');
@@ -543,7 +572,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         const created = await sessions.createSession(
           trainer,
           classB,
-          await newSession(start, end),
+          await newSession(classB, start, end),
         );
         expect(created.status).toBe('SCHEDULED');
       }
@@ -559,7 +588,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       const created = await sessions.createSession(
         trainer,
         classA,
-        await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
+        await newSession(
+          classA,
+          '2030-01-10T01:00:00Z',
+          '2030-01-10T02:00:00Z',
+        ),
       );
 
       expect(await participantsOf(created.id)).toEqual([{ horse_id: winx }]);
@@ -579,7 +612,11 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         sessions.createSession(
           trainer,
           classA,
-          await newSession('2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'),
+          await newSession(
+            classA,
+            '2030-01-10T01:00:00Z',
+            '2030-01-10T02:00:00Z',
+          ),
         ),
       ).rejects.toThrow(ConflictException);
     });

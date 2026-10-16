@@ -87,6 +87,11 @@ describe('Time trial config of a training session (Postgres)', () => {
       startDate: '2030-01-01',
       endDate: '2030-12-31',
     }));
+    await dataSource.query(
+      `INSERT INTO training_class_phase_subjects (phase_id, subject_id, min_sessions_per_week)
+       SELECT id, $2, 1 FROM training_class_phases WHERE class_id = $1`,
+      [classId, trial],
+    );
   });
 
   it('adds a time trial session to a class with its time trial config', async () => {

@@ -1,11 +1,18 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
 import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../users/user.enums';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
+  CreateTrainingSessionsDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
 } from '../dto/training-session.dto';
@@ -35,6 +42,21 @@ export class TrainingSessionsController {
     @Body() body: CreateTrainingSessionDto,
   ) {
     return this.sessions.createSession(actor, classId, body);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
+  @Post('classes/:classId/sessions/bulk')
+  @ApiOperation({
+    summary:
+      'Thêm nhiều buổi vào lớp cùng lúc (vd lặp hằng tuần); một buổi lỗi thì không lưu buổi nào',
+  })
+  @ApiCreatedResponse({ type: [TrainingSessionResponseDto] })
+  createMany(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+    @Body() body: CreateTrainingSessionsDto,
+  ) {
+    return this.sessions.createSessions(actor, classId, body);
   }
 
   @Get('training-sessions/:sessionId')

@@ -8371,6 +8371,55 @@
         ]
       }
     },
+    "/api/v1/classes/{classId}/sessions/bulk": {
+      "post": {
+        "operationId": "TrainingSessionsController_createMany",
+        "parameters": [
+          {
+            "name": "classId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrainingSessionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrainingSessionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Thêm nhiều buổi vào lớp cùng lúc (vd lặp hằng tuần); một buổi lỗi thì không lưu buổi nào",
+        "tags": [
+          "training"
+        ]
+      }
+    },
     "/api/v1/training-sessions/{sessionId}": {
       "get": {
         "operationId": "TrainingSessionsController_get",
@@ -18349,6 +18398,23 @@
           "plannedDistanceM",
           "scheduledStartAt",
           "scheduledEndAt"
+        ]
+      },
+      "CreateTrainingSessionsDto": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "Các buổi cần thêm, lưu cùng lúc; một buổi lỗi thì không lưu buổi nào",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateTrainingSessionDto"
+            }
+          }
+        },
+        "required": [
+          "sessions"
         ]
       },
       "UpdateTrainingSessionDto": {

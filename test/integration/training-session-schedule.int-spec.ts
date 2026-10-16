@@ -275,4 +275,129 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
       { horse_id: horse, status: 'PLANNED', assigned_groom_id: groomId },
     ]);
   });
+
+  describe('several sessions at once', () => {
+    const at = (start: string) => ({
+      name: 'Buổi',
+      subjectId,
+      intensity: TrainingIntensity.LIGHT,
+      plannedDistanceM: 2000,
+      scheduledStartAt: start,
+      scheduledEndAt: new Date(Date.parse(start) + 3_600_000).toISOString(),
+    });
+
+    it('saves every session in time order and plans the enrolled horses', async () => {
+      const horse = await enroll('Winx');
+
+      const rows = await service.createSessions(trainer, classId, {
+        sessions: [at('2026-11-17T01:00:00Z'), at('2026-11-10T01:00:00Z')],
+      });
+
+      expect(rows.map((row) => row.scheduledStartAt.toISOString())).toEqual([
+        '2026-11-10T01:00:00.000Z',
+        '2026-11-17T01:00:00.000Z',
+      ]);
+      for (const row of rows) {
+        expect(await statusByHorse(row.id)).toEqual({ [horse]: 'PLANNED' });
+      }
+    });
+
+    it('saves nothing and names the failing session when two of them overlap', async () => {
+      await expect(
+        service.createSessions(trainer, classId, {
+          sessions: [at('2026-11-10T01:00:00Z'), at('2026-11-10T01:30:00Z')],
+        }),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: {
+          message:
+            'Buổi 2: Trùng giờ với buổi tập lúc 08:00 ngày 10/11/2026 của lớp',
+          errors: [{ field: 'sessions.1' }],
+        },
+      });
+      const [{ count }] = await dataSource.query<Array<{ count: string }>>(
+        'SELECT count(*) FROM training_sessions WHERE class_id = $1',
+        [classId],
+      );
+      expect(count).toBe('0');
+    });
+  });
+
+  describe('subjects of the class phases', () => {
+    let sprint: string;
+
+    beforeEach(async () => {
+      sprint = randomUUID();
+      await dataSource.query(
+        `INSERT INTO training_subjects (id, version, name, session_type, intensity, planned_distance_m)
+         VALUES ($1, 1, 'Nước rút', 'REGULAR', 'HEAVY', 1200)`,
+        [sprint],
+      );
+      await dataSource.query(
+        'UPDATE training_class_phases SET weeks = 4 WHERE class_id = $1',
+        [classId],
+      );
+      const phaseId = randomUUID();
+      await dataSource.query(
+        `INSERT INTO training_class_phases (id, class_id, position, weeks) VALUES ($1, $2, 2, 9)`,
+        [phaseId, classId],
+      );
+      await dataSource.query(
+        `INSERT INTO training_class_phase_subjects (phase_id, subject_id, min_sessions_per_week) VALUES ($1, $2, 2)`,
+        [phaseId, sprint],
+      );
+    });
+
+    const withSubject = (id: string, start: string) => ({
+      name: 'Buổi',
+      subjectId: id,
+      intensity: TrainingIntensity.HEAVY,
+      plannedDistanceM: 1200,
+      scheduledStartAt: start,
+      scheduledEndAt: new Date(Date.parse(start) + 3_600_000).toISOString(),
+    });
+
+    it('accepts a subject only inside its phase, by club day', async () => {
+      await expect(
+        service.createSession(
+          trainer,
+          classId,
+          withSubject(sprint, '2026-10-28T16:00:00Z'),
+        ),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Môn Nước rút không có trong giai đoạn 1 của lớp',
+        ),
+      );
+      await expect(
+        service.createSession(
+          trainer,
+          classId,
+          withSubject(sprint, '2026-10-28T17:00:00Z'),
+        ),
+      ).resolves.toMatchObject({ subjectId: sprint });
+    });
+
+    it('refuses moving a session into a phase without its subject', async () => {
+      const created = await service.createSession(
+        trainer,
+        classId,
+        withSubject(subjectId, '2026-10-20T01:00:00Z'),
+      );
+
+      await expect(
+        service.updateSession(trainer, created.id, {
+          scheduledStartAt: '2026-11-20T01:00:00Z',
+          scheduledEndAt: '2026-11-20T02:00:00Z',
+        }),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.updateSession(trainer, created.id, { subjectId: sprint }),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Môn Nước rút không có trong giai đoạn 1 của lớp',
+        ),
+      );
+    });
+  });
 });

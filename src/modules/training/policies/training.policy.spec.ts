@@ -30,6 +30,7 @@ import {
   assertClassOpenForSessions,
   assertSubjectExercise,
   classEndDate,
+  classPhaseOn,
   eligibilityForSession,
   initialParticipantEligibility,
   totalPlanWeeks,
@@ -570,5 +571,24 @@ describe('assertParticipantActionWindow', () => {
     ).toThrow(
       new ConflictException('Buổi tập đã hết giờ lúc 16:00 ngày 12/10/2026'),
     );
+  });
+});
+
+describe('classPhaseOn', () => {
+  const phases = [
+    { position: 2, weeks: 1 },
+    { position: 1, weeks: 2 },
+  ];
+
+  it('finds the phase containing a day, counting weeks from the class start', () => {
+    expect(classPhaseOn('2026-10-05', phases, '2026-10-05')?.position).toBe(1);
+    expect(classPhaseOn('2026-10-05', phases, '2026-10-18')?.position).toBe(1);
+    expect(classPhaseOn('2026-10-05', phases, '2026-10-19')?.position).toBe(2);
+    expect(classPhaseOn('2026-10-05', phases, '2026-10-25')?.position).toBe(2);
+  });
+
+  it('returns nothing before the start or after the last phase', () => {
+    expect(classPhaseOn('2026-10-05', phases, '2026-10-04')).toBeUndefined();
+    expect(classPhaseOn('2026-10-05', phases, '2026-10-26')).toBeUndefined();
   });
 });

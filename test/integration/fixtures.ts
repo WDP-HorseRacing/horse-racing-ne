@@ -321,7 +321,7 @@ export function fixtures(dataSource: DataSource) {
    * Tạo môn học, giáo án một giai đoạn gồm môn đó (tối thiểu 3 buổi/tuần) và lớp dùng giáo án kèm bản chép giáo án, cùng Head Trainer
    *
    * @param headTrainerId Id Head Trainer sở hữu giáo án và phụ trách lớp
-   * @param options Mã, tên, trạng thái, ngày bắt đầu và kết thúc của lớp; số tuần của giai đoạn duy nhất trong giáo án
+   * @param options Mã, tên, trạng thái, ngày bắt đầu và kết thúc của lớp; số tuần của giai đoạn duy nhất trong giáo án (mặc định đủ phủ tới ngày kết thúc)
    * @returns A promise resolving to id lớp và id giáo án
    */
   const trainingClass = async (
@@ -347,11 +347,19 @@ export function fixtures(dataSource: DataSource) {
        VALUES ($1, 1, 'Giáo án', $2)`,
       [planId, headTrainerId],
     );
+    const startDate = options.startDate ?? '2026-09-01';
+    const endDate = options.endDate ?? '2026-12-31';
+    const weeks =
+      options.weeks ??
+      Math.ceil(
+        (Date.parse(endDate) - Date.parse(startDate)) / (7 * 86_400_000) +
+          1 / 7,
+      );
     const phaseId = randomUUID();
     await dataSource.query(
       `INSERT INTO training_plan_phases (id, plan_id, position, weeks)
        VALUES ($1, $2, 1, $3)`,
-      [phaseId, planId, options.weeks ?? 4],
+      [phaseId, planId, weeks],
     );
     await dataSource.query(
       `INSERT INTO training_plan_subjects (phase_id, subject_id, min_sessions_per_week)
@@ -369,8 +377,8 @@ export function fixtures(dataSource: DataSource) {
         code,
         headTrainerId,
         planId,
-        options.startDate ?? '2026-09-01',
-        options.endDate ?? '2026-12-31',
+        startDate,
+        endDate,
         options.status ?? 'ACTIVE',
       ],
     );
@@ -378,7 +386,7 @@ export function fixtures(dataSource: DataSource) {
     await dataSource.query(
       `INSERT INTO training_class_phases (id, class_id, position, weeks)
        VALUES ($1, $2, 1, $3)`,
-      [classPhaseId, classId, options.weeks ?? 4],
+      [classPhaseId, classId, weeks],
     );
     await dataSource.query(
       `INSERT INTO training_class_phase_subjects (phase_id, subject_id, min_sessions_per_week)

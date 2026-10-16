@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { toClubDate } from '../../../common/utils/club-date';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
@@ -19,6 +21,7 @@ import { evaluateEligibility } from '../../horses/policies/horse.policy';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
+  CreateTrainingSessionsDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
 } from '../dto/training-session.dto';
@@ -29,6 +32,8 @@ import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
+import { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
+import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
@@ -39,6 +44,7 @@ import {
   assertClassOpenForSessions,
   assertSessionWindowInClass,
   assertSubjectExercise,
+  classPhaseOn,
   eligibilityForSession,
   findHorseScheduleClashes,
   horseScheduleClashError,
@@ -67,6 +73,40 @@ const CHECKED_IN_PARTICIPANT_STATUSES = [
 ];
 
 const NOT_ENROLLED_AT_START_REASON = 'Ngựa không học lớp vào giờ mới của buổi';
+
+/**
+ * Gắn thứ tự buổi trong body vào lỗi khi thêm nhiều buổi một lần
+ *
+ * - Câu báo thêm tiền tố "Buổi {chỉ số + 1}: "
+ * - Ô lỗi đổi thành `sessions.{chỉ số}.{ô cũ}`; lỗi không gắn ô thì gắn `sessions.{chỉ số}`
+ * - Lỗi không phải HttpException giữ nguyên
+ *
+ * @param error Lỗi ném ra khi lưu một buổi
+ * @param index Chỉ số của buổi trong body
+ * @returns Lỗi để ném tiếp
+ */
+function withSessionIndex(error: unknown, index: number): unknown {
+  if (!(error instanceof HttpException)) return error;
+  const response = error.getResponse();
+  const responseMessage =
+    typeof response === 'string'
+      ? response
+      : (response as { message?: unknown }).message;
+  const original =
+    typeof responseMessage === 'string' ? responseMessage : error.message;
+  const message = `Buổi ${index + 1}: ${original}`;
+  const fields =
+    typeof response === 'object' &&
+    Array.isArray((response as { errors?: unknown }).errors)
+      ? (response as { errors: Array<{ field: string }> }).errors.map(
+          (item) => `sessions.${index}.${item.field}`,
+        )
+      : [`sessions.${index}`];
+  return new HttpException(
+    { message, errors: fields.map((field) => ({ field, message })) },
+    error.getStatus(),
+  );
+}
 
 @Injectable()
 export class TrainingSessionsService {
@@ -121,7 +161,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập vừa tạo ở trạng thái SCHEDULED
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có lớp
-   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, buổi trùng giờ với buổi chưa hủy khác của lớp, hoặc trùng giờ với lịch ở lớp khác của ngựa đang học lớp vào giờ đó
+   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, môn không có trong giai đoạn chứa ngày của buổi, buổi trùng giờ với buổi chưa hủy khác của lớp, hoặc trùng giờ với lịch ở lớp khác của ngựa đang học lớp vào giờ đó
    * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, môn học không tồn tại, loại buổi gửi lên khác loại buổi của môn, hoặc nội dung buổi sai theo loại môn
    */
   async createSession(
@@ -131,103 +171,216 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
-      const trainingClass = await this.access.lockedTrainingClass(
+      const trainingClass = await this.lockedManagedClass(
         manager,
+        actor,
+        caller.id,
         classId,
       );
-      this.access.assertCanManageClass(
-        actor,
-        caller.id,
-        trainingClass.headTrainerId,
-      );
-      assertClassOpenForSessions(trainingClass.status);
-      assertSessionWindowInClass(
-        body.scheduledStartAt,
-        body.scheduledEndAt,
-        trainingClass.startDate,
-        trainingClass.endDate,
-      );
-      const subject = await manager.findOneBy(TrainingSubjectEntity, {
-        id: body.subjectId,
-      });
-      if (!subject) {
-        throw new BadRequestException('Môn học không tồn tại');
-      }
-      if (body.sessionType && body.sessionType !== subject.sessionType) {
-        throw fieldBadRequest(
-          'sessionType',
-          'Loại buổi phải trùng với loại buổi của môn học',
-        );
-      }
-      const targetTimeMs = body.targetTimeMs ?? null;
-      assertSubjectExercise(
-        subject.sessionType,
-        body.plannedDistanceM,
-        targetTimeMs,
-      );
-      const window = {
-        scheduledStartAt: new Date(body.scheduledStartAt),
-        scheduledEndAt: new Date(body.scheduledEndAt),
-      };
-      assertNoOverlappingClassSession(
-        window,
-        await manager.find(TrainingSessionEntity, {
-          where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
-        }),
-      );
-      await this.assertNoHorseScheduleClash(manager, classId, window);
-      const session = await manager.save(
-        manager.create(TrainingSessionEntity, {
-          classId,
-          subjectId: subject.id,
-          name: body.name,
-          sessionType: subject.sessionType,
-          intensity: body.intensity,
-          plannedDistanceM: body.plannedDistanceM,
-          scheduledStartAt: new Date(body.scheduledStartAt),
-          scheduledEndAt: new Date(body.scheduledEndAt),
-          location: body.location ?? null,
-          surface: body.surface ?? null,
-          notes: body.notes ?? null,
-          status: TrainingSessionStatus.SCHEDULED,
-        }),
-      );
-      if (subject.sessionType === TrainingSessionType.TIME_TRIAL) {
-        await manager.save(
-          manager.create(TimeTrialEntity, {
-            sessionId: session.id,
-            distanceM: String(body.plannedDistanceM),
-            targetTimeMs: targetTimeMs === null ? null : String(targetTimeMs),
-            notes: null,
-          }),
-        );
-      }
-      const participantsCreated = await this.syncParticipants(
+      return this.createLocked(manager, actor, caller.id, trainingClass, body);
+    });
+    return toTrainingSessionResponse(row);
+  }
+
+  /**
+   * Thêm nhiều buổi tập đã lên lịch vào lớp trong một transaction, theo thứ tự giờ bắt đầu
+   *
+   * - Mỗi buổi áp đúng luật của thêm từng buổi, kể cả trùng giờ với các buổi vừa thêm trước nó
+   * - Một buổi lỗi thì không lưu buổi nào; câu báo có tiền tố "Buổi {thứ tự trong body}: " và ô lỗi gắn dưới `sessions.{chỉ số}`
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @param body Các buổi cần thêm
+   * @returns Promise trả về các buổi vừa tạo, sớm nhất trước
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
+   * @throws NotFoundException Nếu không có lớp
+   * @throws ConflictException Nếu lớp đã kết thúc, có buổi trùng giờ, hoặc môn không có trong giai đoạn chứa ngày của buổi
+   * @throws BadRequestException Nếu có buổi sai giờ, nằm ngoài thời gian của lớp, môn không tồn tại hoặc nội dung sai theo loại môn
+   */
+  async createSessions(
+    actor: Actor,
+    classId: string,
+    body: CreateTrainingSessionsDto,
+  ): Promise<TrainingSessionResponseDto[]> {
+    const rows = await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const trainingClass = await this.lockedManagedClass(
         manager,
         actor,
         caller.id,
-        session,
+        classId,
       );
-      await this.auditService.record(manager, {
-        actorId: caller.id,
-        action: AuditAction.CREATE,
-        entityType: AuditEntityType.TRAINING_SESSION,
-        entityId: session.id,
-        before: null,
-        after: {
-          classId,
-          status: session.status,
-          ...sessionAuditData(session),
-          ...(session.sessionType === TrainingSessionType.TIME_TRIAL && {
-            targetTimeMs,
-          }),
-          participantsCreated,
-        },
-        feature: AuditFeature.TRAIN_SESSION,
-      });
-      return session;
+      const order = body.sessions
+        .map((item, index) => ({ item, index }))
+        .sort(
+          (a, b) =>
+            Date.parse(a.item.scheduledStartAt) -
+            Date.parse(b.item.scheduledStartAt),
+        );
+      const saved: TrainingSessionEntity[] = [];
+      for (const { item, index } of order) {
+        try {
+          saved.push(
+            await this.createLocked(
+              manager,
+              actor,
+              caller.id,
+              trainingClass,
+              item,
+            ),
+          );
+        } catch (error) {
+          throw withSessionIndex(error, index);
+        }
+      }
+      return saved;
     });
-    return toTrainingSessionResponse(row);
+    return rows.map(toTrainingSessionResponse);
+  }
+
+  /**
+   * Khóa lớp và kiểm người gọi được thêm buổi vào lớp
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param classId UUID của lớp
+   * @returns Promise trả về lớp đã khóa
+   * @throws NotFoundException Nếu không có lớp
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp
+   * @throws ConflictException Nếu lớp đã kết thúc
+   */
+  private async lockedManagedClass(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    classId: string,
+  ): Promise<TrainingClassEntity> {
+    const trainingClass = await this.access.lockedTrainingClass(
+      manager,
+      classId,
+    );
+    this.access.assertCanManageClass(
+      actor,
+      callerId,
+      trainingClass.headTrainerId,
+    );
+    assertClassOpenForSessions(trainingClass.status);
+    return trainingClass;
+  }
+
+  /**
+   * Lưu một buổi tập vào lớp đã khóa, kèm cấu hình chạy thử, lượt tập và nhật ký
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param trainingClass Lớp đã khóa, đang chạy
+   * @param body Nội dung buổi tập
+   * @returns Promise trả về buổi vừa lưu
+   * @throws ConflictException Nếu buổi trùng giờ, hoặc môn không có trong giai đoạn chứa ngày của buổi
+   * @throws BadRequestException Nếu giờ sai hoặc ngoài thời gian của lớp, môn không tồn tại, loại buổi khác loại của môn, hoặc nội dung sai theo loại môn
+   * @throws ForbiddenException Nếu có ngựa ngoài khu của Head Trainer
+   */
+  private async createLocked(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    trainingClass: TrainingClassEntity,
+    body: CreateTrainingSessionDto,
+  ): Promise<TrainingSessionEntity> {
+    const classId = trainingClass.id;
+    assertSessionWindowInClass(
+      body.scheduledStartAt,
+      body.scheduledEndAt,
+      trainingClass.startDate,
+      trainingClass.endDate,
+    );
+    const subject = await manager.findOneBy(TrainingSubjectEntity, {
+      id: body.subjectId,
+    });
+    if (!subject) {
+      throw new BadRequestException('Môn học không tồn tại');
+    }
+    if (body.sessionType && body.sessionType !== subject.sessionType) {
+      throw fieldBadRequest(
+        'sessionType',
+        'Loại buổi phải trùng với loại buổi của môn học',
+      );
+    }
+    await this.assertSubjectInPhase(
+      manager,
+      trainingClass,
+      subject,
+      new Date(body.scheduledStartAt),
+    );
+    const targetTimeMs = body.targetTimeMs ?? null;
+    assertSubjectExercise(
+      subject.sessionType,
+      body.plannedDistanceM,
+      targetTimeMs,
+    );
+    const window = {
+      scheduledStartAt: new Date(body.scheduledStartAt),
+      scheduledEndAt: new Date(body.scheduledEndAt),
+    };
+    assertNoOverlappingClassSession(
+      window,
+      await manager.find(TrainingSessionEntity, {
+        where: { classId, status: Not(TrainingSessionStatus.CANCELLED) },
+      }),
+    );
+    await this.assertNoHorseScheduleClash(manager, classId, window);
+    const session = await manager.save(
+      manager.create(TrainingSessionEntity, {
+        classId,
+        subjectId: subject.id,
+        name: body.name,
+        sessionType: subject.sessionType,
+        intensity: body.intensity,
+        plannedDistanceM: body.plannedDistanceM,
+        scheduledStartAt: new Date(body.scheduledStartAt),
+        scheduledEndAt: new Date(body.scheduledEndAt),
+        location: body.location ?? null,
+        surface: body.surface ?? null,
+        notes: body.notes ?? null,
+        status: TrainingSessionStatus.SCHEDULED,
+      }),
+    );
+    if (subject.sessionType === TrainingSessionType.TIME_TRIAL) {
+      await manager.save(
+        manager.create(TimeTrialEntity, {
+          sessionId: session.id,
+          distanceM: String(body.plannedDistanceM),
+          targetTimeMs: targetTimeMs === null ? null : String(targetTimeMs),
+          notes: null,
+        }),
+      );
+    }
+    const participantsCreated = await this.syncParticipants(
+      manager,
+      actor,
+      callerId,
+      session,
+    );
+    await this.auditService.record(manager, {
+      actorId: callerId,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.TRAINING_SESSION,
+      entityId: session.id,
+      before: null,
+      after: {
+        classId,
+        status: session.status,
+        ...sessionAuditData(session),
+        ...(session.sessionType === TrainingSessionType.TIME_TRIAL && {
+          targetTimeMs,
+        }),
+        participantsCreated,
+      },
+      feature: AuditFeature.TRAIN_SESSION,
+    });
+    return session;
   }
 
   /**
@@ -244,7 +397,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập sau khi sửa
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có buổi tập hoặc lớp
-   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ, đã có ngựa điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, hoặc trùng giờ
+   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ, đã có ngựa điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ
    * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp hoặc môn học không tồn tại
    */
   async updateSession(
@@ -303,11 +456,24 @@ export class TrainingSessionsService {
         trainingClass.startDate,
         trainingClass.endDate,
       );
-      if (
-        body.subjectId &&
-        !(await manager.existsBy(TrainingSubjectEntity, { id: body.subjectId }))
-      ) {
+      const nextSubjectId = body.subjectId ?? session.subjectId;
+      const nextSubject = nextSubjectId
+        ? await manager.findOneBy(TrainingSubjectEntity, { id: nextSubjectId })
+        : null;
+      if (body.subjectId && !nextSubject) {
         throw new BadRequestException('Môn học không tồn tại');
+      }
+      if (
+        nextSubject &&
+        (nextSubject.id !== session.subjectId ||
+          start.getTime() !== session.scheduledStartAt.getTime())
+      ) {
+        await this.assertSubjectInPhase(
+          manager,
+          trainingClass,
+          nextSubject,
+          start,
+        );
       }
       if (body.scheduledStartAt || body.scheduledEndAt) {
         assertNoOverlappingClassSession(
@@ -495,6 +661,39 @@ export class TrainingSessionsService {
       )
       .orderBy('enrollment.horse_id', 'ASC')
       .getMany();
+  }
+
+  /**
+   * Chặn buổi dùng môn không có trong giai đoạn của lớp chứa ngày bắt đầu của buổi
+   *
+   * - Ngày tính theo lịch CLB; giai đoạn lấy từ giáo án của lớp
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param trainingClass Lớp của buổi
+   * @param subject Môn của buổi
+   * @param startAt Giờ bắt đầu của buổi
+   * @returns Promise hoàn tất khi môn hợp lệ
+   * @throws ConflictException Nếu môn không có trong giai đoạn chứa ngày của buổi
+   */
+  private async assertSubjectInPhase(
+    manager: EntityManager,
+    trainingClass: TrainingClassEntity,
+    subject: TrainingSubjectEntity,
+    startAt: Date,
+  ): Promise<void> {
+    const phase = classPhaseOn(
+      trainingClass.startDate,
+      await manager.find(TrainingClassPhaseEntity, {
+        where: { classId: trainingClass.id },
+        relations: { subjects: true },
+      }),
+      toClubDate(startAt),
+    );
+    if (!phase?.subjects.some((item) => item.subjectId === subject.id)) {
+      throw new ConflictException(
+        `Môn ${subject.name} không có trong giai đoạn ${phase?.position ?? '?'} của lớp`,
+      );
+    }
   }
 
   /**

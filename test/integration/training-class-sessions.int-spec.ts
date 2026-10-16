@@ -280,6 +280,10 @@ describe('Training class queries over its sessions (Postgres)', () => {
   it('rejects a new start date only when the recomputed range leaves out a session of that class', async () => {
     const a = await seedClass('A');
     const b = await seedClass('B');
+    await dataSource.query(
+      'UPDATE training_class_phases SET weeks = 4 WHERE class_id IN ($1, $2)',
+      [a.classId, b.classId],
+    );
     await seedSession(b, 'SCHEDULED', '2026-03-10T01:00:00Z');
     await seedSession(a, 'SCHEDULED', '2026-12-01T01:00:00Z');
 
