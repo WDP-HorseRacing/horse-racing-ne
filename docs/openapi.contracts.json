@@ -12563,13 +12563,7 @@
             ]
           },
           "position": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/InjuryPositionDto"
-              }
-            ]
+            "$ref": "#/components/schemas/InjuryPositionDto"
           },
           "injuryType": {
             "type": "string",
@@ -12611,6 +12605,7 @@
           "id",
           "medicalRecordId",
           "bodyRegion",
+          "position",
           "injuryType",
           "recoveryStatus",
           "examDate",
@@ -12974,13 +12969,7 @@
             ]
           },
           "position": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/InjuryPositionDto"
-              }
-            ]
+            "$ref": "#/components/schemas/InjuryPositionDto"
           },
           "injuryType": {
             "type": "string",
@@ -13013,6 +13002,7 @@
           "id",
           "medicalRecordId",
           "bodyRegion",
+          "position",
           "injuryType",
           "recoveryStatus"
         ]
@@ -13281,6 +13271,7 @@
         },
         "required": [
           "bodyRegion",
+          "position",
           "injuryType",
           "recoveryStatus"
         ]

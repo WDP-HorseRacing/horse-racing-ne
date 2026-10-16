@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 14/10/2026
+> Cập nhật: 16/10/2026
 
 ## I. Những main feature liên quan
 
@@ -427,7 +427,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Ngày hẹn tái khám (tùy chọn).
    - Đơn thuốc (tùy chọn), cùng quy cách với F3.3.
    - Chấn thương (tùy chọn), xem mục 2.
-2. Chấn thương: mỗi dòng gồm vùng cơ thể, vị trí trên mô hình 3D (tọa độ, tùy chọn), loại chấn thương, mức hồi phục (Cấp tính, Đang hồi phục, Đã lành) và ghi chú. Một chấn thương được định danh bằng cặp (vùng cơ thể, loại chấn thương) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp. Diễn biến hồi phục của một chấn thương là chuỗi các dòng cùng cặp của những buổi khám chưa hủy trong cùng bệnh án, xếp theo thời điểm khám.
+2. Chấn thương: mỗi dòng gồm vùng cơ thể, vị trí trên mô hình 3D (tọa độ x, y, z, bắt buộc), loại chấn thương, mức hồi phục (Cấp tính, Đang hồi phục, Đã lành) và ghi chú. Một chấn thương được định danh bằng cặp (vùng cơ thể, loại chấn thương) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp. Diễn biến hồi phục của một chấn thương là chuỗi các dòng cùng cặp của những buổi khám chưa hủy trong cùng bệnh án, xếp theo thời điểm khám.
 3. Hệ thống không trừ kho vật tư và không tính tiền thuốc.
 4. Chỉ ghi được buổi khám vào bệnh án đang ở trạng thái Đang điều trị.
 5. Thời điểm khám theo mục III.2.5 (không sớm hơn ngày mở bệnh án).

@@ -332,8 +332,8 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
     const injure = async (examDate: string, voided: boolean, type: string) => {
       const recordId = await seed.visit(gio, staffId, examDate, { voided });
       await dataSource.query(
-        `INSERT INTO injury_markers (medical_record_id, body_region, injury_type, recovery_status)
-         VALUES ($1, 'LEFT_FRONT_LEG', $2, 'ACUTE')`,
+        `INSERT INTO injury_markers (medical_record_id, body_region, position, injury_type, recovery_status)
+         VALUES ($1, 'LEFT_FRONT_LEG', '{"x":0,"y":0,"z":0}', $2, 'ACUTE')`,
         [recordId, type],
       );
     };

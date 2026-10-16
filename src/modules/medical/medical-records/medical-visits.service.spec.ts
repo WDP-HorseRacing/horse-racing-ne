@@ -348,6 +348,7 @@ describe('MedicalVisitsService', () => {
         bodyRegion: InjuryBodyRegion.LEFT_FRONT_LEG,
         injuryType: InjuryType.SPRAIN,
         recoveryStatus: RecoveryStatus.ACUTE,
+        position: { x: 0, y: 0, z: 0 },
       };
       await expect(
         service.createStandaloneVisit(

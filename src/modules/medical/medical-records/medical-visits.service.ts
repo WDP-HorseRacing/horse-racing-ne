@@ -586,7 +586,7 @@ export class MedicalVisitsService {
         manager.create(InjuryMarkerEntity, {
           medicalRecordId: visit.id,
           bodyRegion: item.bodyRegion,
-          position: item.position ?? null,
+          position: item.position,
           injuryType: item.injuryType,
           recoveryStatus: item.recoveryStatus,
           notes: item.notes ?? null,

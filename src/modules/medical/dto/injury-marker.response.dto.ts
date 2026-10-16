@@ -16,8 +16,8 @@ export class InjuryMarkerResponseDto {
   @ApiProperty({ enum: InjuryBodyRegion })
   bodyRegion!: InjuryBodyRegion;
 
-  @ApiPropertyOptional({ type: InjuryPositionDto, nullable: true })
-  position!: InjuryPositionDto | null;
+  @ApiProperty({ type: InjuryPositionDto })
+  position!: InjuryPositionDto;
 
   @ApiProperty({ enum: InjuryType })
   injuryType!: InjuryType;

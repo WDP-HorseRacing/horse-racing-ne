@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsDefined,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -32,14 +33,14 @@ export class CreateInjuryDto {
   @IsEnum(InjuryBodyRegion)
   bodyRegion!: InjuryBodyRegion;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: InjuryPositionDto,
     description: 'Điểm trên mô hình 3D của ngựa, theo tọa độ của mô hình',
   })
-  @IsOptional()
+  @IsDefined()
   @ValidateNested()
   @Type(() => InjuryPositionDto)
-  position?: InjuryPositionDto;
+  position!: InjuryPositionDto;
 
   @ApiProperty({ enum: InjuryType })
   @IsEnum(InjuryType)
