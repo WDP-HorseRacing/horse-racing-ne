@@ -14,6 +14,8 @@ describe('AuthService.changePassword', () => {
     {} as never,
     {} as never,
     {} as never,
+    { manager: { findOne: jest.fn().mockResolvedValue(null) } } as never,
+    {} as never,
   );
 
   beforeEach(() => jest.clearAllMocks());

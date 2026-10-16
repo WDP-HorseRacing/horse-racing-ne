@@ -38,4 +38,5 @@ export enum AuditFeature {
   PERF_THRESHOLD = 'PERF_THRESHOLD',
   DAILY_FEE = 'DAILY_FEE',
   HORSE_SURCHARGE = 'HORSE_SURCHARGE',
+  AUTH = 'AUTH',
 }

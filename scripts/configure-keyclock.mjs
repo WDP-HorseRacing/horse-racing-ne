@@ -120,6 +120,27 @@ if (current.sslRequired !== 'none') {
   console.log(`da dat sslRequired=NONE cho realm "${realmName}"`);
 }
 
+// 1c. Chong do mat khau  ->  Console: Realm settings > Security defenses >
+//     Brute force detection. Sai 5 lan lien tiep thi khoa tam tai khoan, moi
+//     lan sai tiep khoa lau them 60 giay, toi da 15 phut; tu mo, khong khoa vinh vien.
+const bruteForce = {
+  bruteForceProtected: true,
+  permanentLockout: false,
+  failureFactor: 5,
+  waitIncrementSeconds: 60,
+  maxFailureWaitSeconds: 900,
+  maxDeltaTimeSeconds: 43200,
+  minimumQuickLoginWaitSeconds: 60,
+  quickLoginCheckMilliSeconds: 1000,
+};
+const realmNow = (await root.get(`/realms/${realm}`)).data;
+if (
+  Object.entries(bruteForce).some(([key, value]) => realmNow[key] !== value)
+) {
+  await root.put(`/realms/${realm}`, { ...realmNow, ...bruteForce });
+  console.log(`da bat chong do mat khau cho realm "${realmName}"`);
+}
+
 // 2. Confidential client  ->  Console: Clients > Create client
 let clients = await admin.get('/clients', { params: { clientId } });
 if (!clients.data[0]?.id) {

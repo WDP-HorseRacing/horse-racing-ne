@@ -50,6 +50,8 @@
                 "DELETE",
                 "LOGIN",
                 "LOGOUT",
+                "LOGIN_FAILED",
+                "PASSWORD_CHANGE",
                 "RESTORE"
               ]
             }
@@ -9360,6 +9362,8 @@
               "DELETE",
               "LOGIN",
               "LOGOUT",
+              "LOGIN_FAILED",
+              "PASSWORD_CHANGE",
               "RESTORE"
             ]
           },
@@ -9508,6 +9512,8 @@
               "DELETE",
               "LOGIN",
               "LOGOUT",
+              "LOGIN_FAILED",
+              "PASSWORD_CHANGE",
               "RESTORE"
             ]
           },
@@ -12488,7 +12494,8 @@
               "PERF_EVAL",
               "PERF_THRESHOLD",
               "DAILY_FEE",
-              "HORSE_SURCHARGE"
+              "HORSE_SURCHARGE",
+              "AUTH"
             ],
             "nullable": true,
             "description": "Chức năng gây ra thay đổi"

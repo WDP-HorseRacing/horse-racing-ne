@@ -1,4 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { decode } from 'jsonwebtoken';
+import { DataSource } from 'typeorm';
 import { KeycloakOidcRedirectService } from '../../../common/infrastructure/keycloak/keycloak-oidc-redirect.service';
 import { KeycloakConfig } from '../../../common/infrastructure/keycloak/keycloak.config';
 import { KeycloakService } from '../../../common/infrastructure/keycloak/keycloak.service';
@@ -7,6 +9,11 @@ import type { KeycloakIdentityProvider } from '../../../common/infrastructure/ke
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
+import { UserEntity } from '../../users/entities/user.entity';
 import { ProvisioningService } from '../../users/services/provisioning.service';
 import { AuthTokensResponseDto } from '../dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from '../dto/current-user.response.dto';
@@ -23,10 +30,15 @@ export class AuthService {
     private readonly keycloakConfig: KeycloakConfig,
     private readonly keycloak: KeycloakService,
     private readonly provisioning: ProvisioningService,
+    private readonly dataSource: DataSource,
+    private readonly audit: AuditService,
   ) {}
 
   /**
    * Đăng nhập bằng email và mật khẩu qua Keycloak
+   *
+   * - Thành công: ghi nhật ký LOGIN
+   * - Sai mật khẩu và email thuộc một tài khoản local: ghi nhật ký LOGIN_FAILED rồi ném lỗi
    *
    * @param email Email của tài khoản
    * @param password Mật khẩu của tài khoản
@@ -35,14 +47,21 @@ export class AuthService {
    * @throws BadGatewayException Nếu Keycloak trả lỗi
    */
   async login(email: string, password: string): Promise<AuthTokensResponseDto> {
-    return this.issueSession(
-      toAuthTokensResponse(
+    let tokens: AuthTokensResponseDto;
+    try {
+      tokens = toAuthTokensResponse(
         await this.keycloakTokens.exchangePasswordForToken({
           username: email,
           password,
         }),
-      ),
-    );
+      );
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        await this.recordFailedLogin(email);
+      }
+      throw error;
+    }
+    return this.issueSession(tokens, { method: 'PASSWORD' });
   }
 
   /**
@@ -60,14 +79,22 @@ export class AuthService {
   }
 
   /**
-   * Thu hồi refresh token trên Keycloak
+   * Thu hồi refresh token trên Keycloak rồi ghi nhật ký LOGOUT
+   *
+   * - Chỉ ghi nhật ký khi claim sub của refresh token thuộc một tài khoản local
    *
    * @param refreshToken Refresh token cần thu hồi
-   * @returns Promise hoàn tất khi Keycloak đã thu hồi token
+   * @returns Promise hoàn tất khi Keycloak đã thu hồi token và đã ghi nhật ký
    * @throws BadGatewayException Nếu Keycloak trả lỗi
    */
-  logout(refreshToken: string): Promise<void> {
-    return this.keycloakTokens.revokeRefreshToken({ refreshToken });
+  async logout(refreshToken: string): Promise<void> {
+    await this.keycloakTokens.revokeRefreshToken({ refreshToken });
+    const claims = decode(refreshToken, { json: true });
+    if (!claims?.sub) return;
+    const user = await this.dataSource.manager.findOne(UserEntity, {
+      where: { keycloakId: claims.sub },
+    });
+    if (user) await this.recordAuth(user.id, user.id, AuditAction.LOGOUT, null);
   }
 
   /**
@@ -86,6 +113,7 @@ export class AuthService {
    * Đổi mật khẩu của người gọi rồi đăng xuất mọi phiên Keycloak của họ
    *
    * - Kiểm mật khẩu hiện tại bằng cách đăng nhập thử với Keycloak
+   * - Đổi xong: ghi nhật ký PASSWORD_CHANGE nếu người gọi có tài khoản local
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param currentPassword Mật khẩu hiện tại
@@ -113,6 +141,17 @@ export class AuthService {
     }
     await this.keycloakUsers.resetUserPassword(actor.sub, newPassword);
     await this.keycloakUsers.logoutUser(actor.sub);
+    const user = await this.dataSource.manager.findOne(UserEntity, {
+      where: { keycloakId: actor.sub },
+    });
+    if (user) {
+      await this.recordAuth(
+        user.id,
+        user.id,
+        AuditAction.PASSWORD_CHANGE,
+        null,
+      );
+    }
   }
 
   /**
@@ -130,6 +169,8 @@ export class AuthService {
 
   /**
    * Hoàn tất đăng nhập OIDC: đổi authorization code lấy token
+   *
+   * - Thành công: ghi nhật ký LOGIN kèm identity provider
    *
    * @param provider Identity provider của luồng đăng nhập
    * @param code Authorization code identity provider trả về
@@ -153,21 +194,70 @@ export class AuthService {
           codeVerifier,
         }),
       ),
+      { method: 'OIDC', provider },
     );
   }
 
   /**
-   * Xác thực access token vừa cấp và bắt buộc tài khoản đã có row `users` đang hoạt động trước khi trả token
+   * Xác thực access token vừa cấp, bắt buộc tài khoản đã có row `users` đang hoạt động, ghi nhật ký LOGIN rồi trả token
    *
    * @param tokens Bộ token vừa nhận từ Keycloak
+   * @param method Cách đăng nhập ghi vào nhật ký
    * @returns Promise trả về chính bộ token đã nhận
    * @throws UnauthorizedException Nếu token không hợp lệ, chưa có tài khoản local hoặc tài khoản không ở trạng thái hoạt động
    */
   private async issueSession(
     tokens: AuthTokensResponseDto,
+    method: Record<string, unknown>,
   ): Promise<AuthTokensResponseDto> {
     const claims = await this.keycloak.verifyToken(tokens.accessToken);
-    await this.provisioning.requireProvisionedUser(claims);
+    const user = await this.provisioning.requireProvisionedUser(claims);
+    await this.recordAuth(user.id, user.id, AuditAction.LOGIN, method);
     return tokens;
+  }
+
+  /**
+   * Ghi nhật ký LOGIN_FAILED cho tài khoản local có email trùng email đã nhập
+   *
+   * - Email không thuộc tài khoản local nào: không ghi
+   *
+   * @param email Email người dùng đã nhập
+   * @returns Promise hoàn tất khi đã ghi (hoặc bỏ qua)
+   */
+  private async recordFailedLogin(email: string): Promise<void> {
+    const user = await this.dataSource.manager.findOne(UserEntity, {
+      where: { email: email.trim().toLowerCase() },
+    });
+    if (user) {
+      await this.recordAuth(null, user.id, AuditAction.LOGIN_FAILED, {
+        method: 'PASSWORD',
+      });
+    }
+  }
+
+  /**
+   * Ghi một dòng nhật ký đăng nhập, đăng xuất hoặc đổi mật khẩu trên tài khoản
+   *
+   * @param actorId ID tài khoản thực hiện, null khi chưa xác thực được
+   * @param userId ID tài khoản bị tác động
+   * @param action Hành động ghi nhật ký
+   * @param after Thông tin kèm theo, null nếu không có
+   * @returns Promise hoàn tất khi đã ghi
+   */
+  private recordAuth(
+    actorId: string | null,
+    userId: string,
+    action: AuditAction,
+    after: Record<string, unknown> | null,
+  ): Promise<void> {
+    return this.audit.record(this.dataSource.manager, {
+      actorId,
+      action,
+      entityType: AuditEntityType.USER,
+      entityId: userId,
+      before: null,
+      after,
+      feature: AuditFeature.AUTH,
+    });
   }
 }
