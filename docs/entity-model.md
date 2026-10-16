@@ -99,7 +99,7 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
 - `medical_exam_requests` (yêu cầu khám, Flow 3 F3.4): `status` `PENDING`/`EXAMINED`/`DISMISSED`, `source` `GROOM_INCIDENT`/`MEASUREMENT_ALERT`/`STAFF`/`VET`, `requested_by` null khi hệ thống tự sinh; partial unique `(horse_id, alert_type) WHERE status = 'PENDING' AND alert_type IS NOT NULL` chặn trùng yêu cầu tự động.
 - `training_locks.case_id`: bệnh án liên quan (nullable).
 - `care_schedules`: thêm type `ROUTINE_CHECKUP` (ngày hẹn khám định kỳ, partial unique một lịch `SCHEDULED` mỗi ngựa), `completed_by`, `cancel_reason`. `status` chỉ còn `SCHEDULED`/`COMPLETED`/`CANCELLED` (bỏ `IN_PROGRESS` không dùng; cột varchar nên không cần migration).
-- `injury_markers.position` (`jsonb`, nullable): tọa độ `{ x, y, z }` trên mô hình 3D của ngựa; `body_region` vẫn bắt buộc để lọc/tô theo vùng.
+- `injury_markers.position` (`jsonb`, NOT NULL): tọa độ `{ x, y, z }` trên mô hình 3D của ngựa; `body_region` vẫn bắt buộc để lọc/tô theo vùng.
 - `supply_items.category`: `FEED` (thức ăn), `SUPPLEMENT` (vitamin, thực phẩm bổ sung), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc. Kho chung CLB; số tồn chỉ đổi kèm một dòng `supply_stock_movements` (Flow 4).
 
 ## Khu chuồng

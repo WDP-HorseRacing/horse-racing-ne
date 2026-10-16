@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 14/10/2026
+> Cập nhật: 16/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -163,7 +163,7 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 |---|---|
 | Flow 2 (Huấn luyện) | Cung cấp danh mục khu chuồng, ô chuồng và việc gán HEAD TRAINER phụ trách khu. Cung cấp lớp học và buổi tập. Flow 1 chỉ xếp ngựa vào khu, vào ô chứ không tạo khu và ô. |
 | Flow 3 (Y tế) | Cập nhật trạng thái sức khỏe, lệnh khóa huấn luyện, bệnh án và các buổi khám. Ghi số đo vào bảng chỉ số cơ thể của F1.5. |
-| Flow 4 (Chăm sóc) | Đọc điểm thể trạng từ F1.5 để tính khẩu phần. Quản lý gói chăm sóc do chủ ngựa chọn. |
+| Flow 4 (Chăm sóc) | Đọc điểm thể trạng từ F1.5 để tính khẩu phần. Tính phí ngày chung của CLB và phụ phí chăm sóc riêng của từng ngựa. |
 | Flow 5 (Thi đấu) | Cung cấp lịch sử thành tích hiển thị trong F1.3. |
 
 ### 6. Nhật ký thao tác

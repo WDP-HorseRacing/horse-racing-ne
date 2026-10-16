@@ -114,7 +114,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 1. Mỗi bệnh án có **MỘT** trường chi phí duy nhất, nhập khi đóng bệnh án (F3.9). Hệ thống không ghi chi phí theo từng buổi khám, không theo từng loại thuốc, không có thanh toán.
 2. Chi phí là số nguyên, đơn vị VND, không âm. Điều trị không mất tiền thì nhập 0.
 3. Sau khi đóng, VETERINARIAN được điều chỉnh chi phí (ví dụ gõ nhầm), bắt buộc nhập lý do. Hệ thống ghi nhật ký giá trị trước, sau và báo lại cho chủ chịu khoản chi phí đó (mục 8). Không sửa đè im lặng.
-4. Buổi khám định kỳ và buổi khám theo yêu cầu không có chi phí riêng, vì việc này thuộc gói chăm sóc mà chủ ngựa đã chọn (Flow 4).
+4. Buổi khám định kỳ và buổi khám theo yêu cầu không có chi phí riêng, vì việc này đã nằm trong phí ngày chung của CLB (Flow 4).
 5. Chủ ngựa chỉ nhìn thấy chi phí khi bệnh án đã đóng, đúng với góp ý của giảng viên là chỉ báo chi phí cuối cùng.
 6. HEAD TRAINER không bao giờ thấy chi phí, vì chi phí là việc giữa câu lạc bộ và chủ ngựa, không phục vụ quyết định huấn luyện.
 7. Tổng chi phí y tế của một con ngựa = tổng chi phí của các bệnh án đã đóng.
@@ -739,8 +739,8 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 
 | # | Câu hỏi | Liên quan | Hệ thống đang chạy |
 |---|---|---|---|
-| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Đã chốt: được tập buổi Nhẹ và Trung bình, không được đua. Buổi tập có cường độ; gặp buổi Nặng thì lượt tự đánh Không đủ điều kiện, chặn ở publish buổi, ghi danh, điểm danh, bắt đầu |
-| Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt: chấm lại ngay các lượt sắp tới của ngựa khi đặt khóa, gỡ khóa hoặc đổi sức khỏe (lượt thành Hủy do khóa / Không đủ điều kiện, gỡ hoặc khỏe lại trước giờ tập thì về Chờ điểm danh); vẫn chặn lúc tạo lượt (publish buổi, ghi danh) và lúc bắt đầu buổi / điểm danh (Flow 2 luật 6) |
+| Q1 | Ngựa Cần theo dõi có được tập không (Flow 1 cho tập nhẹ, Flow 2 chặn hết)? | Flow 1, Flow 2 | Đã chốt: chỉ được tập buổi Nhẹ, không được đua. Buổi tập có cường độ Nhẹ hoặc Nặng; gặp buổi Nặng thì lượt tự đánh Không đủ điều kiện, chặn ở thêm buổi, ghi danh, điểm danh, bắt đầu |
+| Q2 | Khóa huấn luyện, Chấn thương, Cách ly có chặn lúc xếp lịch tập không? | Flow 2 | Đã chốt: chấm lại ngay các lượt sắp tới của ngựa khi đặt khóa, gỡ khóa hoặc đổi sức khỏe (lượt thành Hủy do khóa / Không đủ điều kiện, gỡ hoặc khỏe lại trước giờ tập thì về Chờ điểm danh); vẫn chặn lúc tạo lượt (thêm buổi, ghi danh) và lúc bắt đầu buổi / điểm danh (Flow 2 luật 6) |
 | Q3 | Báo cáo sự cố của GROOM chuyển sang yêu cầu khám thế nào? | Flow 4 | Đã chốt: sự cố khẩn tự tạo yêu cầu khám; sự cố thường do HEAD TRAINER chuyển bác sĩ (`docs/flow4-stable-care.md` mục 6) |
 | Q4 | GROOM xem ghi chú chăm sóc của VET ở đâu? | Flow 4 | Đã chốt: trong hồ sơ ngựa; GROOM chỉ thấy ghi chú mới nhất của ngựa mình được giao |
 | Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Đã chốt: lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |

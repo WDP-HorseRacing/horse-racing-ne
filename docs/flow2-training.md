@@ -1,6 +1,6 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-> Cập nhật: 14/10/2026
+> Cập nhật: 16/10/2026
 
 ## I. Đề bài liên quan
 
@@ -66,6 +66,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 ### 3. Tạo lớp
 
 1. Chỉ Head Trainer tạo lớp, và lớp luôn do chính Head Trainer đó phụ trách.
+   - Ngựa cần giáo án riêng (ví dụ ngựa đang hồi phục): Head Trainer tạo một lớp riêng chỉ ghi danh con ngựa đó. Không có giáo án gắn thẳng vào ngựa.
 2. Tạo lớp chỉ cần giáo án và ngày bắt đầu. Lớp chép các giai đoạn và môn của giáo án (`GET /classes/:classId/plan`, kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn). Không tạo buổi tập nào; Head Trainer thêm buổi sau.
 3. Ngày kết thúc lớp = ngày bắt đầu + tổng số tuần của giáo án − 1 ngày. Giai đoạn nối tiếp nhau từ ngày bắt đầu, mỗi tuần 7 ngày.
    - Tiến độ xếp lịch (`GET /classes/:classId/progress`): từng tuần của lớp (tuần thứ n gồm 7 ngày từ ngày bắt đầu + (n − 1) × 7), mỗi môn của giai đoạn đã xếp bao nhiêu buổi chưa hủy so với số buổi tối thiểu; buổi tính vào tuần theo ngày bắt đầu (lịch CLB). Kèm thời lượng tối thiểu của lớp và tổng thời lượng các buổi chưa hủy đã xếp (phút). Thiếu hay vượt chỉ để hiển thị, không chặn.
@@ -83,7 +84,6 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 4. Môn của buổi phải có trong giai đoạn của lớp chứa ngày bắt đầu của buổi (lịch CLB), không thì 409 "Môn {tên} không có trong giai đoạn {n} của lớp". Kiểm khi thêm buổi, và khi sửa buổi có đổi môn hoặc đổi giờ bắt đầu. Xếp nhiều hơn số buổi tối thiểu vẫn được.
 5. Thêm nhiều buổi một lần (`POST /classes/:classId/sessions/bulk`, 1–100 buổi, dùng cho nút lặp lại trên lịch): lưu theo thứ tự giờ bắt đầu, mỗi buổi áp đúng luật của thêm từng buổi, kể cả trùng giờ với các buổi vừa thêm trước nó. Một buổi lỗi thì không lưu buổi nào; câu báo có tiền tố "Buổi {thứ tự trong body}: " và ô lỗi `sessions.{chỉ số}`.
 6. Xóa buổi trên lịch là hủy buổi (`POST /training-sessions/:sessionId/cancel`): buổi giữ lại ở trạng thái Đã hủy, lượt chưa tập bị hủy.
-3. Publish buổi: lớp phải đang chạy; buổi chạy thử phải có cấu hình chạy thử. Publish tạo lượt tập cho từng ngựa đang học lớp.
 7. Ghi danh ngựa vào lớp đang chạy: tạo lượt cho các buổi đã lên lịch trong tương lai.
 8. Trùng giờ: mỗi buổi tính từ giờ bắt đầu tới trước giờ kết thúc; buổi này kết thúc đúng lúc buổi kia bắt đầu thì không trùng.
    1. Thêm buổi hoặc đổi giờ buổi trùng với buổi chưa hủy khác của cùng lớp: chặn 409, câu báo kèm giờ và ngày của buổi trùng.

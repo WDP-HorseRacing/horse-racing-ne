@@ -1,6 +1,6 @@
 # Flow 4 — Chăm sóc chuồng trại và dinh dưỡng hằng ngày
 
-> Cập nhật: 14/10/2026
+> Cập nhật: 16/10/2026
 
 ## I. Đề bài liên quan
 
@@ -110,7 +110,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
    - `IN_PROGRESS`: xong một phần.
    - `COMPLETED`: xong hết, ghi thời điểm hoàn thành.
    - `INCOMPLETE`: ngày đã qua mà chưa xong; checklist bị khóa.
-4. Groom phụ trách tick hoặc gỡ tick từng việc, kèm ghi chú, chỉ trong ngày. Mỗi việc lưu ai tick, lúc nào.
+4. Groom phụ trách tick hoặc gỡ tick từng việc, kèm ghi chú, chỉ trong ngày. Mỗi việc lưu ai tick, lúc nào. Việc không có giờ phải làm; chỉ cần xong trong ngày.
 5. Ghi lên checklist của ngày đã qua: 409.
 6. Mỗi ngày 00:05 (giờ CLB) và một lần khi khởi động, hệ thống chuyển mọi checklist ngày cũ còn `PENDING`/`IN_PROGRESS` sang `INCOMPLETE`. Chạy lại hoặc chạy bù đều cho cùng kết quả.
 7. Việc còn thiếu không dời sang ngày sau.
@@ -118,7 +118,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 ### 6. Sự cố
 
-1. Groom báo sự cố cho ngựa mình phụ trách (403 nếu không phụ trách): mô tả, cờ khẩn, tối đa một ảnh. Ảnh tải lên trước qua `POST /media/upload-requests` với `purpose = INCIDENT_PHOTO` (JPEG, PNG hoặc WebP, tối đa 10 MB), phải do chính người báo tải lên; mỗi ảnh gắn cho tối đa một sự cố (409). Ngựa đã xóa: 404; đã chuyển nhượng hoặc đã mất: 409.
+1. Groom báo sự cố cho ngựa mình phụ trách (403 nếu không phụ trách): mô tả, cờ khẩn, ảnh (tùy chọn, tối đa một). Ảnh tải lên trước qua `POST /media/upload-requests` với `purpose = INCIDENT_PHOTO` (JPEG, PNG hoặc WebP, tối đa 10 MB), phải do chính người báo tải lên; mỗi ảnh gắn cho tối đa một sự cố (409). Ngựa đã xóa: 404; đã chuyển nhượng hoặc đã mất: 409.
 2. Sự cố khẩn: trong cùng transaction hệ thống tạo yêu cầu khám khẩn (nguồn `GROOM_INCIDENT`, gắn sự cố, mô tả lấy từ sự cố); mọi bác sĩ nhận thông báo khẩn như Flow 3.
 3. Sự cố thường: không tạo yêu cầu khám. Head Trainer của khu bấm "Chuyển bác sĩ" thì tạo yêu cầu khám gắn sự cố; tick "Khẩn" thì yêu cầu khám là khẩn và mọi bác sĩ được báo ngay. Mỗi sự cố tối đa một yêu cầu khám.
 4. Sự cố thường còn mở từ 4 giờ trở lên mà chưa chuyển bác sĩ: hệ thống nhắc Head Trainer của khu và mọi Club Manager một lần (kiểm mỗi 30 phút).
@@ -152,6 +152,7 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
    - Tiền tính từ ngày bắt đầu, không phụ thuộc đã xác nhận hay chưa.
 4. Kết thúc sớm (khoản đang tính): đến ngày thành hôm nay, hôm nay vẫn tính phí; khoản chưa bắt đầu hoặc đã kết thúc thì 409. Xóa chỉ khi chưa tới từ ngày; đã bắt đầu thì 409, phải kết thúc sớm. Không sửa nội dung hay số tiền; ghi sai thì xóa (chưa bắt đầu) hoặc kết thúc sớm rồi ghi khoản mới.
 5. Tính tiền theo từng ngày trong khoảng, cùng cách phí ngày: ngày tính cho người là chủ lúc hết ngày, chỉ tính ngày ngựa còn ở CLB lúc hết ngày. Báo cáo chi phí của chủ và báo cáo tài chính CLB có thêm cột `surcharge`, cộng vào `total`.
+   - Báo cáo "định kỳ" của đề: chủ ngựa và Club Manager tự xem báo cáo theo khoảng ngày bất kỳ (`GET /reports/owner/costs`, `GET /reports/club/finance` với `from`, `to`), ví dụ từng tháng. Hệ thống không tự gửi báo cáo theo lịch.
 6. Ghi, xác nhận áp dụng, kết thúc sớm, xóa đều ghi nhật ký (`HORSE_SURCHARGE`).
 
 ### 9. Phân quyền
