@@ -418,6 +418,29 @@ export class TrainingOperationsFacade {
   }
 
   /**
+   * Hủy các lượt đang tập của một con ngựa rồi cập nhật trạng thái các buổi liên quan, chạy trong transaction của nơi gọi
+   *
+   * - Chỉ xét lượt ONGOING; khóa từng lượt theo thứ tự UUID
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param reason Lý do hủy ghi vào từng lượt
+   * @returns Promise trả về số lượt đã hủy
+   */
+  async cancelOngoingParticipants(
+    manager: EntityManager,
+    horseId: string,
+    reason: string,
+  ): Promise<number> {
+    const participants = await manager.find(SessionParticipantEntity, {
+      where: { horseId, status: SessionParticipantStatus.ONGOING },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    return this.cancelLoadedParticipants(manager, participants, reason);
+  }
+
+  /**
    * Hủy các lượt tham gia đã đọc sẵn rồi cập nhật lại trạng thái các buổi liên quan
    *
    * - Chuyển từng lượt sang CANCELLED kèm lý do, lưu một lần nếu có lượt nào

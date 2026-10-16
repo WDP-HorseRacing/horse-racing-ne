@@ -113,6 +113,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 8. Buổi đã tới giờ: lượt mở cuối cùng xong hoặc vắng thì buổi đóng ngay. Buổi đã tới giờ mà không còn lượt mở thì hệ thống tự đóng trong vòng một phút: có lượt đã diễn ra (hoàn thành, vắng, bỏ qua) thì Hoàn thành, không thì Hủy với lý do "Không còn ngựa tham gia".
 9. Khung giờ thao tác (ví dụ buổi 15:00–16:00): điểm danh và báo vắng từ 30 phút trước giờ bắt đầu (14:30); báo sẵn sàng và bắt đầu từ 15 phút trước (14:45); tất cả đóng lúc hết giờ buổi (16:00). Ngoài khung giờ trả 409 kèm giờ mở hoặc giờ đóng. Hoàn thành lượt đang tập không giới hạn giờ.
 10. Buổi đã hết giờ mà còn lượt chưa tập: trong vòng một phút hệ thống chuyển lượt Chờ điểm danh thành Vắng (lý do "Hết giờ, chưa điểm danh"), lượt Có mặt hoặc Sẵn sàng thành Bỏ qua (`SKIPPED`); lượt Đang tập giữ nguyên. Sau đó buổi đóng theo luật 8.
+11. Lượt Đang tập bị quên: buổi đã quá giờ kết thúc từ 30 phút trở lên thì trong vòng một phút hệ thống chuyển lượt Đang tập thành Hoàn thành, thời điểm hoàn thành = giờ kết thúc dự kiến của buổi, nhật ký ghi người thao tác trống, lý do "Hệ thống tự hoàn thành"; buổi đóng như thường.
+12. Ngựa được ghi nhận đã mất khi đang tập: lượt Đang tập bị hủy, lý do "Ngựa đã mất", buổi đóng như thường. Giải nghệ hoặc chuyển nhượng khi ngựa đang tập: 409, chờ hoàn thành lượt tập trước.
 11. Tab buổi tập của ngựa (`GET /horses/:horseId/training/sessions`): `when=upcoming` là lượt còn mở (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) bất kể giờ, cùng lượt Không đủ điều kiện của buổi chưa tới giờ; `when=history` là lượt đã kết thúc, kể cả lượt chạy xong trước giờ lịch. Lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ không nằm ở tab nào.
 
 ### 6. Nhịp tim và tốc độ (dữ liệu giả lập)

@@ -6,3 +6,9 @@ export const START_OPENS_BEFORE_MS = 15 * 60 * 1000;
 
 /** Lý do vắng ghi vào lượt chưa điểm danh khi buổi tập đã hết giờ */
 export const MISSED_CHECK_IN_REASON = 'Hết giờ, chưa điểm danh';
+
+/** Lượt đang tập được hệ thống tự hoàn thành khi buổi đã quá giờ kết thúc một khoảng (ms): 30 phút */
+export const STUCK_RUN_GRACE_MS = 30 * 60 * 1000;
+
+/** Lý do ghi nhật ký khi hệ thống tự hoàn thành lượt đang tập bị quên */
+export const AUTO_COMPLETED_RUN_REASON = 'Hệ thống tự hoàn thành';

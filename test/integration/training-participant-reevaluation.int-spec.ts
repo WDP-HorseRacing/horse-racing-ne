@@ -5,6 +5,7 @@ import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.e
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
 import { ParticipantEligibilityListener } from '../../src/modules/training/training-sessions/participant-eligibility.listener';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { SessionAutoCloseService } from '../../src/modules/training/training-sessions/session-auto-close.service';
 import { fixtures } from './fixtures';
 import {
@@ -32,7 +33,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
     seed = fixtures(dataSource);
     facade = new TrainingOperationsFacade();
     listener = new ParticipantEligibilityListener(dataSource, facade);
-    job = new SessionAutoCloseService(dataSource, facade);
+    job = new SessionAutoCloseService(dataSource, facade, new AuditService());
   });
 
   afterAll(() => stopTestPostgres(db));
@@ -303,6 +304,66 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
         status: 'CANCELLED',
         cancel_reason: 'Không còn ngựa tham gia',
       });
+    });
+  });
+
+  describe('stuck ongoing runs', () => {
+    it('completes an ongoing run 30 minutes after its session ended, at the session end, and closes the session', async () => {
+      const winx = await horse();
+      const stuck = await session(-1.6);
+      const fresh = await session(-1.4);
+      const stuckRun = await participant(stuck, winx, 'ONGOING');
+      const blue = await horse();
+      const freshRun = await participant(fresh, blue, 'ONGOING');
+
+      await job.runEveryMinute();
+
+      const [run] = await dataSource.query<
+        Array<{ status: string; completed_at: Date; end_at: Date }>
+      >(
+        `SELECT p.status, p.completed_at, s.scheduled_end_at AS end_at
+           FROM session_participants p JOIN training_sessions s ON s.id = p.session_id
+          WHERE p.id = $1`,
+        [stuckRun],
+      );
+      expect(run.status).toBe('COMPLETED');
+      expect(run.completed_at.toISOString()).toBe(run.end_at.toISOString());
+      expect((await sessionRow(stuck)).status).toBe('COMPLETED');
+      expect((await participantRow(freshRun)).status).toBe('ONGOING');
+      await expect(
+        dataSource.query(
+          'SELECT actor_id, before_data, after_data, reason FROM audit_logs WHERE entity_id = $1',
+          [stuckRun],
+        ),
+      ).resolves.toEqual([
+        {
+          actor_id: null,
+          before_data: { status: 'ONGOING' },
+          after_data: { status: 'COMPLETED' },
+          reason: 'Hệ thống tự hoàn thành',
+        },
+      ]);
+    });
+
+    it('cancels the ongoing run of a horse that dies and lets its session close', async () => {
+      const winx = await horse();
+      const running = await session(-0.5);
+      const run = await participant(running, winx, 'ONGOING');
+
+      const cancelled = await dataSource.transaction((manager) =>
+        facade.cancelOngoingParticipants(manager, winx.horseId, 'Ngựa đã mất'),
+      );
+
+      expect(cancelled).toBe(1);
+      await expect(
+        dataSource.query(
+          'SELECT status, cancel_reason FROM session_participants WHERE id = $1',
+          [run],
+        ),
+      ).resolves.toEqual([
+        { status: 'CANCELLED', cancel_reason: 'Ngựa đã mất' },
+      ]);
+      expect(await sessionRow(running)).toMatchObject({ status: 'CANCELLED' });
     });
   });
 

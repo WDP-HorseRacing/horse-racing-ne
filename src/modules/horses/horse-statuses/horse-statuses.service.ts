@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource, EntityManager } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -88,6 +88,26 @@ interface LifecycleFieldChanges {
   after: { barnId?: null; healthStatus?: HorseHealthStatus };
 }
 
+/** Câu báo khi giải nghệ hoặc chuyển nhượng lúc ngựa đang tập */
+const ONGOING_RUN_LIFECYCLE_MESSAGE =
+  'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng';
+
+/** Lý do hủy lượt đang tập khi ghi nhận ngựa mất */
+const DECEASED_RUN_CANCEL_REASON = 'Ngựa đã mất';
+
+/**
+ * Kiểm vòng đời đích có bị chặn khi ngựa đang tập không
+ *
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @returns true nếu là giải nghệ hoặc chuyển nhượng
+ */
+function blocksOngoingRun(to: HorseLifecycleStatus): boolean {
+  return (
+    to === HorseLifecycleStatus.RETIRED ||
+    to === HorseLifecycleStatus.TRANSFERRED
+  );
+}
+
 @Injectable()
 export class HorseStatusesService {
   constructor(
@@ -116,7 +136,8 @@ export class HorseStatusesService {
    * - Ngựa đã mất: mọi lần đổi vòng đời bị chặn 409
    * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe; từ chuyển nhượng thì sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu", và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bỏ trống chủ và đóng giai đoạn sở hữu của chủ cũ (khóa chia sẻ row tài khoản chủ khi kiểm)
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
-   * - Ngựa đang tập hoặc đang đua vẫn đổi được
+   * - Giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt tập ONGOING: 409
+   * - Ghi nhận đã mất khi ngựa đang có lượt tập ONGOING: lượt đó bị hủy với lý do "Ngựa đã mất" (ongoingRunsCancelled trong nhật ký); đang đua vẫn đổi được
    * - Bắt buộc lý do; ghi nhật ký kèm lý do. Gửi đúng trạng thái hiện tại thì không đổi gì
    * - Nhật ký ghi thêm hệ quả thực sự xảy ra: số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, incidentsClosed, raceRegistrationsWithdrawn, chủ bị bỏ trống (ownerId); hệ quả không chạy thì không có key
    * - Hồ sơ đã xóa: Club Manager nhận 409, phải khôi phục trước (qua HorseAccessService.lockWritableHorse)
@@ -128,7 +149,7 @@ export class HorseStatusesService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
    * @throws BadRequestException Nếu thiếu, thừa hoặc sai ngày mất
-   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), không được chuyển giữa hai trạng thái, ngựa đã mất, hoặc chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), không được chuyển giữa hai trạng thái, ngựa đã mất, chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở, hoặc giải nghệ hay chuyển nhượng khi ngựa đang tập
    */
   async updateLifecycle(
     actor: Actor,
@@ -310,6 +331,20 @@ export class HorseStatusesService {
       body.lifecycleStatus === HorseLifecycleStatus.DECEASED
         ? { dateOfDeath: body.dateOfDeath }
         : {};
+    if (
+      blocksOngoingRun(body.lifecycleStatus) &&
+      (await this.training.hasOngoingParticipant(manager, id))
+    ) {
+      throw new ConflictException(ONGOING_RUN_LIFECYCLE_MESSAGE);
+    }
+    const ongoingRunsCancelled =
+      body.lifecycleStatus === HorseLifecycleStatus.DECEASED
+        ? await this.training.cancelOngoingParticipants(
+            manager,
+            id,
+            DECEASED_RUN_CANCEL_REASON,
+          )
+        : 0;
     // Lấy các ảnh hưởng của việc truyển status
     const effects = lifecycleSideEffects(
       horse.lifecycleStatus,
@@ -360,6 +395,7 @@ export class HorseStatusesService {
         ...dateOfDeath,
         ...fields.after,
         ...applied.after,
+        ...(ongoingRunsCancelled > 0 && { ongoingRunsCancelled }),
       },
       reason: body.reason,
       feature: HORSE_AUDIT_FEATURE.LIFECYCLE_AND_DELETION,
@@ -536,6 +572,12 @@ export class HorseStatusesService {
     if (from === to) return LIFECYCLE_ALREADY_IN_STATUS_MESSAGE;
     const transitionError = lifecycleTransitionError(from, to);
     if (transitionError !== null) return transitionError;
+    if (
+      blocksOngoingRun(to) &&
+      (await this.training.hasOngoingParticipant(manager, id))
+    ) {
+      return ONGOING_RUN_LIFECYCLE_MESSAGE;
+    }
     // Nếu không phải chuyển nhượng
     if (!effects.settleMedicalWork || !isReadOnlyLifecycle(to)) return null;
     return this.medicalLifecycle.readOnlyBlockReason(id, to, manager);

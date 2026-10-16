@@ -631,7 +631,7 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
    - Hồ sơ đã xóa không đổi vòng đời được, kể cả mở bảng xem trước hệ quả; CLUB MANAGER phải khôi phục hồ sơ trước. *(BA chốt)*
 5. Mọi thao tác trong chức năng này bắt buộc nhập lý do, phải hiện bảng liệt kê hệ quả để xác nhận trước khi thực hiện, và phải thành công hoặc thất bại cùng nhau (Atomic).
 6. Ghi nhật ký thao tác kèm lý do.
-7. Buổi tập đang diễn ra lúc ngựa giải nghệ, chuyển nhượng hoặc mất: giữ lại buổi đó, chỉ hủy các buổi chưa diễn ra. *(BA chốt)*
+7. Buổi tập đang diễn ra lúc đổi vòng đời: giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt Đang tập bị chặn 409 ("Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng"), xem trước cũng báo lý do này; ghi nhận đã mất thì lượt Đang tập bị hủy với lý do "Ngựa đã mất" (nhật ký ghi `ongoingRunsCancelled`). Các buổi chưa diễn ra bị hủy như trước.
 
 ### Bảng use case
 

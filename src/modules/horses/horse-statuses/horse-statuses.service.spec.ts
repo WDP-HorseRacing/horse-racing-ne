@@ -54,7 +54,11 @@ describe('HorseStatusesService', () => {
   let statuses: {
     lifecycleImpact: jest.Mock;
   };
-  let training: { withdrawHorseFromClasses: jest.Mock };
+  let training: {
+    withdrawHorseFromClasses: jest.Mock;
+    hasOngoingParticipant: jest.Mock;
+    cancelOngoingParticipants: jest.Mock;
+  };
   let access: {
     currentUser: jest.Mock;
     lockWritableHorse: jest.Mock;
@@ -141,6 +145,8 @@ describe('HorseStatusesService', () => {
         classIds: ['c1', 'c2'],
         participantsCancelled: 5,
       }),
+      hasOngoingParticipant: jest.fn().mockResolvedValue(false),
+      cancelOngoingParticipants: jest.fn().mockResolvedValue(0),
     };
     access = {
       currentUser: jest.fn().mockResolvedValue({ id: CALLER_ID }),
@@ -683,7 +689,43 @@ describe('HorseStatusesService', () => {
     });
 
     it.each([HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.TRANSFERRED])(
-      'allows %s even while the horse is training or racing (BA 2026-09-23)',
+      'refuses %s with 409 while the horse has an ongoing run, and writes nothing',
+      async (to) => {
+        training.hasOngoingParticipant.mockResolvedValue(true);
+
+        await expect(change(to)).rejects.toThrow(
+          new ConflictException(
+            'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng',
+          ),
+        );
+        expectNoWrite();
+      },
+    );
+
+    it('cancels the ongoing run when recording a death and logs how many', async () => {
+      training.cancelOngoingParticipants.mockResolvedValue(1);
+
+      await service.updateLifecycle(actor, HORSE_ID, {
+        lifecycleStatus: HorseLifecycleStatus.DECEASED,
+        reason: 'Đột quỵ',
+        dateOfDeath: '2026-01-02',
+      });
+
+      expect(training.cancelOngoingParticipants).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+        'Ngựa đã mất',
+      );
+      const afters = (
+        audit.record.mock.calls as Array<[unknown, { after: unknown }]>
+      ).map(([, entry]) => entry.after);
+      expect(afters).toContainEqual(
+        expect.objectContaining({ ongoingRunsCancelled: 1 }),
+      );
+    });
+
+    it.each([HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.TRANSFERRED])(
+      'allows %s while the horse is racing but not training',
       async (to) => {
         await change(to);
         expect(training.withdrawHorseFromClasses).toHaveBeenCalled();
@@ -842,9 +884,21 @@ describe('HorseStatusesService', () => {
       );
     });
 
-    it('allows retiring in the preview while the horse is training or racing', async () => {
+    it('allows retiring in the preview while the horse is racing', async () => {
       await expect(preview(HorseLifecycleStatus.RETIRED)).resolves.toEqual(
         expect.objectContaining({ allowed: true, blockedReason: null }),
+      );
+    });
+
+    it('blocks retiring in the preview while the horse has an ongoing run', async () => {
+      training.hasOngoingParticipant.mockResolvedValue(true);
+
+      await expect(preview(HorseLifecycleStatus.RETIRED)).resolves.toEqual(
+        expect.objectContaining({
+          allowed: false,
+          blockedReason:
+            'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng',
+        }),
       );
     });
 
