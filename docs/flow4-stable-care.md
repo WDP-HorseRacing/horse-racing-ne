@@ -48,6 +48,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 | Việc riêng của ngựa | `horse_daily_tasks` | Head Trainer của khu | Việc phát sinh một ngày thì từ ngày = đến ngày. |
 | Checklist | `daily_checklists`, `daily_checklist_items` | Hệ thống sinh, Groom tick | Mỗi ngựa mỗi ngày một checklist. |
 | Sự cố | `incidents` | Groom báo, Head Trainer của khu xử lý | `OPEN` → `RESOLVED`. |
+| Phụ phí chăm sóc riêng | `horse_surcharges` | Club Manager ghi; Head Trainer xác nhận đã áp dụng | Chữ mô tả tự do + phí một ngày + từ ngày, đến ngày. Không nối tự động với khẩu phần hay việc riêng. |
 
 "Ngày" luôn tính theo lịch CLB (giờ Việt Nam), giống Flow 2.
 
@@ -141,7 +142,19 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
 
-### 8. Phân quyền
+### 8. Phụ phí chăm sóc riêng
+
+1. Chi phí nuôi dưỡng của chủ = phí ngày chung của CLB + phụ phí chăm sóc riêng của từng ngựa + chi phí y tế. Không có gói.
+2. Chủ muốn ngựa được chăm khác (thức ăn tốt hơn, ngâm đá mỗi ngày...) thì thỏa thuận với CLB; Club Manager ghi phụ phí cho ngựa: nội dung (chữ tự do, tối đa 500 ký tự), phí một ngày (> 0), từ ngày, đến ngày. Từ ngày không ở quá khứ, đến ngày không trước từ ngày (400). Ngựa phải còn ở CLB (đang hoạt động hoặc giải nghệ), không thì 409.
+3. Ghi xong hệ thống báo Head Trainer khu của ngựa (ngựa chưa xếp khu hoặc khu chưa có Head Trainer hoạt động thì không ai nhận, không chặn ghi). Head Trainer tự sắp xếp theo nội dung (sửa khẩu phần, gắn việc riêng, hoặc việc ngoài hệ thống), rồi bấm "Đã áp dụng" (`POST /horse-surcharges/:id/apply`): chỉ Head Trainer khu hiện tại của ngựa (403), mỗi khoản xác nhận một lần, khoản đã kết thúc thì 409. Hệ thống lưu ai xác nhận, lúc nào; không tự kiểm từng mục của nội dung.
+   - Ngựa chuyển khu không làm mất xác nhận: khẩu phần và việc riêng gắn với con ngựa nên vẫn còn ở khu mới.
+   - Club Manager xem các khoản chưa áp dụng, chưa kết thúc (`GET /horse-surcharges/unapplied`) kèm tên ngựa, khu hiện tại và Head Trainer đang phụ trách (null là chưa xếp khu hoặc chưa có Head Trainer), để xếp khu hoặc nhắc Head Trainer.
+   - Tiền tính từ ngày bắt đầu, không phụ thuộc đã xác nhận hay chưa.
+4. Kết thúc sớm (khoản đang tính): đến ngày thành hôm nay, hôm nay vẫn tính phí; khoản chưa bắt đầu hoặc đã kết thúc thì 409. Xóa chỉ khi chưa tới từ ngày; đã bắt đầu thì 409, phải kết thúc sớm. Không sửa nội dung hay số tiền; ghi sai thì xóa (chưa bắt đầu) hoặc kết thúc sớm rồi ghi khoản mới.
+5. Tính tiền theo từng ngày trong khoảng, cùng cách phí ngày: ngày tính cho người là chủ lúc hết ngày, chỉ tính ngày ngựa còn ở CLB lúc hết ngày. Báo cáo chi phí của chủ và báo cáo tài chính CLB có thêm cột `surcharge`, cộng vào `total`.
+6. Ghi, xác nhận áp dụng, kết thúc sớm, xóa đều ghi nhật ký (`HORSE_SURCHARGE`).
+
+### 9. Phân quyền
 
 | Thao tác | CM | HT | VET | GROOM | OWNER |
 |---|---|---|---|---|---|
@@ -161,6 +174,9 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
 | Báo sự cố | Không | Không | Không | Ngựa mình phụ trách | Không |
 | Xem sự cố | Tất cả | Ngựa thuộc khu mình | Tất cả | Sự cố mình báo | Không |
 | Chuyển bác sĩ, đóng sự cố | Không | Ngựa thuộc khu mình | Không | Không | Không |
+| Xem phụ phí của ngựa | Tất cả | Ngựa thuộc khu mình | Không | Không | Ngựa của mình |
+| Ghi, kết thúc sớm, xóa phụ phí; xem khoản chưa áp dụng | Có | Không | Không | Không | Không |
+| Xác nhận đã áp dụng phụ phí | Không | Ngựa thuộc khu mình | Không | Không | Không |
 
 Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng thái: 409.
 
@@ -203,6 +219,12 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | GET | `/incidents/:id` | theo quyền xem | Một sự cố, kèm trạng thái yêu cầu khám |
 | POST | `/incidents/:id/refer` | HT | Chuyển bác sĩ: tạo yêu cầu khám `{ urgent? }` |
 | POST | `/incidents/:id/resolve` | HT | Đóng `{ resolution }` |
+| GET | `/horses/:horseId/surcharges` | CM, HT (khu mình), OWNER (ngựa mình) | Phụ phí của ngựa |
+| POST | `/horses/:horseId/surcharges` | CM | Ghi phụ phí `{ description, dailyAmount, startDate, endDate }` |
+| GET | `/horse-surcharges/unapplied` | CM | Khoản chưa được Head Trainer xác nhận |
+| POST | `/horse-surcharges/:id/apply` | HT (khu hiện tại của ngựa) | Xác nhận đã áp dụng |
+| POST | `/horse-surcharges/:id/end` | CM | Kết thúc sớm |
+| DELETE | `/horse-surcharges/:id` | CM | Xóa khoản chưa bắt đầu |
 
 Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 

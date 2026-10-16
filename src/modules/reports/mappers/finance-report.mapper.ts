@@ -9,6 +9,7 @@ import type {
   MedicalChargeRow,
   ReportPeriod,
   SupplyValueRow,
+  SurchargeRow,
 } from '../types/report.types';
 
 /**
@@ -18,6 +19,7 @@ export interface FinanceSource {
   period: ReportPeriod;
   dailyFees: DailyFeeRow[];
   medicalCharges: MedicalChargeRow[];
+  surcharges: SurchargeRow[];
 }
 
 /**
@@ -26,7 +28,7 @@ export interface FinanceSource {
  * - Mỗi ngựa có ít nhất một ngày còn ở CLB dưới tên chủ trong kỳ, hoặc có bệnh án của chủ đóng trong kỳ, một dòng; kể cả khi không phát sinh chi phí
  *
  * @param owner Chủ của báo cáo
- * @param source Phí ngày và chi phí y tế của chủ trong kỳ
+ * @param source Phí ngày, chi phí y tế và phụ phí của chủ trong kỳ
  * @returns OwnerCostResponseDto
  */
 export function toOwnerCost(
@@ -35,10 +37,9 @@ export function toOwnerCost(
 ): OwnerCostResponseDto {
   const horses = [
     ...new Map(
-      [...source.dailyFees, ...source.medicalCharges].map((row) => [
-        row.horseId,
-        row.horseName,
-      ]),
+      [...source.dailyFees, ...source.medicalCharges, ...source.surcharges].map(
+        (row) => [row.horseId, row.horseName],
+      ),
     ),
   ]
     .map(([horseId, horseName]): OwnerCostHorseDto => {
@@ -48,6 +49,11 @@ export function toOwnerCost(
       );
       const dailyFee = sumOf(fee.map((row) => row.dailyFee));
       const medicalCost = sumOf(medical.map((row) => row.medicalCost));
+      const surcharge = sumOf(
+        source.surcharges
+          .filter((row) => row.horseId === horseId)
+          .map((row) => row.surcharge),
+      );
       return {
         horseId,
         horseName,
@@ -55,7 +61,8 @@ export function toOwnerCost(
         dailyFee,
         caseCount: medical.reduce((sum, row) => sum + row.caseCount, 0),
         medicalCost,
-        total: dailyFee + medicalCost,
+        surcharge,
+        total: dailyFee + medicalCost + surcharge,
       };
     })
     .sort(
@@ -65,6 +72,7 @@ export function toOwnerCost(
     );
   const dailyFee = sumOf(horses.map((horse) => horse.dailyFee));
   const medicalCost = sumOf(horses.map((horse) => horse.medicalCost));
+  const surcharge = sumOf(horses.map((horse) => horse.surcharge));
   return {
     ownerId: owner.id,
     ownerName: owner.fullName,
@@ -72,7 +80,8 @@ export function toOwnerCost(
     to: source.period.to,
     dailyFee,
     medicalCost,
-    total: dailyFee + medicalCost,
+    surcharge,
+    total: dailyFee + medicalCost + surcharge,
     prizeMoney: 0,
     horses,
   };
@@ -84,7 +93,7 @@ export function toOwnerCost(
  * - Chi phí y tế toàn CLB gồm cả bệnh án đóng lúc ngựa không có chủ; bảng từng chủ chỉ cộng bệnh án của chủ đó
  * - Bảng từng chủ gồm mọi chủ có ngựa còn ở CLB trong kỳ hoặc có bệnh án đóng trong kỳ, sắp theo tên
  *
- * @param source Phí ngày và chi phí y tế của mọi chủ trong kỳ
+ * @param source Phí ngày, chi phí y tế và phụ phí của mọi chủ trong kỳ
  * @param supplies Giá trị vật tư nhập vào và đã dùng trong kỳ
  * @returns ClubFinanceResponseDto
  */
@@ -94,7 +103,11 @@ export function toClubFinance(
 ): ClubFinanceResponseDto {
   const owners = [
     ...new Map(
-      [...source.dailyFees, ...source.medicalCharges].flatMap((row) =>
+      [
+        ...source.dailyFees,
+        ...source.medicalCharges,
+        ...source.surcharges,
+      ].flatMap((row) =>
         row.ownerId === null ? [] : [[row.ownerId, row.ownerName ?? '']],
       ),
     ),
@@ -114,22 +127,34 @@ export function toClubFinance(
           .filter((row) => row.ownerId === ownerId)
           .map((row) => row.medicalCost),
       );
+      const surcharge = sumOf(
+        source.surcharges
+          .filter((row) => row.ownerId === ownerId)
+          .map((row) => row.surcharge),
+      );
       return {
         ownerId,
         ownerName,
         dailyFee,
         medicalCost,
-        total: dailyFee + medicalCost,
+        surcharge,
+        total: dailyFee + medicalCost + surcharge,
       };
     });
   const dailyFee = sumOf(source.dailyFees.map((row) => row.dailyFee));
   const medicalCost = sumOf(
     source.medicalCharges.map((row) => row.medicalCost),
   );
+  const surcharge = sumOf(source.surcharges.map((row) => row.surcharge));
   return {
     from: source.period.from,
     to: source.period.to,
-    ownerCharges: { dailyFee, medicalCost, total: dailyFee + medicalCost },
+    ownerCharges: {
+      dailyFee,
+      medicalCost,
+      surcharge,
+      total: dailyFee + medicalCost + surcharge,
+    },
     supplies: {
       purchased: Number(supplies.purchased),
       used: Number(supplies.used),

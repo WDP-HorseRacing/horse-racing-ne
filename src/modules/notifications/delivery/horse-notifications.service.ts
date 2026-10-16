@@ -22,6 +22,7 @@ import type {
   IncidentReportedEvent,
   IncidentStaleEvent,
 } from '../../stable/types/stable-events.types';
+import type { SurchargeAddedEvent } from '../../billing/types/billing-events.types';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { horseResource } from '../mappers/notification.mapper';
@@ -189,6 +190,28 @@ export class HorseNotificationsService {
       priority: NotificationPriority.NORMAL,
       title: 'Có việc mới hôm nay',
       message: `Ngựa ${horseName} có thêm việc "${notice.taskName}" trong checklist hôm nay.`,
+      resource: horseResource(notice.horseId),
+    });
+  }
+
+  /**
+   * Báo Head Trainer của khu chứa ngựa có phụ phí chăm sóc riêng mới, để chỉnh khẩu phần và việc riêng theo nội dung
+   *
+   * - Ngựa không có khu hoặc khu không có Head Trainer đang hoạt động thì không gửi
+   *
+   * @param notice Payload do module billing phát khi Club Manager ghi phụ phí
+   * @returns Promise trả về id các thông báo đã gửi; không gửi thì trả mảng rỗng
+   */
+  async notifySurchargeAdded(notice: SurchargeAddedEvent): Promise<string[]> {
+    const horse = await this.recipients.findHorseBarnContact(notice.horseId);
+    if (!horse?.headTrainerId) return [];
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds: [horse.headTrainerId],
+      category: NotificationCategory.SURCHARGE,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa có chế độ chăm sóc riêng',
+      message: `Ngựa ${horse.horseName} từ ${toDisplayDate(notice.startDate)} đến ${toDisplayDate(notice.endDate)}: ${notice.description}`,
       resource: horseResource(notice.horseId),
     });
   }

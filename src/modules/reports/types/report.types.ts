@@ -142,6 +142,17 @@ export interface DailyFeeRow {
 }
 
 /**
+ * Phụ phí chăm sóc riêng của một con ngựa trong kỳ, tính cho chủ lúc hết từng ngày, đọc từ DB
+ */
+export interface SurchargeRow {
+  ownerId: string;
+  ownerName: string;
+  horseId: string;
+  horseName: string;
+  surcharge: string;
+}
+
+/**
  * Chi phí các bệnh án đã đóng của một con ngựa trong kỳ, tính cho chủ lúc đóng, đọc từ DB
  */
 export interface MedicalChargeRow {

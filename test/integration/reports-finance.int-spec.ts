@@ -138,6 +138,17 @@ describe('Reports finance (Postgres)', () => {
       );
     }
 
+    for (const [horseId, amount, start, end] of [
+      [gio, 50000, '2026-10-08', '2026-10-11'],
+      [may, 30000, '2026-10-07', '2026-10-10'],
+    ] as const) {
+      await dataSource.query(
+        `INSERT INTO horse_surcharges (version, horse_id, description, daily_amount, start_date, end_date, created_by)
+         VALUES (1, $1, 'Chăm riêng', $2, $3, $4, $5)`,
+        [horseId, amount, start, end, managerId],
+      );
+    }
+
     const closed = (horseId: string, closedAt: string, totalCost: number) =>
       seed.medicalCase(horseId, vet, {
         status: MedicalCaseStatus.CLOSED,
@@ -211,7 +222,8 @@ describe('Reports finance (Postgres)', () => {
       to: '2026-10-12',
       dailyFee: 1200000,
       medicalCost: 1000000,
-      total: 2200000,
+      surcharge: 160000,
+      total: 2360000,
       prizeMoney: 0,
       horses: [
         {
@@ -221,7 +233,8 @@ describe('Reports finance (Postgres)', () => {
           dailyFee: 700000,
           caseCount: 1,
           medicalCost: 1000000,
-          total: 1700000,
+          surcharge: 100000,
+          total: 1800000,
         },
         {
           horseId: may,
@@ -230,7 +243,8 @@ describe('Reports finance (Postgres)', () => {
           dailyFee: 500000,
           caseCount: 0,
           medicalCost: 0,
-          total: 500000,
+          surcharge: 60000,
+          total: 560000,
         },
       ],
     });
@@ -246,7 +260,8 @@ describe('Reports finance (Postgres)', () => {
       ownerName: 'Bình',
       dailyFee: 600000,
       medicalCost: 2000000,
-      horses: [{ horseName: 'Gió', billedDays: 3 }],
+      surcharge: 100000,
+      horses: [{ horseName: 'Gió', billedDays: 3, surcharge: 100000 }],
     });
     await expect(service.ownerCost(manager, period)).rejects.toBeInstanceOf(
       BadRequestException,
@@ -315,7 +330,8 @@ describe('Reports finance (Postgres)', () => {
       ownerCharges: {
         dailyFee: 1800000,
         medicalCost: 3300000,
-        total: 5100000,
+        surcharge: 260000,
+        total: 5360000,
       },
       supplies: { purchased: 150833, used: 45000 },
       prizeMoney: 0,
@@ -325,14 +341,16 @@ describe('Reports finance (Postgres)', () => {
           ownerName: 'An',
           dailyFee: 1200000,
           medicalCost: 1000000,
-          total: 2200000,
+          surcharge: 160000,
+          total: 2360000,
         },
         {
           ownerId: bId,
           ownerName: 'Bình',
           dailyFee: 600000,
           medicalCost: 2000000,
-          total: 2600000,
+          surcharge: 100000,
+          total: 2700000,
         },
       ],
     });

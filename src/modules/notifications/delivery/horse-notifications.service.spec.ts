@@ -354,6 +354,46 @@ describe('HorseNotificationsService.notifyIncidentReported', () => {
   });
 });
 
+describe('HorseNotificationsService.notifySurchargeAdded', () => {
+  const notice = {
+    eventId: 'surcharge-1',
+    horseId: 'horse-1',
+    description: 'Thức ăn loại 1',
+    startDate: '2026-11-01',
+    endDate: '2026-11-30',
+  };
+
+  it('tells the barn head trainer what care the horse now gets', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseBarnContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'trainer-1',
+    });
+
+    await service.notifySurchargeAdded(notice);
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'surcharge-1',
+        recipientIds: ['trainer-1'],
+        category: NotificationCategory.SURCHARGE,
+        message: 'Ngựa Sao Mai từ 01/11/2026 đến 30/11/2026: Thức ăn loại 1',
+      }),
+    );
+  });
+
+  it('sends nothing when the barn has no head trainer', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseBarnContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+    });
+
+    await expect(service.notifySurchargeAdded(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
 describe('HorseNotificationsService.notifyIncidentStale', () => {
   const notice = {
     eventId: 'stale-1',

@@ -10,6 +10,7 @@ import type {
   MedicalChargeRow,
   ReportPeriod,
   SupplyValueRow,
+  SurchargeRow,
 } from '../types/report.types';
 
 const ON_SITE_STATUSES = [
@@ -76,6 +77,68 @@ export class FinanceReportsRepository {
             ORDER BY f.effective_from DESC
             LIMIT 1
          ) fee ON TRUE
+        WHERE COALESCE(
+                (SELECT a.after_data->>'lifecycleStatus' FROM audit_logs a
+                  WHERE a.entity_type = $5
+                    AND a.entity_id = o.horse_id
+                    AND a.after_data ? 'lifecycleStatus'
+                    AND a.created_at < days.at
+                  ORDER BY a.created_at DESC
+                  LIMIT 1),
+                h.lifecycle_status
+              ) = ANY($6::text[])
+          ${ownerId ? 'AND o.owner_id = $7' : ''}
+        GROUP BY 1, 2, 3, 4`,
+      params,
+    );
+  }
+
+  /**
+   * Tính phụ phí chăm sóc riêng theo từng chủ và con ngựa trong kỳ
+   *
+   * - Mỗi ngày (lịch CLB) của kỳ, không quá ngày của asOf, nằm trong khoảng ngày của một khoản phụ phí thì cộng phí ngày của khoản đó
+   * - Ngày được tính cho người đang là chủ lúc hết ngày, chỉ khi ngựa còn ở CLB lúc hết ngày; cùng cách xét như dailyFees
+   * - Bỏ hồ sơ ngựa đang bị xóa; ngựa không có phụ phí trong kỳ thì không có dòng
+   *
+   * @param period Khoảng ngày của báo cáo
+   * @param asOf Thời điểm hiện tại
+   * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi chủ
+   * @returns Promise trả về tên và tổng phụ phí theo chủ và ngựa
+   */
+  surcharges(
+    period: ReportPeriod,
+    asOf: Date,
+    ownerId?: string,
+  ): Promise<SurchargeRow[]> {
+    const params: unknown[] = [
+      period.from,
+      period.to,
+      asOf,
+      CLUB_TIME_ZONE,
+      AuditEntityType.HORSE,
+      ON_SITE_STATUSES,
+    ];
+    if (ownerId) params.push(ownerId);
+    return this.dataSource.query(
+      `WITH days AS (
+         SELECT d::date AS day,
+                LEAST(((d::date + 1)::timestamp AT TIME ZONE $4), $3::timestamptz) AS at
+           FROM generate_series($1::date, LEAST($2::date, ($3::timestamptz AT TIME ZONE $4)::date), interval '1 day') d
+       )
+       SELECT o.owner_id AS "ownerId",
+              u.full_name AS "ownerName",
+              o.horse_id AS "horseId",
+              h.name AS "horseName",
+              SUM(s.daily_amount)::text AS "surcharge"
+         FROM days
+         JOIN horse_surcharges s
+           ON days.day BETWEEN s.start_date AND s.end_date
+         JOIN horse_ownerships o
+           ON o.horse_id = s.horse_id
+          AND o.started_at < days.at
+          AND (o.ended_at IS NULL OR o.ended_at >= days.at)
+         JOIN horses h ON h.id = o.horse_id AND h.deleted_at IS NULL
+         JOIN users u ON u.id = o.owner_id
         WHERE COALESCE(
                 (SELECT a.after_data->>'lifecycleStatus' FROM audit_logs a
                   WHERE a.entity_type = $5

@@ -34,6 +34,7 @@ import { NotificationRecipientsRepository } from './notification-recipients.repo
 import { PushChannel } from './push.channel';
 import { RealtimeChannel } from './realtime.channel';
 import { SupplyEventsListener } from './supply-events.listener';
+import { SurchargeAddedListener } from './surcharge-added.listener';
 import { SupplyNotificationsService } from './supply-notifications.service';
 
 @Module({
@@ -70,6 +71,7 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     GroomAssignmentChangedListener,
     ChecklistTaskAddedListener,
     IncidentReportedListener,
+    SurchargeAddedListener,
     IncidentStaleListener,
     MedicalEventsListener,
     PerformanceNotificationsService,

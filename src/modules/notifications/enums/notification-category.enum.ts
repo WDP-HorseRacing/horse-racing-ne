@@ -15,6 +15,7 @@
  * - DAILY_CHECKLIST: có việc mới trong checklist chăm sóc hôm nay
  * - INCIDENT: Groom báo sự cố tại chuồng
  * - SUPPLY: đề xuất bổ sung vật tư mới, đổi trạng thái, hoặc vật tư sắp hết
+ * - SURCHARGE: ngựa có phụ phí chăm sóc riêng mới
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -31,4 +32,5 @@ export enum NotificationCategory {
   DAILY_CHECKLIST = 'DAILY_CHECKLIST',
   INCIDENT = 'INCIDENT',
   SUPPLY = 'SUPPLY',
+  SURCHARGE = 'SURCHARGE',
 }

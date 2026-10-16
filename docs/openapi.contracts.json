@@ -100,6 +100,7 @@
                 "HORSE_CARE_TASK",
                 "CHECKLIST_ITEM",
                 "DAILY_FEE",
+                "HORSE_SURCHARGE",
                 "REFRESH_SESSION"
               ]
             }
@@ -522,6 +523,220 @@
           }
         ],
         "summary": "Xóa mức phí chưa có hiệu lực",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/horses/{horseId}/surcharges": {
+      "get": {
+        "operationId": "HorseSurchargesController_list",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorseSurchargeResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Phụ phí chăm sóc riêng của ngựa",
+        "tags": [
+          "billing"
+        ]
+      },
+      "post": {
+        "operationId": "HorseSurchargesController_create",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHorseSurchargeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseSurchargeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ghi phụ phí chăm sóc riêng cho ngựa theo ngày trong một khoảng ngày; báo Head Trainer khu của ngựa",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/horse-surcharges/unapplied": {
+      "get": {
+        "operationId": "HorseSurchargesController_listUnapplied",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnappliedSurchargeResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Phụ phí chưa được Head Trainer xác nhận áp dụng, kèm khu và Head Trainer đang phụ trách",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/horse-surcharges/{id}/apply": {
+      "post": {
+        "operationId": "HorseSurchargesController_apply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseSurchargeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Head Trainer khu hiện tại xác nhận đã sắp xếp chế độ chăm sóc theo nội dung phụ phí",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/horse-surcharges/{id}/end": {
+      "post": {
+        "operationId": "HorseSurchargesController_end",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorseSurchargeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Kết thúc sớm phụ phí đang tính, tính tới hết hôm nay",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/horse-surcharges/{id}": {
+      "delete": {
+        "operationId": "HorseSurchargesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Xóa phụ phí chưa tới ngày bắt đầu",
         "tags": [
           "billing"
         ]
@@ -9190,6 +9405,7 @@
               "HORSE_CARE_TASK",
               "CHECKLIST_ITEM",
               "DAILY_FEE",
+              "HORSE_SURCHARGE",
               "REFRESH_SESSION"
             ]
           },
@@ -9337,6 +9553,7 @@
               "HORSE_CARE_TASK",
               "CHECKLIST_ITEM",
               "DAILY_FEE",
+              "HORSE_SURCHARGE",
               "REFRESH_SESSION"
             ]
           },
@@ -9544,6 +9761,186 @@
         "required": [
           "effectiveFrom",
           "dailyFee"
+        ]
+      },
+      "HorseSurchargeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dailyAmount": {
+            "type": "number",
+            "description": "VND mỗi ngày"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "appliedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Head Trainer đã xác nhận áp dụng; null là chưa áp dụng"
+          },
+          "appliedByName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên Head Trainer đã xác nhận; null là chưa áp dụng"
+          },
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lúc xác nhận áp dụng; null là chưa áp dụng"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "description",
+          "dailyAmount",
+          "startDate",
+          "endDate",
+          "createdBy",
+          "createdAt",
+          "appliedBy",
+          "appliedByName",
+          "appliedAt"
+        ]
+      },
+      "CreateHorseSurchargeDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Nội dung chăm sóc riêng chủ ngựa yêu cầu, vd \"Thức ăn loại 1, ngâm đá mỗi ngày\""
+          },
+          "dailyAmount": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000000000,
+            "description": "Phụ phí một ngày (VND)"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày bắt đầu tính (lịch câu lạc bộ), từ hôm nay trở đi"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Ngày cuối tính phụ phí (lịch câu lạc bộ), không trước ngày bắt đầu"
+          }
+        },
+        "required": [
+          "description",
+          "dailyAmount",
+          "startDate",
+          "endDate"
+        ]
+      },
+      "UnappliedSurchargeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dailyAmount": {
+            "type": "number",
+            "description": "VND mỗi ngày"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "appliedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Head Trainer đã xác nhận áp dụng; null là chưa áp dụng"
+          },
+          "appliedByName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên Head Trainer đã xác nhận; null là chưa áp dụng"
+          },
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Lúc xác nhận áp dụng; null là chưa áp dụng"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "barnName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Khu hiện tại của ngựa; null là ngựa chưa xếp khu"
+          },
+          "headTrainerName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Head Trainer đang phụ trách khu của ngựa; null là chưa có Head Trainer phụ trách"
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "description",
+          "dailyAmount",
+          "startDate",
+          "endDate",
+          "createdBy",
+          "createdAt",
+          "appliedBy",
+          "appliedByName",
+          "appliedAt",
+          "horseName",
+          "barnName",
+          "headTrainerName"
         ]
       },
       "HorseDeletionPreviewResponseDto": {
@@ -12090,7 +12487,8 @@
               "CHECKLIST",
               "PERF_EVAL",
               "PERF_THRESHOLD",
-              "DAILY_FEE"
+              "DAILY_FEE",
+              "HORSE_SURCHARGE"
             ],
             "nullable": true,
             "description": "Chức năng gây ra thay đổi"
@@ -13453,7 +13851,8 @@
               "PERFORMANCE_ALERT",
               "DAILY_CHECKLIST",
               "INCIDENT",
-              "SUPPLY"
+              "SUPPLY",
+              "SURCHARGE"
             ]
           },
           "priority": {
@@ -14535,14 +14934,19 @@
             "type": "number",
             "description": "Chi phí y tế (VND)"
           },
+          "surcharge": {
+            "type": "number",
+            "description": "Phụ phí chăm sóc riêng (VND)"
+          },
           "total": {
             "type": "number",
-            "description": "Phí nuôi + chi phí y tế (VND)"
+            "description": "Phí nuôi + chi phí y tế + phụ phí (VND)"
           }
         },
         "required": [
           "dailyFee",
           "medicalCost",
+          "surcharge",
           "total"
         ]
       },
@@ -14574,9 +14978,13 @@
             "type": "number",
             "description": "Chi phí y tế (VND)"
           },
+          "surcharge": {
+            "type": "number",
+            "description": "Phụ phí chăm sóc riêng (VND)"
+          },
           "total": {
             "type": "number",
-            "description": "Phí nuôi + chi phí y tế (VND)"
+            "description": "Phí nuôi + chi phí y tế + phụ phí (VND)"
           },
           "ownerId": {
             "type": "string",
@@ -14589,6 +14997,7 @@
         "required": [
           "dailyFee",
           "medicalCost",
+          "surcharge",
           "total",
           "ownerId",
           "ownerName"
@@ -14663,9 +15072,13 @@
             "type": "number",
             "description": "Chi phí y tế (VND)"
           },
+          "surcharge": {
+            "type": "number",
+            "description": "Phụ phí chăm sóc riêng (VND)"
+          },
           "total": {
             "type": "number",
-            "description": "Phí nuôi + chi phí y tế (VND)"
+            "description": "Phí nuôi + chi phí y tế + phụ phí (VND)"
           }
         },
         "required": [
@@ -14675,6 +15088,7 @@
           "dailyFee",
           "caseCount",
           "medicalCost",
+          "surcharge",
           "total"
         ]
       },
@@ -14704,9 +15118,13 @@
             "type": "number",
             "description": "Tổng chi phí y tế (VND)"
           },
+          "surcharge": {
+            "type": "number",
+            "description": "Tổng phụ phí chăm sóc riêng (VND)"
+          },
           "total": {
             "type": "number",
-            "description": "Phí nuôi + chi phí y tế (VND)"
+            "description": "Phí nuôi + chi phí y tế + phụ phí (VND)"
           },
           "prizeMoney": {
             "type": "number",
@@ -14727,6 +15145,7 @@
           "to",
           "dailyFee",
           "medicalCost",
+          "surcharge",
           "total",
           "prizeMoney",
           "horses"
