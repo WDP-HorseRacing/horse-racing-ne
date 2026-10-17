@@ -138,6 +138,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 6. Head Trainer của khu đóng sự cố (`OPEN` → `RESOLVED`) kèm kết quả xử lý (bắt buộc), ví dụ "Báo nhầm, ngựa bình thường" hoặc "Đã sát trùng móng".
 7. Yêu cầu khám gắn sự cố còn chờ khám thì không đóng được sự cố (409). Bác sĩ khám xong hoặc bỏ qua (có lý do) rồi Head Trainer mới đóng.
 8. Trạng thái sự cố và trạng thái yêu cầu khám độc lập; xem sự cố thì thấy kèm trạng thái yêu cầu khám (chỉ đọc).
+   Groom xem (danh sách và chi tiết) sự cố mình báo, và mọi sự cố (mọi trạng thái, ai báo cũng vậy) của ngựa mình đang phụ trách. Ngựa đã chuyển cho Groom khác thì Groom cũ chỉ còn thấy sự cố mình báo. Ngoài hai trường hợp đó: 403. Đây chỉ là quyền xem; chuyển bác sĩ và đóng sự cố vẫn chỉ Head Trainer của khu.
    Sự cố không tự lưu mức khẩn: ô "Khẩn" lúc báo chỉ quyết có tạo yêu cầu khám khẩn ngay hay không. Mức khẩn hiện tại (`urgent` trong response) lấy theo yêu cầu khám của sự cố; chưa có yêu cầu khám thì không khẩn.
 9. Groom không còn gửi yêu cầu khám trực tiếp; mọi yêu cầu từ Groom đi qua sự cố.
 10. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction hệ thống tự đóng mọi sự cố còn mở của ngựa, kết quả "Ngựa đã chuyển nhượng" hoặc "Ngựa đã mất", không ghi người đóng (`resolvedBySystem = true`). Xem trước đổi vòng đời có `incidentsClosed` và câu tóm tắt nêu số sự cố đang mở.
@@ -187,7 +188,7 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
 | Xem checklist | Tất cả | Ngựa thuộc khu mình | Không | Ngựa mình phụ trách | Không |
 | Tick, gỡ tick | Không | Không | Không | Checklist giao cho mình | Không |
 | Báo sự cố | Không | Không | Không | Mọi ngựa đang ở CLB | Không |
-| Xem sự cố | Tất cả | Ngựa thuộc khu mình | Tất cả | Sự cố mình báo | Không |
+| Xem sự cố | Tất cả | Ngựa thuộc khu mình | Tất cả | Sự cố mình báo, hoặc của ngựa mình đang phụ trách | Không |
 | Chuyển bác sĩ, đóng sự cố | Không | Ngựa thuộc khu mình | Không | Không | Không |
 | Xem phụ phí của ngựa | Tất cả | Ngựa thuộc khu mình | Không | Không | Ngựa của mình |
 | Ghi, kết thúc sớm, xóa phụ phí; xem khoản chưa áp dụng | Có | Không | Không | Không | Không |
