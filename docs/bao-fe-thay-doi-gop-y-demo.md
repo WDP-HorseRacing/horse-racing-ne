@@ -194,7 +194,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 
 1. `POST /incidents`: mọi Groom đang hoạt động báo được cho ngựa đang ở CLB, không cần đang phụ trách con đó. Trước đây Groom không phụ trách nhận 403. FE bỏ giới hạn "chỉ chọn ngựa mình phụ trách" ở màn báo sự cố.
 2. Ngựa đã chuyển nhượng hoặc đã mất vẫn trả 409, kể cả với Groom cũ của ngựa (trước đây Groom cũ nhận 403).
-3. Groom báo hộ: Groom đang phụ trách ngựa nhận thông báo "Sự cố tại chuồng" như Head Trainer của khu. Groom báo hộ vẫn chỉ xem được sự cố mình báo.
+3. Groom báo hộ: Groom đang phụ trách ngựa nhận thông báo "Sự cố tại chuồng" như Head Trainer của khu. Groom báo hộ xem được sự cố mình báo; Groom đang phụ trách ngựa xem được mọi sự cố của ngựa đó (`GET /incidents`, `GET /incidents/:id`), ngựa chuyển cho Groom khác thì Groom cũ chỉ còn thấy sự cố mình báo.
 4. HT, CM, bác sĩ vẫn không gọi được route này (403); họ gửi yêu cầu khám qua `POST /horses/:horseId/exam-requests`.
 
 ## Hủy lần xuất kho ghi nhầm
