@@ -131,6 +131,19 @@ describe('MedicalCheckupsService (Postgres)', () => {
         groom,
         null,
       ]);
+      const names = new Map(
+        (
+          await dataSource.query<{ id: string; full_name: string }[]>(
+            'SELECT id, full_name FROM users',
+          )
+        ).map((user) => [user.id, user.full_name]),
+      );
+      expect(rows.map((row) => row.assignedToName)).toEqual(
+        rows.map((row) =>
+          row.assignedTo ? (names.get(row.assignedTo) ?? 'missing') : null,
+        ),
+      );
+      expect(rows[0].assignedToName).toEqual(expect.any(String));
     });
 
     it('limits the result to the given horses', async () => {

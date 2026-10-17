@@ -36,4 +36,6 @@ export interface DueCareScheduleRow {
   dueDate: string;
   /** Người làm hiện tại (đã tra theo cách giao), null nếu không có ai */
   assignedTo: string | null;
+  /** Họ tên người làm hiện tại, null nếu không có ai */
+  assignedToName: string | null;
 }

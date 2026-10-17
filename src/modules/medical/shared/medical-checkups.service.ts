@@ -175,6 +175,7 @@ export class MedicalCheckupsService {
    * - Không gồm ngày hẹn khám định kỳ; bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
    * - Ngày đến hạn tính theo lịch câu lạc bộ
    * - assignedTo là người làm hiện tại: người cụ thể được giao nếu còn hoạt động và đúng vai trò của kiểu giao; giao Groom phụ trách thì là Groom đang phụ trách ngựa (còn hoạt động); không có ai thì null
+   * - assignedToName là họ tên người làm hiện tại, null khi assignedTo là null
    *
    * @param untilDate Lấy lịch có ngày đến hạn không muộn hơn ngày này (YYYY-MM-DD)
    * @param horseIds Giới hạn theo danh sách ngựa; bỏ trống để lấy cả đàn
@@ -207,7 +208,12 @@ export class MedicalCheckupsService {
               h.name AS "horseName",
               s.type,
               to_char(s.due_at AT TIME ZONE $1, 'YYYY-MM-DD') AS "dueDate",
-              CASE
+              a.id AS "assignedTo",
+              au.full_name AS "assignedToName"
+         FROM care_schedules s
+         JOIN horses h ON h.id = s.horse_id
+         LEFT JOIN LATERAL (
+           SELECT CASE
                 WHEN s.assigned_to IS NOT NULL THEN (
                   SELECT u.id FROM users u
                    WHERE u.id = s.assigned_to
@@ -221,9 +227,9 @@ export class MedicalCheckupsService {
                      AND ga.end_at IS NULL
                      AND u.deleted_at IS NULL
                      AND u.status = $6)
-              END AS "assignedTo"
-         FROM care_schedules s
-         JOIN horses h ON h.id = s.horse_id
+              END AS id
+         ) a ON true
+         LEFT JOIN users au ON au.id = a.id
         WHERE s.status = $3
           AND s.type <> $4
           AND h.deleted_at IS NULL

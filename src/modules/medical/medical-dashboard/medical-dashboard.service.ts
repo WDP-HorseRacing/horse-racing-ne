@@ -35,9 +35,10 @@ export class MedicalDashboardService {
    * - Yêu cầu khám đang chờ, Khẩn lên trước
    * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu áp cho cả bốn khối; bộ lọc trạng thái sức khỏe áp cho danh sách ngựa của sơ đồ đàn và ba khối còn lại, không áp cho số đếm
    * - Head Trainer (không kiêm Club Manager, Veterinarian) chỉ xem các khu mình phụ trách; không chọn khu thì lấy mọi khu mình phụ trách
+   * - careAssignee = me: khối lịch tiêm phòng, tẩy giun, kiểm tra móng chỉ giữ lịch có người làm hiện tại là người gọi
    *
    * @param actor Thông tin danh tính từ Access Token
-   * @param query Lọc theo khu và trạng thái sức khỏe
+   * @param query Lọc theo khu, trạng thái sức khỏe và người làm lịch chăm sóc
    * @returns Promise trả về bốn khối thông tin y tế
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc Head Trainer chọn khu không do mình phụ trách
    */
@@ -80,7 +81,10 @@ export class MedicalDashboardService {
       checkups: checkups.filter(
         (item) => item.dueStatus !== CheckupDueStatus.OK,
       ),
-      careSchedules,
+      careSchedules:
+        query.careAssignee === 'me'
+          ? careSchedules.filter((row) => row.assignedTo === caller.id)
+          : careSchedules,
       openCases,
       pendingRequests: pending.map(toExamRequestResponse),
     };

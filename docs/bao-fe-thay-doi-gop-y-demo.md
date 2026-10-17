@@ -221,3 +221,9 @@ Không đổi API. Chỉ thêm người nhận và loại tin; FE hiện như c�
    - Yêu cầu do hệ thống tự sinh (cảnh báo sốt, sụt cân) hoặc do chính bác sĩ xử lý gửi thì không có thông báo này.
 3. Ca Khẩn vẫn chỉ báo một lần, không nhắc lại.
 
+## Bảng điều khiển y tế: lọc "Lịch của tôi"
+
+1. `GET /medical/dashboard` nhận thêm `careAssignee=me` (tùy chọn): khối `careSchedules` chỉ còn lịch có người làm hiện tại là người gọi. Các khối khác không đổi. Không gửi thì như cũ.
+2. Mỗi dòng `careSchedules` có thêm `assignedToName`: họ tên người làm hiện tại, `null` nếu chưa có ai.
+3. Nhắc lịch chăm sóc không đổi: thông báo đẩy đúng ngày đến hạn một lần. Lịch sắp tới và quá hạn xem trên dashboard và màn Hôm nay của Groom.
+

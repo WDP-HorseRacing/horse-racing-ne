@@ -2869,6 +2869,18 @@
                 "QUARANTINED"
               ]
             }
+          },
+          {
+            "name": "careAssignee",
+            "required": false,
+            "in": "query",
+            "description": "me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; không áp cho các khối khác",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "me"
+              ]
+            }
           }
         ],
         "responses": {
@@ -13015,6 +13027,11 @@
             "format": "uuid",
             "nullable": true,
             "description": "Người làm hiện tại (giao Groom phụ trách thì là Groom đang phụ trách ngựa), null nếu chưa có ai"
+          },
+          "assignedToName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Họ tên người làm hiện tại, null nếu chưa có ai"
           }
         },
         "required": [
@@ -13023,7 +13040,8 @@
           "horseName",
           "type",
           "dueDate",
-          "assignedTo"
+          "assignedTo",
+          "assignedToName"
         ]
       },
       "DashboardOpenCaseDto": {

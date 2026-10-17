@@ -131,6 +131,27 @@ describe('MedicalDashboardService', () => {
     expect(result.herd.horses.map((item) => item.horseId)).toEqual(['Cúc']);
   });
 
+  it('keeps only the care schedules the caller does when asked, and every schedule otherwise', async () => {
+    shared.dueCareSchedules.mockResolvedValue([
+      { scheduleId: 's1', assignedTo: 'u1', assignedToName: 'Bác sĩ A' },
+      { scheduleId: 's2', assignedTo: 'u2', assignedToName: 'Groom B' },
+      { scheduleId: 's3', assignedTo: null, assignedToName: null },
+    ]);
+    const vet = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
+
+    const mine = await service.get(vet, { careAssignee: 'me' });
+    const all = await service.get(vet, {});
+
+    expect(mine.careSchedules).toEqual([
+      { scheduleId: 's1', assignedTo: 'u1', assignedToName: 'Bác sĩ A' },
+    ]);
+    expect(all.careSchedules.map((row) => row.scheduleId)).toEqual([
+      's1',
+      's2',
+      's3',
+    ]);
+  });
+
   it('skips the request query when no horse matches', async () => {
     shared.herdCheckupAnchors.mockResolvedValue([]);
     const result = await service.get(

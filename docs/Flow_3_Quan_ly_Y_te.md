@@ -179,11 +179,11 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
 
 1. Màn hình gồm bốn khối:
    - Sơ đồ đàn ngựa theo trạng thái sức khỏe trên chuồng trại: đếm số lượng theo từng mức, mỗi con kèm khu và ô chuồng đang xếp để vẽ theo khu và ô; ngựa chưa có ô gom vào nhóm "Chưa xếp ô".
-   - Lịch khám định kỳ: các con đến hạn trong 3 ngày tới và các con đã quá hạn.
+   - Lịch khám định kỳ: các con đến hạn trong 3 ngày tới và các con đã quá hạn. Kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong 3 ngày tới, mỗi dòng có người làm hiện tại (id và họ tên, trống nếu chưa có ai).
    - Bệnh án đang mở, kèm ngày khám gần nhất và ngày hẹn tái khám.
    - Yêu cầu khám đang chờ xử lý, xếp yêu cầu Khẩn lên trước.
 2. Thứ tự ưu tiên trong sơ đồ đàn: Cách ly và Chấn thương lên đầu, rồi Cần theo dõi, cuối cùng là Đủ điều kiện.
-3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và ba khối còn lại.
+3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và ba khối còn lại. Bộ lọc "Lịch của tôi" (`careAssignee=me`) chỉ giữ các lịch tiêm phòng, tẩy giun, kiểm tra móng có người làm hiện tại là người đang xem; không đổi các khối khác. Không có màn việc riêng cho bác sĩ, vì phần lớn việc của bác sĩ là việc chung (yêu cầu khám, khám định kỳ, bệnh án), chỉ lịch chăm sóc là giao đích danh.
 4. Bấm vào một con ngựa mở hồ sơ chi tiết (F1.3) hoặc bệnh án (F3.10).
 5. Không hiển thị ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa.
 6. Số liệu tính trực tiếp khi mở màn hình, không lưu lại.
@@ -691,7 +691,7 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 3. Dời ngày đến hạn hoặc hủy lịch bắt buộc nhập lý do.
 4. Đánh dấu hoàn tất ghi lại thời điểm và người thực hiện. Khi hoàn tất, VETERINARIAN có thể nhập "Ngày đến hạn lần tới" (ví dụ tẩy giun sau 3 tháng): hệ thống tạo luôn lịch mới cùng loại trong cùng thao tác, giữ cách giao (người cụ thể không còn hợp lệ thì giao GROOM về GROOM phụ trách, giao VETERINARIAN về chưa giao ai). Để trống thì không tạo lịch mới. GROOM hoàn tất thì không nhập được ngày lần tới.
    - Không khóa tài khoản hay đổi vai trò người còn lịch Đã lên lịch được giao đích danh cho mình (409): VETERINARIAN phải giao lại các lịch đó trước.
-5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần cho mỗi ngày đến hạn: lịch bị dời sang ngày khác thì được nhắc lại theo ngày mới. *(BA chốt)* Lịch quá hạn chưa làm hiển thị trong bảng điều khiển y tế cùng khối lịch khám.
+5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần cho mỗi ngày đến hạn: lịch bị dời sang ngày khác thì được nhắc lại theo ngày mới. *(BA chốt)* Người nhận: mọi bác sĩ và người làm lịch. Không đẩy thông báo nhắc trước hạn hay nhắc lại khi quá hạn; nhắc trước và quá hạn xem trên màn hình: bảng điều khiển y tế (khối lịch chăm sóc gồm lịch quá hạn và đến hạn trong 3 ngày tới) và màn Hôm nay của Groom (lịch giao Groom, có cờ quá hạn).
 6. Khi ngựa chuyển nhượng, các lịch đang Đã lên lịch tự hủy với lý do "Do chuyển nhượng".
 7. Không tạo lịch cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 8. Ghi nhật ký khi tạo, dời, hủy và hoàn tất.

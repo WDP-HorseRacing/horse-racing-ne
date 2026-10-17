@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../constants/care-schedule.enum';
 import { CheckupItemDto } from './checkup.dto';
@@ -18,6 +18,15 @@ export class MedicalDashboardQueryDto {
   @IsOptional()
   @IsEnum(HorseHealthStatus)
   healthStatus?: HorseHealthStatus;
+
+  @ApiPropertyOptional({
+    enum: ['me'],
+    description:
+      'me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; không áp cho các khối khác',
+  })
+  @IsOptional()
+  @IsIn(['me'])
+  careAssignee?: 'me';
 }
 
 /**
@@ -134,6 +143,13 @@ export class DashboardCareScheduleDto {
       'Người làm hiện tại (giao Groom phụ trách thì là Groom đang phụ trách ngựa), null nếu chưa có ai',
   })
   assignedTo!: string | null;
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: 'Họ tên người làm hiện tại, null nếu chưa có ai',
+  })
+  assignedToName!: string | null;
 }
 
 /**
