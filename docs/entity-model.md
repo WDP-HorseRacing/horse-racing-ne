@@ -18,17 +18,31 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | ------------- | ---------------------------------------------------------------------------------------- |
 | Users         | `users`                                                                                  |
 | Horses        | `horses`, `horse_ownerships`, `horse_measurements`                                       |
-| Training      | `training_plans`, `training_sessions`, `time_trials`                                     |
-| Performance   | `performance_metrics`, `performance_thresholds`, `performance_evaluations`               |
+| Training      | `training_subjects`, `training_plans`, `training_plan_phases`, `training_plan_subjects`, `training_classes`, `training_class_phases`, `training_class_phase_subjects`, `horse_enrollments`, `training_sessions`, `session_participants`, `time_trials`, `trial_results` |
+| Performance   | `performance_thresholds`, `performance_evaluations` (số đo `performance_metrics` ở MongoDB) |
 | Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
 | Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `daily_task_types`, `horse_daily_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
 | Racing        | `races`, `race_registrations`                                                            |
-| Supplies      | `supply_items`, `supply_stock_movements`, `supply_requests`                              |
-| Notifications | `notifications`                                                                          |
+| Supplies      | `supply_items`, `supply_lots`, `supply_stock_movements`, `supply_requests`               |
+| Billing       | `daily_fees`, `horse_surcharges`                                                         |
 | Audit         | `audit_logs`                                                                             |
 | Media         | `media_assets`                                                                           |
+| Hạ tầng       | `outbox_events`                                                                          |
 
-`Reports`, `Realtime` và `Health` chưa có bảng persistence riêng.
+MongoDB: `notifications`, `user_devices`, `performance_metrics` (time-series). `Reports`, `Realtime` và `Health` chưa có bảng persistence riêng.
+
+## Huấn luyện
+
+- `training_subjects` (môn): `intensity` `LIGHT`/`HEAVY`, `duration_minutes` mặc định 60, CHECK 15–480; tên duy nhất.
+- `training_plans` → `training_plan_phases` (`position`, `weeks`) → `training_plan_subjects` (`min_sessions_per_week` 1–14, mỗi môn một dòng trong một giai đoạn). Không lưu thứ hay giờ.
+- `training_classes`: lớp chỉ có `start_date`; `end_date` tính từ tổng số tuần. Trạng thái `ACTIVE`/`COMPLETED`/`CANCELLED`, không có nháp.
+- `training_class_phases` → `training_class_phase_subjects`: bản chép giáo án lúc tạo lớp; sửa giáo án không đổi lớp đã tạo.
+- `training_sessions`: `intensity` `LIGHT`/`HEAVY`, `status` `SCHEDULED`/`IN_PROGRESS`/`COMPLETED`/`CANCELLED`. `session_participants`: một lượt tập của một ngựa trong một buổi.
+
+## Phí
+
+- `daily_fees`: phí ngày chung của CLB theo ngày hiệu lực (`effective_from` duy nhất), `daily_fee` `bigint` VND ≥ 0.
+- `horse_surcharges`: phụ phí riêng từng ngựa, `description` ≤ 500 ký tự, `daily_amount` `bigint` VND > 0, `start_date` ≤ `end_date`. `applied_by` và `applied_at` (HT xác nhận đã áp dụng) cùng null hoặc cùng có giá trị.
 
 ## Horse Schema
 

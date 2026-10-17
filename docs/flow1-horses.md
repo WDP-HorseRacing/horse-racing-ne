@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 16/10/2026
+> Cập nhật: 17/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -67,6 +67,8 @@
 ### Cách hiểu đề bài
 
 - Horse Owner "theo dõi chỉ số sức khỏe, cân nặng và trạng thái sẵn sàng thi đấu theo thời gian thực": mở hồ sơ ngựa là thấy số mới nhất (trạng thái sức khỏe, cân nặng, được tập / được đua). Khi trạng thái sức khỏe đổi hoặc bệnh án được mở, hủy, đóng, hệ thống gửi thông báo ngay qua socket và push. Chủ ngựa không xem luồng nhịp tim, tốc độ trong buổi tập.
+- Club Manager "phân quyền truy cập và chức năng thao tác cho từng vai trò": quyền gắn cố định theo 5 vai trò (RBAC tĩnh, khai ở từng route). Club Manager phân quyền bằng cách gán vai trò và khóa, mở tài khoản cho từng người; không có màn chỉnh "vai trò nào làm được gì" lúc chạy.
+- Horse Owner xem "lịch sử thành tích thi đấu": thuộc Flow 5 (Đăng ký thi đấu), nằm ngoài phạm vi vì nhóm không làm Flow 5. Route `GET /horses/:horseId/race-results` vẫn chạy nhưng không có dữ liệu vì không ghi được kết quả đua; các route quản lý giải đấu trả 501.
 
 ---
 

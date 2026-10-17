@@ -202,17 +202,6 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 
 Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
-## Phụ lục 1: Thay đổi API cần báo FE
-
-1. Bỏ: `GET/POST /training-classes/:classId/plans`, `POST /training-plans/:id/activate|complete|cancel`, `GET/POST /training-plans/:id/sessions`.
-2. Giáo án đổi hẳn dạng: không còn `classId`, `phaseName`, `goal`, `startDate`, `endDate`, `status`; có `description`, `headTrainerId`, `totalWeeks`, `phases[]`. Sửa bằng `PUT`.
-3. Tạo lớp: bắt buộc `planId`, `sessions`; bỏ `endDate` (tự tính) và `headTrainerId` (luôn là người gọi). Response lớp có `planId`.
-4. Buổi tập: bắt buộc `intensity` (`LIGHT` / `MODERATE` / `HEAVY`) và `plannedDistanceM`; có `subjectId`; response có `classId`, `subjectId`, bỏ `planId`. Danh sách và thêm buổi qua `/classes/:classId/sessions`.
-5. Tab Huấn luyện của ngựa: `phaseName` đổi thành `subjectName` (có thể `null`).
-6. Club Manager không còn gọi được các thao tác ghi của lớp, buổi, lượt tập, kết quả chạy thử, đánh giá (nhận 403).
-7. Giáo án theo giai đoạn: body `POST`/`PUT /training-plans` đổi `subjects: [{ subjectId, weeks }]` thành `phases: [{ weeks, subjects: [{ subjectId, weekdays }] }]` (gửi `subjects` kiểu cũ bị 400). Response bỏ `subjects`, thêm `phases: [{ position, startWeek, weeks, subjects: [{ subject, weekdays }] }]`; `weekdays` tăng dần, môn trong giai đoạn sắp theo thứ nhỏ nhất. `POST /classes/schedule-preview` bỏ `weekdays` (gửi lên bị 400).
-8. API mới: môn học, xem trước lịch, publish nhiều buổi, sửa chạy thử, khối lượng tập, lịch sử cảnh báo, ngưỡng, điểm đo, tổng kết lượt, bàn giao Head Trainer; sự kiện socket `performance.metrics`; loại thông báo `PERFORMANCE_ALERT`, đích `SESSION_PARTICIPANT`.
-
-## Phụ lục 2: Việc còn lại
+## Phụ lục: Việc còn lại
 
 - Route nhận điểm đo đang public: nợ mục 5 ở `docs/mongo-notifications-debt.md`.
