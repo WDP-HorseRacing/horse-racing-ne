@@ -33,6 +33,7 @@ export interface ChecklistTaskAddedEvent {
  * - eventId: UUID của sự cố
  * - urgent: sự cố khẩn
  * - description: mô tả của Groom
+ * - assignedGroomId: Groom đang phụ trách ngựa lúc báo, chỉ có khi người báo không phải Groom đó; null nếu chính Groom phụ trách báo hoặc ngựa chưa có Groom
  */
 export interface IncidentReportedEvent {
   eventId: string;
@@ -40,6 +41,7 @@ export interface IncidentReportedEvent {
   horseId: string;
   urgent: boolean;
   description: string;
+  assignedGroomId: string | null;
 }
 
 /**

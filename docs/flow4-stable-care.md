@@ -129,11 +129,11 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 ### 6. Sự cố
 
-1. Groom báo sự cố cho ngựa mình phụ trách (403 nếu không phụ trách): mô tả, cờ khẩn, ảnh (tùy chọn, tối đa một). Ảnh tải lên trước qua `POST /media/upload-requests` với `purpose = INCIDENT_PHOTO` (JPEG, PNG hoặc WebP, tối đa 10 MB), phải do chính người báo tải lên; mỗi ảnh gắn cho tối đa một sự cố (409). Ngựa đã xóa: 404; đã chuyển nhượng hoặc đã mất: 409.
+1. Mọi Groom đang hoạt động báo được sự cố cho ngựa đang ở CLB, không cần đang phụ trách con đó (ví dụ Groom trực đêm thấy ngựa khác lăn lộn): mô tả, cờ khẩn, ảnh (tùy chọn, tối đa một). Ảnh tải lên trước qua `POST /media/upload-requests` với `purpose = INCIDENT_PHOTO` (JPEG, PNG hoặc WebP, tối đa 10 MB), phải do chính người báo tải lên; mỗi ảnh gắn cho tối đa một sự cố (409). Ngựa đã xóa: 404; đã chuyển nhượng hoặc đã mất: 409.
 2. Sự cố khẩn: trong cùng transaction hệ thống tạo yêu cầu khám khẩn (nguồn `GROOM_INCIDENT`, gắn sự cố, mô tả lấy từ sự cố); mọi bác sĩ nhận thông báo khẩn như Flow 3.
 3. Sự cố thường: không tạo yêu cầu khám. Head Trainer của khu bấm "Chuyển bác sĩ" thì tạo yêu cầu khám gắn sự cố; tick "Khẩn" thì yêu cầu khám là khẩn và mọi bác sĩ được báo ngay. Mỗi sự cố tối đa một yêu cầu khám.
 4. Sự cố thường còn mở từ 4 giờ trở lên mà chưa chuyển bác sĩ: hệ thống nhắc Head Trainer của khu và mọi Club Manager một lần (kiểm mỗi 30 phút).
-5. Mọi sự cố mới đều báo Head Trainer của khu chứa ngựa (khẩn: ưu tiên cao).
+5. Mọi sự cố mới đều báo Head Trainer của khu chứa ngựa (khẩn: ưu tiên cao). Groom báo không phải Groom đang phụ trách ngựa thì Groom phụ trách cũng nhận thông báo. Head Trainer, Club Manager, bác sĩ không báo sự cố; họ gửi yêu cầu khám thẳng (Flow 3).
 6. Head Trainer của khu đóng sự cố (`OPEN` → `RESOLVED`) kèm kết quả xử lý (bắt buộc), ví dụ "Báo nhầm, ngựa bình thường" hoặc "Đã sát trùng móng".
 7. Yêu cầu khám gắn sự cố còn chờ khám thì không đóng được sự cố (409). Bác sĩ khám xong hoặc bỏ qua (có lý do) rồi Head Trainer mới đóng.
 8. Trạng thái sự cố và trạng thái yêu cầu khám độc lập; xem sự cố thì thấy kèm trạng thái yêu cầu khám (chỉ đọc).
@@ -184,7 +184,7 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
 | Gắn, gỡ việc riêng của ngựa | Không | Ngựa thuộc khu mình | Không | Không | Không |
 | Xem checklist | Tất cả | Ngựa thuộc khu mình | Không | Ngựa mình phụ trách | Không |
 | Tick, gỡ tick | Không | Không | Không | Checklist giao cho mình | Không |
-| Báo sự cố | Không | Không | Không | Ngựa mình phụ trách | Không |
+| Báo sự cố | Không | Không | Không | Mọi ngựa đang ở CLB | Không |
 | Xem sự cố | Tất cả | Ngựa thuộc khu mình | Tất cả | Sự cố mình báo | Không |
 | Chuyển bác sĩ, đóng sự cố | Không | Ngựa thuộc khu mình | Không | Không | Không |
 | Xem phụ phí của ngựa | Tất cả | Ngựa thuộc khu mình | Không | Không | Ngựa của mình |

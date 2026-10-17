@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
@@ -324,10 +324,10 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
   });
 
   describe('incidents', () => {
-    it('N3 (rule check): a groom not assigned to the horse gets 403', async () => {
+    it('N3: a groom not assigned to the horse can still report an incident', async () => {
       await expect(
         incidents.report(otherGroom, { horseId: gio, description: 'x' }),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).resolves.toMatchObject({ horseId: gio });
     });
 
     it('F4-19: the former groom of a DECEASED horse gets 409, not 403', async () => {

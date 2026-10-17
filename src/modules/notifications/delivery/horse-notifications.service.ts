@@ -294,10 +294,12 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu chứa ngựa có sự cố mới tại chuồng
+   * Báo Head Trainer của khu chứa ngựa có sự cố mới tại chuồng, kèm Groom đang phụ trách ngựa khi người khác báo hộ
    *
    * - Sự cố khẩn gửi mức HIGH, còn lại NORMAL
-   * - Ngựa không có khu hoặc khu không có Head Trainer đang hoạt động thì không gửi
+   * - Ngựa không có khu hoặc khu không có Head Trainer đang hoạt động thì bỏ Head Trainer
+   * - Groom phụ trách lấy từ notice.assignedGroomId (chụp lúc báo); không có thì bỏ
+   * - Không còn ai nhận hoặc không tìm thấy ngựa thì không gửi
    *
    * @param notice Payload do module stable phát khi Groom báo sự cố
    * @returns Promise trả về id các thông báo đã gửi; không gửi thì trả mảng rỗng
@@ -306,10 +308,14 @@ export class HorseNotificationsService {
     notice: IncidentReportedEvent,
   ): Promise<string[]> {
     const horse = await this.recipients.findHorseBarnContact(notice.horseId);
-    if (!horse?.headTrainerId) return [];
+    if (!horse) return [];
+    const recipientIds = [horse.headTrainerId, notice.assignedGroomId].filter(
+      (id): id is string => !!id,
+    );
+    if (recipientIds.length === 0) return [];
     return this.notifications.send({
       eventId: notice.eventId,
-      recipientIds: [horse.headTrainerId],
+      recipientIds,
       category: NotificationCategory.INCIDENT,
       priority: notice.urgent
         ? NotificationPriority.HIGH

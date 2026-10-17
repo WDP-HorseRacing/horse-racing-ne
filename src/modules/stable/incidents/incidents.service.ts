@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -14,7 +14,6 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { mapUniqueViolation } from '../../../common/utils/unique-violation';
-import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { MediaService } from '../../media/services/media.service';
 import { MedicalExamRequestEntity } from '../../medical/entities/medical-exam-request.entity';
@@ -30,6 +29,7 @@ import {
   ReportIncidentDto,
   ResolveIncidentDto,
 } from '../dto/incident.dto';
+import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
 import { IncidentEntity } from '../entities/incident.entity';
 import { toIncidentResponse } from '../mappers/incident.mapper';
 import {
@@ -126,17 +126,17 @@ export class IncidentsService {
   }
 
   /**
-   * Groom báo sự cố cho ngựa mình phụ trách
+   * Groom đang hoạt động báo sự cố cho ngựa đang ở CLB, không cần đang phụ trách con đó
    *
-   * - Kiểm ngựa và phân công trước khi kiểm ảnh, kiểm lại sau khi khóa ngựa
+   * - Kiểm ngựa trước khi kiểm ảnh, kiểm lại sau khi khóa ngựa
    * - Sự cố khẩn: tạo yêu cầu khám khẩn gắn sự cố và báo mọi bác sĩ trong cùng transaction
-   * - Ghi INCIDENT_REPORTED_EVENT vào outbox để báo Head Trainer của khu
+   * - Ghi INCIDENT_REPORTED_EVENT vào outbox để báo Head Trainer của khu, và Groom đang phụ trách ngựa nếu người báo không phải Groom đó
    * - Ghi nhật ký kèm ngựa, mô tả, ảnh, cờ khẩn và yêu cầu khám (nếu có)
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Ngựa, mô tả, cờ khẩn, ảnh
    * @returns Promise trả về sự cố vừa báo
-   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc ngựa không do người gọi phụ trách
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa, hoặc không có ảnh của người gọi
    * @throws BadRequestException Nếu ảnh không phải ảnh sự cố hoặc không đạt giới hạn
    * @throws ConflictException Nếu ảnh chưa có trên storage hoặc đã gắn cho sự cố khác, hoặc ngựa đã chuyển nhượng hay đã mất
@@ -146,10 +146,9 @@ export class IncidentsService {
     body: ReportIncidentDto,
   ): Promise<IncidentResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    await this.assertCanReport(
-      this.dataSource.manager,
+    assertHorseLifecycleWritable(
       await this.horseAccess.findWritableHorse(actor, body.horseId),
-      caller.id,
+      'INCIDENT',
     );
     if (body.photoMediaId) {
       await this.media.assertAttachableIncidentPhoto(
@@ -167,7 +166,11 @@ export class IncidentsService {
             actor,
             body.horseId,
           );
-          await this.assertCanReport(manager, horse, caller.id);
+          assertHorseLifecycleWritable(horse, 'INCIDENT');
+          const assignment = await manager.findOneBy(GroomAssignmentEntity, {
+            horseId: horse.id,
+            endAt: IsNull(),
+          });
           const incident = await manager.save(
             manager.create(IncidentEntity, {
               horseId: horse.id,
@@ -210,6 +213,10 @@ export class IncidentsService {
             horseId: horse.id,
             urgent,
             description,
+            assignedGroomId:
+              assignment && assignment.groomId !== caller.id
+                ? assignment.groomId
+                : null,
           };
           await this.events.publish(manager, INCIDENT_REPORTED_EVENT, event);
           return incident.id;
@@ -399,29 +406,6 @@ export class IncidentsService {
         examByIncident.get(incident.id) ?? null,
       ),
     );
-  }
-
-  /**
-   * Kiểm Groom được báo sự cố cho con ngựa: đang phụ trách ngựa và ngựa chưa chuyển nhượng hay mất
-   *
-   * @param manager EntityManager dùng để query
-   * @param horse Con ngựa chưa xóa
-   * @param callerId UUID của người gọi
-   * @returns Promise hoàn tất khi được báo
-   * @throws ForbiddenException Nếu ngựa không do người gọi phụ trách
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
-   */
-  private async assertCanReport(
-    manager: EntityManager,
-    horse: HorseEntity,
-    callerId: string,
-  ): Promise<void> {
-    if (
-      !(await this.horseAccess.isGroomAssigned(horse.id, callerId, manager))
-    ) {
-      throw new ForbiddenException('Ngựa không do bạn phụ trách');
-    }
-    assertHorseLifecycleWritable(horse, 'INCIDENT');
   }
 
   /**

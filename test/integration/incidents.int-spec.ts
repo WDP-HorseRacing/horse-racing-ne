@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -221,19 +220,28 @@ describe('Stable incidents (Postgres)', () => {
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it('rejects a horse the groom does not care for, before checking the photo', async () => {
-      media.assertAttachableIncidentPhoto.mockRejectedValueOnce(
-        new BadRequestException('Tệp không phải ảnh sự cố'),
-      );
-      await expect(
-        incidents.report(otherGroom, {
-          horseId: gio,
-          description: 'x',
-          photoMediaId: randomUUID(),
-        }),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-      media.assertAttachableIncidentPhoto.mockReset();
-      media.assertAttachableIncidentPhoto.mockResolvedValue(undefined);
+    it('lets a groom who does not care for the horse report it, and tells the groom in charge', async () => {
+      const shown = await incidents.report(otherGroom, {
+        horseId: gio,
+        description: 'Thấy nằm lăn lúc trực đêm',
+      });
+
+      expect(shown.status).toBe(IncidentStatus.OPEN);
+      const [reported] = await outbox(INCIDENT_REPORTED_EVENT);
+      expect(reported.payload).toMatchObject({
+        incidentId: shown.id,
+        assignedGroomId: groomId,
+      });
+      await expect(incidents.get(otherGroom, shown.id)).resolves.toMatchObject({
+        id: shown.id,
+      });
+    });
+
+    it('does not name the groom in charge again when that groom reports', async () => {
+      await incidents.report(groom, { horseId: gio, description: 'Móng xước' });
+
+      const [reported] = await outbox(INCIDENT_REPORTED_EVENT);
+      expect(reported.payload).toMatchObject({ assignedGroomId: null });
     });
 
     it('rejects a deceased horse with 409 and a deleted one with 404', async () => {

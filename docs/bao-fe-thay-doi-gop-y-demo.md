@@ -190,3 +190,10 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 3. Miễn bắt đầu hôm nay: dòng việc đó biến khỏi checklist hôm nay nếu chưa tick. Gỡ dòng miễn (`DELETE /horse-care-tasks/:id`): việc có lại ngay trong checklist hôm nay, Groom nhận thông báo "Có việc mới hôm nay".
 4. `PATCH /care-task-types/:id` đổi `appliesToAll` khi còn ngựa được gắn thêm hoặc được miễn loại đó chưa hết hạn: 409.
 
+## Ai được báo sự cố
+
+1. `POST /incidents`: mọi Groom đang hoạt động báo được cho ngựa đang ở CLB, không cần đang phụ trách con đó. Trước đây Groom không phụ trách nhận 403. FE bỏ giới hạn "chỉ chọn ngựa mình phụ trách" ở màn báo sự cố.
+2. Ngựa đã chuyển nhượng hoặc đã mất vẫn trả 409, kể cả với Groom cũ của ngựa (trước đây Groom cũ nhận 403).
+3. Groom báo hộ: Groom đang phụ trách ngựa nhận thông báo "Sự cố tại chuồng" như Head Trainer của khu. Groom báo hộ vẫn chỉ xem được sự cố mình báo.
+4. HT, CM, bác sĩ vẫn không gọi được route này (403); họ gửi yêu cầu khám qua `POST /horses/:horseId/exam-requests`.
+

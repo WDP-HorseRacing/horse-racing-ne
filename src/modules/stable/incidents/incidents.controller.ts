@@ -51,7 +51,9 @@ export class IncidentsController {
 
   @Access([UserRole.GROOM])
   @Post('incidents')
-  @ApiOperation({ summary: 'Báo sự cố tại chuồng cho ngựa mình phụ trách' })
+  @ApiOperation({
+    summary: 'Groom báo sự cố tại chuồng cho ngựa đang ở câu lạc bộ',
+  })
   @ApiCreatedResponse({ type: IncidentResponseDto })
   report(@CurrentUser() actor: Actor, @Body() body: ReportIncidentDto) {
     return this.incidents.report(actor, body);

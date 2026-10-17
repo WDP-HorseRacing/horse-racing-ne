@@ -6124,7 +6124,7 @@
             "bearer": []
           }
         ],
-        "summary": "Báo sự cố tại chuồng cho ngựa mình phụ trách",
+        "summary": "Groom báo sự cố tại chuồng cho ngựa đang ở câu lạc bộ",
         "tags": [
           "stable"
         ]

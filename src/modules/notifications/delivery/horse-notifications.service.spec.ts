@@ -310,6 +310,7 @@ describe('HorseNotificationsService.notifyIncidentReported', () => {
     horseId: 'horse-1',
     urgent: true,
     description: 'Nằm lăn, bỏ ăn từ sáng',
+    assignedGroomId: null,
   };
 
   it('tells the barn head trainer with HIGH priority for an urgent incident', async () => {
@@ -343,6 +344,23 @@ describe('HorseNotificationsService.notifyIncidentReported', () => {
 
     expect(notifications.send).toHaveBeenCalledWith(
       expect.objectContaining({ priority: NotificationPriority.NORMAL }),
+    );
+  });
+
+  it('also tells the groom in charge when another groom reported it', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseBarnContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+    });
+
+    await service.notifyIncidentReported({
+      ...notice,
+      assignedGroomId: 'groom-1',
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientIds: ['groom-1'] }),
     );
   });
 

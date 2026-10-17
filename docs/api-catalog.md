@@ -206,7 +206,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | DELETE | `/api/v1/horses/{id}/stall` | Remove a horse from its current stall |
 | PUT | `/api/v1/horses/{id}/stall` | Assign or move a horse to a stall in its barn |
 | GET | `/api/v1/incidents` | Liệt kê sự cố tại chuồng |
-| POST | `/api/v1/incidents` | Báo sự cố tại chuồng cho ngựa mình phụ trách |
+| POST | `/api/v1/incidents` | Groom báo sự cố tại chuồng cho ngựa đang ở câu lạc bộ |
 | GET | `/api/v1/incidents/{id}` | Xem một sự cố kèm yêu cầu khám |
 | POST | `/api/v1/incidents/{id}/refer` | Chuyển sự cố cho bác sĩ: tạo yêu cầu khám, khẩn thì báo ngay mọi bác sĩ |
 | POST | `/api/v1/incidents/{id}/resolve` | Đóng sự cố kèm kết quả xử lý |
