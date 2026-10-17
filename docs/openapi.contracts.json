@@ -13088,6 +13088,64 @@
           "nextVisitAt"
         ]
       },
+      "DashboardPrescriptionDto": {
+        "type": "object",
+        "properties": {
+          "prescriptionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "medicine": {
+            "type": "string"
+          },
+          "dosage": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Ngày kết thúc, null nếu dùng tới khi đóng bệnh án"
+          },
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Buổi khám kê đơn"
+          },
+          "caseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Bệnh án chứa buổi khám, null nếu buổi khám ngoài bệnh án"
+          }
+        },
+        "required": [
+          "prescriptionId",
+          "horseId",
+          "horseName",
+          "medicine",
+          "dosage",
+          "frequency",
+          "startDate",
+          "endDate",
+          "medicalRecordId",
+          "caseId"
+        ]
+      },
       "MedicalDashboardResponseDto": {
         "type": "object",
         "properties": {
@@ -13114,6 +13172,13 @@
               "$ref": "#/components/schemas/DashboardOpenCaseDto"
             }
           },
+          "todayPrescriptions": {
+            "description": "Thuốc cần cho hôm nay: đơn đang hiệu lực theo ngày lịch câu lạc bộ, theo tên ngựa",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardPrescriptionDto"
+            }
+          },
           "pendingRequests": {
             "description": "Yêu cầu khám đang chờ, Khẩn lên trước",
             "type": "array",
@@ -13127,6 +13192,7 @@
           "checkups",
           "careSchedules",
           "openCases",
+          "todayPrescriptions",
           "pendingRequests"
         ]
       },

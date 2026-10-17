@@ -27,19 +27,20 @@ export class MedicalDashboardService {
   ) {}
 
   /**
-   * Bảng điều khiển y tế gồm bốn khối, tính trực tiếp mỗi lần mở, không có chi phí
+   * Bảng điều khiển y tế gồm năm khối, tính trực tiếp mỗi lần mở, không có chi phí
    *
    * - Sơ đồ đàn: đếm theo trạng thái sức khỏe trên cả đàn thuộc phạm vi khu (không bị lọc theo trạng thái sức khỏe); danh sách mỗi con kèm khu và ô chuồng để vẽ theo chuồng trại, Cách ly và Chấn thương lên đầu
    * - Lịch khám: các con Quá hạn và Đến hạn; kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong CHECKUP_DUE_SOON_DAYS ngày tới
    * - Bệnh án đang mở kèm buổi khám gần nhất và ngày hẹn tái khám
    * - Yêu cầu khám đang chờ, Khẩn lên trước
-   * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu áp cho cả bốn khối; bộ lọc trạng thái sức khỏe áp cho danh sách ngựa của sơ đồ đàn và ba khối còn lại, không áp cho số đếm
+   * - Thuốc cần cho hôm nay: đơn thuốc đang hiệu lực theo ngày lịch câu lạc bộ, kèm liều và tần suất
+   * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu áp cho cả năm khối; bộ lọc trạng thái sức khỏe áp cho danh sách ngựa của sơ đồ đàn và bốn khối còn lại, không áp cho số đếm
    * - Head Trainer (không kiêm Club Manager, Veterinarian) chỉ xem các khu mình phụ trách; không chọn khu thì lấy mọi khu mình phụ trách
    * - careAssignee = me: khối lịch tiêm phòng, tẩy giun, kiểm tra móng chỉ giữ lịch có người làm hiện tại là người gọi
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Lọc theo khu, trạng thái sức khỏe và người làm lịch chăm sóc
-   * @returns Promise trả về bốn khối thông tin y tế
+   * @returns Promise trả về năm khối thông tin y tế
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc Head Trainer chọn khu không do mình phụ trách
    */
   async get(
@@ -55,26 +56,28 @@ export class MedicalDashboardService {
       ? herd.filter((row) => row.healthStatus === query.healthStatus)
       : herd;
     const horseIds = rows.map((row) => row.horseId);
-    const [checkups, careSchedules, openCases, pending] = await Promise.all([
-      this.checkups.checkupItemsFor(rows, today),
-      horseIds.length
-        ? this.checkups.dueCareSchedules(
-            addDays(today, CHECKUP_DUE_SOON_DAYS),
-            horseIds,
-          )
-        : Promise.resolve([]),
-      this.dashboard.openCases(horseIds),
-      horseIds.length
-        ? this.dataSource.manager.find(MedicalExamRequestEntity, {
-            where: {
-              horseId: In(horseIds),
-              status: ExamRequestStatus.PENDING,
-            },
-            relations: { horse: true },
-            order: { urgent: 'DESC', createdAt: 'ASC' },
-          })
-        : Promise.resolve([]),
-    ]);
+    const [checkups, careSchedules, openCases, pending, todayPrescriptions] =
+      await Promise.all([
+        this.checkups.checkupItemsFor(rows, today),
+        horseIds.length
+          ? this.checkups.dueCareSchedules(
+              addDays(today, CHECKUP_DUE_SOON_DAYS),
+              horseIds,
+            )
+          : Promise.resolve([]),
+        this.dashboard.openCases(horseIds),
+        horseIds.length
+          ? this.dataSource.manager.find(MedicalExamRequestEntity, {
+              where: {
+                horseId: In(horseIds),
+                status: ExamRequestStatus.PENDING,
+              },
+              relations: { horse: true },
+              order: { urgent: 'DESC', createdAt: 'ASC' },
+            })
+          : Promise.resolve([]),
+        this.dashboard.todayPrescriptions(horseIds, today),
+      ]);
 
     return {
       herd: toHerdBlock(herd, query.healthStatus),
@@ -87,6 +90,7 @@ export class MedicalDashboardService {
           : careSchedules,
       openCases,
       pendingRequests: pending.map(toExamRequestResponse),
+      todayPrescriptions,
     };
   }
 

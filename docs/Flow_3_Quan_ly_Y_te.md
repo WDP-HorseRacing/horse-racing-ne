@@ -164,7 +164,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 
 ### Mô tả
 
-Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên về một màn hình y tế tách biệt. Gom bốn nhóm thông tin mà bác sĩ cần nhìn mỗi ngày: tình trạng sức khỏe của cả đàn, lịch khám định kỳ đến hạn, bệnh án đang mở và các yêu cầu khám chờ xử lý.
+Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên về một màn hình y tế tách biệt. Gom năm nhóm thông tin mà bác sĩ cần nhìn mỗi ngày: tình trạng sức khỏe của cả đàn, lịch khám định kỳ đến hạn, bệnh án đang mở, các yêu cầu khám chờ xử lý và thuốc cần cho hôm nay.
 
 ### Phân quyền
 
@@ -178,13 +178,14 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
 
 ### Nghiệp vụ
 
-1. Màn hình gồm bốn khối:
+1. Màn hình gồm năm khối:
    - Sơ đồ đàn ngựa theo trạng thái sức khỏe trên chuồng trại: đếm số lượng theo từng mức, mỗi con kèm khu và ô chuồng đang xếp để vẽ theo khu và ô; ngựa chưa có ô gom vào nhóm "Chưa xếp ô".
    - Lịch khám định kỳ: các con đến hạn trong 3 ngày tới và các con đã quá hạn. Kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong 3 ngày tới, mỗi dòng có người làm hiện tại (id và họ tên, trống nếu chưa có ai).
    - Bệnh án đang mở, kèm ngày khám gần nhất và ngày hẹn tái khám.
    - Yêu cầu khám đang chờ xử lý, xếp yêu cầu Khẩn lên trước.
+   - Thuốc cần cho hôm nay: các đơn thuốc đang hiệu lực, mỗi dòng gồm ngựa (id, tên), tên thuốc, liều lượng, tần suất, ngày bắt đầu, ngày kết thúc, buổi khám kê đơn và bệnh án chứa buổi đó (trống nếu buổi khám ngoài bệnh án); xếp theo tên ngựa rồi tên thuốc. Đơn đang hiệu lực khi đã tới ngày bắt đầu và chưa qua ngày kết thúc (tính cả ngày kết thúc), so theo ngày lịch câu lạc bộ. Đơn không có ngày kết thúc chỉ hiện khi thuộc bệnh án đang mở (dùng tới khi đóng bệnh án); ở buổi khám ngoài bệnh án thì không hiện, bác sĩ muốn hiện thì nhập ngày kết thúc. Bỏ đơn của buổi khám đã hủy. CLUB MANAGER và HEAD TRAINER cũng thấy liều lượng, tần suất (đúng bảng phân quyền thông tin của F3.10).
 2. Thứ tự ưu tiên trong sơ đồ đàn: Cách ly và Chấn thương lên đầu, rồi Cần theo dõi, cuối cùng là Đủ điều kiện.
-3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và ba khối còn lại. Bộ lọc "Lịch của tôi" (`careAssignee=me`) chỉ giữ các lịch tiêm phòng, tẩy giun, kiểm tra móng có người làm hiện tại là người đang xem; không đổi các khối khác. Không có màn việc riêng cho bác sĩ, vì phần lớn việc của bác sĩ là việc chung (yêu cầu khám, khám định kỳ, bệnh án), chỉ lịch chăm sóc là giao đích danh.
+3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và bốn khối còn lại. Bộ lọc "Lịch của tôi" (`careAssignee=me`) chỉ giữ các lịch tiêm phòng, tẩy giun, kiểm tra móng có người làm hiện tại là người đang xem; không đổi các khối khác. Không có màn việc riêng cho bác sĩ, vì phần lớn việc của bác sĩ là việc chung (yêu cầu khám, khám định kỳ, bệnh án), chỉ lịch chăm sóc là giao đích danh.
 4. Bấm vào một con ngựa mở hồ sơ chi tiết (F1.3) hoặc bệnh án (F3.10).
 5. Không hiển thị ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa.
 6. Số liệu tính trực tiếp khi mở màn hình, không lưu lại.
@@ -199,8 +200,8 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
 | **Actor chính** | VETERINARIAN |
 | **Actor phụ** | CLUB MANAGER, HEAD TRAINER (chỉ xem) |
 | **Tiền điều kiện** | Người dùng đã đăng nhập và có vai trò được phép xem. |
-| **Hậu điều kiện** | Bốn khối thông tin y tế được hiển thị theo đúng phạm vi quyền. |
-| **Luồng sự kiện chính** | 1. Người dùng chọn menu "Y tế".<br>2. Hệ thống xác định vai trò và phạm vi dữ liệu.<br>3. Hệ thống tính số liệu của bốn khối.<br>4. Hệ thống sắp xếp các con cần xử lý gấp lên đầu và hiển thị.<br>5. Người dùng xem và chọn công việc cần làm. |
+| **Hậu điều kiện** | Năm khối thông tin y tế được hiển thị theo đúng phạm vi quyền. |
+| **Luồng sự kiện chính** | 1. Người dùng chọn menu "Y tế".<br>2. Hệ thống xác định vai trò và phạm vi dữ liệu.<br>3. Hệ thống tính số liệu của năm khối.<br>4. Hệ thống sắp xếp các con cần xử lý gấp lên đầu và hiển thị.<br>5. Người dùng xem và chọn công việc cần làm. |
 | **Luồng thay thế** | A1. Người dùng lọc theo khu hoặc theo trạng thái sức khỏe -> hệ thống tính lại danh sách.<br>A2. Người dùng bấm vào một con ngựa -> hệ thống mở hồ sơ hoặc bệnh án tương ứng. |
 | **Luồng ngoại lệ** | E1. Không có dữ liệu trong một khối -> hiển thị khối trống kèm dòng giải thích.<br>E2. GROOM hoặc HORSE OWNER gọi trực tiếp API -> trả về 403 (menu không hiển thị với hai vai trò này). |
 

@@ -251,4 +251,86 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       await expect(dashboard.openCases([])).resolves.toEqual([]);
     });
   });
+
+  describe('todayPrescriptions', () => {
+    const today = '2026-10-18';
+    const prescribe = async (
+      recordId: string,
+      medicine: string,
+      startDate: string,
+      endDate: string | null,
+    ) => {
+      await dataSource.query(
+        `INSERT INTO prescriptions (medical_record_id, medicine, dosage, frequency, start_date, end_date)
+         VALUES ($1, $2, '10 ml', '2 lần/ngày', $3, $4)`,
+        [recordId, medicine, startDate, endDate],
+      );
+    };
+
+    it('lists prescriptions in effect today on the club calendar', async () => {
+      const winx = await seed.horse('Winx');
+      const bolt = await seed.horse('Bolt');
+      const hidden = await seed.horse('Hidden');
+      const record = await seed.visit(winx, vet, '2026-10-10T02:00:00Z');
+      const voided = await seed.visit(winx, vet, '2026-10-11T02:00:00Z', {
+        voided: true,
+      });
+      const openCase = await seed.medicalCase(bolt, vet);
+      const inOpenCase = await seed.visit(bolt, vet, '2026-10-12T02:00:00Z', {
+        caseId: openCase,
+      });
+      const closedCase = await seed.medicalCase(bolt, vet, {
+        status: MedicalCaseStatus.CLOSED,
+        closedAt: '2026-10-15T02:00:00Z',
+        totalCost: 1,
+      });
+      const inClosedCase = await seed.visit(bolt, vet, '2026-10-01T02:00:00Z', {
+        caseId: closedCase,
+      });
+      const hiddenRecord = await seed.visit(
+        hidden,
+        vet,
+        '2026-10-10T02:00:00Z',
+      );
+      await prescribe(record, 'Ends today', '2026-10-10', today);
+      await prescribe(record, 'Starts today', today, '2026-10-20');
+      await prescribe(record, 'Ended yesterday', '2026-10-10', '2026-10-17');
+      await prescribe(record, 'Starts tomorrow', '2026-10-19', '2026-10-25');
+      await prescribe(record, 'No end, no case', '2026-10-10', null);
+      await prescribe(voided, 'Voided visit', '2026-10-11', '2026-10-30');
+      await prescribe(inOpenCase, 'No end, open case', '2026-10-12', null);
+      await prescribe(inClosedCase, 'No end, closed case', '2026-10-01', null);
+      await prescribe(hiddenRecord, 'Other horse', '2026-10-10', today);
+
+      const rows = await dashboard.todayPrescriptions([winx, bolt], today);
+
+      expect(rows.map((row) => row.medicine)).toEqual([
+        'No end, open case',
+        'Ends today',
+        'Starts today',
+      ]);
+      expect(rows[0]).toMatchObject({
+        horseId: bolt,
+        horseName: 'Bolt',
+        dosage: '10 ml',
+        frequency: '2 lần/ngày',
+        startDate: '2026-10-12',
+        endDate: null,
+        medicalRecordId: inOpenCase,
+        caseId: openCase,
+      });
+      expect(rows[1]).toMatchObject({
+        horseName: 'Winx',
+        endDate: today,
+        medicalRecordId: record,
+        caseId: null,
+      });
+    });
+
+    it('answers nothing without querying when no horse is shown', async () => {
+      await expect(dashboard.todayPrescriptions([], today)).resolves.toEqual(
+        [],
+      );
+    });
+  });
 });

@@ -25,7 +25,7 @@ const horse = (horseId: string, healthStatus: HorseHealthStatus) => ({
 describe('MedicalDashboardService', () => {
   let shared: { herdCheckupAnchors: jest.Mock; dueCareSchedules: jest.Mock };
   let checkups: { checkupItemsFor: jest.Mock };
-  let dashboard: { openCases: jest.Mock };
+  let dashboard: { openCases: jest.Mock; todayPrescriptions: jest.Mock };
   let requests: { find: jest.Mock };
   let stableAccess: {
     isBarnScopedTrainer: jest.Mock;
@@ -61,7 +61,10 @@ describe('MedicalDashboardService', () => {
         { horseId: 'Bạch', dueStatus: CheckupDueStatus.OK },
       ]),
     };
-    dashboard = { openCases: jest.fn().mockResolvedValue([]) };
+    dashboard = {
+      openCases: jest.fn().mockResolvedValue([]),
+      todayPrescriptions: jest.fn().mockResolvedValue([]),
+    };
     requests = { find: jest.fn().mockResolvedValue([]) };
     service = new MedicalDashboardService(
       {
@@ -112,6 +115,10 @@ describe('MedicalDashboardService', () => {
       expect.any(String),
     );
     expect(dashboard.openCases).toHaveBeenCalledWith(['Cúc']);
+    expect(dashboard.todayPrescriptions).toHaveBeenCalledWith(
+      ['Cúc'],
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
     expect(shared.dueCareSchedules).toHaveBeenCalledWith(expect.any(String), [
       'Cúc',
     ]);

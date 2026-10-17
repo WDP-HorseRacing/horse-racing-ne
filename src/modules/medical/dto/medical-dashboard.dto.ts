@@ -118,6 +118,51 @@ export class DashboardOpenCaseDto {
 }
 
 /**
+ * Một đơn thuốc đang hiệu lực hôm nay trên bảng điều khiển.
+ */
+export class DashboardPrescriptionDto {
+  @ApiProperty({ format: 'uuid' })
+  prescriptionId!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiProperty()
+  horseName!: string;
+
+  @ApiProperty()
+  medicine!: string;
+
+  @ApiProperty()
+  dosage!: string;
+
+  @ApiProperty()
+  frequency!: string;
+
+  @ApiProperty({ format: 'date' })
+  startDate!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    description: 'Ngày kết thúc, null nếu dùng tới khi đóng bệnh án',
+  })
+  endDate!: string | null;
+
+  @ApiProperty({ format: 'uuid', description: 'Buổi khám kê đơn' })
+  medicalRecordId!: string;
+
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: 'Bệnh án chứa buổi khám, null nếu buổi khám ngoài bệnh án',
+  })
+  caseId!: string | null;
+}
+
+/**
  * Một lịch chăm sóc đã đến hạn hoặc sắp đến hạn trên bảng điều khiển.
  */
 export class DashboardCareScheduleDto {
@@ -153,7 +198,7 @@ export class DashboardCareScheduleDto {
 }
 
 /**
- * Bảng điều khiển y tế: bốn khối, tính trực tiếp khi mở, không có chi phí.
+ * Bảng điều khiển y tế: năm khối, tính trực tiếp khi mở, không có chi phí.
  */
 export class MedicalDashboardResponseDto {
   @ApiProperty({ type: HerdBlockDto })
@@ -174,6 +219,13 @@ export class MedicalDashboardResponseDto {
 
   @ApiProperty({ type: [DashboardOpenCaseDto] })
   openCases!: DashboardOpenCaseDto[];
+
+  @ApiProperty({
+    type: [DashboardPrescriptionDto],
+    description:
+      'Thuốc cần cho hôm nay: đơn đang hiệu lực theo ngày lịch câu lạc bộ, theo tên ngựa',
+  })
+  todayPrescriptions!: DashboardPrescriptionDto[];
 
   @ApiProperty({
     type: [ExamRequestResponseDto],
