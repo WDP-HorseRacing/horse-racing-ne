@@ -12,5 +12,6 @@ export const MEDICAL_CASE_OPENED_EVENT = 'medical.case.opened';
 export const MEDICAL_CASE_CLOSED_EVENT = 'medical.case.closed';
 export const MEDICAL_CASE_CANCELLED_EVENT = 'medical.case.cancelled';
 export const MEDICAL_CASE_COST_ADJUSTED_EVENT = 'medical.case.cost-adjusted';
+export const MEDICAL_CHECKUP_DUE_EVENT = 'medical.checkup.due';
 export const MEDICAL_CHECKUP_OVERDUE_EVENT = 'medical.checkup.overdue';
 export const MEDICAL_CARE_SCHEDULE_DUE_EVENT = 'medical.care-schedule.due';

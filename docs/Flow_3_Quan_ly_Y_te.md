@@ -133,6 +133,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Trạng thái sức khỏe chuyển sang Chấn thương hoặc Cách ly | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
 | Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) | NORMAL | HEAD TRAINER phụ trách khu, HORSE OWNER, GROOM phụ trách ngựa |
 | Trạng thái sức khỏe về Đủ điều kiện | NORMAL | HORSE OWNER, GROOM phụ trách ngựa |
+| Đến hạn khám định kỳ mà chưa có ngày hẹn khám | NORMAL | Mọi VETERINARIAN đang hoạt động |
 | Quá hạn khám định kỳ trên 7 ngày | HIGH | Mọi VETERINARIAN đang hoạt động, CLUB MANAGER |
 | Mở bệnh án | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
@@ -145,7 +146,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 1. Ngựa chưa được xếp khu thì không có HEAD TRAINER nhận thông báo, khi đó chỉ gửi cho các vai trò còn lại.
 2. Ngựa chưa có chủ, hoặc chủ không còn là tài khoản HORSE OWNER đang hoạt động, thì bỏ qua người nhận HORSE OWNER. Tương tự, ngựa chưa có GROOM phụ trách hoặc GROOM đó không còn hoạt động thì bỏ qua người nhận GROOM; GROOM lấy theo phân công lúc gửi thông báo.
 3. Gỡ khóa do chuyển nhượng hoặc do ngựa mất không gửi thông báo riêng; hệ quả này đã nằm trong nhật ký đổi vòng đời của F1.8.
-4. Thông báo quá hạn khám và lịch chăm sóc đến hạn do hệ thống kiểm tra mỗi ngày một lần. Mỗi con ngựa chỉ nhận một thông báo cho mỗi hạn; khám xong thì hạn mới được tính và có thể báo lại khi hạn mới quá.
+4. Thông báo đến hạn khám, quá hạn khám và lịch chăm sóc đến hạn do hệ thống kiểm tra mỗi ngày một lần. Mỗi con ngựa chỉ nhận một thông báo cho mỗi hạn; khám xong thì hạn mới được tính và có thể báo lại khi hạn mới quá.
 5. Ca Khẩn chỉ báo một lần lúc tạo hoặc lúc nâng lên Khẩn, không nhắc lại. Khóa quá ngày dự kiến gỡ không gửi nhắc.
 
 ### 8. Phụ thuộc giữa các flow
@@ -234,10 +235,11 @@ Theo dõi hạn khám định kỳ của từng con ngựa và đặt ngày hẹ
    - Mỗi con ngựa có tối đa một ngày hẹn đang hiệu lực.
 4. Ngày hẹn chỉ là kế hoạch, hệ thống không tự tạo buổi khám khi đến ngày. Khi ghi một buổi khám bất kỳ cho con ngựa (F3.3 hoặc F3.6), ngày hẹn đang hiệu lực được đánh dấu Đã thực hiện.
 5. Dời ngày hẹn bắt buộc nhập lý do.
-6. Quá hạn trên 7 ngày: hệ thống gửi thông báo mức HIGH theo mục III.7.
-7. Ngựa đang có bệnh án mở vẫn hiện trong danh sách và vẫn có hạn khám.
-8. Không tính hạn khám cho ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa. Khi ngựa chuyển nhượng hoặc được ghi nhận mất, ngày hẹn đang hiệu lực tự hủy.
-9. Ghi nhật ký khi đặt, dời ngày hẹn khám.
+6. Ngựa vào trạng thái Đến hạn mà chưa có ngày hẹn khám đang hiệu lực: hệ thống gửi thông báo mức NORMAL cho mọi VETERINARIAN theo mục III.7, mỗi hạn khám chỉ báo một lần. Ngựa đã có ngày hẹn thì không báo.
+7. Quá hạn trên 7 ngày: hệ thống gửi thông báo mức HIGH theo mục III.7.
+8. Ngựa đang có bệnh án mở vẫn hiện trong danh sách và vẫn có hạn khám.
+9. Không tính hạn khám cho ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa. Khi ngựa chuyển nhượng hoặc được ghi nhận mất, ngày hẹn đang hiệu lực tự hủy.
+10. Ghi nhật ký khi đặt, dời ngày hẹn khám.
 
 ### Bảng use case
 

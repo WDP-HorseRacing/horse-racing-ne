@@ -95,6 +95,13 @@ export interface MedicalCaseCostAdjustedEvent extends MedicalEventBase {
 }
 
 /**
+ * Ngựa đến hạn khám định kỳ mà chưa có ngày hẹn khám.
+ */
+export interface CheckupDueEvent extends MedicalEventBase {
+  dueDate: string;
+}
+
+/**
  * Ngựa quá hạn khám định kỳ trên số ngày ngưỡng.
  */
 export interface CheckupOverdueEvent extends MedicalEventBase {

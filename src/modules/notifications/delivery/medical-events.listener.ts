@@ -7,6 +7,7 @@ import {
   MEDICAL_CASE_CLOSED_EVENT,
   MEDICAL_CASE_COST_ADJUSTED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
+  MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_URGENT_EVENT,
@@ -16,6 +17,7 @@ import {
 } from '../../medical/constants/medical-events.constants';
 import type {
   CareScheduleDueEvent,
+  CheckupDueEvent,
   CheckupOverdueEvent,
   ExamRequestHandledEvent,
   ExamRequestUrgentEvent,
@@ -130,6 +132,17 @@ export class MedicalEventsListener {
   @OnEvent(MEDICAL_CASE_COST_ADJUSTED_EVENT, OUTBOX_LISTENER_OPTIONS)
   async onCaseCostAdjusted(event: MedicalCaseCostAdjustedEvent): Promise<void> {
     await this.medical.notifyCaseCostAdjusted(event);
+  }
+
+  /**
+   * Nghe MEDICAL_CHECKUP_DUE_EVENT và báo Veterinarian
+   *
+   * @param event Payload của event
+   * @returns Promise hoàn tất khi đã gửi xong
+   */
+  @OnEvent(MEDICAL_CHECKUP_DUE_EVENT, OUTBOX_LISTENER_OPTIONS)
+  async onCheckupDue(event: CheckupDueEvent): Promise<void> {
+    await this.medical.notifyCheckupDue(event);
   }
 
   /**

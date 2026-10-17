@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
-import { toClubDate } from '../../../common/utils/club-date';
+import { toClubDate, toDisplayDate } from '../../../common/utils/club-date';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
 import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
 import type {
   CareScheduleDueEvent,
+  CheckupDueEvent,
   CheckupOverdueEvent,
   ExamRequestHandledEvent,
   ExamRequestUrgentEvent,
@@ -363,6 +364,27 @@ export class MedicalNotificationsService {
       resource: null,
     });
     return [...sent, ...toPastOwner];
+  }
+
+  /**
+   * Báo mọi Veterinarian khi ngựa đến hạn khám định kỳ mà chưa có ngày hẹn khám
+   *
+   * @param event Payload của MEDICAL_CHECKUP_DUE_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  notifyCheckupDue(event: CheckupDueEvent): Promise<string[]> {
+    return this.sendForHorse(
+      event.eventId,
+      event.horseId,
+      horseResource(event.horseId),
+      { veterinarians: true },
+      NotificationCategory.CARE_REMINDER,
+      NotificationPriority.NORMAL,
+      (horse) => ({
+        title: `Ngựa ${horse} đến hạn khám định kỳ`,
+        message: `${horse} đến hạn khám định kỳ ngày ${toDisplayDate(event.dueDate)}. Vui lòng đặt lịch khám.`,
+      }),
+    );
   }
 
   /**

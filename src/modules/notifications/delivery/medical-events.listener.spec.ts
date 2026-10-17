@@ -20,6 +20,18 @@ describe('MedicalEventsListener', () => {
     expect(medical.notifyLockSet).toHaveBeenCalledWith(event);
   });
 
+  it('forwards a due checkup to the notification service', async () => {
+    const medical = { notifyCheckupDue: jest.fn().mockResolvedValue([]) };
+    const listener = new MedicalEventsListener(
+      medical as unknown as MedicalNotificationsService,
+    );
+    const event = { eventId: 'e3', horseId: 'h1', dueDate: '2026-10-31' };
+
+    await listener.onCheckupDue(event);
+
+    expect(medical.notifyCheckupDue).toHaveBeenCalledWith(event);
+  });
+
   it('rethrows a failure so the outbox relay retries the event', async () => {
     const medical = {
       notifyCaseClosed: jest.fn().mockRejectedValue(new Error('db down')),

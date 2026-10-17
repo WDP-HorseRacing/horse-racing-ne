@@ -6,16 +6,20 @@ import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
 import { CLUB_TIME_ZONE } from '../../../common/constants';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
+  MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
 } from '../constants/medical-events.constants';
+import { CheckupDueStatus } from '../constants/checkup.enum';
 import {
   checkupDueDate,
+  dueStatusOf,
   isOverdueNotifiable,
 } from '../policies/medical.policy';
 import { toClubDate } from '../../../common/utils/club-date';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import type {
   CareScheduleDueEvent,
+  CheckupDueEvent,
   CheckupOverdueEvent,
 } from '../types/medical-events.types';
 
@@ -43,6 +47,9 @@ export class MedicalRemindersService {
   })
   async runDaily(): Promise<void> {
     const today = toClubDate(new Date());
+    const dueCheckups = await this.runSafely('nhắc đến hạn khám định kỳ', () =>
+      this.notifyDueCheckups(today),
+    );
     const overdue = await this.runSafely('nhắc quá hạn khám định kỳ', () =>
       this.notifyOverdueCheckups(today),
     );
@@ -50,7 +57,7 @@ export class MedicalRemindersService {
       this.notifyDueCareSchedules(today),
     );
     this.logger.log(
-      `Nhắc quá hạn khám định kỳ: ${overdue ?? 'lỗi'}; nhắc lịch chăm sóc đến hạn: ${due ?? 'lỗi'}`,
+      `Nhắc đến hạn khám định kỳ: ${dueCheckups ?? 'lỗi'}; nhắc quá hạn khám định kỳ: ${overdue ?? 'lỗi'}; nhắc lịch chăm sóc đến hạn: ${due ?? 'lỗi'}`,
     );
   }
 
@@ -74,6 +81,42 @@ export class MedicalRemindersService {
       );
       return null;
     }
+  }
+
+  /**
+   * Phát nhắc cho mọi con ngựa đang ở trạng thái đến hạn khám định kỳ (DUE_SOON) mà chưa có ngày hẹn khám
+   *
+   * - Ngựa đang có ngày hẹn khám còn hiệu lực thì bỏ qua
+   * - eventId cố định theo ngựa và hạn khám: mỗi hạn chỉ báo một lần dù job chạy nhiều ngày liền
+   *
+   * @param today Hôm nay theo lịch câu lạc bộ
+   * @returns Promise trả về số con ngựa đã phát nhắc
+   */
+  async notifyDueCheckups(today: string): Promise<number> {
+    const rows = (await this.checkups.herdCheckupAnchors()).filter(
+      (row) =>
+        dueStatusOf(checkupDueDate(row), today) === CheckupDueStatus.DUE_SOON,
+    );
+    const appointments = await this.checkups.activeAppointments(
+      rows.map((row) => row.horseId),
+    );
+    let sent = 0;
+    for (const row of rows) {
+      if (appointments.has(row.horseId)) continue;
+      const dueDate = checkupDueDate(row);
+      const event: CheckupDueEvent = {
+        eventId: deterministicUuid(`checkup-due:${row.horseId}:${dueDate}`),
+        horseId: row.horseId,
+        dueDate,
+      };
+      await this.events.publish(
+        this.dataSource.manager,
+        MEDICAL_CHECKUP_DUE_EVENT,
+        event,
+      );
+      sent += 1;
+    }
+    return sent;
   }
 
   /**

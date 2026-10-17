@@ -181,6 +181,29 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft().recipientIds).toEqual(['cm-1']);
   });
 
+  it('sends a due checkup to veterinarians only at normal priority', async () => {
+    await service.notifyCheckupDue({
+      eventId: 'e7',
+      horseId: 'h1',
+      dueDate: '2026-10-31',
+    });
+    expect(sentDraft()).toMatchObject({
+      eventId: 'e7',
+      recipientIds: ['vet-1', 'vet-2'],
+      category: NotificationCategory.CARE_REMINDER,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Winx đến hạn khám định kỳ',
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'h1',
+        horseId: 'h1',
+      },
+    });
+    expect(sentDraft().message).toContain(
+      'Winx đến hạn khám định kỳ ngày 31/10/2026',
+    );
+  });
+
   it('sends an overdue checkup to veterinarians and club managers', async () => {
     await service.notifyCheckupOverdue({
       eventId: 'e8',

@@ -1,6 +1,7 @@
 import type { DataSource } from 'typeorm';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
+  MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
 } from '../constants/medical-events.constants';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
@@ -90,8 +91,80 @@ describe('MedicalRemindersService.notifyOverdueCheckups', () => {
   });
 });
 
+describe('MedicalRemindersService.notifyDueCheckups', () => {
+  let shared: { herdCheckupAnchors: jest.Mock; activeAppointments: jest.Mock };
+  let events: { publish: jest.Mock };
+  let service: MedicalRemindersService;
+
+  beforeEach(() => {
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
+    shared = {
+      herdCheckupAnchors: jest
+        .fn()
+        .mockResolvedValue([
+          anchor('h-today', '2026-08-28'),
+          anchor('h-3', '2026-08-31'),
+          anchor('h-4', '2026-09-01'),
+          anchor('h-late', '2026-08-27'),
+          anchor('h-booked', '2026-08-29'),
+        ]),
+      activeAppointments: jest
+        .fn()
+        .mockResolvedValue(new Map([['h-booked', { id: 'a1' }]])),
+    };
+    service = new MedicalRemindersService(
+      dataSource,
+      shared as unknown as MedicalCheckupsService,
+      events,
+    );
+  });
+
+  const published = () =>
+    (
+      events.publish.mock.calls as Array<
+        [unknown, string, { eventId: string; horseId: string; dueDate: string }]
+      >
+    ).map(([target, name, event]) => ({ target, name, ...event }));
+
+  it('notifies horses due within 0 to 3 days that have no appointment', async () => {
+    await expect(service.notifyDueCheckups('2026-09-27')).resolves.toBe(2);
+    expect(shared.activeAppointments).toHaveBeenCalledWith([
+      'h-today',
+      'h-3',
+      'h-booked',
+    ]);
+    expect(published()).toEqual([
+      expect.objectContaining({
+        target: manager,
+        name: MEDICAL_CHECKUP_DUE_EVENT,
+        horseId: 'h-today',
+        dueDate: '2026-09-27',
+      }),
+      expect.objectContaining({
+        name: MEDICAL_CHECKUP_DUE_EVENT,
+        horseId: 'h-3',
+        dueDate: '2026-09-30',
+      }),
+    ]);
+  });
+
+  it('reuses the same event id on the next day so the notice is not sent twice', async () => {
+    await service.notifyDueCheckups('2026-09-27');
+    await service.notifyDueCheckups('2026-09-28');
+    const ids = published()
+      .filter((event) => event.horseId === 'h-3')
+      .map((event) => event.eventId);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe(ids[1]);
+  });
+});
+
 describe('MedicalRemindersService.runDaily', () => {
-  let shared: { herdCheckupAnchors: jest.Mock; dueCareSchedules: jest.Mock };
+  let shared: {
+    herdCheckupAnchors: jest.Mock;
+    activeAppointments: jest.Mock;
+    dueCareSchedules: jest.Mock;
+  };
   let events: { publish: jest.Mock };
   let service: MedicalRemindersService;
 
@@ -100,7 +173,11 @@ describe('MedicalRemindersService.runDaily', () => {
     shared = {
       herdCheckupAnchors: jest
         .fn()
-        .mockResolvedValue([anchor('h-8', '2026-08-20')]),
+        .mockResolvedValue([
+          anchor('h-8', '2026-08-20'),
+          anchor('h-due', '2026-08-29'),
+        ]),
+      activeAppointments: jest.fn().mockResolvedValue(new Map()),
       dueCareSchedules: jest.fn().mockResolvedValue([]),
     };
     events = { publish: jest.fn().mockResolvedValue(undefined) };
@@ -115,9 +192,14 @@ describe('MedicalRemindersService.runDaily', () => {
     jest.useRealTimers();
   });
 
-  it('runs both reminders for today on the club calendar', async () => {
+  it('runs every reminder for today on the club calendar', async () => {
     await service.runDaily();
-    expect(shared.herdCheckupAnchors).toHaveBeenCalledTimes(1);
+    expect(shared.herdCheckupAnchors).toHaveBeenCalledTimes(2);
+    expect(events.publish).toHaveBeenCalledWith(
+      manager,
+      MEDICAL_CHECKUP_DUE_EVENT,
+      expect.objectContaining({ horseId: 'h-due', dueDate: '2026-09-28' }),
+    );
     expect(shared.dueCareSchedules).toHaveBeenCalledWith('2026-09-27');
     expect(events.publish).toHaveBeenCalledWith(
       manager,
