@@ -72,6 +72,7 @@ function setup() {
     access as unknown as TrainingAccessService,
     dataSource,
     { record: jest.fn() },
+    { publish: jest.fn() },
   );
   return { service, session };
 }
@@ -173,6 +174,7 @@ function setupCreate(
     access as unknown as TrainingAccessService,
     dataSource,
     { record: jest.fn() },
+    { publish: jest.fn() },
   );
   return { service, manager };
 }

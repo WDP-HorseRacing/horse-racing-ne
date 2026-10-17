@@ -37,6 +37,7 @@ import { PushChannel } from './push.channel';
 import { RealtimeChannel } from './realtime.channel';
 import { SupplyEventsListener } from './supply-events.listener';
 import { SurchargeAddedListener } from './surcharge-added.listener';
+import { TrainingSessionCancelledListener } from './training-session-cancelled.listener';
 import { SupplyNotificationsService } from './supply-notifications.service';
 
 @Module({
@@ -76,6 +77,7 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     IncidentReportedListener,
     HorseLifecycleChangedListener,
     SurchargeAddedListener,
+    TrainingSessionCancelledListener,
     IncidentStaleListener,
     MedicalEventsListener,
     PerformanceNotificationsService,

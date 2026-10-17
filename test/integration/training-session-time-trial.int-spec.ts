@@ -1,3 +1,4 @@
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
@@ -44,6 +45,7 @@ describe('Time trial config of a training session (Postgres)', () => {
       access,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     timeTrials = new TimeTrialsService(
       dataSource.getRepository(TimeTrialEntity),

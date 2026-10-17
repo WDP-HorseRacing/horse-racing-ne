@@ -32,6 +32,22 @@ export function toDisplayDate(date: string): string {
 }
 
 /**
+ * Định dạng một thời điểm theo giờ CLB để đưa vào câu báo
+ *
+ * @param value Thời điểm cần định dạng, dạng Date hoặc chuỗi ISO
+ * @returns Chuỗi dạng "HH:mm ngày dd/mm/yyyy"
+ */
+export function formatClubDateTime(value: Date | string): string {
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone: CLUB_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(value));
+  return `${time} ngày ${toDisplayDate(toClubDate(value))}`;
+}
+
+/**
  * Lùi một ngày đi số năm cho trước theo lịch
  *
  * - Ngày 29/02 lùi về năm không nhuận thì thành 28/02

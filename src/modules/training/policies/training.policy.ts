@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
-import { toClubDate, toDisplayDate } from '../../../common/utils/club-date';
+import {
+  formatClubDateTime,
+  toClubDate,
+} from '../../../common/utils/club-date';
 import { EligibilityReason } from '../../horses/enums/eligibility-reason.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
@@ -691,22 +693,6 @@ export function assertClassOpenForSessions(status: TrainingClassStatus): void {
       'Lớp đã kết thúc, không thêm hoặc sửa buổi tập được',
     );
   }
-}
-
-/**
- * Định dạng một thời điểm theo giờ CLB để đưa vào câu báo
- *
- * @param value Thời điểm cần định dạng
- * @returns Chuỗi dạng "HH:mm ngày dd/mm/yyyy"
- */
-function formatClubDateTime(value: Date): string {
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone: CLUB_TIME_ZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(value);
-  return `${time} ngày ${toDisplayDate(toClubDate(value))}`;
 }
 
 /**

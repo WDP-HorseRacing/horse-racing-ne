@@ -240,6 +240,7 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       trainingAccess,
       dataSource,
       audit,
+      new DomainEventPublisher(),
     );
     classes = new TrainingClassesService(
       dataSource.getRepository(TrainingClassEntity),

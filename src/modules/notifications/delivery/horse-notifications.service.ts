@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { toClubDate, toDisplayDate } from '../../../common/utils/club-date';
+import {
+  formatClubDateTime,
+  toClubDate,
+  toDisplayDate,
+} from '../../../common/utils/club-date';
 import { UserRole } from '../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
@@ -29,6 +33,7 @@ import type {
   IncidentStaleEvent,
 } from '../../stable/types/stable-events.types';
 import type { SurchargeAddedEvent } from '../../billing/types/billing-events.types';
+import type { TrainingSessionCancelledEvent } from '../../training/types/training-session.types';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { horseResource } from '../mappers/notification.mapper';
@@ -253,6 +258,53 @@ export class HorseNotificationsService {
       message: 'Đã có đủ checklist hôm nay.',
       resource: null,
     });
+  }
+
+  /**
+   * Báo người dắt từng ngựa khi Head Trainer hủy buổi tập
+   *
+   * - Người nhận của mỗi lượt: Groom được giao dắt nếu còn ACTIVE với vai trò GROOM; lượt chưa có người dắt thì Groom đang phụ trách ngựa
+   * - Mỗi người nhận một thông báo, liệt kê các ngựa của mình trong buổi; idempotent theo notice.eventId
+   * - Lượt không tìm được ai để báo thì bỏ qua
+   *
+   * @param notice Payload do module training phát khi hủy buổi tập
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  async notifySessionCancelled(
+    notice: TrainingSessionCancelledEvent,
+  ): Promise<string[]> {
+    const horsesByGroom = new Map<string, string[]>();
+    for (const run of notice.runs) {
+      const horse = await this.recipients.findHorseMedicalContact(run.horseId);
+      if (!horse) continue;
+      const handlerActive =
+        run.groomId !== null &&
+        (await this.recipients.isActiveUserWithRole(
+          run.groomId,
+          UserRole.GROOM,
+        ));
+      const groomId = handlerActive ? run.groomId : horse.groomId;
+      if (!groomId) continue;
+      horsesByGroom.set(groomId, [
+        ...(horsesByGroom.get(groomId) ?? []),
+        horse.horseName,
+      ]);
+    }
+    const sent: string[] = [];
+    for (const [groomId, horseNames] of horsesByGroom) {
+      sent.push(
+        ...(await this.notifications.send({
+          eventId: notice.eventId,
+          recipientIds: [groomId],
+          category: NotificationCategory.TRAINING_SESSION,
+          priority: NotificationPriority.HIGH,
+          title: `Buổi tập ${notice.sessionName} đã hủy`,
+          message: `Buổi tập ${notice.sessionName} lúc ${formatClubDateTime(notice.scheduledStartAt)} đã hủy: ${notice.reason}. Không dắt ${horseNames.join(', ')} ra sân.`,
+          resource: null,
+        })),
+      );
+    }
+    return sent;
   }
 
   /**

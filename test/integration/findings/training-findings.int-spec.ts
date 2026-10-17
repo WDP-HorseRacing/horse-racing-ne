@@ -1,3 +1,4 @@
+import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import { ForbiddenException } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -79,6 +80,7 @@ describe('Training findings (Postgres)', () => {
       access,
       dataSource,
       audit,
+      new DomainEventPublisher(),
     );
     participantsService = new SessionParticipantsService(
       dataSource.getRepository(SessionParticipantEntity),

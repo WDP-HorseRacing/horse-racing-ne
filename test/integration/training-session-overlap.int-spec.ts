@@ -1,3 +1,4 @@
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
@@ -48,6 +49,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       access,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),

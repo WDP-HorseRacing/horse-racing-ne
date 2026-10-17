@@ -5,7 +5,9 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import { randomUUID } from 'node:crypto';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import { toClubDate } from '../../../common/utils/club-date';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
@@ -57,7 +59,11 @@ import {
 } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { sessionAuditData } from '../utils/training-audit';
-import type { SessionWindow } from '../types/training-session.types';
+import { TRAINING_SESSION_CANCELLED_EVENT } from '../constants/training-events.constants';
+import type {
+  SessionWindow,
+  TrainingSessionCancelledEvent,
+} from '../types/training-session.types';
 
 /**
  * Lượt tập được đồng bộ lại khi buổi đổi giờ hoặc cường độ
@@ -66,6 +72,15 @@ const SYNCED_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.PLANNED,
   SessionParticipantStatus.CANCELLED_BY_LOCK,
   SessionParticipantStatus.INELIGIBLE,
+];
+
+/**
+ * Lượt tập chưa diễn ra, bị hủy theo khi hủy buổi
+ */
+const CANCELLABLE_RUN_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.PRESENT,
+  SessionParticipantStatus.READY,
 ];
 
 /**
@@ -115,6 +130,7 @@ export class TrainingSessionsService {
     private readonly access: TrainingAccessService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
@@ -528,6 +544,22 @@ export class TrainingSessionsService {
     return toTrainingSessionResponse(row);
   }
 
+  /**
+   * Head Trainer của lớp hủy một buổi tập kèm lý do
+   *
+   * - Còn lượt Đang tập: 409
+   * - Lượt chưa diễn ra (Chờ điểm danh, Có mặt, Sẵn sàng) chuyển Đã hủy với cùng lý do
+   * - Có lượt vừa bị hủy: ghi TRAINING_SESSION_CANCELLED_EVENT vào outbox để báo người dắt từng ngựa
+   * - Ghi nhật ký trạng thái trước và sau kèm lý do
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @param body Lý do hủy
+   * @returns Promise trả về buổi tập sau khi hủy
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc người gọi không quản lý lớp của buổi
+   * @throws NotFoundException Nếu không có buổi tập hoặc lớp
+   * @throws ConflictException Nếu buổi không còn hủy được, hoặc còn lượt Đang tập
+   */
   async cancelSession(
     actor: Actor,
     sessionId: string,
@@ -555,6 +587,10 @@ export class TrainingSessionsService {
         throw new ConflictException(
           'Không thể hủy buổi tập khi còn lượt tập đang tập',
         );
+      const cancelledRuns = await manager.find(SessionParticipantEntity, {
+        where: { sessionId, status: In(CANCELLABLE_RUN_STATUSES) },
+        select: { horseId: true, assignedGroomId: true },
+      });
       await manager
         .createQueryBuilder()
         .update(SessionParticipantEntity)
@@ -564,11 +600,7 @@ export class TrainingSessionsService {
         })
         .where('session_id = :sessionId', { sessionId })
         .andWhere('status IN (:...statuses)', {
-          statuses: [
-            SessionParticipantStatus.PLANNED,
-            SessionParticipantStatus.PRESENT,
-            SessionParticipantStatus.READY,
-          ],
+          statuses: CANCELLABLE_RUN_STATUSES,
         })
         .execute();
       session.status = TrainingSessionStatus.CANCELLED;
@@ -586,6 +618,24 @@ export class TrainingSessionsService {
         reason: body.reason,
         feature: AuditFeature.TRAIN_SESSION,
       });
+      if (cancelledRuns.length > 0) {
+        const event: TrainingSessionCancelledEvent = {
+          eventId: randomUUID(),
+          sessionId,
+          sessionName: saved.name,
+          scheduledStartAt: saved.scheduledStartAt.toISOString(),
+          reason: body.reason,
+          runs: cancelledRuns.map((run) => ({
+            horseId: run.horseId,
+            groomId: run.assignedGroomId,
+          })),
+        };
+        await this.events.publish(
+          manager,
+          TRAINING_SESSION_CANCELLED_EVENT,
+          event,
+        );
+      }
       return saved;
     });
     return toTrainingSessionResponse(row);

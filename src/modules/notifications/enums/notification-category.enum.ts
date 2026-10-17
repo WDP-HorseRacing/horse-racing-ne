@@ -16,6 +16,7 @@
  * - INCIDENT: Groom báo sự cố tại chuồng
  * - SUPPLY: đề xuất bổ sung vật tư mới, đổi trạng thái, hoặc vật tư sắp hết
  * - SURCHARGE: ngựa có phụ phí chăm sóc riêng mới
+ * - TRAINING_SESSION: buổi tập có ngựa mình dắt bị hủy
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -33,4 +34,5 @@ export enum NotificationCategory {
   INCIDENT = 'INCIDENT',
   SUPPLY = 'SUPPLY',
   SURCHARGE = 'SURCHARGE',
+  TRAINING_SESSION = 'TRAINING_SESSION',
 }

@@ -2,9 +2,11 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
+import { TRAINING_SESSION_CANCELLED_EVENT } from '../../src/modules/training/constants/training-events.constants';
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingSessionEntity } from '../../src/modules/training/entities/training-session.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
@@ -38,6 +40,7 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
   });
 
@@ -117,6 +120,49 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
     Object.fromEntries(
       (await participantsOf(sessionId)).map((r) => [r.horse_id, r.status]),
     );
+
+  it('tells the groom leading each upcoming run when the session is cancelled', async () => {
+    const winx = await enroll('Winx');
+    await enroll('Gió', HorseHealthStatus.UNDER_OBSERVATION);
+    const groomId = await seed.user(UserRole.GROOM);
+    await dataSource.query(
+      `INSERT INTO groom_assignments (version, horse_id, groom_id, start_at)
+       VALUES (1, $1, $2, '2026-10-01T00:00:00Z')`,
+      [winx, groomId],
+    );
+    const created = await create('2026-11-20T01:00:00Z');
+
+    await service.cancelSession(trainer, created.id, { reason: 'Mưa lớn' });
+
+    const events = await dataSource.query<
+      Array<{ payload: Record<string, unknown> }>
+    >('SELECT payload FROM outbox_events WHERE event_name = $1', [
+      TRAINING_SESSION_CANCELLED_EVENT,
+    ]);
+    expect(events).toEqual([
+      {
+        payload: expect.objectContaining({
+          sessionId: created.id,
+          reason: 'Mưa lớn',
+          scheduledStartAt: '2026-11-20T01:00:00.000Z',
+          runs: [{ horseId: winx, groomId }],
+        }) as unknown,
+      },
+    ]);
+  });
+
+  it('writes no event when the cancelled session had no upcoming run', async () => {
+    await enroll('Gió', HorseHealthStatus.UNDER_OBSERVATION);
+    const created = await create('2026-11-20T01:00:00Z');
+
+    await service.cancelSession(trainer, created.id, { reason: 'Mưa lớn' });
+
+    await expect(
+      dataSource.query('SELECT id FROM outbox_events WHERE event_name = $1', [
+        TRAINING_SESSION_CANCELLED_EVENT,
+      ]),
+    ).resolves.toEqual([]);
+  });
 
   it('schedules a new session and plans every enrolled horse with its eligibility', async () => {
     const healthy = await enroll('Winx');

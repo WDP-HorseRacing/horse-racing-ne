@@ -69,3 +69,19 @@ export interface ParticipantEligibilityChange {
   before: ParticipantEligibilityState;
   after: ParticipantEligibilityState;
 }
+
+/**
+ * Payload của domain event TRAINING_SESSION_CANCELLED_EVENT
+ *
+ * - eventId: sinh mới mỗi lần hủy, dùng để chống gửi trùng thông báo
+ * - scheduledStartAt: giờ bắt đầu dự kiến, chuỗi ISO
+ * - runs: các lượt vừa bị hủy; groomId là người dắt được giao, null nếu lượt chưa có người dắt
+ */
+export interface TrainingSessionCancelledEvent {
+  eventId: string;
+  sessionId: string;
+  sessionName: string;
+  scheduledStartAt: string;
+  reason: string;
+  runs: Array<{ horseId: string; groomId: string | null }>;
+}

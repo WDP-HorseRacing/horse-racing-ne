@@ -1,3 +1,4 @@
+import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -125,6 +126,7 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
       access,
       dataSource,
       audit,
+      new DomainEventPublisher(),
     );
     participantsService = new SessionParticipantsService(
       dataSource.getRepository(SessionParticipantEntity),

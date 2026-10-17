@@ -23,6 +23,7 @@ function setup() {
     findBarnContact: jest.fn(),
     findHorseMedicalContact: jest.fn(),
     findHorseName: jest.fn(),
+    isActiveUserWithRole: jest.fn(),
   };
   const notifications = { send: jest.fn().mockResolvedValue([]) };
   const dataSource = {
@@ -725,5 +726,53 @@ describe('HorseNotificationsService checklist generation notices', () => {
         message: 'Đã có đủ checklist hôm nay.',
       }),
     );
+  });
+});
+
+describe('HorseNotificationsService.notifySessionCancelled', () => {
+  const notice = {
+    eventId: 'cancel-1',
+    sessionId: 'session-1',
+    sessionName: 'Sức bền sáng',
+    scheduledStartAt: '2026-11-20T23:00:00.000Z',
+    reason: 'Mưa lớn',
+    runs: [
+      { horseId: 'winx', groomId: 'groom-1' },
+      { horseId: 'gio', groomId: 'groom-1' },
+      { horseId: 'may', groomId: null },
+      { horseId: 'locked', groomId: 'groom-locked' },
+    ],
+  };
+
+  it('sends one notice per groom listing their horses, falling back to the groom in charge', async () => {
+    const { service, recipients, notifications } = setup();
+    const contacts: Record<string, { horseName: string; groomId: string }> = {
+      winx: { horseName: 'Winx', groomId: 'groom-1' },
+      gio: { horseName: 'Gió', groomId: 'groom-1' },
+      may: { horseName: 'Mây', groomId: 'groom-2' },
+      locked: { horseName: 'Sao', groomId: 'groom-3' },
+    };
+    recipients.findHorseMedicalContact.mockImplementation((id: string) =>
+      Promise.resolve(contacts[id]),
+    );
+    recipients.isActiveUserWithRole.mockImplementation((id: string) =>
+      Promise.resolve(id !== 'groom-locked'),
+    );
+
+    await service.notifySessionCancelled(notice);
+
+    const sent = (
+      notifications.send.mock.calls as Array<
+        [{ recipientIds: string[]; message: string }]
+      >
+    ).map(([draft]) => [draft.recipientIds, draft.message]);
+    expect(sent).toEqual([
+      [
+        ['groom-1'],
+        'Buổi tập Sức bền sáng lúc 06:00 ngày 21/11/2026 đã hủy: Mưa lớn. Không dắt Winx, Gió ra sân.',
+      ],
+      [['groom-2'], expect.stringContaining('Không dắt Mây ra sân.')],
+      [['groom-3'], expect.stringContaining('Không dắt Sao ra sân.')],
+    ]);
   });
 });
