@@ -183,7 +183,7 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
    - Lịch khám định kỳ: các con đến hạn trong 3 ngày tới và các con đã quá hạn. Kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong 3 ngày tới, mỗi dòng có người làm hiện tại (id và họ tên, trống nếu chưa có ai).
    - Bệnh án đang mở, kèm ngày khám gần nhất và ngày hẹn tái khám.
    - Yêu cầu khám đang chờ xử lý, xếp yêu cầu Khẩn lên trước.
-   - Thuốc cần cho hôm nay: các đơn thuốc đang hiệu lực, mỗi dòng gồm ngựa (id, tên), tên thuốc, liều lượng, tần suất, ngày bắt đầu, ngày kết thúc, buổi khám kê đơn và bệnh án chứa buổi đó (trống nếu buổi khám ngoài bệnh án); xếp theo tên ngựa rồi tên thuốc. Đơn đang hiệu lực khi đã tới ngày bắt đầu và chưa qua ngày kết thúc (tính cả ngày kết thúc), so theo ngày lịch câu lạc bộ. Đơn không có ngày kết thúc chỉ hiện khi thuộc bệnh án đang mở (dùng tới khi đóng bệnh án); ở buổi khám ngoài bệnh án thì không hiện, bác sĩ muốn hiện thì nhập ngày kết thúc. Bỏ đơn của buổi khám đã hủy. CLUB MANAGER và HEAD TRAINER cũng thấy liều lượng, tần suất (đúng bảng phân quyền thông tin của F3.10).
+   - Thuốc cần cho hôm nay: các đơn thuốc đang hiệu lực, mỗi dòng gồm ngựa (id, tên), tên thuốc, liều lượng, tần suất, ngày bắt đầu, ngày kết thúc, buổi khám kê đơn và bệnh án chứa buổi đó (trống nếu buổi khám ngoài bệnh án); xếp theo tên ngựa rồi tên thuốc. Đơn đang hiệu lực khi đã tới ngày bắt đầu và chưa qua ngày kết thúc (tính cả ngày kết thúc), so theo ngày lịch câu lạc bộ. Đơn không có ngày kết thúc (chỉ có ở buổi khám thuộc bệnh án, theo F3.3) hiện tới khi đóng bệnh án. Bỏ đơn của buổi khám đã hủy. CLUB MANAGER và HEAD TRAINER cũng thấy liều lượng, tần suất (đúng bảng phân quyền thông tin của F3.10).
 2. Thứ tự ưu tiên trong sơ đồ đàn: Cách ly và Chấn thương lên đầu, rồi Cần theo dõi, cuối cùng là Đủ điều kiện.
 3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và bốn khối còn lại. Bộ lọc "Lịch của tôi" (`careAssignee=me`) chỉ giữ các lịch tiêm phòng, tẩy giun, kiểm tra móng có người làm hiện tại là người đang xem; không đổi các khối khác. Không có màn việc riêng cho bác sĩ, vì phần lớn việc của bác sĩ là việc chung (yêu cầu khám, khám định kỳ, bệnh án), chỉ lịch chăm sóc là giao đích danh.
 4. Bấm vào một con ngựa mở hồ sơ chi tiết (F1.3) hoặc bệnh án (F3.10).
@@ -285,7 +285,7 @@ Ghi lại một buổi khám cho con ngựa chưa có bệnh án đang mở: kh�
    - Kết luận: Bình thường hoặc Có vấn đề.
    - Trạng thái sức khỏe sau khám (tùy chọn; nếu khác trạng thái hiện tại thì bắt buộc lý do, theo F3.7).
    - Ghi chú chăm sóc: hạn chế vận động, lưu ý cho GROOM (tùy chọn). Ghi chú của buổi khám gần nhất là ghi chú đang hiệu lực; để trống nghĩa là không còn hạn chế. Giao diện điền sẵn ghi chú đang hiệu lực để bác sĩ giữ, sửa hoặc xóa có chủ đích.
-   - Đơn thuốc (tùy chọn): mỗi dòng gồm tên thuốc, liều lượng, tần suất, ngày bắt đầu, ngày kết thúc (tùy chọn, không sớm hơn ngày bắt đầu). Không trừ kho, không tính tiền.
+   - Đơn thuốc (tùy chọn): mỗi dòng gồm tên thuốc, liều lượng, tần suất, ngày bắt đầu, ngày kết thúc (không sớm hơn ngày bắt đầu). Ngày kết thúc bắt buộc khi kết luận Bình thường (buổi khám không mở bệnh án, thiếu thì 400); khi kết luận Có vấn đề thì tùy chọn, bỏ trống nghĩa là dùng tới khi đóng bệnh án. Không trừ kho, không tính tiền.
    - Chấn thương (tùy chọn, chỉ khi kết luận Có vấn đề): theo F3.6 mục 2.
    - Ngày hẹn tái khám (tùy chọn, chỉ khi kết luận Có vấn đề): là ngày hẹn tái khám đầu tiên của bệnh án vừa mở.
 2. Kết luận Bình thường: hệ thống lưu buổi khám như một bản ghi độc lập, không mở bệnh án, và đẩy hạn khám định kỳ sang chu kỳ tiếp theo.
@@ -430,7 +430,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Trạng thái sức khỏe sau khám (tùy chọn; nếu khác trạng thái hiện tại thì bắt buộc lý do).
    - Ghi chú chăm sóc: hạn chế vận động, lưu ý cho GROOM (tùy chọn). Ghi chú của buổi khám gần nhất là ghi chú đang hiệu lực; để trống nghĩa là không còn hạn chế (giao diện điền sẵn ghi chú đang hiệu lực).
    - Ngày hẹn tái khám (tùy chọn).
-   - Đơn thuốc (tùy chọn), cùng quy cách với F3.3.
+   - Đơn thuốc (tùy chọn), cùng quy cách với F3.3; ngày kết thúc tùy chọn, bỏ trống nghĩa là dùng tới khi đóng bệnh án.
    - Chấn thương (tùy chọn), xem mục 2.
 2. Chấn thương: mỗi dòng gồm vùng cơ thể, vị trí trên mô hình 3D (tọa độ x, y, z, bắt buộc), loại chấn thương, mức hồi phục (Cấp tính, Đang hồi phục, Đã lành) và ghi chú. Một chấn thương được định danh bằng cặp (vùng cơ thể, loại chấn thương) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp. Diễn biến hồi phục của một chấn thương là chuỗi các dòng cùng cặp của những buổi khám chưa hủy trong cùng bệnh án, xếp theo thời điểm khám.
 3. Hệ thống không trừ kho vật tư và không tính tiền thuốc.

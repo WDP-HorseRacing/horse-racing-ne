@@ -169,6 +169,9 @@ export class MedicalVisitsService {
         requestCount: body.requestIds?.length ?? 0,
         injuryCount: body.injuries?.length ?? 0,
         hasNextVisit: nextVisitAt !== null,
+        hasOpenEndedPrescription: (body.prescriptions ?? []).some(
+          (item) => !item.endDate,
+        ),
       });
       if (nextVisitAt) assertNextVisitAt(nextVisitAt, now);
       assertDistinctInjuries(body.injuries ?? []);

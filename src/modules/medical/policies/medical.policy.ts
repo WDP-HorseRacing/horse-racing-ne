@@ -211,8 +211,9 @@ export function assertStandaloneVisitAllowed(hasOpenCase: boolean): void {
  * - Kết luận ISSUE bắt buộc chẩn đoán ban đầu
  * - Khám theo yêu cầu (REQUEST) bắt buộc gắn ít nhất một yêu cầu
  * - Chấn thương và ngày hẹn tái khám chỉ dùng khi buổi khám mở bệnh án (ISSUE)
+ * - Buổi khám không mở bệnh án: mọi dòng đơn thuốc bắt buộc có ngày kết thúc
  *
- * @param input Loại, kết luận, chẩn đoán ban đầu, số yêu cầu gắn, số chấn thương và có ngày hẹn tái khám không
+ * @param input Loại, kết luận, chẩn đoán ban đầu, số yêu cầu gắn, số chấn thương, có ngày hẹn tái khám không và có dòng đơn thuốc thiếu ngày kết thúc không
  * @throws BadRequestException Nếu vi phạm một trong các luật trên
  */
 export function assertStandaloneVisitInput(input: {
@@ -222,6 +223,7 @@ export function assertStandaloneVisitInput(input: {
   requestCount: number;
   injuryCount: number;
   hasNextVisit: boolean;
+  hasOpenEndedPrescription: boolean;
 }): void {
   const opensCase = input.conclusion === MedicalVisitConclusion.ISSUE;
   if (opensCase && !input.initialDiagnosis) {
@@ -242,6 +244,11 @@ export function assertStandaloneVisitInput(input: {
   if (!opensCase && (input.injuryCount > 0 || input.hasNextVisit)) {
     throw new BadRequestException(
       'Chấn thương và ngày hẹn tái khám chỉ ghi khi buổi khám mở bệnh án',
+    );
+  }
+  if (!opensCase && input.hasOpenEndedPrescription) {
+    throw new BadRequestException(
+      'Đơn thuốc của buổi khám không mở bệnh án phải có ngày kết thúc',
     );
   }
 }

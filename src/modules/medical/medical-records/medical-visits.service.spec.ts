@@ -238,6 +238,26 @@ describe('MedicalVisitsService', () => {
       expectNothingWritten();
     });
 
+    it('requires an end date on every prescription of a visit that opens no case, before any write', async () => {
+      await expect(
+        service.createStandaloneVisit(
+          vet,
+          HORSE_ID,
+          standalone({
+            prescriptions: [
+              {
+                medicine: 'Phenylbutazone',
+                dosage: '2 g',
+                frequency: '1 lần/ngày',
+                startDate: '2026-09-27',
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expectNothingWritten();
+    });
+
     it('answers conflict when an attached request is no longer pending', async () => {
       manager.find.mockImplementation((entity: unknown) =>
         Promise.resolve(

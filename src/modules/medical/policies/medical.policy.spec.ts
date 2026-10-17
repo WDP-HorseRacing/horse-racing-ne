@@ -232,6 +232,7 @@ describe('medical.policy', () => {
       requestCount: 0,
       injuryCount: 0,
       hasNextVisit: false,
+      hasOpenEndedPrescription: false,
       ...overrides,
     });
     const now = new Date('2026-09-27T10:00:00Z');
@@ -252,13 +253,17 @@ describe('medical.policy', () => {
       ['REQUEST without request', { kind: MedicalVisitKind.REQUEST }],
       ['injuries on a NORMAL visit', { injuryCount: 1 }],
       ['next visit on a NORMAL visit', { hasNextVisit: true }],
+      [
+        'a prescription without end date on a NORMAL visit',
+        { hasOpenEndedPrescription: true },
+      ],
     ])('rejects %s', (_label, overrides) => {
       expect(() => assertStandaloneVisitInput(input(overrides))).toThrow(
         BadRequestException,
       );
     });
 
-    it('accepts an ISSUE visit with diagnosis, injuries and next visit', () => {
+    it('accepts an ISSUE visit with diagnosis, injuries, next visit and an open-ended prescription', () => {
       expect(() =>
         assertStandaloneVisitInput(
           input({
@@ -266,6 +271,7 @@ describe('medical.policy', () => {
             initialDiagnosis: 'Viêm gân',
             injuryCount: 1,
             hasNextVisit: true,
+            hasOpenEndedPrescription: true,
           }),
         ),
       ).not.toThrow();

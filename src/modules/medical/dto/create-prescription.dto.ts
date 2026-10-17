@@ -42,7 +42,8 @@ export class CreatePrescriptionDto {
 
   @ApiPropertyOptional({
     format: 'date',
-    description: 'YYYY-MM-DD, không sớm hơn startDate',
+    description:
+      'YYYY-MM-DD, không sớm hơn startDate; bắt buộc khi buổi khám không mở bệnh án, bỏ trống là dùng tới khi đóng bệnh án',
   })
   @IsOptional()
   @Matches(DATE_ONLY_PATTERN, {

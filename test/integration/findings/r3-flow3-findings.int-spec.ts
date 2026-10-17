@@ -625,6 +625,7 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
             dosage: '10ml',
             frequency: '1 lần',
             startDate: '2019-01-01',
+            endDate: '2019-01-10',
           },
         ],
       }),
