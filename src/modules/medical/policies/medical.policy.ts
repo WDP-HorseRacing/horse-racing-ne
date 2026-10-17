@@ -13,6 +13,7 @@ import type { OwnershipPeriod } from '../../horses/types/horse.types';
 import {
   CareAssigneeType,
   CareScheduleStatus,
+  CareScheduleType,
 } from '../constants/care-schedule.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import {
@@ -38,6 +39,11 @@ import {
 } from '../constants/medical.constants';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const VET_ONLY_CARE_TYPES: readonly CareScheduleType[] = [
+  CareScheduleType.VACCINATION,
+  CareScheduleType.DEWORMING,
+];
 
 /**
  * Các mốc để tính hạn khám định kỳ của một con ngựa, đều là ngày theo lịch câu lạc bộ (YYYY-MM-DD).
@@ -799,6 +805,31 @@ export function careAssignment(
     throw fieldBadRequest('assignedTo', 'Giao bác sĩ phải chọn bác sĩ cụ thể');
   }
   return { assigneeType: type, assignedTo: person };
+}
+
+/**
+ * Kiểm loại lịch chăm sóc có được giao theo kiểu giao này không
+ *
+ * - Tiêm phòng, tẩy giun: không được giao Groom (400 ô assigneeType); giao bác sĩ hoặc chưa giao ai thì được
+ * - Loại khác: kiểu giao nào cũng được
+ *
+ * @param type Loại lịch chăm sóc
+ * @param assigneeType Kiểu giao đã chuẩn hóa, null là chưa giao ai
+ * @throws BadRequestException Nếu lịch tiêm phòng hoặc tẩy giun giao cho Groom
+ */
+export function assertCareAssigneeAllowed(
+  type: CareScheduleType,
+  assigneeType: CareAssigneeType | null,
+): void {
+  if (
+    assigneeType === CareAssigneeType.GROOM &&
+    VET_ONLY_CARE_TYPES.includes(type)
+  ) {
+    throw fieldBadRequest(
+      'assigneeType',
+      'Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ',
+    );
+  }
 }
 
 /**

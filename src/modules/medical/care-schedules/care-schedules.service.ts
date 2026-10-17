@@ -31,6 +31,7 @@ import { toCareScheduleResponse } from '../mappers/medical.mapper';
 import {
   assertCanCompleteCareSchedule,
   assertCanScheduleNext,
+  assertCareAssigneeAllowed,
   assertCareDueDate,
   assertCareScheduleOpen,
   assertRescheduleReason,
@@ -119,6 +120,7 @@ export class CareSchedulesService {
    * - Khóa row ngựa; ngựa đã chuyển nhượng: 409
    * - Ngày đến hạn không ở quá khứ
    * - Giao Groom: bỏ trống người là Groom đang phụ trách ngựa, có người thì phải là Groom đang hoạt động; giao bác sĩ: bắt buộc bác sĩ đang hoạt động; không có kiểu giao thì không được chọn người
+   * - Tiêm phòng, tẩy giun không được giao Groom
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -126,7 +128,7 @@ export class CareSchedulesService {
    * @returns Promise trả về lịch vừa tạo
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
-   * @throws BadRequestException Nếu ngày đến hạn ở quá khứ, kiểu giao và người được giao không khớp, hoặc người được giao không hợp lệ
+   * @throws BadRequestException Nếu ngày đến hạn ở quá khứ, kiểu giao và người được giao không khớp, tiêm phòng hoặc tẩy giun giao Groom, hoặc người được giao không hợp lệ
    * @throws ConflictException Nếu ngựa đã chuyển nhượng
    */
   async create(
@@ -143,6 +145,7 @@ export class CareSchedulesService {
       );
       assertCareDueDate(toClubDate(dueAt), toClubDate(new Date()));
       const assignment = careAssignment(body.assigneeType, body.assignedTo);
+      assertCareAssigneeAllowed(body.type, assignment.assigneeType);
       await this.assertAssignee(manager, assignment);
       const saved = await manager.save(
         manager.create(CareScheduleEntity, {
@@ -182,7 +185,7 @@ export class CareSchedulesService {
    *
    * - Chỉ lịch còn Đã lên lịch: 409
    * - Dời ngày bắt buộc lý do; ngày mới không ở quá khứ
-   * - Đổi cách giao: gửi assigneeType (kèm assignedTo nếu giao người cụ thể), cùng luật như khi tạo; gửi assignedTo mà không gửi assigneeType: 400
+   * - Đổi cách giao: gửi assigneeType (kèm assignedTo nếu giao người cụ thể), cùng luật như khi tạo (kể cả tiêm phòng, tẩy giun không được giao Groom); không đổi cách giao thì không kiểm luật loại lịch; gửi assignedTo mà không gửi assigneeType: 400
    * - Không có trường nào thay đổi thì không ghi gì, không ghi nhật ký
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -191,7 +194,7 @@ export class CareSchedulesService {
    * @returns Promise trả về lịch sau khi đổi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
-   * @throws BadRequestException Nếu dời ngày không có lý do, ngày ở quá khứ, kiểu giao và người được giao không khớp, hoặc người được giao không hợp lệ
+   * @throws BadRequestException Nếu dời ngày không có lý do, ngày ở quá khứ, kiểu giao và người được giao không khớp, đổi lịch tiêm phòng hoặc tẩy giun sang giao Groom, hoặc người được giao không hợp lệ
    * @throws ConflictException Nếu lịch đã hoàn tất hoặc đã hủy, hoặc ngựa đã chuyển nhượng
    */
   async update(
@@ -214,13 +217,17 @@ export class CareSchedulesService {
       if (dueChanged) {
         assertCareDueDate(toClubDate(dueAt), toClubDate(new Date()));
       }
-      const assignment =
-        body.assigneeType !== undefined || body.assignedTo !== undefined
-          ? careAssignment(body.assigneeType, body.assignedTo)
-          : {
-              assigneeType: schedule.assigneeType,
-              assignedTo: schedule.assignedTo,
-            };
+      const reassigned =
+        body.assigneeType !== undefined || body.assignedTo !== undefined;
+      const assignment = reassigned
+        ? careAssignment(body.assigneeType, body.assignedTo)
+        : {
+            assigneeType: schedule.assigneeType,
+            assignedTo: schedule.assignedTo,
+          };
+      if (reassigned) {
+        assertCareAssigneeAllowed(schedule.type, assignment.assigneeType);
+      }
       await this.assertAssignee(manager, assignment);
       const changes = {
         dueAt,

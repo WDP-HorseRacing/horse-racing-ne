@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 17/10/2026
+> Cập nhật: 18/10/2026
 
 ## I. Những main feature liên quan
 
@@ -687,6 +687,7 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
    - Giao một GROOM cụ thể (GROOM đang hoạt động, không bắt buộc phụ trách con ngựa, ví dụ GROOM chuyên làm móng): đổi GROOM phụ trách không làm đổi người làm.
    - Giao một VETERINARIAN cụ thể (bắt buộc chọn người, VETERINARIAN đang hoạt động).
    - Người làm là người hệ thống nhắc hạn và là GROOM duy nhất được hoàn tất lịch; VETERINARIAN hoàn tất được mọi lịch.
+   - Tiêm phòng và Tẩy giun chỉ giao được cho VETERINARIAN (hoặc để chưa giao ai); giao GROOM khi tạo hoặc khi đổi cách giao bị chặn (400 ở ô `assigneeType`). Kiểm tra móng giao được cho GROOM hoặc VETERINARIAN.
 2. Trạng thái: Đã lên lịch, Hoàn tất, Đã hủy. Hoàn tất và Đã hủy là trạng thái cuối.
 3. Dời ngày đến hạn hoặc hủy lịch bắt buộc nhập lý do.
 4. Đánh dấu hoàn tất ghi lại thời điểm và người thực hiện. Khi hoàn tất, VETERINARIAN có thể nhập "Ngày đến hạn lần tới" (ví dụ tẩy giun sau 3 tháng): hệ thống tạo luôn lịch mới cùng loại trong cùng thao tác, giữ cách giao (người cụ thể không còn hợp lệ thì giao GROOM về GROOM phụ trách, giao VETERINARIAN về chưa giao ai). Để trống thì không tạo lịch mới. GROOM hoàn tất thì không nhập được ngày lần tới.
@@ -708,7 +709,7 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 | **Hậu điều kiện** | Lịch chăm sóc được tạo, dời, hủy hoặc hoàn tất và ghi nhật ký. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở tab Lịch chăm sóc của con ngựa.<br>2. VETERINARIAN chọn loại, ngày đến hạn, người được giao và lưu.<br>3. Đến hạn, hệ thống gửi thông báo.<br>4. Người thực hiện đánh dấu hoàn tất.<br>5. Hệ thống lưu thời điểm, người thực hiện và ghi nhật ký. |
 | **Luồng thay thế** | A1. Dời ngày -> nhập lý do, hệ thống lưu ngày mới.<br>A2. Hủy lịch -> nhập lý do, hệ thống chuyển Đã hủy. |
-| **Luồng ngoại lệ** | E1. Ngày đến hạn ở quá khứ khi tạo hoặc dời -> báo lỗi.<br>E2. Dời, hủy hoặc hoàn tất lịch đã Hoàn tất hoặc Đã hủy -> trả về 409.<br>E3. GROOM hoàn tất lịch không giao cho mình, hoặc không còn phụ trách con ngựa, hoặc nhập ngày lần tới -> trả về 403.<br>E4. Ngựa đã chuyển nhượng hoặc đã mất -> không cho tạo lịch (409). Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E5. Giao lịch cho người không phải VETERINARIAN hoặc GROOM đang phụ trách con ngựa -> báo lỗi. |
+| **Luồng ngoại lệ** | E1. Ngày đến hạn ở quá khứ khi tạo hoặc dời -> báo lỗi.<br>E2. Dời, hủy hoặc hoàn tất lịch đã Hoàn tất hoặc Đã hủy -> trả về 409.<br>E3. GROOM hoàn tất lịch không giao cho mình, hoặc không còn phụ trách con ngựa, hoặc nhập ngày lần tới -> trả về 403.<br>E4. Ngựa đã chuyển nhượng hoặc đã mất -> không cho tạo lịch (409). Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E5. Giao lịch cho người không phải VETERINARIAN hoặc GROOM đang phụ trách con ngựa -> báo lỗi.<br>E6. Giao lịch Tiêm phòng hoặc Tẩy giun cho GROOM -> báo lỗi (400). |
 
 ---
 

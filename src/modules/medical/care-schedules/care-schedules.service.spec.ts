@@ -171,13 +171,13 @@ describe('CareSchedulesService', () => {
 
     it('creates a scheduled task given to the horse groom and audits it', async () => {
       const result = await service.create(vet, 'h1', {
-        type: CareScheduleType.DEWORMING,
+        type: CareScheduleType.FARRIER,
         dueAt: inDays(3),
         assigneeType: CareAssigneeType.GROOM,
       });
       expect(result).toMatchObject({
         status: CareScheduleStatus.SCHEDULED,
-        type: CareScheduleType.DEWORMING,
+        type: CareScheduleType.FARRIER,
         assigneeType: CareAssigneeType.GROOM,
         assignedTo: null,
       });

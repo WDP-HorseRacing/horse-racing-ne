@@ -154,6 +154,49 @@ describe('Care schedule assignee (Postgres)', () => {
     ).rejects.toThrow('Người được giao phải là Bác sĩ thú y đang hoạt động');
   });
 
+  it('refuses vaccination and deworming for a groom on create and on reassign, keeps an old groom one editable', async () => {
+    const groomOnly = 'Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ';
+    for (const type of [
+      CareScheduleType.VACCINATION,
+      CareScheduleType.DEWORMING,
+    ]) {
+      await expect(
+        schedules.create(vet, horse, {
+          type,
+          dueAt: dueToday(),
+          assigneeType: CareAssigneeType.GROOM,
+          assignedTo: an,
+        }),
+      ).rejects.toThrow(groomOnly);
+    }
+    const doctor = await seed.user(UserRole.VETERINARIAN);
+    const vaccination = await schedules.create(vet, horse, {
+      type: CareScheduleType.VACCINATION,
+      dueAt: dueToday(),
+      assigneeType: CareAssigneeType.VET,
+      assignedTo: doctor,
+    });
+    await expect(
+      schedules.update(vet, vaccination.id, {
+        assigneeType: CareAssigneeType.GROOM,
+      }),
+    ).rejects.toThrow(groomOnly);
+    await expect(
+      schedules.update(vet, vaccination.id, { assigneeType: null }),
+    ).resolves.toMatchObject({ assigneeType: null, assignedTo: null });
+
+    await dataSource.query(
+      `UPDATE care_schedules SET assignee_type = 'GROOM', assigned_to = NULL WHERE id = $1`,
+      [vaccination.id],
+    );
+    await expect(
+      schedules.update(vet, vaccination.id, { notes: 'Mang theo sổ tiêm' }),
+    ).resolves.toMatchObject({
+      assigneeType: CareAssigneeType.GROOM,
+      notes: 'Mang theo sổ tiêm',
+    });
+  });
+
   describe('CareScheduleAssigneeType migration', () => {
     const migration = new CareScheduleAssigneeType1789827600000();
 
