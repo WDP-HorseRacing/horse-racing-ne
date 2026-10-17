@@ -3,6 +3,10 @@
   "rootDir": "..",
   "roots": ["<rootDir>/test"],
   "testRegex": ".*\\.int-spec\\.ts$",
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "<rootDir>/test/integration/findings/"
+  ],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
