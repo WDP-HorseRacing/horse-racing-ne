@@ -227,3 +227,13 @@ Không đổi API. Chỉ thêm người nhận và loại tin; FE hiện như c�
 2. Mỗi dòng `careSchedules` có thêm `assignedToName`: họ tên người làm hiện tại, `null` nếu chưa có ai.
 3. Nhắc lịch chăm sóc không đổi: thông báo đẩy đúng ngày đến hạn một lần. Lịch sắp tới và quá hạn xem trên dashboard và màn Hôm nay của Groom.
 
+## Báo Groom khi buổi tập bị hủy
+
+Không đổi API.
+
+1. HT hủy một buổi tập (`POST /training-sessions/:sessionId/cancel`): người dắt từng lượt vừa bị hủy nhận thông báo `category = TRAINING_SESSION` (loại mới), mức HIGH, `resource = null`.
+   - Mỗi Groom một tin liệt kê ngựa của mình, ví dụ "Buổi tập Sức bền sáng lúc 06:00 ngày 21/11/2026 đã hủy: Mưa lớn. Không dắt Winx, Gió ra sân."
+   - Lượt chưa có người dắt thì Groom đang phụ trách ngựa nhận.
+2. Hủy cả lớp không gửi thông báo này.
+3. FE cần thêm biểu tượng cho `category = TRAINING_SESSION`.
+
