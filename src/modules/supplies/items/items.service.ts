@@ -45,7 +45,9 @@ import {
   toSupplyStockMovementResponse,
 } from '../mappers/supply-item.mapper';
 import {
+  assertCanTakeSupply,
   assertUsageCancellable,
+  assertUsageNote,
   assertUsageNotCancelled,
 } from '../policies/supplies.policy';
 import {
@@ -356,12 +358,14 @@ export class SupplyItemsService {
    * - Trừ các lô nhập sớm nhất trước; mỗi lô bị trừ ghi một dòng sổ USAGE
    * - Ghi nhật ký số tồn trước và sau, phần lấy từ từng lô, ghi chú làm lý do
    * - Số tồn xuống từ trên ngưỡng báo thiếu tới hoặc dưới ngưỡng: ghi SUPPLY_LOW_STOCK_EVENT vào outbox để báo Club Manager
+   * - Thứ tự kiểm: ghi chú (400) → vật tư (404) → quyền theo loại (403) → số tồn (409)
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của vật tư
    * @param body Số lượng lấy và ghi chú
    * @returns Promise trả về vật tư sau khi trừ tồn
-   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws BadRequestException Nếu ghi chú trống
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc vật tư là thuốc mà người gọi không phải Veterinarian hoặc Club Manager
    * @throws NotFoundException Nếu không có vật tư hoặc vật tư đã xóa
    * @throws ConflictException Nếu số lượng lấy lớn hơn số tồn
    */
@@ -370,13 +374,15 @@ export class SupplyItemsService {
     id: string,
     body: SupplyUsageDto,
   ): Promise<SupplyItemResponseDto> {
+    const note = body.note?.trim() || null;
+    assertUsageNote(note);
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
       const item = await this.stock.lockItem(manager, id);
+      assertCanTakeSupply(caller.role, item.category);
       const before = Number(item.quantityOnHand);
       const wasAboveThreshold =
         compareDecimal(item.quantityOnHand, item.reorderThreshold) > 0;
-      const note = body.note?.trim() || null;
       const {
         item: saved,
         usageId,

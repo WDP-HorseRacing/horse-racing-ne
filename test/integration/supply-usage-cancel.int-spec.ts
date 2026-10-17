@@ -99,7 +99,7 @@ describe('Cancelling a supply usage (Postgres)', () => {
   });
 
   it('puts back what a usage took from each lot and marks it cancelled in the ledger', async () => {
-    await items.use(groom, itemId, { quantity: 25 });
+    await items.use(groom, itemId, { quantity: 25, note: 'Dùng' });
     expect(await lotsLeft()).toEqual([0, 25]);
     const usageId = await lastUsageId();
 
@@ -115,8 +115,8 @@ describe('Cancelling a supply usage (Postgres)', () => {
         .sort(),
     ).toEqual(
       [
-        [SupplyStockMovementType.USAGE, -20, true, null],
-        [SupplyStockMovementType.USAGE, -5, true, null],
+        [SupplyStockMovementType.USAGE, -20, true, 'Dùng'],
+        [SupplyStockMovementType.USAGE, -5, true, 'Dùng'],
         [SupplyStockMovementType.USAGE_REVERSAL, 20, false, reason.reason],
         [SupplyStockMovementType.USAGE_REVERSAL, 5, false, reason.reason],
       ].sort(),
@@ -130,7 +130,7 @@ describe('Cancelling a supply usage (Postgres)', () => {
   });
 
   it('refuses to cancel the same usage twice, also when both run at once', async () => {
-    await items.use(groom, itemId, { quantity: 25 });
+    await items.use(groom, itemId, { quantity: 25, note: 'Dùng' });
     const usageId = await lastUsageId();
 
     const results = await Promise.allSettled([
@@ -149,7 +149,7 @@ describe('Cancelling a supply usage (Postgres)', () => {
   });
 
   it('lets only the one who used it cancel within 24 hours, and the club manager any time', async () => {
-    await items.use(groom, itemId, { quantity: 5 });
+    await items.use(groom, itemId, { quantity: 5, note: 'Dùng' });
     const usageId = await lastUsageId();
 
     await expect(
@@ -182,8 +182,8 @@ describe('Cancelling a supply usage (Postgres)', () => {
       start: new Date(now.getTime() - 3_600_000),
       end: new Date(now.getTime() + 3_600_000),
     };
-    await items.use(groom, itemId, { quantity: 25 });
-    await items.use(groom, itemId, { quantity: 2 });
+    await items.use(groom, itemId, { quantity: 25, note: 'Dùng' });
+    await items.use(groom, itemId, { quantity: 2, note: 'Dùng' });
     const kept = 2 * 15000;
     expect(await repository.supplyValues(period)).toEqual({
       purchased: String(20 * 20000 + 30 * 15000),

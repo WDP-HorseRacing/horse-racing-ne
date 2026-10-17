@@ -134,7 +134,10 @@ export class SupplyItemsController {
 
   @Access(ITEM_READERS)
   @Post('items/:id/usages')
-  @ApiOperation({ summary: 'Lấy vật tư ra dùng, trừ tồn ngay' })
+  @ApiOperation({
+    summary: 'Lấy vật tư ra dùng, trừ tồn ngay',
+    description: 'Thuốc chỉ Veterinarian và Club Manager xuất được',
+  })
   @ApiCreatedResponse({ type: SupplyItemResponseDto })
   use(
     @CurrentUser() actor: Actor,

@@ -6958,6 +6958,7 @@
     },
     "/api/v1/supplies/items/{id}/usages": {
       "post": {
+        "description": "Thuốc chỉ Veterinarian và Club Manager xuất được",
         "operationId": "SupplyItemsController_use",
         "parameters": [
           {
@@ -17524,7 +17525,8 @@
           }
         },
         "required": [
-          "quantity"
+          "quantity",
+          "note"
         ]
       },
       "CancelSupplyUsageDto": {

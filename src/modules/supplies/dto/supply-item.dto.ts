@@ -154,11 +154,12 @@ export class SupplyUsageDto {
   @Max(MAX_QUANTITY)
   quantity!: number;
 
-  @ApiPropertyOptional({ maxLength: 500, description: 'Ghi chú lần lấy' })
-  @IsOptional()
+  @ApiProperty({ maxLength: 500, description: 'Ghi chú lần lấy' })
+  @Transform(trimValue)
   @IsString()
+  @MinLength(1, { message: 'Phải ghi chú lần xuất' })
   @MaxLength(500)
-  note?: string;
+  note!: string;
 }
 
 export class CancelSupplyUsageDto {

@@ -1,6 +1,6 @@
 # Flow 4 — Chăm sóc chuồng trại và dinh dưỡng hằng ngày
 
-> Cập nhật: 17/10/2026
+> Cập nhật: 18/10/2026
 
 ## I. Đề bài liên quan
 
@@ -63,7 +63,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
    1. Tồn ban đầu: thêm vật tư có số tồn khác 0 thì tạo lô đầu tiên, đơn giá do Club Manager nhập (bỏ trống là 0); ghi `OPENING`.
    2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp kèm đơn giá thực trả; tạo một lô, ghi `RESTOCK` gắn mã đề xuất.
    3. Nhập hàng trực tiếp: Club Manager nhập số lượng mua về và đơn giá, không cần đề xuất; tạo một lô, ghi `RESTOCK` không gắn đề xuất.
-   4. Xuất dùng: Club Manager, Head Trainer, bác sĩ hoặc Groom lấy hàng ra dùng thì ghi số lượng và ghi chú; tồn trừ ngay, không cần duyệt. Hệ thống trừ các lô còn hàng nhập sớm nhất trước, mỗi lô bị trừ ghi một dòng `USAGE`, mọi dòng của lần xuất chung một mã lần xuất. Lấy nhiều hơn số tồn: 409.
+   4. Xuất dùng: Club Manager, Head Trainer, bác sĩ hoặc Groom lấy hàng ra dùng thì ghi số lượng và ghi chú (bắt buộc, chỉ có khoảng trắng coi như trống: 400); tồn trừ ngay, không cần duyệt. Vật tư loại `MEDICINE` chỉ bác sĩ và Club Manager xuất được (Head Trainer, Groom: 403), vì thuốc do bác sĩ cấp và cho dùng. Thứ tự lỗi: ghi chú trống (400) → không có vật tư (404) → không được xuất loại này (403) → vượt tồn (409). Hệ thống trừ các lô còn hàng nhập sớm nhất trước, mỗi lô bị trừ ghi một dòng `USAGE`, mọi dòng của lần xuất chung một mã lần xuất.
    5. Hủy lần xuất ghi nhầm: người xuất tự hủy trong 24 giờ kể từ lúc xuất, Club Manager hủy bất kỳ lúc nào (người khác hoặc quá hạn: 403); lý do bắt buộc. Hệ thống cộng trả đúng số đã trừ vào từng lô và vào số tồn, mỗi lô ghi một dòng `USAGE_REVERSAL` cùng mã lần xuất, ghi nhật ký. Hủy lại lần đã hủy: 409, kể cả khi hai người bấm cùng lúc. Tồn vượt lại ngưỡng báo thiếu thì không báo gì. Muốn sửa số lượng thì hủy rồi xuất lại số đúng. Lần xuất ghi trước khi có mã lần xuất không hủy được; sai thì chờ kiểm kê (chưa làm).
 5. Sắp hết: số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu. Xuất dùng làm số tồn xuống từ trên ngưỡng tới hoặc dưới ngưỡng thì báo mọi Club Manager một lần; các lần xuất tiếp theo khi đã dưới ngưỡng không báo lại.
 6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Chưa có kiểm kê và ghi hao hụt.
@@ -175,7 +175,8 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
 | Xem vật tư, sắp hết, lô, sổ nhập xuất | Có | Có | Có | Có | Không |
 | Thêm, sửa, xóa vật tư | Có | Không | Không | Không | Không |
 | Nhập hàng trực tiếp | Có | Không | Không | Không | Không |
-| Xuất dùng | Có | Có | Có | Có | Không |
+| Xuất dùng (loại `MEDICINE`) | Có | Không | Có | Không | Không |
+| Xuất dùng (loại khác) | Có | Có | Có | Có | Không |
 | Hủy lần xuất | Mọi lần xuất | Lần mình xuất, trong 24 giờ | Lần mình xuất, trong 24 giờ | Lần mình xuất, trong 24 giờ | Không |
 | Gửi, sửa đề xuất | Không | Của mình | Không | Của mình | Không |
 | Xem đề xuất | Tất cả | Của mình | Không | Của mình | Không |
@@ -206,7 +207,7 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | PATCH | `/supplies/items/:id` | CM | Sửa tên, loại, đơn vị, ngưỡng |
 | DELETE | `/supplies/items/:id` | CM | Xóa mềm |
 | POST | `/supplies/items/:id/receipts` | CM | Nhập hàng trực tiếp `{ quantity, unitPrice, note? }` |
-| POST | `/supplies/items/:id/usages` | CM, HT, VET, GROOM | Xuất dùng `{ quantity, note? }` |
+| POST | `/supplies/items/:id/usages` | CM, HT, VET, GROOM | Xuất dùng `{ quantity, note }`; thuốc chỉ CM, VET |
 | POST | `/supplies/usages/:usageId/cancel` | CM, HT, VET, GROOM | Hủy lần xuất `{ reason }` (luật 1.4.5) |
 | GET | `/supplies/items/:id/lots` | CM, HT, VET, GROOM | Các lô của vật tư (số nhập, số còn, đơn giá), lô nhập sớm nhất trước |
 | GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư kèm lô, đơn giá, tiền của dòng; mới nhất trước `?page&limit` |

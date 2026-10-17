@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { USAGE_SELF_CANCEL_HOURS } from '../constants/supply-stock.constants';
+import { SupplyCategory } from '../enums/supply-category.enum';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
 
 const NEXT_REQUEST_STATUSES: Readonly<
@@ -142,5 +143,42 @@ export function assertUsageCancellable(
 export function assertUsageNotCancelled(cancelled: boolean): void {
   if (cancelled) {
     throw new ConflictException('Lần xuất này đã được hủy');
+  }
+}
+
+/**
+ * Bắt buộc lần xuất kho có ghi chú
+ *
+ * @param note Ghi chú đã bỏ khoảng trắng, null nếu rỗng
+ * @throws BadRequestException Nếu không có ghi chú
+ */
+export function assertUsageNote(note: string | null): void {
+  if (!note) {
+    throw new BadRequestException('Phải ghi chú lần xuất');
+  }
+}
+
+/**
+ * Kiểm người gọi được xuất dùng vật tư theo loại
+ *
+ * - Thuốc: chỉ Veterinarian và Club Manager
+ * - Loại khác: mọi vai trò được vào route
+ *
+ * @param callerRole Vai trò người gọi
+ * @param category Loại vật tư
+ * @throws ForbiddenException Nếu vật tư là thuốc và người gọi không phải Veterinarian hoặc Club Manager
+ */
+export function assertCanTakeSupply(
+  callerRole: UserRole,
+  category: SupplyCategory,
+): void {
+  if (
+    category === SupplyCategory.MEDICINE &&
+    callerRole !== UserRole.VETERINARIAN &&
+    callerRole !== UserRole.CLUB_MANAGER
+  ) {
+    throw new ForbiddenException(
+      'Chỉ Veterinarian hoặc Club Manager được xuất thuốc',
+    );
   }
 }

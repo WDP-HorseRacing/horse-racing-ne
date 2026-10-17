@@ -319,7 +319,7 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
         quantityOnHand: 10,
         reorderThreshold: 0,
       });
-      const use = () => items.use(cm, item.id, { quantity: 6 });
+      const use = () => items.use(cm, item.id, { quantity: 6, note: 'Dùng' });
       const outcomes = await contend(
         'SELECT 1 FROM supply_items WHERE id = $1 FOR UPDATE',
         [item.id],

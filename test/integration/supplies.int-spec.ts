@@ -228,7 +228,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         NotFoundException,
       );
       await expect(
-        items.use(groom, item.id, { quantity: 1 }),
+        items.use(groom, item.id, { quantity: 1, note: 'Dùng' }),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect((await items.movementsOf(groom, item.id, page())).meta.total).toBe(
         1,
@@ -405,8 +405,8 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
           unitPrice: 20000,
         }),
       ),
-      items.use(groom, item.id, { quantity: 2 }),
-      items.use(trainer, item.id, { quantity: 3 }),
+      items.use(groom, item.id, { quantity: 2, note: 'Dùng' }),
+      items.use(trainer, item.id, { quantity: 3, note: 'Dùng' }),
     ]);
 
     const rows = await ledger(item.id);
@@ -727,7 +727,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         note: 'Bữa sáng',
       });
       await expect(
-        items.use(groom, item.id, { quantity: 38 }),
+        items.use(groom, item.id, { quantity: 38, note: 'Dùng' }),
       ).rejects.toBeInstanceOf(ConflictException);
       expect((await items.get(manager, item.id)).quantityOnHand).toBe(37.5);
     });
@@ -742,7 +742,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       await items.receive(manager, item.id, { quantity: 20, unitPrice: 20000 });
       await items.receive(manager, item.id, { quantity: 30, unitPrice: 15000 });
 
-      await items.use(groom, item.id, { quantity: 25 });
+      await items.use(groom, item.id, { quantity: 25, note: 'Dùng' });
 
       expect(
         (await items.lotsOf(manager, item.id)).map((lot) => [
@@ -830,9 +830,9 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         reorderThreshold: 10,
       });
 
-      await items.use(groom, item.id, { quantity: 5 });
-      await items.use(groom, item.id, { quantity: 5 });
-      await items.use(groom, item.id, { quantity: 2 });
+      await items.use(groom, item.id, { quantity: 5, note: 'Dùng' });
+      await items.use(groom, item.id, { quantity: 5, note: 'Dùng' });
+      await items.use(groom, item.id, { quantity: 2, note: 'Dùng' });
 
       const warnings = await outbox('supplies.item.low-stock');
       expect(warnings.map((row) => row.payload)).toEqual([
@@ -843,6 +843,59 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
           reorderThreshold: 10,
         }),
       ]);
+    });
+  });
+
+  describe('usage rules by category', () => {
+    const medicine = () =>
+      items.create(manager, {
+        name: 'Kháng sinh',
+        category: SupplyCategory.MEDICINE,
+        unit: 'lọ',
+        quantityOnHand: 10,
+        reorderThreshold: 0,
+      });
+
+    it('lets only a veterinarian or the club manager take medicine', async () => {
+      const item = await medicine();
+      const vet = await actorOf(UserRole.VETERINARIAN);
+
+      await expect(
+        items.use(groom, item.id, { quantity: 1, note: 'Cho uống' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        items.use(trainer, item.id, { quantity: 1, note: 'Cho uống' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await items.use(vet, item.id, { quantity: 1, note: 'Tiêm' });
+      await items.use(manager, item.id, { quantity: 1, note: 'Tiêm' });
+
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(8);
+    });
+
+    it('requires a note for every category, blank counts as missing', async () => {
+      const item = await oats(40);
+      const vet = await actorOf(UserRole.VETERINARIAN);
+      const drug = await medicine();
+
+      await expect(
+        items.use(groom, item.id, { quantity: 1, note: '   ' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        items.use(vet, drug.id, { quantity: 1 } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(40);
+      expect((await items.get(manager, drug.id)).quantityOnHand).toBe(10);
+    });
+
+    it('checks the item before the category rule, and the category before stock', async () => {
+      const item = await medicine();
+
+      await expect(
+        items.use(groom, randomUUID(), { quantity: 1, note: 'x' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        items.use(groom, item.id, { quantity: 99, note: 'x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 });

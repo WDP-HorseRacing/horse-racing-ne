@@ -5,9 +5,12 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
+import { SupplyCategory } from '../enums/supply-category.enum';
 import {
+  assertCanTakeSupply,
   assertCanViewSupplyRequest,
   assertUsageCancellable,
+  assertUsageNote,
   assertUsageNotCancelled,
   assertRejectionReason,
   assertSupplyRequestEditable,
@@ -139,5 +142,43 @@ describe('supplies policy', () => {
   it('refuses to cancel a usage twice', () => {
     expect(() => assertUsageNotCancelled(false)).not.toThrow();
     expect(() => assertUsageNotCancelled(true)).toThrow(ConflictException);
+  });
+
+  describe('assertCanTakeSupply', () => {
+    it.each([UserRole.VETERINARIAN, UserRole.CLUB_MANAGER])(
+      'lets %s take medicine',
+      (role) => {
+        expect(() =>
+          assertCanTakeSupply(role, SupplyCategory.MEDICINE),
+        ).not.toThrow();
+      },
+    );
+
+    it.each([UserRole.HEAD_TRAINER, UserRole.GROOM])(
+      'rejects %s taking medicine',
+      (role) => {
+        expect(() =>
+          assertCanTakeSupply(role, SupplyCategory.MEDICINE),
+        ).toThrow(ForbiddenException);
+      },
+    );
+
+    it.each([
+      SupplyCategory.FEED,
+      SupplyCategory.SUPPLEMENT,
+      SupplyCategory.EQUIPMENT,
+    ])('lets a groom take %s', (category) => {
+      expect(() => assertCanTakeSupply(UserRole.GROOM, category)).not.toThrow();
+    });
+  });
+
+  describe('assertUsageNote', () => {
+    it('rejects a missing note', () => {
+      expect(() => assertUsageNote(null)).toThrow(BadRequestException);
+    });
+
+    it('accepts a note', () => {
+      expect(() => assertUsageNote('Bữa sáng')).not.toThrow();
+    });
   });
 });
