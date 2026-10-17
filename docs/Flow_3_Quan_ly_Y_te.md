@@ -129,22 +129,24 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Sự kiện | Mức | Người nhận |
 |---|---|---|
 | Yêu cầu khám mức Khẩn được tạo bởi người dùng, hoặc bác sĩ nâng một yêu cầu (kể cả yêu cầu tự động) lên Khẩn | URGENT | Mọi VETERINARIAN đang hoạt động |
-| Đặt khóa huấn luyện | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
-| Trạng thái sức khỏe chuyển sang Chấn thương hoặc Cách ly | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
-| Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) | NORMAL | HEAD TRAINER phụ trách khu, HORSE OWNER |
-| Trạng thái sức khỏe về Đủ điều kiện | NORMAL | HORSE OWNER |
+| Đặt khóa huấn luyện | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
+| Trạng thái sức khỏe chuyển sang Chấn thương hoặc Cách ly | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
+| Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) | NORMAL | HEAD TRAINER phụ trách khu, HORSE OWNER, GROOM phụ trách ngựa |
+| Trạng thái sức khỏe về Đủ điều kiện | NORMAL | HORSE OWNER, GROOM phụ trách ngựa |
 | Quá hạn khám định kỳ trên 7 ngày | HIGH | Mọi VETERINARIAN đang hoạt động, CLUB MANAGER |
 | Mở bệnh án | NORMAL | CLUB MANAGER, HORSE OWNER |
-| Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER |
+| Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
+| Bác sĩ khám xong (gắn yêu cầu vào buổi khám) hoặc bỏ qua một yêu cầu khám (kèm lý do) | NORMAL | Người gửi yêu cầu (GROOM qua sự cố, HEAD TRAINER, CLUB MANAGER); không báo khi yêu cầu do hệ thống tự sinh hoặc người gửi chính là bác sĩ xử lý |
 | Đóng bệnh án | NORMAL | HORSE OWNER, CLUB MANAGER |
 | Hủy bệnh án mở nhầm | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Điều chỉnh chi phí bệnh án đã đóng | NORMAL | HORSE OWNER của giai đoạn chứa bệnh án (III.6.8), CLUB MANAGER |
 | Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, người làm lịch (xem F3.11 mục 1) |
 
 1. Ngựa chưa được xếp khu thì không có HEAD TRAINER nhận thông báo, khi đó chỉ gửi cho các vai trò còn lại.
-2. Ngựa chưa có chủ, hoặc chủ không còn là tài khoản HORSE OWNER đang hoạt động, thì bỏ qua người nhận HORSE OWNER.
+2. Ngựa chưa có chủ, hoặc chủ không còn là tài khoản HORSE OWNER đang hoạt động, thì bỏ qua người nhận HORSE OWNER. Tương tự, ngựa chưa có GROOM phụ trách hoặc GROOM đó không còn hoạt động thì bỏ qua người nhận GROOM; GROOM lấy theo phân công lúc gửi thông báo.
 3. Gỡ khóa do chuyển nhượng hoặc do ngựa mất không gửi thông báo riêng; hệ quả này đã nằm trong nhật ký đổi vòng đời của F1.8.
 4. Thông báo quá hạn khám và lịch chăm sóc đến hạn do hệ thống kiểm tra mỗi ngày một lần. Mỗi con ngựa chỉ nhận một thông báo cho mỗi hạn; khám xong thì hạn mới được tính và có thể báo lại khi hạn mới quá.
+5. Ca Khẩn chỉ báo một lần lúc tạo hoặc lúc nâng lên Khẩn, không nhắc lại. Khóa quá ngày dự kiến gỡ không gửi nhắc.
 
 ### 8. Phụ thuộc giữa các flow
 
@@ -333,7 +335,7 @@ Hàng đợi các yêu cầu khám phát sinh ngoài lịch định kỳ. Đây 
    - VETERINARIAN tự tạo.
 2. Yêu cầu có ba trạng thái: Chờ xử lý, Đã khám, Đã bỏ qua. Đã khám và Đã bỏ qua là trạng thái cuối, không mở lại.
 3. Chỉ VETERINARIAN chuyển trạng thái. Người gửi không tự hủy được yêu cầu; gửi nhầm thì báo bác sĩ bỏ qua.
-4. Bỏ qua bắt buộc nhập lý do.
+4. Bỏ qua bắt buộc nhập lý do. Khám xong hoặc bỏ qua thì người gửi yêu cầu nhận thông báo (mục III.7).
 5. VETERINARIAN được đổi mức độ của yêu cầu đang chờ, bắt buộc nhập lý do.
 6. Yêu cầu mức Khẩn do người dùng tạo sinh thông báo URGENT cho mọi VETERINARIAN ngay khi được tạo. Yêu cầu tự động không gửi thêm thông báo lúc tạo (mục III.5.6). Khi bác sĩ nâng một yêu cầu bất kỳ (kể cả yêu cầu tự động) lên Khẩn, hệ thống cũng gửi URGENT cho mọi VETERINARIAN.
 7. Một con ngựa có thể có nhiều yêu cầu đang chờ. Khi khám, bác sĩ gắn một hoặc nhiều yêu cầu vào cùng một buổi khám và tất cả cùng chuyển sang Đã khám.
@@ -481,10 +483,10 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 2. Bốn giá trị và ý nghĩa của chúng theo đúng Flow 1, mục III.2.
 3. Hệ quả khi chuyển sang Chấn thương hoặc Cách ly:
    - Con ngựa không còn được tập và không còn được đua, do quy tắc tính ở Flow 1 mục III.4.
-   - Hệ thống gửi thông báo mức HIGH cho HEAD TRAINER phụ trách khu, CLUB MANAGER và HORSE OWNER.
+   - Hệ thống gửi thông báo mức HIGH cho HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER và GROOM phụ trách ngựa.
    - Hệ thống **KHÔNG** tự rút ngựa khỏi lớp học và không tự rút đăng ký thi đấu. Ngựa vẫn còn trong lớp nhưng không tham gia được buổi tập; HEAD TRAINER quyết định giữ hay rút.
    - Hệ thống không tự chuyển ô. Cần tách đàn thì HEAD TRAINER chuyển ô bằng F1.7 (Flow 1 mục III.2.2).
-4. Chuyển sang Cần theo dõi: ngựa mất quyền đua và chỉ được tập cường độ Nhẹ (Flow 2 mục III.5); gửi thông báo mức NORMAL cho HEAD TRAINER phụ trách khu và HORSE OWNER. Về Đủ điều kiện: báo HORSE OWNER mức NORMAL.
+4. Chuyển sang Cần theo dõi: ngựa mất quyền đua và chỉ được tập cường độ Nhẹ (Flow 2 mục III.5); gửi thông báo mức NORMAL cho HEAD TRAINER phụ trách khu, HORSE OWNER và GROOM phụ trách. Về Đủ điều kiện: báo HORSE OWNER và GROOM phụ trách mức NORMAL.
 5. Chuyển sang Đủ điều kiện được phép cả khi đang có lệnh khóa huấn luyện, và không tự gỡ khóa. Khóa chỉ được gỡ ở F3.8.
 6. Không đổi trạng thái cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 7. Ghi nhật ký kèm giá trị trước, giá trị sau và lý do. Lịch sử trạng thái sức khỏe (F3.10) được dựng từ nhật ký này.
@@ -518,7 +520,7 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 | VETERINARIAN | Thêm, Xóa | Toàn câu lạc bộ | Vai trò duy nhất đặt và gỡ khóa. |
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | |
 | HEAD TRAINER | Xem | Toàn câu lạc bộ | Nhận thông báo khi ngựa bị khóa hoặc được gỡ khóa. |
-| GROOM | Xem (hạn chế) | Toàn câu lạc bộ | Chỉ thấy nhãn "Đang bị khóa huấn luyện" trong hồ sơ ngựa (F1.3), không xem chi tiết và lịch sử khóa. |
+| GROOM | Xem (hạn chế) | Toàn câu lạc bộ | Chỉ thấy nhãn "Đang bị khóa huấn luyện" trong hồ sơ ngựa (F1.3), không xem chi tiết và lịch sử khóa. GROOM phụ trách ngựa nhận thông báo khi ngựa bị khóa hoặc được gỡ khóa. |
 | HORSE OWNER | Xem | Ngựa sở hữu | |
 
 ### Nghiệp vụ
@@ -530,7 +532,7 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 5. Ngày dự kiến gỡ chỉ là thông tin tham khảo cho HEAD TRAINER. Hệ thống không tự gỡ khóa khi đến ngày, vì việc ngựa đã hồi phục hay chưa phải do bác sĩ xác nhận.
 6. Gỡ khóa bắt buộc nhập lý do và chỉ VETERINARIAN thực hiện. Ngoại lệ duy nhất: khi ngựa được chuyển nhượng hoặc được ghi nhận mất, hệ thống tự gỡ khóa với ghi chú "Gỡ do chuyển nhượng" hoặc "Gỡ do ngựa mất" (xem F1.8); lịch sử khóa hiển thị người gỡ là "Hệ thống".
 7. Khi đóng bệnh án mà lệnh khóa gắn với bệnh án đó vẫn còn hiệu lực, hệ thống bắt bác sĩ chọn một trong hai: gỡ khóa ngay, hoặc giữ khóa và nhập ngày dự kiến gỡ.
-8. Thông báo theo mục III.7: mức HIGH khi đặt khóa và mức NORMAL khi bác sĩ gỡ khóa, gửi cho HEAD TRAINER phụ trách khu và CLUB MANAGER.
+8. Thông báo theo mục III.7: mức HIGH khi đặt khóa và mức NORMAL khi bác sĩ gỡ khóa, gửi cho HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER và GROOM phụ trách ngựa.
 9. Không đặt khóa cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 10. Ghi nhật ký cho cả thao tác đặt và gỡ.
 

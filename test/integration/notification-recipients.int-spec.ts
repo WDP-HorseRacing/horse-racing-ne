@@ -106,12 +106,38 @@ describe('NotificationRecipientsRepository (Postgres)', () => {
       horseName: 'Gió',
       headTrainerId: trainer,
       ownerId: owner,
+      groomId: null,
     });
     await expect(recipients.findHorseMedicalContact(other)).resolves.toEqual({
       horseName: 'Mây',
       headTrainerId: null,
       ownerId: null,
+      groomId: null,
     });
+  });
+
+  it('finds the active groom of the open assignment for medical notices', async () => {
+    const groom = await seed.user(UserRole.GROOM);
+    const lockedGroom = await seed.user(UserRole.GROOM, UserStatus.LOCKED);
+    const formerGroom = await seed.user(UserRole.GROOM);
+    const gio = await seed.horse('Gió');
+    const may = await seed.horse('Mây');
+    const assign = (horseId: string, groomId: string, ended: boolean) =>
+      dataSource.query(
+        `INSERT INTO groom_assignments (version, horse_id, groom_id, start_at, end_at)
+         VALUES (1, $1, $2, now() - interval '2 days', $3)`,
+        [horseId, groomId, ended ? new Date() : null],
+      );
+    await assign(gio, formerGroom, true);
+    await assign(gio, groom, false);
+    await assign(may, lockedGroom, false);
+
+    await expect(
+      recipients.findHorseMedicalContact(gio),
+    ).resolves.toMatchObject({ groomId: groom });
+    await expect(
+      recipients.findHorseMedicalContact(may),
+    ).resolves.toMatchObject({ groomId: null });
   });
 
   it('finds a live barn with its head trainer and nothing for a deleted barn', async () => {

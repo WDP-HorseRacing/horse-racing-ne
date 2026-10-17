@@ -1,6 +1,7 @@
 import { UserRole } from '../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
+import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationResourceType } from '../enums/notification-resource-type.enum';
 import { NotificationCategory } from '../enums/notification-category.enum';
@@ -27,6 +28,7 @@ describe('MedicalNotificationsService', () => {
         horseName: 'Winx',
         headTrainerId: 'ht-1',
         ownerId: 'owner-1',
+        groomId: 'groom-1',
       }),
       findActiveUserIdsByRole: jest.fn((role: UserRole) =>
         Promise.resolve(
@@ -65,7 +67,7 @@ describe('MedicalNotificationsService', () => {
     });
   });
 
-  it('sends a lock to the barn head trainer, club managers and the owner with HIGH priority', async () => {
+  it('sends a lock to the barn head trainer, club managers, the owner and the groom in charge with HIGH priority', async () => {
     await service.notifyLockSet({
       eventId: 'e2',
       horseId: 'h1',
@@ -74,7 +76,7 @@ describe('MedicalNotificationsService', () => {
       expectedEnd: null,
     });
     expect(sentDraft()).toMatchObject({
-      recipientIds: ['cm-1', 'ht-1', 'owner-1'],
+      recipientIds: ['cm-1', 'ht-1', 'owner-1', 'groom-1'],
       priority: NotificationPriority.HIGH,
       resource: {
         type: NotificationResourceType.TRAINING_LOCK,
@@ -100,7 +102,7 @@ describe('MedicalNotificationsService', () => {
   });
 
   it.each([HorseHealthStatus.INJURED, HorseHealthStatus.QUARANTINED])(
-    'warns the barn head trainer, club managers and the owner about a change to %s',
+    'warns the barn head trainer, club managers, the owner and the groom in charge about a change to %s',
     async (to) => {
       await service.notifyHealthChanged({
         eventId: 'e4',
@@ -109,13 +111,13 @@ describe('MedicalNotificationsService', () => {
         to,
       });
       expect(sentDraft()).toMatchObject({
-        recipientIds: ['cm-1', 'ht-1', 'owner-1'],
+        recipientIds: ['cm-1', 'ht-1', 'owner-1', 'groom-1'],
         priority: NotificationPriority.HIGH,
       });
     },
   );
 
-  it('tells only the owner at NORMAL level when the horse becomes eligible again', async () => {
+  it('tells the owner and the groom in charge at NORMAL level when the horse becomes eligible again', async () => {
     await service.notifyHealthChanged({
       eventId: 'e5',
       horseId: 'h1',
@@ -123,14 +125,14 @@ describe('MedicalNotificationsService', () => {
       to: HorseHealthStatus.ELIGIBLE,
     });
     expect(sentDraft()).toMatchObject({
-      recipientIds: ['owner-1'],
+      recipientIds: ['owner-1', 'groom-1'],
       priority: NotificationPriority.NORMAL,
       message:
         'Trạng thái sức khỏe của ngựa Winx chuyển từ Chấn thương sang Đủ điều kiện. Ngựa tập và đua lại được.',
     });
   });
 
-  it('tells the barn head trainer and the owner at NORMAL level when the horse goes under observation', async () => {
+  it('tells the barn head trainer, the owner and the groom in charge at NORMAL level when the horse goes under observation', async () => {
     await service.notifyHealthChanged({
       eventId: 'e5b',
       horseId: 'h1',
@@ -139,7 +141,7 @@ describe('MedicalNotificationsService', () => {
     });
     expect(sentDraft()).toMatchObject({
       eventId: 'e5b',
-      recipientIds: ['ht-1', 'owner-1'],
+      recipientIds: ['ht-1', 'owner-1', 'groom-1'],
       category: NotificationCategory.HEALTH_STATUS,
       priority: NotificationPriority.NORMAL,
       title: 'Ngựa Winx: Cần theo dõi',
@@ -222,6 +224,44 @@ describe('MedicalNotificationsService', () => {
       }),
     ).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();
+  });
+
+  describe('notifyExamRequestHandled', () => {
+    const handled = {
+      eventId: 'e11',
+      horseId: 'h1',
+      requestId: 'r1',
+      requestedBy: 'groom-2',
+      description: 'Đi khập khiễng',
+    };
+
+    it('tells the requester that the vet examined the horse', async () => {
+      await service.notifyExamRequestHandled({
+        ...handled,
+        outcome: ExamRequestStatus.EXAMINED,
+        dismissReason: null,
+      });
+      expect(sentDraft()).toMatchObject({
+        eventId: 'e11',
+        recipientIds: ['groom-2'],
+        category: NotificationCategory.EXAM_REQUEST,
+        priority: NotificationPriority.NORMAL,
+        title: 'Ngựa Winx đã được bác sĩ khám',
+      });
+    });
+
+    it('tells the requester why the vet skipped the request', async () => {
+      await service.notifyExamRequestHandled({
+        ...handled,
+        outcome: ExamRequestStatus.DISMISSED,
+        dismissReason: 'Đã khám sáng nay',
+      });
+      expect(sentDraft()).toMatchObject({
+        recipientIds: ['groom-2'],
+        message:
+          'Bác sĩ bỏ qua yêu cầu khám "Đi khập khiễng" của ngựa Winx. Lý do: Đã khám sáng nay',
+      });
+    });
   });
 
   describe('notifyCaseCostAdjusted', () => {

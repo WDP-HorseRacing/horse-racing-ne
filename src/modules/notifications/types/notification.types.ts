@@ -95,10 +95,11 @@ export interface BarnContact {
 /**
  * Người liên quan tới một con ngựa để nhận thông báo y tế.
  *
- * headTrainerId, ownerId là null khi không có người đang hoạt động để báo.
+ * headTrainerId, ownerId, groomId là null khi không có người đang hoạt động để báo.
  */
 export interface HorseMedicalContact {
   horseName: string;
   headTrainerId: string | null;
   ownerId: string | null;
+  groomId: string | null;
 }

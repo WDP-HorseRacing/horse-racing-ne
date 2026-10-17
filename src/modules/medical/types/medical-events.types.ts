@@ -1,5 +1,6 @@
 import type { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import type { CareScheduleType } from '../constants/care-schedule.enum';
+import type { ExamRequestStatus } from '../constants/exam-request.enum';
 
 /**
  * Trường chung của mọi domain event y tế.
@@ -17,6 +18,20 @@ interface MedicalEventBase {
 export interface ExamRequestUrgentEvent extends MedicalEventBase {
   requestId: string;
   description: string;
+}
+
+/**
+ * Bác sĩ khám xong hoặc bỏ qua yêu cầu khám do một người gửi.
+ *
+ * - requestedBy: người gửi yêu cầu, người nhận thông báo
+ * - dismissReason: lý do bỏ qua, null khi đã khám
+ */
+export interface ExamRequestHandledEvent extends MedicalEventBase {
+  requestId: string;
+  requestedBy: string;
+  outcome: ExamRequestStatus.EXAMINED | ExamRequestStatus.DISMISSED;
+  description: string;
+  dismissReason: string | null;
 }
 
 /**

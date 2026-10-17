@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { EntityManager, In } from 'typeorm';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
+import type { ExamRequestHandledEvent } from '../types/medical-events.types';
 
 /**
  * Các câu ghi dùng chung lên bảng medical_exam_requests, luôn chạy trong transaction đang mở
@@ -61,4 +63,36 @@ export class ExamRequestWritesService {
     );
     return result.affected ?? 0;
   }
+}
+
+/**
+ * Dựng payload báo người gửi yêu cầu khám rằng bác sĩ đã khám hoặc bỏ qua
+ *
+ * - Yêu cầu không có người gửi (hệ thống tự sinh) hoặc người gửi chính là người xử lý: không báo
+ *
+ * @param request Yêu cầu khám trước khi đổi trạng thái
+ * @param outcome Trạng thái mới: đã khám hoặc bỏ qua
+ * @param handledBy UUID người xử lý
+ * @param dismissReason Lý do bỏ qua, null khi đã khám
+ * @returns Payload của MEDICAL_EXAM_REQUEST_HANDLED_EVENT, hoặc null nếu không cần báo
+ */
+export function examRequestHandledEvent(
+  request: Pick<
+    MedicalExamRequestEntity,
+    'id' | 'horseId' | 'requestedBy' | 'description'
+  >,
+  outcome: ExamRequestHandledEvent['outcome'],
+  handledBy: string,
+  dismissReason: string | null,
+): ExamRequestHandledEvent | null {
+  if (!request.requestedBy || request.requestedBy === handledBy) return null;
+  return {
+    eventId: randomUUID(),
+    horseId: request.horseId,
+    requestId: request.id,
+    requestedBy: request.requestedBy,
+    outcome,
+    description: request.description,
+    dismissReason,
+  };
 }

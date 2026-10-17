@@ -4,6 +4,7 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { BarnEntity } from '../../stable/entities/barn.entity';
+import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import type {
   BarnContact,
@@ -72,14 +73,15 @@ export class NotificationRecipientsRepository {
   }
 
   /**
-   * Lấy tên ngựa, Head Trainer phụ trách khu và chủ ngựa để gửi thông báo y tế.
+   * Lấy tên ngựa, Head Trainer phụ trách khu, chủ ngựa và Groom đang phụ trách để gửi thông báo y tế.
    *
    * - Đọc cả ngựa đã xóa mềm
    * - headTrainerId null theo cùng luật với findHorseBarnContact
    * - ownerId null khi ngựa chưa có chủ, hoặc chủ không còn là HORSE_OWNER đang ACTIVE
+   * - groomId null khi ngựa chưa có phân công Groom đang mở, hoặc Groom đó không còn là GROOM đang ACTIVE
    *
    * @param horseId UUID của ngựa
-   * @returns Promise trả về tên ngựa, Head Trainer và chủ, hoặc null nếu không tìm thấy ngựa
+   * @returns Promise trả về tên ngựa, Head Trainer, chủ và Groom, hoặc null nếu không tìm thấy ngựa
    */
   async findHorseMedicalContact(
     horseId: string,
@@ -93,13 +95,26 @@ export class NotificationRecipientsRepository {
         'owner.id = horse.ownerId AND owner.deletedAt IS NULL AND owner.status = :ownerStatus AND owner.role = :ownerRole',
         { ownerStatus: UserStatus.ACTIVE, ownerRole: UserRole.HORSE_OWNER },
       )
+      .leftJoin(
+        GroomAssignmentEntity,
+        'assignment',
+        'assignment.horseId = horse.id AND assignment.endAt IS NULL',
+      )
+      .leftJoin(
+        UserEntity,
+        'groom',
+        'groom.id = assignment.groomId AND groom.deletedAt IS NULL AND groom.status = :groomStatus AND groom.role = :groomRole',
+        { groomStatus: UserStatus.ACTIVE, groomRole: UserRole.GROOM },
+      )
       .select('horse.name', 'horseName')
       .addSelect('trainer.id', 'headTrainerId')
       .addSelect('owner.id', 'ownerId')
+      .addSelect('groom.id', 'groomId')
       .getRawOne<{
         horseName: string;
         headTrainerId: string | null;
         ownerId: string | null;
+        groomId: string | null;
       }>();
     if (!row) {
       return null;
@@ -108,6 +123,7 @@ export class NotificationRecipientsRepository {
       horseName: row.horseName,
       headTrainerId: row.headTrainerId,
       ownerId: row.ownerId,
+      groomId: row.groomId,
     };
   }
 

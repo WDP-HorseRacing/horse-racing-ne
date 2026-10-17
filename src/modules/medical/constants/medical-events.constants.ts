@@ -2,6 +2,8 @@
  * Tên domain event y tế, phát sau khi transaction đã commit.
  */
 export const MEDICAL_EXAM_REQUEST_URGENT_EVENT = 'medical.exam-request.urgent';
+export const MEDICAL_EXAM_REQUEST_HANDLED_EVENT =
+  'medical.exam-request.handled';
 export const MEDICAL_TRAINING_LOCK_SET_EVENT = 'medical.training-lock.set';
 export const MEDICAL_TRAINING_LOCK_RELEASED_EVENT =
   'medical.training-lock.released';

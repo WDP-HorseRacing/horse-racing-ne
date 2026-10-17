@@ -3,9 +3,11 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { toClubDate } from '../../../common/utils/club-date';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
+import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
 import type {
   CareScheduleDueEvent,
   CheckupOverdueEvent,
+  ExamRequestHandledEvent,
   ExamRequestUrgentEvent,
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
@@ -32,6 +34,7 @@ interface MedicalAudience {
   clubManagers?: boolean;
   headTrainer?: boolean;
   owner?: boolean;
+  groom?: boolean;
   extraUserIds?: Array<string | null>;
 }
 
@@ -86,7 +89,37 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu, Club Manager và chủ ngựa khi bác sĩ đặt khóa huấn luyện
+   * Báo người gửi yêu cầu khám khi bác sĩ khám xong hoặc bỏ qua yêu cầu
+   *
+   * - Bỏ qua: kèm lý do trong nội dung
+   *
+   * @param event Payload của MEDICAL_EXAM_REQUEST_HANDLED_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  notifyExamRequestHandled(event: ExamRequestHandledEvent): Promise<string[]> {
+    const examined = event.outcome === ExamRequestStatus.EXAMINED;
+    return this.sendForHorse(
+      event.eventId,
+      event.horseId,
+      horseResource(event.horseId),
+      { extraUserIds: [event.requestedBy] },
+      NotificationCategory.EXAM_REQUEST,
+      NotificationPriority.NORMAL,
+      (horse) =>
+        examined
+          ? {
+              title: `Ngựa ${horse} đã được bác sĩ khám`,
+              message: `Yêu cầu khám "${event.description}" của ngựa ${horse} đã được bác sĩ khám.`,
+            }
+          : {
+              title: `Yêu cầu khám ngựa ${horse} được bỏ qua`,
+              message: `Bác sĩ bỏ qua yêu cầu khám "${event.description}" của ngựa ${horse}. Lý do: ${event.dismissReason}`,
+            },
+    );
+  }
+
+  /**
+   * Báo Head Trainer của khu, Club Manager, chủ ngựa và Groom phụ trách khi bác sĩ đặt khóa huấn luyện
    *
    * @param event Payload của MEDICAL_TRAINING_LOCK_SET_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -103,7 +136,7 @@ export class MedicalNotificationsService {
         id: event.lockId,
         horseId: event.horseId,
       },
-      { headTrainer: true, clubManagers: true, owner: true },
+      { headTrainer: true, clubManagers: true, owner: true, groom: true },
       NotificationCategory.TRAINING_LOCK,
       NotificationPriority.HIGH,
       (horse) => ({
@@ -114,7 +147,7 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu, Club Manager và chủ ngựa khi bác sĩ gỡ khóa huấn luyện
+   * Báo Head Trainer của khu, Club Manager, chủ ngựa và Groom phụ trách khi bác sĩ gỡ khóa huấn luyện
    *
    * @param event Payload của MEDICAL_TRAINING_LOCK_RELEASED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -128,7 +161,7 @@ export class MedicalNotificationsService {
         id: event.lockId,
         horseId: event.horseId,
       },
-      { headTrainer: true, clubManagers: true, owner: true },
+      { headTrainer: true, clubManagers: true, owner: true, groom: true },
       NotificationCategory.TRAINING_LOCK,
       NotificationPriority.NORMAL,
       (horse) => ({
@@ -141,9 +174,9 @@ export class MedicalNotificationsService {
   /**
    * Báo khi trạng thái sức khỏe đổi
    *
-   * - Sang Chấn thương hoặc Cách ly: báo Head Trainer của khu, Club Manager và chủ ngựa, mức HIGH
-   * - Sang Cần theo dõi: báo Head Trainer của khu và chủ ngựa, mức NORMAL
-   * - Về Đủ điều kiện: báo chủ ngựa, mức NORMAL
+   * - Sang Chấn thương hoặc Cách ly: báo Head Trainer của khu, Club Manager, chủ ngựa và Groom phụ trách, mức HIGH
+   * - Sang Cần theo dõi: báo Head Trainer của khu, chủ ngựa và Groom phụ trách, mức NORMAL
+   * - Về Đủ điều kiện: báo chủ ngựa và Groom phụ trách, mức NORMAL
    *
    * @param event Payload của MEDICAL_HEALTH_CHANGED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới, rỗng nếu không cần báo
@@ -154,7 +187,7 @@ export class MedicalNotificationsService {
         event.eventId,
         event.horseId,
         horseResource(event.horseId),
-        { headTrainer: true, owner: true },
+        { headTrainer: true, owner: true, groom: true },
         NotificationCategory.HEALTH_STATUS,
         NotificationPriority.NORMAL,
         (horse) => ({
@@ -168,7 +201,7 @@ export class MedicalNotificationsService {
         event.eventId,
         event.horseId,
         horseResource(event.horseId),
-        { owner: true },
+        { owner: true, groom: true },
         NotificationCategory.HEALTH_STATUS,
         NotificationPriority.NORMAL,
         (horse) => ({
@@ -181,7 +214,7 @@ export class MedicalNotificationsService {
       event.eventId,
       event.horseId,
       horseResource(event.horseId),
-      { headTrainer: true, clubManagers: true, owner: true },
+      { headTrainer: true, clubManagers: true, owner: true, groom: true },
       NotificationCategory.HEALTH_STATUS,
       NotificationPriority.HIGH,
       (horse) => ({
@@ -423,7 +456,7 @@ export class MedicalNotificationsService {
    * Đổi nhóm người nhận thành danh sách id không trùng
    *
    * @param audience Các nhóm người nhận
-   * @param contact Head Trainer và chủ của con ngựa
+   * @param contact Head Trainer, chủ và Groom phụ trách của con ngựa
    * @returns Promise trả về danh sách id người nhận
    */
   private async resolveAudience(
@@ -447,7 +480,8 @@ export class MedicalNotificationsService {
     }
     if (audience.headTrainer) ids.push(contact.headTrainerId);
     if (audience.owner) ids.push(contact.ownerId);
-    return [...new Set(ids.filter((id): id is string => id !== null))];
+    if (audience.groom) ids.push(contact.groomId);
+    return [...new Set(ids.filter((id): id is string => !!id))];
   }
 }
 

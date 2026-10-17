@@ -26,7 +26,10 @@ import {
   ExamRequestSource,
   ExamRequestStatus,
 } from '../constants/exam-request.enum';
-import { MEDICAL_EXAM_REQUEST_URGENT_EVENT } from '../constants/medical-events.constants';
+import {
+  MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+  MEDICAL_EXAM_REQUEST_URGENT_EVENT,
+} from '../constants/medical-events.constants';
 import {
   CreateExamRequestDto,
   DismissExamRequestDto,
@@ -44,6 +47,7 @@ import {
   isGroomOnlyForExamRequests,
   isUrgentAlert,
 } from '../policies/medical.policy';
+import { examRequestHandledEvent } from '../shared/exam-request-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import type { ExamRequestUrgentEvent } from '../types/medical-events.types';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
@@ -294,6 +298,19 @@ export class ExamRequestsService {
         reason: body.reason,
         feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
       });
+      const handled = examRequestHandledEvent(
+        current,
+        ExamRequestStatus.DISMISSED,
+        caller.id,
+        body.reason,
+      );
+      if (handled) {
+        await this.events.publish(
+          manager,
+          MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+          handled,
+        );
+      }
       return { ...current, ...changes, horse };
     });
     return toExamRequestResponse(dismissed);

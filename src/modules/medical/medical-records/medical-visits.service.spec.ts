@@ -19,6 +19,7 @@ import {
 } from '../constants/injury-marker.enum';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { MEDICAL_EXAM_REQUEST_HANDLED_EVENT } from '../constants/medical-events.constants';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
@@ -425,6 +426,46 @@ describe('MedicalVisitsService', () => {
         handledBy: 'vet-1',
         medicalRecordId: result.id,
       });
+    });
+
+    it('tells each person who asked that the horse was examined, but not the examining vet nor the system', async () => {
+      manager.find.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === MedicalExamRequestEntity
+            ? [
+                { id: 'req-1', requestedBy: 'groom-2' },
+                { id: 'req-2', requestedBy: null },
+                { id: 'req-3', requestedBy: 'vet-1' },
+              ].map((request) => ({
+                ...request,
+                horseId: HORSE_ID,
+                status: ExamRequestStatus.PENDING,
+                description: 'Đi khập khiễng',
+              }))
+            : [],
+        ),
+      );
+
+      await service.createStandaloneVisit(
+        vet,
+        HORSE_ID,
+        standalone({
+          kind: MedicalVisitKind.REQUEST,
+          requestIds: ['req-1', 'req-2', 'req-3'],
+        }),
+      );
+
+      const handled = (
+        events.publish.mock.calls as Array<[unknown, string, unknown]>
+      ).filter(([, name]) => name === MEDICAL_EXAM_REQUEST_HANDLED_EVENT);
+      expect(handled.map(([, , payload]) => payload)).toEqual([
+        expect.objectContaining({
+          requestId: 'req-1',
+          requestedBy: 'groom-2',
+          outcome: ExamRequestStatus.EXAMINED,
+          dismissReason: null,
+        }),
+      ]);
     });
   });
 

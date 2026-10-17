@@ -22,7 +22,10 @@ import {
   ExamRequestSource,
   ExamRequestStatus,
 } from '../constants/exam-request.enum';
-import { MEDICAL_EXAM_REQUEST_URGENT_EVENT } from '../constants/medical-events.constants';
+import {
+  MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+  MEDICAL_EXAM_REQUEST_URGENT_EVENT,
+} from '../constants/medical-events.constants';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { ExamRequestsService } from './exam-requests.service';
@@ -349,6 +352,34 @@ describe('ExamRequestsService', () => {
         expect.objectContaining({ reason: 'Groom báo nhầm ngựa' }),
       );
       expect(result.status).toBe(ExamRequestStatus.DISMISSED);
+    });
+
+    it('tells the person who asked why the request was skipped', async () => {
+      requestRow = { ...requestRow, requestedBy: 'groom-2' };
+
+      await service.dismiss(vet, 'req-1', { reason: 'Đã khám sáng nay' });
+
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+        expect.objectContaining({
+          requestId: 'req-1',
+          requestedBy: 'groom-2',
+          outcome: ExamRequestStatus.DISMISSED,
+          dismissReason: 'Đã khám sáng nay',
+        }),
+      );
+    });
+
+    it.each([
+      ['raised by the system', null],
+      ['raised by the same vet', 'user-1'],
+    ])('tells nobody when the request was %s', async (_case, requestedBy) => {
+      requestRow = { ...requestRow, requestedBy };
+
+      await service.dismiss(vet, 'req-1', { reason: 'Nhầm' });
+
+      expect(events.publish).not.toHaveBeenCalled();
     });
   });
 

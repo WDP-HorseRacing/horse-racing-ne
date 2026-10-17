@@ -208,3 +208,16 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 3. Nút "Hủy lần xuất" nên hiện ở dòng `USAGE` có `usageId`, chưa `cancelled`, và (với người không phải CM) do chính người dùng xuất trong 24 giờ.
 4. `GET /reports/club/finance`: "đã dùng" không còn tính lần xuất đã hủy, kể cả ở tháng đã xem trước đó.
 
+## Thông báo mới cho Groom và người gửi yêu cầu khám
+
+Không đổi API. Chỉ thêm người nhận và loại tin; FE hiện như các thông báo đang có (inbox, socket, push).
+
+1. Groom đang phụ trách ngựa nhận thêm (cùng nội dung với HT và chủ):
+   - Đặt khóa huấn luyện (HIGH) và gỡ khóa (NORMAL), `category = TRAINING_LOCK`.
+   - Đổi trạng thái sức khỏe, mọi chiều, `category = HEALTH_STATUS`: Chấn thương, Cách ly (HIGH); Cần theo dõi, về Đủ điều kiện (NORMAL).
+2. Người gửi yêu cầu khám (Groom qua sự cố, HT, CM) nhận kết quả, `category = EXAM_REQUEST`, mức NORMAL, `resource` là ngựa:
+   - Khám xong: "Ngựa X đã được bác sĩ khám".
+   - Bỏ qua: "Yêu cầu khám ngựa X được bỏ qua", nội dung kèm lý do.
+   - Yêu cầu do hệ thống tự sinh (cảnh báo sốt, sụt cân) hoặc do chính bác sĩ xử lý gửi thì không có thông báo này.
+3. Ca Khẩn vẫn chỉ báo một lần, không nhắc lại.
+

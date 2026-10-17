@@ -27,6 +27,7 @@ import { ExamRequestStatus } from '../constants/exam-request.enum';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
+  MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
 } from '../constants/medical-events.constants';
 import {
@@ -64,7 +65,10 @@ import {
   resolveVisitVoid,
 } from '../policies/medical.policy';
 import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
-import { ExamRequestWritesService } from '../shared/exam-request-writes.service';
+import {
+  ExamRequestWritesService,
+  examRequestHandledEvent,
+} from '../shared/exam-request-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 import type {
@@ -651,6 +655,8 @@ export class MedicalVisitsService {
   /**
    * Chuyển các yêu cầu khám đã gắn sang EXAMINED, mỗi yêu cầu một dòng nhật ký
    *
+   * - Yêu cầu có người gửi khác người khám: ghi MEDICAL_EXAM_REQUEST_HANDLED_EVENT để báo người gửi
+   *
    * @param manager EntityManager của transaction đang chạy
    * @param input Bối cảnh buổi khám, gồm các yêu cầu đã khóa
    * @param visitId UUID của buổi khám vừa ghi
@@ -678,6 +684,19 @@ export class MedicalVisitsService {
         after: { status: ExamRequestStatus.EXAMINED, medicalRecordId: visitId },
         feature: input.feature,
       });
+      const handled = examRequestHandledEvent(
+        request,
+        ExamRequestStatus.EXAMINED,
+        input.callerId,
+        null,
+      );
+      if (handled) {
+        await this.events.publish(
+          manager,
+          MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+          handled,
+        );
+      }
     }
   }
 

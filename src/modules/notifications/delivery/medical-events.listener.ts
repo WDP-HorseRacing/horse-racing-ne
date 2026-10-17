@@ -8,6 +8,7 @@ import {
   MEDICAL_CASE_COST_ADJUSTED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
+  MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_URGENT_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
@@ -16,6 +17,7 @@ import {
 import type {
   CareScheduleDueEvent,
   CheckupOverdueEvent,
+  ExamRequestHandledEvent,
   ExamRequestUrgentEvent,
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
@@ -40,6 +42,17 @@ export class MedicalEventsListener {
   @OnEvent(MEDICAL_EXAM_REQUEST_URGENT_EVENT, OUTBOX_LISTENER_OPTIONS)
   async onUrgentExamRequest(event: ExamRequestUrgentEvent): Promise<void> {
     await this.medical.notifyUrgentExamRequest(event);
+  }
+
+  /**
+   * Nghe MEDICAL_EXAM_REQUEST_HANDLED_EVENT và báo người gửi yêu cầu khám
+   *
+   * @param event Payload của event
+   * @returns Promise hoàn tất khi đã gửi xong
+   */
+  @OnEvent(MEDICAL_EXAM_REQUEST_HANDLED_EVENT, OUTBOX_LISTENER_OPTIONS)
+  async onExamRequestHandled(event: ExamRequestHandledEvent): Promise<void> {
+    await this.medical.notifyExamRequestHandled(event);
   }
 
   /**
