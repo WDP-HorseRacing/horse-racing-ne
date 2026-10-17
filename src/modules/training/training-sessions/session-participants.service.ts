@@ -387,7 +387,7 @@ export class SessionParticipantsService {
         session.status !== TrainingSessionStatus.IN_PROGRESS
       ) {
         throw new ConflictException(
-          'Buổi tập chưa công bố hoặc đã kết thúc, không thao tác được',
+          'Buổi tập đã kết thúc hoặc đã hủy, không thao tác được',
         );
       }
       assertParticipantActionWindow(session, START_OPENS_BEFORE_MS, new Date());

@@ -47,7 +47,7 @@ describe('training policy', () => {
     expect(() => assertTrainableHorse(false)).not.toThrow();
   });
 
-  it('edits a scheduled session only before it starts', () => {
+  it('edits a scheduled session only before check-in opens, 30 minutes before the start', () => {
     const now = new Date('2026-10-10T01:00:00Z');
     const at = (iso: string, status = TrainingSessionStatus.SCHEDULED) => ({
       status,
@@ -55,16 +55,17 @@ describe('training policy', () => {
     });
 
     expect(() =>
-      assertSessionEditable(at('2026-10-10T01:00:01Z'), now),
+      assertSessionEditable(at('2026-10-10T01:30:01Z'), now),
     ).not.toThrow();
     for (const session of [
-      at('2026-10-10T01:00:00Z'),
+      at('2026-10-10T01:30:00Z'),
+      at('2026-10-10T01:00:01Z'),
       at('2026-10-10T02:00:00Z', TrainingSessionStatus.IN_PROGRESS),
       at('2026-10-10T02:00:00Z', TrainingSessionStatus.CANCELLED),
     ]) {
       expect(() => assertSessionEditable(session, now)).toThrow(
         new ConflictException(
-          'Chỉ sửa được buổi tập đã lên lịch và chưa tới giờ bắt đầu',
+          'Chỉ sửa được buổi tập đã lên lịch, trước giờ mở điểm danh (30 phút trước giờ bắt đầu)',
         ),
       );
     }

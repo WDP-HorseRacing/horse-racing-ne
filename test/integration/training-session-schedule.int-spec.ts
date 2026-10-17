@@ -187,25 +187,11 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
     ]);
   });
 
-  it('refuses editing once a horse has checked in', async () => {
+  it('refuses editing once check-in has opened, even before anyone checked in', async () => {
     await enroll('Winx');
     const created = await create('2026-11-10T01:00:00Z');
     await dataSource.query(
-      `UPDATE session_participants SET status = 'PRESENT' WHERE session_id = $1`,
-      [created.id],
-    );
-
-    await expect(
-      service.updateSession(trainer, created.id, { name: 'Đổi' }),
-    ).rejects.toThrow(
-      new ConflictException('Buổi tập đã có ngựa điểm danh, không sửa được'),
-    );
-  });
-
-  it('refuses editing a session that has started', async () => {
-    const created = await create('2026-11-10T01:00:00Z');
-    await dataSource.query(
-      `UPDATE training_sessions SET scheduled_start_at = now() - interval '1 minute' WHERE id = $1`,
+      `UPDATE training_sessions SET scheduled_start_at = now() + interval '20 minutes', scheduled_end_at = now() + interval '80 minutes' WHERE id = $1`,
       [created.id],
     );
 
@@ -213,9 +199,12 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
       service.updateSession(trainer, created.id, { name: 'Đổi' }),
     ).rejects.toThrow(
       new ConflictException(
-        'Chỉ sửa được buổi tập đã lên lịch và chưa tới giờ bắt đầu',
+        'Chỉ sửa được buổi tập đã lên lịch, trước giờ mở điểm danh (30 phút trước giờ bắt đầu)',
       ),
     );
+    await expect(participantsOf(created.id)).resolves.toEqual([
+      expect.objectContaining({ status: 'PLANNED' }),
+    ]);
   });
 
   it('forbids another head trainer from adding or editing sessions', async () => {

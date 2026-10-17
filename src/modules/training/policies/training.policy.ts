@@ -26,6 +26,7 @@ import {
   MAX_SESSIONS_PER_HORSE_DAY,
   MIN_REST_BETWEEN_SESSIONS_MS,
 } from '../constants/horse-daily-load.constants';
+import { CHECK_IN_OPENS_BEFORE_MS } from '../constants/participant-window.constants';
 import type {
   ClassSessionLoad,
   HorseBrief,
@@ -423,11 +424,11 @@ export function assertTrainableHorse(isReference: boolean): void {
 }
 
 /**
- * Chỉ sửa buổi tập đã lên lịch và chưa tới giờ bắt đầu
+ * Chỉ sửa buổi tập đã lên lịch và chưa tới giờ mở điểm danh (CHECK_IN_OPENS_BEFORE_MS trước giờ bắt đầu)
  *
  * @param session Trạng thái và giờ bắt đầu của buổi
  * @param now Thời điểm hiện tại
- * @throws ConflictException Nếu buổi không còn ở trạng thái đã lên lịch, hoặc đã tới giờ bắt đầu
+ * @throws ConflictException Nếu buổi không còn ở trạng thái đã lên lịch, hoặc đã tới giờ mở điểm danh
  */
 export function assertSessionEditable(
   session: { status: TrainingSessionStatus; scheduledStartAt: Date },
@@ -435,10 +436,11 @@ export function assertSessionEditable(
 ): void {
   if (
     session.status !== TrainingSessionStatus.SCHEDULED ||
-    session.scheduledStartAt <= now
+    session.scheduledStartAt.getTime() - CHECK_IN_OPENS_BEFORE_MS <=
+      now.getTime()
   ) {
     throw new ConflictException(
-      'Chỉ sửa được buổi tập đã lên lịch và chưa tới giờ bắt đầu',
+      'Chỉ sửa được buổi tập đã lên lịch, trước giờ mở điểm danh (30 phút trước giờ bắt đầu)',
     );
   }
 }
@@ -486,7 +488,7 @@ export function assertSessionOperational(status: TrainingSessionStatus): void {
     status !== TrainingSessionStatus.IN_PROGRESS
   ) {
     throw new ConflictException(
-      'Buổi tập chưa công bố hoặc đã kết thúc, không thao tác được',
+      'Buổi tập đã kết thúc hoặc đã hủy, không thao tác được',
     );
   }
 }

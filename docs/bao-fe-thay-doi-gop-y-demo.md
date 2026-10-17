@@ -50,7 +50,8 @@ Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, 
      - Một buổi lỗi thì không lưu buổi nào. Câu báo có tiền tố `Buổi N: `, ô lỗi là `sessions.{i}`.
    - `GET /classes/:classId/enrollable-horses`: ngựa ghi danh được vào lớp lúc này, trả `[{ horseId, horseName, horsePhotoUrl }]`. Đã tự loại ngựa đã ghi danh, ngựa trùng giờ và ngựa vượt giới hạn tập trong ngày (mục 2).
 6. **Luật mới khi thêm hoặc sửa buổi**: môn của buổi phải có trong giai đoạn của lớp chứa ngày đó. Sai thì 409 `Môn {tên} không có trong giai đoạn {n} của lớp`.
-7. Sửa buổi (kéo đổi giờ, đổi môn...) chỉ được khi buổi `SCHEDULED`, chưa tới giờ và chưa có ngựa điểm danh. Các trường hợp khác: 409.
+7. Sửa buổi (kéo đổi giờ, đổi môn...) và sửa cấu hình chạy thử chỉ được khi buổi `SCHEDULED` và chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu). Các trường hợp khác: 409 `Chỉ sửa được buổi tập đã lên lịch, trước giờ mở điểm danh (30 phút trước giờ bắt đầu)`. FE nên khóa kéo thả buổi từ mốc này.
+8. Điểm danh, báo vắng, sẵn sàng, bắt đầu trên buổi đã hoàn thành hoặc đã hủy: câu báo 409 đổi thành `Buổi tập đã kết thúc hoặc đã hủy, không thao tác được`.
 
 ## 2. Cường độ chỉ còn Nhẹ và Nặng, có giới hạn tập trong ngày
 

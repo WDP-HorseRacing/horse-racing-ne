@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { toClubDate } from '../../../common/utils/club-date';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
@@ -71,12 +71,6 @@ const SYNCED_PARTICIPANT_STATUSES = [
 /**
  * Lượt tập đã điểm danh trở đi, chặn sửa buổi
  */
-const CHECKED_IN_PARTICIPANT_STATUSES = [
-  SessionParticipantStatus.PRESENT,
-  SessionParticipantStatus.READY,
-  SessionParticipantStatus.ONGOING,
-];
-
 const NOT_ENROLLED_AT_START_REASON = 'Ngựa không học lớp vào giờ mới của buổi';
 
 /**
@@ -397,9 +391,8 @@ export class TrainingSessionsService {
   }
 
   /**
-   * Sửa buổi tập đã lên lịch chưa tới giờ bắt đầu, rồi đồng bộ lại lượt tập
+   * Sửa buổi tập đã lên lịch chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu), rồi đồng bộ lại lượt tập
    *
-   * - Chặn khi đã có ngựa điểm danh, sẵn sàng hoặc đang tập
    * - Đổi giờ: kiểm trùng giờ trong lớp và trùng giờ của ngựa như khi thêm buổi
    * - Sau khi lưu, lượt tập được đồng bộ theo giờ bắt đầu và cường độ mới (syncParticipants)
    * - Ghi nhật ký các field nội dung đã đổi
@@ -410,7 +403,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập sau khi sửa
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có buổi tập hoặc lớp
-   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ, đã có ngựa điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ
+   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ
    * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp hoặc môn học không tồn tại
    */
   async updateSession(
@@ -432,16 +425,6 @@ export class TrainingSessionsService {
       );
       assertClassOpenForSessions(trainingClass.status);
       assertSessionEditable(session, new Date());
-      if (
-        await manager.existsBy(SessionParticipantEntity, {
-          sessionId,
-          status: In(CHECKED_IN_PARTICIPANT_STATUSES),
-        })
-      ) {
-        throw new ConflictException(
-          'Buổi tập đã có ngựa điểm danh, không sửa được',
-        );
-      }
       const before = sessionAuditData(session);
       const nextSessionType = body.sessionType ?? session.sessionType;
       if (nextSessionType !== session.sessionType) {
