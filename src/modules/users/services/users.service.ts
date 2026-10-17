@@ -24,6 +24,8 @@ import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
+import { CareScheduleStatus } from '../../medical/constants/care-schedule.enum';
+import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
 import { BarnEntity } from '../../stable/entities/barn.entity';
 import { TrainingClassEntity } from '../../training/entities/training-class.entity';
 import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
@@ -349,6 +351,7 @@ export class UsersService {
    * - Horse Owner: không còn là chủ của ngựa nào đang ở câu lạc bộ
    * - Groom: không còn phụ trách ngựa nào (groom assignment chưa kết thúc)
    * - Head Trainer: không còn phụ trách khu chuồng nào, không còn giáo án và lớp huấn luyện nháp hoặc đang chạy
+   * - Mọi vai trò: không còn lịch chăm sóc Đã lên lịch được giao đích danh cho người này
    *
    * @param manager EntityManager của transaction đang chạy, user đã được khóa bằng manager này
    * @param user User sắp đổi vai trò hoặc sắp bị khóa
@@ -392,6 +395,16 @@ export class UsersService {
     ) {
       throw new ConflictException(
         `Người này còn giáo án hoặc lớp huấn luyện chưa kết thúc, cần bàn giao cho Huấn luyện viên trưởng khác trước khi ${label}`,
+      );
+    }
+    const openCareSchedules = await manager
+      .getRepository(CareScheduleEntity)
+      .count({
+        where: { assignedTo: user.id, status: CareScheduleStatus.SCHEDULED },
+      });
+    if (openCareSchedules > 0) {
+      throw new ConflictException(
+        `Người này còn ${openCareSchedules} lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi ${label}`,
       );
     }
   }

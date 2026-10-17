@@ -12,6 +12,7 @@ import { HorseHealthStatus } from '../../../src/modules/horses/enums/horse-statu
 import { CareSchedulesModule } from '../../../src/modules/medical/care-schedules/care-schedules.module';
 import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
 import {
+  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../../src/modules/medical/constants/care-schedule.enum';
@@ -256,6 +257,7 @@ describe('Medical findings (Postgres)', () => {
       .create(vet.actor, horse, {
         type: CareScheduleType.VACCINATION,
         dueAt: new Date(Date.now() + DAY_MS).toISOString(),
+        assigneeType: CareAssigneeType.GROOM,
         assignedTo: groomId,
       })
       .then((schedule) =>

@@ -53,6 +53,16 @@ export class GroomTodayCareScheduleResponseDto {
   notes!: string | null;
 }
 
+export class GroomTodayOtherCareScheduleResponseDto extends GroomTodayCareScheduleResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @Expose()
+  @ApiProperty()
+  horseName!: string;
+}
+
 export class GroomTodayHorseResponseDto {
   @Expose()
   @ApiProperty({ format: 'uuid' })
@@ -105,7 +115,7 @@ export class GroomTodayHorseResponseDto {
   @ApiProperty({
     type: [GroomTodayCareScheduleResponseDto],
     description:
-      'Lịch chăm sóc giao cho Groom, đến hạn tới hết hôm nay mà chưa làm',
+      'Lịch chăm sóc Groom là người làm (giao Groom phụ trách, hoặc giao đích danh cho Groom), đến hạn tới hết hôm nay mà chưa làm',
   })
   careSchedules!: GroomTodayCareScheduleResponseDto[];
 }
@@ -122,4 +132,13 @@ export class GroomTodayResponseDto {
     description: 'Ngựa Groom đang phụ trách, theo tên',
   })
   horses!: GroomTodayHorseResponseDto[];
+
+  @Expose()
+  @Type(() => GroomTodayOtherCareScheduleResponseDto)
+  @ApiProperty({
+    type: [GroomTodayOtherCareScheduleResponseDto],
+    description:
+      'Lịch chăm sóc giao đích danh cho Groom ở ngựa Groom không phụ trách, đến hạn tới hết hôm nay mà chưa làm, ngày đến hạn sớm nhất lên trên',
+  })
+  otherCareSchedules!: GroomTodayOtherCareScheduleResponseDto[];
 }

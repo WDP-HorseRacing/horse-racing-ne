@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 16/10/2026
+> Cập nhật: 17/10/2026
 
 ## I. Những main feature liên quan
 
@@ -139,7 +139,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Đóng bệnh án | NORMAL | HORSE OWNER, CLUB MANAGER |
 | Hủy bệnh án mở nhầm | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Điều chỉnh chi phí bệnh án đã đóng | NORMAL | HORSE OWNER của giai đoạn chứa bệnh án (III.6.8), CLUB MANAGER |
-| Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, người được giao (nếu còn hợp lệ, xem F3.11 mục 1) |
+| Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, người làm lịch (xem F3.11 mục 1) |
 
 1. Ngựa chưa được xếp khu thì không có HEAD TRAINER nhận thông báo, khi đó chỉ gửi cho các vai trò còn lại.
 2. Ngựa chưa có chủ, hoặc chủ không còn là tài khoản HORSE OWNER đang hoạt động, thì bỏ qua người nhận HORSE OWNER.
@@ -674,15 +674,21 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 | VETERINARIAN | Thêm, Sửa, Xem | Toàn câu lạc bộ | Tạo, dời, hủy, đánh dấu hoàn tất. |
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | |
 | HEAD TRAINER | Xem | Toàn câu lạc bộ | Xem để tránh xếp buổi tập trùng lịch. |
-| GROOM | Xem, Sửa (hoàn tất) | Lịch được giao cho mình, khi vẫn đang phụ trách con ngựa | Đánh dấu hoàn tất việc được giao, ví dụ kiểm tra móng. |
+| GROOM | Xem, Sửa (hoàn tất) | Lịch mình là người làm: giao GROOM phụ trách ở ngựa mình đang phụ trách, hoặc giao đích danh cho mình | Đánh dấu hoàn tất việc được giao, ví dụ kiểm tra móng. |
 | HORSE OWNER | Xem | Ngựa sở hữu | |
 
 ### Nghiệp vụ
 
-1. Một lịch chăm sóc gồm: con ngựa, loại (Tiêm phòng, Tẩy giun, Kiểm tra móng), ngày đến hạn, người được giao (tùy chọn), ghi chú. Người được giao phải là VETERINARIAN đang hoạt động, hoặc GROOM đang hoạt động và đang phụ trách con ngựa. Khi HEAD TRAINER đổi GROOM phụ trách, GROOM cũ không còn nhận nhắc và không hoàn tất được lịch đó; VETERINARIAN giao lại cho người mới.
+1. Một lịch chăm sóc gồm: con ngựa, loại (Tiêm phòng, Tẩy giun, Kiểm tra móng), ngày đến hạn, cách giao (tùy chọn), ghi chú. Cách giao gồm kiểu giao và người cụ thể:
+   - Chưa giao ai.
+   - Giao GROOM phụ trách (không chọn người): người làm là GROOM đang phụ trách con ngựa lúc đó. HEAD TRAINER đổi GROOM thì lịch tự theo GROOM mới, GROOM cũ không còn thấy và không hoàn tất được.
+   - Giao một GROOM cụ thể (GROOM đang hoạt động, không bắt buộc phụ trách con ngựa, ví dụ GROOM chuyên làm móng): đổi GROOM phụ trách không làm đổi người làm.
+   - Giao một VETERINARIAN cụ thể (bắt buộc chọn người, VETERINARIAN đang hoạt động).
+   - Người làm là người hệ thống nhắc hạn và là GROOM duy nhất được hoàn tất lịch; VETERINARIAN hoàn tất được mọi lịch.
 2. Trạng thái: Đã lên lịch, Hoàn tất, Đã hủy. Hoàn tất và Đã hủy là trạng thái cuối.
 3. Dời ngày đến hạn hoặc hủy lịch bắt buộc nhập lý do.
-4. Đánh dấu hoàn tất ghi lại thời điểm và người thực hiện. Khi hoàn tất, VETERINARIAN có thể nhập "Ngày đến hạn lần tới" (ví dụ tẩy giun sau 3 tháng): hệ thống tạo luôn lịch mới cùng loại trong cùng thao tác, giữ người được giao nếu vẫn hợp lệ. Để trống thì không tạo lịch mới. GROOM hoàn tất thì không nhập được ngày lần tới.
+4. Đánh dấu hoàn tất ghi lại thời điểm và người thực hiện. Khi hoàn tất, VETERINARIAN có thể nhập "Ngày đến hạn lần tới" (ví dụ tẩy giun sau 3 tháng): hệ thống tạo luôn lịch mới cùng loại trong cùng thao tác, giữ cách giao (người cụ thể không còn hợp lệ thì giao GROOM về GROOM phụ trách, giao VETERINARIAN về chưa giao ai). Để trống thì không tạo lịch mới. GROOM hoàn tất thì không nhập được ngày lần tới.
+   - Không khóa tài khoản hay đổi vai trò người còn lịch Đã lên lịch được giao đích danh cho mình (409): VETERINARIAN phải giao lại các lịch đó trước.
 5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần cho mỗi ngày đến hạn: lịch bị dời sang ngày khác thì được nhắc lại theo ngày mới. *(BA chốt)* Lịch quá hạn chưa làm hiển thị trong bảng điều khiển y tế cùng khối lịch khám.
 6. Khi ngựa chuyển nhượng, các lịch đang Đã lên lịch tự hủy với lý do "Do chuyển nhượng".
 7. Không tạo lịch cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.

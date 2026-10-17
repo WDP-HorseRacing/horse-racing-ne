@@ -28,12 +28,14 @@ export interface GroomTodayHorseSource {
  * @param date Hôm nay theo lịch CLB, YYYY-MM-DD
  * @param dayStart Đầu ngày theo giờ CLB
  * @param horses Dữ liệu từng ngựa; mỗi lượt tập đã load session
+ * @param otherSchedules Lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, đã load horse
  * @returns Response màn Hôm nay
  */
 export function toGroomTodayResponse(
   date: string,
   dayStart: Date,
   horses: readonly GroomTodayHorseSource[],
+  otherSchedules: readonly CareScheduleEntity[],
 ): GroomTodayResponseDto {
   return plainToInstance(
     GroomTodayResponseDto,
@@ -61,6 +63,15 @@ export function toGroomTodayResponse(
           overdue: schedule.dueAt < dayStart,
           notes: schedule.notes,
         })),
+      })),
+      otherCareSchedules: otherSchedules.map((schedule) => ({
+        id: schedule.id,
+        horseId: schedule.horseId,
+        horseName: schedule.horse.name,
+        type: schedule.type,
+        dueAt: schedule.dueAt,
+        overdue: schedule.dueAt < dayStart,
+        notes: schedule.notes,
       })),
     },
     MAPPER_OPTIONS,

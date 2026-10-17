@@ -18,9 +18,11 @@ import { HorseStatusesService } from '../../../src/modules/horses/horse-statuses
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
 import {
+  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../../src/modules/medical/constants/care-schedule.enum';
+import { MedicalCheckupsService } from '../../../src/modules/medical/shared/medical-checkups.service';
 import { MEDICAL_CARE_SCHEDULE_DUE_EVENT } from '../../../src/modules/medical/constants/medical-events.constants';
 import { CaseLockDecision } from '../../../src/modules/medical/constants/medical-case.enum';
 import {
@@ -226,16 +228,16 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     await grooms.assign(ht.actor, horse, { groomId: oldGroom });
     const schedule = await seed.schedule(horse, isoIn(3), {
       type: CareScheduleType.FARRIER,
-      assignedTo: oldGroom,
+      assigneeType: CareAssigneeType.GROOM,
     });
 
     await grooms.assign(ht.actor, horse, { groomId: newGroom });
 
-    const [row] = await dataSource.query<{ assigned_to: string | null }[]>(
-      'SELECT assigned_to FROM care_schedules WHERE id = $1',
-      [schedule],
+    const [due] = await new MedicalCheckupsService(dataSource).dueCareSchedules(
+      isoIn(4).slice(0, 10),
+      [horse],
     );
-    expect(row.assigned_to).toBe(newGroom);
+    expect(due).toMatchObject({ scheduleId: schedule, assignedTo: newGroom });
   });
 
   it('N1: a horse with an open-ended prescription from a closed case is not racing eligible', async () => {

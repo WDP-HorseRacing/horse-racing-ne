@@ -9,6 +9,8 @@ import { KeycloakUserService } from '../../../common/infrastructure/keycloak/use
 import type { Actor } from '../../../common/types/actor';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
+import { CareScheduleStatus } from '../../medical/constants/care-schedule.enum';
+import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
 import { BarnEntity } from '../../stable/entities/barn.entity';
 import { TrainingClassEntity } from '../../training/entities/training-class.entity';
 import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
@@ -50,6 +52,7 @@ describe('UsersService', () => {
   let barnRepository: { existsBy: jest.Mock };
   let planRepository: { existsBy: jest.Mock };
   let classRepository: { existsBy: jest.Mock };
+  let careScheduleRepository: { count: jest.Mock };
   let userRepository: {
     findOne: jest.Mock;
     find: jest.Mock;
@@ -81,6 +84,7 @@ describe('UsersService', () => {
     barnRepository = { existsBy: exists('barn') };
     planRepository = { existsBy: exists('plan') };
     classRepository = { existsBy: exists('class') };
+    careScheduleRepository = { count: jest.fn().mockResolvedValue(0) };
     userRepository = {
       findOne: jest.fn(() => {
         events.push('lock:user');
@@ -102,6 +106,7 @@ describe('UsersService', () => {
       if (entity === BarnEntity) return barnRepository;
       if (entity === TrainingPlanEntity) return planRepository;
       if (entity === TrainingClassEntity) return classRepository;
+      if (entity === CareScheduleEntity) return careScheduleRepository;
       if (entity === UserEntity) return userRepository;
       throw new Error('Unexpected repository');
     });
@@ -475,6 +480,23 @@ describe('UsersService', () => {
         owner.keycloakId,
         false,
       );
+    });
+
+    it('refuses to lock a vet who still has open care schedules assigned by name', async () => {
+      target = { ...owner, role: UserRole.VETERINARIAN };
+      careScheduleRepository.count.mockResolvedValue(2);
+
+      await expect(
+        service.setStatus(actor, owner.id, UserStatus.LOCKED),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Người này còn 2 lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi khóa tài khoản',
+        ),
+      );
+      expect(careScheduleRepository.count).toHaveBeenCalledWith({
+        where: { assignedTo: owner.id, status: CareScheduleStatus.SCHEDULED },
+      });
+      expect(userRepository.update).not.toHaveBeenCalled();
     });
 
     it('reactivates a locked user without checking responsibilities', async () => {

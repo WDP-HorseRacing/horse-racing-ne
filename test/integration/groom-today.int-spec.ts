@@ -131,7 +131,7 @@ describe('Groom today view (Postgres)', () => {
     const result = await service.today(
       await actorOf(await seed.user(UserRole.GROOM), UserRole.GROOM),
     );
-    expect(result).toEqual({ date: today, horses: [] });
+    expect(result).toEqual({ date: today, horses: [], otherCareSchedules: [] });
   });
 
   it('lists the groom horses by name with barn, stall and today checklist', async () => {

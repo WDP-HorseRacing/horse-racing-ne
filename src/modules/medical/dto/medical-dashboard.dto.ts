@@ -127,7 +127,12 @@ export class DashboardCareScheduleDto {
   @ApiProperty({ format: 'date' })
   dueDate!: string;
 
-  @ApiProperty({ format: 'uuid', nullable: true })
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    description:
+      'Người làm hiện tại (giao Groom phụ trách thì là Groom đang phụ trách ngựa), null nếu chưa có ai',
+  })
   assignedTo!: string | null;
 }
 

@@ -2,13 +2,17 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsDateString,
+  IsEnum,
   IsIn,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
 } from 'class-validator';
-import { CareScheduleType } from '../constants/care-schedule.enum';
+import {
+  CareAssigneeType,
+  CareScheduleType,
+} from '../constants/care-schedule.enum';
 import { trimValue } from '../../../common/utils/dto-input';
 
 /**
@@ -41,8 +45,18 @@ export class CreateCareScheduleDto {
   dueAt!: string;
 
   @ApiPropertyOptional({
+    enum: CareAssigneeType,
+    description:
+      'Kiểu giao: GROOM (bỏ trống assignedTo là Groom đang phụ trách ngựa) hoặc VET. Bỏ trống là chưa giao ai',
+  })
+  @IsOptional()
+  @IsEnum(CareAssigneeType)
+  assigneeType?: CareAssigneeType;
+
+  @ApiPropertyOptional({
     format: 'uuid',
-    description: 'Người được giao: Veterinarian hoặc Groom đang hoạt động',
+    description:
+      'Người cụ thể: Groom đang hoạt động (assigneeType = GROOM) hoặc bác sĩ đang hoạt động (assigneeType = VET, bắt buộc)',
   })
   @IsOptional()
   @IsUUID('4')

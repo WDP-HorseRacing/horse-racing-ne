@@ -7,6 +7,7 @@ import { CLUB_TIME_ZONE } from '../../../common/constants';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import {
+  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
@@ -173,7 +174,7 @@ export class MedicalCheckupsService {
    *
    * - Không gồm ngày hẹn khám định kỳ; bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
    * - Ngày đến hạn tính theo lịch câu lạc bộ
-   * - assignedTo chỉ giữ khi người được giao còn hoạt động và còn hợp lệ (Veterinarian, hoặc Groom đang phụ trách ngựa); không thì null
+   * - assignedTo là người làm hiện tại: người cụ thể được giao nếu còn hoạt động và đúng vai trò của kiểu giao; giao Groom phụ trách thì là Groom đang phụ trách ngựa (còn hoạt động); không có ai thì null
    *
    * @param untilDate Lấy lịch có ngày đến hạn không muộn hơn ngày này (YYYY-MM-DD)
    * @param horseIds Giới hạn theo danh sách ngựa; bỏ trống để lấy cả đàn
@@ -192,6 +193,8 @@ export class MedicalCheckupsService {
       UserStatus.ACTIVE,
       UserRole.VETERINARIAN,
       UserRole.GROOM,
+      CareAssigneeType.VET,
+      CareAssigneeType.GROOM,
     ];
     let horseFilter = '';
     if (horseIds) {
@@ -204,18 +207,20 @@ export class MedicalCheckupsService {
               h.name AS "horseName",
               s.type,
               to_char(s.due_at AT TIME ZONE $1, 'YYYY-MM-DD') AS "dueDate",
-              CASE WHEN EXISTS (
-                     SELECT 1 FROM users u
-                      WHERE u.id = s.assigned_to
-                        AND u.deleted_at IS NULL
-                        AND u.status = $6
-                        AND (u.role = $7
-                             OR (u.role = $8 AND EXISTS (
-                                   SELECT 1 FROM groom_assignments ga
-                                    WHERE ga.horse_id = s.horse_id
-                                      AND ga.groom_id = u.id
-                                      AND ga.end_at IS NULL)))
-                   ) THEN s.assigned_to
+              CASE
+                WHEN s.assigned_to IS NOT NULL THEN (
+                  SELECT u.id FROM users u
+                   WHERE u.id = s.assigned_to
+                     AND u.deleted_at IS NULL
+                     AND u.status = $6
+                     AND u.role = CASE s.assignee_type WHEN $9 THEN $7 WHEN $10 THEN $8 END)
+                WHEN s.assignee_type = $10 THEN (
+                  SELECT u.id FROM groom_assignments ga
+                    JOIN users u ON u.id = ga.groom_id
+                   WHERE ga.horse_id = s.horse_id
+                     AND ga.end_at IS NULL
+                     AND u.deleted_at IS NULL
+                     AND u.status = $6)
               END AS "assignedTo"
          FROM care_schedules s
          JOIN horses h ON h.id = s.horse_id
