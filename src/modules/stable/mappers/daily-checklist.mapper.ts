@@ -3,10 +3,14 @@ import {
   CareTaskTypeResponseDto,
   HorseCareTaskResponseDto,
 } from '../dto/care-task.dto';
-import { DailyChecklistResponseDto } from '../dto/daily-checklist.dto';
+import {
+  DailyChecklistResponseDto,
+  RegenerateChecklistsResponseDto,
+} from '../dto/daily-checklist.dto';
 import type { CareTaskTypeEntity } from '../entities/care-task-type.entity';
 import type { DailyChecklistEntity } from '../entities/daily-checklist.entity';
 import type { HorseCareTaskEntity } from '../entities/horse-care-task.entity';
+import type { ChecklistGenerationResult } from '../types/stable.types';
 
 const MAPPER_OPTIONS = { excludeExtraneousValues: true } as const;
 
@@ -57,6 +61,24 @@ export function toDailyChecklistResponse(
   return plainToInstance(
     DailyChecklistResponseDto,
     { ...entity, horseName: entity.horse.name, items },
+    MAPPER_OPTIONS,
+  );
+}
+
+/**
+ * Chuyển kết quả sinh lại checklist hôm nay sang response
+ *
+ * @param date Hôm nay theo lịch CLB, YYYY-MM-DD
+ * @param result Số checklist vừa sinh và các ngựa sinh lỗi
+ * @returns Response của lần sinh lại
+ */
+export function toRegenerateChecklistsResponse(
+  date: string,
+  result: ChecklistGenerationResult,
+): RegenerateChecklistsResponseDto {
+  return plainToInstance(
+    RegenerateChecklistsResponseDto,
+    { date, ...result },
     MAPPER_OPTIONS,
   );
 }

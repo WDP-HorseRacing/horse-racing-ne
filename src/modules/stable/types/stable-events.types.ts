@@ -55,3 +55,27 @@ export interface IncidentStaleEvent {
   description: string;
   hours: number;
 }
+
+/**
+ * Payload của domain event CHECKLIST_GENERATION_FAILED_EVENT
+ *
+ * - eventId: UUID suy ra cố định từ ngày, mỗi ngày chỉ báo một lần
+ * - date: ngày của checklist, YYYY-MM-DD
+ * - horseNames: tên các ngựa chưa sinh được checklist; rỗng khi không đọc được danh sách ngựa
+ */
+export interface ChecklistGenerationFailedEvent {
+  eventId: string;
+  date: string;
+  horseNames: string[];
+}
+
+/**
+ * Payload của domain event CHECKLIST_GENERATION_RECOVERED_EVENT
+ *
+ * - eventId: UUID suy ra cố định từ ngày, mỗi ngày chỉ báo một lần
+ * - date: ngày của checklist, YYYY-MM-DD
+ */
+export interface ChecklistGenerationRecoveredEvent {
+  eventId: string;
+  date: string;
+}

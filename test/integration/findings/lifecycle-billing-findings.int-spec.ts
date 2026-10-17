@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
@@ -156,6 +157,7 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
     moduleRef = await Test.createTestingModule({
       imports: [
         EventEmitterModule.forRoot(),
+        ScheduleModule.forRoot(),
         TypeOrmModule.forRootAsync({
           useFactory: () => ({ type: 'postgres' }),
           dataSourceFactory: () => Promise.resolve(dataSource),

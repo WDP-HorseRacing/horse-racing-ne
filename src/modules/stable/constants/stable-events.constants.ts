@@ -21,3 +21,17 @@ export const INCIDENT_REPORTED_EVENT = 'stable.incident.reported';
  * Payload là IncidentStaleEvent; module notifications nghe event này để nhắc Head Trainer của khu và Club Manager.
  */
 export const INCIDENT_STALE_EVENT = 'stable.incident.stale';
+
+/**
+ * Tên domain event phát khi sinh checklist hôm nay vẫn còn ngựa lỗi sau nhiều lần thử.
+ * Payload là ChecklistGenerationFailedEvent; module notifications nghe event này để báo Club Manager.
+ */
+export const CHECKLIST_GENERATION_FAILED_EVENT =
+  'stable.checklist.generation-failed';
+
+/**
+ * Tên domain event phát khi checklist hôm nay đã sinh đủ sau khi đã báo lỗi.
+ * Payload là ChecklistGenerationRecoveredEvent; module notifications nghe event này để báo Club Manager.
+ */
+export const CHECKLIST_GENERATION_RECOVERED_EVENT =
+  'stable.checklist.generation-recovered';

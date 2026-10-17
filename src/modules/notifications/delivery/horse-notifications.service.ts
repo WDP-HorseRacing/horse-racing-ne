@@ -21,6 +21,8 @@ import type {
   HorseMeasurementAlertEvent,
 } from '../../horses/types/horse.types';
 import type {
+  ChecklistGenerationFailedEvent,
+  ChecklistGenerationRecoveredEvent,
   ChecklistTaskAddedEvent,
   GroomAssignmentChangedEvent,
   IncidentReportedEvent,
@@ -198,6 +200,58 @@ export class HorseNotificationsService {
       title: 'Có việc mới hôm nay',
       message: `Ngựa ${horseName} có thêm việc "${notice.taskName}" trong checklist hôm nay.`,
       resource: horseResource(notice.horseId),
+    });
+  }
+
+  /**
+   * Báo mọi Club Manager đang hoạt động khi checklist hôm nay vẫn chưa sinh được sau nhiều lần thử
+   *
+   * - Có tên ngựa thì nêu tên các ngựa chưa có checklist
+   * - Idempotent theo notice.eventId
+   *
+   * @param notice Payload do module stable phát khi sinh checklist hôm nay còn lỗi
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  async notifyChecklistGenerationFailed(
+    notice: ChecklistGenerationFailedEvent,
+  ): Promise<string[]> {
+    const subject = notice.horseNames.length
+      ? `Chưa có checklist hôm nay cho ${notice.horseNames.join(', ')}.`
+      : 'Chưa sinh được checklist hôm nay.';
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds: await this.recipients.findActiveUserIdsByRole(
+        UserRole.CLUB_MANAGER,
+      ),
+      category: NotificationCategory.DAILY_CHECKLIST,
+      priority: NotificationPriority.HIGH,
+      title: 'Lỗi sinh checklist hôm nay',
+      message: `${subject} Hệ thống đang thử lại.`,
+      resource: null,
+    });
+  }
+
+  /**
+   * Báo mọi Club Manager đang hoạt động khi checklist hôm nay đã sinh đủ sau khi đã báo lỗi
+   *
+   * - Idempotent theo notice.eventId
+   *
+   * @param notice Payload do module stable phát khi checklist hôm nay đã đủ
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  async notifyChecklistGenerationRecovered(
+    notice: ChecklistGenerationRecoveredEvent,
+  ): Promise<string[]> {
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds: await this.recipients.findActiveUserIdsByRole(
+        UserRole.CLUB_MANAGER,
+      ),
+      category: NotificationCategory.DAILY_CHECKLIST,
+      priority: NotificationPriority.NORMAL,
+      title: 'Checklist hôm nay đã đủ',
+      message: 'Đã có đủ checklist hôm nay.',
+      resource: null,
     });
   }
 

@@ -122,3 +122,36 @@ export class DailyChecklistResponseDto {
   @ApiProperty({ type: [DailyChecklistItemResponseDto] })
   items!: DailyChecklistItemResponseDto[];
 }
+
+export class ChecklistGenerationFailureResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @Expose()
+  @ApiProperty({ description: 'Tên ngựa' })
+  horseName!: string;
+
+  @Expose()
+  @ApiProperty({ description: 'Câu lỗi khi sinh checklist' })
+  message!: string;
+}
+
+export class RegenerateChecklistsResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'date', description: 'Hôm nay theo lịch CLB' })
+  date!: string;
+
+  @Expose()
+  @ApiProperty({ description: 'Số checklist vừa sinh thêm' })
+  generated!: number;
+
+  @Expose()
+  @Type(() => ChecklistGenerationFailureResponseDto)
+  @ApiProperty({
+    type: [ChecklistGenerationFailureResponseDto],
+    description:
+      'Ngựa vẫn chưa sinh được checklist; rỗng là mọi ngựa có Groom đã đủ',
+  })
+  failures!: ChecklistGenerationFailureResponseDto[];
+}

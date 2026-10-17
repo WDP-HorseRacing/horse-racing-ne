@@ -28,8 +28,13 @@ import { ReportsModule } from '../../../src/modules/reports/reports.module';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
 import { IncidentListQueryDto } from '../../../src/modules/stable/dto/incident.dto';
 import { FeedingMeal } from '../../../src/modules/stable/constants/feeding-meal.enum';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import {
+  ChecklistJob,
+  checklistRetryName,
+} from '../../../src/modules/stable/constants/checklist-job.enum';
+import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
 import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
-import { DailyChecklistsModule } from '../../../src/modules/stable/daily-checklists/daily-checklists.module';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../../src/modules/stable/entities/daily-checklist.entity';
 import { FeedingPlanEntity } from '../../../src/modules/stable/entities/feeding-plan.entity';
@@ -265,14 +270,31 @@ describe('Findings R3: Flow 4 stable, supplies, fees, reports, media (Postgres)'
   });
 
   describe('daily checklists and care tasks', () => {
-    it('B16: checklist generation is retried during the day, not only at 00:05', () => {
-      const crons = cronsOf(DailyChecklistsModule);
-      const hourField = (cron: string) => {
-        const fields = cron.trim().split(/\s+/);
-        return fields.length === 6 ? fields[2] : fields[1];
-      };
+    it('B16: a failed checklist generation at 00:05 is retried later the same day', async () => {
+      const scheduler = new SchedulerRegistry();
+      const generation = new ChecklistGenerationService(
+        checklists,
+        dataSource,
+        new DomainEventPublisher(),
+        new AuditService(),
+        scheduler,
+      );
+      jest
+        .spyOn(checklists, 'generateDay')
+        .mockRejectedValueOnce(new Error('DB chập chờn'));
 
-      expect(crons.some((cron) => !/^\d+$/.test(hourField(cron)))).toBe(true);
+      try {
+        await generation.runDaily();
+
+        expect(scheduler.getTimeouts()).toContain(
+          checklistRetryName(ChecklistJob.GENERATE_TODAY),
+        );
+      } finally {
+        for (const name of scheduler.getTimeouts()) {
+          scheduler.deleteTimeout(name);
+        }
+        jest.restoreAllMocks();
+      }
     });
 
     it('N2: an ACTIVE ration with two meals yields one feeding line per meal', async () => {

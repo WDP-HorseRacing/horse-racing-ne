@@ -105,6 +105,9 @@ SỰ CỐ                             Groom báo, HT khu đóng
    - Ngựa được giao Groom trong ngày mà chưa có checklist hôm nay: sinh ngay lúc giao.
    - Gắn việc riêng bắt đầu hôm nay cho ngựa chưa có checklist hôm nay (ví dụ sáng nay không có việc nào): sinh ngay lúc gắn.
    - Nhờ sinh sẵn, ngày không ai mở checklist vẫn có dòng để chuyển `INCOMPLETE` (luật 6).
+   - Lỗi lúc sinh (ví dụ DB chập chờn): hệ thống tự thử lại sau 5, 10, 20, 40, 60 phút rồi mỗi 60 phút, tới khi đủ hoặc sang ngày mới. Mỗi lần thử chỉ sinh cho ngựa còn thiếu; checklist đã sinh (kể cả đã tick) giữ nguyên, kể cả khi danh mục loại việc vừa đổi. Chỉ thử lại khi có lỗi; không chạy lại mỗi giờ khi không lỗi. Mỗi lần lỗi ghi log ERROR.
+   - Báo Club Manager: lần chạy thứ 3 (tính cả lần 00:05, tức khoảng 00:20) vẫn còn ngựa lỗi thì mọi Club Manager đang hoạt động nhận một thông báo trong ngày, kèm tên ngựa chưa có checklist. Sau đó sinh đủ (do thử lại hoặc do nút sinh lại) thì nhận thêm đúng một thông báo "Đã có đủ checklist hôm nay". Lỗi tự hết ở lần 2 hoặc 3 thì không báo. Tối đa 2 thông báo mỗi ngày. Postgres sập hẳn thì không ghi được thông báo, chỉ còn log. Ứng dụng khởi động lại giữa lúc đã báo lỗi và lúc sinh đủ thì không có thông báo "đã đủ".
+   - Nút "Sinh lại checklist hôm nay" (chỉ Club Manager, `POST /daily-checklists/regenerate-today`): chạy ngay việc sinh cho ngựa còn thiếu, trả số checklist vừa sinh và các ngựa vẫn lỗi (tên ngựa, câu lỗi). Mỗi lần bấm ghi nhật ký. Bấm nhiều lần hoặc trùng lúc với lần thử lại không sinh trùng. Sinh đủ thì dừng thử lại.
 3. Trạng thái (lưu cột, tính lại trong cùng transaction mỗi lần tick, gỡ tick, thêm việc):
    - `PENDING`: chưa việc nào xong.
    - `IN_PROGRESS`: xong một phần.
@@ -112,7 +115,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
    - `INCOMPLETE`: ngày đã qua mà chưa xong; checklist bị khóa.
 4. Groom phụ trách tick hoặc gỡ tick từng việc, kèm ghi chú, chỉ trong ngày. Mỗi việc lưu ai tick, lúc nào. Việc không có giờ phải làm; chỉ cần xong trong ngày.
 5. Ghi lên checklist của ngày đã qua: 409.
-6. Mỗi ngày 00:05 (giờ CLB) và một lần khi khởi động, hệ thống chuyển mọi checklist ngày cũ còn `PENDING`/`IN_PROGRESS` sang `INCOMPLETE`. Chạy lại hoặc chạy bù đều cho cùng kết quả. Việc tự chuyển này không ghi nhật ký.
+6. Mỗi ngày 00:05 (giờ CLB) và một lần khi khởi động, hệ thống chuyển mọi checklist ngày cũ còn `PENDING`/`IN_PROGRESS` sang `INCOMPLETE`. Chạy lại hoặc chạy bù đều cho cùng kết quả. Lỗi thì việc này tự thử lại riêng theo cùng nhịp ở luật 2, không chờ và không chặn việc sinh checklist hôm nay. Việc tự chuyển này không ghi nhật ký.
 7. Việc còn thiếu không dời sang ngày sau.
 8. Đổi Groom phụ trách: checklist hôm nay (kể cả đã xong) chuyển cho Groom mới; việc đã tick giữ nguyên người tick.
 

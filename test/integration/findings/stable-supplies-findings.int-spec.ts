@@ -15,6 +15,8 @@ import { ExamRequestsService } from '../../../src/modules/medical/exam-requests/
 import type { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
 import { FeedingMeal } from '../../../src/modules/stable/constants/feeding-meal.enum';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
 import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../../src/modules/stable/entities/daily-checklist.entity';
@@ -52,6 +54,7 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
   let plans: FeedingPlansService;
   let incidents: IncidentsService;
   let checklists: ChecklistsService;
+  let generation: ChecklistGenerationService;
   let careTasks: CareTasksService;
   let fees: DailyFeesService;
   let manager: Actor;
@@ -144,6 +147,13 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       daily,
       dataSource,
       new AuditService(),
+    );
+    generation = new ChecklistGenerationService(
+      checklists,
+      dataSource,
+      events,
+      new AuditService(),
+      new SchedulerRegistry(),
     );
     careTasks = new CareTasksService(
       dataSource.getRepository(CareTaskTypeEntity),
@@ -374,7 +384,7 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       });
       const today = clubToday();
       fakeNow(`${today}T23:30:00+07:00`);
-      await checklists.runDaily();
+      await generation.runDaily();
       const [checklist] = await checklists.listForHorse(groom, gio, {});
       expect(checklist.checklistDate).toBe(today);
 

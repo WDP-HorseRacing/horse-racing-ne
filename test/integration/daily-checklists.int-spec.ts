@@ -13,6 +13,8 @@ import { HorseAccessService } from '../../src/modules/horses/shared/horse-access
 import { CareTasksService } from '../../src/modules/stable/care-tasks/care-tasks.service';
 import { DailyChecklistStatus } from '../../src/modules/stable/constants/daily-checklist-status.enum';
 import { CHECKLIST_TASK_ADDED_EVENT } from '../../src/modules/stable/constants/stable-events.constants';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { ChecklistGenerationService } from '../../src/modules/stable/daily-checklists/checklist-generation.service';
 import { ChecklistsService } from '../../src/modules/stable/daily-checklists/checklists.service';
 import { CareTaskTypeEntity } from '../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../src/modules/stable/entities/daily-checklist.entity';
@@ -44,6 +46,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let checklists: ChecklistsService;
+  let generation: ChecklistGenerationService;
   let careTasks: CareTasksService;
   let daily: DailyChecklistsService;
   let manager: Actor;
@@ -74,7 +77,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     );
 
   const todayOf = async (actor: Actor, horseId: string) => {
-    await checklists.runDaily();
+    await generation.runDaily();
     return (await checklists.listForHorse(actor, horseId, {}))[0];
   };
 
@@ -99,6 +102,13 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       daily,
       dataSource,
       new AuditService(),
+    );
+    generation = new ChecklistGenerationService(
+      checklists,
+      dataSource,
+      new DomainEventPublisher(),
+      new AuditService(),
+      new SchedulerRegistry(),
     );
     careTasks = new CareTasksService(
       dataSource.getRepository(CareTaskTypeEntity),
@@ -148,8 +158,8 @@ describe('Daily checklists and care tasks (Postgres)', () => {
 
   describe('generating each day', () => {
     it('creates today for every horse with a groom on the daily run, once', async () => {
-      await checklists.runDaily();
-      await checklists.onApplicationBootstrap();
+      await generation.runDaily();
+      await generation.onApplicationBootstrap();
 
       expect(await checklistCounts()).toEqual([
         { horse_id: gio, checklist_date: today, items: 3 },
@@ -185,7 +195,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       for (const name of ['Cho ăn', 'Vệ sinh chuồng', 'Tắm rửa']) {
         await careTasks.updateType(manager, types[name], { active: false });
       }
-      await checklists.runDaily();
+      await generation.runDaily();
       expect(await checklistCounts()).toEqual([]);
 
       await careTasks.createForHorse(trainer, gio, {
@@ -344,7 +354,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
         [shiftDays(today, -1)],
       );
 
-      await checklists.onApplicationBootstrap();
+      await generation.onApplicationBootstrap();
 
       const [row] = await dataSource.query<{ status: string }[]>(
         'SELECT status FROM daily_checklists',

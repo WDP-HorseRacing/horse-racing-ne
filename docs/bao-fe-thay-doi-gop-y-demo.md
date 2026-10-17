@@ -167,3 +167,16 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 3. `GET /grooms/me/today` (màn Hôm nay của Groom) có thêm `otherCareSchedules`: lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, mỗi dòng có `horseId`, `horseName`. `careSchedules` trong từng ngựa giờ gồm cả lịch giao "Groom phụ trách".
 4. `assignedTo` trong khối lịch chăm sóc của `GET /medical/dashboard` là người làm hiện tại (đã tra Groom phụ trách), `null` nếu chưa có ai.
 5. Khóa tài khoản hoặc đổi vai trò người còn lịch chưa làm được giao đích danh: 409 `Người này còn N lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi khóa tài khoản`.
+
+## Checklist hằng ngày: tự thử lại và nút sinh lại
+
+1. Route mới `POST /daily-checklists/regenerate-today`, chỉ Club Manager, không có body. Sinh checklist hôm nay cho các ngựa có Groom mà còn thiếu; checklist đã có giữ nguyên. Trả 200:
+
+   ```json
+   { "date": "2026-10-17", "generated": 1, "failures": [{ "horseId": "…", "horseName": "Gió", "message": "…" }] }
+   ```
+
+   - `failures` rỗng là đủ. Vai trò khác: 403.
+2. Thông báo mới cho Club Manager, `category` là `DAILY_CHECKLIST`, `resource` là `null`:
+   - Lỗi kéo dài (mức `HIGH`), tối đa một lần mỗi ngày: tiêu đề "Lỗi sinh checklist hôm nay", nội dung "Chưa có checklist hôm nay cho Winx, Gió. Hệ thống đang thử lại." FE có thể gắn nút "Sinh lại checklist hôm nay" gọi route ở mục 1.
+   - Đã đủ lại (mức `NORMAL`), chỉ khi trước đó đã báo lỗi: tiêu đề "Checklist hôm nay đã đủ", nội dung "Đã có đủ checklist hôm nay."

@@ -664,3 +664,48 @@ describe('HorseNotificationsService.notifyOwnershipTransferred', () => {
     expect(notifications.send).not.toHaveBeenCalled();
   });
 });
+
+describe('HorseNotificationsService checklist generation notices', () => {
+  it('tells every club manager which horses have no checklist today', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findActiveUserIdsByRole.mockResolvedValue(['cm-1', 'cm-2']);
+
+    await service.notifyChecklistGenerationFailed({
+      eventId: 'failed-1',
+      date: '2026-10-17',
+      horseNames: ['Winx', 'Gió'],
+    });
+
+    expect(recipients.findActiveUserIdsByRole).toHaveBeenCalledWith(
+      UserRole.CLUB_MANAGER,
+    );
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'failed-1',
+        recipientIds: ['cm-1', 'cm-2'],
+        category: NotificationCategory.DAILY_CHECKLIST,
+        priority: NotificationPriority.HIGH,
+        message:
+          'Chưa có checklist hôm nay cho Winx, Gió. Hệ thống đang thử lại.',
+      }),
+    );
+  });
+
+  it('tells the club managers when every checklist of today is there again', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findActiveUserIdsByRole.mockResolvedValue(['cm-1']);
+
+    await service.notifyChecklistGenerationRecovered({
+      eventId: 'recovered-1',
+      date: '2026-10-17',
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'recovered-1',
+        recipientIds: ['cm-1'],
+        message: 'Đã có đủ checklist hôm nay.',
+      }),
+    );
+  });
+});

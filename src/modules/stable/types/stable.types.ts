@@ -36,3 +36,25 @@ export interface BarnChange {
   currentHeadTrainerId: string | null;
   nextHeadTrainerId?: string | null;
 }
+
+/**
+ * Một con ngựa sinh checklist bị lỗi
+ *
+ * - message: câu lỗi của lần sinh
+ */
+export interface ChecklistGenerationFailure {
+  horseId: string;
+  horseName: string;
+  message: string;
+}
+
+/**
+ * Kết quả một lần sinh checklist cho các ngựa còn thiếu của một ngày
+ *
+ * - generated: số checklist vừa sinh thêm
+ * - failures: các ngựa sinh lỗi; rỗng nghĩa là mọi ngựa đã đủ (ngựa không có việc nào trong ngày không tính là lỗi)
+ */
+export interface ChecklistGenerationResult {
+  generated: number;
+  failures: ChecklistGenerationFailure[];
+}

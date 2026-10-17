@@ -14,6 +14,7 @@ import {
 } from '../schemas/notification.schema';
 import { UserDevice, UserDeviceSchema } from '../schemas/user-device.schema';
 import type { NotificationChannel } from '../types/notification.types';
+import { ChecklistGenerationListener } from './checklist-generation.listener';
 import { ChecklistTaskAddedListener } from './checklist-task-added.listener';
 import { IncidentStaleListener } from './incident-stale.listener';
 import { IncidentReportedListener } from './incident-reported.listener';
@@ -71,6 +72,7 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     HorseOwnershipTransferredListener,
     GroomAssignmentChangedListener,
     ChecklistTaskAddedListener,
+    ChecklistGenerationListener,
     IncidentReportedListener,
     HorseLifecycleChangedListener,
     SurchargeAddedListener,

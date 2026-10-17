@@ -5610,6 +5610,33 @@
         ]
       }
     },
+    "/api/v1/daily-checklists/regenerate-today": {
+      "post": {
+        "operationId": "DailyChecklistsController_regenerateToday",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateChecklistsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sinh lại checklist hôm nay cho các ngựa có Groom mà còn thiếu; checklist đã sinh giữ nguyên",
+        "tags": [
+          "stable"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/feeding-plans": {
       "get": {
         "operationId": "FeedingPlansController_listForHorse",
@@ -16695,6 +16722,54 @@
         },
         "required": [
           "done"
+        ]
+      },
+      "ChecklistGenerationFailureResponseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string",
+            "description": "Tên ngựa"
+          },
+          "message": {
+            "type": "string",
+            "description": "Câu lỗi khi sinh checklist"
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "message"
+        ]
+      },
+      "RegenerateChecklistsResponseDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Hôm nay theo lịch CLB"
+          },
+          "generated": {
+            "type": "number",
+            "description": "Số checklist vừa sinh thêm"
+          },
+          "failures": {
+            "description": "Ngựa vẫn chưa sinh được checklist; rỗng là mọi ngựa có Groom đã đủ",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistGenerationFailureResponseDto"
+            }
+          }
+        },
+        "required": [
+          "date",
+          "generated",
+          "failures"
         ]
       },
       "FeedingPlanItemInputDto": {

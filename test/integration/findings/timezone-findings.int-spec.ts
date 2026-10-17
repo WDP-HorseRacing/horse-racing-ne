@@ -19,6 +19,8 @@ import { MedicalCheckupsService } from '../../../src/modules/medical/shared/medi
 import { FinanceReportsRepository } from '../../../src/modules/reports/finance-reports/finance-reports.repository';
 import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
 import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
 import { GroomTodayService } from '../../../src/modules/stable/daily-checklists/groom-today.service';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
@@ -65,6 +67,7 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
   let checklists: ChecklistsService;
+  let generation: ChecklistGenerationService;
   let careTasks: CareTasksService;
   let groomToday: GroomTodayService;
   let fees: DailyFeesService;
@@ -106,6 +109,13 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
       daily,
       dataSource,
       new AuditService(),
+    );
+    generation = new ChecklistGenerationService(
+      checklists,
+      dataSource,
+      events,
+      new AuditService(),
+      new SchedulerRegistry(),
     );
     careTasks = new CareTasksService(
       dataSource.getRepository(CareTaskTypeEntity),
@@ -196,10 +206,10 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
       it('TZ-1: cron at 00:02 club time closes yesterday and generates the checklist of the new club day', async () => {
         await careTasks.createType(cm, { name: 'Cho ăn', appliesToAll: true });
         fakeNow(shiftDays(D, -1), '23:30');
-        await checklists.runDaily();
+        await generation.runDaily();
         fakeNow(D, '00:02');
 
-        await checklists.runDaily();
+        await generation.runDaily();
 
         expect(await checklistRows()).toEqual([
           { day: shiftDays(D, -1), status: 'INCOMPLETE' },
@@ -210,10 +220,10 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
       it('TZ-2: run at 06:00 club time (still the previous UTC day) targets the club day, and 23:59 keeps today open', async () => {
         await careTasks.createType(cm, { name: 'Cho ăn', appliesToAll: true });
         fakeNow(D, '06:00');
-        await checklists.runDaily();
+        await generation.runDaily();
         fakeNow(D, '23:59');
 
-        await checklists.runDaily();
+        await generation.runDaily();
 
         expect(await checklistRows()).toEqual([{ day: D, status: 'PENDING' }]);
       });
