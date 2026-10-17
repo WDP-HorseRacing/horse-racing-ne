@@ -197,3 +197,14 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 3. Groom báo hộ: Groom đang phụ trách ngựa nhận thông báo "Sự cố tại chuồng" như Head Trainer của khu. Groom báo hộ vẫn chỉ xem được sự cố mình báo.
 4. HT, CM, bác sĩ vẫn không gọi được route này (403); họ gửi yêu cầu khám qua `POST /horses/:horseId/exam-requests`.
 
+## Hủy lần xuất kho ghi nhầm
+
+1. Route mới `POST /supplies/usages/:usageId/cancel`, body `{ "reason": "Ghi nhầm số lượng" }` (bắt buộc, tối đa 500 ký tự). Trả 200 kèm vật tư sau khi cộng trả tồn.
+   - Người xuất tự hủy trong 24 giờ, CM hủy bất kỳ lúc nào; còn lại 403. Lần xuất đã hủy: 409. Mã không có: 404.
+2. `GET /supplies/items/:id/movements` mỗi dòng có thêm:
+   - `usageId`: mã lần xuất, chung cho các dòng `USAGE` của một lần xuất (trừ nhiều lô) và dòng `USAGE_REVERSAL` hủy nó. Dòng xuất cũ có `usageId = null`, không hủy được.
+   - `cancelled`: `true` ở dòng `USAGE` của lần xuất đã hủy. FE gạch dòng đó và ẩn nút hủy.
+   - Loại dòng mới `type = USAGE_REVERSAL` (số dương, ghi chú là lý do hủy).
+3. Nút "Hủy lần xuất" nên hiện ở dòng `USAGE` có `usageId`, chưa `cancelled`, và (với người không phải CM) do chính người dùng xuất trong 24 giờ.
+4. `GET /reports/club/finance`: "đã dùng" không còn tính lần xuất đã hủy, kể cả ở tháng đã xem trước đó.
+

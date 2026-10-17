@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 216 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 217 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -237,6 +237,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/supplies/requests/{id}` | Xem một đề xuất bổ sung vật tư |
 | PATCH | `/api/v1/supplies/requests/{id}` | Sửa đề xuất đang chờ duyệt của mình |
 | PATCH | `/api/v1/supplies/requests/{id}/status` | Duyệt, từ chối hoặc cấp đề xuất bổ sung vật tư |
+| POST | `/api/v1/supplies/usages/{usageId}/cancel` | Hủy một lần xuất ghi nhầm, cộng trả tồn; người xuất trong 24 giờ, Club Manager bất kỳ lúc nào |
 
 ## training
 

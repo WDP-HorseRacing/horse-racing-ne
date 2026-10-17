@@ -7,6 +7,8 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
 import {
   assertCanViewSupplyRequest,
+  assertUsageCancellable,
+  assertUsageNotCancelled,
   assertRejectionReason,
   assertSupplyRequestEditable,
   assertSupplyRequestTransition,
@@ -92,5 +94,50 @@ describe('supplies policy', () => {
         assertRejectionReason(SupplyRequestStatus.APPROVED, null),
       ).not.toThrow();
     });
+  });
+
+  describe('assertUsageCancellable', () => {
+    const usedAt = new Date('2026-10-17T00:00:00Z');
+    const usage = { usedBy: 'groom-1', usedAt };
+    const hoursLater = (hours: number) =>
+      new Date(usedAt.getTime() + hours * 3_600_000);
+
+    it('lets the one who used it cancel within 24 hours', () => {
+      expect(() =>
+        assertUsageCancellable(
+          'groom-1',
+          UserRole.GROOM,
+          usage,
+          hoursLater(24),
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertUsageCancellable(
+          'groom-1',
+          UserRole.GROOM,
+          usage,
+          hoursLater(24.01),
+        ),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('refuses anyone else but the club manager, who can cancel any time', () => {
+      expect(() =>
+        assertUsageCancellable('groom-2', UserRole.GROOM, usage, hoursLater(1)),
+      ).toThrow(ForbiddenException);
+      expect(() =>
+        assertUsageCancellable(
+          'cm-1',
+          UserRole.CLUB_MANAGER,
+          usage,
+          hoursLater(24 * 30),
+        ),
+      ).not.toThrow();
+    });
+  });
+
+  it('refuses to cancel a usage twice', () => {
+    expect(() => assertUsageNotCancelled(false)).not.toThrow();
+    expect(() => assertUsageNotCancelled(true)).toThrow(ConflictException);
   });
 });

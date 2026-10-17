@@ -161,6 +161,15 @@ export class SupplyUsageDto {
   note?: string;
 }
 
+export class CancelSupplyUsageDto {
+  @ApiProperty({ maxLength: 500, description: 'Lý do hủy lần xuất' })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1, { message: 'Phải ghi lý do hủy lần xuất' })
+  @MaxLength(500)
+  reason!: string;
+}
+
 export class SupplyItemListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: SupplyCategory, description: 'Lọc theo loại' })
   @IsOptional()
@@ -298,6 +307,22 @@ export class SupplyStockMovementResponseDto {
     description: 'Đề xuất được cấp, với RESTOCK',
   })
   requestId!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    format: 'uuid',
+    nullable: true,
+    type: String,
+    description:
+      'Mã lần xuất, chung cho mọi dòng USAGE của một lần xuất và dòng USAGE_REVERSAL hủy nó; null với dòng khác và dòng xuất ghi trước khi có mã (không hủy được)',
+  })
+  usageId!: string | null;
+
+  @Expose()
+  @ApiProperty({
+    description: 'Dòng USAGE thuộc lần xuất đã bị hủy; false với dòng khác',
+  })
+  cancelled!: boolean;
 
   @Expose()
   @ApiPropertyOptional({ nullable: true })

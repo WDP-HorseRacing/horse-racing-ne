@@ -40,10 +40,12 @@ export function toSupplyItemResponse(
  * - Tiền = chênh lệch × đơn giá lô, làm tròn tới đồng
  *
  * @param entity Dòng sổ, đã load quan hệ creator và lot
+ * @param cancelled Dòng USAGE thuộc lần xuất đã bị hủy
  * @returns Response của dòng sổ
  */
 export function toSupplyStockMovementResponse(
   entity: SupplyStockMovementEntity,
+  cancelled: boolean,
 ): SupplyStockMovementResponseDto {
   const unitPrice = entity.lot?.unitPrice ?? null;
   return plainToInstance(
@@ -52,6 +54,7 @@ export function toSupplyStockMovementResponse(
       ...entity,
       delta: Number(entity.delta),
       balanceAfter: Number(entity.balanceAfter),
+      cancelled,
       unitPrice: unitPrice === null ? null : Number(unitPrice),
       amount:
         unitPrice === null

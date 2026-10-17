@@ -15,6 +15,13 @@ import { SupplyRequestEntity } from './supply-request.entity';
   unique: true,
   where: 'request_id IS NOT NULL',
 })
+@Index('supply_stock_movements_usage_idx', ['usageId'], {
+  where: 'usage_id IS NOT NULL',
+})
+@Index('supply_stock_movements_reversal_uq', ['usageId', 'lotId'], {
+  unique: true,
+  where: `type = 'USAGE_REVERSAL'`,
+})
 export class SupplyStockMovementEntity extends BaseRecordEntity {
   @Column({ name: 'item_id', type: 'uuid' })
   itemId!: string;
@@ -44,6 +51,9 @@ export class SupplyStockMovementEntity extends BaseRecordEntity {
     foreignKeyConstraintName: 'supply_stock_movements_lot_fk',
   })
   lot!: SupplyLotEntity | null;
+
+  @Column({ name: 'usage_id', type: 'uuid', nullable: true })
+  usageId!: string | null;
 
   @Column({ name: 'request_id', type: 'uuid', nullable: true })
   requestId!: string | null;

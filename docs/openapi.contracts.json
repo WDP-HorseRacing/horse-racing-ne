@@ -6990,6 +6990,52 @@
         ]
       }
     },
+    "/api/v1/supplies/usages/{usageId}/cancel": {
+      "post": {
+        "operationId": "SupplyItemsController_cancelUsage",
+        "parameters": [
+          {
+            "name": "usageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelSupplyUsageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyItemResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hủy một lần xuất ghi nhầm, cộng trả tồn; người xuất trong 24 giờ, Club Manager bất kỳ lúc nào",
+        "tags": [
+          "supplies"
+        ]
+      }
+    },
     "/api/v1/supplies/items/{id}/lots": {
       "get": {
         "operationId": "SupplyItemsController_lots",
@@ -17463,6 +17509,19 @@
           "quantity"
         ]
       },
+      "CancelSupplyUsageDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Lý do hủy lần xuất"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "SupplyLotResponseDto": {
         "type": "object",
         "properties": {
@@ -17542,6 +17601,7 @@
               "OPENING",
               "RESTOCK",
               "USAGE",
+              "USAGE_REVERSAL",
               "COUNT_ADJUST"
             ]
           },
@@ -17567,6 +17627,16 @@
             "nullable": true,
             "description": "Đề xuất được cấp, với RESTOCK"
           },
+          "usageId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Mã lần xuất, chung cho mọi dòng USAGE của một lần xuất và dòng USAGE_REVERSAL hủy nó; null với dòng khác và dòng xuất ghi trước khi có mã (không hủy được)"
+          },
+          "cancelled": {
+            "type": "boolean",
+            "description": "Dòng USAGE thuộc lần xuất đã bị hủy; false với dòng khác"
+          },
           "note": {
             "type": "object",
             "nullable": true
@@ -17588,6 +17658,7 @@
           "lotId",
           "unitPrice",
           "amount",
+          "cancelled",
           "creator",
           "createdAt"
         ]

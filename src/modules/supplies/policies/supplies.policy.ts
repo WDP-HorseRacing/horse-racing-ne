@@ -4,6 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
+import { USAGE_SELF_CANCEL_HOURS } from '../constants/supply-stock.constants';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
 
 const NEXT_REQUEST_STATUSES: Readonly<
@@ -95,5 +96,51 @@ export function assertRejectionReason(
 ): void {
   if (next === SupplyRequestStatus.REJECTED && !reason) {
     throw new BadRequestException('Từ chối phải có lý do');
+  }
+}
+
+/**
+ * Kiểm người gọi được hủy một lần xuất kho
+ *
+ * - Club Manager: hủy bất kỳ lúc nào
+ * - Người xuất: tự hủy trong USAGE_SELF_CANCEL_HOURS giờ kể từ lúc xuất
+ *
+ * @param callerId UUID người gọi
+ * @param callerRole Vai trò người gọi
+ * @param usage Người xuất và thời điểm xuất
+ * @param now Thời điểm hiện tại
+ * @throws ForbiddenException Nếu người gọi không phải người xuất, hoặc đã quá hạn tự hủy
+ */
+export function assertUsageCancellable(
+  callerId: string,
+  callerRole: UserRole,
+  usage: { usedBy: string; usedAt: Date },
+  now: Date,
+): void {
+  if (callerRole === UserRole.CLUB_MANAGER) return;
+  if (usage.usedBy !== callerId) {
+    throw new ForbiddenException(
+      'Chỉ người xuất hoặc Club Manager hủy được lần xuất này',
+    );
+  }
+  if (
+    now.getTime() - usage.usedAt.getTime() >
+    USAGE_SELF_CANCEL_HOURS * 3_600_000
+  ) {
+    throw new ForbiddenException(
+      `Đã quá ${USAGE_SELF_CANCEL_HOURS} giờ kể từ lúc xuất, nhờ Club Manager hủy`,
+    );
+  }
+}
+
+/**
+ * Chặn hủy lại lần xuất đã hủy
+ *
+ * @param cancelled Lần xuất đã có dòng hủy
+ * @throws ConflictException Nếu lần xuất đã hủy
+ */
+export function assertUsageNotCancelled(cancelled: boolean): void {
+  if (cancelled) {
+    throw new ConflictException('Lần xuất này đã được hủy');
   }
 }

@@ -203,6 +203,7 @@ export class FinanceReportsRepository {
    * Tính giá trị vật tư nhập vào và đã dùng trong kỳ theo đơn giá của lô
    *
    * - Nhập vào: các dòng sổ nhập hàng (không gồm tồn ban đầu); đã dùng: các dòng sổ xuất dùng
+   * - Lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau; dòng hủy không tính vào nhập vào hay đã dùng
    * - Giá trị mỗi dòng sổ là số lượng × đơn giá lô, làm tròn tới đồng rồi mới cộng
    *
    * @param period Khoảng ngày của báo cáo
@@ -215,12 +216,17 @@ export class FinanceReportsRepository {
          FROM supply_stock_movements m
          JOIN supply_lots l ON l.id = m.lot_id
         WHERE m.created_at >= $1
-          AND m.created_at < $2`,
+          AND m.created_at < $2
+          AND NOT (m.type = $4 AND EXISTS (SELECT 1
+                                             FROM supply_stock_movements r
+                                            WHERE r.usage_id = m.usage_id
+                                              AND r.type = $5))`,
       [
         period.start,
         period.end,
         SupplyStockMovementType.RESTOCK,
         SupplyStockMovementType.USAGE,
+        SupplyStockMovementType.USAGE_REVERSAL,
       ],
     );
     return row;

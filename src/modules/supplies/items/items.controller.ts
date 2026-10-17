@@ -31,6 +31,7 @@ import {
   SupplyReceiptDto,
   SupplyStockMovementPageResponseDto,
   SupplyUsageDto,
+  CancelSupplyUsageDto,
   UpdateSupplyItemDto,
 } from '../dto/supply-item.dto';
 import { SupplyItemsService } from './items.service';
@@ -141,6 +142,22 @@ export class SupplyItemsController {
     @Body() body: SupplyUsageDto,
   ) {
     return this.items.use(actor, id, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Post('usages/:usageId/cancel')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Hủy một lần xuất ghi nhầm, cộng trả tồn; người xuất trong 24 giờ, Club Manager bất kỳ lúc nào',
+  })
+  @ApiOkResponse({ type: SupplyItemResponseDto })
+  cancelUsage(
+    @CurrentUser() actor: Actor,
+    @Param('usageId', ParseUUIDPipe) usageId: string,
+    @Body() body: CancelSupplyUsageDto,
+  ) {
+    return this.items.cancelUsage(actor, usageId, body);
   }
 
   @Access(ITEM_READERS)

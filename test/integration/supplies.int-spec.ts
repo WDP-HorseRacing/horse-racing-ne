@@ -495,6 +495,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
           after_data: {
             quantityOnHand: 35,
             used: 5,
+            usageId: expect.any(String) as unknown,
             lots: [{ lotId: lot.id, quantity: 5, unitPrice: 0 }],
           },
           reason: 'Bữa sáng',

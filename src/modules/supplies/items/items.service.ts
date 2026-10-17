@@ -21,6 +21,7 @@ import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
+  CancelSupplyUsageDto,
   CreateSupplyItemDto,
   SupplyItemListQueryDto,
   SupplyItemPageResponseDto,
@@ -43,6 +44,10 @@ import {
   toSupplyLotResponse,
   toSupplyStockMovementResponse,
 } from '../mappers/supply-item.mapper';
+import {
+  assertUsageCancellable,
+  assertUsageNotCancelled,
+} from '../policies/supplies.policy';
 import {
   SUPPLY_ITEM_NOT_FOUND,
   SupplyStockService,
@@ -372,7 +377,11 @@ export class SupplyItemsService {
       const wasAboveThreshold =
         compareDecimal(item.quantityOnHand, item.reorderThreshold) > 0;
       const note = body.note?.trim() || null;
-      const { item: saved, takings } = await this.stock.consume(
+      const {
+        item: saved,
+        usageId,
+        takings,
+      } = await this.stock.consume(
         manager,
         item,
         body.quantity.toString(),
@@ -388,6 +397,7 @@ export class SupplyItemsService {
         after: {
           quantityOnHand: Number(saved.quantityOnHand),
           used: body.quantity,
+          usageId,
           lots: takings.map((taking) => ({
             lotId: taking.lotId,
             quantity: Number(taking.quantity),
@@ -446,12 +456,107 @@ export class SupplyItemsService {
       skip: query.skip,
       take: query.limit,
     });
+    const usageIds = rows
+      .filter((row) => row.type === SupplyStockMovementType.USAGE)
+      .map((row) => row.usageId)
+      .filter((usageId): usageId is string => usageId !== null);
+    const cancelled = new Set(
+      usageIds.length === 0
+        ? []
+        : (
+            await this.movements.find({
+              select: { usageId: true },
+              where: {
+                usageId: In(usageIds),
+                type: SupplyStockMovementType.USAGE_REVERSAL,
+              },
+            })
+          ).map((row) => row.usageId),
+    );
     return new PaginationResponseDto(
-      rows.map(toSupplyStockMovementResponse),
+      rows.map((row) =>
+        toSupplyStockMovementResponse(
+          row,
+          row.type === SupplyStockMovementType.USAGE &&
+            cancelled.has(row.usageId),
+        ),
+      ),
       total,
       query.page,
       query.limit,
     );
+  }
+
+  /**
+   * Hủy một lần xuất kho ghi nhầm: cộng trả đúng số đã trừ vào từng lô và vào số tồn
+   *
+   * - Người xuất tự hủy trong 24 giờ kể từ lúc xuất; Club Manager hủy bất kỳ lúc nào
+   * - Khóa vật tư trước khi kiểm đã hủy chưa, nên hai lần hủy cùng lúc chỉ một lần thành công
+   * - Mỗi lô ghi một dòng sổ USAGE_REVERSAL cùng mã lần xuất, lý do làm ghi chú
+   * - Ghi nhật ký số tồn trước và sau, mã lần xuất, phần trả lại từng lô, lý do
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param usageId Mã lần xuất
+   * @param body Lý do hủy
+   * @returns Promise trả về vật tư sau khi cộng trả
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, người gọi không phải người xuất hay Club Manager, hoặc người xuất đã quá 24 giờ
+   * @throws NotFoundException Nếu không có lần xuất hoặc vật tư đã xóa
+   * @throws ConflictException Nếu lần xuất đã được hủy
+   */
+  async cancelUsage(
+    actor: Actor,
+    usageId: string,
+    body: CancelSupplyUsageDto,
+  ): Promise<SupplyItemResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const itemId = await this.dataSource.transaction(async (manager) => {
+      const usageRows = await manager.find(SupplyStockMovementEntity, {
+        where: { usageId, type: SupplyStockMovementType.USAGE },
+        order: { createdAt: 'ASC', id: 'ASC' },
+      });
+      if (usageRows.length === 0) {
+        throw new NotFoundException('Không tìm thấy lần xuất');
+      }
+      const item = await this.stock.lockItem(manager, usageRows[0].itemId);
+      assertUsageNotCancelled(
+        await manager.exists(SupplyStockMovementEntity, {
+          where: { usageId, type: SupplyStockMovementType.USAGE_REVERSAL },
+        }),
+      );
+      assertUsageCancellable(
+        caller.id,
+        caller.role,
+        { usedBy: usageRows[0].createdBy, usedAt: usageRows[0].createdAt },
+        new Date(),
+      );
+      const before = Number(item.quantityOnHand);
+      const saved = await this.stock.reverseUsage(
+        manager,
+        item,
+        usageRows,
+        caller.id,
+        body.reason,
+      );
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.SUPPLY_ITEM,
+        entityId: item.id,
+        before: { quantityOnHand: before },
+        after: {
+          quantityOnHand: Number(saved.quantityOnHand),
+          cancelledUsageId: usageId,
+          lots: usageRows.map((row) => ({
+            lotId: row.lotId,
+            quantity: -Number(row.delta),
+          })),
+        },
+        reason: body.reason,
+        feature: AuditFeature.SUPPLY_STOCK,
+      });
+      return item.id;
+    });
+    return this.get(actor, itemId);
   }
 
   /**

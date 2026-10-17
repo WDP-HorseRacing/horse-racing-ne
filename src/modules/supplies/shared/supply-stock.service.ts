@@ -3,7 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EntityManager, MoreThan } from 'typeorm';
+import { randomUUID } from 'node:crypto';
+import { EntityManager, In, MoreThan } from 'typeorm';
 import {
   addDecimal,
   compareDecimal,
@@ -153,14 +154,14 @@ export class SupplyStockService {
    * Xuất dùng theo nhập trước xuất trước: trừ các lô còn hàng nhập sớm nhất trước
    *
    * - Khóa các lô còn hàng của vật tư theo thứ tự nhập
-   * - Mỗi lô bị trừ ghi một dòng sổ USAGE gắn lô đó
+   * - Mỗi lô bị trừ ghi một dòng sổ USAGE gắn lô đó; mọi dòng của lần xuất dùng chung một mã lần xuất
    *
    * @param manager EntityManager của transaction đang chạy
    * @param item Vật tư đã khóa trong transaction
    * @param quantity Số lượng lấy dùng, lớn hơn 0
    * @param actorId UUID người lấy
    * @param note Ghi chú của lần lấy
-   * @returns Promise trả về vật tư sau khi lưu và phần lấy từ từng lô theo thứ tự trừ
+   * @returns Promise trả về vật tư sau khi lưu, mã lần xuất và phần lấy từ từng lô theo thứ tự trừ
    * @throws ConflictException Nếu số lượng lấy lớn hơn số tồn
    * @throws Error Nếu tổng số còn của các lô nhỏ hơn số tồn của vật tư
    */
@@ -170,8 +171,13 @@ export class SupplyStockService {
     quantity: string,
     actorId: string,
     note: string | null,
-  ): Promise<{ item: SupplyItemEntity; takings: LotTaking[] }> {
+  ): Promise<{
+    item: SupplyItemEntity;
+    usageId: string;
+    takings: LotTaking[];
+  }> {
     let left = roundDecimal(quantity, QUANTITY_SCALE);
+    const usageId = randomUUID();
     if (compareDecimal(left, item.quantityOnHand) > 0) {
       throw new ConflictException('Số lượng lấy lớn hơn số tồn');
     }
@@ -198,6 +204,7 @@ export class SupplyStockService {
         delta: subtractDecimal('0', taken, QUANTITY_SCALE),
         balanceAfter: item.quantityOnHand,
         type: SupplyStockMovementType.USAGE,
+        usageId,
         requestId: null,
         note,
         createdBy: actorId,
@@ -214,7 +221,61 @@ export class SupplyStockService {
         `Tổng số còn của các lô nhỏ hơn số tồn của vật tư ${item.id}`,
       );
     }
-    return { item: await manager.save(item), takings };
+    return { item: await manager.save(item), usageId, takings };
+  }
+
+  /**
+   * Hủy một lần xuất: cộng trả đúng số đã trừ vào từng lô và vào số tồn, mỗi lô ghi một dòng sổ USAGE_REVERSAL cùng mã lần xuất
+   *
+   * - Khóa các lô của lần xuất trước khi cộng
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param item Vật tư đã khóa trong transaction
+   * @param usageRows Các dòng sổ USAGE của lần xuất (cùng mã lần xuất, có lô)
+   * @param actorId UUID người hủy
+   * @param reason Lý do hủy
+   * @returns Promise trả về vật tư sau khi lưu
+   */
+  async reverseUsage(
+    manager: EntityManager,
+    item: SupplyItemEntity,
+    usageRows: Pick<SupplyStockMovementEntity, 'usageId' | 'lotId' | 'delta'>[],
+    actorId: string,
+    reason: string,
+  ): Promise<SupplyItemEntity> {
+    const lots = await manager.find(SupplyLotEntity, {
+      where: { id: In(usageRows.map((row) => row.lotId as string)) },
+      order: { createdAt: 'ASC', id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    const takenByLot = new Map(usageRows.map((row) => [row.lotId, row.delta]));
+    const usageId = usageRows[0].usageId;
+    for (const lot of lots) {
+      const returned = subtractDecimal(
+        '0',
+        takenByLot.get(lot.id) ?? '0',
+        QUANTITY_SCALE,
+      );
+      lot.remaining = addDecimal(lot.remaining, returned, QUANTITY_SCALE);
+      await manager.save(lot);
+      item.quantityOnHand = addDecimal(
+        item.quantityOnHand,
+        returned,
+        QUANTITY_SCALE,
+      );
+      await this.appendMovement(manager, {
+        itemId: item.id,
+        lotId: lot.id,
+        delta: returned,
+        balanceAfter: item.quantityOnHand,
+        type: SupplyStockMovementType.USAGE_REVERSAL,
+        usageId,
+        requestId: null,
+        note: reason,
+        createdBy: actorId,
+      });
+    }
+    return manager.save(item);
   }
 
   /**
@@ -236,7 +297,8 @@ export class SupplyStockService {
       | 'requestId'
       | 'note'
       | 'createdBy'
-    >,
+    > &
+      Partial<Pick<SupplyStockMovementEntity, 'usageId'>>,
   ): Promise<void> {
     await manager
       .createQueryBuilder()

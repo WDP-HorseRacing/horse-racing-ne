@@ -41,7 +41,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 |---|---|---|---|
 | Vật tư | `supply_items` | Club Manager | Vừa là danh mục vừa giữ số tồn chung CLB. Loại: `FEED`, `SUPPLEMENT`, `MEDICINE`, `EQUIPMENT`. |
 | Lô vật tư | `supply_lots` | Hệ thống | Một lần hàng vào kho: số nhập, số còn, đơn giá. Xuất dùng trừ lô nhập sớm nhất trước. |
-| Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Mỗi dòng gắn một lô: tồn ban đầu (`OPENING`), nhập hàng (`RESTOCK`), xuất dùng (`USAGE`). Không sửa, không xóa. Dòng ghi trước khi có lô (`COUNT_ADJUST` và `RESTOCK` cũ) không gắn lô, không có tiền. |
+| Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Mỗi dòng gắn một lô: tồn ban đầu (`OPENING`), nhập hàng (`RESTOCK`), xuất dùng (`USAGE`), hủy lần xuất (`USAGE_REVERSAL`). Các dòng của một lần xuất và dòng hủy nó dùng chung mã lần xuất (`usage_id`). Không sửa, không xóa. Dòng ghi trước khi có lô (`COUNT_ADJUST` và `RESTOCK` cũ) không gắn lô, không có tiền. |
 | Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`. |
 | Khẩu phần | `feeding_plans`, `feeding_plan_items` | Head Trainer của khu | Mỗi ngựa tối đa một bản `ACTIVE`; bản cũ giữ lại làm lịch sử. |
 | Loại việc | `daily_task_types` | Club Manager | Migration tạo sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). Seed demo tách "Cho ăn" thành "Cho ăn sáng" và "Cho ăn tối". |
@@ -63,12 +63,13 @@ SỰ CỐ                             Groom báo, HT khu đóng
    1. Tồn ban đầu: thêm vật tư có số tồn khác 0 thì tạo lô đầu tiên, đơn giá do Club Manager nhập (bỏ trống là 0); ghi `OPENING`.
    2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp kèm đơn giá thực trả; tạo một lô, ghi `RESTOCK` gắn mã đề xuất.
    3. Nhập hàng trực tiếp: Club Manager nhập số lượng mua về và đơn giá, không cần đề xuất; tạo một lô, ghi `RESTOCK` không gắn đề xuất.
-   4. Xuất dùng: Club Manager, Head Trainer, bác sĩ hoặc Groom lấy hàng ra dùng thì ghi số lượng và ghi chú; tồn trừ ngay, không cần duyệt. Hệ thống trừ các lô còn hàng nhập sớm nhất trước, mỗi lô bị trừ ghi một dòng `USAGE`. Lấy nhiều hơn số tồn: 409.
+   4. Xuất dùng: Club Manager, Head Trainer, bác sĩ hoặc Groom lấy hàng ra dùng thì ghi số lượng và ghi chú; tồn trừ ngay, không cần duyệt. Hệ thống trừ các lô còn hàng nhập sớm nhất trước, mỗi lô bị trừ ghi một dòng `USAGE`, mọi dòng của lần xuất chung một mã lần xuất. Lấy nhiều hơn số tồn: 409.
+   5. Hủy lần xuất ghi nhầm: người xuất tự hủy trong 24 giờ kể từ lúc xuất, Club Manager hủy bất kỳ lúc nào (người khác hoặc quá hạn: 403); lý do bắt buộc. Hệ thống cộng trả đúng số đã trừ vào từng lô và vào số tồn, mỗi lô ghi một dòng `USAGE_REVERSAL` cùng mã lần xuất, ghi nhật ký. Hủy lại lần đã hủy: 409, kể cả khi hai người bấm cùng lúc. Tồn vượt lại ngưỡng báo thiếu thì không báo gì. Muốn sửa số lượng thì hủy rồi xuất lại số đúng. Lần xuất ghi trước khi có mã lần xuất không hủy được; sai thì chờ kiểm kê (chưa làm).
 5. Sắp hết: số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu. Xuất dùng làm số tồn xuống từ trên ngưỡng tới hoặc dưới ngưỡng thì báo mọi Club Manager một lần; các lần xuất tiếp theo khi đã dưới ngưỡng không báo lại.
-6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Không có kiểm kê.
+6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Chưa có kiểm kê và ghi hao hụt.
 7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối hoặc cấp xong trước.
 8. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
-9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE`; giá trị tồn kho = tổng số còn × đơn giá của các lô. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
+9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE` của các lần xuất chưa bị hủy (lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau, nên báo cáo kỳ gốc tự đổi số); dòng `USAGE_REVERSAL` không tính vào mua vào hay đã dùng; giá trị tồn kho = tổng số còn × đơn giá của các lô. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
 
 ### 2. Đề xuất bổ sung
 
@@ -175,6 +176,7 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
 | Thêm, sửa, xóa vật tư | Có | Không | Không | Không | Không |
 | Nhập hàng trực tiếp | Có | Không | Không | Không | Không |
 | Xuất dùng | Có | Có | Có | Có | Không |
+| Hủy lần xuất | Mọi lần xuất | Lần mình xuất, trong 24 giờ | Lần mình xuất, trong 24 giờ | Lần mình xuất, trong 24 giờ | Không |
 | Gửi, sửa đề xuất | Không | Của mình | Không | Của mình | Không |
 | Xem đề xuất | Tất cả | Của mình | Không | Của mình | Không |
 | Duyệt, từ chối, cấp | Có | Không | Không | Không | Không |
@@ -205,6 +207,7 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | DELETE | `/supplies/items/:id` | CM | Xóa mềm |
 | POST | `/supplies/items/:id/receipts` | CM | Nhập hàng trực tiếp `{ quantity, unitPrice, note? }` |
 | POST | `/supplies/items/:id/usages` | CM, HT, VET, GROOM | Xuất dùng `{ quantity, note? }` |
+| POST | `/supplies/usages/:usageId/cancel` | CM, HT, VET, GROOM | Hủy lần xuất `{ reason }` (luật 1.4.5) |
 | GET | `/supplies/items/:id/lots` | CM, HT, VET, GROOM | Các lô của vật tư (số nhập, số còn, đơn giá), lô nhập sớm nhất trước |
 | GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư kèm lô, đơn giá, tiền của dòng; mới nhất trước `?page&limit` |
 | GET | `/supplies/requests` | CM (tất cả), HT, GROOM (của mình) | Danh sách đề xuất `?status&page&limit` |
