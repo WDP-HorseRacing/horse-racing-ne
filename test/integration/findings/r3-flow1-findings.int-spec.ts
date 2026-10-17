@@ -501,6 +501,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
       name: 'Mới',
       gender: HorseGender.MALE,
       ownerId: owner,
+      microchipId: '900000000000101',
     });
 
     expect(await outboxCount()).toBeGreaterThan(0);
