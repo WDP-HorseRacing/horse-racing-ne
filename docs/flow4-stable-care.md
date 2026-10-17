@@ -44,7 +44,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 | Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Mỗi dòng gắn một lô: tồn ban đầu (`OPENING`), nhập hàng (`RESTOCK`), xuất dùng (`USAGE`). Không sửa, không xóa. Dòng ghi trước khi có lô (`COUNT_ADJUST` và `RESTOCK` cũ) không gắn lô, không có tiền. |
 | Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`. |
 | Khẩu phần | `feeding_plans`, `feeding_plan_items` | Head Trainer của khu | Mỗi ngựa tối đa một bản `ACTIVE`; bản cũ giữ lại làm lịch sử. |
-| Loại việc | `daily_task_types` | Club Manager | Seed sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). |
+| Loại việc | `daily_task_types` | Club Manager | Migration tạo sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). Seed demo tách "Cho ăn" thành "Cho ăn sáng" và "Cho ăn tối". |
 | Việc riêng của ngựa | `horse_daily_tasks` | Head Trainer của khu | Việc phát sinh một ngày thì từ ngày = đến ngày. |
 | Checklist | `daily_checklists`, `daily_checklist_items` | Hệ thống sinh, Groom tick | Mỗi ngựa mỗi ngày một checklist. |
 | Sự cố | `incidents` | Groom báo, Head Trainer của khu xử lý | `OPEN` → `RESOLVED`. |
@@ -93,6 +93,8 @@ SỰ CỐ                             Groom báo, HT khu đóng
 ### 4. Loại việc và việc riêng của ngựa
 
 1. Club Manager thêm, sửa loại việc (tên duy nhất, cờ "áp mọi ngựa", đang dùng hay ngưng). Không xóa; ngưng dùng thì checklist sinh sau đó (kể cả trong ngày) không còn việc này, checklist đã sinh giữ nguyên.
+   - Mỗi loại việc là một dòng trong checklist mỗi ngày. Việc làm nhiều lần trong ngày thì Club Manager khai mỗi lần một loại việc, ví dụ "Cho ăn sáng" và "Cho ăn tối".
+   - Khẩu phần (các bữa và món ăn) chỉ là thực đơn để Groom làm theo; khẩu phần không quyết định checklist có những dòng nào.
 2. Head Trainer của khu gắn loại việc cho một ngựa trong khoảng ngày (từ ngày ≤ đến ngày, từ ngày không ở quá khứ, dài tối đa 366 ngày). Một loại việc không gắn trùng khoảng ngày cho cùng một ngựa (409). Loại việc đã ngưng hoặc đã "áp mọi ngựa" thì không gắn riêng được (409).
 3. Gắn việc có hiệu lực hôm nay khi checklist hôm nay đã có: thêm dòng vào checklist hôm nay; checklist đang `COMPLETED` quay về `IN_PROGRESS`; báo Groom phụ trách.
 4. Gỡ việc riêng: chưa tới ngày bắt đầu thì xóa; đã bắt đầu thì kết thúc ở hôm nay. Checklist đã sinh không đổi.
@@ -244,4 +246,4 @@ Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
 ## Phụ lục 2: Việc còn lại
 
-- Chưa có.
+- Việc theo giờ: mỗi loại việc có danh sách giờ, mỗi giờ sinh một dòng checklist, kèm nhắc Groom khi trễ giờ. Làm phần này thì xem lại quyết định "checklist không có giờ" (D6).

@@ -170,4 +170,17 @@ BEGIN
    WHERE h.id = o.horse_id AND h.lifecycle_status = 'TRANSFERRED' AND o.ended_at IS NULL;
   UPDATE horses h SET owner_id = NULL
    WHERE h.lifecycle_status = 'TRANSFERRED' AND h.owner_id IS NOT NULL;
+
+  -- ── Loại việc ───────────────────────────────────────────────
+  -- Việc làm nhiều lần trong ngày khai mỗi lần một loại việc: tách "Cho ăn" (migration tạo sẵn)
+  -- thành "Cho ăn sáng" và "Cho ăn tối", cả hai áp mọi ngựa.
+  UPDATE daily_task_types SET name = 'Cho ăn sáng', updated_at = now()
+   WHERE name = 'Cho ăn'
+     AND NOT EXISTS (SELECT 1 FROM daily_task_types WHERE name = 'Cho ăn sáng');
+  -- Cùng created_at với "Cho ăn sáng" để đứng ngay sau nó trong checklist (thứ tự theo created_at rồi tên).
+  INSERT INTO daily_task_types (name, applies_to_all, active, version, created_at)
+  SELECT 'Cho ăn tối', true, true, 1, t.created_at
+    FROM daily_task_types t
+   WHERE t.name = 'Cho ăn sáng'
+     AND NOT EXISTS (SELECT 1 FROM daily_task_types WHERE name = 'Cho ăn tối');
 END $$;
