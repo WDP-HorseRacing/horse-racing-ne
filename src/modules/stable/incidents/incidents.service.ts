@@ -4,7 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -71,7 +78,7 @@ export class IncidentsService {
    *
    * - Club Manager, Veterinarian: mọi sự cố
    * - Head Trainer: sự cố của ngựa thuộc khu mình phụ trách
-   * - Groom: sự cố mình báo
+   * - Groom: sự cố mình báo, hoặc của ngựa mình đang phụ trách
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Lọc trạng thái, ngựa, khu và phân trang
@@ -111,9 +118,18 @@ export class IncidentsService {
           { callerId: caller.id },
         ).andWhere('horse.deletedAt IS NULL');
       } else {
-        qb.andWhere('incident.reportedBy = :callerId', {
-          callerId: caller.id,
-        });
+        qb.andWhere(
+          (outer: SelectQueryBuilder<IncidentEntity>) =>
+            `(incident.reportedBy = :callerId OR EXISTS ${outer
+              .subQuery()
+              .select('1')
+              .from(GroomAssignmentEntity, 'assignment')
+              .where('assignment.horseId = incident.horseId')
+              .andWhere('assignment.groomId = :callerId')
+              .andWhere('assignment.endAt IS NULL')
+              .getQuery()})`,
+          { callerId: caller.id },
+        );
       }
     }
     const [rows, total] = await qb.getManyAndCount();
@@ -237,7 +253,7 @@ export class IncidentsService {
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của sự cố
    * @returns Promise trả về sự cố kèm ảnh và yêu cầu khám
-   * @throws ForbiddenException Nếu tài khoản không hoạt động, Head Trainer xem sự cố ngoài khu, hoặc Groom xem sự cố không do mình báo
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, Head Trainer xem sự cố ngoài khu, hoặc Groom xem sự cố không do mình báo và không thuộc ngựa mình đang phụ trách
    * @throws NotFoundException Nếu không có sự cố
    */
   async get(actor: Actor, id: string): Promise<IncidentResponseDto> {
@@ -411,12 +427,16 @@ export class IncidentsService {
   /**
    * Kiểm người gọi được xem một sự cố
    *
+   * - Club Manager, Veterinarian: mọi sự cố
+   * - Head Trainer: sự cố của ngựa thuộc khu mình
+   * - Groom: sự cố mình báo, hoặc của ngựa mình đang phụ trách
+   *
    * @param manager EntityManager dùng để query
    * @param actor Thông tin danh tính từ Access Token
    * @param callerId UUID của người gọi
    * @param incident Sự cố cần xem
    * @returns Promise hoàn tất khi được xem
-   * @throws ForbiddenException Nếu Head Trainer xem sự cố ngoài khu, hoặc Groom xem sự cố không do mình báo
+   * @throws ForbiddenException Nếu Head Trainer xem sự cố ngoài khu, hoặc Groom xem sự cố không do mình báo và không thuộc ngựa mình đang phụ trách
    */
   private async assertCanView(
     manager: EntityManager,
@@ -433,8 +453,17 @@ export class IncidentsService {
       );
       return;
     }
-    if (incident.reportedBy !== callerId) {
-      throw new ForbiddenException('Chỉ xem được sự cố bạn báo');
+    if (incident.reportedBy === callerId) return;
+    if (
+      !(await this.horseAccess.isGroomAssigned(
+        incident.horseId,
+        callerId,
+        manager,
+      ))
+    ) {
+      throw new ForbiddenException(
+        'Chỉ xem được sự cố bạn báo hoặc của ngựa bạn đang phụ trách',
+      );
     }
   }
 

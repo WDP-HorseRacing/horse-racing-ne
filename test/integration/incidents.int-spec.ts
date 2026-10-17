@@ -407,6 +407,90 @@ describe('Stable incidents (Postgres)', () => {
       expect(result.items[1].examRequest).toBeNull();
     });
   });
+
+  describe('grooms viewing incidents of horses in their care', () => {
+    let reportedByOther: string;
+
+    const descriptions = async (actor: Actor) =>
+      (await incidents.list(actor, page())).items.map(
+        (item) => item.description,
+      );
+
+    beforeEach(async () => {
+      reportedByOther = (
+        await incidents.report(otherGroom, {
+          horseId: gio,
+          description: 'Móng xước',
+        })
+      ).id;
+    });
+
+    it('shows the groom in charge an incident another groom reported', async () => {
+      expect(await descriptions(groom)).toEqual(['Móng xước']);
+      expect((await incidents.get(groom, reportedByOther)).id).toBe(
+        reportedByOther,
+      );
+    });
+
+    it('keeps only their own reports for a groom after the horse moves to another groom', async () => {
+      const own = await incidents.report(groom, {
+        horseId: gio,
+        description: 'Bỏ ăn',
+      });
+      const otherGroomId = (await incidents.get(otherGroom, reportedByOther))
+        .reporter.id;
+      await dataSource.query(
+        'UPDATE groom_assignments SET end_at = now() WHERE horse_id = $1',
+        [gio],
+      );
+      await dataSource.query(
+        `INSERT INTO groom_assignments (version, horse_id, groom_id, start_at)
+         VALUES (1, $1, $2, now())`,
+        [gio, otherGroomId],
+      );
+      const thirdGroom = await actorOf(
+        await seed.user(UserRole.GROOM),
+        UserRole.GROOM,
+      );
+      const later = await incidents.report(thirdGroom, {
+        horseId: gio,
+        description: 'Ho khan',
+      });
+
+      expect(await descriptions(groom)).toEqual(['Bỏ ăn']);
+      expect((await incidents.get(groom, own.id)).id).toBe(own.id);
+      await expect(incidents.get(groom, later.id)).rejects.toThrow(
+        'Chỉ xem được sự cố bạn báo hoặc của ngựa bạn đang phụ trách',
+      );
+      expect(await descriptions(otherGroom)).toEqual([
+        'Ho khan',
+        'Bỏ ăn',
+        'Móng xước',
+      ]);
+    });
+
+    it('keeps out a groom who neither reported nor cares for the horse', async () => {
+      const outsider = await actorOf(
+        await seed.user(UserRole.GROOM),
+        UserRole.GROOM,
+      );
+
+      expect(await descriptions(outsider)).toEqual([]);
+      await expect(
+        incidents.get(outsider, reportedByOther),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('does not let the groom in charge refer or resolve', async () => {
+      await expect(
+        incidents.refer(groom, reportedByOther, {}),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        incidents.resolve(groom, reportedByOther, { resolution: 'x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
   describe('reminding stale incidents', () => {
     const reminders = () =>
       new IncidentRemindersService(new DomainEventPublisher(), dataSource);
