@@ -30,14 +30,14 @@ export class MedicalRemindersService {
   ) {}
 
   /**
-   * Job hằng ngày 07:00 giờ Việt Nam: chạy các nhắc nhở y tế định kỳ
+   * Job hằng ngày 05:00 giờ Việt Nam: chạy các nhắc nhở y tế định kỳ
    *
    * - Mỗi loại nhắc chạy độc lập: loại này lỗi vẫn chạy loại kia
    * - Lỗi chỉ được log, không làm dừng scheduler
    *
    * @returns Promise hoàn tất khi đã chạy xong
    */
-  @Cron('0 7 * * *', {
+  @Cron('0 5 * * *', {
     name: 'medical-daily-reminders',
     timeZone: CLUB_TIME_ZONE,
   })
