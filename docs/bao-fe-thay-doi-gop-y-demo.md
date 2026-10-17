@@ -116,7 +116,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 
 ## 8. Chủ sở hữu và tạo ngựa
 
-1. `POST /horses`: `ownerId` (UUID tài khoản HORSE_OWNER đang hoạt động) và `microchipId` (đúng 15 chữ số) giờ **bắt buộc**. Thiếu, `null` hoặc sai định dạng: 400 gắn đúng ô. `PATCH /horses/:horseId` không đổi.
+1. `POST /horses`: `ownerId` (UUID tài khoản HORSE_OWNER đang hoạt động) và `microchipId` (đúng 15 chữ số) giờ **bắt buộc**. Thiếu, `null` hoặc sai định dạng: 400 gắn đúng ô. `PATCH /horses/:horseId` không cho xóa số chip: gửi `microchipId` là `null` hoặc chuỗi rỗng trả 400 ở ô đó (không gửi trường thì giữ nguyên, đổi sang số khác vẫn được).
 2. Trùng số chip (tạo hoặc sửa): 409, câu báo nêu tên, tình trạng con đang giữ số chip và cách xử lý; `errors[0].conflictId` là id con đó để FE hiện nút mở hồ sơ.
 
    ```json

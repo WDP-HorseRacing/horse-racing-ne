@@ -393,7 +393,7 @@ Sửa thông tin định danh, ảnh đại diện, cha mẹ, chủ sở hữu v
 
 ### Nghiệp vụ
 
-1. Các quy tắc hợp lệ của F1.2 được áp dụng lại: số chip không trùng, ngày sinh trong khoảng 1 đến 40 tuổi, quy tắc chọn cha mẹ, định dạng và dung lượng ảnh. Ngày sinh chỉ bị kiểm lại khi giá trị thật sự đổi; hồ sơ cũ không đổi ngày sinh thì sửa các trường khác bình thường.
+1. Các quy tắc hợp lệ của F1.2 được áp dụng lại: số chip không trùng và không xóa được (chỉ đổi sang số khác), ngày sinh trong khoảng 1 đến 40 tuổi, quy tắc chọn cha mẹ, định dạng và dung lượng ảnh. Ngày sinh chỉ bị kiểm lại khi giá trị thật sự đổi; hồ sơ cũ không đổi ngày sinh thì sửa các trường khác bình thường.
 2. Không cho đổi giới tính nếu con ngựa đang được dùng làm cha hoặc mẹ của con khác mà giới tính mới làm sai vai trò. Chuyển từ MALE sang GELDING luôn được phép. Đổi ngày sinh của ngựa đang làm cha hoặc mẹ thì vẫn phải sinh trước con sớm nhất ít nhất 2 năm, tính cả con đã bị xóa hồ sơ (vì con đó có thể được khôi phục). *(BA chốt)*
 3. Đổi cha hoặc mẹ phải kiểm tra lại vòng lặp phả hệ.
 4. Chủ sở hữu (chỉ CLUB MANAGER):

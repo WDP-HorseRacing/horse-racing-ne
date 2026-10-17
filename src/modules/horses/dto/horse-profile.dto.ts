@@ -164,16 +164,14 @@ export class UpdateHorseDto extends PartialType(
   ] as const),
 ) {
   @ApiPropertyOptional({
-    nullable: true,
-    type: String,
     pattern: MICROCHIP_PATTERN.source,
-    description: 'Đúng 15 chữ số',
+    description: 'Đúng 15 chữ số. Chỉ đổi sang số khác, không xóa được',
   })
+  @ValidateIf((body: UpdateHorseDto) => body.microchipId !== undefined)
   @Transform(trimToNull)
-  @IsOptional()
-  @IsString()
+  @IsString({ message: 'Không xóa được số chip, chỉ đổi sang số khác' })
   @Matches(MICROCHIP_PATTERN, { message: 'Số chip phải gồm đúng 15 chữ số' })
-  microchipId?: string | null;
+  microchipId?: string;
 
   @ApiPropertyOptional({
     format: 'uuid',

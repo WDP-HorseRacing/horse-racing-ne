@@ -11404,9 +11404,8 @@
           },
           "microchipId": {
             "type": "string",
-            "nullable": true,
             "pattern": "^\\d{15}$",
-            "description": "Đúng 15 chữ số"
+            "description": "Đúng 15 chữ số. Chỉ đổi sang số khác, không xóa được"
           },
           "ownerId": {
             "type": "string",

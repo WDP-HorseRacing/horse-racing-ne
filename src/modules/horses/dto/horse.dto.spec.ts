@@ -65,14 +65,24 @@ describe('horse DTOs', () => {
       expect(fields).toEqual(['microchipId']);
     });
 
-    it('keeps ownerId and microchipId optional when updating a horse, a blank microchip becomes null', async () => {
-      const { instance, fields } = await invalidFields(UpdateHorseDto, {
-        version: 1,
-        microchipId: '  ',
-      });
+    it('keeps ownerId and microchipId optional when updating a horse', async () => {
+      const { fields } = await invalidFields(UpdateHorseDto, { version: 1 });
       expect(fields).toEqual([]);
-      expect(instance).toMatchObject({ microchipId: null });
     });
+
+    it.each([
+      ['null', null],
+      ['blank', '  '],
+    ])(
+      'refuses to clear the microchip when updating (%s)',
+      async (_case, microchipId) => {
+        const { fields } = await invalidFields(UpdateHorseDto, {
+          version: 1,
+          microchipId,
+        });
+        expect(fields).toEqual(['microchipId']);
+      },
+    );
   });
 
   describe.each([
