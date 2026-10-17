@@ -12118,10 +12118,20 @@
             "format": "date-time",
             "type": "string"
           },
+          "assigneeType": {
+            "type": "string",
+            "enum": [
+              "GROOM",
+              "VET"
+            ],
+            "nullable": true,
+            "description": "Kiểu giao, null là chưa giao ai"
+          },
           "assignedTo": {
             "type": "object",
             "format": "uuid",
-            "nullable": true
+            "nullable": true,
+            "description": "Người cụ thể; null kèm assigneeType = GROOM là Groom đang phụ trách ngựa"
           },
           "status": {
             "type": "string",
@@ -12155,6 +12165,7 @@
           "horseId",
           "type",
           "dueAt",
+          "assigneeType",
           "assignedTo",
           "status",
           "completedAt",
@@ -12179,10 +12190,18 @@
             "format": "date-time",
             "description": "Ngày đến hạn, không ở quá khứ"
           },
+          "assigneeType": {
+            "type": "string",
+            "enum": [
+              "GROOM",
+              "VET"
+            ],
+            "description": "Kiểu giao: GROOM (bỏ trống assignedTo là Groom đang phụ trách ngựa) hoặc VET. Bỏ trống là chưa giao ai"
+          },
           "assignedTo": {
             "type": "string",
             "format": "uuid",
-            "description": "Người được giao: Veterinarian hoặc Groom đang hoạt động"
+            "description": "Người cụ thể: Groom đang hoạt động (assigneeType = GROOM) hoặc bác sĩ đang hoạt động (assigneeType = VET, bắt buộc)"
           },
           "notes": {
             "type": "string",
@@ -12202,11 +12221,20 @@
             "format": "date-time",
             "description": "Ngày đến hạn mới; dời ngày bắt buộc reason"
           },
+          "assigneeType": {
+            "type": "string",
+            "enum": [
+              "GROOM",
+              "VET"
+            ],
+            "nullable": true,
+            "description": "Đổi cách giao: gửi kiểu giao mới cùng assignedTo (bỏ trống assignedTo là không chọn người). Gửi null để bỏ giao"
+          },
           "assignedTo": {
             "type": "object",
             "format": "uuid",
             "nullable": true,
-            "description": "Gửi null để bỏ người được giao"
+            "description": "Người cụ thể, chỉ gửi kèm assigneeType"
           },
           "notes": {
             "type": "object",
@@ -12913,7 +12941,8 @@
           "assignedTo": {
             "type": "object",
             "format": "uuid",
-            "nullable": true
+            "nullable": true,
+            "description": "Người làm hiện tại (giao Groom phụ trách thì là Groom đang phụ trách ngựa), null nếu chưa có ai"
           }
         },
         "required": [
@@ -16563,7 +16592,7 @@
             }
           },
           "careSchedules": {
-            "description": "Lịch chăm sóc giao cho Groom, đến hạn tới hết hôm nay mà chưa làm",
+            "description": "Lịch chăm sóc Groom là người làm (giao Groom phụ trách, hoặc giao đích danh cho Groom), đến hạn tới hết hôm nay mà chưa làm",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GroomTodayCareScheduleResponseDto"
@@ -16575,6 +16604,51 @@
           "horseName",
           "trainingRuns",
           "careSchedules"
+        ]
+      },
+      "GroomTodayOtherCareScheduleResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VACCINATION",
+              "DEWORMING",
+              "FARRIER",
+              "ROUTINE_CHECKUP"
+            ]
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "Đến hạn trước hôm nay mà chưa làm"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "dueAt",
+          "overdue",
+          "horseId",
+          "horseName"
         ]
       },
       "GroomTodayResponseDto": {
@@ -16591,11 +16665,19 @@
             "items": {
               "$ref": "#/components/schemas/GroomTodayHorseResponseDto"
             }
+          },
+          "otherCareSchedules": {
+            "description": "Lịch chăm sóc giao đích danh cho Groom ở ngựa Groom không phụ trách, đến hạn tới hết hôm nay mà chưa làm, ngày đến hạn sớm nhất lên trên",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroomTodayOtherCareScheduleResponseDto"
+            }
           }
         },
         "required": [
           "date",
-          "horses"
+          "horses",
+          "otherCareSchedules"
         ]
       },
       "TickChecklistItemDto": {

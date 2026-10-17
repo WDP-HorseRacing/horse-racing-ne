@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, Not, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -14,6 +14,7 @@ import { AuditService } from '../../audit/services/audit.service';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import {
+  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
@@ -33,6 +34,8 @@ import {
   assertCareDueDate,
   assertCareScheduleOpen,
   assertRescheduleReason,
+  careAssignment,
+  isCareScheduleDoer,
   isGroomOnly,
 } from '../policies/medical.policy';
 import { toClubDate } from '../../../common/utils/club-date';
@@ -40,9 +43,28 @@ import { MedicalAccessService } from '../shared/medical-access.service';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
 /**
- * Vai trò được giao thực hiện lịch chăm sóc.
+ * Vai trò tài khoản ứng với từng kiểu giao khi giao cho người cụ thể
  */
-const ASSIGNABLE_ROLES = [UserRole.VETERINARIAN, UserRole.GROOM];
+const ASSIGNEE_ROLE: Record<CareAssigneeType, UserRole> = {
+  [CareAssigneeType.GROOM]: UserRole.GROOM,
+  [CareAssigneeType.VET]: UserRole.VETERINARIAN,
+};
+
+/**
+ * Câu báo khi người cụ thể được giao không đúng vai trò hoặc không hoạt động
+ */
+const INVALID_ASSIGNEE_MESSAGE: Record<CareAssigneeType, string> = {
+  [CareAssigneeType.GROOM]: 'Người được giao phải là Groom đang hoạt động',
+  [CareAssigneeType.VET]: 'Người được giao phải là Bác sĩ thú y đang hoạt động',
+};
+
+/**
+ * Kiểu giao và người được giao của một lịch chăm sóc
+ */
+interface CareAssignment {
+  assigneeType: CareAssigneeType | null;
+  assignedTo: string | null;
+}
 
 @Injectable()
 export class CareSchedulesService {
@@ -59,7 +81,7 @@ export class CareSchedulesService {
    * Lịch tiêm phòng, tẩy giun, kiểm tra móng của con ngựa, ngày đến hạn gần nhất lên trên
    *
    * - Không gồm ngày hẹn khám định kỳ
-   * - Người chỉ có vai trò Groom chỉ thấy lịch được giao cho mình, và chỉ khi vẫn đang phụ trách con ngựa
+   * - Người chỉ có vai trò Groom chỉ thấy lịch mình là người làm: giao đích danh cho mình, hoặc giao Groom phụ trách khi mình đang phụ trách con ngựa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -73,29 +95,30 @@ export class CareSchedulesService {
   ): Promise<CareScheduleResponseDto[]> {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const caller = await this.horseAccess.currentUser(actor);
-    const groomOnly = isGroomOnly(actor.roles);
-    if (
-      groomOnly &&
-      !(await this.horseAccess.isGroomAssigned(horseId, caller.id))
-    ) {
-      return [];
-    }
     const schedules = await this.schedules.find({
-      where: {
-        horseId,
-        type: Not(CareScheduleType.ROUTINE_CHECKUP),
-        ...(groomOnly ? { assignedTo: caller.id } : {}),
-      },
+      where: { horseId, type: Not(CareScheduleType.ROUTINE_CHECKUP) },
       order: { dueAt: 'ASC' },
     });
-    return schedules.map(toCareScheduleResponse);
+    if (!isGroomOnly(actor.roles)) {
+      return schedules.map(toCareScheduleResponse);
+    }
+    const isHorseGroom = await this.horseAccess.isGroomAssigned(
+      horseId,
+      caller.id,
+    );
+    return schedules
+      .filter((schedule) =>
+        isCareScheduleDoer(schedule, caller.id, isHorseGroom),
+      )
+      .map(toCareScheduleResponse);
   }
 
   /**
    * Bác sĩ tạo lịch chăm sóc cho con ngựa
    *
    * - Khóa row ngựa; ngựa đã chuyển nhượng: 409
-   * - Ngày đến hạn không ở quá khứ; người được giao phải là Veterinarian hoặc Groom đang hoạt động
+   * - Ngày đến hạn không ở quá khứ
+   * - Giao Groom: bỏ trống người là Groom đang phụ trách ngựa, có người thì phải là Groom đang hoạt động; giao bác sĩ: bắt buộc bác sĩ đang hoạt động; không có kiểu giao thì không được chọn người
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -103,7 +126,7 @@ export class CareSchedulesService {
    * @returns Promise trả về lịch vừa tạo
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
-   * @throws BadRequestException Nếu ngày đến hạn ở quá khứ, hoặc người được giao không hợp lệ
+   * @throws BadRequestException Nếu ngày đến hạn ở quá khứ, kiểu giao và người được giao không khớp, hoặc người được giao không hợp lệ
    * @throws ConflictException Nếu ngựa đã chuyển nhượng
    */
   async create(
@@ -119,13 +142,14 @@ export class CareSchedulesService {
         horseId,
       );
       assertCareDueDate(toClubDate(dueAt), toClubDate(new Date()));
-      await this.assertAssignee(manager, horseId, body.assignedTo);
+      const assignment = careAssignment(body.assigneeType, body.assignedTo);
+      await this.assertAssignee(manager, assignment);
       const saved = await manager.save(
         manager.create(CareScheduleEntity, {
           horseId,
           type: body.type,
           dueAt,
-          assignedTo: body.assignedTo ?? null,
+          ...assignment,
           status: CareScheduleStatus.SCHEDULED,
           completedAt: null,
           completedBy: null,
@@ -143,6 +167,7 @@ export class CareSchedulesService {
           horseId,
           type: body.type,
           dueAt,
+          assigneeType: saved.assigneeType,
           assignedTo: saved.assignedTo,
         },
         feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
@@ -157,6 +182,7 @@ export class CareSchedulesService {
    *
    * - Chỉ lịch còn Đã lên lịch: 409
    * - Dời ngày bắt buộc lý do; ngày mới không ở quá khứ
+   * - Đổi cách giao: gửi assigneeType (kèm assignedTo nếu giao người cụ thể), cùng luật như khi tạo; gửi assignedTo mà không gửi assigneeType: 400
    * - Không có trường nào thay đổi thì không ghi gì, không ghi nhật ký
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -165,7 +191,7 @@ export class CareSchedulesService {
    * @returns Promise trả về lịch sau khi đổi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
-   * @throws BadRequestException Nếu dời ngày không có lý do, ngày ở quá khứ, hoặc người được giao không hợp lệ
+   * @throws BadRequestException Nếu dời ngày không có lý do, ngày ở quá khứ, kiểu giao và người được giao không khớp, hoặc người được giao không hợp lệ
    * @throws ConflictException Nếu lịch đã hoàn tất hoặc đã hủy, hoặc ngựa đã chuyển nhượng
    */
   async update(
@@ -188,15 +214,22 @@ export class CareSchedulesService {
       if (dueChanged) {
         assertCareDueDate(toClubDate(dueAt), toClubDate(new Date()));
       }
-      await this.assertAssignee(manager, horseId, body.assignedTo);
+      const assignment =
+        body.assigneeType !== undefined || body.assignedTo !== undefined
+          ? careAssignment(body.assigneeType, body.assignedTo)
+          : {
+              assigneeType: schedule.assigneeType,
+              assignedTo: schedule.assignedTo,
+            };
+      await this.assertAssignee(manager, assignment);
       const changes = {
         dueAt,
-        assignedTo:
-          body.assignedTo !== undefined ? body.assignedTo : schedule.assignedTo,
+        ...assignment,
         notes: body.notes !== undefined ? body.notes : schedule.notes,
       };
       if (
         !dueChanged &&
+        changes.assigneeType === schedule.assigneeType &&
         changes.assignedTo === schedule.assignedTo &&
         changes.notes === schedule.notes
       ) {
@@ -210,6 +243,7 @@ export class CareSchedulesService {
         entityId: scheduleId,
         before: {
           dueAt: schedule.dueAt,
+          assigneeType: schedule.assigneeType,
           assignedTo: schedule.assignedTo,
           notes: schedule.notes,
         },
@@ -225,9 +259,9 @@ export class CareSchedulesService {
   /**
    * Đánh dấu hoàn tất lịch chăm sóc, lưu thời điểm và người thực hiện
    *
-   * - Veterinarian, hoặc đúng Groom được giao mà vẫn đang phụ trách con ngựa; người khác: 403
+   * - Veterinarian, hoặc Groom là người làm lịch (giao đích danh cho mình, hoặc giao Groom phụ trách khi mình đang phụ trách con ngựa); người khác: 403
    * - Chỉ lịch còn Đã lên lịch: 409
-   * - Bác sĩ có thể nhập ngày đến hạn lần tới: tạo luôn lịch mới cùng loại trong cùng transaction, giữ người được giao nếu vẫn hợp lệ
+   * - Bác sĩ có thể nhập ngày đến hạn lần tới: tạo luôn lịch mới cùng loại trong cùng transaction, giữ cách giao (createNext)
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param scheduleId UUID của lịch chăm sóc
@@ -251,15 +285,12 @@ export class CareSchedulesService {
         horseId,
       );
       const schedule = await this.lockSchedule(manager, scheduleId);
-      const isActiveAssignee =
-        schedule.assignedTo === caller.id &&
-        (actor.roles.includes(UserRole.VETERINARIAN) ||
-          (await this.horseAccess.isGroomAssigned(
-            horseId,
-            caller.id,
-            manager,
-          )));
-      assertCanCompleteCareSchedule(actor.roles, isActiveAssignee);
+      const isDoer = isCareScheduleDoer(
+        schedule,
+        caller.id,
+        await this.horseAccess.isGroomAssigned(horseId, caller.id, manager),
+      );
+      assertCanCompleteCareSchedule(actor.roles, isDoer);
       assertCareScheduleOpen(schedule.status);
       const nextDueAt = body.nextDueAt ? new Date(body.nextDueAt) : null;
       assertCanScheduleNext(actor.roles, nextDueAt !== null);
@@ -341,7 +372,9 @@ export class CareSchedulesService {
   }
 
   /**
-   * Tạo lịch lần tới cùng loại sau khi hoàn tất, giữ người được giao nếu vẫn hợp lệ
+   * Tạo lịch lần tới cùng loại sau khi hoàn tất, giữ cách giao của lịch vừa hoàn tất
+   *
+   * - Người cụ thể không còn hợp lệ: giao Groom thì về Groom đang phụ trách ngựa, giao bác sĩ thì về chưa giao ai
    *
    * @param manager EntityManager của transaction đang chạy
    * @param done Lịch vừa hoàn tất
@@ -355,15 +388,20 @@ export class CareSchedulesService {
     dueAt: Date,
     callerId: string,
   ): Promise<CareScheduleEntity> {
-    const keepAssignee =
-      done.assignedTo !== null &&
-      (await this.isValidAssignee(manager, done.horseId, done.assignedTo));
+    const assignment: CareAssignment = (await this.isValidAssignee(
+      manager,
+      done,
+    ))
+      ? { assigneeType: done.assigneeType, assignedTo: done.assignedTo }
+      : done.assigneeType === CareAssigneeType.GROOM
+        ? { assigneeType: CareAssigneeType.GROOM, assignedTo: null }
+        : { assigneeType: null, assignedTo: null };
     const next = await manager.save(
       manager.create(CareScheduleEntity, {
         horseId: done.horseId,
         type: done.type,
         dueAt,
-        assignedTo: keepAssignee ? done.assignedTo : null,
+        ...assignment,
         status: CareScheduleStatus.SCHEDULED,
         completedAt: null,
         completedBy: null,
@@ -381,6 +419,7 @@ export class CareSchedulesService {
         horseId: done.horseId,
         type: done.type,
         dueAt,
+        assigneeType: next.assigneeType,
         assignedTo: next.assignedTo,
         previousScheduleId: done.id,
       },
@@ -390,51 +429,51 @@ export class CareSchedulesService {
   }
 
   /**
-   * Người được giao phải là Veterinarian đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa
+   * Kiểm người cụ thể được giao có đúng vai trò của kiểu giao và đang hoạt động không
    *
    * @param manager EntityManager của transaction đang chạy
-   * @param horseId UUID của ngựa
-   * @param userId UUID người được giao; bỏ trống hoặc null thì không kiểm
-   * @returns Promise hoàn tất khi kiểm xong
-   * @throws BadRequestException Nếu người được giao không hợp lệ
+   * @param assignment Kiểu giao và người được giao
+   * @returns Promise hoàn tất khi kiểm xong; không giao người cụ thể thì không kiểm
+   * @throws BadRequestException Nếu người được giao không phải Groom (giao Groom) hoặc bác sĩ (giao bác sĩ) đang hoạt động
    */
   private async assertAssignee(
     manager: EntityManager,
-    horseId: string,
-    userId: string | null | undefined,
+    assignment: CareAssignment,
   ): Promise<void> {
-    if (!userId) return;
-    if (!(await this.isValidAssignee(manager, horseId, userId))) {
+    if (
+      assignment.assigneeType !== null &&
+      !(await this.isValidAssignee(manager, assignment))
+    ) {
       throw new BadRequestException(
-        'Người được giao phải là Bác sĩ thú y đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa',
+        INVALID_ASSIGNEE_MESSAGE[assignment.assigneeType],
       );
     }
   }
 
   /**
-   * Kiểm một người có được giao lịch chăm sóc của con ngựa không
+   * Kiểm cách giao của lịch còn hợp lệ không
+   *
+   * - Không giao người cụ thể (kể cả chưa giao ai): luôn hợp lệ
+   * - Giao người cụ thể: người đó đang hoạt động và có vai trò ứng với kiểu giao
    *
    * @param manager EntityManager của transaction đang chạy
-   * @param horseId UUID của ngựa
-   * @param userId UUID người được giao
-   * @returns Promise trả về true nếu là Veterinarian đang hoạt động, hoặc Groom đang hoạt động và đang phụ trách con ngựa
+   * @param assignment Kiểu giao và người được giao
+   * @returns Promise trả về true nếu hợp lệ
    */
   private async isValidAssignee(
     manager: EntityManager,
-    horseId: string,
-    userId: string,
+    assignment: CareAssignment,
   ): Promise<boolean> {
-    const user = await manager.findOne(UserEntity, {
+    if (assignment.assignedTo === null || assignment.assigneeType === null) {
+      return true;
+    }
+    return manager.exists(UserEntity, {
       where: {
-        id: userId,
+        id: assignment.assignedTo,
         status: UserStatus.ACTIVE,
-        role: In(ASSIGNABLE_ROLES),
+        role: ASSIGNEE_ROLE[assignment.assigneeType],
       },
     });
-    if (!user) return false;
-    return user.role === UserRole.GROOM
-      ? this.horseAccess.isGroomAssigned(horseId, userId, manager)
-      : true;
   }
 
   /**

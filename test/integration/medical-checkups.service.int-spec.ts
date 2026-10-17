@@ -14,6 +14,7 @@ import {
   HorseLifecycleStatus,
 } from '../../src/modules/horses/enums/horse-status.enum';
 import {
+  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../src/modules/medical/constants/care-schedule.enum';
@@ -91,7 +92,7 @@ describe('MedicalCheckupsService (Postgres)', () => {
       await expect(scheduleIds()).resolves.toEqual([kept]);
     });
 
-    it('keeps only an assignee who is still valid', async () => {
+    it('resolves the doer: a named person still active with the right role, or the groom looking after the horse', async () => {
       const horse = await seed.horse('Winx');
       const vet = await seed.user(UserRole.VETERINARIAN);
       const inactiveVet = await seed.user(
@@ -115,12 +116,18 @@ describe('MedicalCheckupsService (Postgres)', () => {
           assignedTo: assignee,
         });
       }
+      await seed.schedule(horse, '2026-09-26T05:00:00Z', {
+        assigneeType: CareAssigneeType.GROOM,
+      });
+      await seed.schedule(horse, '2026-09-26T06:00:00Z');
 
       const rows = await repository.dueCareSchedules(TODAY);
 
       expect(rows.map((row) => row.assignedTo)).toEqual([
         vet,
         null,
+        groom,
+        formerGroom,
         groom,
         null,
       ]);

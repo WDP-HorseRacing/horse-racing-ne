@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
@@ -20,7 +21,19 @@ export class CareScheduleResponseDto {
   @ApiProperty({ format: 'date-time' })
   dueAt!: Date;
 
-  @ApiProperty({ format: 'uuid', nullable: true })
+  @ApiProperty({
+    enum: CareAssigneeType,
+    nullable: true,
+    description: 'Kiểu giao, null là chưa giao ai',
+  })
+  assigneeType!: CareAssigneeType | null;
+
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    description:
+      'Người cụ thể; null kèm assigneeType = GROOM là Groom đang phụ trách ngựa',
+  })
   assignedTo!: string | null;
 
   @ApiProperty({ enum: CareScheduleStatus })

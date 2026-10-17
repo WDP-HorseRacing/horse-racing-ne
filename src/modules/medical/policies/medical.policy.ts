@@ -10,7 +10,10 @@ import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-aler
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { OwnershipPeriod } from '../../horses/types/horse.types';
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
+import {
+  CareAssigneeType,
+  CareScheduleStatus,
+} from '../constants/care-schedule.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import {
   ExamRequestSource,
@@ -766,4 +769,58 @@ export function assertPrescriptionDates(
       'Ngày kết thúc đơn thuốc không được sớm hơn ngày bắt đầu',
     );
   }
+}
+
+/**
+ * Kiểm cặp kiểu giao và người được giao của lịch chăm sóc rồi trả về cặp đã chuẩn hóa
+ *
+ * - Không có kiểu giao: không được có người được giao (400 ô assignedTo); kết quả là chưa giao ai
+ * - Giao bác sĩ: bắt buộc chọn bác sĩ (400 ô assignedTo)
+ * - Giao Groom: bỏ trống người là Groom đang phụ trách ngựa
+ *
+ * @param assigneeType Kiểu giao gửi lên, null hoặc bỏ trống là chưa giao
+ * @param assignedTo Người được giao gửi lên, null hoặc bỏ trống là không chọn người
+ * @returns Kiểu giao và người được giao để lưu
+ * @throws BadRequestException Nếu cặp kiểu giao và người được giao không hợp lệ
+ */
+export function careAssignment(
+  assigneeType: CareAssigneeType | null | undefined,
+  assignedTo: string | null | undefined,
+): { assigneeType: CareAssigneeType | null; assignedTo: string | null } {
+  const type = assigneeType ?? null;
+  const person = assignedTo ?? null;
+  if (type === null && person !== null) {
+    throw fieldBadRequest(
+      'assignedTo',
+      'Chọn kiểu giao (assigneeType) khi giao cho một người cụ thể',
+    );
+  }
+  if (type === CareAssigneeType.VET && person === null) {
+    throw fieldBadRequest('assignedTo', 'Giao bác sĩ phải chọn bác sĩ cụ thể');
+  }
+  return { assigneeType: type, assignedTo: person };
+}
+
+/**
+ * Kiểm một người có phải người làm lịch chăm sóc không
+ *
+ * - Giao đích danh: đúng người đó
+ * - Giao Groom phụ trách: người đó đang phụ trách ngựa
+ * - Chưa giao ai: không ai
+ *
+ * @param schedule Kiểu giao và người được giao của lịch
+ * @param userId UUID người cần kiểm
+ * @param isHorseGroom Người đó có đang phụ trách ngựa không
+ * @returns true nếu người đó là người làm lịch
+ */
+export function isCareScheduleDoer(
+  schedule: {
+    assigneeType: CareAssigneeType | null;
+    assignedTo: string | null;
+  },
+  userId: string,
+  isHorseGroom: boolean,
+): boolean {
+  if (schedule.assignedTo !== null) return schedule.assignedTo === userId;
+  return schedule.assigneeType === CareAssigneeType.GROOM && isHorseGroom;
 }

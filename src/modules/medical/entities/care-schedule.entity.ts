@@ -1,8 +1,9 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import {
+  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
@@ -17,6 +18,10 @@ import {
   unique: true,
   where: `type = '${CareScheduleType.ROUTINE_CHECKUP}' AND status = '${CareScheduleStatus.SCHEDULED}'`,
 })
+@Check(
+  'care_schedules_assignee_ck',
+  `(assignee_type IS NULL AND assigned_to IS NULL) OR assignee_type = '${CareAssigneeType.GROOM}' OR (assignee_type = '${CareAssigneeType.VET}' AND assigned_to IS NOT NULL)`,
+)
 export class CareScheduleEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -30,6 +35,14 @@ export class CareScheduleEntity extends MutableRecordEntity {
 
   @Column({ name: 'due_at', type: 'timestamptz' })
   dueAt!: Date;
+
+  @Column({
+    name: 'assignee_type',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  assigneeType!: CareAssigneeType | null;
 
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
   assignedTo!: string | null;

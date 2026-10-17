@@ -34,5 +34,6 @@ export interface DueCareScheduleRow {
   horseName: string;
   type: CareScheduleType;
   dueDate: string;
+  /** Người làm hiện tại (đã tra theo cách giao), null nếu không có ai */
   assignedTo: string | null;
 }

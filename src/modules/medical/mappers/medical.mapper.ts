@@ -228,6 +228,7 @@ export function toCareScheduleResponse(
     horseId: schedule.horseId,
     type: schedule.type,
     dueAt: schedule.dueAt,
+    assigneeType: schedule.assigneeType,
     assignedTo: schedule.assignedTo,
     status: schedule.status,
     completedAt: schedule.completedAt,

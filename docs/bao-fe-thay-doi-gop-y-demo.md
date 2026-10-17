@@ -149,3 +149,21 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 1. Ngựa cần giáo án riêng: HT tạo một lớp riêng, chỉ ghi danh con ngựa đó.
 2. Việc trong checklist không có giờ phải làm, chỉ cần xong trong ngày.
 3. Ảnh khi báo sự cố là tùy chọn, tối đa một ảnh.
+
+## Lịch chăm sóc y tế: giao theo vai trò
+
+1. `POST /horses/:horseId/care-schedules` và `PATCH /care-schedules/:id` có thêm `assigneeType` (`GROOM` | `VET`), đi kèm `assignedTo`:
+
+   | `assigneeType` | `assignedTo` | Nghĩa |
+   |---|---|---|
+   | bỏ trống / `null` | bỏ trống | Chưa giao ai |
+   | `GROOM` | bỏ trống | Groom đang phụ trách ngựa; đổi Groom thì lịch tự theo Groom mới |
+   | `GROOM` | UUID Groom | Đúng Groom đó, kể cả Groom không phụ trách ngựa |
+   | `VET` | UUID bác sĩ (bắt buộc) | Đúng bác sĩ đó |
+
+   - Gửi `assignedTo` mà không có `assigneeType`, hoặc `VET` không kèm người: 400 ô `assignedTo`. Người không đúng vai trò hoặc không hoạt động: 400.
+   - Sửa lịch: muốn đổi cách giao thì gửi `assigneeType` (kèm `assignedTo` nếu chọn người).
+2. Response lịch chăm sóc có thêm `assigneeType`. `assignedTo = null` kèm `assigneeType = GROOM` nghĩa là "Groom phụ trách".
+3. `GET /grooms/me/today` (màn Hôm nay của Groom) có thêm `otherCareSchedules`: lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, mỗi dòng có `horseId`, `horseName`. `careSchedules` trong từng ngựa giờ gồm cả lịch giao "Groom phụ trách".
+4. `assignedTo` trong khối lịch chăm sóc của `GET /medical/dashboard` là người làm hiện tại (đã tra Groom phụ trách), `null` nếu chưa có ai.
+5. Khóa tài khoản hoặc đổi vai trò người còn lịch chưa làm được giao đích danh: 409 `Người này còn N lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi khóa tài khoản`.

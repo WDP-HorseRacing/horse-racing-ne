@@ -6,7 +6,10 @@ import {
   clubToday,
   shiftDays,
 } from '../../../common/utils/club-date';
-import { CareScheduleStatus } from '../../medical/constants/care-schedule.enum';
+import {
+  CareAssigneeType,
+  CareScheduleStatus,
+} from '../../medical/constants/care-schedule.enum';
 import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
 import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
@@ -59,7 +62,8 @@ export class GroomTodayService {
    * - Checklist hôm nay (nếu đã sinh)
    * - Khẩu phần đang áp dụng
    * - Lượt tập hôm nay Groom được giao dắt, bỏ buổi nháp và buổi đã hủy
-   * - Lịch chăm sóc giao cho Groom, đến hạn tới hết hôm nay mà chưa làm
+   * - Lịch chăm sóc Groom là người làm (giao Groom phụ trách ở ngựa mình phụ trách, hoặc giao đích danh cho mình), đến hạn tới hết hôm nay mà chưa làm
+   * - Lịch giao đích danh ở ngựa Groom không phụ trách: tách ra otherCareSchedules
    *
    * @param actor Thông tin danh tính từ Access Token
    * @returns Promise trả về ngày hôm nay và việc của từng ngựa
@@ -79,8 +83,20 @@ export class GroomTodayService {
       .flatMap((assignment) => (assignment.horse ? [assignment.horse] : []))
       .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
     const horseIds = horses.map((horse) => horse.id);
-    if (horseIds.length === 0) return toGroomTodayResponse(date, dayStart, []);
-    const [stalls, checklists, plans, runs, schedules] = await Promise.all([
+    const schedules = await this.careSchedulesOf(
+      manager,
+      caller.id,
+      horseIds,
+      dayEnd,
+    );
+    const ownHorseIds = new Set(horseIds);
+    const otherSchedules = schedules.filter(
+      (schedule) => !ownHorseIds.has(schedule.horseId),
+    );
+    if (horseIds.length === 0) {
+      return toGroomTodayResponse(date, dayStart, [], otherSchedules);
+    }
+    const [stalls, checklists, plans, runs] = await Promise.all([
       manager.find(StallAssignmentEntity, {
         where: { horseId: In(horseIds), endAt: IsNull() },
         relations: { stall: true },
@@ -97,15 +113,6 @@ export class GroomTodayService {
         withDeleted: true,
       }),
       this.runsOf(manager, caller.id, horseIds, dayStart, dayEnd),
-      manager.find(CareScheduleEntity, {
-        where: {
-          horseId: In(horseIds),
-          assignedTo: caller.id,
-          status: CareScheduleStatus.SCHEDULED,
-          dueAt: LessThan(dayEnd),
-        },
-        order: { dueAt: 'ASC' },
-      }),
     ]);
     const stallByHorse = new Map(
       stalls.map((row) => [row.horseId, row.stall.code]),
@@ -129,7 +136,46 @@ export class GroomTodayService {
           (schedule) => schedule.horseId === horse.id,
         ),
       })),
+      otherSchedules,
     );
+  }
+
+  /**
+   * Lấy lịch chăm sóc còn Đã lên lịch, đến hạn trước dayEnd mà Groom là người làm
+   *
+   * - Giao Groom phụ trách ở các ngựa Groom đang phụ trách
+   * - Giao đích danh cho Groom ở bất kỳ ngựa nào (kèm horse để lấy tên)
+   *
+   * @param manager EntityManager dùng để query
+   * @param groomId UUID của Groom
+   * @param horseIds UUID các ngựa Groom đang phụ trách
+   * @param dayEnd Đầu ngày mai theo giờ CLB
+   * @returns Promise trả về các lịch, ngày đến hạn sớm nhất lên trên
+   */
+  private careSchedulesOf(
+    manager: EntityManager,
+    groomId: string,
+    horseIds: string[],
+    dayEnd: Date,
+  ): Promise<CareScheduleEntity[]> {
+    const open = {
+      status: CareScheduleStatus.SCHEDULED,
+      dueAt: LessThan(dayEnd),
+    };
+    const ownHorses = {
+      ...open,
+      horseId: In(horseIds),
+      assigneeType: CareAssigneeType.GROOM,
+      assignedTo: IsNull(),
+    };
+    return manager.find(CareScheduleEntity, {
+      where: horseIds.length
+        ? [{ ...open, assignedTo: groomId }, ownHorses]
+        : { ...open, assignedTo: groomId },
+      relations: { horse: true },
+      withDeleted: true,
+      order: { dueAt: 'ASC' },
+    });
   }
 
   /**
