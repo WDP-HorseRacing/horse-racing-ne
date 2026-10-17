@@ -3,6 +3,7 @@ import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
+  IsEnum,
   IsOptional,
   IsString,
   IsUUID,
@@ -11,6 +12,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
+import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 
 export class CreateCareTaskTypeDto {
   @ApiProperty({ maxLength: 80, description: 'Tên loại việc, duy nhất' })
@@ -56,6 +58,16 @@ export class CreateHorseCareTaskDto {
   @IsUUID()
   taskTypeId!: string;
 
+  @ApiPropertyOptional({
+    enum: HorseCareTaskMode,
+    default: HorseCareTaskMode.EXTRA,
+    description:
+      'EXTRA: gắn thêm loại việc không áp mọi ngựa. EXEMPT: miễn loại việc đang áp mọi ngựa, bắt buộc ghi lý do ở note',
+  })
+  @IsOptional()
+  @IsEnum(HorseCareTaskMode)
+  mode?: HorseCareTaskMode;
+
   @ApiProperty({ format: 'date', description: 'Ngày bắt đầu, từ hôm nay' })
   @IsDateString({ strict: true })
   @Matches(DATE_ONLY_PATTERN, {
@@ -70,7 +82,10 @@ export class CreateHorseCareTaskDto {
   })
   toDate!: string;
 
-  @ApiPropertyOptional({ maxLength: 200, description: 'Ghi chú cho Groom' })
+  @ApiPropertyOptional({
+    maxLength: 200,
+    description: 'Ghi chú cho Groom; với EXEMPT là lý do miễn (bắt buộc)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -118,6 +133,13 @@ export class HorseCareTaskResponseDto {
   @Type(() => CareTaskTypeResponseDto)
   @ApiProperty({ type: CareTaskTypeResponseDto })
   taskType!: CareTaskTypeResponseDto;
+
+  @Expose()
+  @ApiProperty({
+    enum: HorseCareTaskMode,
+    description: 'EXTRA: gắn thêm. EXEMPT: miễn việc chung',
+  })
+  mode!: HorseCareTaskMode;
 
   @Expose()
   @ApiProperty({ format: 'date' })

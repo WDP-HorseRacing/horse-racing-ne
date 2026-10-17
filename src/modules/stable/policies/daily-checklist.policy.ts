@@ -4,7 +4,9 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { shiftDays } from '../../../common/utils/club-date';
+import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
+import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 
 const MAX_CARE_TASK_DAYS = 366;
 const MAX_CHECKLIST_RANGE_DAYS = 31;
@@ -12,10 +14,11 @@ const MAX_CHECKLIST_RANGE_DAYS = 31;
 /**
  * Cách gỡ một việc riêng của ngựa theo hôm nay
  *
- * - DELETE: chưa tới ngày bắt đầu, xóa hẳn
- * - END_TODAY: đang hiệu lực, kết thúc ở hôm nay
+ * - DELETE: chưa tới ngày bắt đầu (dòng miễn: chưa qua ngày bắt đầu), xóa hẳn
+ * - END_TODAY: việc gắn thêm đang hiệu lực, kết thúc ở hôm nay
+ * - END_YESTERDAY: dòng miễn đã bắt đầu từ trước hôm nay, kết thúc ở hôm qua để việc chung có lại từ hôm nay
  */
-export type CareTaskRemoval = 'DELETE' | 'END_TODAY';
+export type CareTaskRemoval = 'DELETE' | 'END_TODAY' | 'END_YESTERDAY';
 
 /**
  * Tính trạng thái checklist trong ngày từ số việc đã xong
@@ -110,22 +113,69 @@ export function assertCareTaskRange(
 }
 
 /**
- * Bắt buộc loại việc còn dùng và chưa áp cho mọi ngựa trước khi gắn riêng cho một ngựa
+ * Kiểm loại việc có gắn riêng cho một ngựa được theo kiểu dòng không
  *
- * @param type Trạng thái dùng và cờ áp mọi ngựa của loại việc
- * @throws ConflictException Nếu loại việc đã ngưng hoặc đã áp cho mọi ngựa
+ * - Loại việc đã ngưng: không gắn thêm, không miễn
+ * - Gắn thêm (EXTRA): chỉ loại việc không áp mọi ngựa
+ * - Miễn (EXEMPT): chỉ loại việc đang áp mọi ngựa
+ *
+ * @param type Tên, trạng thái dùng và cờ áp mọi ngựa của loại việc
+ * @param mode Kiểu dòng việc riêng
+ * @throws ConflictException Nếu loại việc đã ngưng, gắn thêm loại đã áp mọi ngựa, hoặc miễn loại không áp mọi ngựa
  */
-export function assertAssignableCareTaskType(type: {
-  name: string;
-  active: boolean;
-  appliesToAll: boolean;
-}): void {
+export function assertAssignableCareTaskType(
+  type: {
+    name: string;
+    active: boolean;
+    appliesToAll: boolean;
+  },
+  mode: HorseCareTaskMode,
+): void {
   if (!type.active) {
     throw new ConflictException(`Loại việc ${type.name} đã ngưng dùng`);
   }
-  if (type.appliesToAll) {
+  if (mode === HorseCareTaskMode.EXTRA && type.appliesToAll) {
     throw new ConflictException(
       `Loại việc ${type.name} đã áp cho mọi ngựa, không cần gắn riêng`,
+    );
+  }
+  if (mode === HorseCareTaskMode.EXEMPT && !type.appliesToAll) {
+    throw new ConflictException(
+      `Loại việc ${type.name} không áp cho mọi ngựa, không cần miễn`,
+    );
+  }
+}
+
+/**
+ * Bắt buộc ghi lý do khi miễn việc chung cho một ngựa
+ *
+ * @param mode Kiểu dòng việc riêng
+ * @param note Ghi chú đã cắt khoảng trắng, null nếu bỏ trống
+ * @throws BadRequestException Nếu miễn việc mà không có lý do (lỗi gắn ô note)
+ */
+export function assertExemptionReason(
+  mode: HorseCareTaskMode,
+  note: string | null,
+): void {
+  if (mode === HorseCareTaskMode.EXEMPT && !note) {
+    throw fieldBadRequest('note', 'Miễn việc phải ghi lý do');
+  }
+}
+
+/**
+ * Chặn đổi cờ áp mọi ngựa của loại việc khi còn dòng gắn thêm hoặc miễn chưa hết hạn
+ *
+ * @param changing Cờ áp mọi ngựa đổi giá trị
+ * @param hasOpenHorseTasks Còn dòng việc riêng của loại này có ngày kết thúc từ hôm nay trở đi
+ * @throws ConflictException Nếu đổi cờ khi còn dòng chưa hết hạn
+ */
+export function assertAppliesToAllChangeable(
+  changing: boolean,
+  hasOpenHorseTasks: boolean,
+): void {
+  if (changing && hasOpenHorseTasks) {
+    throw new ConflictException(
+      'Loại việc còn ngựa được gắn thêm hoặc được miễn chưa hết hạn, gỡ các dòng đó trước khi đổi cờ áp mọi ngựa',
     );
   }
 }
@@ -145,20 +195,29 @@ export function assertNoOverlappingCareTask(overlapping: boolean): void {
 }
 
 /**
- * Chọn cách gỡ việc riêng theo hôm nay
+ * Chọn cách gỡ việc riêng theo hôm nay và kiểu dòng
  *
+ * - Gắn thêm: chưa bắt đầu thì xóa, đang hiệu lực thì kết thúc ở hôm nay
+ * - Miễn: bắt đầu từ hôm nay trở đi thì xóa, bắt đầu trước hôm nay thì kết thúc ở hôm qua
+ *
+ * @param mode Kiểu dòng việc riêng
  * @param fromDate Ngày bắt đầu, YYYY-MM-DD
  * @param toDate Ngày kết thúc, YYYY-MM-DD
  * @param today Hôm nay theo lịch CLB, YYYY-MM-DD
- * @returns DELETE nếu chưa bắt đầu, END_TODAY nếu đang hiệu lực
+ * @returns Cách gỡ
  * @throws ConflictException Nếu việc đã kết thúc trước hôm nay
  */
 export function careTaskRemovalOf(
+  mode: HorseCareTaskMode,
   fromDate: string,
   toDate: string,
   today: string,
 ): CareTaskRemoval {
-  if (fromDate > today) return 'DELETE';
-  if (toDate >= today) return 'END_TODAY';
-  throw new ConflictException('Việc riêng đã kết thúc, không gỡ được');
+  if (toDate < today) {
+    throw new ConflictException('Việc riêng đã kết thúc, không gỡ được');
+  }
+  if (mode === HorseCareTaskMode.EXEMPT) {
+    return fromDate >= today ? 'DELETE' : 'END_YESTERDAY';
+  }
+  return fromDate > today ? 'DELETE' : 'END_TODAY';
 }

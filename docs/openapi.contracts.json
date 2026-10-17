@@ -16151,6 +16151,14 @@
           "taskType": {
             "$ref": "#/components/schemas/CareTaskTypeResponseDto"
           },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "EXTRA",
+              "EXEMPT"
+            ],
+            "description": "EXTRA: gắn thêm. EXEMPT: miễn việc chung"
+          },
           "fromDate": {
             "type": "string",
             "format": "date"
@@ -16180,6 +16188,7 @@
           "id",
           "horseId",
           "taskType",
+          "mode",
           "fromDate",
           "toDate",
           "creator",
@@ -16194,6 +16203,15 @@
             "format": "uuid",
             "description": "Loại việc"
           },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "EXTRA",
+              "EXEMPT"
+            ],
+            "default": "EXTRA",
+            "description": "EXTRA: gắn thêm loại việc không áp mọi ngựa. EXEMPT: miễn loại việc đang áp mọi ngựa, bắt buộc ghi lý do ở note"
+          },
           "fromDate": {
             "type": "string",
             "format": "date",
@@ -16207,7 +16225,7 @@
           "note": {
             "type": "string",
             "maxLength": 200,
-            "description": "Ghi chú cho Groom"
+            "description": "Ghi chú cho Groom; với EXEMPT là lý do miễn (bắt buộc)"
           }
         },
         "required": [

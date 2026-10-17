@@ -2,14 +2,16 @@ import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 import { CareTaskTypeEntity } from './care-task-type.entity';
 
 /**
- * Việc riêng Head Trainer gắn cho một con ngựa trong một khoảng ngày
+ * Việc riêng Head Trainer gắn cho một con ngựa trong một khoảng ngày: gắn thêm loại việc không áp mọi ngựa, hoặc miễn loại việc đang áp mọi ngựa
  */
 @Entity({ name: 'horse_daily_tasks' })
 @Index('horse_daily_tasks_horse_dates_idx', ['horseId', 'fromDate', 'toDate'])
 @Check('horse_daily_tasks_date_range_ck', '"from_date" <= "to_date"')
+@Check('horse_daily_tasks_mode_ck', `"mode" IN ('EXTRA', 'EXEMPT')`)
 export class HorseCareTaskEntity extends BaseRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -33,6 +35,9 @@ export class HorseCareTaskEntity extends BaseRecordEntity {
     foreignKeyConstraintName: 'horse_daily_tasks_task_type_fk',
   })
   taskType!: CareTaskTypeEntity;
+
+  @Column({ type: 'varchar', length: 16, default: HorseCareTaskMode.EXTRA })
+  mode!: HorseCareTaskMode;
 
   @Column({ name: 'from_date', type: 'date' })
   fromDate!: string;

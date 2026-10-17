@@ -12,16 +12,24 @@ import { checklistStatusOf } from '../policies/daily-checklist.policy';
 import type { ChecklistTaskAddedEvent } from '../types/stable-events.types';
 
 /**
- * Loại việc của một ngày cho một con ngựa: việc chung đang dùng cộng việc riêng còn hiệu lực, theo thứ tự tạo loại việc
+ * Loại việc của một ngày cho một con ngựa: việc chung đang dùng (trừ việc ngựa được miễn đúng ngày đó) cộng việc gắn thêm còn hiệu lực, theo thứ tự tạo loại việc
  */
 const TASK_TYPES_FOR_DAY_SQL = `SELECT t.id
   FROM daily_task_types t
  WHERE t.active
-   AND (t.applies_to_all
+   AND ((t.applies_to_all
+         AND NOT EXISTS (SELECT 1
+                           FROM horse_daily_tasks e
+                          WHERE e.task_type_id = t.id
+                            AND e.horse_id = $1
+                            AND e.mode = 'EXEMPT'
+                            AND e.from_date <= $2::date
+                            AND e.to_date >= $2::date))
         OR EXISTS (SELECT 1
                      FROM horse_daily_tasks h
                     WHERE h.task_type_id = t.id
                       AND h.horse_id = $1
+                      AND h.mode = 'EXTRA'
                       AND h.from_date <= $2::date
                       AND h.to_date >= $2::date))
  ORDER BY t.created_at, t.name`;
@@ -213,6 +221,46 @@ export class DailyChecklistsService {
       taskName: taskType.name,
     };
     await this.events.publish(manager, CHECKLIST_TASK_ADDED_EVENT, event);
+    return true;
+  }
+
+  /**
+   * Bỏ một loại việc chưa tick khỏi checklist đã sinh của ngựa trong ngày
+   *
+   * - Checklist chưa sinh, không có việc này hoặc việc đã tick thì không đổi gì
+   * - Bỏ xong mà checklist không còn việc nào thì xóa checklist; còn việc thì tính lại trạng thái
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param date Ngày của checklist, YYYY-MM-DD
+   * @param taskTypeId UUID của loại việc
+   * @returns Promise trả về true nếu đã bỏ việc
+   */
+  async removeUntickedTaskFromChecklist(
+    manager: EntityManager,
+    horseId: string,
+    date: string,
+    taskTypeId: string,
+  ): Promise<boolean> {
+    const checklist = await manager.findOne(DailyChecklistEntity, {
+      where: { horseId, checklistDate: date },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!checklist) return false;
+    const removed = await manager.delete(DailyChecklistItemEntity, {
+      checklistId: checklist.id,
+      taskTypeId,
+      doneAt: IsNull(),
+    });
+    if (!removed.affected) return false;
+    const left = await manager.countBy(DailyChecklistItemEntity, {
+      checklistId: checklist.id,
+    });
+    if (left === 0) {
+      await manager.delete(DailyChecklistEntity, { id: checklist.id });
+    } else {
+      await this.refreshStatus(manager, checklist);
+    }
     return true;
   }
 

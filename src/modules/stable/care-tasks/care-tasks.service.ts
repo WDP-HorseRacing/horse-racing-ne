@@ -8,7 +8,7 @@ import {
   Repository,
 } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday, shiftDays } from '../../../common/utils/club-date';
 import type { FieldError } from '../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
@@ -24,6 +24,7 @@ import {
   HorseCareTaskResponseDto,
   UpdateCareTaskTypeDto,
 } from '../dto/care-task.dto';
+import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 import { CareTaskTypeEntity } from '../entities/care-task-type.entity';
 import { HorseCareTaskEntity } from '../entities/horse-care-task.entity';
 import {
@@ -31,8 +32,10 @@ import {
   toHorseCareTaskResponse,
 } from '../mappers/daily-checklist.mapper';
 import {
+  assertAppliesToAllChangeable,
   assertAssignableCareTaskType,
   assertCareTaskRange,
+  assertExemptionReason,
   assertNoOverlappingCareTask,
   careTaskRemovalOf,
 } from '../policies/daily-checklist.policy';
@@ -120,6 +123,7 @@ export class CareTasksService {
   /**
    * Sửa tên, cờ áp mọi ngựa hoặc ngưng/dùng lại loại việc; checklist đã sinh không đổi
    *
+   * - Đổi cờ áp mọi ngựa khi còn ngựa được gắn thêm hoặc được miễn loại này chưa hết hạn: 409
    * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -128,7 +132,7 @@ export class CareTasksService {
    * @returns Promise trả về loại việc sau khi sửa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có loại việc
-   * @throws ConflictException Nếu tên loại việc đã tồn tại
+   * @throws ConflictException Nếu tên loại việc đã tồn tại, hoặc đổi cờ áp mọi ngựa khi còn dòng việc riêng chưa hết hạn
    */
   async updateType(
     actor: Actor,
@@ -144,6 +148,16 @@ export class CareTasksService {
             lock: { mode: 'pessimistic_write' },
           });
           if (!type) throw new NotFoundException(CARE_TASK_TYPE_NOT_FOUND);
+          const changingAppliesToAll =
+            body.appliesToAll !== undefined &&
+            body.appliesToAll !== type.appliesToAll;
+          assertAppliesToAllChangeable(
+            changingAppliesToAll,
+            changingAppliesToAll &&
+              (await manager.exists(HorseCareTaskEntity, {
+                where: { taskTypeId: id, toDate: MoreThanOrEqual(clubToday()) },
+              })),
+          );
           const before = careTaskTypeAuditData(type);
           Object.assign(type, {
             name: body.name?.trim() ?? type.name,
@@ -198,18 +212,20 @@ export class CareTasksService {
   }
 
   /**
-   * Gắn một loại việc cho ngựa trong khoảng ngày; bắt đầu hôm nay thì thêm ngay vào checklist hôm nay (chưa có thì sinh)
+   * Gắn thêm hoặc miễn một loại việc cho ngựa trong khoảng ngày
    *
-   * - Ghi nhật ký kèm ngựa, loại việc, khoảng ngày, ghi chú
+   * - Gắn thêm bắt đầu hôm nay: thêm ngay vào checklist hôm nay (chưa có thì sinh)
+   * - Miễn bắt đầu hôm nay: bỏ việc đó khỏi checklist hôm nay nếu chưa tick; đã tick thì giữ
+   * - Ghi nhật ký kèm ngựa, loại việc, kiểu dòng, khoảng ngày, ghi chú
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @param body Loại việc, khoảng ngày, ghi chú
+   * @param body Loại việc, kiểu dòng (mặc định gắn thêm), khoảng ngày, ghi chú (lý do miễn)
    * @returns Promise trả về việc riêng vừa gắn
    * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc ngựa không thuộc khu người gọi
    * @throws NotFoundException Nếu không có ngựa hoặc loại việc
-   * @throws ConflictException Nếu ngựa chưa có khu, đã chuyển nhượng hoặc đã mất; loại việc đã ngưng hoặc đã áp mọi ngựa; hoặc trùng khoảng ngày
-   * @throws BadRequestException Nếu khoảng ngày không hợp lệ
+   * @throws ConflictException Nếu ngựa chưa có khu, đã chuyển nhượng hoặc đã mất; loại việc đã ngưng, gắn thêm loại đã áp mọi ngựa hoặc miễn loại không áp mọi ngựa; hoặc trùng khoảng ngày
+   * @throws BadRequestException Nếu khoảng ngày không hợp lệ, hoặc miễn mà không có lý do
    */
   async createForHorse(
     actor: Actor,
@@ -218,6 +234,8 @@ export class CareTasksService {
   ): Promise<HorseCareTaskResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const today = clubToday();
+    const mode = body.mode ?? HorseCareTaskMode.EXTRA;
+    const note = body.note?.trim() || null;
     const id = await this.dataSource.transaction(async (manager) => {
       await this.access.lockOperableHorse(
         manager,
@@ -226,11 +244,12 @@ export class CareTasksService {
         'CARE_TASK',
       );
       assertCareTaskRange(body.fromDate, body.toDate, today);
+      assertExemptionReason(mode, note);
       const type = await manager.findOneBy(CareTaskTypeEntity, {
         id: body.taskTypeId,
       });
       if (!type) throw new NotFoundException(CARE_TASK_TYPE_NOT_FOUND);
-      assertAssignableCareTaskType(type);
+      assertAssignableCareTaskType(type, mode);
       assertNoOverlappingCareTask(
         await manager.exists(HorseCareTaskEntity, {
           where: {
@@ -245,15 +264,24 @@ export class CareTasksService {
         manager.create(HorseCareTaskEntity, {
           horseId,
           taskTypeId: type.id,
+          mode,
           fromDate: body.fromDate,
           toDate: body.toDate,
-          note: body.note?.trim() || null,
+          note,
           createdBy: caller.id,
         }),
       );
-      if (body.fromDate === today) {
+      if (body.fromDate === today && mode === HorseCareTaskMode.EXTRA) {
         await this.checklists.ensureChecklist(manager, horseId, today);
         await this.checklists.addTaskToChecklist(manager, horseId, today, type);
+      }
+      if (body.fromDate === today && mode === HorseCareTaskMode.EXEMPT) {
+        await this.checklists.removeUntickedTaskFromChecklist(
+          manager,
+          horseId,
+          today,
+          type.id,
+        );
       }
       await this.auditService.record(manager, {
         actorId: caller.id,
@@ -264,6 +292,7 @@ export class CareTasksService {
         after: {
           horseId,
           taskTypeId: type.id,
+          mode,
           fromDate: saved.fromDate,
           toDate: saved.toDate,
           note: saved.note,
@@ -278,9 +307,11 @@ export class CareTasksService {
   }
 
   /**
-   * Gỡ việc riêng: chưa bắt đầu thì xóa, đang hiệu lực thì kết thúc ở hôm nay; checklist đã sinh không đổi
+   * Gỡ việc riêng của ngựa theo kiểu dòng
    *
-   * - Ghi nhật ký: xóa kèm nội dung việc, hoặc kết thúc kèm ngày kết thúc trước và sau
+   * - Gắn thêm: chưa bắt đầu thì xóa, đang hiệu lực thì kết thúc ở hôm nay; checklist đã sinh không đổi
+   * - Miễn: bắt đầu từ hôm nay trở đi thì xóa, bắt đầu trước hôm nay thì kết thúc ở hôm qua; việc chung có lại ngay trong checklist hôm nay (nếu loại việc còn dùng và còn áp mọi ngựa) và báo Groom
+   * - Ghi nhật ký: xóa kèm nội dung dòng, hoặc kết thúc kèm ngày kết thúc trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của việc riêng
@@ -301,7 +332,13 @@ export class CareTasksService {
         task.horseId,
         'CARE_TASK',
       );
-      if (careTaskRemovalOf(task.fromDate, task.toDate, today) === 'DELETE') {
+      const removal = careTaskRemovalOf(
+        task.mode,
+        task.fromDate,
+        task.toDate,
+        today,
+      );
+      if (removal === 'DELETE') {
         await manager.delete(HorseCareTaskEntity, { id });
         await this.auditService.record(manager, {
           actorId: caller.id,
@@ -311,25 +348,60 @@ export class CareTasksService {
           before: {
             horseId: task.horseId,
             taskTypeId: task.taskTypeId,
+            mode: task.mode,
             fromDate: task.fromDate,
             toDate: task.toDate,
           },
           after: null,
           feature: AuditFeature.CARE_TASK,
         });
-        return;
+      } else {
+        const toDate = removal === 'END_TODAY' ? today : shiftDays(today, -1);
+        await manager.update(HorseCareTaskEntity, { id }, { toDate });
+        await this.auditService.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.HORSE_CARE_TASK,
+          entityId: id,
+          before: { toDate: task.toDate },
+          after: { toDate },
+          feature: AuditFeature.CARE_TASK,
+        });
       }
-      await manager.update(HorseCareTaskEntity, { id }, { toDate: today });
-      await this.auditService.record(manager, {
-        actorId: caller.id,
-        action: AuditAction.UPDATE,
-        entityType: AuditEntityType.HORSE_CARE_TASK,
-        entityId: id,
-        before: { toDate: task.toDate },
-        after: { toDate: today },
-        feature: AuditFeature.CARE_TASK,
-      });
+      if (task.mode === HorseCareTaskMode.EXEMPT) {
+        await this.restoreSharedTaskToday(manager, task, today);
+      }
     });
+  }
+
+  /**
+   * Thêm lại việc chung vào checklist hôm nay sau khi đã gỡ dòng miễn đang che hôm nay
+   *
+   * - Dòng miễn chưa tới ngày bắt đầu, hoặc loại việc đã ngưng hay không còn áp mọi ngựa: không thêm
+   * - Hôm nay chưa có checklist (ngựa có Groom) thì sinh; đã có thì thêm việc và báo Groom
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param exemption Dòng miễn vừa gỡ (giá trị trước khi gỡ)
+   * @param today Hôm nay theo lịch CLB, YYYY-MM-DD
+   * @returns Promise hoàn tất khi đã thêm hoặc bỏ qua
+   */
+  private async restoreSharedTaskToday(
+    manager: EntityManager,
+    exemption: HorseCareTaskEntity,
+    today: string,
+  ): Promise<void> {
+    if (exemption.fromDate > today) return;
+    const type = await manager.findOneBy(CareTaskTypeEntity, {
+      id: exemption.taskTypeId,
+    });
+    if (!type?.active || !type.appliesToAll) return;
+    await this.checklists.ensureChecklist(manager, exemption.horseId, today);
+    await this.checklists.addTaskToChecklist(
+      manager,
+      exemption.horseId,
+      today,
+      type,
+    );
   }
 
   /**

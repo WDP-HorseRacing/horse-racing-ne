@@ -657,6 +657,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
           {
             horseId: gio,
             taskTypeId: types['Ngâm chân nước đá'],
+            mode: 'EXTRA',
             fromDate,
             toDate,
             note: null,
@@ -667,6 +668,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
           {
             horseId: gio,
             taskTypeId: types['Ngâm chân nước đá'],
+            mode: 'EXTRA',
             fromDate,
             toDate,
           },

@@ -4,8 +4,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
+import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 import {
+  assertAppliesToAllChangeable,
   assertAssignableCareTaskType,
+  assertExemptionReason,
   assertCareTaskRange,
   assertChecklistRange,
   assertChecklistGroom,
@@ -63,28 +66,52 @@ describe('daily checklist policy', () => {
     });
   });
 
-  it('only assigns an active type that is not already for every horse', () => {
+  describe('assertAssignableCareTaskType', () => {
+    const extra = { name: 'Ngâm đá', active: true, appliesToAll: false };
+    const shared = { name: 'Cho ăn sáng', active: true, appliesToAll: true };
+    const { EXTRA, EXEMPT } = HorseCareTaskMode;
+
+    it('adds only an active type that is not for every horse', () => {
+      expect(() => assertAssignableCareTaskType(extra, EXTRA)).not.toThrow();
+      expect(() =>
+        assertAssignableCareTaskType({ ...extra, active: false }, EXTRA),
+      ).toThrow(ConflictException);
+      expect(() => assertAssignableCareTaskType(shared, EXTRA)).toThrow(
+        ConflictException,
+      );
+    });
+
+    it('exempts only an active type that is for every horse', () => {
+      expect(() => assertAssignableCareTaskType(shared, EXEMPT)).not.toThrow();
+      expect(() => assertAssignableCareTaskType(extra, EXEMPT)).toThrow(
+        new ConflictException(
+          'Loại việc Ngâm đá không áp cho mọi ngựa, không cần miễn',
+        ),
+      );
+      expect(() =>
+        assertAssignableCareTaskType({ ...shared, active: false }, EXEMPT),
+      ).toThrow(ConflictException);
+    });
+  });
+
+  it('requires a reason to exempt a horse, not to add a task', () => {
     expect(() =>
-      assertAssignableCareTaskType({
-        name: 'Ngâm đá',
-        active: true,
-        appliesToAll: false,
-      }),
+      assertExemptionReason(HorseCareTaskMode.EXEMPT, 'Ngựa đang sốt'),
     ).not.toThrow();
+    expect(() => assertExemptionReason(HorseCareTaskMode.EXEMPT, null)).toThrow(
+      BadRequestException,
+    );
     expect(() =>
-      assertAssignableCareTaskType({
-        name: 'Ngâm đá',
-        active: false,
-        appliesToAll: false,
-      }),
-    ).toThrow(ConflictException);
-    expect(() =>
-      assertAssignableCareTaskType({
-        name: 'Cho ăn',
-        active: true,
-        appliesToAll: true,
-      }),
-    ).toThrow(ConflictException);
+      assertExemptionReason(HorseCareTaskMode.EXTRA, null),
+    ).not.toThrow();
+  });
+
+  it('blocks switching "for every horse" only while horse rows are still open', () => {
+    expect(() => assertAppliesToAllChangeable(true, true)).toThrow(
+      ConflictException,
+    );
+    expect(() => assertAppliesToAllChangeable(true, false)).not.toThrow();
+    expect(() => assertAppliesToAllChangeable(false, true)).not.toThrow();
   });
 
   it('rejects an overlapping assignment', () => {
@@ -94,24 +121,38 @@ describe('daily checklist policy', () => {
 
   describe('careTaskRemovalOf', () => {
     const today = '2026-10-10';
+    const { EXTRA, EXEMPT } = HorseCareTaskMode;
 
-    it('deletes a task that has not started', () => {
-      expect(careTaskRemovalOf('2026-10-11', '2026-10-20', today)).toBe(
+    it('deletes an added task that has not started', () => {
+      expect(careTaskRemovalOf(EXTRA, '2026-10-11', '2026-10-20', today)).toBe(
         'DELETE',
       );
     });
 
-    it('ends a running task today', () => {
-      expect(careTaskRemovalOf('2026-10-01', '2026-10-10', today)).toBe(
+    it('ends a running added task today', () => {
+      expect(careTaskRemovalOf(EXTRA, '2026-10-01', '2026-10-10', today)).toBe(
         'END_TODAY',
       );
-      expect(careTaskRemovalOf(today, '2026-10-20', today)).toBe('END_TODAY');
+      expect(careTaskRemovalOf(EXTRA, today, '2026-10-20', today)).toBe(
+        'END_TODAY',
+      );
     });
 
-    it('refuses a task that already ended', () => {
-      expect(() =>
-        careTaskRemovalOf('2026-10-01', '2026-10-09', today),
-      ).toThrow(ConflictException);
+    it('deletes an exemption starting today and ends an older one yesterday', () => {
+      expect(careTaskRemovalOf(EXEMPT, today, '2026-10-20', today)).toBe(
+        'DELETE',
+      );
+      expect(careTaskRemovalOf(EXEMPT, '2026-10-01', '2026-10-20', today)).toBe(
+        'END_YESTERDAY',
+      );
+    });
+
+    it('refuses a row that already ended', () => {
+      for (const mode of [EXTRA, EXEMPT]) {
+        expect(() =>
+          careTaskRemovalOf(mode, '2026-10-01', '2026-10-09', today),
+        ).toThrow(ConflictException);
+      }
     });
   });
 

@@ -180,3 +180,13 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 2. Thông báo mới cho Club Manager, `category` là `DAILY_CHECKLIST`, `resource` là `null`:
    - Lỗi kéo dài (mức `HIGH`), tối đa một lần mỗi ngày: tiêu đề "Lỗi sinh checklist hôm nay", nội dung "Chưa có checklist hôm nay cho Winx, Gió. Hệ thống đang thử lại." FE có thể gắn nút "Sinh lại checklist hôm nay" gọi route ở mục 1.
    - Đã đủ lại (mức `NORMAL`), chỉ khi trước đó đã báo lỗi: tiêu đề "Checklist hôm nay đã đủ", nội dung "Đã có đủ checklist hôm nay."
+
+## Miễn việc chung cho từng ngựa
+
+1. `POST /horses/:horseId/care-tasks` nhận thêm `mode` (`EXTRA` | `EXEMPT`, mặc định `EXTRA` như cũ).
+   - `EXEMPT` miễn một loại việc đang "áp mọi ngựa" trong khoảng ngày, ví dụ không tắm 5 ngày vì ngựa sốt. `note` là lý do, bắt buộc: thiếu trả 400 ở ô `note`.
+   - Miễn loại việc không áp mọi ngựa: 409.
+2. Response việc riêng (`GET /horses/:horseId/care-tasks` và POST ở trên) có thêm `mode`. FE nên hiện dòng `EXEMPT` là "Miễn: <tên việc>".
+3. Miễn bắt đầu hôm nay: dòng việc đó biến khỏi checklist hôm nay nếu chưa tick. Gỡ dòng miễn (`DELETE /horse-care-tasks/:id`): việc có lại ngay trong checklist hôm nay, Groom nhận thông báo "Có việc mới hôm nay".
+4. `PATCH /care-task-types/:id` đổi `appliesToAll` khi còn ngựa được gắn thêm hoặc được miễn loại đó chưa hết hạn: 409.
+
