@@ -12,3 +12,7 @@ export const STUCK_RUN_GRACE_MS = 30 * 60 * 1000;
 
 /** Lý do ghi nhật ký khi hệ thống tự hoàn thành lượt đang tập bị quên */
 export const AUTO_COMPLETED_RUN_REASON = 'Hệ thống tự hoàn thành';
+
+/** Lý do ghi nhật ký khi hệ thống chấm lại điều kiện tập của lượt sau khi khóa huấn luyện hoặc sức khỏe ngựa đổi */
+export const ELIGIBILITY_REEVALUATED_REASON =
+  'Hệ thống chấm lại điều kiện tập sau khi đổi khóa huấn luyện hoặc sức khỏe';

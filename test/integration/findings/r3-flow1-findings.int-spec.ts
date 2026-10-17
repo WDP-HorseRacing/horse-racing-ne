@@ -226,6 +226,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
     listener = new ParticipantEligibilityListener(
       dataSource,
       new TrainingOperationsFacade(),
+      new AuditService(),
     );
   });
 

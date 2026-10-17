@@ -17,6 +17,7 @@ import {
   eligibilityForSession,
   initialParticipantEligibility,
 } from '../policies/training.policy';
+import type { ParticipantEligibilityChange } from '../types/training-session.types';
 
 /**
  * Tham số khi hệ thống tự rút một con ngựa khỏi lớp.
@@ -238,18 +239,18 @@ export class TrainingOperationsFacade {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
-   * @returns Promise trả về số lượt đã đổi trạng thái hoặc lý do
+   * @returns Promise trả về các lượt đã đổi trạng thái hoặc lý do, kèm giá trị trước và sau
    */
   async reevaluateUpcomingParticipants(
     manager: EntityManager,
     horseId: string,
-  ): Promise<number> {
+  ): Promise<ParticipantEligibilityChange[]> {
     const horse = await manager.findOne(HorseEntity, {
       where: { id: horseId },
       withDeleted: true,
       lock: { mode: 'pessimistic_write' },
     });
-    if (!horse) return 0;
+    if (!horse) return [];
     const sessions = await manager
       .getRepository(TrainingSessionEntity)
       .createQueryBuilder('session')
@@ -269,7 +270,7 @@ export class TrainingOperationsFacade {
       .orderBy('session.id', 'ASC')
       .setLock('pessimistic_write', undefined, ['session'])
       .getMany();
-    if (sessions.length === 0) return 0;
+    if (sessions.length === 0) return [];
     const participants = await manager.find(SessionParticipantEntity, {
       where: {
         horseId,
@@ -292,6 +293,7 @@ export class TrainingOperationsFacade {
     const intensityBySession = new Map(
       sessions.map((session) => [session.id, session.intensity]),
     );
+    const changes: ParticipantEligibilityChange[] = [];
     const changed = participants.filter((participant) => {
       const next = initialParticipantEligibility(
         eligibilityForSession(
@@ -306,13 +308,21 @@ export class TrainingOperationsFacade {
       ) {
         return false;
       }
+      changes.push({
+        participantId: participant.id,
+        before: {
+          status: participant.status,
+          ineligibilityReason: participant.ineligibilityReason,
+        },
+        after: next,
+      });
       Object.assign(participant, next);
       return true;
     });
     if (changed.length) {
       await manager.save(SessionParticipantEntity, changed);
     }
-    return changed.length;
+    return changes;
   }
 
   /**

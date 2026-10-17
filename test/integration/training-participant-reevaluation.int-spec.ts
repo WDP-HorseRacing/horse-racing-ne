@@ -32,7 +32,11 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
     facade = new TrainingOperationsFacade();
-    listener = new ParticipantEligibilityListener(dataSource, facade);
+    listener = new ParticipantEligibilityListener(
+      dataSource,
+      facade,
+      new AuditService(),
+    );
     job = new SessionAutoCloseService(dataSource, facade, new AuditService());
   });
 
@@ -134,6 +138,12 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
     return row;
   };
 
+  const auditRows = () =>
+    dataSource.query<Array<Record<string, unknown>>>(
+      `SELECT actor_id, action, entity_type, entity_id, before_data, after_data, reason, feature
+         FROM audit_logs ORDER BY created_at`,
+    );
+
   describe('listener on lock and health events', () => {
     it('cancels upcoming participants by lock when a lock is set, and keeps the upcoming session SCHEDULED', async () => {
       const winx = await horse();
@@ -154,6 +164,22 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
         ineligibility_reason: 'ACTIVE_TRAINING_LOCK',
       });
       expect((await sessionRow(upcoming)).status).toBe('SCHEDULED');
+      await expect(auditRows()).resolves.toEqual([
+        {
+          actor_id: null,
+          action: 'UPDATE',
+          entity_type: 'SESSION_PARTICIPANT',
+          entity_id: planned,
+          before_data: { status: 'PLANNED', ineligibilityReason: null },
+          after_data: {
+            status: 'CANCELLED_BY_LOCK',
+            ineligibilityReason: 'ACTIVE_TRAINING_LOCK',
+          },
+          reason:
+            'Hệ thống chấm lại điều kiện tập sau khi đổi khóa huấn luyện hoặc sức khỏe',
+          feature: 'TRAIN_RUN',
+        },
+      ]);
     });
 
     it('brings participants cancelled by lock back to PLANNED when the lock is released', async () => {
@@ -274,6 +300,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
 
       expect(await participantRow(planned)).toEqual(first);
       expect(first.status).toBe('CANCELLED_BY_LOCK');
+      await expect(auditRows()).resolves.toHaveLength(1);
       expect((await sessionRow(upcoming)).status).toBe('SCHEDULED');
     });
   });

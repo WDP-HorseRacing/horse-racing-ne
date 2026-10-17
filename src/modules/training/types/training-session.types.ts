@@ -1,3 +1,4 @@
+import type { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import type { TrainingIntensity } from '../enums/training-intensity.enum';
 
 /**
@@ -50,4 +51,21 @@ export interface HorseListDisplay {
  */
 export interface ParticipantListDisplay extends HorseListDisplay {
   assignedGroomName: string | null;
+}
+
+/**
+ * Trạng thái và lý do không đủ điều kiện của một lượt tập.
+ */
+export interface ParticipantEligibilityState {
+  status: SessionParticipantStatus;
+  ineligibilityReason: string | null;
+}
+
+/**
+ * Lượt tập vừa đổi trạng thái hoặc lý do khi hệ thống chấm lại điều kiện tập.
+ */
+export interface ParticipantEligibilityChange {
+  participantId: string;
+  before: ParticipantEligibilityState;
+  after: ParticipantEligibilityState;
 }

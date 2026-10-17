@@ -109,7 +109,11 @@ describe('Training findings (Postgres)', () => {
       dataSource,
       audit,
     );
-    listener = new ParticipantEligibilityListener(dataSource, facade);
+    listener = new ParticipantEligibilityListener(
+      dataSource,
+      facade,
+      new AuditService(),
+    );
     job = new SessionAutoCloseService(dataSource, facade, new AuditService());
     groomToday = new GroomTodayService(dataSource);
     moduleRef = await Test.createTestingModule({
