@@ -69,9 +69,8 @@ export function toLifecyclePreviewResponse({
       ? HorseHealthStatus.UNDER_OBSERVATION
       : null,
     pendingBarnAfter: effects.reactivateFromTransfer,
-    ownerCleared: effects.reactivateFromTransfer
-      ? impact.invalidOwnerName
-      : null,
+    ownerCleared: effects.endOwnership ? impact.ownerName : null,
+    ownerRequired: effects.reactivateFromTransfer,
     summary,
   };
 }

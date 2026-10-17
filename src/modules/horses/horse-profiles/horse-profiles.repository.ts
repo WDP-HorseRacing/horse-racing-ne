@@ -14,6 +14,7 @@ import { applyHorseScope } from '../utils/horse-scope';
 import type {
   HorseLocationRow,
   HorseScope,
+  PastOwnershipRow,
   PedigreeAncestorRow,
 } from '../types/horse.types';
 import {
@@ -237,6 +238,40 @@ export class HorseProfilesRepository {
     } else {
       qb.orderBy(VIETNAMESE_NAME_ORDER, query.sortOrder);
     }
+  }
+  /**
+   * Lấy các giai đoạn sở hữu đã kết thúc của một chủ trên những con ngựa người đó không còn sở hữu
+   *
+   * - Gồm cả giai đoạn kết thúc do chuyển nhượng nội bộ, chuyển nhượng ra ngoài hay bị bỏ trống chủ
+   * - Bỏ con ngựa người đó đang là chủ hiện tại và hồ sơ đã xóa
+   * - Sắp theo lúc kết thúc, mới nhất trước
+   *
+   * @param ownerId UUID tài khoản chủ cũ
+   * @param horseId Chỉ lấy của một con ngựa; bỏ trống là mọi ngựa
+   * @returns Promise trả về từng giai đoạn kèm tên, giới tính, màu lông, ngày sinh và mã ảnh của ngựa
+   */
+  pastOwnershipsOf(
+    ownerId: string,
+    horseId?: string,
+  ): Promise<PastOwnershipRow[]> {
+    return this.dataSource.query(
+      `SELECT h.id AS "horseId",
+              h.name,
+              h.gender,
+              h.color,
+              to_char(h.date_of_birth, 'YYYY-MM-DD') AS "dateOfBirth",
+              h.photo_asset_id AS "mediaId",
+              o.started_at AS "startedAt",
+              o.ended_at AS "endedAt"
+         FROM horse_ownerships o
+         JOIN horses h ON h.id = o.horse_id AND h.deleted_at IS NULL
+        WHERE o.owner_id = $1
+          AND o.ended_at IS NOT NULL
+          AND h.owner_id IS DISTINCT FROM $1
+          ${horseId ? 'AND h.id = $2' : ''}
+        ORDER BY o.ended_at DESC, h.id`,
+      horseId ? [ownerId, horseId] : [ownerId],
+    );
   }
 }
 

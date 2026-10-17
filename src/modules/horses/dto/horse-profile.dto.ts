@@ -99,17 +99,15 @@ export class CreateHorseDto {
   })
   color?: string | null;
 
-  @ApiPropertyOptional({
-    nullable: true,
-    type: String,
+  @ApiProperty({
     pattern: MICROCHIP_PATTERN.source,
-    description: 'Đúng 15 chữ số',
+    description:
+      'Đúng 15 chữ số, không trùng với hồ sơ nào (kể cả hồ sơ đã xóa)',
   })
   @Transform(trimToNull)
-  @IsOptional()
   @IsString()
   @Matches(MICROCHIP_PATTERN, { message: 'Số chip phải gồm đúng 15 chữ số' })
-  microchipId?: string | null;
+  microchipId!: string;
 
   @ApiPropertyOptional({ format: 'date', nullable: true, type: String })
   @IsOptional()
@@ -140,16 +138,12 @@ export class CreateHorseDto {
   @IsUUID()
   mediaId?: string | null;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     format: 'uuid',
-    nullable: true,
-    type: String,
-    description:
-      'Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động. Để trống thì gán sau bằng PATCH',
+    description: 'Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động',
   })
-  @IsOptional()
   @IsUUID()
-  ownerId?: string | null;
+  ownerId!: string;
 
   @ApiPropertyOptional({
     format: 'uuid',
@@ -161,8 +155,37 @@ export class CreateHorseDto {
   barnId?: string;
 }
 export class UpdateHorseDto extends PartialType(
-  OmitType(CreateHorseDto, ['name', 'gender', 'barnId'] as const),
+  OmitType(CreateHorseDto, [
+    'name',
+    'gender',
+    'barnId',
+    'ownerId',
+    'microchipId',
+  ] as const),
 ) {
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    pattern: MICROCHIP_PATTERN.source,
+    description: 'Đúng 15 chữ số',
+  })
+  @Transform(trimToNull)
+  @IsOptional()
+  @IsString()
+  @Matches(MICROCHIP_PATTERN, { message: 'Số chip phải gồm đúng 15 chữ số' })
+  microchipId?: string | null;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    nullable: true,
+    type: String,
+    description:
+      'Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động. Chỉ gán được cho ngựa chưa có chủ',
+  })
+  @IsOptional()
+  @IsUUID()
+  ownerId?: string | null;
+
   @ApiPropertyOptional({
     enum: RaceAptitude,
     nullable: true,

@@ -26,6 +26,7 @@ describe('Reports finance (Postgres)', () => {
   let bId: string;
   let gio: string;
   let may: string;
+  let sao: string;
 
   beforeAll(async () => {
     db = await startTestPostgres();
@@ -96,7 +97,7 @@ describe('Reports finance (Postgres)', () => {
 
     gio = await seed.horse('Gió', { ownerId: bId });
     may = await seed.horse('Mây', { ownerId: aId });
-    const sao = await seed.horse('Sao');
+    sao = await seed.horse('Sao');
     const sold = await seed.horse('Đã bán', {
       ownerId: aId,
       lifecycle: HorseLifecycleStatus.TRANSFERRED,
@@ -328,10 +329,10 @@ describe('Reports finance (Postgres)', () => {
       from: '2026-10-01',
       to: '2026-10-12',
       ownerCharges: {
-        dailyFee: 1800000,
+        dailyFee: 3100000,
         medicalCost: 3300000,
         surcharge: 260000,
-        total: 5360000,
+        total: 6660000,
       },
       supplies: { purchased: 150833, used: 45000 },
       prizeMoney: 0,
@@ -353,6 +354,44 @@ describe('Reports finance (Postgres)', () => {
           total: 2700000,
         },
       ],
+      unowned: {
+        billedDays: 8,
+        dailyFee: 3 * 100000 + 5 * 200000,
+        medicalCost: 300000,
+        surcharge: 0,
+        total: 1600000,
+      },
     });
+  });
+
+  it('bills the days a horse stays at the club without owner to the unowned part, only from its creation', async () => {
+    await dataSource.query(
+      `UPDATE horses SET created_at = '2026-10-09T00:00:00Z' WHERE id = $1`,
+      [sao],
+    );
+    await dataSource.query(
+      `INSERT INTO horse_surcharges (version, horse_id, description, daily_amount, start_date, end_date, created_by)
+       SELECT 1, $1, 'Chăm riêng', 40000, '2026-10-11', '2026-10-20', created_by FROM daily_fees LIMIT 1`,
+      [sao],
+    );
+
+    const report = await service.clubFinance(manager, period);
+
+    expect(report.unowned).toEqual({
+      billedDays: 4,
+      dailyFee: 4 * 200000,
+      medicalCost: 300000,
+      surcharge: 2 * 40000,
+      total: 800000 + 300000 + 80000,
+    });
+    expect(report.ownerCharges).toEqual({
+      dailyFee: 1800000 + 800000,
+      medicalCost: 3300000,
+      surcharge: 260000 + 80000,
+      total: 5360000 + 800000 + 80000,
+    });
+    expect(report.owners.map((owner) => owner.total)).toEqual([
+      2360000, 2700000,
+    ]);
   });
 });

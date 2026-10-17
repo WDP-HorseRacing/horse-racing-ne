@@ -321,6 +321,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
       await statuses.updateLifecycle(cm, horse, {
         lifecycleStatus: HorseLifecycleStatus.ACTIVE,
         reason: 'Mua lại',
+        ownerId: await seed.user(UserRole.HORSE_OWNER),
       });
 
       const [row] = await dataSource.query<{ owner_id: string | null }[]>(

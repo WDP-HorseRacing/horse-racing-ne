@@ -8,6 +8,8 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { HorseGender } from '../enums/horse-gender.enum';
+import { HorsePedigreeNodeResponseDto } from './horse-pedigree.dto';
 import { HorsePersonDto } from './horse.dto';
 
 export class CreateOwnershipTransferDto {
@@ -75,4 +77,51 @@ export class HorseOwnershipResponseDto {
     description: 'Người ghi nhận, null với dữ liệu chuyển đổi',
   })
   recordedBy!: HorsePersonDto | null;
+}
+
+export class OwnershipPeriodDto {
+  @ApiProperty({ description: 'Thời điểm bắt đầu sở hữu' })
+  startedAt!: Date;
+
+  @ApiProperty({ description: 'Thời điểm kết thúc sở hữu' })
+  endedAt!: Date;
+}
+
+export class PastHorseListItemDto {
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Link tải ảnh đại diện có hạn dùng; null nếu ngựa chưa có ảnh',
+  })
+  photoUrl!: string | null;
+
+  @ApiProperty({
+    type: [OwnershipPeriodDto],
+    description: 'Các khoảng người gọi từng sở hữu con ngựa, mới nhất trước',
+  })
+  periods!: OwnershipPeriodDto[];
+}
+
+export class PastHorseDetailDto extends PastHorseListItemDto {
+  @ApiProperty({ enum: HorseGender })
+  gender!: HorseGender;
+
+  @ApiPropertyOptional({ format: 'date', nullable: true, type: String })
+  dateOfBirth!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  color!: string | null;
+
+  @ApiProperty({
+    type: [HorsePedigreeNodeResponseDto],
+    description:
+      'Cha mẹ và ông bà có hồ sơ tại câu lạc bộ, chỉ có tên (canOpen luôn false)',
+  })
+  ancestors!: HorsePedigreeNodeResponseDto[];
 }

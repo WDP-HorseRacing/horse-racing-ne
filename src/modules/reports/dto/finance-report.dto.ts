@@ -69,13 +69,21 @@ export class FinanceOwnerDto extends FinanceOwnerChargesDto {
   @ApiProperty() ownerName!: string;
 }
 
+export class FinanceUnownedDto extends FinanceOwnerChargesDto {
+  @ApiProperty({
+    description:
+      'Tổng số ngày tính phí của các ngựa ở CLB mà lúc hết ngày không có chủ (mỗi ngựa mỗi ngày tính một)',
+  })
+  billedDays!: number;
+}
+
 export class ClubFinanceResponseDto {
   @ApiProperty({ format: 'date' }) from!: string;
   @ApiProperty({ format: 'date' }) to!: string;
   @ApiProperty({
     type: FinanceOwnerChargesDto,
     description:
-      'Khoản thu từ chủ ngựa; chi phí y tế gồm cả bệnh án đóng lúc ngựa không có chủ',
+      'Tổng phí nuôi, chi phí y tế và phụ phí của mọi ngựa trong kỳ, gồm cả phần chưa có chủ (= tổng owners + unowned)',
   })
   ownerCharges!: FinanceOwnerChargesDto;
   @ApiProperty({ type: FinanceSuppliesDto }) supplies!: FinanceSuppliesDto;
@@ -87,4 +95,10 @@ export class ClubFinanceResponseDto {
       'Từng chủ có ngựa còn ở CLB hoặc có bệnh án đóng trong kỳ, sắp theo tên',
   })
   owners!: FinanceOwnerDto[];
+  @ApiProperty({
+    type: FinanceUnownedDto,
+    description:
+      'Phần chưa có chủ: phí nuôi, phụ phí của các ngày ngựa ở CLB không có chủ và chi phí bệnh án đóng lúc ngựa không có chủ; không có thì các số bằng 0',
+  })
+  unowned!: FinanceUnownedDto;
 }

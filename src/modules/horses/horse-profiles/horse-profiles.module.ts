@@ -8,6 +8,8 @@ import { HorsesSharedModule } from '../shared/horses-shared.module';
 import { HorseProfilesController } from './horse-profiles.controller';
 import { HorseProfilesRepository } from './horse-profiles.repository';
 import { HorseProfilesService } from './horse-profiles.service';
+import { PastHorsesController } from './past-horses.controller';
+import { PastHorsesService } from './past-horses.service';
 
 @Module({
   imports: [
@@ -17,7 +19,7 @@ import { HorseProfilesService } from './horse-profiles.service';
     MediaModule,
     BarnsModule,
   ],
-  controllers: [HorseProfilesController],
-  providers: [HorseProfilesRepository, HorseProfilesService],
+  controllers: [HorseProfilesController, PastHorsesController],
+  providers: [HorseProfilesRepository, HorseProfilesService, PastHorsesService],
 })
 export class HorseProfilesModule {}

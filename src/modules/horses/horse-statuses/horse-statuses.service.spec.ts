@@ -66,8 +66,7 @@ describe('HorseStatusesService', () => {
     findNotDeletedHorse: jest.Mock;
     findWritableHorse: jest.Mock;
     hasActiveTrainingLock: jest.Mock;
-    lockActiveHorseOwner: jest.Mock;
-    invalidOwnerName: jest.Mock;
+    lockOwnerAccount: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let stalls: { closeOpenStallAssignment: jest.Mock };
@@ -125,7 +124,7 @@ describe('HorseStatusesService', () => {
       groomName: 'Groom A',
       barnName: 'Khu A',
       hasActiveTrainingLock: true,
-      invalidOwnerName: null,
+      ownerName: null,
       examRequestsToDismiss: 0,
       careSchedulesToCancel: 0,
       openIncidents: 0,
@@ -155,8 +154,10 @@ describe('HorseStatusesService', () => {
       findNotDeletedHorse: jest.fn(() => Promise.resolve(horse)),
       findWritableHorse: jest.fn(() => Promise.resolve(horse)),
       hasActiveTrainingLock: jest.fn().mockResolvedValue(false),
-      lockActiveHorseOwner: jest.fn().mockResolvedValue(true),
-      invalidOwnerName: jest.fn().mockResolvedValue(null),
+      lockOwnerAccount: jest.fn().mockResolvedValue({
+        role: UserRole.HORSE_OWNER,
+        status: UserStatus.ACTIVE,
+      }),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     stalls = {
@@ -206,8 +207,16 @@ describe('HorseStatusesService', () => {
   });
 
   describe('updateLifecycle', () => {
-    const change = (lifecycleStatus: HorseLifecycleStatus, reason = 'Bán') =>
-      service.updateLifecycle(actor, HORSE_ID, { lifecycleStatus, reason });
+    const change = (
+      lifecycleStatus: HorseLifecycleStatus,
+      reason = 'Bán',
+      extra: { ownerId?: string } = {},
+    ) =>
+      service.updateLifecycle(actor, HORSE_ID, {
+        lifecycleStatus,
+        reason,
+        ...extra,
+      });
 
     it('writes the released groom event to the outbox inside the transfer transaction', async () => {
       await change(HorseLifecycleStatus.TRANSFERRED);
@@ -401,50 +410,61 @@ describe('HorseStatusesService', () => {
       );
     });
 
-    it('clears an owner who is no longer an active HORSE_OWNER when reactivating a transfer, and audits it', async () => {
+    it('sets the chosen active owner when reactivating a transfer, opens its ownership and audits it', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
-      access.lockActiveHorseOwner.mockResolvedValue(false);
-      await change(HorseLifecycleStatus.ACTIVE, 'Mua lại');
-      expect(access.lockActiveHorseOwner).toHaveBeenCalledWith(
-        manager,
-        'owner-1',
-      );
+      horse.ownerId = null;
+      await change(HorseLifecycleStatus.ACTIVE, 'Mua lại', {
+        ownerId: 'owner-2',
+      });
+      expect(access.lockOwnerAccount).toHaveBeenCalledWith(manager, 'owner-2');
       expect(horseRepository.update).toHaveBeenCalledWith(
         { id: HORSE_ID },
-        expect.objectContaining({ ownerId: null }),
+        expect.objectContaining({ ownerId: 'owner-2' }),
       );
       expect(audit.record).toHaveBeenCalledWith(
         manager,
         expect.objectContaining({
-          before: expect.objectContaining({ ownerId: 'owner-1' }) as unknown,
-          after: expect.objectContaining({ ownerId: null }) as unknown,
+          before: expect.objectContaining({ ownerId: null }) as unknown,
+          after: expect.objectContaining({ ownerId: 'owner-2' }) as unknown,
         }),
       );
       expect(ownerships.recordOwnerChange).toHaveBeenCalledWith(manager, {
         horseId: HORSE_ID,
-        ownerId: null,
+        ownerId: 'owner-2',
         at: anyDate,
+        reason: 'Mua lại',
         recordedBy: CALLER_ID,
       });
     });
 
-    it('keeps a valid owner when reactivating a transfer', async () => {
+    it('requires an owner to reactivate a transfer, refuses one elsewhere, and refuses an inactive owner', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
-      await change(HorseLifecycleStatus.ACTIVE, 'Mua lại');
-      const [, changes] = horseRepository.update.mock.calls[0] as [
-        unknown,
-        Record<string, unknown>,
-      ];
-      expect(changes).not.toHaveProperty('ownerId');
+      await expect(
+        change(HorseLifecycleStatus.ACTIVE, 'Mua lại'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
+      await expect(
+        change(HorseLifecycleStatus.ACTIVE, 'Trở lại', { ownerId: 'owner-2' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
+      access.lockOwnerAccount.mockResolvedValue({
+        role: UserRole.HORSE_OWNER,
+        status: UserStatus.INACTIVE,
+      });
+      await expect(
+        change(HorseLifecycleStatus.ACTIVE, 'Mua lại', { ownerId: 'owner-2' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(horseRepository.update).not.toHaveBeenCalled();
     });
 
-    it('does not check the owner when reactivating a RETIRED horse', async () => {
+    it('keeps the owner when reactivating a RETIRED horse', async () => {
       horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
       await change(HorseLifecycleStatus.ACTIVE, 'Trở lại');
-      expect(access.lockActiveHorseOwner).not.toHaveBeenCalled();
+      expect(access.lockOwnerAccount).not.toHaveBeenCalled();
+      expect(ownerships.recordOwnerChange).not.toHaveBeenCalled();
     });
 
-    it('clears the barn on transfer and keeps the owner', async () => {
+    it('clears the barn and ends the ownership on transfer', async () => {
       await change(HorseLifecycleStatus.TRANSFERRED, 'Bán cho CLB khác');
       expect(horseRepository.update).toHaveBeenCalledTimes(1);
       const [criteria, changes] = horseRepository.update.mock.calls[0] as [
@@ -457,8 +477,15 @@ describe('HorseStatusesService', () => {
         lifecycleReason: 'Bán cho CLB khác',
         lifecycleChangedAt: expect.any(Date) as unknown,
         barnId: null,
+        ownerId: null,
       });
-      expect(changes).not.toHaveProperty('ownerId');
+      expect(ownerships.recordOwnerChange).toHaveBeenCalledWith(manager, {
+        horseId: HORSE_ID,
+        ownerId: null,
+        at: anyDate,
+        reason: 'Bán cho CLB khác',
+        recordedBy: CALLER_ID,
+      });
     });
 
     it('audits the transfer with the reason and feature F1.8', async () => {
@@ -472,6 +499,7 @@ describe('HorseStatusesService', () => {
           lifecycleStatus: HorseLifecycleStatus.ACTIVE,
           lifecycleReason: null,
           barnId: 'b1',
+          ownerId: 'owner-1',
           stallCode: 'A-01',
           groomId: 'g1',
         },
@@ -479,9 +507,10 @@ describe('HorseStatusesService', () => {
           lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
           lifecycleReason: 'Bán cho CLB khác',
           barnId: null,
+          classesWithdrawn: 2,
+          ownerId: null,
           stallCode: null,
           groomId: null,
-          classesWithdrawn: 2,
           trainingLockReleased: true,
           examRequestsDismissed: 0,
           careSchedulesCancelled: 0,
@@ -506,12 +535,14 @@ describe('HorseStatusesService', () => {
             lifecycleStatus: HorseLifecycleStatus.RETIRED,
             lifecycleReason: null,
             barnId: 'b1',
+            ownerId: 'owner-1',
           },
           after: {
             lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
             lifecycleReason: 'Bán',
             barnId: null,
             classesWithdrawn: 2,
+            ownerId: null,
             trainingLockReleased: false,
             examRequestsDismissed: 0,
             careSchedulesCancelled: 0,
@@ -603,7 +634,9 @@ describe('HorseStatusesService', () => {
       'puts health under observation when reactivating from %s',
       async (from) => {
         horse.lifecycleStatus = from;
-        await change(HorseLifecycleStatus.ACTIVE, 'Quay lại thi đấu');
+        await change(HorseLifecycleStatus.ACTIVE, 'Quay lại thi đấu', {
+          ownerId: 'owner-2',
+        });
         expect(horseRepository.update).toHaveBeenCalledWith(
           { id: HORSE_ID },
           expect.objectContaining({
@@ -863,6 +896,7 @@ describe('HorseStatusesService', () => {
     });
 
     it('reports every transfer effect from ACTIVE', async () => {
+      impact.ownerName = 'Chủ A';
       await expect(preview(HorseLifecycleStatus.TRANSFERRED)).resolves.toEqual({
         horseId: HORSE_ID,
         from: HorseLifecycleStatus.ACTIVE,
@@ -880,9 +914,10 @@ describe('HorseStatusesService', () => {
         incidentsClosed: 0,
         healthResetTo: null,
         pendingBarnAfter: false,
-        ownerCleared: null,
+        ownerCleared: 'Chủ A',
+        ownerRequired: false,
         summary:
-          'Winx đang có 2 lớp đang học, 3 đăng ký thi đấu chưa diễn ra, ô chuồng A-01, Groom Groom A phụ trách, lệnh khóa huấn luyện. Nếu chuyển nhượng sẽ rút khỏi lớp, rút khỏi giải, trả ô chuồng, kết thúc phân công Groom, bỏ khu Khu A, gỡ khóa huấn luyện.',
+          'Winx đang có 2 lớp đang học, 3 đăng ký thi đấu chưa diễn ra, ô chuồng A-01, Groom Groom A phụ trách, lệnh khóa huấn luyện, chủ Chủ A. Nếu chuyển nhượng sẽ rút khỏi lớp, rút khỏi giải, trả ô chuồng, kết thúc phân công Groom, bỏ khu Khu A, gỡ khóa huấn luyện, kết thúc sở hữu của chủ hiện tại.',
       });
       expectNothingWritten();
     });
@@ -950,23 +985,11 @@ describe('HorseStatusesService', () => {
         healthResetTo: HorseHealthStatus.UNDER_OBSERVATION,
         pendingBarnAfter: true,
         ownerCleared: null,
+        ownerRequired: true,
         summary:
-          'Nếu kích hoạt lại sẽ đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom), đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại.',
+          'Nếu kích hoạt lại sẽ đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom), gán chủ sở hữu mới được chọn, đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại.',
       });
-      expect(access.invalidOwnerName).toHaveBeenCalledWith('owner-1', manager);
       expectNothingWritten();
-    });
-
-    it('warns that an owner who is no longer an active HORSE_OWNER will be cleared when reactivating a transfer', async () => {
-      horse.lifecycleStatus = HorseLifecycleStatus.TRANSFERRED;
-      access.invalidOwnerName.mockResolvedValue('Nguyen Van B');
-      await expect(preview(HorseLifecycleStatus.ACTIVE)).resolves.toEqual(
-        expect.objectContaining({
-          ownerCleared: 'Nguyen Van B',
-          summary:
-            'Nếu kích hoạt lại sẽ đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom), bỏ trống chủ Nguyen Van B vì tài khoản không còn là chủ ngựa đang hoạt động, đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại.',
-        }),
-      );
     });
 
     it('does not check the owner when reactivating a RETIRED horse', async () => {
@@ -975,9 +998,9 @@ describe('HorseStatusesService', () => {
         expect.objectContaining({
           pendingBarnAfter: false,
           ownerCleared: null,
+          ownerRequired: false,
         }),
       );
-      expect(access.invalidOwnerName).not.toHaveBeenCalled();
     });
 
     it('blocks an invalid transition', async () => {

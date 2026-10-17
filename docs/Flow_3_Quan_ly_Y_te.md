@@ -643,7 +643,7 @@ Viết tắt: CM = Club Manager, HT = Head Trainer, VET = Veterinarian, GROOM = 
 3. Chỉ số cơ thể không hiển thị lại ở đây mà dùng chung màn hình của F1.5, tránh có hai nơi hiển thị cùng một dữ liệu.
 4. CLUB MANAGER có thêm báo cáo tổng hợp: tổng chi phí y tế của các bệnh án đóng trong khoảng thời gian (theo ngày đóng), lọc theo khu chuồng (khu hiện tại của ngựa) hoặc theo chủ ngựa (theo giai đoạn sở hữu lúc bệnh án được đóng, III.6.8).
 5. Dữ liệu ngoài quyền bị loại bỏ trước khi gửi về máy người dùng, không gửi đủ rồi ẩn ở giao diện.
-6. Con ngựa ngoài phạm vi xem trả về 404. Ngựa đã chuyển nhượng hoặc đã mất vẫn tra cứu được bởi các vai trò trong câu lạc bộ và bởi chủ còn ghi trên hồ sơ. Chủ cũ đã bán ngựa bằng chuyển nhượng nội bộ thì mất quyền xem ngay khi việc chuyển chủ được lưu.
+6. Con ngựa ngoài phạm vi xem trả về 404. Ngựa đã chuyển nhượng hoặc đã mất vẫn tra cứu được bởi các vai trò trong câu lạc bộ; ngựa đã mất còn tra cứu được bởi chủ ghi trên hồ sơ. Chuyển nhượng ra ngoài bỏ trống chủ, nên chủ cũ mất quyền xem bệnh án; chủ cũ đã bán bằng chuyển nhượng nội bộ cũng mất quyền xem ngay khi việc chuyển chủ được lưu (Flow 1, III.1 mục 5).
 
 ### Bảng use case
 

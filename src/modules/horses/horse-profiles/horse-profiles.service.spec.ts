@@ -231,7 +231,18 @@ describe('HorseProfilesService', () => {
     service = new HorseProfilesService(
       profiles as unknown as HorseProfilesRepository,
       {
-        exists: jest.fn(() => Promise.resolve(microchipTaken)),
+        findOne: jest.fn(() =>
+          Promise.resolve(
+            microchipTaken
+              ? {
+                  id: 'holder-1',
+                  name: 'Winx',
+                  lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
+                  deletedAt: null,
+                }
+              : null,
+          ),
+        ),
       } as unknown as Repository<HorseEntity>,
       access,
       new HorsePedigreeService(new HorsePedigreeRepository(), access),
@@ -502,7 +513,14 @@ describe('HorseProfilesService', () => {
       ).rejects.toMatchObject({
         status: 409,
         response: {
-          errors: [{ field: 'microchipId', message: MICROCHIP_TAKEN_MESSAGE }],
+          errors: [
+            {
+              field: 'microchipId',
+              message:
+                'Số chip trùng với ngựa Winx (Đã chuyển nhượng). Kiểm tra lại số chip',
+              conflictId: 'holder-1',
+            },
+          ],
         },
       });
       expect(dataSource.transaction).not.toHaveBeenCalled();
@@ -768,7 +786,7 @@ describe('HorseProfilesService', () => {
       service = new HorseProfilesService(
         profiles as unknown as HorseProfilesRepository,
         {
-          exists: jest.fn().mockResolvedValue(false),
+          findOne: jest.fn().mockResolvedValue(null),
         } as unknown as Repository<HorseEntity>,
         access,
         new HorsePedigreeService(new HorsePedigreeRepository(), access),
@@ -792,6 +810,8 @@ describe('HorseProfilesService', () => {
           service.create(actorWith(UserRole.CLUB_MANAGER), {
             name: 'Gió',
             gender: HorseGender.MALE,
+            ownerId: 'owner-1',
+            microchipId: '900000000000123',
             [field]: 'missing-parent',
           }),
         ).rejects.toThrow(new BadRequestException(message));
@@ -803,6 +823,7 @@ describe('HorseProfilesService', () => {
         name: 'Gió',
         gender: HorseGender.MALE,
         ownerId: 'owner-1',
+        microchipId: '900000000000123',
       });
       expect(ownerships.recordOwnerChange).toHaveBeenCalledWith(createManager, {
         horseId: 'h-new',
@@ -812,18 +833,12 @@ describe('HorseProfilesService', () => {
       });
     });
 
-    it('records no ownership period for a horse created without an owner', async () => {
-      await service.create(actorWith(UserRole.CLUB_MANAGER), {
-        name: 'Gió',
-        gender: HorseGender.MALE,
-      });
-      expect(ownerships.recordOwnerChange).not.toHaveBeenCalled();
-    });
-
     it('locks the chosen barn and writes the notification event inside the transaction', async () => {
       const result = await service.create(actorWith(UserRole.CLUB_MANAGER), {
         name: 'Gió',
         gender: HorseGender.MALE,
+        ownerId: 'owner-1',
+        microchipId: '900000000000123',
         barnId: 'b2',
       });
       expect(barns.lockAssignableBarn).toHaveBeenCalledWith(
@@ -861,6 +876,8 @@ describe('HorseProfilesService', () => {
         service.create(actorWith(UserRole.CLUB_MANAGER), {
           name: 'Gió',
           gender: HorseGender.MALE,
+          ownerId: 'owner-1',
+          microchipId: '900000000000123',
           barnId: 'b2',
         }),
       ).rejects.toThrow('outbox down');
@@ -880,6 +897,8 @@ describe('HorseProfilesService', () => {
         service.create(actorWith(UserRole.CLUB_MANAGER), {
           name: 'Gió',
           gender: HorseGender.MALE,
+          ownerId: 'owner-1',
+          microchipId: '900000000000123',
           barnId: 'b2',
         }),
       ).rejects.toThrow(ConflictException);
@@ -891,6 +910,8 @@ describe('HorseProfilesService', () => {
       await service.create(actorWith(UserRole.CLUB_MANAGER), {
         name: 'Gió',
         gender: HorseGender.MALE,
+        ownerId: 'owner-1',
+        microchipId: '900000000000123',
       });
       expect(barns.lockAssignableBarn).not.toHaveBeenCalled();
       expect(createManager.save).toHaveBeenCalledWith(
@@ -904,6 +925,8 @@ describe('HorseProfilesService', () => {
       await service.create(actorWith(UserRole.CLUB_MANAGER), {
         name: 'Gió',
         gender: HorseGender.MALE,
+        ownerId: 'owner-1',
+        microchipId: '900000000000123',
         mediaId: 'asset-1',
       });
       expect(media.assertAttachableHorsePhoto).toHaveBeenCalledWith(
@@ -925,6 +948,8 @@ describe('HorseProfilesService', () => {
         service.create(actorWith(UserRole.CLUB_MANAGER), {
           name: 'Gió',
           gender: HorseGender.MALE,
+          ownerId: 'owner-1',
+          microchipId: '900000000000123',
           mediaId: 'asset-1',
         }),
       ).rejects.toThrow(NotFoundException);

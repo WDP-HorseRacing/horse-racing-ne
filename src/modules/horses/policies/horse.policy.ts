@@ -539,9 +539,9 @@ export function assertLifecycleTransition(
  * 5. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE): 
  *    - Lớp học và giải đua cũ không tự khôi phục. 
  *    - Từ RETIRED: giữ nguyên trạng thái sức khỏe hiện tại. 
- *    - Từ TRANSFERRED: tự động đặt sức khỏe về UNDER_OBSERVATION, đưa ngựa vào trạng thái "Chờ xếp khu".
+ *    - Từ TRANSFERRED: tự động đặt sức khỏe về UNDER_OBSERVATION, đưa ngựa vào trạng thái "Chờ xếp khu", bắt buộc chọn chủ mới.
  *
- * Chú ý: Thao tác chuyển nhượng không xoá trường "Chủ sở hữu" để đảm bảo lưu trữ lịch sử.
+ * Chú ý: Thao tác chuyển nhượng kết thúc giai đoạn sở hữu và bỏ trống "Chủ sở hữu"; lịch sử vẫn giữ trong horse_ownerships.
  *
  * @param from Trạng thái vòng đời hiện tại
  * @param to Trạng thái vòng đời đích (đã qua canTransitionLifecycle)
@@ -569,6 +569,7 @@ export function lifecycleSideEffects(
     closeIncidents: becomesReadOnly,
     resetHealth: reactivateFromTransfer,
     reactivateFromTransfer,
+    endOwnership: to === HorseLifecycleStatus.TRANSFERRED,
   };
 }
 
@@ -633,11 +634,11 @@ export function lifecycleImpactSummary(
     actions.push(
       'đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom)',
     );
-    if (impact.invalidOwnerName) {
-      actions.push(
-        `bỏ trống chủ ${impact.invalidOwnerName} vì tài khoản không còn là chủ ngựa đang hoạt động`,
-      );
-    }
+    actions.push('gán chủ sở hữu mới được chọn');
+  }
+  if (effects.endOwnership && impact.ownerName) {
+    facts.push(`chủ ${impact.ownerName}`);
+    actions.push('kết thúc sở hữu của chủ hiện tại');
   }
   if (effects.resetHealth) {
     actions.push('đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại');
@@ -1068,4 +1069,63 @@ export function barnChangeSummary(
     : '';
   if (actions.length === 0) return `${head}, ngựa vào ${pending}.${groom}`;
   return `${head} sẽ ${actions.join(' và ')}.${groom} Ngựa vào ${pending}.`;
+}
+
+/**
+ * Câu báo 409 khi số chip đã thuộc một hồ sơ ngựa khác
+ *
+ * - Nêu tên và tình trạng của ngựa đang giữ số chip
+ * - Tạo mới trùng hồ sơ đã xóa: gợi ý khôi phục hồ sơ đó; trùng ngựa đã chuyển nhượng: gợi ý kích hoạt lại
+ * - Các trường hợp còn lại (kể cả khi sửa hồ sơ): nhắc kiểm tra lại số chip
+ *
+ * @param holder Tên, vòng đời và thời điểm xóa của ngựa đang giữ số chip
+ * @param creating true khi đang tạo hồ sơ mới, false khi sửa hồ sơ
+ * @returns Câu báo lỗi
+ */
+export function microchipTakenMessage(
+  holder: {
+    name: string;
+    lifecycleStatus: HorseLifecycleStatus;
+    deletedAt: Date | null;
+  },
+  creating: boolean,
+): string {
+  const status = holder.deletedAt
+    ? 'hồ sơ đã xóa'
+    : HORSE_LIFECYCLE_LABELS[holder.lifecycleStatus];
+  const hint =
+    creating && holder.deletedAt
+      ? 'Khôi phục hồ sơ đó thay vì tạo mới'
+      : creating && holder.lifecycleStatus === HorseLifecycleStatus.TRANSFERRED
+        ? 'Dùng kích hoạt lại thay vì tạo mới'
+        : 'Kiểm tra lại số chip';
+  return `Số chip trùng với ngựa ${holder.name} (${status}). ${hint}`;
+}
+
+/**
+ * Kiểm chủ sở hữu gửi kèm khi đổi vòng đời
+ *
+ * - Kích hoạt lại ngựa đã chuyển nhượng: bắt buộc gửi ownerId
+ * - Các trường hợp khác: không được gửi ownerId
+ *
+ * @param effects Các việc sẽ chạy (từ lifecycleSideEffects)
+ * @param ownerId Chủ sở hữu gửi lên, undefined nếu không gửi
+ * @throws BadRequestException Nếu thiếu ownerId khi kích hoạt lại ngựa đã chuyển nhượng, hoặc gửi ownerId ở trường hợp khác, lỗi gắn ô `ownerId`
+ */
+export function assertLifecycleOwner(
+  effects: LifecycleSideEffects,
+  ownerId: string | undefined,
+): void {
+  if (effects.reactivateFromTransfer && ownerId === undefined) {
+    throw fieldBadRequest(
+      'ownerId',
+      'Kích hoạt lại ngựa đã chuyển nhượng phải chọn chủ sở hữu',
+    );
+  }
+  if (!effects.reactivateFromTransfer && ownerId !== undefined) {
+    throw fieldBadRequest(
+      'ownerId',
+      'Chỉ chọn chủ sở hữu khi kích hoạt lại ngựa đã chuyển nhượng',
+    );
+  }
 }

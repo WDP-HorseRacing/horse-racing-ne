@@ -40,6 +40,8 @@ export class HorseStatusesRepository {
            WHERE ga.horse_id = $1 AND ga.end_at IS NULL LIMIT 1) AS "groomName",
          (SELECT b.name FROM horses h JOIN barns b ON b.id = h.barn_id
            WHERE h.id = $1) AS "barnName",
+         (SELECT u.full_name FROM horses h JOIN users u ON u.id = h.owner_id
+           WHERE h.id = $1) AS "ownerName",
          (SELECT count(*)::int FROM incidents i
            WHERE i.horse_id = $1 AND i.status = $5) AS "openIncidents"`,
         [

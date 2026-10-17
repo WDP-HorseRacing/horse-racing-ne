@@ -36,11 +36,55 @@ describe('horse DTOs', () => {
     });
   });
 
+  describe('CreateHorseDto.ownerId and microchipId', () => {
+    it.each([
+      ['missing', {}],
+      ['null', { ownerId: null }],
+      ['not a UUID', { ownerId: 'chu-1' }],
+    ])('rejects an owner that is %s', async (_case, extra) => {
+      const { fields } = await invalidFields(CreateHorseDto, {
+        name: 'Gió',
+        gender: HorseGender.MALE,
+        microchipId: '900000000000001',
+        ...extra,
+      });
+      expect(fields).toEqual(['ownerId']);
+    });
+
+    it.each([
+      ['missing', {}],
+      ['null', { microchipId: null }],
+      ['blank', { microchipId: '   ' }],
+    ])('rejects a microchip that is %s', async (_case, extra) => {
+      const { fields } = await invalidFields(CreateHorseDto, {
+        name: 'Gió',
+        gender: HorseGender.MALE,
+        ownerId: '11111111-1111-4111-8111-111111111111',
+        ...extra,
+      });
+      expect(fields).toEqual(['microchipId']);
+    });
+
+    it('keeps ownerId and microchipId optional when updating a horse, a blank microchip becomes null', async () => {
+      const { instance, fields } = await invalidFields(UpdateHorseDto, {
+        version: 1,
+        microchipId: '  ',
+      });
+      expect(fields).toEqual([]);
+      expect(instance).toMatchObject({ microchipId: null });
+    });
+  });
+
   describe.each([
     [
       'CreateHorseDto',
       CreateHorseDto,
-      { name: 'Gió', gender: HorseGender.MALE },
+      {
+        name: 'Gió',
+        gender: HorseGender.MALE,
+        ownerId: '11111111-1111-4111-8111-111111111111',
+        microchipId: '900000000000001',
+      },
     ],
     ['UpdateHorseDto', UpdateHorseDto, { version: 1 }],
   ] as const)('%s microchipId, breed, color', (_label, dto, base) => {
@@ -89,13 +133,11 @@ describe('horse DTOs', () => {
 
     it('turns empty or null values into null without error', async () => {
       const { instance, fields } = await check({
-        microchipId: '  ',
         breed: '',
         color: null,
       });
       expect(fields).toEqual([]);
       expect(instance).toMatchObject({
-        microchipId: null,
         breed: null,
         color: null,
       });

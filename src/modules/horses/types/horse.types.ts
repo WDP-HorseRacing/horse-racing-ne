@@ -26,6 +26,20 @@ import type { HorseEntity } from '../entities/horse.entity';
 export type HorseScope = { kind: 'ALL' } | { kind: 'OWNER'; userId: string };
 
 /**
+ * Một giai đoạn sở hữu đã kết thúc của chủ cũ, kèm thông tin cơ bản của con ngựa, đọc từ DB
+ */
+export interface PastOwnershipRow {
+  horseId: string;
+  name: string;
+  gender: HorseGender;
+  color: string | null;
+  dateOfBirth: string | null;
+  mediaId: string | null;
+  startedAt: Date;
+  endedAt: Date;
+}
+
+/**
  * Một dòng tổ tiên do query phả hệ trả về
  */
 export interface PedigreeAncestorRow {
@@ -370,6 +384,7 @@ export interface LifecycleSideEffects {
   closeIncidents: boolean;
   resetHealth: boolean;
   reactivateFromTransfer: boolean;
+  endOwnership: boolean;
 }
 
 /**
@@ -382,7 +397,7 @@ export interface LifecycleImpactRow {
   groomName: string | null;
   barnName: string | null;
   hasActiveTrainingLock: boolean;
-  invalidOwnerName: string | null;
+  ownerName: string | null;
   examRequestsToDismiss: number;
   careSchedulesToCancel: number;
   openIncidents: number;

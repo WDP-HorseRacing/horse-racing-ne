@@ -130,11 +130,11 @@ export interface HorseHealthRows {
 }
 
 /**
- * Phí ngày của một con ngựa tính cho một chủ trong kỳ, đọc từ DB
+ * Phí ngày của một con ngựa tính cho một chủ trong kỳ, đọc từ DB; ownerId null là các ngày ngựa không có chủ
  */
 export interface DailyFeeRow {
-  ownerId: string;
-  ownerName: string;
+  ownerId: string | null;
+  ownerName: string | null;
   horseId: string;
   horseName: string;
   billedDays: number;
@@ -142,11 +142,11 @@ export interface DailyFeeRow {
 }
 
 /**
- * Phụ phí chăm sóc riêng của một con ngựa trong kỳ, tính cho chủ lúc hết từng ngày, đọc từ DB
+ * Phụ phí chăm sóc riêng của một con ngựa trong kỳ, tính cho chủ lúc hết từng ngày, đọc từ DB; ownerId null là các ngày ngựa không có chủ
  */
 export interface SurchargeRow {
-  ownerId: string;
-  ownerName: string;
+  ownerId: string | null;
+  ownerName: string | null;
   horseId: string;
   horseName: string;
   surcharge: string;

@@ -90,8 +90,9 @@ export function toOwnerCost(
 /**
  * Dựng báo cáo tài chính CLB
  *
- * - Chi phí y tế toàn CLB gồm cả bệnh án đóng lúc ngựa không có chủ; bảng từng chủ chỉ cộng bệnh án của chủ đó
- * - Bảng từng chủ gồm mọi chủ có ngựa còn ở CLB trong kỳ hoặc có bệnh án đóng trong kỳ, sắp theo tên
+ * - Tổng của CLB gồm mọi ngựa, kể cả các ngày và bệnh án không có chủ
+ * - Bảng từng chủ gồm mọi chủ có ngựa còn ở CLB trong kỳ hoặc có bệnh án đóng trong kỳ, sắp theo tên; mỗi chủ chỉ cộng phần của chủ đó
+ * - Phần không có chủ (ownerId null) gom vào unowned, kèm tổng số ngày tính phí
  *
  * @param source Phí ngày, chi phí y tế và phụ phí của mọi chủ trong kỳ
  * @param supplies Giá trị vật tư nhập vào và đã dùng trong kỳ
@@ -146,6 +147,18 @@ export function toClubFinance(
     source.medicalCharges.map((row) => row.medicalCost),
   );
   const surcharge = sumOf(source.surcharges.map((row) => row.surcharge));
+  const unownedFees = source.dailyFees.filter((row) => row.ownerId === null);
+  const unownedDailyFee = sumOf(unownedFees.map((row) => row.dailyFee));
+  const unownedMedicalCost = sumOf(
+    source.medicalCharges
+      .filter((row) => row.ownerId === null)
+      .map((row) => row.medicalCost),
+  );
+  const unownedSurcharge = sumOf(
+    source.surcharges
+      .filter((row) => row.ownerId === null)
+      .map((row) => row.surcharge),
+  );
   return {
     from: source.period.from,
     to: source.period.to,
@@ -161,6 +174,13 @@ export function toClubFinance(
     },
     prizeMoney: 0,
     owners,
+    unowned: {
+      billedDays: unownedFees.reduce((sum, row) => sum + row.billedDays, 0),
+      dailyFee: unownedDailyFee,
+      medicalCost: unownedMedicalCost,
+      surcharge: unownedSurcharge,
+      total: unownedDailyFee + unownedMedicalCost + unownedSurcharge,
+    },
   };
 }
 

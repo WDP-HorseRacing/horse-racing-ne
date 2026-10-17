@@ -29,14 +29,15 @@ export class FinanceReportsRepository {
    * Tính phí ngày theo từng chủ và từng con ngựa có ít nhất một ngày còn ở CLB trong kỳ
    *
    * - Mỗi ngày (lịch CLB) từ ngày đầu kỳ tới ngày cuối kỳ, không quá ngày của asOf, xét trạng thái ngay trước lúc hết ngày; ngày của asOf xét ngay trước asOf
-   * - Ngày được tính cho người đang là chủ lúc hết ngày, nên ngày chuyển chủ tính cho chủ mới
+   * - Chỉ tính các ngày từ lúc tạo hồ sơ ngựa
+   * - Ngày được tính cho người đang là chủ lúc hết ngày, nên ngày chuyển chủ tính cho chủ mới; lúc hết ngày ngựa không có chủ thì ownerId và ownerName là null
    * - Bỏ hồ sơ ngựa đang bị xóa
    * - Chỉ tính ngày ngựa còn ở CLB (đang hoạt động hoặc đã giải nghệ) lúc hết ngày; trạng thái lấy từ nhật ký thao tác, chưa có dòng nhật ký nào thì lấy trạng thái hiện tại của ngựa
    * - Mỗi ngày lấy mức phí có ngày hiệu lực gần nhất không sau ngày đó; ngày chưa có mức phí nào thì không tính phí nhưng ngựa vẫn có dòng
    *
    * @param period Khoảng ngày của báo cáo
    * @param asOf Thời điểm hiện tại
-   * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi chủ
+   * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi chủ, kể cả các ngày không có chủ
    * @returns Promise trả về tên, số ngày tính phí và tổng phí theo chủ và ngựa
    */
   dailyFees(
@@ -61,16 +62,17 @@ export class FinanceReportsRepository {
        )
        SELECT o.owner_id AS "ownerId",
               u.full_name AS "ownerName",
-              o.horse_id AS "horseId",
+              h.id AS "horseId",
               h.name AS "horseName",
               COUNT(fee.daily_fee)::int AS "billedDays",
               COALESCE(SUM(fee.daily_fee), 0)::text AS "dailyFee"
          FROM days
-         JOIN horse_ownerships o
-           ON o.started_at < days.at
+         JOIN horses h ON h.deleted_at IS NULL AND h.created_at < days.at
+         LEFT JOIN horse_ownerships o
+           ON o.horse_id = h.id
+          AND o.started_at < days.at
           AND (o.ended_at IS NULL OR o.ended_at >= days.at)
-         JOIN horses h ON h.id = o.horse_id AND h.deleted_at IS NULL
-         JOIN users u ON u.id = o.owner_id
+         LEFT JOIN users u ON u.id = o.owner_id
          LEFT JOIN LATERAL (
            SELECT f.daily_fee FROM daily_fees f
             WHERE f.effective_from <= days.day
@@ -80,7 +82,7 @@ export class FinanceReportsRepository {
         WHERE COALESCE(
                 (SELECT a.after_data->>'lifecycleStatus' FROM audit_logs a
                   WHERE a.entity_type = $5
-                    AND a.entity_id = o.horse_id
+                    AND a.entity_id = h.id
                     AND a.after_data ? 'lifecycleStatus'
                     AND a.created_at < days.at
                   ORDER BY a.created_at DESC
@@ -97,12 +99,12 @@ export class FinanceReportsRepository {
    * Tính phụ phí chăm sóc riêng theo từng chủ và con ngựa trong kỳ
    *
    * - Mỗi ngày (lịch CLB) của kỳ, không quá ngày của asOf, nằm trong khoảng ngày của một khoản phụ phí thì cộng phí ngày của khoản đó
-   * - Ngày được tính cho người đang là chủ lúc hết ngày, chỉ khi ngựa còn ở CLB lúc hết ngày; cùng cách xét như dailyFees
+   * - Ngày được tính cho người đang là chủ lúc hết ngày (không có chủ thì ownerId và ownerName là null), chỉ khi ngựa còn ở CLB lúc hết ngày; cùng cách xét như dailyFees
    * - Bỏ hồ sơ ngựa đang bị xóa; ngựa không có phụ phí trong kỳ thì không có dòng
    *
    * @param period Khoảng ngày của báo cáo
    * @param asOf Thời điểm hiện tại
-   * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi chủ
+   * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi chủ, kể cả các ngày không có chủ
    * @returns Promise trả về tên và tổng phụ phí theo chủ và ngựa
    */
   surcharges(
@@ -127,22 +129,22 @@ export class FinanceReportsRepository {
        )
        SELECT o.owner_id AS "ownerId",
               u.full_name AS "ownerName",
-              o.horse_id AS "horseId",
+              h.id AS "horseId",
               h.name AS "horseName",
               SUM(s.daily_amount)::text AS "surcharge"
          FROM days
          JOIN horse_surcharges s
            ON days.day BETWEEN s.start_date AND s.end_date
-         JOIN horse_ownerships o
-           ON o.horse_id = s.horse_id
+         JOIN horses h ON h.id = s.horse_id AND h.deleted_at IS NULL
+         LEFT JOIN horse_ownerships o
+           ON o.horse_id = h.id
           AND o.started_at < days.at
           AND (o.ended_at IS NULL OR o.ended_at >= days.at)
-         JOIN horses h ON h.id = o.horse_id AND h.deleted_at IS NULL
-         JOIN users u ON u.id = o.owner_id
+         LEFT JOIN users u ON u.id = o.owner_id
         WHERE COALESCE(
                 (SELECT a.after_data->>'lifecycleStatus' FROM audit_logs a
                   WHERE a.entity_type = $5
-                    AND a.entity_id = o.horse_id
+                    AND a.entity_id = h.id
                     AND a.after_data ? 'lifecycleStatus'
                     AND a.created_at < days.at
                   ORDER BY a.created_at DESC

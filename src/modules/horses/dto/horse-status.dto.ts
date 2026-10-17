@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   MinLength,
@@ -45,6 +46,15 @@ export class UpdateHorseLifecycleDto {
   })
   @IsDateString({ strict: true })
   dateOfDeath?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Chủ sở hữu mới, là tài khoản HORSE_OWNER đang hoạt động. Bắt buộc khi kích hoạt lại ngựa đã chuyển nhượng, không gửi ở trường hợp khác (400)',
+  })
+  @IsOptional()
+  @IsUUID()
+  ownerId?: string;
 }
 export class LifecyclePreviewQueryDto {
   @ApiProperty({ enum: HorseLifecycleStatus })
@@ -140,9 +150,15 @@ export class HorseLifecyclePreviewResponseDto {
     nullable: true,
     type: String,
     description:
-      'Tên chủ sẽ bị bỏ trống khi tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ',
+      'Tên chủ sẽ kết thúc sở hữu (chuyển nhượng ra ngoài), null nếu giữ chủ',
   })
   ownerCleared!: string | null;
+
+  @ApiProperty({
+    description:
+      'true nếu phải chọn chủ sở hữu mới (kích hoạt lại ngựa đã chuyển nhượng)',
+  })
+  ownerRequired!: boolean;
 
   @ApiPropertyOptional({
     nullable: true,

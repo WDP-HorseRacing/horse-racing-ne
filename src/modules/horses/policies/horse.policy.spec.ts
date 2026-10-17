@@ -37,7 +37,9 @@ import {
   assertDistinctMeasurementTypes,
   assertGenderKeepsPedigree,
   assertLifecycleTransition,
+  assertLifecycleOwner,
   assertMeasuredAt,
+  microchipTakenMessage,
   assertMeasurementDeletable,
   assertMeasurementValue,
   assertNoBusinessData,
@@ -413,8 +415,10 @@ describe('horse.policy', () => {
       closeIncidents: false,
       resetHealth: false,
       reactivateFromTransfer: false,
+      endOwnership: false,
     };
     const transferEffects = {
+      endOwnership: true,
       releaseStall: true,
       endGroom: true,
       clearBarn: true,
@@ -833,7 +837,7 @@ describe('horse.policy', () => {
       groomName: 'Lan',
       barnName: 'Khu A',
       hasActiveTrainingLock: true,
-      invalidOwnerName: null,
+      ownerName: null,
       examRequestsToDismiss: 0,
       careSchedulesToCancel: 0,
       openIncidents: 0,
@@ -1272,29 +1276,31 @@ describe('horse.policy', () => {
       }
     });
 
-    it('cleans up like a transfer without resetting health', () => {
+    it('cleans up like a transfer without resetting health and keeps the owner', () => {
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.ACTIVE,
           HorseLifecycleStatus.DECEASED,
         ),
-      ).toEqual(
-        lifecycleSideEffects(
+      ).toEqual({
+        ...lifecycleSideEffects(
           HorseLifecycleStatus.ACTIVE,
           HorseLifecycleStatus.TRANSFERRED,
         ),
-      );
+        endOwnership: false,
+      });
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.RETIRED,
           HorseLifecycleStatus.DECEASED,
         ),
-      ).toEqual(
-        lifecycleSideEffects(
+      ).toEqual({
+        ...lifecycleSideEffects(
           HorseLifecycleStatus.RETIRED,
           HorseLifecycleStatus.TRANSFERRED,
         ),
-      );
+        endOwnership: false,
+      });
       expect(
         lifecycleSideEffects(
           HorseLifecycleStatus.ACTIVE,
@@ -1457,6 +1463,90 @@ describe('horse.policy', () => {
       );
       expect(() =>
         assertDateOfDeath(HorseLifecycleStatus.RETIRED, undefined, null, today),
+      ).not.toThrow();
+    });
+  });
+
+  describe('microchipTakenMessage', () => {
+    const holder = (
+      lifecycleStatus: HorseLifecycleStatus,
+      deletedAt: Date | null = null,
+    ) => ({ name: 'Winx', lifecycleStatus, deletedAt });
+
+    it.each([
+      [
+        holder(HorseLifecycleStatus.TRANSFERRED),
+        true,
+        'Số chip trùng với ngựa Winx (Đã chuyển nhượng). Dùng kích hoạt lại thay vì tạo mới',
+      ],
+      [
+        holder(HorseLifecycleStatus.ACTIVE, new Date()),
+        true,
+        'Số chip trùng với ngựa Winx (hồ sơ đã xóa). Khôi phục hồ sơ đó thay vì tạo mới',
+      ],
+      [
+        holder(HorseLifecycleStatus.DECEASED),
+        true,
+        'Số chip trùng với ngựa Winx (Đã mất). Kiểm tra lại số chip',
+      ],
+      [
+        holder(HorseLifecycleStatus.TRANSFERRED),
+        false,
+        'Số chip trùng với ngựa Winx (Đã chuyển nhượng). Kiểm tra lại số chip',
+      ],
+    ])('names the holder and the way out (%#)', (input, creating, message) => {
+      expect(microchipTakenMessage(input, creating)).toBe(message);
+    });
+  });
+
+  describe('assertLifecycleOwner', () => {
+    const effects = (from: HorseLifecycleStatus, to: HorseLifecycleStatus) =>
+      lifecycleSideEffects(from, to);
+
+    it('requires an owner only when reactivating a transferred horse', () => {
+      expect(() =>
+        assertLifecycleOwner(
+          effects(
+            HorseLifecycleStatus.TRANSFERRED,
+            HorseLifecycleStatus.ACTIVE,
+          ),
+          undefined,
+        ),
+      ).toThrow(
+        new BadRequestException(
+          'Kích hoạt lại ngựa đã chuyển nhượng phải chọn chủ sở hữu',
+        ),
+      );
+      expect(() =>
+        assertLifecycleOwner(
+          effects(
+            HorseLifecycleStatus.TRANSFERRED,
+            HorseLifecycleStatus.ACTIVE,
+          ),
+          'owner-1',
+        ),
+      ).not.toThrow();
+    });
+
+    it('refuses an owner for any other change', () => {
+      expect(() =>
+        assertLifecycleOwner(
+          effects(HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.ACTIVE),
+          'owner-1',
+        ),
+      ).toThrow(
+        new BadRequestException(
+          'Chỉ chọn chủ sở hữu khi kích hoạt lại ngựa đã chuyển nhượng',
+        ),
+      );
+      expect(() =>
+        assertLifecycleOwner(
+          effects(
+            HorseLifecycleStatus.ACTIVE,
+            HorseLifecycleStatus.TRANSFERRED,
+          ),
+          undefined,
+        ),
       ).not.toThrow();
     });
   });

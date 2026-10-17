@@ -1798,6 +1798,74 @@
         ]
       }
     },
+    "/api/v1/past-horses": {
+      "get": {
+        "description": "Chỉ Horse Owner. Các con ngựa người gọi từng sở hữu, đã kết thúc giai đoạn sở hữu (chuyển nhượng nội bộ hoặc bán ra ngoài) và không còn là chủ hiện tại; bỏ hồ sơ đã xóa. Mỗi dòng có tên, ảnh và các khoảng đã sở hữu. Không có chủ mới, khu, sức khỏe.",
+        "operationId": "PastHorsesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PastHorseListItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List horses the current owner sold or transferred",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
+    "/api/v1/past-horses/{horseId}": {
+      "get": {
+        "description": "Chỉ Horse Owner từng có giai đoạn sở hữu đã kết thúc của con ngựa và không còn là chủ hiện tại; không thì 404. Trả tên, ảnh, giới tính, ngày sinh, màu lông, phả hệ 2 đời (chỉ tên) và các khoảng đã sở hữu.",
+        "operationId": "PastHorsesController_detail",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PastHorseDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get basic information of a horse the current owner sold",
+        "tags": [
+          "horses"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/lifecycle-status/preview": {
       "get": {
         "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại).",
@@ -10971,9 +11039,8 @@
           },
           "microchipId": {
             "type": "string",
-            "nullable": true,
             "pattern": "^\\d{15}$",
-            "description": "Đúng 15 chữ số"
+            "description": "Đúng 15 chữ số, không trùng với hồ sơ nào (kể cả hồ sơ đã xóa)"
           },
           "dateOfBirth": {
             "type": "string",
@@ -10999,8 +11066,7 @@
           "ownerId": {
             "type": "string",
             "format": "uuid",
-            "nullable": true,
-            "description": "Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động. Để trống thì gán sau bằng PATCH"
+            "description": "Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động"
           },
           "barnId": {
             "type": "string",
@@ -11010,7 +11076,9 @@
         },
         "required": [
           "name",
-          "gender"
+          "gender",
+          "microchipId",
+          "ownerId"
         ]
       },
       "HorseLatestMeasurementDto": {
@@ -11313,12 +11381,6 @@
             "pattern": "^\\p{L}+(?:[ '-]\\p{L}+)*$",
             "description": "Chỉ gồm chữ cái; các từ ngăn bằng một khoảng trắng, gạch nối hoặc dấu nháy đơn"
           },
-          "microchipId": {
-            "type": "string",
-            "nullable": true,
-            "pattern": "^\\d{15}$",
-            "description": "Đúng 15 chữ số"
-          },
           "dateOfBirth": {
             "type": "string",
             "format": "date",
@@ -11340,11 +11402,17 @@
             "nullable": true,
             "description": "Ảnh đại diện: media đã tải lên, định dạng JPEG/PNG/WebP, tối đa 10 MB"
           },
+          "microchipId": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^\\d{15}$",
+            "description": "Đúng 15 chữ số"
+          },
           "ownerId": {
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động. Để trống thì gán sau bằng PATCH"
+            "description": "Chủ sở hữu duy nhất, là tài khoản HORSE_OWNER đang hoạt động. Chỉ gán được cho ngựa chưa có chủ"
           },
           "raceAptitude": {
             "type": "string",
@@ -11660,6 +11728,109 @@
           "reasons"
         ]
       },
+      "OwnershipPeriodDto": {
+        "type": "object",
+        "properties": {
+          "startedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Thời điểm bắt đầu sở hữu"
+          },
+          "endedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Thời điểm kết thúc sở hữu"
+          }
+        },
+        "required": [
+          "startedAt",
+          "endedAt"
+        ]
+      },
+      "PastHorseListItemDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Link tải ảnh đại diện có hạn dùng; null nếu ngựa chưa có ảnh"
+          },
+          "periods": {
+            "description": "Các khoảng người gọi từng sở hữu con ngựa, mới nhất trước",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnershipPeriodDto"
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "name",
+          "periods"
+        ]
+      },
+      "PastHorseDetailDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Link tải ảnh đại diện có hạn dùng; null nếu ngựa chưa có ảnh"
+          },
+          "periods": {
+            "description": "Các khoảng người gọi từng sở hữu con ngựa, mới nhất trước",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnershipPeriodDto"
+            }
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "GELDING"
+            ]
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "ancestors": {
+            "description": "Cha mẹ và ông bà có hồ sơ tại câu lạc bộ, chỉ có tên (canOpen luôn false)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorsePedigreeNodeResponseDto"
+            }
+          }
+        },
+        "required": [
+          "horseId",
+          "name",
+          "periods",
+          "gender",
+          "ancestors"
+        ]
+      },
       "HorseLifecyclePreviewResponseDto": {
         "type": "object",
         "properties": {
@@ -11751,7 +11922,11 @@
           "ownerCleared": {
             "type": "string",
             "nullable": true,
-            "description": "Tên chủ sẽ bị bỏ trống khi tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
+            "description": "Tên chủ sẽ kết thúc sở hữu (chuyển nhượng ra ngoài), null nếu giữ chủ"
+          },
+          "ownerRequired": {
+            "type": "boolean",
+            "description": "true nếu phải chọn chủ sở hữu mới (kích hoạt lại ngựa đã chuyển nhượng)"
           },
           "summary": {
             "type": "string",
@@ -11770,7 +11945,8 @@
           "examRequestsDismissed",
           "careSchedulesCancelled",
           "incidentsClosed",
-          "pendingBarnAfter"
+          "pendingBarnAfter",
+          "ownerRequired"
         ]
       },
       "UpdateHorseLifecycleDto": {
@@ -11795,6 +11971,11 @@
             "type": "string",
             "format": "date",
             "description": "Ngày mất. Bắt buộc khi lifecycleStatus = DECEASED, không gửi với trạng thái khác (400). Không ở tương lai, không trước ngày sinh"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chủ sở hữu mới, là tài khoản HORSE_OWNER đang hoạt động. Bắt buộc khi kích hoạt lại ngựa đã chuyển nhượng, không gửi ở trường hợp khác (400)"
           }
         },
         "required": [
@@ -15001,6 +15182,38 @@
           "ownerName"
         ]
       },
+      "FinanceUnownedDto": {
+        "type": "object",
+        "properties": {
+          "dailyFee": {
+            "type": "number",
+            "description": "Phí nuôi theo ngày (VND)"
+          },
+          "medicalCost": {
+            "type": "number",
+            "description": "Chi phí y tế (VND)"
+          },
+          "surcharge": {
+            "type": "number",
+            "description": "Phụ phí chăm sóc riêng (VND)"
+          },
+          "total": {
+            "type": "number",
+            "description": "Phí nuôi + chi phí y tế + phụ phí (VND)"
+          },
+          "billedDays": {
+            "type": "number",
+            "description": "Tổng số ngày tính phí của các ngựa ở CLB mà lúc hết ngày không có chủ (mỗi ngựa mỗi ngày tính một)"
+          }
+        },
+        "required": [
+          "dailyFee",
+          "medicalCost",
+          "surcharge",
+          "total",
+          "billedDays"
+        ]
+      },
       "ClubFinanceResponseDto": {
         "type": "object",
         "properties": {
@@ -15013,7 +15226,7 @@
             "format": "date"
           },
           "ownerCharges": {
-            "description": "Khoản thu từ chủ ngựa; chi phí y tế gồm cả bệnh án đóng lúc ngựa không có chủ",
+            "description": "Tổng phí nuôi, chi phí y tế và phụ phí của mọi ngựa trong kỳ, gồm cả phần chưa có chủ (= tổng owners + unowned)",
             "allOf": [
               {
                 "$ref": "#/components/schemas/FinanceOwnerChargesDto"
@@ -15033,6 +15246,14 @@
             "items": {
               "$ref": "#/components/schemas/FinanceOwnerDto"
             }
+          },
+          "unowned": {
+            "description": "Phần chưa có chủ: phí nuôi, phụ phí của các ngày ngựa ở CLB không có chủ và chi phí bệnh án đóng lúc ngựa không có chủ; không có thì các số bằng 0",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinanceUnownedDto"
+              }
+            ]
           }
         },
         "required": [
@@ -15041,7 +15262,8 @@
           "ownerCharges",
           "supplies",
           "prizeMoney",
-          "owners"
+          "owners",
+          "unowned"
         ]
       },
       "OwnerCostHorseDto": {

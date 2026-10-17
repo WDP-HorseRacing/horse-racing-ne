@@ -11,7 +11,6 @@ import { PaginationResponseDto } from '../../../common/dto/pagination-response.d
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import { fieldConflict } from '../../../common/utils/field-errors';
 import { mapUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -24,7 +23,6 @@ import {
   CREATE_AUDIT_FIELDS,
   HORSE_AUDIT_FEATURE,
   HORSE_BARN_ASSIGNED_EVENT,
-  MICROCHIP_TAKEN_MESSAGE,
   PEDIGREE_DEPTH,
   PEDIGREE_FIELDS,
   STALE_HORSE_MESSAGE,
@@ -62,6 +60,7 @@ import {
   assertOwnerAssignment,
   evaluateEligibility,
   evaluateHorsePermissions,
+  microchipTakenMessage,
   nonRaceAptitudeFieldsIn,
   raceAptitudeFieldsIn,
 } from '../policies/horse.policy';
@@ -224,7 +223,7 @@ export class HorseProfilesService {
   /**
    * Tạo hồ sơ ngựa mới. Sức khỏe luôn ELIGIBLE, vòng đời luôn ACTIVE.
    *
-   * - Chủ sở hữu (nếu có) phải là tài khoản HORSE_OWNER đang hoạt động; có chủ thì mở giai đoạn sở hữu đầu tiên trong cùng transaction
+   * - Chủ sở hữu bắt buộc, phải là tài khoản HORSE_OWNER đang hoạt động; mở giai đoạn sở hữu đầu tiên trong cùng transaction
    * - Ảnh (nếu có) phải là ảnh ngựa người gọi đã tải lên: JPEG/PNG/WebP, tối đa 10 MB
    * - Cha mẹ phải là ngựa có hồ sơ tại câu lạc bộ, đúng giới tính, sinh trước con
    * - Khu (nếu có) phải đang hoạt động, có Head Trainer và còn ô trống; không chọn thì ngựa vào "Chờ xếp khu"
@@ -245,7 +244,7 @@ export class HorseProfilesService {
     await this.assertMicrochipFree(microchipId);
     const sireId = body.sireId ?? null;
     const damId = body.damId ?? null;
-    const ownerId = body.ownerId ?? null;
+    const ownerId = body.ownerId;
     if (body.mediaId) {
       await this.media.assertAttachableHorsePhoto(caller.id, body.mediaId);
     }
@@ -279,14 +278,12 @@ export class HorseProfilesService {
             ownerId,
             barnId: body.barnId ?? null,
           });
-          if (ownerId) {
-            await this.ownerships.recordOwnerChange(manager, {
-              horseId: created.id,
-              ownerId,
-              at: new Date(),
-              recordedBy: caller.id,
-            });
-          }
+          await this.ownerships.recordOwnerChange(manager, {
+            horseId: created.id,
+            ownerId,
+            at: new Date(),
+            recordedBy: caller.id,
+          });
           await this.auditService.record(manager, {
             actorId: caller.id,
             action: AuditAction.CREATE,
@@ -603,6 +600,8 @@ export class HorseProfilesService {
   /**
    * Kiểm tra số chip chưa được ngựa khác dùng, tính cả hồ sơ đã xóa mềm và ngựa đã chuyển nhượng hoặc đã mất
    *
+   * - Trùng: câu báo nêu tên, tình trạng ngựa đang giữ số chip và cách xử lý (microchipTakenMessage); lỗi ô microchipId kèm conflictId là UUID của ngựa đó
+   *
    * @param microchipId Số chip đã cắt khoảng trắng, null nếu bỏ trống
    * @param excludeHorseId UUID của ngựa đang sửa, bỏ trống khi tạo mới
    * @returns Promise hoàn tất khi kiểm tra xong
@@ -612,17 +611,20 @@ export class HorseProfilesService {
     microchipId: string | null,
     excludeHorseId?: string,
   ): Promise<void> {
-    if (
-      microchipId &&
-      (await this.horseRecords.exists({
-        where: excludeHorseId
-          ? { microchipId, id: Not(excludeHorseId) }
-          : { microchipId },
-        withDeleted: true,
-      }))
-    ) {
-      throw fieldConflict('microchipId', MICROCHIP_TAKEN_MESSAGE);
-    }
+    if (!microchipId) return;
+    const holder = await this.horseRecords.findOne({
+      where: excludeHorseId
+        ? { microchipId, id: Not(excludeHorseId) }
+        : { microchipId },
+      select: { id: true, name: true, lifecycleStatus: true, deletedAt: true },
+      withDeleted: true,
+    });
+    if (!holder) return;
+    const message = microchipTakenMessage(holder, excludeHorseId === undefined);
+    throw new ConflictException({
+      message,
+      errors: [{ field: 'microchipId', message, conflictId: holder.id }],
+    });
   }
 
   /**

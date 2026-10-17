@@ -114,7 +114,37 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 1. Khi ghi chấn thương trong buổi khám, `injuries[].position` `{ x, y, z }` (số) là bắt buộc. Thiếu, gửi `null` hoặc thiếu một trục đều là 400.
 2. Response chấn thương và diễn biến chấn thương luôn có `position`, không còn `null`.
 
-## 8. Không đổi API, chỉ cần biết
+## 8. Chủ sở hữu và tạo ngựa
+
+1. `POST /horses`: `ownerId` (UUID tài khoản HORSE_OWNER đang hoạt động) và `microchipId` (đúng 15 chữ số) giờ **bắt buộc**. Thiếu, `null` hoặc sai định dạng: 400 gắn đúng ô. `PATCH /horses/:horseId` không đổi.
+2. Trùng số chip (tạo hoặc sửa): 409, câu báo nêu tên, tình trạng con đang giữ số chip và cách xử lý; `errors[0].conflictId` là id con đó để FE hiện nút mở hồ sơ.
+
+   ```json
+   {
+     "code": 409,
+     "message": "Số chip trùng với ngựa Winx (Đã chuyển nhượng). Dùng kích hoạt lại thay vì tạo mới",
+     "errors": [{ "field": "microchipId", "message": "Số chip trùng với ngựa Winx (Đã chuyển nhượng). Dùng kích hoạt lại thay vì tạo mới", "conflictId": "uuid" }]
+   }
+   ```
+
+   - Trùng hồ sơ đã xóa: "... (hồ sơ đã xóa). Khôi phục hồ sơ đó thay vì tạo mới". Các trường hợp khác (và khi sửa hồ sơ): "... Kiểm tra lại số chip".
+3. Đổi vòng đời sang `TRANSFERRED` (bán ra ngoài): kết thúc giai đoạn sở hữu và bỏ trống chủ (`ownerId` của ngựa thành `null`). Chủ cũ không nhận thông báo.
+4. Kích hoạt lại từ `TRANSFERRED` (`PATCH /horses/:horseId/lifecycle-status` với `lifecycleStatus = ACTIVE`): body **bắt buộc** `ownerId` (HORSE_OWNER đang hoạt động), thiếu là 400; gửi `ownerId` ở mọi trường hợp khác là 400. Kích hoạt lại từ `RETIRED` giữ nguyên chủ.
+   - Xem trước (`GET /horses/:horseId/lifecycle-status/preview`): thêm `ownerRequired` (true khi phải chọn chủ). `ownerCleared` giờ là tên chủ sẽ kết thúc sở hữu khi chuyển nhượng ra ngoài (null nếu giữ chủ).
+5. Route mới cho chủ cũ, chỉ HORSE_OWNER:
+   - `GET /past-horses`: các con mình từng sở hữu, đã kết thúc giai đoạn (chuyển nhượng nội bộ hoặc bán ra ngoài), không còn là chủ hiện tại, bỏ hồ sơ đã xóa. Mỗi dòng: `{ horseId, name, photoUrl, periods: [{ startedAt, endedAt }] }`, mới nhất trước.
+   - `GET /past-horses/:horseId`: thêm `gender`, `dateOfBirth`, `color`, `ancestors` (phả hệ 2 đời, chỉ tên, `canOpen` luôn false). Không từng sở hữu hoặc đang là chủ hiện tại: 404.
+   - Không trả chủ mới, khu, ô, sức khỏe, khóa tập. Các tab khác của hồ sơ ngựa vẫn chỉ cho chủ hiện tại.
+6. `GET /reports/club/finance` có thêm `unowned`: phần của các ngày ngựa ở CLB mà không có chủ (còn xảy ra khi khôi phục hồ sơ đã xóa mà chủ cũ không còn hoạt động), cộng chi phí bệnh án đóng lúc ngựa không có chủ. Không có thì các số bằng 0.
+
+   ```json
+   "unowned": { "billedDays": 4, "dailyFee": 800000, "medicalCost": 300000, "surcharge": 80000, "total": 1180000 }
+   ```
+
+   - `billedDays`: tổng số ngày tính phí (mỗi ngựa mỗi ngày tính một). `ownerCharges` = tổng `owners` + `unowned`.
+   - `GET /reports/owner/costs` không đổi.
+
+## 9. Không đổi API, chỉ cần biết
 
 1. Ngựa cần giáo án riêng: HT tạo một lớp riêng, chỉ ghi danh con ngựa đó.
 2. Việc trong checklist không có giờ phải làm, chỉ cần xong trong ngày.
