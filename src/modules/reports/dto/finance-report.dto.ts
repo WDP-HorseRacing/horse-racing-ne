@@ -93,13 +93,13 @@ export class ClubFinanceResponseDto {
   @ApiProperty({
     type: [FinanceOwnerDto],
     description:
-      'Từng chủ có ngựa còn ở CLB hoặc có bệnh án đóng trong kỳ, sắp theo tên',
+      'Từng chủ có ngựa còn ở CLB hoặc có buổi khám trong kỳ, sắp theo tên',
   })
   owners!: FinanceOwnerDto[];
   @ApiProperty({
     type: FinanceUnownedDto,
     description:
-      'Phần chưa có chủ: phí nuôi, phụ phí của các ngày ngựa ở CLB không có chủ và chi phí bệnh án đóng lúc ngựa không có chủ; không có thì các số bằng 0',
+      'Phần chưa có chủ: phí nuôi, phụ phí của các ngày ngựa ở CLB không có chủ và chi phí các buổi khám (theo ngày khám) lúc ngựa không có chủ; không có thì các số bằng 0',
   })
   unowned!: FinanceUnownedDto;
 }

@@ -15618,14 +15618,14 @@
             "description": "Tiền thưởng giải đấu (VND), luôn 0"
           },
           "owners": {
-            "description": "Từng chủ có ngựa còn ở CLB hoặc có bệnh án đóng trong kỳ, sắp theo tên",
+            "description": "Từng chủ có ngựa còn ở CLB hoặc có buổi khám trong kỳ, sắp theo tên",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FinanceOwnerDto"
             }
           },
           "unowned": {
-            "description": "Phần chưa có chủ: phí nuôi, phụ phí của các ngày ngựa ở CLB không có chủ và chi phí bệnh án đóng lúc ngựa không có chủ; không có thì các số bằng 0",
+            "description": "Phần chưa có chủ: phí nuôi, phụ phí của các ngày ngựa ở CLB không có chủ và chi phí các buổi khám (theo ngày khám) lúc ngựa không có chủ; không có thì các số bằng 0",
             "allOf": [
               {
                 "$ref": "#/components/schemas/FinanceUnownedDto"
