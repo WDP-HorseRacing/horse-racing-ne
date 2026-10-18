@@ -394,4 +394,61 @@ describe('Reports finance (Postgres)', () => {
       2360000, 2700000,
     ]);
   });
+
+  it('charges medical costs inside the period on the club calendar, keeps deleted profiles and skips cancelled cases', async () => {
+    const lan = await ownerNamed('Lan');
+    const vet = await seed.user(UserRole.VETERINARIAN);
+    const suong = await seed.horse('Sương', { ownerId: lan });
+    await seed.ownership(suong, lan, '2026-09-01T00:00:00Z');
+    const removed = await seed.horse('Xóa', { ownerId: lan, deleted: true });
+    await seed.ownership(removed, lan, '2026-09-01T00:00:00Z');
+    const closed = (horseId: string, closedAt: string, totalCost: number) =>
+      seed.medicalCase(horseId, vet, {
+        status: MedicalCaseStatus.CLOSED,
+        openedAt: '2026-09-01T00:00:00Z',
+        closedAt,
+        totalCost,
+      });
+    await closed(suong, '2026-09-30T16:59:00Z', 1);
+    await closed(suong, '2026-09-30T17:00:00Z', 10);
+    await closed(suong, '2026-10-12T16:59:00Z', 100);
+    await closed(suong, '2026-10-12T17:00:00Z', 1000);
+    await closed(removed, '2026-10-05T03:00:00Z', 10000);
+    await seed.medicalCase(suong, vet, {
+      status: MedicalCaseStatus.CANCELLED,
+      openedAt: '2026-10-05T00:00:00Z',
+      closedAt: '2026-10-06T00:00:00Z',
+      totalCost: 100000,
+    });
+
+    const rows = await new FinanceReportsRepository(dataSource).medicalCharges(
+      {
+        ...period,
+        start: new Date('2026-09-30T17:00:00Z'),
+        end: new Date('2026-10-12T17:00:00Z'),
+      },
+      lan,
+    );
+
+    expect(rows.sort((a, b) => a.horseName.localeCompare(b.horseName))).toEqual(
+      [
+        {
+          ownerId: lan,
+          ownerName: 'Lan',
+          horseId: suong,
+          horseName: 'Sương',
+          caseCount: 2,
+          medicalCost: '110',
+        },
+        {
+          ownerId: lan,
+          ownerName: 'Lan',
+          horseId: removed,
+          horseName: 'Xóa',
+          caseCount: 1,
+          medicalCost: '10000',
+        },
+      ],
+    );
+  });
 });
