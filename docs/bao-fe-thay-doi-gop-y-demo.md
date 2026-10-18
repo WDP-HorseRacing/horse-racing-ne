@@ -351,3 +351,31 @@ Không đổi API.
    - `POST /horses/:horseId/care-tasks`, `DELETE /horse-care-tasks/:id`: HT (khu mình), VET.
 2. HT giữ nguyên phạm vi khu. Khẩu phần (`feeding-plans`) không đổi, vẫn chỉ HT.
 3. Bác sĩ đổi thì HT của khu nhận thông báo `category = DAILY_CHECKLIST`, mức `NORMAL`, tiêu đề "Bác sĩ đổi việc riêng của ngựa", ví dụ: `Bác sĩ Lan miễn việc "Tắm rửa" (từ 18/10/2026 đến 20/10/2026) cho ngựa Gió. Lý do: Đang sốt, kiêng tắm.`. Kiểu: "gắn thêm việc", "miễn việc", "gỡ việc gắn thêm", "gỡ miễn việc". HT tự làm thì không có thông báo này.
+
+## Chi phí y tế theo từng buổi khám
+
+1. Buổi khám có thêm `cost` (VND, số nguyên ≥ 0, tối đa 10 tỷ), tùy chọn, bỏ trống là 0:
+   - Body `POST /horses/:horseId/medical-records` (khám định kỳ, theo yêu cầu) và `POST /medical-cases/:caseId/visits` (tái khám) nhận `cost`.
+   - Response buổi khám (`GET /horses/:horseId/medical-records`, `GET /medical-records/:id`, `visits` trong `GET /medical-cases/:caseId`, response ghi/hủy buổi khám) có `cost` và `costHidden`.
+   - HT: không có key `cost`, `costHidden`.
+   - OWNER: buổi khám thuộc giai đoạn chủ khác sở hữu có `cost = null`, `costHidden = true` (gợi ý hiện "Chi phí thuộc chủ khác"). Buổi của mình hiện số ngay, không chờ bệnh án đóng.
+2. Đóng bệnh án `POST /medical-cases/:caseId/close` **bỏ** `totalCost` trong body (gửi lên là 400). Biểu mẫu đóng không còn ô chi phí.
+3. Bệnh án:
+   - `totalCost` của bệnh án = tổng `cost` các buổi khám chưa hủy, có cả khi bệnh án đang điều trị (không còn `null`). OWNER chỉ được cộng phần của mình.
+   - **Bỏ** `costHidden` ở cấp bệnh án; dùng `costHidden` của từng buổi.
+   - `totalCost` của `GET /horses/:horseId/medical-cases` = tổng mọi buổi khám chưa hủy của ngựa, trong và ngoài bệnh án.
+4. **Bỏ** `PATCH /medical-cases/:caseId/cost`. **Thay bằng** `PATCH /medical-records/:id/cost` (chỉ VET):
+
+   ```json
+   { "cost": 1500000, "reason": "Gõ thừa số 0" }
+   ```
+
+   - Trả buổi khám (như `GET /medical-records/:id`). Bệnh án đang mở hay đã đóng đều sửa được, không giới hạn thời gian.
+   - Số trùng số cũ: 200, không ghi nhật ký, không báo ai.
+   - Buổi khám đã hủy, ngựa đã chuyển nhượng hoặc đã mất: 409. Không có buổi khám: 404.
+   - Thông báo `category = MEDICAL_CASE`, mức `NORMAL`, tiêu đề "Điều chỉnh chi phí khám ngựa X", ví dụ: "Chi phí buổi khám ngày 20/05/2026 của ngựa Gió được điều chỉnh từ 15.000.000 đ thành 1.500.000 đ.". Gửi CM và chủ của giai đoạn chứa ngày khám. `resource` là bệnh án; buổi khám ngoài bệnh án thì `resource.type = HORSE`.
+5. Thông báo đóng bệnh án: CM nhận "Tổng chi phí điều trị: …" (cả bệnh án), chủ nhận "Chi phí điều trị của bạn: …" (phần thuộc giai đoạn mình sở hữu).
+6. Báo cáo:
+   - `GET /medical/cost-report` lọc theo **ngày khám** (không còn theo ngày đóng), gồm cả buổi khám ngoài bệnh án. Đổi `caseCount` thành `visitCount` (số buổi khám chưa hủy) ở tổng và từng dòng. `ownerId` lọc theo chủ của giai đoạn chứa ngày khám; `barnId` vẫn theo khu hiện tại.
+   - `GET /reports/owner/costs`, `GET /reports/club/finance`: `medicalCost` tính theo ngày khám; từng ngựa đổi `caseCount` thành `visitCount`.
+7. Chuyển chủ nội bộ `POST /horses/:horseId/ownership-transfers` không còn 409 khi ngựa đang có bệnh án mở. Bán ra ngoài và ghi nhận mất khi còn bệnh án mở vẫn 409 như cũ.

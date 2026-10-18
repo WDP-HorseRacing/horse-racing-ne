@@ -45,7 +45,7 @@
 | F3.6 | Ghi nhận buổi khám trong bệnh án và hủy buổi khám ghi sai (Thêm, Xem, Sửa) |
 | F3.7 | Cập nhật trạng thái sức khỏe (Sửa) |
 | F3.8 | Đặt và gỡ khóa huấn luyện (Thêm, Xóa) |
-| F3.9 | Đóng bệnh án, chốt và điều chỉnh chi phí (Sửa) |
+| F3.9 | Đóng bệnh án (Sửa) |
 | F3.10 | Xem bệnh án và báo cáo y tế (Xem) |
 | F3.11 | Quản lý lịch chăm sóc định kỳ: tiêm phòng, tẩy giun, kiểm tra móng (Thêm, Sửa, Xem) |
 
@@ -75,8 +75,8 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
    - Buổi khám bị hủy không còn được tính khi xác định hạn khám định kỳ.
    - Trạng thái sức khỏe **không** tự quay về giá trị cũ; nếu cần, bác sĩ đổi lại bằng F3.7.
    - Bác sĩ có thể ghi ngay một buổi khám thay thế, buổi mới ghi rõ là thay cho buổi đã hủy.
-   - Buổi tái khám hủy được kể cả khi bệnh án đã đóng; việc hủy không đổi chi phí hay kết luận cuối.
-   - Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi khám nào khác chưa hủy (trường hợp mở nhầm). Khi đó bệnh án chuyển trạng thái **Đã hủy**: không có chi phí, không tính vào tổng chi phí, lệnh khóa đang gắn được tách khỏi bệnh án (lệnh khóa giữ nguyên), hệ thống báo lại CLUB MANAGER và HORSE OWNER.
+   - Buổi tái khám hủy được kể cả khi bệnh án đã đóng; việc hủy không đổi kết luận cuối, chi phí của buổi đó không còn được tính (III.6.3).
+   - Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi khám nào khác chưa hủy (trường hợp mở nhầm). Khi đó bệnh án chuyển trạng thái **Đã hủy**: mọi buổi khám đều đã hủy nên tổng chi phí là 0, lệnh khóa đang gắn được tách khỏi bệnh án (lệnh khóa giữ nguyên), hệ thống báo lại CLUB MANAGER và HORSE OWNER.
 5. Thời điểm khám không được ở tương lai và chỉ được nhập lùi tối đa 7 ngày (đồng bộ với F1.5). Buổi khám trong bệnh án phải có thời điểm không sớm hơn thời điểm mở bệnh án.
 6. "Buổi khám gần nhất" là buổi chưa bị hủy có **thời điểm khám** lớn nhất, không phải buổi được nhập sau cùng.
 
@@ -111,18 +111,18 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 
 ### 6. Chi phí y tế
 
-1. Mỗi bệnh án có **MỘT** trường chi phí duy nhất, nhập khi đóng bệnh án (F3.9). Hệ thống không ghi chi phí theo từng buổi khám, không theo từng loại thuốc, không có thanh toán.
-2. Chi phí là số nguyên, đơn vị VND, không âm. Điều trị không mất tiền thì nhập 0.
-3. Sau khi đóng, VETERINARIAN được điều chỉnh chi phí (ví dụ gõ nhầm), bắt buộc nhập lý do. Hệ thống ghi nhật ký giá trị trước, sau và báo lại cho chủ chịu khoản chi phí đó (mục 8). Không sửa đè im lặng.
-4. Buổi khám định kỳ và buổi khám theo yêu cầu không có chi phí riêng, vì việc này đã nằm trong phí ngày chung của CLB (Flow 4).
-5. Chủ ngựa chỉ nhìn thấy chi phí khi bệnh án đã đóng, đúng với góp ý của giảng viên là chỉ báo chi phí cuối cùng.
-6. HEAD TRAINER không bao giờ thấy chi phí, vì chi phí là việc giữa câu lạc bộ và chủ ngựa, không phục vụ quyết định huấn luyện.
-7. Tổng chi phí y tế của một con ngựa = tổng chi phí của các bệnh án đã đóng.
-8. Chi phí của một bệnh án thuộc về người đang làm chủ ngựa lúc bệnh án được đóng (theo giai đoạn sở hữu ở F1.4; giai đoạn bắt đầu từ lúc CLUB MANAGER lưu việc chuyển chủ). Vì chuyển nhượng nội bộ bị chặn khi còn bệnh án đang mở, không bệnh án nào nằm vắt qua hai chủ.
-   - Báo cáo chi phí lọc theo chủ chỉ cộng các bệnh án thuộc giai đoạn của chủ đó. Ví dụ: A sở hữu ngựa, bệnh án tháng 3 tốn 5 triệu; A bán cho B ngày 01/06; bệnh án tháng 8 tốn 3 triệu. Lọc A ra 5 triệu, lọc B ra 3 triệu.
-   - Chủ ngựa xem bệnh án: bệnh án thuộc giai đoạn của chủ khác vẫn hiện đủ nội dung (lịch sử sức khỏe thuộc về con ngựa), nhưng chi phí bị ẩn và có đánh dấu "chi phí thuộc chủ trước". Tổng chi phí chủ ngựa thấy chỉ cộng các bệnh án thuộc mọi giai đoạn mình sở hữu.
-   - Điều chỉnh chi phí sau khi đã chuyển chủ: báo cho chủ của giai đoạn chứa bệnh án. Người đó không còn là chủ hiện tại thì thông báo không mở được hồ sơ ngựa.
-   - CLUB MANAGER và VETERINARIAN vẫn thấy đủ chi phí mọi bệnh án. HEAD TRAINER vẫn không thấy chi phí.
+1. Chi phí ghi theo **từng buổi khám**: khám định kỳ, khám theo yêu cầu (F3.3) và tái khám trong bệnh án (F3.6). Bác sĩ nhập lúc ghi buổi khám, không bắt buộc; bỏ trống là 0. Hệ thống không ghi chi phí theo từng loại thuốc, không có thanh toán.
+2. Chi phí là số nguyên, đơn vị VND, không âm.
+3. Buổi khám đã hủy không được tính vào bất kỳ tổng nào.
+4. Tổng chi phí của một bệnh án = tổng chi phí các buổi khám chưa hủy trong bệnh án, cộng lúc xem, không lưu riêng. Bệnh án đang điều trị cũng có tổng (cộng tới thời điểm xem). Đóng bệnh án không nhập chi phí.
+5. Tổng chi phí y tế của một con ngựa = tổng chi phí mọi buổi khám chưa hủy của ngựa, trong và ngoài bệnh án.
+6. Chi phí của một buổi khám thuộc về người đang làm chủ ngựa **vào ngày khám** (theo giai đoạn sở hữu ở F1.4; giai đoạn bắt đầu từ lúc CLUB MANAGER lưu việc chuyển chủ), và rơi vào kỳ báo cáo chứa ngày khám (ngày theo lịch câu lạc bộ). Lúc khám ngựa không có chủ thì khoản đó nằm ở mục "Chưa có chủ" của báo cáo tài chính CLB.
+   - Một bệnh án có thể nằm vắt qua hai chủ (chuyển chủ trong lúc điều trị). Ví dụ: A sở hữu ngựa tới 01/06; bệnh án mở 20/05, buổi khám 20/05 tốn 3 triệu; A chuyển cho B ngày 01/06; buổi tái khám 10/06 tốn 2 triệu. Lọc A ra 3 triệu, lọc B ra 2 triệu; CLUB MANAGER thấy bệnh án tổng 5 triệu.
+7. Ai thấy chi phí:
+   - CLUB MANAGER và VETERINARIAN thấy chi phí mọi buổi khám và mọi tổng.
+   - HORSE OWNER thấy chi phí **ngay khi buổi khám được ghi**, không chờ bệnh án đóng, nhưng chỉ của các buổi khám thuộc giai đoạn mình sở hữu. Buổi khám thuộc giai đoạn chủ khác vẫn hiện đủ nội dung (lịch sử sức khỏe thuộc về con ngựa), chi phí bị ẩn và có đánh dấu "chi phí thuộc chủ khác". Tổng của bệnh án và tổng của con ngựa chủ thấy chỉ cộng phần của mình.
+   - HEAD TRAINER không bao giờ thấy chi phí, vì chi phí là việc giữa câu lạc bộ và chủ ngựa, không phục vụ quyết định huấn luyện.
+8. Điều chỉnh chi phí một buổi khám (F3.6 mục 4): chỉ VETERINARIAN, bắt buộc lý do, không giới hạn thời gian, bệnh án đang điều trị hay đã đóng đều được. Hệ thống ghi nhật ký giá trị trước, sau và lý do, rồi báo CLUB MANAGER và chủ của giai đoạn chứa ngày khám. Người đó không còn là chủ hiện tại thì thông báo không mở được hồ sơ ngựa. Nhập lại đúng số cũ thì không ghi và không báo. Buổi khám đã hủy không điều chỉnh được.
 
 ### 7. Thông báo
 
@@ -138,9 +138,9 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 | Mở bệnh án | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
 | Bác sĩ khám xong (gắn yêu cầu vào buổi khám) hoặc bỏ qua một yêu cầu khám (kèm lý do) | NORMAL | Người gửi yêu cầu (GROOM qua sự cố, HEAD TRAINER, CLUB MANAGER); không báo khi yêu cầu do hệ thống tự sinh hoặc người gửi chính là bác sĩ xử lý |
-| Đóng bệnh án | NORMAL | HORSE OWNER, CLUB MANAGER |
+| Đóng bệnh án | NORMAL | CLUB MANAGER (kèm tổng chi phí của cả bệnh án), HORSE OWNER (kèm phần chi phí thuộc giai đoạn mình sở hữu); số tiền chụp lúc đóng |
 | Hủy bệnh án mở nhầm | NORMAL | CLUB MANAGER, HORSE OWNER |
-| Điều chỉnh chi phí bệnh án đã đóng | NORMAL | HORSE OWNER của giai đoạn chứa bệnh án (III.6.8), CLUB MANAGER |
+| Điều chỉnh chi phí một buổi khám | NORMAL | HORSE OWNER của giai đoạn chứa ngày khám (III.6.6), CLUB MANAGER |
 | Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, người làm lịch (xem F3.11 mục 1) |
 
 1. Ngựa chưa được xếp khu thì không có HEAD TRAINER nhận thông báo, khi đó chỉ gửi cho các vai trò còn lại.
@@ -153,7 +153,7 @@ Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nh
 
 | Flow | Flow 3 nhận gì / cung cấp gì |
 |---|---|
-| Flow 1 | Nhận hồ sơ ngựa, khu và ô chuồng, HEAD TRAINER phụ trách khu. Ghi số đo vào bảng chỉ số cơ thể của F1.5. Cung cấp trạng thái sức khỏe, khóa huấn luyện, danh sách bệnh án và tổng chi phí để hiển thị trong F1.3. Khi chuyển nhượng (F1.8): chặn nếu ngựa còn bệnh án đang mở; yêu cầu khám đang chờ tự chuyển Đã bỏ qua với lý do "Do chuyển nhượng"; lịch hẹn khám định kỳ và lịch chăm sóc (F3.11) chưa làm tự hủy; khóa huấn luyện tự gỡ. Khi ghi nhận ngựa mất (F1.8): làm giống vậy với lý do "Do ngựa mất" và "Gỡ do ngựa mất". Bác sĩ đóng bệnh án kèm ngày mất (F3.9) thì ngựa được ghi nhận mất trong cùng thao tác. Chuyển nhượng nội bộ (F1.4) cũng bị chặn khi còn bệnh án đang mở. Các hệ quả này nằm trong dòng nhật ký đổi vòng đời. Bệnh án và yêu cầu khám cũng là dữ liệu chặn xóa hồ sơ. |
+| Flow 1 | Nhận hồ sơ ngựa, khu và ô chuồng, HEAD TRAINER phụ trách khu. Ghi số đo vào bảng chỉ số cơ thể của F1.5. Cung cấp trạng thái sức khỏe, khóa huấn luyện, danh sách bệnh án và tổng chi phí để hiển thị trong F1.3. Khi chuyển nhượng (F1.8): chặn nếu ngựa còn bệnh án đang mở; yêu cầu khám đang chờ tự chuyển Đã bỏ qua với lý do "Do chuyển nhượng"; lịch hẹn khám định kỳ và lịch chăm sóc (F3.11) chưa làm tự hủy; khóa huấn luyện tự gỡ. Khi ghi nhận ngựa mất (F1.8): làm giống vậy với lý do "Do ngựa mất" và "Gỡ do ngựa mất". Bác sĩ đóng bệnh án kèm ngày mất (F3.9) thì ngựa được ghi nhận mất trong cùng thao tác. Chuyển nhượng nội bộ (F1.4) **không** bị chặn khi còn bệnh án đang mở: bệnh án tiếp tục, chi phí từng buổi khám tính cho chủ vào ngày khám (III.6.6). Các hệ quả này nằm trong dòng nhật ký đổi vòng đời. Bệnh án và yêu cầu khám cũng là dữ liệu chặn xóa hồ sơ. |
 | Flow 2 | Cung cấp trạng thái sức khỏe và khóa huấn luyện để Flow 2 chặn việc đăng ký lớp và tham gia buổi tập. Flow 3 không tự rút ngựa khỏi lớp. |
 | Flow 4 | Nhận báo cáo sự cố của GROOM dưới dạng yêu cầu khám khi sự cố khẩn hoặc HEAD TRAINER chuyển bác sĩ. Cung cấp ghi chú chăm sóc và hạn chế vận động (trường "Ghi chú chăm sóc" của buổi khám gần nhất) để Flow 4 điều chỉnh khẩu phần và checklist. |
 | Flow 5 | Cung cấp giá trị "được đua" để Flow 5 chặn đăng ký thi đấu. Flow 3 không tự rút đăng ký thi đấu đã có; Flow 5 kiểm tra lại "được đua" khi chốt danh sách. |
@@ -289,13 +289,14 @@ Ghi lại một buổi khám cho con ngựa chưa có bệnh án đang mở: kh�
    - Đơn thuốc (tùy chọn): mỗi dòng gồm tên thuốc, liều lượng, tần suất, ngày bắt đầu, ngày kết thúc (không sớm hơn ngày bắt đầu). Ngày kết thúc bắt buộc khi kết luận Bình thường (buổi khám không mở bệnh án, thiếu thì 400); khi kết luận Có vấn đề thì tùy chọn, bỏ trống nghĩa là dùng tới khi đóng bệnh án. Không trừ kho, không tính tiền.
    - Chấn thương (tùy chọn, chỉ khi kết luận Có vấn đề): theo F3.6 mục 2.
    - Ngày hẹn tái khám (tùy chọn, chỉ khi kết luận Có vấn đề): là ngày hẹn tái khám đầu tiên của bệnh án vừa mở.
+   - Chi phí của buổi khám (tùy chọn, số nguyên VND, bỏ trống là 0), theo mục III.6.
 2. Kết luận Bình thường: hệ thống lưu buổi khám như một bản ghi độc lập, không mở bệnh án, và đẩy hạn khám định kỳ sang chu kỳ tiếp theo.
 3. Kết luận Có vấn đề: bắt buộc nhập chẩn đoán ban đầu của bệnh án. Hệ thống lưu buổi khám và mở bệnh án (F3.5) trong cùng một thao tác; buổi khám trở thành buổi đầu tiên của bệnh án.
 4. Các yêu cầu khám được gắn chuyển sang Đã khám. Chỉ gắn được yêu cầu đang chờ của chính con ngựa đó.
 5. Nếu con ngựa đã có bệnh án đang mở, hệ thống không cho tạo buổi khám ngoài bệnh án mà hướng bác sĩ sang F3.6 để ghi buổi khám vào bệnh án đó.
 6. Thời điểm khám theo mục III.2.5.
 7. Không ghi nhận buổi khám cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa. Ngựa đã giải nghệ vẫn khám bình thường.
-8. Buổi khám đã lưu không sửa, không xóa; ghi sai thì hủy theo F3.6.
+8. Buổi khám đã lưu không sửa, không xóa; ghi sai thì hủy theo F3.6. Riêng chi phí được điều chỉnh kèm lý do theo F3.6 mục 9.
 9. Ghi nhật ký thao tác.
 
 ### Bảng use case
@@ -381,7 +382,7 @@ Tạo một bệnh án cho con ngựa khi buổi khám ngoài bệnh án phát h
 
 ### Nghiệp vụ
 
-1. Một bệnh án gồm: con ngựa, ngày mở (bằng thời điểm của buổi khám mở bệnh án), bác sĩ mở, chẩn đoán ban đầu, trạng thái (Đang điều trị, Đã đóng, hoặc Đã hủy khi mở nhầm, xem III.2.4), danh sách buổi khám, kết luận cuối và tổng chi phí. Hai trường cuối chỉ có giá trị khi bệnh án đã đóng.
+1. Một bệnh án gồm: con ngựa, ngày mở (bằng thời điểm của buổi khám mở bệnh án), bác sĩ mở, chẩn đoán ban đầu, trạng thái (Đang điều trị, Đã đóng, hoặc Đã hủy khi mở nhầm, xem III.2.4), danh sách buổi khám, kết luận cuối và tổng chi phí. Kết luận cuối chỉ có khi bệnh án đã đóng; tổng chi phí cộng từ các buổi khám chưa hủy (III.6.4).
 2. Mỗi con ngựa có tối đa **MỘT** bệnh án đang mở. Nếu đã có, hệ thống chặn với mã 409 và hướng bác sĩ sang bệnh án hiện có để thêm buổi khám.
 3. Bệnh án luôn được mở từ một buổi khám ngoài bệnh án có kết luận Có vấn đề, không mở rỗng. Buổi khám đó trở thành buổi đầu tiên của bệnh án.
 4. Ngựa đã giải nghệ vẫn mở bệnh án được. Ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa thì không.
@@ -415,11 +416,11 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 
 | Vai trò | Quyền | Phạm vi | Ghi chú |
 |---|---|---|---|
-| VETERINARIAN | Thêm, Xem, Sửa (hủy) | Toàn câu lạc bộ | Vai trò duy nhất ghi nhận và hủy buổi khám. |
+| VETERINARIAN | Thêm, Xem, Sửa (hủy, điều chỉnh chi phí) | Toàn câu lạc bộ | Vai trò duy nhất ghi nhận, hủy buổi khám và điều chỉnh chi phí buổi khám. |
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | |
-| HEAD TRAINER | Xem | Toàn câu lạc bộ | Xem chẩn đoán, ghi chú chăm sóc và hạn chế vận động để sắp lịch tập. |
+| HEAD TRAINER | Xem | Toàn câu lạc bộ | Xem chẩn đoán, ghi chú chăm sóc và hạn chế vận động để sắp lịch tập. Không thấy chi phí. |
 | GROOM | Xem ghi chú chăm sóc | Ngựa được phân công | Xem ghi chú chăm sóc đang hiệu lực (của buổi khám gần nhất) ngay trong hồ sơ ngựa. Không xem được chẩn đoán, thuốc hay chi phí. *(BA chốt)* |
-| HORSE OWNER | Xem | Ngựa sở hữu | Không thấy liều lượng, tần suất của đơn thuốc; không thấy chi phí cho tới khi bệnh án đóng; không thấy chi phí của bệnh án thuộc giai đoạn chủ khác (III.6.8). |
+| HORSE OWNER | Xem | Ngựa sở hữu | Không thấy liều lượng, tần suất của đơn thuốc. Thấy chi phí của buổi khám ngay khi buổi khám được ghi, chỉ với buổi khám thuộc giai đoạn mình sở hữu (III.6.7). |
 
 ### Nghiệp vụ
 
@@ -433,6 +434,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Ngày hẹn tái khám (tùy chọn).
    - Đơn thuốc (tùy chọn), cùng quy cách với F3.3; ngày kết thúc tùy chọn, bỏ trống nghĩa là dùng tới khi đóng bệnh án.
    - Chấn thương (tùy chọn), xem mục 2.
+   - Chi phí của buổi khám (tùy chọn, số nguyên VND, bỏ trống là 0), theo mục III.6.
 2. Chấn thương: mỗi dòng gồm vùng cơ thể, vị trí trên mô hình 3D (tọa độ x, y, z, bắt buộc), loại chấn thương, mức hồi phục (Cấp tính, Đang hồi phục, Đã lành) và ghi chú. Một chấn thương được định danh bằng cặp (vùng cơ thể, loại chấn thương) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp. Diễn biến hồi phục của một chấn thương là chuỗi các dòng cùng cặp của những buổi khám chưa hủy trong cùng bệnh án, xếp theo thời điểm khám.
 3. Hệ thống không trừ kho vật tư và không tính tiền thuốc.
 4. Chỉ ghi được buổi khám vào bệnh án đang ở trạng thái Đang điều trị.
@@ -445,7 +447,13 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi khám nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy (III.2.4).
    - Các yêu cầu khám đã gắn vào buổi bị hủy giữ nguyên trạng thái Đã khám.
    - Bác sĩ có thể ghi ngay buổi khám thay thế; buổi thay thế theo đúng quy tắc của F3.3 hoặc F3.6.
-9. Ghi nhật ký thao tác.
+9. **Điều chỉnh chi phí một buổi khám** (áp dụng cho buổi khám của F3.3 và F3.6), theo mục III.6.8:
+   - Chỉ VETERINARIAN, bắt buộc nhập lý do; không giới hạn thời gian; bệnh án đang điều trị hay đã đóng đều được.
+   - Chỉ đổi con số chi phí, các nội dung khác của buổi khám giữ nguyên.
+   - Nhập lại đúng số cũ thì không ghi nhật ký và không gửi thông báo.
+   - Ghi nhật ký giá trị trước, sau và lý do; gửi thông báo mức NORMAL cho HORSE OWNER của giai đoạn chứa ngày khám và CLUB MANAGER.
+   - Không điều chỉnh buổi khám đã hủy, và không điều chỉnh khi ngựa đã chuyển nhượng hoặc đã mất (hồ sơ chỉ được xem).
+10. Ghi nhật ký thao tác.
 
 ### Bảng use case
 
@@ -458,8 +466,8 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 | **Tiền điều kiện** | VETERINARIAN đã đăng nhập. Ghi buổi khám: con ngựa có một bệnh án đang ở trạng thái Đang điều trị. |
 | **Hậu điều kiện** | Buổi khám được thêm vào bệnh án, chỉ số cơ thể được ghi vào F1.5, các yêu cầu khám liên quan chuyển sang Đã khám. Hoặc buổi khám ghi sai được đánh dấu Đã hủy và số đo của nó bị gỡ khỏi F1.5. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án đang điều trị.<br>2. VETERINARIAN chọn "Thêm buổi khám".<br>3. Hệ thống hiển thị biểu mẫu và danh sách yêu cầu khám đang chờ của con ngựa.<br>4. VETERINARIAN gắn yêu cầu, nhập chỉ số, chẩn đoán và hướng điều trị, đơn thuốc, chấn thương, trạng thái sức khỏe.<br>5. VETERINARIAN lưu.<br>6. Hệ thống ghi chỉ số vào F1.5, lưu buổi khám, đẩy hạn khám định kỳ và ghi nhật ký. |
-| **Luồng thay thế** | A1. Bác sĩ đặt ngày hẹn tái khám -> hệ thống hiển thị ngày hẹn trong bảng điều khiển.<br>A2. Trạng thái sức khỏe thay đổi -> hệ thống thực hiện hệ quả của UC-F3-07.<br>A3. Bác sĩ thấy đã khỏi -> chuyển sang UC-F3-09 để đóng bệnh án.<br>A4. Bác sĩ phát hiện một buổi khám ghi sai -> chọn "Hủy buổi khám", nhập lý do; hệ thống đánh dấu Đã hủy, gỡ số đo khỏi F1.5, ghi nhật ký; bác sĩ có thể ghi buổi thay thế.<br>A5. Bác sĩ mở nhầm bệnh án (chưa có buổi tái khám) -> hủy buổi mở bệnh án; bệnh án chuyển Đã hủy và báo lại CLUB MANAGER, HORSE OWNER. |
-| **Luồng ngoại lệ** | E1. Bệnh án đã đóng -> trả về 409, phải khám ngoài bệnh án (F3.3) và mở bệnh án mới nếu có vấn đề.<br>E2. Thời điểm khám ở tương lai, lùi quá 7 ngày hoặc sớm hơn ngày mở bệnh án -> báo lỗi.<br>E3. Ngày hẹn tái khám ở quá khứ -> báo lỗi.<br>E4. Hủy buổi đã hủy, buổi mở bệnh án khi bệnh án còn buổi khác hoặc đã đóng -> trả về 409.<br>E5. Hủy không nhập lý do -> báo lỗi. |
+| **Luồng thay thế** | A1. Bác sĩ đặt ngày hẹn tái khám -> hệ thống hiển thị ngày hẹn trong bảng điều khiển.<br>A2. Trạng thái sức khỏe thay đổi -> hệ thống thực hiện hệ quả của UC-F3-07.<br>A3. Bác sĩ thấy đã khỏi -> chuyển sang UC-F3-09 để đóng bệnh án.<br>A4. Bác sĩ phát hiện một buổi khám ghi sai -> chọn "Hủy buổi khám", nhập lý do; hệ thống đánh dấu Đã hủy, gỡ số đo khỏi F1.5, ghi nhật ký; bác sĩ có thể ghi buổi thay thế.<br>A5. Bác sĩ mở nhầm bệnh án (chưa có buổi tái khám) -> hủy buổi mở bệnh án; bệnh án chuyển Đã hủy và báo lại CLUB MANAGER, HORSE OWNER.<br>A6. Bác sĩ phát hiện chi phí một buổi khám nhập sai -> chọn "Điều chỉnh chi phí", nhập số mới và lý do; hệ thống lưu, ghi nhật ký và thông báo lại. |
+| **Luồng ngoại lệ** | E1. Bệnh án đã đóng -> trả về 409, phải khám ngoài bệnh án (F3.3) và mở bệnh án mới nếu có vấn đề.<br>E2. Thời điểm khám ở tương lai, lùi quá 7 ngày hoặc sớm hơn ngày mở bệnh án -> báo lỗi.<br>E3. Ngày hẹn tái khám ở quá khứ -> báo lỗi.<br>E4. Hủy buổi đã hủy, buổi mở bệnh án khi bệnh án còn buổi khác hoặc đã đóng -> trả về 409.<br>E5. Hủy hoặc điều chỉnh chi phí không nhập lý do -> báo lỗi.<br>E6. Điều chỉnh chi phí của buổi khám đã hủy, hoặc của ngựa đã chuyển nhượng, đã mất -> trả về 409.<br>E7. Chi phí âm hoặc không phải số nguyên -> báo lỗi. |
 
 ---
 
@@ -557,28 +565,26 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 
 ---
 
-## F3.9 — Đóng bệnh án, chốt và điều chỉnh chi phí (Sửa)
+## F3.9 — Đóng bệnh án (Sửa)
 
 ### Mô tả
 
-Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi kết luận cuối và tổng chi phí điều trị. Đây là thời điểm chi phí được nhập và cũng là lúc chủ ngựa nhìn thấy chi phí. Sau khi đóng, chi phí chỉ được điều chỉnh kèm lý do.
+Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi kết luận cuối. Chi phí không nhập ở đây mà đã nhập theo từng buổi khám (III.6); tổng chi phí của bệnh án được cộng từ các buổi khám.
 
 ### Phân quyền
 
 | Vai trò | Quyền | Phạm vi | Ghi chú |
 |---|---|---|---|
-| VETERINARIAN | Sửa | Toàn câu lạc bộ | Vai trò duy nhất đóng bệnh án, nhập và điều chỉnh chi phí. |
-| CLUB MANAGER | Không | | Xem chi phí sau khi bệnh án đóng tại F3.10. |
+| VETERINARIAN | Sửa | Toàn câu lạc bộ | Vai trò duy nhất đóng bệnh án. |
+| CLUB MANAGER | Không | | Xem chi phí tại F3.10. |
 | HEAD TRAINER | Không | | |
 | GROOM | Không | | |
-| HORSE OWNER | Không | | Xem tổng chi phí sau khi bệnh án đóng tại F3.10. |
+| HORSE OWNER | Không | | Xem chi phí phần mình tại F3.10. |
 
 ### Nghiệp vụ
 
 1. Chỉ đóng được bệnh án đang ở trạng thái Đang điều trị.
-2. Khi đóng, bác sĩ nhập:
-   - Kết luận cuối.
-   - Tổng chi phí điều trị theo mục III.6: một số tiền duy nhất cho cả bệnh án. Hệ thống không tính tự động và không tách theo từng buổi khám hay từng loại thuốc.
+2. Khi đóng, bác sĩ nhập kết luận cuối. Không nhập chi phí; tổng chi phí của bệnh án là tổng các buổi khám chưa hủy (III.6.4).
 3. Ngày đóng là thời điểm thực hiện thao tác.
 4. Nếu lệnh khóa huấn luyện gắn với bệnh án này còn hiệu lực, hệ thống bắt chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ (theo F3.8 nghiệp vụ 7).
 4b. **Ngựa mất trong lúc điều trị:**
@@ -591,24 +597,23 @@ Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi k
 5. Nếu trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly, hệ thống cảnh báo và hỏi bác sĩ có muốn cập nhật trạng thái trước khi đóng không. Bác sĩ vẫn được phép đóng, vì có trường hợp ngựa hồi phục dần mà bệnh án đã kết thúc.
 6. Nếu con ngựa còn yêu cầu khám đang chờ, hệ thống báo số lượng để bác sĩ biết, kèm nút mở hàng đợi yêu cầu khám; các yêu cầu này vẫn ở hàng đợi và được xử lý như bình thường sau khi đóng. *(BA chốt)*
 7. Sau khi đóng, bệnh án chuyển sang chỉ đọc. Không mở lại bệnh án đã đóng; vấn đề tái phát thì khám ngoài bệnh án (F3.3) và mở bệnh án mới.
-8. Điều chỉnh chi phí sau khi đóng theo mục III.6.3: chỉ đổi con số tổng chi phí, bắt buộc lý do, ghi nhật ký giá trị trước và sau, gửi thông báo mức NORMAL cho HORSE OWNER của giai đoạn chứa bệnh án (III.6.8) và CLUB MANAGER.
-9. Chi phí của bệnh án đã đóng được cộng vào tổng chi phí y tế của con ngựa, hiển thị ở F1.3 và F3.10.
-10. Gửi thông báo mức NORMAL cho HORSE OWNER và CLUB MANAGER khi đóng.
-11. Ghi nhật ký kèm tổng chi phí và kết luận cuối.
+8. Chi phí của từng buổi khám vẫn điều chỉnh được sau khi đóng, theo F3.6 mục 9.
+9. Gửi thông báo mức NORMAL khi đóng, kèm số tiền chụp tại lúc đóng: CLUB MANAGER nhận tổng chi phí của cả bệnh án; HORSE OWNER hiện tại nhận phần chi phí thuộc giai đoạn mình sở hữu (III.6.6). Lúc đóng ngựa không có chủ thì chỉ báo CLUB MANAGER. Điều chỉnh chi phí sau đó không gửi lại thông báo đóng.
+10. Ghi nhật ký kèm kết luận cuối.
 
 ### Bảng use case
 
 | | |
 |---|---|
 | **Mã use case** | UC-F3-09 |
-| **Tên use case** | Đóng bệnh án, chốt và điều chỉnh chi phí |
+| **Tên use case** | Đóng bệnh án |
 | **Actor chính** | VETERINARIAN |
 | **Actor phụ** | HORSE OWNER, CLUB MANAGER (nhận thông báo), Hệ thống (ghi nhật ký) |
-| **Tiền điều kiện** | Đóng: bệnh án đang ở trạng thái Đang điều trị. Điều chỉnh chi phí: bệnh án đã đóng. |
-| **Hậu điều kiện** | Bệnh án chuyển sang Đã đóng và chỉ đọc. Tổng chi phí được lưu và hiển thị cho chủ ngựa. |
-| **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án và chọn "Đóng bệnh án".<br>2. Hệ thống hiển thị biểu mẫu kết luận cuối và tổng chi phí, kèm lệnh khóa liên quan, trạng thái sức khỏe hiện tại và yêu cầu khám đang chờ.<br>3. VETERINARIAN nhập thông tin.<br>4. VETERINARIAN xác nhận lại số tiền.<br>5. Hệ thống đóng bệnh án, xử lý lệnh khóa theo lựa chọn, gửi thông báo và ghi nhật ký. |
-| **Luồng thay thế** | A1. Khóa huấn luyện còn hiệu lực -> bác sĩ chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ.<br>A2. Trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly -> hệ thống cảnh báo, bác sĩ có thể cập nhật trạng thái rồi đóng.<br>A3. Điều trị không mất chi phí -> nhập 0.<br>A4. Bác sĩ phát hiện chi phí nhập sai sau khi đóng -> chọn "Điều chỉnh chi phí", nhập số mới và lý do; hệ thống lưu, ghi nhật ký và thông báo lại.<br>A5. Ngựa mất trong lúc điều trị -> bác sĩ nhập ngày mất; hệ thống đóng bệnh án và ghi nhận ngựa mất cùng lúc (F1.8). |
-| **Luồng ngoại lệ** | E1. Không nhập kết luận cuối hoặc chi phí -> báo lỗi.<br>E2. Chi phí âm hoặc không phải số nguyên -> báo lỗi.<br>E3. Đóng bệnh án đã đóng -> trả về 409.<br>E4. Điều chỉnh chi phí của bệnh án đang điều trị -> trả về 409.<br>E5. Khóa còn hiệu lực mà không chọn cách xử lý, hoặc chọn giữ khóa mà ngày dự kiến gỡ ở quá khứ -> báo lỗi.<br>E6. Có ngày mất mà vẫn chọn gỡ hoặc giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh -> báo lỗi tại ô tương ứng, không đóng bệnh án. |
+| **Tiền điều kiện** | Bệnh án đang ở trạng thái Đang điều trị. |
+| **Hậu điều kiện** | Bệnh án chuyển sang Đã đóng và chỉ đọc (trừ chi phí từng buổi khám, điều chỉnh theo F3.6). |
+| **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án và chọn "Đóng bệnh án".<br>2. Hệ thống hiển thị biểu mẫu kết luận cuối, kèm tổng chi phí các buổi khám, lệnh khóa liên quan, trạng thái sức khỏe hiện tại và yêu cầu khám đang chờ.<br>3. VETERINARIAN nhập kết luận cuối.<br>4. VETERINARIAN xác nhận.<br>5. Hệ thống đóng bệnh án, xử lý lệnh khóa theo lựa chọn, gửi thông báo và ghi nhật ký. |
+| **Luồng thay thế** | A1. Khóa huấn luyện còn hiệu lực -> bác sĩ chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ.<br>A2. Trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly -> hệ thống cảnh báo, bác sĩ có thể cập nhật trạng thái rồi đóng.<br>A3. Bác sĩ thấy chi phí một buổi khám nhập sai -> điều chỉnh theo UC-F3-06 (A6), trước hoặc sau khi đóng.<br>A4. Ngựa mất trong lúc điều trị -> bác sĩ nhập ngày mất; hệ thống đóng bệnh án và ghi nhận ngựa mất cùng lúc (F1.8). |
+| **Luồng ngoại lệ** | E1. Không nhập kết luận cuối -> báo lỗi.<br>E2. Đóng bệnh án đã đóng -> trả về 409.<br>E3. Khóa còn hiệu lực mà không chọn cách xử lý, hoặc chọn giữ khóa mà ngày dự kiến gỡ ở quá khứ -> báo lỗi.<br>E4. Có ngày mất mà vẫn chọn gỡ hoặc giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh -> báo lỗi tại ô tương ứng, không đóng bệnh án. |
 
 ---
 
@@ -641,14 +646,14 @@ Viết tắt: CM = Club Manager, HT = Head Trainer, VET = Veterinarian, GROOM = 
 | 5. Chấn thương và diễn biến hồi phục theo bệnh án | Xem | Xem | Xem | Không | Xem |
 | 6. Lịch sử trạng thái sức khỏe | Xem | Xem | Xem | Không | Xem |
 | 7. Lệnh khóa huấn luyện đang hiệu lực và lịch sử khóa | Xem | Xem | Xem | Không (chỉ nhãn trong F1.3) | Xem |
-| 8. Chi phí của bệnh án đã đóng và tổng chi phí | Xem | Không | Xem | Không | Xem |
+| 8. Chi phí từng buổi khám, tổng chi phí của bệnh án và của con ngựa | Xem | Không | Xem | Không | Xem (chỉ phần thuộc giai đoạn mình sở hữu) |
 
 ### Nghiệp vụ
 
-1. Chủ ngựa xem được cả bệnh án đang điều trị, vì họ cần biết ngựa mình đang được chữa gì. Riêng chi phí chỉ hiện sau khi bệnh án đóng, và chỉ với bệnh án thuộc giai đoạn mình sở hữu (III.6.8).
-2. HEAD TRAINER xem được toàn bộ nội dung y tế trừ chi phí (mục III.6.6).
+1. Chủ ngựa xem được cả bệnh án đang điều trị, vì họ cần biết ngựa mình đang được chữa gì. Chi phí của từng buổi khám hiện ngay khi buổi khám được ghi, chỉ với buổi khám thuộc giai đoạn mình sở hữu; buổi khám của giai đoạn chủ khác có đánh dấu "chi phí thuộc chủ khác" (III.6.7).
+2. HEAD TRAINER xem được toàn bộ nội dung y tế trừ chi phí (mục III.6.7).
 3. Chỉ số cơ thể không hiển thị lại ở đây mà dùng chung màn hình của F1.5, tránh có hai nơi hiển thị cùng một dữ liệu.
-4. CLUB MANAGER có thêm báo cáo tổng hợp: tổng chi phí y tế của các bệnh án đóng trong khoảng thời gian (theo ngày đóng), lọc theo khu chuồng (khu hiện tại của ngựa) hoặc theo chủ ngựa (theo giai đoạn sở hữu lúc bệnh án được đóng, III.6.8).
+4. CLUB MANAGER có thêm báo cáo tổng hợp: tổng chi phí các buổi khám chưa hủy (trong và ngoài bệnh án) có ngày khám trong khoảng thời gian, theo lịch câu lạc bộ, kèm số buổi khám của từng ngựa. Lọc theo khu chuồng (khu hiện tại của ngựa) hoặc theo chủ ngựa (theo giai đoạn sở hữu chứa ngày khám, III.6.6).
 5. Dữ liệu ngoài quyền bị loại bỏ trước khi gửi về máy người dùng, không gửi đủ rồi ẩn ở giao diện.
 6. Con ngựa ngoài phạm vi xem trả về 404. Ngựa đã chuyển nhượng hoặc đã mất vẫn tra cứu được bởi các vai trò trong câu lạc bộ; ngựa đã mất còn tra cứu được bởi chủ ghi trên hồ sơ. Chuyển nhượng ra ngoài bỏ trống chủ, nên chủ cũ mất quyền xem bệnh án; chủ cũ đã bán bằng chuyển nhượng nội bộ cũng mất quyền xem ngay khi việc chuyển chủ được lưu (Flow 1, III.1 mục 5).
 
@@ -663,7 +668,7 @@ Viết tắt: CM = Club Manager, HT = Head Trainer, VET = Veterinarian, GROOM = 
 | **Tiền điều kiện** | Người dùng đã đăng nhập. Con ngựa nằm trong phạm vi xem của người dùng. |
 | **Hậu điều kiện** | Lịch sử y tế của con ngựa được hiển thị theo đúng phạm vi quyền. |
 | **Luồng sự kiện chính** | 1. Người dùng mở hồ sơ ngựa và chọn tab Bệnh án.<br>2. Hệ thống kiểm tra phạm vi xem.<br>3. Hệ thống lấy danh sách bệnh án, buổi khám, lệnh khóa và lịch sử trạng thái sức khỏe.<br>4. Hệ thống loại bỏ các trường ngoài quyền, trong đó có chi phí với HEAD TRAINER và liều thuốc với HORSE OWNER.<br>5. Hệ thống hiển thị danh sách, mới nhất lên trên. |
-| **Luồng thay thế** | A1. Người dùng mở một bệnh án -> hệ thống hiển thị toàn bộ buổi khám và diễn biến chấn thương của bệnh án đó.<br>A2. CLUB MANAGER chọn báo cáo tổng hợp -> hệ thống tính tổng chi phí theo khoảng thời gian và bộ lọc.<br>A3. Bệnh án đang điều trị -> hệ thống hiển thị nhãn Đang điều trị và không có ô chi phí. |
+| **Luồng thay thế** | A1. Người dùng mở một bệnh án -> hệ thống hiển thị toàn bộ buổi khám và diễn biến chấn thương của bệnh án đó.<br>A2. CLUB MANAGER chọn báo cáo tổng hợp -> hệ thống tính tổng chi phí theo khoảng thời gian và bộ lọc.<br>A3. Bệnh án đang điều trị -> hệ thống hiển thị nhãn Đang điều trị, tổng chi phí cộng tới thời điểm xem. |
 | **Luồng ngoại lệ** | E1. HORSE OWNER mở ngựa không thuộc sở hữu -> trả về 404.<br>E2. GROOM gọi trực tiếp API bệnh án -> trả về 403.<br>E3. Con ngựa chưa có dữ liệu y tế -> hiển thị danh sách trống kèm dòng giải thích. |
 
 ---
@@ -730,8 +735,8 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 | CLUB MANAGER đặt chu kỳ khám trong danh mục hệ thống | Chu kỳ cố định 30 ngày | Không có trong đề bài; "danh mục hệ thống" không được định nghĩa ở đâu. |
 | Hạn khám tính từ buổi khám gần nhất hoặc ngày tạo hồ sơ | Tính thêm ngày kích hoạt lại; tính theo ngày lịch Việt Nam | Ngựa vừa được mua lại bị báo quá hạn ngay. |
 | Ngày hẹn phải sớm hơn hoặc bằng hạn | Ngày hẹn từ hôm nay; chỉ giới hạn theo hạn khi chưa quá hạn | Ngựa đã quá hạn không đặt được ngày hẹn nào. |
-| Không nói gì về ngựa chuyển nhượng khi còn bệnh án | Chặn chuyển nhượng; yêu cầu khám, lịch hẹn, lịch chăm sóc tự hủy | Bệnh án kẹt Đang điều trị vĩnh viễn, chủ không thấy chi phí. |
-| Chi phí nhập một lần, không sửa | Được điều chỉnh sau khi đóng, bắt buộc lý do, có nhật ký, thông báo lại | Gõ nhầm số tiền thì chủ ngựa thấy số sai vĩnh viễn. |
+| Không nói gì về ngựa chuyển nhượng khi còn bệnh án | Chặn chuyển nhượng ra ngoài; yêu cầu khám, lịch hẹn, lịch chăm sóc tự hủy. Chuyển chủ nội bộ không chặn | Bệnh án kẹt Đang điều trị vĩnh viễn vì hồ sơ đã chuyển nhượng chỉ được xem. Chuyển chủ nội bộ thì bệnh án vẫn tiếp tục, chi phí chia theo ngày khám. |
+| Chi phí nhập một lần cho cả bệnh án lúc đóng | Chi phí theo từng buổi khám, tính cho chủ vào ngày khám; được điều chỉnh, bắt buộc lý do, có nhật ký, thông báo lại | Ngựa điều trị dài ngày mà đổi chủ thì không chia được tiền; gõ nhầm số tiền thì chủ ngựa thấy số sai vĩnh viễn. |
 | Ba mức cảnh báo URGENT/HIGH/NORMAL "định nghĩa ở F1.5" | Ghi thẳng: sốt sinh yêu cầu Khẩn, sụt cân sinh yêu cầu Bình thường; không sinh từ số đo trong buổi khám | F1.5 chỉ có hai cảnh báo; tránh tự sinh yêu cầu cho chính con ngựa đang được khám và tránh thông báo trùng. |
 | Vai trò không được phép vào dashboard trả 404 | Trả 403 | Đúng quy ước 404/403 của Flow 1. |
 | Gỡ khóa chỉ báo HEAD TRAINER (mục III.7) nhưng F3.8 báo cả CLUB MANAGER | Thống nhất: HEAD TRAINER và CLUB MANAGER | Hai chỗ trong bản nháp nói khác nhau. |
@@ -739,7 +744,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 | Không có ghi chú chăm sóc dù Flow 4 cần | Thêm trường "Ghi chú chăm sóc" cho buổi khám | Mục phụ thuộc Flow 4 đã hứa cung cấp. |
 | Không hủy được buổi mở bệnh án và buổi của bệnh án đã đóng | Buổi tái khám hủy được cả khi bệnh án đã đóng; mở nhầm thì hủy buổi mở, bệnh án chuyển Đã hủy | Phản biện vòng 2: mở nhầm ngựa hoặc số đo sai sau khi đóng thì không còn cách sửa. |
 | Kích hoạt lại thì hạn khám cộng 30 ngày | Hạn khám bằng ngày kích hoạt lại cho tới khi khám | Ngựa đang Cần theo dõi mà 30 ngày không có gì nhắc bác sĩ. |
-| Ngựa mất khi còn bệnh án thì phải chờ bác sĩ đóng bệnh án rồi CLUB MANAGER mới ghi nhận mất | Bác sĩ đóng bệnh án kèm ngày mất, hệ thống ghi nhận mất cùng lúc | Ngựa thường mất trong lúc điều trị; chờ hai bước thì ngựa vẫn hiện Đang hoạt động. Chi phí điều trị vẫn được chốt thật. |
+| Ngựa mất khi còn bệnh án thì phải chờ bác sĩ đóng bệnh án rồi CLUB MANAGER mới ghi nhận mất | Bác sĩ đóng bệnh án kèm ngày mất, hệ thống ghi nhận mất cùng lúc | Ngựa thường mất trong lúc điều trị; chờ hai bước thì ngựa vẫn hiện Đang hoạt động. Chi phí điều trị vẫn được tính theo từng buổi khám. |
 | Lịch chăm sóc không tự lặp | Khi hoàn tất, bác sĩ nhập ngày lần tới để tạo luôn lịch mới | Quên tạo lịch lần sau là ngựa không bao giờ được nhắc. |
 | Giao lịch cho GROOM bất kỳ | Chỉ GROOM đang phụ trách con ngựa | Đổi GROOM thì GROOM cũ vẫn thao tác được, lọt quyền. |
 | Sơ đồ đàn chỉ đếm và liệt kê tên | Kèm khu và ô chuồng để vẽ trên chuồng trại | Đề bài yêu cầu "sơ đồ trạng thái sức khỏe trên giao diện chuồng trại". |
@@ -760,7 +765,7 @@ Bản đầy đủ (bối cảnh, ví dụ, phương án A/B) nằm cuối trang
 | Q5 | Khi bị chặn 409, giao diện lấy chi tiết ở đâu? | FE | Đã chốt: lỗi chỉ có câu thông báo; giao diện gọi lại màn xem |
 | Q6 | Có cần màn "Việc được giao cho tôi" cho GROOM không? | FE | Đã chốt: không cần, xem lịch chăm sóc theo từng con ngựa |
 | Q7 | Tài liệu mô hình dữ liệu ghi quyền ghi số đo lệch spec F1.5 | Flow 1 | Đã xác nhận: theo spec F1.5 (cả bốn loại) |
-| Q8 | Ngựa đã chuyển nhượng có được hủy buổi khám, điều chỉnh chi phí không? | Flow 1, F3.6, F3.9 | Đã chốt: chặn (hồ sơ đã chuyển nhượng chỉ xem được) |
+| Q8 | Ngựa đã chuyển nhượng có được hủy buổi khám, điều chỉnh chi phí không? | Flow 1, F3.6 | Đã chốt: chặn (hồ sơ đã chuyển nhượng chỉ xem được) |
 | Q9 | Lọc bảng điều khiển theo trạng thái thì số đếm tính trên đâu? | F3.1 | Đã chốt: số đếm bốn mức theo bộ lọc khu, không theo bộ lọc sức khỏe |
 | Q10 | BA xác nhận các thay đổi ở Phụ lục 1 | Toàn Flow 3 | Đã xác nhận |
 

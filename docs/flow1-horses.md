@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 17/10/2026
+> Cập nhật: 18/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -204,7 +204,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả.
 | Ngựa chết chỉ xử lý được bằng giải nghệ, chuyển nhượng hoặc xóa | Thêm trạng thái Đã mất | Giải nghệ thì ngựa vẫn chiếm ô và bị nhắc khám, chuyển nhượng sai nghĩa, xóa thì bị chặn vì đã có dữ liệu. |
 | Thông báo ngựa mất không gửi CLUB MANAGER | Gửi mọi CLUB MANAGER đang hoạt động | Bác sĩ ghi nhận mất khi đóng bệnh án thì CLUB MANAGER không biết ngựa đã mất; CLB có thể có nhiều CLUB MANAGER. Giống các thông báo y tế của Flow 3. |
 | Chỉ CLUB MANAGER ghi nhận ngựa mất, phải chờ bác sĩ đóng bệnh án trước | Bác sĩ đóng bệnh án kèm ngày mất, hệ thống ghi nhận mất cùng lúc | Ngựa thường mất trong lúc điều trị. Chờ hai bước thì ngựa vẫn hiện Đang hoạt động, vẫn trong lớp và vẫn được giao GROOM. Ngoài thực tế, bác sĩ thú y là người xác nhận ngựa chết. |
-| Đổi chủ bằng sửa trường chủ sở hữu, chỉ lưu chủ hiện tại | Chuyển nhượng nội bộ, lưu lịch sử giai đoạn sở hữu | Góp ý của giảng viên: chỉ sửa trường chủ là CRUD, chưa phải chuyển nhượng. Chi phí y tế phải tính cho người làm chủ lúc bệnh án được đóng, không dồn hết cho chủ hiện tại. |
+| Đổi chủ bằng sửa trường chủ sở hữu, chỉ lưu chủ hiện tại | Chuyển nhượng nội bộ, lưu lịch sử giai đoạn sở hữu | Góp ý của giảng viên: chỉ sửa trường chủ là CRUD, chưa phải chuyển nhượng. Chi phí y tế phải tính cho người làm chủ vào ngày khám, không dồn hết cho chủ hiện tại. |
 
 ---
 
@@ -339,7 +339,7 @@ Màn hình hồ sơ đầy đủ của một con ngựa. Tab đầu tiên là th
 |---|---|---|---|---|---|
 | 1. Thông tin hồ sơ: định danh, ảnh, số chip, sở trường cự ly, trạng thái sức khỏe và vòng đời, được tập / được đua, cây phả hệ, chủ sở hữu, khu và ô chuồng, GROOM phụ trách, chỉ số cơ thể và biểu đồ | Xem | Xem | Xem | Xem | Xem |
 | 2. Bệnh án: danh sách bệnh án, các buổi khám (Flow 3) | Xem | Xem | Xem | Không | Xem |
-| 2b. Tổng chi phí y tế của các bệnh án đã đóng (Flow 3) | Xem | Không | Xem | Không | Xem |
+| 2b. Tổng chi phí y tế của các buổi khám chưa hủy (Flow 3) | Xem | Không | Xem | Không | Xem (chỉ phần thuộc giai đoạn mình sở hữu) |
 | 3. Huấn luyện: lớp đang học, lịch buổi tập, kết quả và nhận xét sau buổi tập (Flow 2) | Xem | Xem | Xem | Không | Xem |
 | 4. Thành tích thi đấu (Flow 5) | Xem | Xem | Không | Không | Xem |
 
@@ -400,7 +400,7 @@ Sửa thông tin định danh, ảnh đại diện, cha mẹ, chủ sở hữu v
    - Gán chủ: chỉ dùng cho ngựa chưa có chủ. Hệ thống mở giai đoạn sở hữu mới, bắt đầu từ lúc lưu.
    - Ngựa đã có chủ thì không đổi chủ bằng chức năng sửa hồ sơ (409), phải dùng chuyển nhượng nội bộ (mục 9). Không bỏ trống được chủ (400). Không gửi trường chủ sở hữu thì chủ giữ nguyên.
    - Hệ thống lưu lịch sử các giai đoạn sở hữu: chủ, thời điểm bắt đầu, thời điểm kết thúc, lý do, người ghi nhận. Thời điểm bắt đầu là lúc CLUB MANAGER lưu việc gán chủ hoặc chuyển chủ. Mỗi con ngựa có tối đa một giai đoạn đang mở.
-   - Chủ mới thấy được toàn bộ lịch sử sức khỏe của con ngựa, nhưng chi phí y tế thuộc thời gian chủ khác sở hữu bị ẩn (Flow 3).
+   - Chủ mới thấy được toàn bộ lịch sử sức khỏe của con ngựa, nhưng chi phí của các buổi khám thuộc thời gian chủ khác sở hữu bị ẩn (Flow 3).
    - Chủ cũ mất quyền xem ngay khi việc chuyển chủ được lưu.
    - Việc gán chủ và chuyển chủ được ghi vào nhật ký: từ ai sang ai, ai thực hiện, thời điểm nào.
 5. Không cho sửa hồ sơ của ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
@@ -410,9 +410,9 @@ Sửa thông tin định danh, ảnh đại diện, cha mẹ, chủ sở hữu v
 9. **Chuyển nhượng nội bộ** (bán cho chủ khác trong câu lạc bộ; chỉ CLUB MANAGER ghi nhận, sau khi hai bên đã thỏa thuận bên ngoài):
    - Nhập chủ mới và lý do (số hợp đồng, ngày ký nếu cần). Chủ mới bắt đầu sở hữu từ lúc lưu; hệ thống không nhận ngày hiệu lực lùi về trước. Không lưu giá bán vì đề tài không quản lý giao dịch tiền.
    - Chỉ cho ngựa Đang hoạt động hoặc Đã giải nghệ (409) và đang có chủ (409; chưa có chủ thì dùng gán chủ). Chủ mới phải khác chủ hiện tại (400) và là tài khoản HORSE OWNER đang hoạt động.
-   - Bị chặn (409) nếu ngựa còn bệnh án đang mở; bác sĩ đóng bệnh án trước (Flow 3), để không có bệnh án nào nằm vắt qua hai chủ.
+   - Ngựa đang có bệnh án mở vẫn chuyển được; bệnh án tiếp tục điều trị (Flow 3).
    - Không đổi vòng đời, khu, ô chuồng, GROOM, lớp học.
-   - Đóng giai đoạn sở hữu hiện tại và mở giai đoạn mới tại cùng thời điểm lưu. Chi phí y tế chia theo thời điểm này (Flow 3).
+   - Đóng giai đoạn sở hữu hiện tại và mở giai đoạn mới tại cùng thời điểm lưu. Chi phí từng buổi khám tính cho người làm chủ vào ngày khám, nên một bệnh án có thể chia cho hai chủ (Flow 3, III.6.6).
    - Hai người cùng chuyển nhượng một con ngựa: người lưu sau bị chặn như mục 7.
    - Thông báo cho chủ mới ("Bạn đã trở thành chủ sở hữu ngựa X") và chủ cũ ("Ngựa X đã chuyển sang chủ khác").
 10. **Xem lịch sử sở hữu:** mới nhất lên trên, gồm chủ, thời điểm bắt đầu, thời điểm kết thúc, lý do và người ghi nhận. CLUB MANAGER, HEAD TRAINER, VETERINARIAN, GROOM xem toàn bộ; HORSE OWNER chỉ thấy các giai đoạn của chính mình.
@@ -613,7 +613,7 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
    - GROOM vừa bị kết thúc phân công nhận thông báo "Ngựa X đã chuyển nhượng, bạn không còn phụ trách".
 2b. **Ghi nhận ngựa mất (ACTIVE hoặc RETIRED sang DECEASED):**
    - Bắt buộc nhập ngày mất (không ở tương lai, không trước ngày sinh nếu biết) và nguyên nhân (dùng ô lý do). Không nhập ngày mất khi chuyển sang trạng thái khác.
-   - Bị chặn (409) nếu con ngựa còn bệnh án đang mở; bác sĩ đóng bệnh án với kết luận và chi phí thật trước (Flow 3). Hệ thống không tự đóng bệnh án.
+   - Bị chặn (409) nếu con ngựa còn bệnh án đang mở; bác sĩ đóng bệnh án với kết luận thật trước (Flow 3). Hệ thống không tự đóng bệnh án.
    - Ngựa mất trong lúc điều trị: VETERINARIAN đóng bệnh án kèm ngày mất (F3.9). Hệ thống đóng bệnh án rồi ghi nhận ngựa mất trong cùng một thao tác, lấy kết luận cuối của bệnh án làm nguyên nhân mất. CLUB MANAGER không phải làm thêm bước nào.
    - Làm như chuyển nhượng: rút khỏi lớp, rút đăng ký thi đấu chưa diễn ra, trả ô, bỏ khu, kết thúc phân công GROOM, gỡ lệnh khóa huấn luyện với lý do "Gỡ do ngựa mất", yêu cầu khám đang chờ và lịch chưa làm tự hủy với lý do "Do ngựa mất". Không đặt lại trạng thái sức khỏe.
    - Giữ chủ sở hữu, chủ vẫn xem được hồ sơ. Hồ sơ chỉ đọc. Ngựa vẫn hiện là cha mẹ trong phả hệ và vẫn chọn làm cha mẹ được. Số chip vẫn giữ chỗ.
@@ -709,7 +709,7 @@ Phát hiện khi làm, cũng đã sửa: chặn xóa hồ sơ (F1.8) đang hỏi
 
 Còn lại, chưa làm:
 
-- ~~Tổng chi phí y tế ở tab Bệnh án (F1.3)~~ Có từ Flow 3: `GET /horses/:id/medical-cases` trả `totalCost` (tổng các bệnh án đã đóng); Head Trainer không có key này.
+- ~~Tổng chi phí y tế ở tab Bệnh án (F1.3)~~ Có từ Flow 3: `GET /horses/:id/medical-cases` trả `totalCost` (tổng các buổi khám chưa hủy, trong và ngoài bệnh án; chủ ngựa chỉ được cộng phần của mình); Head Trainer không có key này.
 - **Tab 1 hồ sơ (F1.3 mục 1)**: hồ sơ, phả hệ, lịch sử chỉ số, quyền và ảnh là 5 API riêng (`GET /horses/:id`, `/pedigree`, `/measurements`, `/permissions`, `/photo-url`); FE gọi song song khi mở hồ sơ.
 - ~~Chỉ số cơ thể (F1.5)~~ Đã làm: cờ bất thường lưu lúc ghi (`is_abnormal`), xác nhận ghi vào nhật ký; lịch sử lọc `from`/`to`/`type` và phân trang.
 - ~~Danh sách ngựa (F1.1)~~ Đã làm: mỗi dòng có `photoUrl` ký sẵn, vẫn giữ `mediaId`.

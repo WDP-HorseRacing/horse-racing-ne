@@ -268,7 +268,7 @@ không được lock/rollback cùng transaction.
 
 Repository riêng (`<feature>.repository.ts`) là **tùy chọn**, chỉ nên tạo khi có câu query phức tạp: dùng `QueryBuilder` nhiều dòng, join nhiều bảng, raw SQL tổng hợp (`GROUP BY`, `FILTER`), CTE đệ quy (`WITH RECURSIVE`), advisory lock (`pg_advisory_xact_lock`), hoặc transaction nhiều bảng liên kết.
 
-Ví dụ dưới đây là báo cáo chi phí bệnh án bằng raw SQL với `GROUP BY`, `SUM`, join 2 bảng và điều kiện lọc tùy chọn:
+Ví dụ dưới đây là báo cáo chi phí y tế bằng raw SQL với `GROUP BY`, `SUM`, join 2 bảng và điều kiện lọc tùy chọn:
 
 ```ts
 @Injectable()
@@ -279,15 +279,15 @@ export class MedicalCasesRepository {
     return this.dataSource.query(
       `SELECT h.id AS "horseId",
               h.name AS "horseName",
-              COUNT(c.id)::int AS "caseCount",
-              SUM(c.total_cost)::text AS "totalCost"
-         FROM medical_cases c
-         JOIN horses h ON h.id = c.horse_id
-        WHERE c.status = $1
-          AND (c.closed_at AT TIME ZONE $2)::date BETWEEN $3::date AND $4::date
+              COUNT(r.id)::int AS "visitCount",
+              SUM(r.cost)::text AS "totalCost"
+         FROM medical_records r
+         JOIN horses h ON h.id = r.horse_id
+        WHERE r.voided_at IS NULL
+          AND (r.exam_date AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
         GROUP BY h.id, h.name
-        ORDER BY SUM(c.total_cost) DESC, h.name`,
-      [MedicalCaseStatus.CLOSED, CLUB_TIME_ZONE, filter.from, filter.to],
+        ORDER BY SUM(r.cost) DESC, h.name`,
+      [CLUB_TIME_ZONE, filter.from, filter.to],
     );
   }
 }
