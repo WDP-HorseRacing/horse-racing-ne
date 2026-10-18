@@ -420,6 +420,7 @@ export class HorseStatusesService {
         from: horse.lifecycleStatus,
         to: body.lifecycleStatus,
         reason: body.reason,
+        ownerId: applied.ownerChange?.ownerId ?? horse.ownerId,
       };
       await this.events.publish(
         manager,

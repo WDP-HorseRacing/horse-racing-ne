@@ -262,6 +262,19 @@ describe('HorseStatusesService', () => {
           horseId: HORSE_ID,
           from: HorseLifecycleStatus.ACTIVE,
           to: HorseLifecycleStatus.RETIRED,
+          ownerId: 'owner-1',
+        }),
+      );
+    });
+
+    it('puts the owner whose ownership the sale ends into the lifecycle event', async () => {
+      await change(HorseLifecycleStatus.TRANSFERRED);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        HORSE_LIFECYCLE_CHANGED_EVENT,
+        expect.objectContaining({
+          to: HorseLifecycleStatus.TRANSFERRED,
+          ownerId: 'owner-1',
         }),
       );
     });
@@ -435,6 +448,11 @@ describe('HorseStatusesService', () => {
         reason: 'Mua lại',
         recordedBy: CALLER_ID,
       });
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        HORSE_LIFECYCLE_CHANGED_EVENT,
+        expect.objectContaining({ ownerId: 'owner-2' }),
+      );
     });
 
     it('requires an owner to reactivate a transfer, refuses one elsewhere, and refuses an inactive owner', async () => {

@@ -435,10 +435,12 @@ describe('HorseNotificationsService.notifyLifecycleChanged', () => {
     from: HorseLifecycleStatus.ACTIVE,
     to: HorseLifecycleStatus.RETIRED,
     reason: 'Hết tuổi đua',
+    ownerId: 'owner-1',
   };
 
   it('tells the owner the new lifecycle and the reason', async () => {
     const { service, recipients, notifications } = setup();
+    recipients.isActiveUserWithRole.mockResolvedValue(true);
     recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: 'trainer-1',
@@ -447,6 +449,10 @@ describe('HorseNotificationsService.notifyLifecycleChanged', () => {
 
     await service.notifyLifecycleChanged(event);
 
+    expect(recipients.isActiveUserWithRole).toHaveBeenCalledWith(
+      'owner-1',
+      UserRole.HORSE_OWNER,
+    );
     expect(notifications.send).toHaveBeenCalledWith(
       expect.objectContaining({
         eventId: 'life-1',
@@ -455,17 +461,47 @@ describe('HorseNotificationsService.notifyLifecycleChanged', () => {
         title: 'Ngựa Sao Mai: Đã giải nghệ',
         message:
           'Vòng đời của ngựa Sao Mai chuyển từ Đang hoạt động sang Đã giải nghệ. Lý do: Hết tuổi đua',
+        resource: expect.objectContaining({ id: 'horse-1' }) as unknown,
       }),
     );
   });
 
-  it('sends nothing when the horse has no active owner', async () => {
+  it('tells the owner whose ownership just ended on a sale, without a link to the horse', async () => {
     const { service, recipients, notifications } = setup();
+    recipients.isActiveUserWithRole.mockResolvedValue(true);
     recipients.findHorseMedicalContact.mockResolvedValue({
       horseName: 'Sao Mai',
       headTrainerId: null,
       ownerId: null,
     });
+
+    await service.notifyLifecycleChanged({
+      ...event,
+      to: HorseLifecycleStatus.TRANSFERRED,
+      reason: 'Bán cho trại B',
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['owner-1'],
+        title: 'Ngựa Sao Mai: Đã chuyển nhượng',
+        resource: null,
+      }),
+    );
+  });
+
+  it('sends nothing when the event has no owner', async () => {
+    const { service, notifications } = setup();
+
+    await expect(
+      service.notifyLifecycleChanged({ ...event, ownerId: null }),
+    ).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when the owner is no longer an active horse owner', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.isActiveUserWithRole.mockResolvedValue(false);
 
     await expect(service.notifyLifecycleChanged(event)).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();

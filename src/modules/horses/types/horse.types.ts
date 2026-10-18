@@ -242,6 +242,7 @@ export interface HorseDeceasedEvent {
  *
  * - eventId: sinh mới cho mỗi lần đổi, dùng để chống gửi trùng thông báo
  * - from, to: vòng đời trước và sau; reason: lý do Club Manager nhập
+ * - ownerId: chủ cần báo, chụp lúc đổi; bán ra ngoài là chủ vừa kết thúc sở hữu, kích hoạt lại là chủ mới, null nếu ngựa không có chủ
  */
 export interface HorseLifecycleChangedEvent {
   eventId: string;
@@ -249,6 +250,7 @@ export interface HorseLifecycleChangedEvent {
   from: HorseLifecycleStatus;
   to: HorseLifecycleStatus;
   reason: string;
+  ownerId: string | null;
 }
 
 /**

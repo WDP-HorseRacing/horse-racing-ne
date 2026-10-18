@@ -507,7 +507,8 @@ export class HorseNotificationsService {
   /**
    * Báo chủ ngựa khi ngựa giải nghệ, chuyển nhượng hoặc hoạt động trở lại
    *
-   * - Chủ ngựa chỉ nhận khi còn là HORSE_OWNER đang ACTIVE; không có chủ thì không gửi
+   * - Người nhận là chủ chụp trong event (bán ra ngoài: chủ vừa kết thúc sở hữu), chỉ khi còn là HORSE_OWNER đang ACTIVE; event không có chủ thì không gửi
+   * - Người nhận không còn là chủ hiện tại thì thông báo không gắn link tới ngựa
    * - Idempotent theo event.eventId
    *
    * @param event Payload của HORSE_LIFECYCLE_CHANGED_EVENT
@@ -516,18 +517,28 @@ export class HorseNotificationsService {
   async notifyLifecycleChanged(
     event: HorseLifecycleChangedEvent,
   ): Promise<string[]> {
+    if (
+      !event.ownerId ||
+      !(await this.recipients.isActiveUserWithRole(
+        event.ownerId,
+        UserRole.HORSE_OWNER,
+      ))
+    ) {
+      return [];
+    }
     const contact = await this.recipients.findHorseMedicalContact(
       event.horseId,
     );
-    if (!contact?.ownerId) return [];
+    if (!contact) return [];
     return this.notifications.send({
       eventId: event.eventId,
-      recipientIds: [contact.ownerId],
+      recipientIds: [event.ownerId],
       category: NotificationCategory.HORSE_LIFECYCLE,
       priority: NotificationPriority.NORMAL,
       title: `Ngựa ${contact.horseName}: ${HORSE_LIFECYCLE_LABELS[event.to]}`,
       message: `Vòng đời của ngựa ${contact.horseName} chuyển từ ${HORSE_LIFECYCLE_LABELS[event.from]} sang ${HORSE_LIFECYCLE_LABELS[event.to]}. Lý do: ${event.reason}`,
-      resource: horseResource(event.horseId),
+      resource:
+        contact.ownerId === event.ownerId ? horseResource(event.horseId) : null,
     });
   }
 
