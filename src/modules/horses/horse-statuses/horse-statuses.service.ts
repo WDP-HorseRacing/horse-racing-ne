@@ -40,12 +40,14 @@ import { toLifecyclePreviewResponse } from '../mappers/horse-statuses.mapper';
 import {
   assertAssignableOwner,
   assertDateOfDeath,
+  assertLifecycleChanged,
   assertLifecycleOwner,
   assertLifecycleTransition,
   isReadOnlyLifecycle,
   lifecycleImpactSummary,
   lifecycleSideEffects,
   lifecycleTransitionError,
+  lifecycleUnchangedError,
 } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
 import { HorseOwnershipService } from '../shared/horse-ownership.service';
@@ -57,11 +59,6 @@ import type {
   LifecycleSideEffects,
 } from '../types/horse.types';
 import { HorseStatusesRepository } from './horse-statuses.repository';
-
-/**
- * Lý do chặn khi xem trước đổi vòng đời sang đúng trạng thái hiện tại
- */
-const LIFECYCLE_ALREADY_IN_STATUS_MESSAGE = 'Ngựa đang ở đúng trạng thái này';
 
 /**
  * Dữ liệu của một lần đổi vòng đời, dùng chung cho các bước trong transaction
@@ -144,7 +141,8 @@ export class HorseStatusesService {
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
    * - Giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt tập ONGOING: 409
    * - Ghi nhận đã mất khi ngựa đang có lượt tập ONGOING: lượt đó bị hủy với lý do "Ngựa đã mất" (ongoingRunsCancelled trong nhật ký); đang đua vẫn đổi được
-   * - Bắt buộc lý do; ghi nhật ký kèm lý do. Gửi đúng trạng thái hiện tại thì không đổi gì
+   * - Bắt buộc lý do; ghi nhật ký kèm lý do
+   * - Gửi đúng trạng thái hiện tại (mọi trạng thái, kể cả ngựa đã mất): 409 "Ngựa <tên> đã ở trạng thái <nhãn trạng thái>", không ghi gì
    * - Nhật ký ghi thêm hệ quả thực sự xảy ra: số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, incidentsClosed, raceRegistrationsWithdrawn, chủ trước và sau (ownerId); hệ quả không chạy thì không có key
    * - Hồ sơ đã xóa: Club Manager nhận 409, phải khôi phục trước (qua HorseAccessService.lockWritableHorse)
    *
@@ -155,7 +153,7 @@ export class HorseStatusesService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
    * @throws BadRequestException Nếu thiếu, thừa hoặc sai ngày mất; thiếu, thừa hoặc sai vai trò chủ sở hữu
-   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), không được chuyển giữa hai trạng thái, ngựa đã mất, chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở, giải nghệ hay chuyển nhượng khi ngựa đang tập, hoặc chủ sở hữu được chọn không ở trạng thái hoạt động
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), gửi đúng trạng thái hiện tại, không được chuyển giữa hai trạng thái, ngựa đã mất, chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở, giải nghệ hay chuyển nhượng khi ngựa đang tập, hoặc chủ sở hữu được chọn không ở trạng thái hoạt động
    */
   async updateLifecycle(
     actor: Actor,
@@ -165,7 +163,11 @@ export class HorseStatusesService {
     await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const horse = await this.access.lockWritableHorse(manager, actor, id);
-      if (horse.lifecycleStatus === body.lifecycleStatus) return;
+      assertLifecycleChanged(
+        horse.name,
+        horse.lifecycleStatus,
+        body.lifecycleStatus,
+      );
       await this.applyLifecycleChange(manager, caller.id, horse, body);
     });
     return toHorseResponse(await this.access.findNotDeletedHorse(id));
@@ -222,8 +224,7 @@ export class HorseStatusesService {
     // Kiểm tra lý do chặn
     const blockedReason = await this.lifecycleBlockedReason(
       manager,
-      id,
-      horse.lifecycleStatus,
+      horse,
       to,
       effects,
     );
@@ -583,20 +584,20 @@ export class HorseStatusesService {
    * - Chỉ đọc bệnh án khi hai bước đầu không chặn và effects có settleMedicalWork
    *
    * @param manager EntityManager dùng để query
-   * @param id UUID của ngựa
-   * @param from Trạng thái vòng đời hiện tại
+   * @param horse Hồ sơ ngựa hiện tại
    * @param to Trạng thái vòng đời muốn chuyển sang
    * @param effects Các hệ quả sẽ chạy (từ lifecycleSideEffects)
    * @returns Promise trả về lý do chặn đầu tiên gặp, null nếu được đổi
    */
   private async lifecycleBlockedReason(
     manager: EntityManager,
-    id: string,
-    from: HorseLifecycleStatus,
+    horse: HorseEntity,
     to: HorseLifecycleStatus,
     effects: LifecycleSideEffects,
   ): Promise<string | null> {
-    if (from === to) return LIFECYCLE_ALREADY_IN_STATUS_MESSAGE;
+    const { id, lifecycleStatus: from } = horse;
+    const unchangedError = lifecycleUnchangedError(horse.name, from, to);
+    if (unchangedError !== null) return unchangedError;
     const transitionError = lifecycleTransitionError(from, to);
     if (transitionError !== null) return transitionError;
     if (

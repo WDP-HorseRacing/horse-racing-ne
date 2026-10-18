@@ -636,6 +636,7 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
 6. Ghi nhật ký thao tác kèm lý do.
 7. Giải nghệ, kích hoạt lại: báo HORSE OWNER hiện tại (đang hoạt động) vòng đời mới kèm lý do. Chuyển nhượng ra ngoài không báo chủ cũ, vì chủ đã bị bỏ trống. Ghi nhận đã mất báo như trước (chủ, HEAD TRAINER khu cũ, Groom cũ, CLUB MANAGER).
 8. Buổi tập đang diễn ra lúc đổi vòng đời: giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt Đang tập bị chặn 409 ("Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng"), xem trước cũng báo lý do này; ghi nhận đã mất thì lượt Đang tập bị hủy với lý do "Ngựa đã mất" (nhật ký ghi `ongoingRunsCancelled`). Các buổi chưa diễn ra bị hủy như trước.
+9. Gửi đúng trạng thái vòng đời hiện tại (mọi trạng thái, kể cả Đã mất) bị chặn 409 ("Ngựa <tên> đã ở trạng thái <trạng thái>"), không ghi gì; xem trước cũng báo lý do này.
 
 ### Bảng use case
 
@@ -649,7 +650,7 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
 | **Hậu điều kiện** | Trạng thái vòng đời được thay đổi hoặc hồ sơ bị ẩn. Các dữ liệu liên quan được xử lý theo quy tắc. Nhật ký ghi lại lý do. |
 | **Luồng sự kiện chính** | 1. CLUB MANAGER mở hồ sơ và chọn "Đổi trạng thái vòng đời".<br>2. Hệ thống hiển thị các trạng thái có thể chuyển sang kèm mô tả hệ quả.<br>3. CLUB MANAGER chọn trạng thái và nhập lý do.<br>4. Hệ thống hiển thị bảng xác nhận liệt kê toàn bộ hệ quả.<br>5. CLUB MANAGER xác nhận.<br>6. Hệ thống thực hiện trong một giao dịch và ghi nhật ký. |
 | **Luồng thay thế** | A1. CLUB MANAGER chọn "Xóa hồ sơ" với hồ sơ tạo nhầm → hệ thống kiểm tra điều kiện xóa trước khi thực hiện.<br>A2. CLUB MANAGER khôi phục hồ sơ đã xóa → hồ sơ trở về trạng thái trước khi xóa.<br>A3. Câu lạc bộ mua lại ngựa đã bán → CLUB MANAGER kích hoạt lại hồ sơ cũ, hệ thống đặt sức khỏe về "Cần theo dõi" và đưa ngựa vào danh sách "Chờ xếp khu".<br>A4. Ngựa chết → CLUB MANAGER ghi nhận Đã mất kèm ngày mất và nguyên nhân.<br>A5. Ngựa mất khi đang có bệnh án mở → VETERINARIAN đóng bệnh án kèm ngày mất tại F3.9, hệ thống ghi nhận Đã mất cùng lúc. |
-| **Luồng ngoại lệ** | E1. Hồ sơ đã phát sinh dữ liệu nghiệp vụ → không cho xóa, hệ thống liệt kê các dữ liệu đang vướng.<br>E2. Con ngựa đang là cha hoặc mẹ của con khác → không cho xóa.<br>E3. Không nhập lý do → chặn thao tác.<br>E3b. Ghi nhận ngựa mất khi còn bệnh án đang mở → chặn (409). Thiếu ngày mất, ngày mất ở tương lai hoặc trước ngày sinh → báo lỗi tại ô ngày mất. Thao tác trên ngựa đã mất → chặn (409).<br>E4. Thực hiện thất bại giữa chừng → hủy toàn bộ, giữ nguyên trạng thái cũ. |
+| **Luồng ngoại lệ** | E1. Hồ sơ đã phát sinh dữ liệu nghiệp vụ → không cho xóa, hệ thống liệt kê các dữ liệu đang vướng.<br>E2. Con ngựa đang là cha hoặc mẹ của con khác → không cho xóa.<br>E3. Không nhập lý do → chặn thao tác.<br>E3b. Ghi nhận ngựa mất khi còn bệnh án đang mở → chặn (409). Thiếu ngày mất, ngày mất ở tương lai hoặc trước ngày sinh → báo lỗi tại ô ngày mất. Thao tác trên ngựa đã mất → chặn (409). Gửi đúng trạng thái vòng đời hiện tại, kể cả ghi nhận mất lần nữa với ngày khác → chặn (409), không ghi gì.<br>E4. Thực hiện thất bại giữa chừng → hủy toàn bộ, giữ nguyên trạng thái cũ. |
 
 ---
 

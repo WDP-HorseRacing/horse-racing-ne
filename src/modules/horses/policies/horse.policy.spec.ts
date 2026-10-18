@@ -37,6 +37,7 @@ import {
   assertDistinctMeasurementTypes,
   assertGenderKeepsPedigree,
   assertLifecycleTransition,
+  assertLifecycleChanged,
   assertLifecycleOwner,
   assertMeasuredAt,
   microchipTakenMessage,
@@ -57,6 +58,7 @@ import {
   lifecycleImpactSummary,
   lifecycleSideEffects,
   lifecycleTransitionError,
+  lifecycleUnchangedError,
   raceAptitudeFieldsIn,
   measurementAlerts,
   placementStatusOf,
@@ -826,6 +828,31 @@ describe('horse.policy', () => {
       expect(() => assertLifecycleTransition(from, to)).toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe('lifecycle unchanged', () => {
+    it.each([
+      [HorseLifecycleStatus.ACTIVE, 'Đang hoạt động'],
+      [HorseLifecycleStatus.RETIRED, 'Đã giải nghệ'],
+      [HorseLifecycleStatus.TRANSFERRED, 'Đã chuyển nhượng'],
+      [HorseLifecycleStatus.DECEASED, 'Đã mất'],
+    ])(
+      'blocks %s -> same status with 409 naming horse and status',
+      (status, label) => {
+        const message = `Ngựa Winx đã ở trạng thái ${label}`;
+        expect(lifecycleUnchangedError('Winx', status, status)).toBe(message);
+        expect(() => assertLifecycleChanged('Winx', status, status)).toThrow(
+          new ConflictException(message),
+        );
+      },
+    );
+
+    it('lets a different status through', () => {
+      const from = HorseLifecycleStatus.DECEASED;
+      const to = HorseLifecycleStatus.ACTIVE;
+      expect(lifecycleUnchangedError('Winx', from, to)).toBeNull();
+      expect(() => assertLifecycleChanged('Winx', from, to)).not.toThrow();
     });
   });
 

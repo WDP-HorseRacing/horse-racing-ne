@@ -69,6 +69,7 @@ Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, 
 1. Lượt đang tập (`ONGOING`) ở buổi đã quá giờ kết thúc 30 phút: hệ thống tự chuyển `COMPLETED`, lý do `Hệ thống tự hoàn thành`.
 2. Ngựa được ghi nhận đã mất khi đang tập: lượt chuyển `CANCELLED`, lý do `Ngựa đã mất`.
 3. Giải nghệ hoặc chuyển nhượng khi ngựa còn lượt đang tập: 409 `Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng`.
+4. `PATCH /horses/:horseId/lifecycle-status` gửi đúng trạng thái hiện tại (kể cả ghi nhận mất lần nữa): 409 `Ngựa <tên> đã ở trạng thái <trạng thái>` (trước trả 200, không ghi gì). Xem trước trả `blockedReason` cùng câu này.
 
 ## 4. Phụ phí chăm sóc riêng (thay cho "gói chăm sóc")
 

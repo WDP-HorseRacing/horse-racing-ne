@@ -524,6 +524,42 @@ export function assertLifecycleTransition(
 }
 
 /**
+ * Tìm lý do chặn khi trạng thái vòng đời muốn chuyển sang trùng trạng thái hiện tại; trả về lý do thay vì ném lỗi
+ *
+ * - Áp dụng cho mọi trạng thái, kể cả ngựa đã mất
+ *
+ * @param horseName Tên ngựa
+ * @param from Trạng thái vòng đời hiện tại
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @returns Lý do dạng "Ngựa <tên> đã ở trạng thái <nhãn trạng thái>", hoặc null nếu hai trạng thái khác nhau
+ */
+export function lifecycleUnchangedError(
+  horseName: string,
+  from: HorseLifecycleStatus,
+  to: HorseLifecycleStatus,
+): string | null {
+  if (from !== to) return null;
+  return `Ngựa ${horseName} đã ở trạng thái ${HORSE_LIFECYCLE_LABELS[from]}`;
+}
+
+/**
+ * Chặn đổi vòng đời sang đúng trạng thái ngựa đang ở
+ *
+ * @param horseName Tên ngựa
+ * @param from Trạng thái vòng đời hiện tại
+ * @param to Trạng thái vòng đời muốn chuyển sang
+ * @throws ConflictException Nếu hai trạng thái trùng nhau
+ */
+export function assertLifecycleChanged(
+  horseName: string,
+  from: HorseLifecycleStatus,
+  to: HorseLifecycleStatus,
+): void {
+  const error = lifecycleUnchangedError(horseName, from, to);
+  if (error) throw new ConflictException(error);
+}
+
+/**
  * Xác định các việc cần chạy khi ngựa đổi vòng đời, dựa vào trạng thái hiện tại (from) và trạng thái đích (to).
  *
  * Các kịch bản chính:

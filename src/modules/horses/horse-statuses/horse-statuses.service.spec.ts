@@ -787,8 +787,10 @@ describe('HorseStatusesService', () => {
       },
     );
 
-    it('writes nothing when the status is unchanged', async () => {
-      await change(HorseLifecycleStatus.ACTIVE);
+    it('rejects the current status with 409 and writes nothing', async () => {
+      await expect(change(HorseLifecycleStatus.ACTIVE)).rejects.toThrow(
+        new ConflictException('Ngựa Winx đã ở trạng thái Đang hoạt động'),
+      );
       expectNoWrite();
     });
   });
@@ -1066,7 +1068,7 @@ describe('HorseStatusesService', () => {
       await expect(preview(HorseLifecycleStatus.ACTIVE)).resolves.toEqual(
         expect.objectContaining({
           allowed: false,
-          blockedReason: 'Ngựa đang ở đúng trạng thái này',
+          blockedReason: 'Ngựa Winx đã ở trạng thái Đang hoạt động',
         }),
       );
       expectNothingWritten();
