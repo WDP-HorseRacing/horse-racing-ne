@@ -34,7 +34,8 @@ const INELIGIBLE_STATUSES: SessionParticipantStatus[] = [
  * Dựng dashboard từ số liệu đã đọc
  *
  * - Lượt không đủ điều kiện gồm cả lượt hủy do khóa huấn luyện
- * - Biểu đồ tuần gồm mọi tuần có lượt hoàn thành hoặc có điểm đo, sắp theo tuần
+ * - Lượt dừng sớm đếm riêng, không tính vào lượt hoàn thành
+ * - Biểu đồ tuần gồm mọi tuần có lượt hoàn thành, lượt dừng sớm hoặc có điểm đo, sắp theo tuần
  * - Nhịp tim trung bình làm tròn tới số nguyên, tốc độ tới SPEED_SCALE chữ số; không có điểm đo thì null
  *
  * @param source Ngựa, số lượt, số buổi và tổng hợp điểm đo của kỳ
@@ -43,6 +44,9 @@ const INELIGIBLE_STATUSES: SessionParticipantStatus[] = [
 export function toDashboard(source: DashboardSource): DashboardResponseDto {
   const completed = source.participantCounts.filter(
     (row) => row.status === SessionParticipantStatus.COMPLETED,
+  );
+  const stopped = source.participantCounts.filter(
+    (row) => row.status === SessionParticipantStatus.STOPPED,
   );
   const sumOf = (rows: DashboardParticipantCountRow[]) =>
     rows.reduce((sum, row) => sum + row.count, 0);
@@ -70,6 +74,7 @@ export function toDashboard(source: DashboardSource): DashboardResponseDto {
     training: {
       sessions: source.sessions,
       completed: sumOf(completed),
+      stopped: sumOf(stopped),
       absent: sumOf(
         source.participantCounts.filter(
           (row) => row.status === SessionParticipantStatus.ABSENT,
@@ -85,7 +90,7 @@ export function toDashboard(source: DashboardSource): DashboardResponseDto {
         HEAVY: byIntensity(TrainingIntensity.HEAVY),
       },
     },
-    weekly: toWeeks(completed, source.metricsByWeek),
+    weekly: toWeeks(completed, stopped, source.metricsByWeek),
     horses: source.horses.map((horse): DashboardHorseDto => ({
       horseId: horse.horseId,
       horseName: horse.horseName,

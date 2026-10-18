@@ -1,6 +1,6 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-> Cập nhật: 17/10/2026
+> Cập nhật: 18/10/2026
 
 ## I. Đề bài liên quan
 
@@ -95,6 +95,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    6. Giới hạn tập trong ngày của mỗi ngựa (xét lịch của ngựa ở mọi lớp, cùng định nghĩa lịch và lượt giữ chỗ như luật 2, 3): tối đa 2 buổi một ngày theo lịch CLB, trong đó tối đa 1 buổi Nặng; hai buổi bất kỳ cách nhau tối thiểu 3 giờ tính từ lúc kết thúc buổi trước tới lúc bắt đầu buổi sau, kể cả qua nửa đêm.
       - Thêm buổi, đổi giờ hoặc đổi cường độ: buổi phải đạt giới hạn so với các buổi chưa hủy khác của chính lớp (409 "Buổi vượt giới hạn tập trong ngày của lớp: …"), và so với lịch ở lớp khác của mọi ngựa đang học lớp vào giờ đó (409 "Vượt giới hạn tập trong ngày của ngựa: {tên} {cách vượt} (lớp {mã}, {giờ})", liệt kê mọi ngựa vướng, sắp theo tên). Cách vượt: "chưa nghỉ đủ 3 giờ so với buổi khác", "đã đủ 2 buổi trong ngày", "đã có buổi Nặng trong ngày".
       - Ghi danh: mỗi buổi trong lịch của ngựa ở lớp này phải đạt giới hạn so với lịch ở lớp khác của ngựa, không thì 409 cả thao tác. Danh sách ngựa ghi danh được (4a) tự bỏ ngựa vướng.
+      - Lượt dừng sớm (mục 5 luật 13) được xét y như lượt hoàn thành.
 7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
    1. Head Trainer phụ trách lớp gắn, đổi hoặc gỡ (`videoMediaId = null`) video của một lần chạy thử bằng `PATCH /session-participants/:id/trial-results/:attemptNo`, không kiểm khu của ngựa. Làm được tới 7 ngày sau giờ kết thúc dự kiến của buổi; buổi đã hủy thì 409. Chỉ video thay đổi, các số đo giữ nguyên.
 8. Danh sách lượt tập của buổi (`GET /training-sessions/:sessionId/participants`) kèm `horseName`, `horsePhotoUrl` (link có hạn, null nếu ngựa chưa có ảnh) và `assignedGroomName` (null nếu chưa giao Groom); danh sách ghi danh của lớp (`GET /classes/:classId/enrollments`) kèm `horseName`, `horsePhotoUrl`. Ngựa hoặc Groom đã xóa mềm vẫn hiện tên; các endpoint ghi giữ response cũ.
@@ -111,13 +112,20 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 6. Chấm lại ngay khi bác sĩ đặt khóa, gỡ khóa, hoặc sức khỏe ngựa đổi (xấu đi hay tốt lên): mọi lượt Chờ điểm danh (`PLANNED`), Hủy do khóa, Không đủ điều kiện của ngựa đó ở buổi đã lên lịch chưa tới giờ bắt đầu được chấm lại theo luật 1–3; ổn hết thì về Chờ điểm danh và xóa lý do. Lượt đã điểm danh, sẵn sàng, đang tập, đã kết thúc, và buổi đã tới giờ giữ nguyên.
    - Mỗi lượt đổi trạng thái hoặc lý do khi chấm lại được ghi một dòng nhật ký (người thao tác là hệ thống, chức năng `TRAIN_RUN`, kèm trạng thái trước và sau). Nhận lặp event không ghi thêm.
 7. Buổi chưa tới giờ bắt đầu không bao giờ tự đóng, kể cả khi mọi lượt đều bị hủy hoặc không đủ điều kiện (còn chờ chấm lại).
-8. Buổi đã tới giờ: lượt mở cuối cùng xong hoặc vắng thì buổi đóng ngay. Buổi đã tới giờ mà không còn lượt mở thì hệ thống tự đóng trong vòng một phút: có lượt đã diễn ra (hoàn thành, vắng, bỏ qua) thì Hoàn thành, không thì Hủy với lý do "Không còn ngựa tham gia".
-9. Khung giờ thao tác (ví dụ buổi 15:00–16:00): điểm danh và báo vắng từ 30 phút trước giờ bắt đầu (14:30); báo sẵn sàng và bắt đầu từ 15 phút trước (14:45); tất cả đóng lúc hết giờ buổi (16:00). Ngoài khung giờ trả 409 kèm giờ mở hoặc giờ đóng. Hoàn thành lượt đang tập không giới hạn giờ.
+8. Buổi đã tới giờ: lượt mở cuối cùng xong, dừng sớm hoặc vắng thì buổi đóng ngay. Buổi đã tới giờ mà không còn lượt mở thì hệ thống tự đóng trong vòng một phút: có lượt đã diễn ra (hoàn thành, dừng sớm, vắng, bỏ qua) thì Hoàn thành, không thì Hủy với lý do "Không còn ngựa tham gia".
+9. Khung giờ thao tác (ví dụ buổi 15:00–16:00): điểm danh và báo vắng từ 30 phút trước giờ bắt đầu (14:30); báo sẵn sàng và bắt đầu từ 15 phút trước (14:45); tất cả đóng lúc hết giờ buổi (16:00). Ngoài khung giờ trả 409 kèm giờ mở hoặc giờ đóng. Hoàn thành hoặc dừng sớm lượt đang tập không giới hạn giờ.
 10. Buổi đã hết giờ mà còn lượt chưa tập: trong vòng một phút hệ thống chuyển lượt Chờ điểm danh thành Vắng (lý do "Hết giờ, chưa điểm danh"), lượt Có mặt hoặc Sẵn sàng thành Bỏ qua (`SKIPPED`); lượt Đang tập giữ nguyên. Sau đó buổi đóng theo luật 8.
    - Việc tự chuyển Vắng hoặc Bỏ qua này không ghi nhật ký: luật cố định, nhìn trạng thái và lý do trên lượt là biết.
 11. Lượt Đang tập bị quên: buổi đã quá giờ kết thúc từ 30 phút trở lên thì trong vòng một phút hệ thống chuyển lượt Đang tập thành Hoàn thành, thời điểm hoàn thành = giờ kết thúc dự kiến của buổi, nhật ký ghi người thao tác trống, lý do "Hệ thống tự hoàn thành"; buổi đóng như thường.
 12. Ngựa được ghi nhận đã mất khi đang tập: lượt Đang tập bị hủy, lý do "Ngựa đã mất", buổi đóng như thường. Giải nghệ hoặc chuyển nhượng khi ngựa đang tập: 409, chờ hoàn thành lượt tập trước.
-11. Tab buổi tập của ngựa (`GET /horses/:horseId/training/sessions`): `when=upcoming` là lượt còn mở (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) bất kể giờ, cùng lượt Không đủ điều kiện của buổi chưa tới giờ; `when=history` là lượt đã kết thúc, kể cả lượt chạy xong trước giờ lịch. Lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ không nằm ở tab nào.
+13. Dừng sớm (`POST /session-participants/:id/stop`, body `{ reason }`): Head Trainer có quyền hoàn thành lượt (mục 8) dừng một lượt Đang tập giữa chừng; lượt khác Đang tập hoặc buổi không Đang diễn ra thì 409.
+    - Lý do chữ tự do bắt buộc, cắt khoảng trắng hai đầu, 1–500 ký tự; trống thì 400.
+    - Lượt thành Dừng sớm (`STOPPED`), lưu `stoppedReason`; giờ kết thúc lưu vào `completedAt` như hoàn thành nên thời lượng thực vẫn tính được.
+    - Ghi một dòng nhật ký (chức năng `TRAIN_RUN`, trạng thái trước và sau, lý do = lý do dừng).
+    - Lượt dừng sớm đã kết thúc: không điểm danh, bắt đầu, giao Groom lại; không nhận thêm điểm đo. Vẫn ghi được kết quả chạy thử (khi buổi còn Đang diễn ra) và đánh giá như lượt hoàn thành.
+    - Không gửi thông báo, không tự gửi yêu cầu khám, không đổi sức khỏe ngựa.
+    - Lượt tạo trước khi có trạng thái này giữ nguyên Hoàn thành. Tự hoàn thành lượt bị quên (luật 11) không đổi.
+11. Tab buổi tập của ngựa (`GET /horses/:horseId/training/sessions`): `when=upcoming` là lượt còn mở (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) bất kể giờ, cùng lượt Không đủ điều kiện của buổi chưa tới giờ; `when=history` là lượt đã kết thúc (kể cả Dừng sớm, kèm `stoppedReason`), kể cả lượt chạy xong trước giờ lịch. Lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ không nằm ở tab nào.
 
 ### 6. Nhịp tim và tốc độ (dữ liệu giả lập)
 
@@ -128,7 +136,11 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 5. Head Trainer của lớp nhận điểm đo realtime qua socket, sự kiện `performance.metrics`.
 6. Có điểm `CRITICAL`: thông báo KHẨN cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần; chủ ngựa nhận một thông báo riêng mức HIGH báo bác sĩ và Head Trainer đã được báo.
 7. Lịch sử cảnh báo của ngựa (`GET /horses/:id/alerts`): mọi điểm đo `WARNING`/`CRITICAL` qua các buổi, mới nhất trước, lọc theo mức và khoảng ngày lịch CLB, phân trang, kèm tên buổi. Club Manager, bác sĩ và Head Trainer của khu chứa ngựa xem.
-8. Khối lượng tập của ngựa (`GET /horses/:id/workload?from&to`, mặc định 7 ngày gần nhất theo lịch CLB): chỉ tính lượt đã hoàn thành có buổi trong khoảng ngày; trả số lượt, số lượt theo cường độ, tổng cự ly dự kiến, tổng thời lượng thực (bắt đầu tới hoàn thành) và cự ly thực tính từ tốc độ cảm biến (khoảng giữa hai điểm đo tính tối đa 5 giây). Ai xem được hồ sơ ngựa thì xem được.
+8. Khối lượng tập của ngựa (`GET /horses/:id/workload?from&to`, mặc định 7 ngày gần nhất theo lịch CLB): tính lượt hoàn thành và dừng sớm có buổi trong khoảng ngày. Ai xem được hồ sơ ngựa thì xem được.
+   - `sessionsCompleted`, `byIntensity`: chỉ đếm lượt hoàn thành; `sessionsStopped`: số lượt dừng sớm.
+   - `plannedDistanceM`: tổng cự ly dự kiến của lượt hoàn thành, không cộng lượt dừng sớm.
+   - `actualDurationSeconds` (bắt đầu tới kết thúc lượt) và `actualDistanceM` (tính từ tốc độ cảm biến, khoảng giữa hai điểm đo tính tối đa 5 giây): cộng cả lượt dừng sớm.
+   - Báo cáo tiến độ ngựa và dashboard báo cáo cùng cách đếm: cột `stopped` riêng ở tổng và từng tuần của biểu đồ tuần, không tính vào `completed`; số phút tập cộng cả lượt dừng sớm, cự ly dự kiến thì không.
 
 ### 7. Bàn giao khi Head Trainer nghỉ
 
@@ -146,7 +158,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | Lớp, buổi tập (xem) | Tất cả | Lớp mình phụ trách | Tất cả | Lớp có lượt mình dắt | Lớp có ngựa của mình |
 | Tạo, sửa lớp, buổi, chạy thử, ghi danh | Không | Lớp mình phụ trách | Không | Không | Không |
 | Điểm danh, báo vắng, báo sẵn sàng | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
-| Bắt đầu, hoàn thành lượt, ghi kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
+| Bắt đầu, hoàn thành, dừng sớm lượt, ghi kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
 | Đánh giá buổi | Không | Có | Không | Không | Không |
 | Ngưỡng nhịp tim/tốc độ | Xem | Đặt cho ngựa thuộc khu mình | Xem | Không | Không |
 | Bàn giao Head Trainer | Có | Không | Không | Không | Không |
@@ -191,6 +203,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | GET/POST | `/session-participants/:id/evaluation` | Xem: theo quyền xem lượt; ghi: HT | Đánh giá lượt tập |
 | POST | `/session-participants/:id/check-in`, `/ready`, `/absent` | HT, GROOM | Điểm danh, báo sẵn sàng, báo vắng |
 | POST | `/session-participants/:id/start`, `/complete` | HT | Bắt đầu, hoàn thành lượt tập |
+| POST | `/session-participants/:id/stop` | HT | Dừng sớm lượt đang tập `{ reason }` |
 | POST | `/session-participants/:id/metrics`, `/metrics/batch` | Không cần đăng nhập | Nhận điểm đo (giả lập) |
 | GET | `/session-participants/:id/metrics` | CM, VET, HT | Điểm đo của lượt theo thời gian |
 | GET | `/session-participants/:id/performance-summary` | CM, VET, HT, OWNER, và phải xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |

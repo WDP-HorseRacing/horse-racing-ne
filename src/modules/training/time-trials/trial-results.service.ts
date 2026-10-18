@@ -24,6 +24,7 @@ import { TrialResultEntity } from '../entities/trial-result.entity';
 import { toTrialResultResponse } from '../mappers/trial-result.mapper';
 import { assertTrialVideoEditable } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
+import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
 
 @Injectable()
 export class TrialResultsService {
@@ -138,7 +139,7 @@ export class TrialResultsService {
       }
       if (
         participant.status !== SessionParticipantStatus.ONGOING &&
-        participant.status !== SessionParticipantStatus.COMPLETED
+        !TRAINED_PARTICIPANT_STATUSES.includes(participant.status)
       ) {
         throw new ConflictException('Lượt tập không được ghi kết quả chạy thử');
       }

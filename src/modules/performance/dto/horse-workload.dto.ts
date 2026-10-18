@@ -40,20 +40,29 @@ export class HorseWorkloadDto {
   @ApiProperty({ description: 'Số lượt tập đã hoàn thành' })
   sessionsCompleted!: number;
 
+  @ApiProperty({ description: 'Số lượt tập dừng sớm' })
+  sessionsStopped!: number;
+
   @ApiProperty({
     type: WorkloadByIntensityDto,
     description: 'Số lượt hoàn thành theo cường độ buổi',
   })
   byIntensity!: WorkloadByIntensityDto;
 
-  @ApiProperty({ description: 'Tổng cự ly dự kiến (mét)' })
+  @ApiProperty({
+    description: 'Tổng cự ly dự kiến của các lượt hoàn thành (mét)',
+  })
   plannedDistanceM!: number;
 
   @ApiProperty({
-    description: 'Tổng thời lượng thực, từ bắt đầu tới hoàn thành (giây)',
+    description:
+      'Tổng thời lượng thực của các lượt hoàn thành và dừng sớm, từ bắt đầu tới kết thúc lượt (giây)',
   })
   actualDurationSeconds!: number;
 
-  @ApiProperty({ description: 'Tổng cự ly thực tính từ tốc độ cảm biến (mét)' })
+  @ApiProperty({
+    description:
+      'Tổng cự ly thực của các lượt hoàn thành và dừng sớm, tính từ tốc độ cảm biến (mét)',
+  })
   actualDistanceM!: number;
 }

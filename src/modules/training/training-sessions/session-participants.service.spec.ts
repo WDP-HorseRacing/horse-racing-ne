@@ -273,3 +273,87 @@ describe('SessionParticipantsService.absent', () => {
     });
   });
 });
+
+describe('SessionParticipantsService.stop', () => {
+  function setup(status: SessionParticipantStatus, sessionStatus: string) {
+    const row = {
+      ...participant('p1', 'h1'),
+      status,
+      completedAt: null as Date | null,
+      stoppedReason: null as string | null,
+    };
+    const manager = {
+      save: jest.fn((value: unknown) => Promise.resolve(value)),
+    } as unknown as EntityManager;
+    const access = {
+      currentUser: jest.fn().mockResolvedValue({ id: 'ht-1' }),
+      findParticipant: jest
+        .fn()
+        .mockResolvedValue({ sessionId: 's1', horseId: 'h1' }),
+      lockedHorse: jest.fn().mockResolvedValue({ id: 'h1' }),
+      lockedSession: jest.fn().mockResolvedValue({ status: sessionStatus }),
+      lockedParticipant: jest.fn().mockResolvedValue(row),
+      assertCanOperateParticipant: jest.fn().mockResolvedValue(undefined),
+    };
+    const operations = new TrainingOperationsFacade();
+    const refresh = jest
+      .spyOn(operations, 'refreshSessionStatus')
+      .mockResolvedValue({} as never);
+    const audit = { record: jest.fn() };
+    const service = new SessionParticipantsService(
+      {} as Repository<SessionParticipantEntity>,
+      access as unknown as TrainingAccessService,
+      operations,
+      {
+        transaction: jest.fn((cb: (m: EntityManager) => unknown) =>
+          cb(manager),
+        ),
+      } as unknown as DataSource,
+      {} as MediaService,
+      audit,
+    );
+    return { service, row, refresh, manager, audit };
+  }
+
+  it('dừng lượt ONGOING: chuyển STOPPED, lưu lý do, giờ kết thúc, ghi nhật ký và cập nhật buổi', async () => {
+    const { service, row, refresh, manager, audit } = setup(
+      SessionParticipantStatus.ONGOING,
+      'IN_PROGRESS',
+    );
+
+    await service.stop(actor, 'p1', { reason: 'Ngựa đau' });
+
+    expect(row).toMatchObject({
+      status: SessionParticipantStatus.STOPPED,
+      stoppedReason: 'Ngựa đau',
+    });
+    expect(row.completedAt).toBeInstanceOf(Date);
+    expect(audit.record).toHaveBeenCalledWith(
+      manager,
+      expect.objectContaining({
+        before: { status: SessionParticipantStatus.ONGOING },
+        after: { status: SessionParticipantStatus.STOPPED },
+        reason: 'Ngựa đau',
+      }),
+    );
+    expect(refresh).toHaveBeenCalledWith(manager, 's1');
+  });
+
+  it.each([
+    [SessionParticipantStatus.READY, 'IN_PROGRESS'],
+    [SessionParticipantStatus.ONGOING, 'COMPLETED'],
+  ])(
+    'từ chối dừng lượt %s của buổi %s bằng 409 và không lưu gì',
+    async (status, sessionStatus) => {
+      const { service, manager, refresh } = setup(status, sessionStatus);
+
+      await expect(
+        service.stop(actor, 'p1', { reason: 'x' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(
+        (manager as unknown as { save: jest.Mock }).save,
+      ).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
+    },
+  );
+});

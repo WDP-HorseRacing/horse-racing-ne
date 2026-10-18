@@ -11,6 +11,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
@@ -21,6 +22,7 @@ import {
   MarkParticipantAbsentDto,
   SessionParticipantListItemDto,
   SessionParticipantResponseDto,
+  StopParticipantDto,
 } from '../dto/session-participant.dto';
 import { SessionParticipantsService } from './session-participants.service';
 
@@ -90,5 +92,19 @@ export class SessionParticipantsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.participants.complete(actor, id);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
+  @Post('session-participants/:id/stop')
+  @ApiOperation({
+    summary: 'Dừng sớm lượt đang tập, bắt buộc lý do',
+  })
+  @ApiCreatedResponse({ type: SessionParticipantResponseDto })
+  stop(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: StopParticipantDto,
+  ) {
+    return this.participants.stop(actor, id, body);
   }
 }

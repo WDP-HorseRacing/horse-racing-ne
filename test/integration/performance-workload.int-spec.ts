@@ -172,10 +172,41 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
       from: '2026-10-05',
       to: '2026-10-11',
       sessionsCompleted: 2,
+      sessionsStopped: 0,
       byIntensity: { LIGHT: 1, HEAVY: 1 },
       plannedDistanceM: 5000,
       actualDurationSeconds: 3000,
       actualDistanceM: 72,
+    });
+  });
+
+  it('counts stopped participants apart: duration and sensor distance yes, planned distance and intensity no', async () => {
+    await participant('2026-10-05T01:00:00Z', {
+      intensity: 'HEAVY',
+      distance: 3000,
+      minutes: 30,
+    });
+    const stopped = await participant('2026-10-06T01:00:00Z', {
+      intensity: 'LIGHT',
+      distance: 2000,
+      minutes: 10,
+      status: 'STOPPED',
+    });
+    await point(stopped, '2026-10-06T01:00:00Z', '10');
+    await point(stopped, '2026-10-06T01:00:02Z', '10');
+
+    const result = await service.workload(manager, horseId, {
+      from: '2026-10-05',
+      to: '2026-10-11',
+    });
+
+    expect(result).toMatchObject({
+      sessionsCompleted: 1,
+      sessionsStopped: 1,
+      byIntensity: { LIGHT: 0, HEAVY: 1 },
+      plannedDistanceM: 3000,
+      actualDurationSeconds: 2400,
+      actualDistanceM: 20,
     });
   });
 

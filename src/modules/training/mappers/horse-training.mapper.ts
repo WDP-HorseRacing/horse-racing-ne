@@ -76,6 +76,7 @@ export function toHorseTrainingSessionResponse(
     participantStatus: row.participantStatus,
     groomName: row.groomName,
     absenceReason: row.absenceReason,
+    stoppedReason: row.stoppedReason,
     cancelReason: row.cancelReason,
     completedAt: row.completedAt,
     trialResults,

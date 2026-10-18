@@ -4,10 +4,10 @@ import type { Model } from 'mongoose';
 import { DataSource, In } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import { TrainingSessionEntity } from '../../training/entities/training-session.entity';
-import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
+import { TRAINED_PARTICIPANT_STATUSES } from '../../training/constants/participant-window.constants';
 import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import { PerformanceMetric } from '../schemas/performance-metric.schema';
-import type { CompletedParticipantLoad } from '../types/performance.types';
+import type { FinishedParticipantLoad } from '../types/performance.types';
 
 /**
  * Khoảng tối đa (giây) giữa hai điểm đo liên tiếp được tính vào cự ly; khoảng dài hơn coi như cảm biến mất tín hiệu
@@ -26,36 +26,38 @@ export class PerformanceDetailsRepository {
   ) {}
 
   /**
-   * Lấy các lượt tập đã hoàn thành của ngựa có buổi bắt đầu trong khoảng ngày theo lịch CLB
+   * Lấy các lượt tập đã hoàn thành hoặc dừng sớm của ngựa có buổi bắt đầu trong khoảng ngày theo lịch CLB
    *
    * @param horseId UUID của ngựa
    * @param from Từ ngày dạng YYYY-MM-DD
    * @param to Tới ngày dạng YYYY-MM-DD
-   * @returns Promise trả về mỗi lượt một dòng: cường độ, cự ly dự kiến của buổi và số giây thực tập
+   * @returns Promise trả về mỗi lượt một dòng: trạng thái lượt, cường độ, cự ly dự kiến của buổi và số giây thực tập
    */
-  async completedLoads(
+  async finishedLoads(
     horseId: string,
     from: string,
     to: string,
-  ): Promise<CompletedParticipantLoad[]> {
+  ): Promise<FinishedParticipantLoad[]> {
     const rows = await this.dataSource.query<
       Array<{
         participantId: string;
-        intensity: CompletedParticipantLoad['intensity'];
+        status: FinishedParticipantLoad['status'];
+        intensity: FinishedParticipantLoad['intensity'];
         plannedDistanceM: number;
         durationSeconds: string | null;
       }>
     >(
       `SELECT p.id AS "participantId",
+              p.status AS "status",
               s.intensity AS "intensity",
               s.planned_distance_m AS "plannedDistanceM",
               EXTRACT(EPOCH FROM (p.completed_at - p.started_at)) AS "durationSeconds"
          FROM session_participants p
          JOIN training_sessions s ON s.id = p.session_id
         WHERE p.horse_id = $1
-          AND p.status = $2
+          AND p.status = ANY($2)
           AND (s.scheduled_start_at AT TIME ZONE $3)::date BETWEEN $4::date AND $5::date`,
-      [horseId, SessionParticipantStatus.COMPLETED, CLUB_TIME_ZONE, from, to],
+      [horseId, TRAINED_PARTICIPANT_STATUSES, CLUB_TIME_ZONE, from, to],
     );
     return rows.map((row) => ({
       ...row,

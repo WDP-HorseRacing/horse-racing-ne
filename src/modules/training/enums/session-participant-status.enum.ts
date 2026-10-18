@@ -4,6 +4,7 @@ export enum SessionParticipantStatus {
   READY = 'READY',
   ONGOING = 'ONGOING',
   COMPLETED = 'COMPLETED',
+  STOPPED = 'STOPPED',
   ABSENT = 'ABSENT',
   SKIPPED = 'SKIPPED',
   INELIGIBLE = 'INELIGIBLE',

@@ -1,6 +1,6 @@
 # Thay đổi API cần FE cập nhật (đợt sửa theo góp ý demo)
 
-Cập nhật: 2026-10-16
+Cập nhật: 2026-10-18
 
 Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, HT = Head Trainer, VET = bác sĩ thú y, GROOM = người chăm ngựa, OWNER = chủ ngựa. Lỗi vẫn theo format chung. Schema chi tiết: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
@@ -237,3 +237,20 @@ Không đổi API.
 2. Hủy cả lớp không gửi thông báo này.
 3. FE cần thêm biểu tượng cho `category = TRAINING_SESSION`.
 
+
+## Dừng sớm lượt tập
+
+1. Trạng thái lượt tập mới `STOPPED` (dừng sớm), là trạng thái kết thúc như `COMPLETED`: không điểm danh, bắt đầu, giao Groom lại; vẫn ghi kết quả chạy thử và đánh giá được.
+2. Route mới `POST /session-participants/:id/stop` (HT), body `{ "reason": "Ngựa đi khập khiễng" }`:
+   - Lý do bắt buộc, 1–500 ký tự sau khi cắt khoảng trắng; trống thì 400.
+   - Chỉ lượt `ONGOING` của buổi `IN_PROGRESS`, không thì 409. Quyền như `/complete`.
+   - Response như `/complete`: `status = STOPPED`, `completedAt` là giờ dừng. Lượt cuối còn mở dừng thì buổi tự đóng `COMPLETED`.
+3. Field mới `stoppedReason` (null nếu không dừng sớm) ở:
+   - Response các route `/session-participants/:id/*` và `GET /training-sessions/:sessionId/participants`.
+   - `GET /horses/:horseId/training/sessions` (lượt dừng sớm nằm ở `when=history`).
+   - `GET /grooms/me/today` → `trainingRuns[]` (lượt dừng sớm vẫn hiện).
+4. Đếm riêng lượt dừng sớm:
+   - `GET /horses/:id/workload`: thêm `sessionsStopped`. `sessionsCompleted`, `byIntensity`, `plannedDistanceM` chỉ tính lượt hoàn thành; `actualDurationSeconds`, `actualDistanceM` cộng cả lượt dừng sớm.
+   - Báo cáo tiến độ ngựa (`GET /reports/horses/:horseId/progress`): thêm `totals.stopped` và `weekly[].stopped`; `trainedMinutes` cộng cả lượt dừng sớm, `completed` và `plannedDistanceM` thì không.
+   - Dashboard báo cáo (`GET /reports/dashboard`): thêm `training.stopped` và `weekly[].stopped`.
+5. FE cần thêm nhãn và màu cho `STOPPED` ở mọi chỗ hiển thị trạng thái lượt.

@@ -46,6 +46,7 @@ const VISIBLE_RUN_STATUSES = [
   SessionParticipantStatus.READY,
   SessionParticipantStatus.ONGOING,
   SessionParticipantStatus.COMPLETED,
+  SessionParticipantStatus.STOPPED,
 ];
 
 /**

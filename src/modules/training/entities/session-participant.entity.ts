@@ -79,6 +79,9 @@ export class SessionParticipantEntity extends MutableRecordEntity {
   @Column({ name: 'absence_reason', type: 'text', nullable: true })
   absenceReason!: string | null;
 
+  @Column({ name: 'stopped_reason', type: 'text', nullable: true })
+  stoppedReason!: string | null;
+
   @Column({ name: 'cancel_reason', type: 'text', nullable: true })
   cancelReason!: string | null;
 

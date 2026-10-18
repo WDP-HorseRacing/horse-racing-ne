@@ -8697,6 +8697,52 @@
         ]
       }
     },
+    "/api/v1/session-participants/{id}/stop": {
+      "post": {
+        "operationId": "SessionParticipantsController_stop",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopParticipantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionParticipantResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dừng sớm lượt đang tập, bắt buộc lý do",
+        "tags": [
+          "training"
+        ]
+      }
+    },
     "/api/v1/classes/{classId}/sessions": {
       "get": {
         "operationId": "TrainingSessionsController_list",
@@ -14484,6 +14530,10 @@
             "type": "number",
             "description": "Số lượt tập đã hoàn thành"
           },
+          "sessionsStopped": {
+            "type": "number",
+            "description": "Số lượt tập dừng sớm"
+          },
           "byIntensity": {
             "description": "Số lượt hoàn thành theo cường độ buổi",
             "allOf": [
@@ -14494,15 +14544,15 @@
           },
           "plannedDistanceM": {
             "type": "number",
-            "description": "Tổng cự ly dự kiến (mét)"
+            "description": "Tổng cự ly dự kiến của các lượt hoàn thành (mét)"
           },
           "actualDurationSeconds": {
             "type": "number",
-            "description": "Tổng thời lượng thực, từ bắt đầu tới hoàn thành (giây)"
+            "description": "Tổng thời lượng thực của các lượt hoàn thành và dừng sớm, từ bắt đầu tới kết thúc lượt (giây)"
           },
           "actualDistanceM": {
             "type": "number",
-            "description": "Tổng cự ly thực tính từ tốc độ cảm biến (mét)"
+            "description": "Tổng cự ly thực của các lượt hoàn thành và dừng sớm, tính từ tốc độ cảm biến (mét)"
           }
         },
         "required": [
@@ -14510,6 +14560,7 @@
           "from",
           "to",
           "sessionsCompleted",
+          "sessionsStopped",
           "byIntensity",
           "plannedDistanceM",
           "actualDurationSeconds",
@@ -15112,6 +15163,10 @@
             "type": "number",
             "description": "Số lượt hoàn thành"
           },
+          "stopped": {
+            "type": "number",
+            "description": "Số lượt dừng sớm"
+          },
           "absent": {
             "type": "number",
             "description": "Số lượt vắng"
@@ -15132,6 +15187,7 @@
         "required": [
           "sessions",
           "completed",
+          "stopped",
           "absent",
           "ineligible",
           "completedByIntensity"
@@ -15148,6 +15204,10 @@
           "completed": {
             "type": "number",
             "description": "Số lượt hoàn thành trong tuần"
+          },
+          "stopped": {
+            "type": "number",
+            "description": "Số lượt dừng sớm trong tuần"
           },
           "avgHeartRateBpm": {
             "type": "number",
@@ -15167,6 +15227,7 @@
         "required": [
           "weekStart",
           "completed",
+          "stopped",
           "avgHeartRateBpm",
           "avgSpeedMps",
           "alertCount"
@@ -15564,6 +15625,10 @@
             "type": "number",
             "description": "Số lượt hoàn thành"
           },
+          "stopped": {
+            "type": "number",
+            "description": "Số lượt dừng sớm"
+          },
           "absent": {
             "type": "number",
             "description": "Số lượt vắng"
@@ -15578,7 +15643,7 @@
           },
           "trainedMinutes": {
             "type": "number",
-            "description": "Tổng thời gian tập thực tế của các lượt hoàn thành (phút)"
+            "description": "Tổng thời gian tập thực tế của các lượt hoàn thành và dừng sớm (phút)"
           },
           "completedByIntensity": {
             "$ref": "#/components/schemas/DashboardIntensityCountsDto"
@@ -15586,6 +15651,7 @@
         },
         "required": [
           "completed",
+          "stopped",
           "absent",
           "ineligible",
           "plannedDistanceM",
@@ -15652,6 +15718,7 @@
               "READY",
               "ONGOING",
               "COMPLETED",
+              "STOPPED",
               "ABSENT",
               "SKIPPED",
               "INELIGIBLE",
@@ -16666,12 +16733,18 @@
               "READY",
               "ONGOING",
               "COMPLETED",
+              "STOPPED",
               "ABSENT",
               "SKIPPED",
               "INELIGIBLE",
               "CANCELLED_BY_LOCK",
               "CANCELLED"
             ]
+          },
+          "stoppedReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do dừng sớm, null nếu lượt không dừng sớm"
           }
         },
         "required": [
@@ -18134,6 +18207,7 @@
               "READY",
               "ONGOING",
               "COMPLETED",
+              "STOPPED",
               "ABSENT",
               "SKIPPED",
               "INELIGIBLE",
@@ -18151,6 +18225,11 @@
             "type": "string",
             "nullable": true
           },
+          "stoppedReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do dừng sớm, null nếu lượt không dừng sớm"
+          },
           "cancelReason": {
             "type": "string",
             "nullable": true,
@@ -18159,7 +18238,8 @@
           "completedAt": {
             "type": "string",
             "nullable": true,
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Giờ kết thúc lượt, gồm hoàn thành hoặc dừng sớm"
           },
           "trialResults": {
             "description": "Kết quả time trial của ngựa trong buổi, rỗng nếu không có",
@@ -19158,6 +19238,7 @@
               "READY",
               "ONGOING",
               "COMPLETED",
+              "STOPPED",
               "ABSENT",
               "SKIPPED",
               "INELIGIBLE",
@@ -19175,10 +19256,16 @@
           },
           "completedAt": {
             "type": "object",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Giờ kết thúc lượt, gồm hoàn thành hoặc dừng sớm"
           },
           "absenceReason": {
             "type": "object"
+          },
+          "stoppedReason": {
+            "type": "object",
+            "nullable": true,
+            "description": "Lý do dừng sớm, null nếu lượt không dừng sớm"
           },
           "cancelReason": {
             "type": "object"
@@ -19267,6 +19354,7 @@
               "READY",
               "ONGOING",
               "COMPLETED",
+              "STOPPED",
               "ABSENT",
               "SKIPPED",
               "INELIGIBLE",
@@ -19284,10 +19372,16 @@
           },
           "completedAt": {
             "type": "object",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Giờ kết thúc lượt, gồm hoàn thành hoặc dừng sớm"
           },
           "absenceReason": {
             "type": "object"
+          },
+          "stoppedReason": {
+            "type": "object",
+            "nullable": true,
+            "description": "Lý do dừng sớm, null nếu lượt không dừng sớm"
           },
           "cancelReason": {
             "type": "object"
@@ -19320,6 +19414,20 @@
           "reason": {
             "type": "string",
             "minLength": 1
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "StopParticipantDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do dừng sớm"
           }
         },
         "required": [

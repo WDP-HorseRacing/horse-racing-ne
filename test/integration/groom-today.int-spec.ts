@@ -262,6 +262,33 @@ describe('Groom today view (Postgres)', () => {
     ]);
   });
 
+  it('shows a stopped run with its stop reason', async () => {
+    const { classId } = await seed.trainingClass(trainerId);
+    await dataSource.query(
+      `INSERT INTO horse_enrollments (version, class_id, horse_id, status, enrolled_at)
+       VALUES (1, $1, $2, 'ACTIVE', now())`,
+      [classId, gio],
+    );
+    await run(classId, gio, {
+      start: clubDateTimeToInstant(today, '06:00'),
+      name: 'Sáng',
+      runStatus: 'STOPPED',
+    });
+    await dataSource.query(
+      `UPDATE session_participants SET stopped_reason = 'Ngựa đau chân' WHERE status = 'STOPPED'`,
+    );
+
+    const [first] = (await service.today(groom)).horses;
+
+    expect(first.trainingRuns).toEqual([
+      expect.objectContaining({
+        sessionName: 'Sáng',
+        status: 'STOPPED',
+        stoppedReason: 'Ngựa đau chân',
+      }),
+    ]);
+  });
+
   it('shows open care schedules due by the end of today, flagging overdue ones', async () => {
     const at = (date: string) => clubDateTimeToInstant(date, '12:00');
     await seed.schedule(gio, at(today).toISOString(), { assignedTo: groomId });

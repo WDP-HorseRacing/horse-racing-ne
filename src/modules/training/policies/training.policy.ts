@@ -551,6 +551,20 @@ export function assertParticipantComplete(
 }
 
 /**
+ * Kiểm lượt tham gia còn dừng sớm được
+ *
+ * - Chỉ lượt đang tập được dừng sớm
+ *
+ * @param status Trạng thái hiện tại của lượt tham gia
+ * @throws ConflictException Nếu lượt không ở ONGOING
+ */
+export function assertParticipantStop(status: SessionParticipantStatus): void {
+  if (status !== SessionParticipantStatus.ONGOING) {
+    throw new ConflictException('Chỉ lượt đang tập mới được dừng sớm');
+  }
+}
+
+/**
  * Áp cường độ buổi tập lên điều kiện tập của con ngựa
  *
  * - Ngựa Cần theo dõi gặp buổi không phải LIGHT: không được tập, thêm lý do HEALTH_UNDER_OBSERVATION

@@ -95,6 +95,7 @@ export class HorseTrainingRepository {
       .addSelect('participant.status', 'participantStatus')
       .addSelect('groom.fullName', 'groomName')
       .addSelect('participant.absenceReason', 'absenceReason')
+      .addSelect('participant.stoppedReason', 'stoppedReason')
       .addSelect('participant.cancelReason', 'cancelReason')
       .addSelect('participant.completedAt', 'completedAt')
       .orderBy(

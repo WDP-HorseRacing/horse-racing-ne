@@ -40,6 +40,7 @@ export interface HorseTrainingSessionRow {
   participantStatus: SessionParticipantStatus;
   groomName: string | null;
   absenceReason: string | null;
+  stoppedReason: string | null;
   cancelReason: string | null;
   completedAt: Date | null;
 }

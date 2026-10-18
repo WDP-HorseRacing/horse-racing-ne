@@ -29,6 +29,14 @@ export class GroomTodayRunResponseDto {
   @Expose()
   @ApiProperty({ enum: SessionParticipantStatus })
   status!: SessionParticipantStatus;
+
+  @Expose()
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Lý do dừng sớm, null nếu lượt không dừng sớm',
+  })
+  stoppedReason!: string | null;
 }
 
 export class GroomTodayCareScheduleResponseDto {

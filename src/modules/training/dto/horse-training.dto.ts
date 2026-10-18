@@ -153,11 +153,23 @@ export class HorseTrainingSessionResponseDto {
   @ApiPropertyOptional({
     nullable: true,
     type: String,
+    description: 'Lý do dừng sớm, null nếu lượt không dừng sớm',
+  })
+  stoppedReason!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
     description: 'Lý do lượt tập của ngựa bị hủy',
   })
   cancelReason!: string | null;
 
-  @ApiPropertyOptional({ nullable: true, type: String, format: 'date-time' })
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    format: 'date-time',
+    description: 'Giờ kết thúc lượt, gồm hoàn thành hoặc dừng sớm',
+  })
   completedAt!: Date | null;
 
   @ApiProperty({

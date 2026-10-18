@@ -18,6 +18,7 @@ import {
   initialParticipantEligibility,
 } from '../policies/training.policy';
 import type { ParticipantEligibilityChange } from '../types/training-session.types';
+import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
 
 /**
  * Tham số khi hệ thống tự rút một con ngựa khỏi lớp.
@@ -49,6 +50,7 @@ const OPEN_PARTICIPANT_STATUSES = [
 
 const HAPPENED_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.COMPLETED,
+  SessionParticipantStatus.STOPPED,
   SessionParticipantStatus.ABSENT,
   SessionParticipantStatus.SKIPPED,
 ];
@@ -90,7 +92,16 @@ function isEnrollmentNotYetStarted(
 
 @Injectable()
 export class TrainingOperationsFacade {
-  async assertParticipantCompleted(
+  /**
+   * Kiểm lượt tập đã tập xong, gồm hoàn thành hoặc dừng sớm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param participantId UUID của lượt tập
+   * @returns Promise trả về lượt tập
+   * @throws NotFoundException Nếu không có lượt tập
+   * @throws ConflictException Nếu lượt không ở COMPLETED hoặc STOPPED
+   */
+  async assertParticipantFinished(
     manager: EntityManager,
     participantId: string,
   ): Promise<SessionParticipantEntity> {
@@ -98,9 +109,9 @@ export class TrainingOperationsFacade {
       id: participantId,
     });
     if (!participant) throw new NotFoundException('Không tìm thấy lượt tập');
-    if (participant.status !== SessionParticipantStatus.COMPLETED) {
+    if (!TRAINED_PARTICIPANT_STATUSES.includes(participant.status)) {
       throw new ConflictException(
-        'Chỉ lượt tập đã hoàn thành mới được ghi dữ liệu hiệu suất',
+        'Chỉ lượt tập đã hoàn thành hoặc dừng sớm mới được ghi dữ liệu hiệu suất',
       );
     }
     return participant;
@@ -571,7 +582,7 @@ export class TrainingOperationsFacade {
    * - Chỉ xét buổi SCHEDULED hoặc IN_PROGRESS; buổi đã đóng giữ nguyên
    * - Buổi SCHEDULED chưa tới giờ bắt đầu: giữ nguyên dù không còn lượt mở
    * - Còn lượt mở (PLANNED/PRESENT/READY/ONGOING): không đổi gì
-   * - Hết lượt mở và có lượt COMPLETED, ABSENT hoặc SKIPPED: COMPLETED
+   * - Hết lượt mở và có lượt COMPLETED, STOPPED, ABSENT hoặc SKIPPED: COMPLETED
    * - Hết lượt mở và mọi lượt đều bị hủy hoặc không đủ điều kiện: CANCELLED, ghi thời điểm và lý do "Không còn ngựa tham gia"
    *
    * @param manager EntityManager của transaction đang chạy

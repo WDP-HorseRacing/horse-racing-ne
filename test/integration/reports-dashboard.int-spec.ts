@@ -202,6 +202,14 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
 
   const period = { from: '2026-10-01', to: '2026-10-14' };
 
+  const dashboardHorseId = async (name: string) => {
+    const [row] = await dataSource.query<Array<{ id: string }>>(
+      'SELECT id FROM horses WHERE name = $1',
+      [name],
+    );
+    return row.id;
+  };
+
   it('sums the herd, the training, the weekly chart and each horse over the whole club', async () => {
     const dashboard = await service.get(manager, period);
 
@@ -269,6 +277,37 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
       alertCount: 0,
       latestWeightKg: null,
     });
+  });
+
+  it('counts stopped runs apart from completed ones, in totals and the weekly chart', async () => {
+    const saoId = dashboardHorseId('Sao');
+    const [{ id: enrollmentId }] = await dataSource.query<
+      Array<{ id: string }>
+    >('SELECT id FROM horse_enrollments WHERE horse_id = $1', [await saoId]);
+    await run(
+      await session('2026-10-13T03:00:00Z', 'LIGHT'),
+      await saoId,
+      enrollmentId,
+      'STOPPED',
+    );
+
+    const dashboard = await service.get(manager, period);
+
+    expect(dashboard.training).toMatchObject({
+      completed: 2,
+      stopped: 1,
+      completedByIntensity: { LIGHT: 1, HEAVY: 1 },
+    });
+    expect(
+      dashboard.weekly.map(({ weekStart, completed, stopped }) => ({
+        weekStart,
+        completed,
+        stopped,
+      })),
+    ).toEqual([
+      { weekStart: '2026-10-05', completed: 1, stopped: 0 },
+      { weekStart: '2026-10-12', completed: 1, stopped: 1 },
+    ]);
   });
 
   it('narrows to the barns of the caller or to one barn', async () => {

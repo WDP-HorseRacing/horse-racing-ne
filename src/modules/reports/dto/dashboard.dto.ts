@@ -54,6 +54,9 @@ export class DashboardTrainingDto {
   @ApiProperty({ description: 'Số lượt hoàn thành' })
   completed!: number;
 
+  @ApiProperty({ description: 'Số lượt dừng sớm' })
+  stopped!: number;
+
   @ApiProperty({ description: 'Số lượt vắng' })
   absent!: number;
 

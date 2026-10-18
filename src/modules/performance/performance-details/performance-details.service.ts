@@ -8,6 +8,7 @@ import {
   shiftDays,
 } from '../../../common/utils/club-date';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import { TrainingIntensity } from '../../training/enums/training-intensity.enum';
 import { HorseAlertPageDto, HorseAlertQueryDto } from '../dto/horse-alert.dto';
 import {
@@ -93,15 +94,17 @@ export class PerformanceDetailsService {
   }
 
   /**
-   * Tổng hợp khối lượng tập của ngựa trong một khoảng ngày, chỉ tính lượt đã hoàn thành
+   * Tổng hợp khối lượng tập của ngựa trong một khoảng ngày từ các lượt đã hoàn thành hoặc dừng sớm
    *
+   * - Số lượt và số lượt theo cường độ chỉ đếm lượt hoàn thành; lượt dừng sớm đếm riêng
+   * - Cự ly dự kiến chỉ cộng lượt hoàn thành; thời lượng và cự ly thực cộng cả lượt dừng sớm
    * - Mặc định 7 ngày gần nhất tính tới hôm nay theo lịch CLB
    * - Ai xem được hồ sơ ngựa thì xem được khối lượng tập
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param query Khoảng ngày tùy chọn
-   * @returns Promise trả về số lượt, số lượt theo cường độ, tổng cự ly dự kiến, tổng thời lượng và cự ly thực
+   * @returns Promise trả về số lượt hoàn thành, số lượt dừng sớm, số lượt hoàn thành theo cường độ, tổng cự ly dự kiến, tổng thời lượng và cự ly thực
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi xem
    * @throws BadRequestException Nếu from sau to
@@ -117,19 +120,26 @@ export class PerformanceDetailsService {
     if (from > to) {
       throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
     }
-    const loads = await this.repository.completedLoads(horseId, from, to);
+    const loads = await this.repository.finishedLoads(horseId, from, to);
+    const completed = loads.filter(
+      (load) => load.status === SessionParticipantStatus.COMPLETED,
+    );
     const byIntensity = {
       [TrainingIntensity.LIGHT]: 0,
       [TrainingIntensity.HEAVY]: 0,
     };
-    for (const load of loads) byIntensity[load.intensity] += 1;
+    for (const load of completed) byIntensity[load.intensity] += 1;
     return {
       horseId,
       from,
       to,
-      sessionsCompleted: loads.length,
+      sessionsCompleted: completed.length,
+      sessionsStopped: loads.length - completed.length,
       byIntensity,
-      plannedDistanceM: loads.reduce((sum, l) => sum + l.plannedDistanceM, 0),
+      plannedDistanceM: completed.reduce(
+        (sum, l) => sum + l.plannedDistanceM,
+        0,
+      ),
       actualDurationSeconds: loads.reduce(
         (sum, l) => sum + l.durationSeconds,
         0,

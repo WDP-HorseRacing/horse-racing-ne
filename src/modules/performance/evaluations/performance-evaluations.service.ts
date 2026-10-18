@@ -47,7 +47,7 @@ export class PerformanceEvaluationsService {
         caller.id,
         participant,
       );
-      await this.training.assertParticipantCompleted(manager, participantId);
+      await this.training.assertParticipantFinished(manager, participantId);
       const existing = await manager.findOneBy(PerformanceEvaluationEntity, {
         sessionParticipantId: participantId,
       });

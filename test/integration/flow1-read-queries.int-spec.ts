@@ -488,6 +488,38 @@ describe('Flow 1 read queries (Postgres)', () => {
         ]);
       });
 
+      it('puts a stopped run in history with its stop reason', async () => {
+        const trainer = await seed.user(UserRole.HEAD_TRAINER);
+        const classC = await trainingClass('C', trainer);
+        const enrollC = await enrollment(
+          classC,
+          horse,
+          'ACTIVE',
+          '2026-09-01T00:00:00Z',
+        );
+        const stopped = await participant(
+          await session(classC, '2026-09-25T01:00:00Z'),
+          horse,
+          enrollC,
+          { status: 'STOPPED' },
+        );
+        await dataSource.query(
+          `UPDATE session_participants SET stopped_reason = 'Ngựa đau chân' WHERE id = $1`,
+          [stopped],
+        );
+
+        const history = await list({ when: HorseTrainingSessionWhen.HISTORY });
+
+        expect(history.rows.map((row) => row.participantId)).toEqual([
+          stopped,
+          ids.past,
+        ]);
+        expect(history.rows[0]).toMatchObject({
+          participantStatus: 'STOPPED',
+          stoppedReason: 'Ngựa đau chân',
+        });
+      });
+
       it('pages with skip and limit while total counts every match', async () => {
         const page = await list({ skip: 1, limit: 2 });
 

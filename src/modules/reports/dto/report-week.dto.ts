@@ -7,6 +7,9 @@ export class ReportWeekDto {
   @ApiProperty({ description: 'Số lượt hoàn thành trong tuần' })
   completed!: number;
 
+  @ApiProperty({ description: 'Số lượt dừng sớm trong tuần' })
+  stopped!: number;
+
   @ApiProperty({
     type: Number,
     nullable: true,

@@ -1,3 +1,5 @@
+import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+
 /** Điểm danh và báo vắng mở sớm hơn giờ bắt đầu buổi tập (ms): 30 phút */
 export const CHECK_IN_OPENS_BEFORE_MS = 30 * 60 * 1000;
 
@@ -16,3 +18,7 @@ export const AUTO_COMPLETED_RUN_REASON = 'Hệ thống tự hoàn thành';
 /** Lý do ghi nhật ký khi hệ thống chấm lại điều kiện tập của lượt sau khi khóa huấn luyện hoặc sức khỏe ngựa đổi */
 export const ELIGIBILITY_REEVALUATED_REASON =
   'Hệ thống chấm lại điều kiện tập sau khi đổi khóa huấn luyện hoặc sức khỏe';
+
+/** Trạng thái lượt đã tập xong: hoàn thành hoặc dừng sớm */
+export const TRAINED_PARTICIPANT_STATUSES: readonly SessionParticipantStatus[] =
+  [SessionParticipantStatus.COMPLETED, SessionParticipantStatus.STOPPED];

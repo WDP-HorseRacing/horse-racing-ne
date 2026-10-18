@@ -21,7 +21,7 @@ describe('PerformanceEvaluationsService.create', () => {
       assertCanOperateParticipant: jest.fn(),
     } as unknown as TrainingAccessService,
     {
-      assertParticipantCompleted: jest.fn(),
+      assertParticipantFinished: jest.fn(),
     } as unknown as TrainingOperationsFacade,
     {
       transaction: (work: (m: typeof manager) => Promise<unknown>) =>

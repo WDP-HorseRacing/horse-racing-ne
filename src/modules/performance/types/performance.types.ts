@@ -1,3 +1,4 @@
+import type { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import type { TrainingIntensity } from '../../training/enums/training-intensity.enum';
 import type { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 import type { ThresholdSource } from '../enums/threshold-source.enum';
@@ -93,12 +94,13 @@ export interface ParticipantMetricAggregate {
 }
 
 /**
- * Một lượt tập đã hoàn thành dùng để tính khối lượng tập.
+ * Một lượt tập đã hoàn thành hoặc dừng sớm dùng để tính khối lượng tập.
  *
- * - durationSeconds là số giây từ lúc bắt đầu tới lúc hoàn thành
+ * - durationSeconds là số giây từ lúc bắt đầu tới lúc kết thúc lượt
  */
-export interface CompletedParticipantLoad {
+export interface FinishedParticipantLoad {
   participantId: string;
+  status: SessionParticipantStatus.COMPLETED | SessionParticipantStatus.STOPPED;
   intensity: TrainingIntensity;
   plannedDistanceM: number;
   durationSeconds: number;

@@ -17,6 +17,7 @@ import {
   MarkParticipantAbsentDto,
   SessionParticipantListItemDto,
   SessionParticipantResponseDto,
+  StopParticipantDto,
 } from '../dto/session-participant.dto';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
@@ -34,6 +35,7 @@ import {
   assertParticipantReady,
   assertParticipantActionWindow,
   assertParticipantStart,
+  assertParticipantStop,
   assertSessionOperational,
   eligibilityForSession,
 } from '../policies/training.policy';
@@ -187,6 +189,7 @@ export class SessionParticipantsService {
       if (
         [
           SessionParticipantStatus.COMPLETED,
+          SessionParticipantStatus.STOPPED,
           SessionParticipantStatus.ABSENT,
           SessionParticipantStatus.INELIGIBLE,
           SessionParticipantStatus.CANCELLED,
@@ -435,6 +438,68 @@ export class SessionParticipantsService {
     actor: Actor,
     participantId: string,
   ): Promise<SessionParticipantResponseDto> {
+    return this.finishRun(
+      actor,
+      participantId,
+      assertParticipantComplete,
+      (participant) => {
+        participant.status = SessionParticipantStatus.COMPLETED;
+      },
+    );
+  }
+
+  /**
+   * Dừng sớm một lượt đang tập, lưu lý do và giờ kết thúc như hoàn thành lượt
+   *
+   * - Lượt chuyển STOPPED, giờ kết thúc lưu vào completedAt
+   * - Ghi nhật ký trạng thái lượt trước và sau kèm lý do dừng
+   * - Lượt cuối còn mở kết thúc thì buổi tự đóng
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia
+   * @param body Lý do dừng sớm
+   * @returns Promise trả về lượt tham gia sau khi dừng
+   * @throws NotFoundException Nếu không có lượt tham gia, buổi tập hoặc ngựa
+   * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
+   * @throws ConflictException Nếu lượt không ở ONGOING hoặc buổi không ở IN_PROGRESS
+   */
+  async stop(
+    actor: Actor,
+    participantId: string,
+    body: StopParticipantDto,
+  ): Promise<SessionParticipantResponseDto> {
+    return this.finishRun(
+      actor,
+      participantId,
+      assertParticipantStop,
+      (participant) => {
+        participant.status = SessionParticipantStatus.STOPPED;
+        participant.stoppedReason = body.reason;
+      },
+    );
+  }
+
+  /**
+   * Kết thúc một lượt đang tập trong transaction, rồi cập nhật trạng thái buổi
+   *
+   * - Khóa ngựa, buổi và lượt; kiểm quyền thao tác, kiểm trạng thái lượt rồi buổi IN_PROGRESS
+   * - Giờ kết thúc lưu vào completedAt; ghi nhật ký trạng thái lượt trước và sau
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia
+   * @param assertFinishable Policy kiểm trạng thái lượt còn kết thúc được
+   * @param finish Hàm đổi trạng thái lượt sang trạng thái kết thúc
+   * @returns Promise trả về lượt tham gia sau khi kết thúc
+   * @throws NotFoundException Nếu không có lượt tham gia, buổi tập hoặc ngựa
+   * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
+   * @throws ConflictException Nếu assertFinishable từ chối hoặc buổi không ở IN_PROGRESS
+   */
+  private async finishRun(
+    actor: Actor,
+    participantId: string,
+    assertFinishable: (status: SessionParticipantStatus) => void,
+    finish: (participant: SessionParticipantEntity) => void,
+  ): Promise<SessionParticipantResponseDto> {
     const saved = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const snapshot = await this.access.findParticipant(
@@ -457,12 +522,12 @@ export class SessionParticipantsService {
         caller.id,
         context,
       );
-      assertParticipantComplete(participant.status);
+      assertFinishable(participant.status);
       if (session.status !== TrainingSessionStatus.IN_PROGRESS) {
         throw new ConflictException('Buổi tập chưa ở trạng thái đang diễn ra');
       }
       const previousStatus = participant.status;
-      participant.status = SessionParticipantStatus.COMPLETED;
+      finish(participant);
       participant.completedAt = new Date();
       await manager.save(participant);
       await this.recordStatusChange(
@@ -541,6 +606,7 @@ export class SessionParticipantsService {
    * Ghi nhật ký một lần đổi trạng thái lượt tập
    *
    * - Lượt vắng: lý do vắng ghi vào cột lý do
+   * - Lượt dừng sớm: lý do dừng ghi vào cột lý do
    * - Lượt bị đánh không được tập: kèm lý do không được tập
    *
    * @param manager EntityManager của transaction đang chạy
@@ -569,10 +635,24 @@ export class SessionParticipantsService {
           ineligibilityReason: participant.ineligibilityReason,
         }),
       },
-      participant.status === SessionParticipantStatus.ABSENT
-        ? participant.absenceReason
-        : null,
+      this.runReason(participant),
     );
+  }
+
+  /**
+   * Lấy lý do ghi vào nhật ký theo trạng thái mới của lượt tập
+   *
+   * @param participant Lượt tập sau khi đổi trạng thái
+   * @returns Lý do vắng với lượt ABSENT, lý do dừng với lượt STOPPED, còn lại null
+   */
+  private runReason(participant: SessionParticipantEntity): string | null {
+    if (participant.status === SessionParticipantStatus.ABSENT) {
+      return participant.absenceReason;
+    }
+    if (participant.status === SessionParticipantStatus.STOPPED) {
+      return participant.stoppedReason;
+    }
+    return null;
   }
 
   /**

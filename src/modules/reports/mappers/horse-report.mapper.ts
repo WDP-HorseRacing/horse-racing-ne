@@ -23,8 +23,9 @@ const INELIGIBLE_STATUSES: SessionParticipantStatus[] = [
  * Dựng báo cáo tiến độ tập luyện của một con ngựa
  *
  * - Lượt không đủ điều kiện gồm cả lượt hủy do khóa huấn luyện
- * - Quãng đường và số phút tập chỉ tính lượt hoàn thành; số phút làm tròn tới số nguyên
- * - Biểu đồ tuần gồm mọi tuần có lượt hoàn thành hoặc có điểm đo
+ * - Lượt dừng sớm đếm riêng, không tính vào lượt hoàn thành
+ * - Quãng đường dự kiến chỉ tính lượt hoàn thành; số phút tập tính cả lượt dừng sớm, làm tròn tới số nguyên
+ * - Biểu đồ tuần gồm mọi tuần có lượt hoàn thành, lượt dừng sớm hoặc có điểm đo
  *
  * @param horse Con ngựa của báo cáo
  * @param period Khoảng ngày của báo cáo
@@ -43,6 +44,9 @@ export function toHorseProgress(
   const completed = rows.filter(
     (row) => row.status === SessionParticipantStatus.COMPLETED,
   );
+  const stopped = rows.filter(
+    (row) => row.status === SessionParticipantStatus.STOPPED,
+  );
   const byIntensity = (intensity: TrainingIntensity) =>
     completed.filter((row) => row.intensity === intensity).length;
   const metricsOfParticipant = new Map(
@@ -55,6 +59,7 @@ export function toHorseProgress(
     to: period.to,
     totals: {
       completed: completed.length,
+      stopped: stopped.length,
       absent: rows.filter(
         (row) => row.status === SessionParticipantStatus.ABSENT,
       ).length,
@@ -65,7 +70,10 @@ export function toHorseProgress(
         0,
       ),
       trainedMinutes: Math.round(
-        completed.reduce((sum, row) => sum + (row.trainedSeconds ?? 0), 0) / 60,
+        [...completed, ...stopped].reduce(
+          (sum, row) => sum + (row.trainedSeconds ?? 0),
+          0,
+        ) / 60,
       ),
       completedByIntensity: {
         LIGHT: byIntensity(TrainingIntensity.LIGHT),
@@ -74,6 +82,7 @@ export function toHorseProgress(
     },
     weekly: toWeeks(
       completed.map((row) => ({ weekStart: row.weekStart, count: 1 })),
+      stopped.map((row) => ({ weekStart: row.weekStart, count: 1 })),
       metricsByWeek,
     ),
     sessions: rows.map((row): HorseProgressSessionDto => ({

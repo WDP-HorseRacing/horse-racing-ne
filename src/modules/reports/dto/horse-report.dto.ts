@@ -16,6 +16,7 @@ import { ReportWeekDto } from './report-week.dto';
 
 export class HorseProgressTotalsDto {
   @ApiProperty({ description: 'Số lượt hoàn thành' }) completed!: number;
+  @ApiProperty({ description: 'Số lượt dừng sớm' }) stopped!: number;
   @ApiProperty({ description: 'Số lượt vắng' }) absent!: number;
 
   @ApiProperty({
@@ -29,7 +30,8 @@ export class HorseProgressTotalsDto {
   plannedDistanceM!: number;
 
   @ApiProperty({
-    description: 'Tổng thời gian tập thực tế của các lượt hoàn thành (phút)',
+    description:
+      'Tổng thời gian tập thực tế của các lượt hoàn thành và dừng sớm (phút)',
   })
   trainedMinutes!: number;
 

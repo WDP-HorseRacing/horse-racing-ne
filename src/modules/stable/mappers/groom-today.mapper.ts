@@ -55,6 +55,7 @@ export function toGroomTodayResponse(
           scheduledStartAt: run.session.scheduledStartAt,
           scheduledEndAt: run.session.scheduledEndAt,
           status: run.status,
+          stoppedReason: run.stoppedReason,
         })),
         careSchedules: source.schedules.map((schedule) => ({
           id: schedule.id,

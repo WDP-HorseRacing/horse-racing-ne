@@ -287,6 +287,53 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
     });
   });
 
+  it('counts a stopped run apart: its minutes and best trial yes, completed and planned distance no', async () => {
+    const [{ id: enrollmentId }] = await dataSource.query<
+      Array<{ id: string }>
+    >('SELECT id FROM horse_enrollments WHERE horse_id = $1', [gio]);
+    const trialSession = await session('2026-10-13T03:00:00Z', 'LIGHT', 2000);
+    const stopped = await run(
+      trialSession,
+      enrollmentId,
+      'STOPPED',
+      '2026-10-13T03:00:00Z',
+      '2026-10-13T03:10:00Z',
+    );
+    const timeTrial = randomUUID();
+    await dataSource.query(
+      `INSERT INTO time_trials (id, version, session_id, distance_m) VALUES ($1, 1, $2, 1200)`,
+      [timeTrial, trialSession],
+    );
+    await dataSource.query(
+      `INSERT INTO trial_results (id, version, time_trial_id, session_participant_id, attempt_no, elapsed_ms, recorded_by, recorded_at)
+       VALUES ($1, 1, $2, $3, 1, '81000', $4, '2026-10-13T03:05:00Z')`,
+      [randomUUID(), timeTrial, stopped, staffId],
+    );
+
+    const report = await service.progress(owner, gio, period);
+
+    expect(report.totals).toMatchObject({
+      completed: 2,
+      stopped: 1,
+      plannedDistanceM: 4200,
+      trainedMinutes: 75,
+      completedByIntensity: { LIGHT: 1, HEAVY: 1 },
+    });
+    expect(
+      report.weekly.map(({ weekStart, completed, stopped }) => ({
+        weekStart,
+        completed,
+        stopped,
+      })),
+    ).toEqual([
+      { weekStart: '2026-10-05', completed: 1, stopped: 0 },
+      { weekStart: '2026-10-12', completed: 1, stopped: 1 },
+    ]);
+    expect(
+      report.sessions.find((row) => row.participantId === stopped),
+    ).toMatchObject({ status: 'STOPPED', bestTrialMs: 81000 });
+  });
+
   it('reports status changes, measurements, cases, injuries and locks overlapping the period', async () => {
     await seed.horseAudit(
       gio,

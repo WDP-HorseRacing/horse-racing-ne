@@ -21,6 +21,7 @@ import {
   assertParticipantAbsent,
   assertParticipantActionWindow,
   assertParticipantComplete,
+  assertParticipantStop,
   assertSessionOperational,
   assertSessionWindowInClass,
   assertTrainableHorse,
@@ -111,6 +112,21 @@ describe('training policy', () => {
     expect(() =>
       assertParticipantComplete(SessionParticipantStatus.ONGOING),
     ).not.toThrow();
+  });
+
+  it('stops only an ongoing participant early', () => {
+    expect(() =>
+      assertParticipantStop(SessionParticipantStatus.ONGOING),
+    ).not.toThrow();
+    for (const status of [
+      SessionParticipantStatus.READY,
+      SessionParticipantStatus.COMPLETED,
+      SessionParticipantStatus.STOPPED,
+    ]) {
+      expect(() => assertParticipantStop(status)).toThrow(
+        'Chỉ lượt đang tập mới được dừng sớm',
+      );
+    }
   });
 
   it('keeps a session window inside the class date range', () => {
