@@ -101,7 +101,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | POST | `/api/v1/horses/{horseId}/exam-requests` | Request a medical exam for a horse |
 | GET | `/api/v1/horses/{horseId}/health-history` | Horse health status history |
 | PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status with a reason |
-| GET | `/api/v1/horses/{horseId}/injuries` | List horse injury timeline |
+| GET | `/api/v1/horses/{horseId}/injuries` | List horse injuries with current recovery status and history |
 | GET | `/api/v1/horses/{horseId}/medical-cases` | List horse medical cases |
 | GET | `/api/v1/horses/{horseId}/medical-records` | List horse medical visits |
 | POST | `/api/v1/horses/{horseId}/medical-records` | Record a medical visit outside a case |

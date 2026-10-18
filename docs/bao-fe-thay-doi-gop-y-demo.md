@@ -389,3 +389,57 @@ Không đổi API.
 
 1. 409 mới khi thêm buổi (`POST /classes/:classId/sessions`, `.../sessions/bulk`) và đổi giờ buổi (`PATCH /training-sessions/:sessionId`) nếu HT của lớp đã có buổi chưa hủy trùng giờ ở lớp khác của mình: "Trùng giờ với lịch của Huấn luyện viên trưởng: lớp KD-02, 06:00 ngày 10/10/2026". Không lưu gì. Thêm nhiều buổi thì câu báo có tiền tố "Buổi {n}: " như các lỗi khác.
 2. 409 mới khi `POST /users/:id/head-trainer-handover` nếu buổi của lớp được chuyển trùng giờ với buổi ở lớp của HT nhận: "Huấn luyện viên trưởng nhận có buổi trùng giờ: lớp KD-01 lúc 06:00 ngày 10/10/2026 trùng lớp KD-05 lúc 06:30 ngày 10/10/2026. Đổi giờ các buổi này trước khi bàn giao" (nhiều cặp nối bằng "; "). Không chuyển gì.
+
+## Chấn thương theo từng vết, theo dõi qua các buổi khám
+
+Mỗi vết chấn thương nay có mã riêng (`injuryId`) và sống qua nhiều buổi khám. Vị trí, vùng, loại cố định lúc phát hiện; mỗi buổi khám chỉ ghi mức hồi phục mới. Dữ liệu cũ đã được gom thành vết theo (ngựa, bệnh án, vùng, loại).
+
+1. Body buổi khám (`POST /horses/:horseId/medical-records`, `POST /medical-cases/:caseId/visits`): bỏ `injuries`, thay bằng hai danh sách (mỗi danh sách tối đa 20 dòng):
+
+   ```json
+   {
+     "injuryUpdates": [
+       { "injuryId": "uuid", "recoveryStatus": "RECOVERING", "notes": "Bớt sưng" }
+     ],
+     "newInjuries": [
+       { "bodyRegion": "LEFT_FRONT_LEG", "injuryType": "SPRAIN", "position": { "x": 0.1, "y": 0.2, "z": 0 }, "recoveryStatus": "ACUTE", "notes": "Cổ chân" }
+     ]
+   }
+   ```
+
+   - Vết không gửi trong buổi khám giữ nguyên mức cũ.
+   - Hai vết mới cùng vùng và cùng loại nay ghi được (trước đây 400).
+   - Lỗi mới:
+     - 400 "Mỗi chấn thương chỉ cập nhật một lần trong một buổi khám".
+     - 400 "Chấn thương không thuộc con ngựa này": mã của ngựa khác, hoặc vết đã bị ẩn.
+     - 409 "Chấn thương đã lành, không cập nhật được; tái phát thì ghi chấn thương mới".
+   - Như cũ: chỉ buổi khám thuộc bệnh án hoặc buổi kết luận Có vấn đề mới gửi được hai danh sách này. Buổi khám ngoài bệnh án kết luận Bình thường gửi thì nhận 400.
+2. Response buổi khám (`injuries[]`): mỗi dòng có thêm `injuryId`. Các trường còn lại giữ nguyên: `bodyRegion`, `injuryType`, `position` lấy từ vết; `recoveryStatus`, `notes` là của buổi khám đó.
+3. `GET /horses/:horseId/injuries` đổi shape. Trước đây là danh sách phẳng từng dòng; nay mỗi phần tử là một vết, xếp theo lần khám sớm nhất của vết. Query mới `unhealedOnly=true` chỉ lấy vết chưa lành.
+
+   ```json
+   [
+     {
+       "id": "uuid", "horseId": "uuid",
+       "bodyRegion": "LEFT_FRONT_LEG", "injuryType": "SPRAIN", "position": { "x": 0.1, "y": 0.2, "z": 0 },
+       "firstMedicalRecordId": "uuid", "firstExamDate": "2026-10-10T02:00:00.000Z",
+       "currentRecoveryStatus": "RECOVERING",
+       "history": [
+         { "medicalRecordId": "uuid", "examDate": "2026-10-10T02:00:00.000Z", "caseId": "uuid", "recoveryStatus": "ACUTE", "notes": "Cổ chân" },
+         { "medicalRecordId": "uuid", "examDate": "2026-10-14T02:00:00.000Z", "caseId": "uuid", "recoveryStatus": "RECOVERING", "notes": "Bớt sưng" }
+       ]
+     }
+   ]
+   ```
+
+   - `currentRecoveryStatus` là mức ở lần khám mới nhất chưa hủy. `history` tăng dần theo ngày khám, chỉ gồm buổi chưa hủy.
+   - Hủy buổi khám: mức của các vết buổi đó đã cập nhật quay về mức trước. Vết không còn buổi khám chưa hủy nào (vd vết do chính buổi bị hủy phát hiện) biến mất khỏi danh sách.
+4. Luồng form khám gợi ý:
+   1. Mở form: gọi `GET /horses/:horseId/injuries?unhealedOnly=true`, hiện các vết đang theo dõi trên mô hình 3D.
+   2. Với từng vết: chọn mức hồi phục mới (đưa vào `injuryUpdates`), hoặc bỏ qua nếu buổi này không khám chỗ đó.
+   3. Vết mới: chạm vào mô hình để lấy `position`, chọn vùng, loại, mức (đưa vào `newInjuries`).
+5. Màn hình 3D gợi ý:
+   - Mặc định gọi `unhealedOnly=true`, tô màu điểm theo `currentRecoveryStatus`.
+   - Có nút xem cả vết đã lành (bỏ query).
+   - Bấm một điểm thì hiện `history` của vết đó.
+6. Đóng bệnh án (`POST /medical-cases/:caseId/close`): 409 mới "Còn chấn thương chưa lành, hãy ghi buổi khám đánh dấu đã lành trước khi đóng bệnh án". Đóng kèm `dateOfDeath` thì không bị chặn. Màn xem trước đóng bệnh án chưa có cờ báo trước lỗi này; FE có thể tự kiểm bằng `GET /horses/:horseId/injuries?unhealedOnly=true`.

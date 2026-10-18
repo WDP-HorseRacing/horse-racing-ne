@@ -2803,7 +2803,7 @@
     },
     "/api/v1/horses/{horseId}/injuries": {
       "get": {
-        "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem.",
+        "description": "Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem. Mức hồi phục hiện tại lấy từ lần ghi nhận mới nhất của buổi khám chưa hủy; chấn thương mà mọi buổi khám ghi nó đã hủy thì không trả về.",
         "operationId": "MedicalController_listInjuries",
         "parameters": [
           {
@@ -2812,6 +2812,15 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "unhealedOnly",
+            "required": false,
+            "in": "query",
+            "description": "true: chỉ lấy chấn thương chưa lành. Mặc định lấy tất cả",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -2823,7 +2832,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/InjuryTimelineItemDto"
+                    "$ref": "#/components/schemas/InjuryResponseDto"
                   }
                 }
               }
@@ -2835,7 +2844,7 @@
             "bearer": []
           }
         ],
-        "summary": "List horse injury timeline",
+        "summary": "List horse injuries with current recovery status and history",
         "tags": [
           "medical"
         ]
@@ -12872,14 +12881,50 @@
           "z"
         ]
       },
-      "InjuryTimelineItemDto": {
+      "InjuryHistoryItemDto": {
+        "type": "object",
+        "properties": {
+          "medicalRecordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "caseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "medicalRecordId",
+          "examDate",
+          "caseId",
+          "recoveryStatus"
+        ]
+      },
+      "InjuryResponseDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "medicalRecordId": {
+          "horseId": {
             "type": "string",
             "format": "uuid"
           },
@@ -12899,9 +12944,6 @@
               "OTHER"
             ]
           },
-          "position": {
-            "$ref": "#/components/schemas/InjuryPositionDto"
-          },
           "injuryType": {
             "type": "string",
             "enum": [
@@ -12916,37 +12958,46 @@
               "OTHER"
             ]
           },
-          "recoveryStatus": {
+          "position": {
+            "$ref": "#/components/schemas/InjuryPositionDto"
+          },
+          "firstMedicalRecordId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Buổi khám phát hiện chấn thương"
+          },
+          "firstExamDate": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Thời điểm khám sớm nhất trong diễn biến"
+          },
+          "currentRecoveryStatus": {
             "type": "string",
             "enum": [
               "ACUTE",
               "RECOVERING",
               "HEALED"
-            ]
+            ],
+            "description": "Mức hồi phục ở lần ghi nhận mới nhất"
           },
-          "notes": {
-            "type": "object",
-            "nullable": true
-          },
-          "examDate": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "caseId": {
-            "type": "object",
-            "format": "uuid",
-            "nullable": true
+          "history": {
+            "description": "Các lần ghi nhận, theo thời điểm khám tăng dần",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InjuryHistoryItemDto"
+            }
           }
         },
         "required": [
           "id",
-          "medicalRecordId",
+          "horseId",
           "bodyRegion",
-          "position",
           "injuryType",
-          "recoveryStatus",
-          "examDate",
-          "caseId"
+          "position",
+          "firstMedicalRecordId",
+          "firstExamDate",
+          "currentRecoveryStatus",
+          "history"
         ]
       },
       "HerdCountsDto": {
@@ -13419,6 +13470,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "injuryId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "bodyRegion": {
             "type": "string",
             "enum": [
@@ -13468,6 +13523,7 @@
         "required": [
           "id",
           "medicalRecordId",
+          "injuryId",
           "bodyRegion",
           "position",
           "injuryType",
@@ -13686,6 +13742,32 @@
           "startDate"
         ]
       },
+      "UpdateInjuryStatusDto": {
+        "type": "object",
+        "properties": {
+          "injuryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chấn thương chưa lành của chính con ngựa"
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ],
+            "description": "Mức hồi phục tại buổi khám này"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "injuryId",
+          "recoveryStatus"
+        ]
+      },
       "CreateInjuryDto": {
         "type": "object",
         "properties": {
@@ -13809,8 +13891,15 @@
               "$ref": "#/components/schemas/CreatePrescriptionDto"
             }
           },
-          "injuries": {
-            "description": "Chấn thương; chỉ dùng khi buổi khám thuộc bệnh án",
+          "injuryUpdates": {
+            "description": "Mức hồi phục mới của các chấn thương chưa lành; chấn thương không có trong danh sách giữ nguyên mức cũ. Chỉ dùng khi buổi khám thuộc bệnh án",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateInjuryStatusDto"
+            }
+          },
+          "newInjuries": {
+            "description": "Chấn thương phát hiện ở buổi khám này; chỉ dùng khi buổi khám thuộc bệnh án",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateInjuryDto"
@@ -14048,8 +14137,15 @@
               "$ref": "#/components/schemas/CreatePrescriptionDto"
             }
           },
-          "injuries": {
-            "description": "Chấn thương; chỉ dùng khi buổi khám thuộc bệnh án",
+          "injuryUpdates": {
+            "description": "Mức hồi phục mới của các chấn thương chưa lành; chấn thương không có trong danh sách giữ nguyên mức cũ. Chỉ dùng khi buổi khám thuộc bệnh án",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateInjuryStatusDto"
+            }
+          },
+          "newInjuries": {
+            "description": "Chấn thương phát hiện ở buổi khám này; chỉ dùng khi buổi khám thuộc bệnh án",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateInjuryDto"

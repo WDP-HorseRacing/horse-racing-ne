@@ -20,7 +20,7 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | Horses        | `horses`, `horse_ownerships`, `horse_measurements`                                       |
 | Training      | `training_subjects`, `training_plans`, `training_plan_phases`, `training_plan_subjects`, `training_classes`, `training_class_phases`, `training_class_phase_subjects`, `horse_enrollments`, `training_sessions`, `session_participants`, `time_trials`, `trial_results` |
 | Performance   | `performance_evaluations` (số đo `performance_metrics` ở MongoDB; ngưỡng là hằng số chung CLB) |
-| Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
+| Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injuries`, `injury_markers`, `training_locks`, `care_schedules` |
 | Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `daily_task_types`, `horse_daily_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
 | Racing        | `races`, `race_registrations`                                                            |
 | Supplies      | `supply_items`, `supply_lots`, `supply_stock_movements`, `supply_requests`               |
@@ -114,7 +114,8 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
 - `training_locks.case_id`: bệnh án liên quan (nullable).
 - `care_schedules`: thêm type `ROUTINE_CHECKUP` (ngày hẹn khám định kỳ, partial unique một lịch `SCHEDULED` mỗi ngựa), `completed_by`, `cancel_reason`. `status` chỉ còn `SCHEDULED`/`COMPLETED`/`CANCELLED` (bỏ `IN_PROGRESS` không dùng; cột varchar nên không cần migration).
 - `care_schedules.assignee_type` (`GROOM`/`VET`, nullable) + `assigned_to`: null/null là chưa giao; `GROOM` + null là Groom đang phụ trách ngựa (tra `groom_assignments`); `GROOM` + UUID là đúng Groom đó; `VET` bắt buộc UUID. CHECK `care_schedules_assignee_ck`.
-- `injury_markers.position` (`jsonb`, NOT NULL): tọa độ `{ x, y, z }` trên mô hình 3D của ngựa; `body_region` vẫn bắt buộc để lọc/tô theo vùng.
+- `injuries` (một vết chấn thương của ngựa, chỉ thông tin cố định lúc phát hiện): `horse_id`, `body_region`, `injury_type`, `position` (`jsonb`, NOT NULL, tọa độ `{ x, y, z }` trên mô hình 3D), `first_medical_record_id` (buổi khám phát hiện); index `injuries_horse_idx`. Không sửa, không xóa; không lưu mức hồi phục hiện tại.
+- `injury_markers` (một lần ghi nhận vết tại một buổi khám): `medical_record_id`, `injury_id` (FK `injuries`, NOT NULL), `recovery_status`, `notes`; unique `injury_markers_record_injury_uq (medical_record_id, injury_id)`. Mức hiện tại của vết = `recovery_status` của dòng mới nhất thuộc buổi khám chưa hủy (theo `exam_date` rồi `created_at`); vết không còn dòng nào thuộc buổi chưa hủy thì ẩn.
 - `supply_items.category`: `FEED` (thức ăn), `SUPPLEMENT` (vitamin, thực phẩm bổ sung), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc. Kho chung CLB; số tồn chỉ đổi kèm một dòng `supply_stock_movements` (Flow 4).
 
 ## Khu chuồng

@@ -435,7 +435,15 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Đơn thuốc (tùy chọn), cùng quy cách với F3.3; ngày kết thúc tùy chọn, bỏ trống nghĩa là dùng tới khi đóng bệnh án.
    - Chấn thương (tùy chọn), xem mục 2.
    - Chi phí của buổi khám (tùy chọn, số nguyên VND, bỏ trống là 0), theo mục III.6.
-2. Chấn thương: mỗi dòng gồm vùng cơ thể, vị trí trên mô hình 3D (tọa độ x, y, z, bắt buộc), loại chấn thương, mức hồi phục (Cấp tính, Đang hồi phục, Đã lành) và ghi chú. Một chấn thương được định danh bằng cặp (vùng cơ thể, loại chấn thương) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp. Diễn biến hồi phục của một chấn thương là chuỗi các dòng cùng cặp của những buổi khám chưa hủy trong cùng bệnh án, xếp theo thời điểm khám.
+2. Chấn thương:
+   - Mỗi chấn thương là một vết riêng của con ngựa, có mã riêng. Thông tin cố định lúc phát hiện: vùng cơ thể, loại chấn thương, vị trí trên mô hình 3D (tọa độ x, y, z, bắt buộc) và buổi khám phát hiện. Không sửa, không dời vị trí, không xóa.
+   - Mỗi buổi khám ghi được hai loại dòng:
+     - Cập nhật vết cũ: chọn một vết chưa lành của con ngựa, nhập mức hồi phục (Cấp tính, Đang hồi phục, Đã lành) và ghi chú.
+     - Ghi vết mới: chạm vào mô hình để lấy vị trí, chọn vùng, loại, mức hồi phục, ghi chú. Hai vết cùng vùng và cùng loại (vd bong gân cẳng chân và bong gân cổ chân cùng một chân) là hai vết riêng.
+   - Mỗi vết chỉ cập nhật một lần trong một buổi khám (400). Vết của ngựa khác, hoặc vết đã bị ẩn (mục 8), báo 400. Vết đã lành không cập nhật được (409); tái phát thì ghi vết mới.
+   - Vết không có trong buổi khám giữ nguyên mức cũ. Buổi khám chỉ khám bụng không cần ghi lại vết ở chân.
+   - Mức hồi phục hiện tại của một vết là mức ở lần ghi nhận mới nhất thuộc buổi khám chưa hủy, xếp theo thời điểm khám rồi thời điểm ghi. Hệ thống tính lúc đọc, không lưu.
+   - Diễn biến hồi phục của một vết là các lần ghi nhận thuộc buổi khám chưa hủy, xếp theo thời điểm khám tăng dần, mỗi lần kèm buổi khám, bệnh án, mức hồi phục, ghi chú.
 3. Hệ thống không trừ kho vật tư và không tính tiền thuốc.
 4. Chỉ ghi được buổi khám vào bệnh án đang ở trạng thái Đang điều trị.
 5. Thời điểm khám theo mục III.2.5 (không sớm hơn ngày mở bệnh án).
@@ -447,6 +455,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Không hủy lại buổi đã hủy. Buổi tái khám hủy được kể cả khi bệnh án đã đóng.
    - Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi khám nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy (III.2.4).
    - Các yêu cầu khám đã gắn vào buổi bị hủy giữ nguyên trạng thái Đã khám.
+   - Chấn thương: mức hồi phục của các vết mà buổi bị hủy đã cập nhật quay về lần ghi nhận trước đó. Vết không còn lần ghi nhận nào thuộc buổi khám chưa hủy (vd vết do chính buổi này phát hiện) bị ẩn ở mọi nơi.
    - Bác sĩ có thể ghi ngay buổi khám thay thế; buổi thay thế theo đúng quy tắc của F3.3 hoặc F3.6.
 9. **Điều chỉnh chi phí một buổi khám** (áp dụng cho buổi khám của F3.3 và F3.6), theo mục III.6.8:
    - Chỉ VETERINARIAN, bắt buộc nhập lý do; không giới hạn thời gian; bệnh án đang điều trị hay đã đóng đều được.
@@ -595,6 +604,7 @@ Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi k
    - Lệnh khóa huấn luyện tự gỡ với lý do "Gỡ do ngựa mất". Bác sĩ không chọn gỡ hay giữ khóa; gửi kèm lựa chọn khóa thì báo lỗi.
    - Một bước lỗi thì hủy toàn bộ, bệnh án vẫn Đang điều trị.
    - Gửi cả thông báo đóng bệnh án (nghiệp vụ 10) và thông báo ngựa mất (F1.8).
+4c. Còn chấn thương chưa lành (mức hiện tại khác Đã lành, F3.6 mục 2) thì không đóng được (409); bác sĩ ghi buổi tái khám đánh dấu Đã lành trước. Đóng kèm ghi nhận ngựa mất (mục 4b) thì không chặn.
 5. Nếu trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly, hệ thống cảnh báo và hỏi bác sĩ có muốn cập nhật trạng thái trước khi đóng không. Bác sĩ vẫn được phép đóng, vì có trường hợp ngựa hồi phục dần mà bệnh án đã kết thúc.
 6. Nếu con ngựa còn yêu cầu khám đang chờ, hệ thống báo số lượng để bác sĩ biết, kèm nút mở hàng đợi yêu cầu khám; các yêu cầu này vẫn ở hàng đợi và được xử lý như bình thường sau khi đóng. *(BA chốt)*
 7. Sau khi đóng, bệnh án chuyển sang chỉ đọc. Không mở lại bệnh án đã đóng; vấn đề tái phát thì khám ngoài bệnh án (F3.3) và mở bệnh án mới.
@@ -614,7 +624,7 @@ Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi k
 | **Hậu điều kiện** | Bệnh án chuyển sang Đã đóng và chỉ đọc (trừ chi phí từng buổi khám, điều chỉnh theo F3.6). |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án và chọn "Đóng bệnh án".<br>2. Hệ thống hiển thị biểu mẫu kết luận cuối, kèm tổng chi phí các buổi khám, lệnh khóa liên quan, trạng thái sức khỏe hiện tại và yêu cầu khám đang chờ.<br>3. VETERINARIAN nhập kết luận cuối.<br>4. VETERINARIAN xác nhận.<br>5. Hệ thống đóng bệnh án, xử lý lệnh khóa theo lựa chọn, gửi thông báo và ghi nhật ký. |
 | **Luồng thay thế** | A1. Khóa huấn luyện còn hiệu lực -> bác sĩ chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ.<br>A2. Trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly -> hệ thống cảnh báo, bác sĩ có thể cập nhật trạng thái rồi đóng.<br>A3. Bác sĩ thấy chi phí một buổi khám nhập sai -> điều chỉnh theo UC-F3-06 (A6), trước hoặc sau khi đóng.<br>A4. Ngựa mất trong lúc điều trị -> bác sĩ nhập ngày mất; hệ thống đóng bệnh án và ghi nhận ngựa mất cùng lúc (F1.8). |
-| **Luồng ngoại lệ** | E1. Không nhập kết luận cuối -> báo lỗi.<br>E2. Đóng bệnh án đã đóng -> trả về 409.<br>E3. Khóa còn hiệu lực mà không chọn cách xử lý, hoặc chọn giữ khóa mà ngày dự kiến gỡ ở quá khứ -> báo lỗi.<br>E4. Có ngày mất mà vẫn chọn gỡ hoặc giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh -> báo lỗi tại ô tương ứng, không đóng bệnh án. |
+| **Luồng ngoại lệ** | E1. Không nhập kết luận cuối -> báo lỗi.<br>E2. Đóng bệnh án đã đóng -> trả về 409.<br>E3. Khóa còn hiệu lực mà không chọn cách xử lý, hoặc chọn giữ khóa mà ngày dự kiến gỡ ở quá khứ -> báo lỗi.<br>E4. Có ngày mất mà vẫn chọn gỡ hoặc giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh -> báo lỗi tại ô tương ứng, không đóng bệnh án.<br>E5. Còn chấn thương chưa lành và không ghi nhận ngựa mất -> trả về 409, không đóng bệnh án. |
 
 ---
 
@@ -644,7 +654,7 @@ Viết tắt: CM = Club Manager, HT = Head Trainer, VET = Veterinarian, GROOM = 
 | 2. Buổi khám (trong và ngoài bệnh án): ngày giờ, bác sĩ, chẩn đoán và hướng điều trị, kết luận, trạng thái sau khám, ghi chú chăm sóc, nhãn Đã hủy và lý do | Xem | Xem | Xem | Không | Xem |
 | 3. Đơn thuốc: tên thuốc, ngày bắt đầu, ngày kết thúc | Xem | Xem | Xem | Không | Xem |
 | 4. Đơn thuốc: liều lượng, tần suất | Xem | Xem | Xem | Không | Không |
-| 5. Chấn thương và diễn biến hồi phục theo bệnh án | Xem | Xem | Xem | Không | Xem |
+| 5. Chấn thương: vị trí trên mô hình 3D, mức hồi phục hiện tại và diễn biến qua các buổi khám | Xem | Xem | Xem | Không | Xem |
 | 6. Lịch sử trạng thái sức khỏe | Xem | Xem | Xem | Không | Xem |
 | 7. Lệnh khóa huấn luyện đang hiệu lực và lịch sử khóa | Xem | Xem | Xem | Không (chỉ nhãn trong F1.3) | Xem |
 | 8. Chi phí từng buổi khám, tổng chi phí của bệnh án và của con ngựa | Xem | Không | Xem | Không | Xem (chỉ phần thuộc giai đoạn mình sở hữu) |
@@ -749,7 +759,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 | Lịch chăm sóc không tự lặp | Khi hoàn tất, bác sĩ nhập ngày lần tới để tạo luôn lịch mới | Quên tạo lịch lần sau là ngựa không bao giờ được nhắc. |
 | Giao lịch cho GROOM bất kỳ | Chỉ GROOM đang phụ trách con ngựa | Đổi GROOM thì GROOM cũ vẫn thao tác được, lọt quyền. |
 | Sơ đồ đàn chỉ đếm và liệt kê tên | Kèm khu và ô chuồng để vẽ trên chuồng trại | Đề bài yêu cầu "sơ đồ trạng thái sức khỏe trên giao diện chuồng trại". |
-| Chấn thương không định danh qua các buổi khám | Định danh bằng (vùng cơ thể, loại) trong một bệnh án | Theo dõi được diễn biến hồi phục từng chấn thương. |
+| Chấn thương không định danh qua các buổi khám | Mỗi vết có mã riêng; buổi khám cập nhật vết cũ theo mã hoặc ghi vết mới; mức hiện tại tính lúc đọc | Hai vết cùng vùng và loại vẫn ghi được; vết không ghi lại ở buổi sau vẫn giữ mức cũ. |
 | Chấn thương/Cách ly chỉ báo HEAD TRAINER và CLUB MANAGER | Báo thêm HORSE OWNER | Đề bài: chủ theo dõi tình trạng sẵn sàng thi đấu. |
 | Gợi ý chuyển ô khi Cách ly | Bỏ | Đề bài không yêu cầu; HEAD TRAINER chuyển ô bằng F1.7. |
 
