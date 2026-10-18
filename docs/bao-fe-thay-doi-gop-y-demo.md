@@ -100,7 +100,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 2. Ngựa chuyển sang Cần theo dõi, hoặc về Đủ điều kiện (`HEALTH_STATUS`).
 3. Cảnh báo sốt, sụt cân (`MEASUREMENT_ALERT`).
 4. Chỉ số tập vượt ngưỡng nguy hiểm (`PERFORMANCE_ALERT`, mức HIGH).
-5. Giải nghệ, kích hoạt lại (`HORSE_LIFECYCLE`). Bán ra ngoài (`TRANSFERRED`) không báo chủ cũ, vì giai đoạn sở hữu đã kết thúc (xem mục 8).
+5. Giải nghệ, chuyển nhượng, kích hoạt lại (`HORSE_LIFECYCLE`). Bán ra ngoài (`TRANSFERRED`): chủ vừa kết thúc sở hữu vẫn nhận, nhưng thông báo không gắn link tới ngựa (`resource` là `null`) vì chủ cũ không mở được hồ sơ nữa. Kích hoạt lại từ chuyển nhượng: chủ mới nhận.
 6. Phụ phí mới (`SURCHARGE`).
 
 ## 6. Nhật ký đăng nhập
@@ -163,12 +163,14 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
    | `GROOM` | UUID Groom | Đúng Groom đó, kể cả Groom không phụ trách ngựa |
    | `VET` | UUID bác sĩ (bắt buộc) | Đúng bác sĩ đó |
 
+   - Lịch Tiêm phòng, Tẩy giun không giao được Groom, xem mục "Tiêm phòng, tẩy giun chỉ giao bác sĩ".
+
    - Gửi `assignedTo` mà không có `assigneeType`, hoặc `VET` không kèm người: 400 ô `assignedTo`. Người không đúng vai trò hoặc không hoạt động: 400.
    - Sửa lịch: muốn đổi cách giao thì gửi `assigneeType` (kèm `assignedTo` nếu chọn người).
 2. Response lịch chăm sóc có thêm `assigneeType`. `assignedTo = null` kèm `assigneeType = GROOM` nghĩa là "Groom phụ trách".
 3. `GET /grooms/me/today` (màn Hôm nay của Groom) có thêm `otherCareSchedules`: lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, mỗi dòng có `horseId`, `horseName`. `careSchedules` trong từng ngựa giờ gồm cả lịch giao "Groom phụ trách".
 4. `assignedTo` trong khối lịch chăm sóc của `GET /medical/dashboard` là người làm hiện tại (đã tra Groom phụ trách), `null` nếu chưa có ai.
-5. Khóa tài khoản hoặc đổi vai trò người còn lịch chưa làm được giao đích danh: 409 `Người này còn N lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi khóa tài khoản`.
+5. Khóa tài khoản hoặc đổi vai trò người còn lịch chưa làm được giao đích danh: 409 `Người này còn N lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi khóa tài khoản` (đổi vai trò thì câu kết thúc bằng "trước khi đổi vai trò").
 
 ## Checklist hằng ngày: tự thử lại và nút sinh lại
 
@@ -253,7 +255,7 @@ Không đổi API.
 ## Bảng điều khiển y tế: khối Thuốc cần cho hôm nay
 
 1. `GET /medical/dashboard` có thêm `todayPrescriptions`: các đơn thuốc đang hiệu lực hôm nay theo ngày lịch CLB, xếp theo tên ngựa rồi tên thuốc. Mỗi dòng `{ prescriptionId, horseId, horseName, medicine, dosage, frequency, startDate, endDate (null nếu dùng tới khi đóng bệnh án), medicalRecordId, caseId (null nếu buổi khám ngoài bệnh án) }`.
-2. Bộ lọc khu (`barnId`, `mine`) áp cho khối này; đơn của buổi khám đã hủy không hiện.
+2. Bộ lọc `barnId`, `mine`, `healthStatus` áp cho khối này; đơn của buổi khám đã hủy không hiện.
 
 ## Đơn thuốc của buổi khám không mở bệnh án phải có ngày kết thúc
 
@@ -350,7 +352,7 @@ Không đổi API.
 
 ## Ngựa Chấn thương/Cách ly chưa có bệnh án và thông báo Cách ly
 
-1. `GET /medical/dashboard` có thêm mảng `horsesWithoutCase`: ngựa đang `INJURED` hoặc `QUARANTINED` mà không có bệnh án đang mở. Cùng bộ lọc `barnId`, `healthStatus` và phạm vi HT như các khối khác; không có ngựa đã chuyển nhượng, đã mất, hồ sơ đã xóa. Xếp Cách ly trước, rồi con chuyển trạng thái lâu nhất trước.
+1. `GET /medical/dashboard` có thêm mảng `horsesWithoutCase`: ngựa đang `INJURED` hoặc `QUARANTINED` mà không có bệnh án đang mở. Cùng bộ lọc `barnId`, `mine`, `healthStatus` như các khối khác; không có ngựa đã chuyển nhượng, đã mất, hồ sơ đã xóa. Xếp Cách ly trước, rồi con chuyển trạng thái lâu nhất trước.
 
    ```json
    {
@@ -399,7 +401,7 @@ Không đổi API.
    - Trả buổi khám (như `GET /medical-records/:id`). Bệnh án đang mở hay đã đóng đều sửa được, không giới hạn thời gian.
    - Số trùng số cũ: 200, không ghi nhật ký, không báo ai.
    - Buổi khám đã hủy, ngựa đã chuyển nhượng hoặc đã mất: 409. Không có buổi khám: 404.
-   - Thông báo `category = MEDICAL_CASE`, mức `NORMAL`, tiêu đề "Điều chỉnh chi phí khám ngựa X", ví dụ: "Chi phí buổi khám ngày 20/05/2026 của ngựa Gió được điều chỉnh từ 15.000.000 đ thành 1.500.000 đ.". Gửi CM và chủ của giai đoạn chứa ngày khám. `resource` là bệnh án; buổi khám ngoài bệnh án thì `resource.type = HORSE`.
+   - Thông báo `category = MEDICAL_CASE`, mức `NORMAL`, tiêu đề "Điều chỉnh chi phí khám ngựa X", ví dụ: "Chi phí buổi khám ngày 20/05/2026 của ngựa Gió được điều chỉnh từ 15.000.000 đ thành 1.500.000 đ.". Gửi CM và chủ của giai đoạn chứa ngày khám. `resource` là bệnh án; buổi khám ngoài bệnh án thì `resource.type = HORSE`. Chủ đó không còn là chủ hiện tại thì nhận thông báo có `resource = null` (chỉ khi tài khoản chủ còn hoạt động).
 5. Thông báo đóng bệnh án: CM nhận "Tổng chi phí điều trị: …" (cả bệnh án), chủ nhận "Chi phí điều trị của bạn: …" (phần thuộc giai đoạn mình sở hữu).
 6. Báo cáo:
    - `GET /medical/cost-report` lọc theo **ngày khám** (không còn theo ngày đóng), gồm cả buổi khám ngoài bệnh án. Đổi `caseCount` thành `visitCount` (số buổi khám chưa hủy) ở tổng và từng dòng. `ownerId` lọc theo chủ của giai đoạn chứa ngày khám; `barnId` vẫn theo khu hiện tại.
