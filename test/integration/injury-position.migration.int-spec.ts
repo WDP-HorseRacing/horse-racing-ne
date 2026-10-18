@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { InjuryPositionRequired1789827400000 } from '../../src/migrations/1789827400000-InjuryPositionRequired';
+import { InjuriesTable1789828600000 } from '../../src/migrations/1789828600000-InjuriesTable';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -15,6 +16,12 @@ describe('InjuryPositionRequired migration (Postgres)', () => {
   beforeAll(async () => {
     db = await startTestPostgres();
     dataSource = db.dataSource;
+    const runner = dataSource.createQueryRunner();
+    try {
+      await new InjuriesTable1789828600000().down(runner);
+    } finally {
+      await runner.release();
+    }
   });
 
   afterAll(() => stopTestPostgres(db));

@@ -26,6 +26,7 @@ import {
   MedicalCaseStatus,
   VisitVoidAction,
 } from '../constants/medical-case.enum';
+import { RecoveryStatus } from '../constants/injury-marker.enum';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import {
   MedicalVisitConclusion,
@@ -212,7 +213,7 @@ export function assertStandaloneVisitAllowed(hasOpenCase: boolean): void {
  *
  * - Kết luận ISSUE bắt buộc chẩn đoán ban đầu
  * - Khám theo yêu cầu (REQUEST) bắt buộc gắn ít nhất một yêu cầu
- * - Chấn thương và ngày hẹn tái khám chỉ dùng khi buổi khám mở bệnh án (ISSUE)
+ * - Chấn thương (cập nhật hay ghi mới) và ngày hẹn tái khám chỉ dùng khi buổi khám mở bệnh án (ISSUE)
  * - Buổi khám không mở bệnh án: mọi dòng đơn thuốc bắt buộc có ngày kết thúc
  *
  * @param input Loại, kết luận, chẩn đoán ban đầu, số yêu cầu gắn, số chấn thương, có ngày hẹn tái khám không và có dòng đơn thuốc thiếu ngày kết thúc không
@@ -443,6 +444,31 @@ export function assertNoLockChoiceOnDeath(
   }
   if (expectedEnd !== undefined) {
     throw fieldBadRequest('lockExpectedEnd', NO_LOCK_CHOICE_ON_DEATH_MESSAGE);
+  }
+}
+
+/**
+ * Chỉ đóng bệnh án khi mọi chấn thương của con ngựa đã lành
+ *
+ * - Đóng kèm ghi nhận ngựa mất thì không chặn
+ *
+ * @param currentStatuses Mức hồi phục hiện tại của từng chấn thương đang hiển thị của con ngựa
+ * @param recordsDeath Có ghi nhận ngựa mất cùng lúc đóng không
+ * @throws ConflictException Nếu còn chấn thương chưa lành và không ghi nhận ngựa mất
+ */
+export function assertInjuriesHealedBeforeClose(
+  currentStatuses: Map<string, RecoveryStatus>,
+  recordsDeath: boolean,
+): void {
+  if (recordsDeath) return;
+  if (
+    [...currentStatuses.values()].some(
+      (status) => status !== RecoveryStatus.HEALED,
+    )
+  ) {
+    throw new ConflictException(
+      'Còn chấn thương chưa lành, hãy ghi buổi khám đánh dấu đã lành trước khi đóng bệnh án',
+    );
   }
 }
 
@@ -799,18 +825,34 @@ export function assertCanScheduleNext(
 }
 
 /**
- * Một chấn thương được định danh bằng (vùng cơ thể, loại) trong một bệnh án; mỗi buổi khám ghi tối đa một dòng cho mỗi cặp
+ * Kiểm tra danh sách cập nhật mức hồi phục của buổi khám
  *
- * @param injuries Các chấn thương ghi trong buổi khám
- * @throws BadRequestException Nếu có hai dòng cùng vùng cơ thể và cùng loại
+ * - Một chấn thương xuất hiện quá một lần: 400
+ * - Chấn thương không thuộc con ngựa, hoặc mọi buổi khám ghi nó đều đã hủy: 400
+ * - Chấn thương đã lành: 409
+ *
+ * @param injuryIds UUID các chấn thương cần cập nhật, theo thứ tự trong request
+ * @param currentStatuses Mức hồi phục hiện tại của từng chấn thương đang hiển thị của con ngựa
+ * @throws BadRequestException Nếu trùng chấn thương, hoặc chấn thương không thuộc con ngựa
+ * @throws ConflictException Nếu chấn thương đã lành
  */
-export function assertDistinctInjuries(
-  injuries: Array<{ bodyRegion: string; injuryType: string }>,
+export function assertInjuryUpdates(
+  injuryIds: string[],
+  currentStatuses: Map<string, RecoveryStatus>,
 ): void {
-  const keys = injuries.map((item) => `${item.bodyRegion}|${item.injuryType}`);
-  if (new Set(keys).size !== keys.length) {
+  if (new Set(injuryIds).size !== injuryIds.length) {
     throw new BadRequestException(
-      'Mỗi buổi khám chỉ ghi một dòng cho mỗi cặp vùng cơ thể và loại chấn thương',
+      'Mỗi chấn thương chỉ cập nhật một lần trong một buổi khám',
+    );
+  }
+  if (injuryIds.some((id) => !currentStatuses.has(id))) {
+    throw new BadRequestException('Chấn thương không thuộc con ngựa này');
+  }
+  if (
+    injuryIds.some((id) => currentStatuses.get(id) === RecoveryStatus.HEALED)
+  ) {
+    throw new ConflictException(
+      'Chấn thương đã lành, không cập nhật được; tái phát thì ghi chấn thương mới',
     );
   }
 }

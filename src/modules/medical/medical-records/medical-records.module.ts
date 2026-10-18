@@ -5,6 +5,7 @@ import { HorseMeasurementsModule } from '../../horses/horse-measurements/horse-m
 import { HorseStatusesModule } from '../../horses/horse-statuses/horse-statuses.module';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
+import { InjuryEntity } from '../entities/injury.entity';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
@@ -26,6 +27,7 @@ import { MedicalVisitsService } from './medical-visits.service';
       MedicalCaseEntity,
       PrescriptionEntity,
       InjuryMarkerEntity,
+      InjuryEntity,
     ]),
     HorsesSharedModule,
     HorseMeasurementsModule,

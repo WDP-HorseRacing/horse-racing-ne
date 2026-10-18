@@ -19,6 +19,7 @@ import {
   MEDICAL_CASE_CLOSED_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
 } from '../constants/medical-events.constants';
+import { RecoveryStatus } from '../constants/injury-marker.enum';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
@@ -75,7 +76,10 @@ describe('MedicalCasesService', () => {
     currentUser: jest.Mock;
   };
   let ownerships: { periodsOfHorse: jest.Mock };
-  let access: { lockHorseForWrite: jest.Mock };
+  let access: {
+    lockHorseForWrite: jest.Mock;
+    currentInjuryStatuses: jest.Mock;
+  };
   let casesRepository: {
     costByHorse: jest.Mock;
   };
@@ -158,6 +162,9 @@ describe('MedicalCasesService', () => {
         caller: { id: 'vet-1' },
         horse: { id: 'h1', ownerId: 'owner-b' },
       }),
+      currentInjuryStatuses: jest
+        .fn()
+        .mockResolvedValue(new Map([['inj-1', RecoveryStatus.HEALED]])),
     };
     casesRepository = {
       costByHorse: jest.fn().mockResolvedValue([]),
@@ -385,6 +392,19 @@ describe('MedicalCasesService', () => {
       caseRow = null;
       await expect(close()).rejects.toThrow(NotFoundException);
       expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it('answers conflict while an injury of the horse is not healed and writes nothing', async () => {
+      access.currentInjuryStatuses.mockResolvedValue(
+        new Map([
+          ['inj-1', RecoveryStatus.HEALED],
+          ['inj-2', RecoveryStatus.RECOVERING],
+        ]),
+      );
+      await expect(close()).rejects.toThrow(ConflictException);
+      expect(access.currentInjuryStatuses).toHaveBeenCalledWith(manager, 'h1');
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
     });
 
     it.each([

@@ -112,9 +112,10 @@ export class HorseReportsRepository {
           range,
         ),
         this.dataSource.query<HorseHealthRows['injuries']>(
-          `SELECT r.exam_date AS "examDate", i.body_region AS "bodyRegion",
-                  i.injury_type AS "injuryType", i.recovery_status AS "recoveryStatus"
+          `SELECT r.exam_date AS "examDate", j.body_region AS "bodyRegion",
+                  j.injury_type AS "injuryType", i.recovery_status AS "recoveryStatus"
              FROM injury_markers i
+             JOIN injuries j ON j.id = i.injury_id
              JOIN medical_records r ON r.id = i.medical_record_id
             WHERE r.horse_id = $1
               AND r.exam_date >= $2

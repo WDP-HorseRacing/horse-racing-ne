@@ -13,6 +13,9 @@ export class InjuryMarkerResponseDto {
   @ApiProperty({ format: 'uuid' })
   medicalRecordId!: string;
 
+  @ApiProperty({ format: 'uuid' })
+  injuryId!: string;
+
   @ApiProperty({ enum: InjuryBodyRegion })
   bodyRegion!: InjuryBodyRegion;
 

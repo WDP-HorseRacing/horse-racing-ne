@@ -21,6 +21,7 @@ import {
   MedicalCaseStatus,
   VisitVoidAction,
 } from '../constants/medical-case.enum';
+import { RecoveryStatus } from '../constants/injury-marker.enum';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import {
   MedicalVisitConclusion,
@@ -44,6 +45,8 @@ import {
   examRequestSourceFor,
   isUrgentAlert,
   assertCaseOpen,
+  assertInjuriesHealedBeforeClose,
+  assertInjuryUpdates,
   assertNextVisitAt,
   assertReplacementTarget,
   assertRequestsAttachable,
@@ -715,6 +718,63 @@ describe('medical.policy', () => {
       expect(
         isGroomOnlyForExamRequests([UserRole.GROOM, UserRole.HEAD_TRAINER]),
       ).toBe(false);
+    });
+  });
+
+  describe('assertInjuryUpdates', () => {
+    const current = new Map([
+      ['inj-open', RecoveryStatus.ACUTE],
+      ['inj-healed', RecoveryStatus.HEALED],
+    ]);
+
+    it('accepts updates of injuries not healed yet', () => {
+      expect(() => assertInjuryUpdates(['inj-open'], current)).not.toThrow();
+      expect(() => assertInjuryUpdates([], new Map())).not.toThrow();
+    });
+
+    it.each([
+      ['the same injury twice', ['inj-open', 'inj-open'], BadRequestException],
+      ['an injury outside the horse', ['inj-other'], BadRequestException],
+      ['a healed injury', ['inj-healed'], ConflictException],
+      [
+        'a duplicate before a healed one',
+        ['inj-healed', 'inj-healed'],
+        BadRequestException,
+      ],
+    ])('rejects %s', (_case, ids, error) => {
+      expect(() => assertInjuryUpdates(ids, current)).toThrow(error);
+    });
+  });
+
+  describe('assertInjuriesHealedBeforeClose', () => {
+    it('allows closing when every injury is healed or there is none', () => {
+      expect(() =>
+        assertInjuriesHealedBeforeClose(
+          new Map([['inj-1', RecoveryStatus.HEALED]]),
+          false,
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertInjuriesHealedBeforeClose(new Map(), false),
+      ).not.toThrow();
+    });
+
+    it('blocks closing while an injury is not healed', () => {
+      expect(() =>
+        assertInjuriesHealedBeforeClose(
+          new Map([['inj-1', RecoveryStatus.RECOVERING]]),
+          false,
+        ),
+      ).toThrow(ConflictException);
+    });
+
+    it('allows closing with a recorded death even with injuries not healed', () => {
+      expect(() =>
+        assertInjuriesHealedBeforeClose(
+          new Map([['inj-1', RecoveryStatus.ACUTE]]),
+          true,
+        ),
+      ).not.toThrow();
     });
   });
 });

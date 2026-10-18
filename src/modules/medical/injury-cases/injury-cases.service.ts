@@ -33,7 +33,7 @@ export class InjuryCasesService {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const injuries = await this.dataSource.manager.find(InjuryMarkerEntity, {
       where: { medicalRecord: { horseId, voidedAt: IsNull() } },
-      relations: { medicalRecord: true },
+      relations: { medicalRecord: true, injury: true },
       order: { medicalRecord: { examDate: 'ASC' }, createdAt: 'ASC' },
     });
     return injuries.map(toInjuryTimelineItem);

@@ -64,7 +64,11 @@ describe('MedicalVisitsService', () => {
     save: jest.Mock;
     update: jest.Mock;
   };
-  let access: { lockHorseForWrite: jest.Mock; findOpenCase: jest.Mock };
+  let access: {
+    lockHorseForWrite: jest.Mock;
+    findOpenCase: jest.Mock;
+    currentInjuryStatuses: jest.Mock;
+  };
   let shared: { findOpenCase: jest.Mock };
   let horseHealth: { applyHealthStatus: jest.Mock };
   let measurements: {
@@ -138,6 +142,12 @@ describe('MedicalVisitsService', () => {
         Promise.resolve({ caller: { id: 'vet-1' }, horse }),
       ),
       findOpenCase: shared.findOpenCase,
+      currentInjuryStatuses: jest.fn().mockResolvedValue(
+        new Map([
+          ['inj-open', RecoveryStatus.RECOVERING],
+          ['inj-healed', RecoveryStatus.HEALED],
+        ]),
+      ),
     };
     horseHealth = {
       applyHealthStatus: jest.fn((_m: unknown, input: { to: string }) =>
@@ -385,7 +395,33 @@ describe('MedicalVisitsService', () => {
       ]);
     });
 
-    it('rejects two injuries with the same body region and type in one visit', async () => {
+    it.each([
+      ['the same injury twice', ['inj-open', 'inj-open'], BadRequestException],
+      ['an injury of another horse', ['inj-other'], BadRequestException],
+      ['a healed injury', ['inj-healed'], ConflictException],
+    ])('rejects updating %s in one visit', async (_case, injuryIds, error) => {
+      await expect(
+        service.createStandaloneVisit(
+          vet,
+          HORSE_ID,
+          standalone({
+            conclusion: MedicalVisitConclusion.ISSUE,
+            initialDiagnosis: 'Bong gân',
+            injuryUpdates: injuryIds.map((injuryId) => ({
+              injuryId,
+              recoveryStatus: RecoveryStatus.RECOVERING,
+            })),
+          }),
+        ),
+      ).rejects.toThrow(error);
+      expect(access.currentInjuryStatuses).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+      );
+      expectNothingWritten();
+    });
+
+    it('accepts two new injuries with the same body region and type in one visit', async () => {
       const injury = {
         bodyRegion: InjuryBodyRegion.LEFT_FRONT_LEG,
         injuryType: InjuryType.SPRAIN,
@@ -399,11 +435,10 @@ describe('MedicalVisitsService', () => {
           standalone({
             conclusion: MedicalVisitConclusion.ISSUE,
             initialDiagnosis: 'Bong gân',
-            injuries: [injury, injury],
+            newInjuries: [injury, injury],
           }),
         ),
-      ).rejects.toThrow(BadRequestException);
-      expectNothingWritten();
+      ).resolves.toBeDefined();
     });
 
     it('rejects a prescription ending before it starts', async () => {

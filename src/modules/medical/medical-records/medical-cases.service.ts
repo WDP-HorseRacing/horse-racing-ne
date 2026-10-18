@@ -46,6 +46,7 @@ import {
 } from '../mappers/medical.mapper';
 import {
   assertCaseOpen,
+  assertInjuriesHealedBeforeClose,
   assertNoLockChoiceOnDeath,
   canSeeDosage,
   resolveLockOnClose,
@@ -232,6 +233,7 @@ export class MedicalCasesService {
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row bệnh án
    * - Lệnh khóa gắn bệnh án còn hiệu lực: bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
    * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
+   * - Còn chấn thương chưa lành: 409, trừ khi đóng kèm ghi nhận ngựa mất
    * - Ghi event vào outbox trong cùng transaction: báo chủ ngựa và Club Manager kèm tổng chi phí các buổi khám chưa hủy lúc đóng và phần của chủ hiện tại; gỡ khóa thì báo Head Trainer và Club Manager
    * - Có ngày mất: không nhận lựa chọn gỡ hay giữ khóa; sau khi đóng thì ghi nhận ngựa mất trong cùng transaction (HorseStatusesService.recordDeathInTransaction), lấy kết luận cuối làm nguyên nhân mất; một bước lỗi thì hủy toàn bộ
    *
@@ -242,7 +244,7 @@ export class MedicalCasesService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
    * @throws BadRequestException Nếu còn khóa mà không chọn cách xử lý, ngày dự kiến gỡ không hợp lệ, có ngày mất mà vẫn chọn gỡ hay giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh
-   * @throws ConflictException Nếu bệnh án đã đóng, hoặc ngựa đã chuyển nhượng hay đã mất
+   * @throws ConflictException Nếu bệnh án đã đóng, ngựa đã chuyển nhượng hay đã mất, hoặc còn chấn thương chưa lành
    */
   async closeCase(
     actor: Actor,
@@ -282,6 +284,10 @@ export class MedicalCasesService {
               now,
             )
           : undefined;
+      assertInjuriesHealedBeforeClose(
+        await this.access.currentInjuryStatuses(manager, horseId),
+        body.dateOfDeath !== undefined,
+      );
 
       const changes = {
         status: MedicalCaseStatus.CLOSED,

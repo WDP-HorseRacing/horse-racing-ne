@@ -21,9 +21,12 @@ describe('InjuryCasesService.listInjuries', () => {
         {
           id: 'i1',
           medicalRecordId: 'r1',
-          bodyRegion: 'Chân trước trái',
-          position: null,
-          injuryType: 'Viêm gân',
+          injuryId: 'inj-1',
+          injury: {
+            bodyRegion: 'Chân trước trái',
+            position: null,
+            injuryType: 'Viêm gân',
+          },
           recoveryStatus: 'RECOVERING',
           notes: 'Chườm lạnh 2 lần/ngày',
           medicalRecord: {
@@ -74,7 +77,7 @@ describe('InjuryCasesService.listInjuries', () => {
     );
     expect(injuries.find).toHaveBeenCalledWith(InjuryMarkerEntity, {
       where: { medicalRecord: { horseId: 'h1', voidedAt: IsNull() } },
-      relations: { medicalRecord: true },
+      relations: { medicalRecord: true, injury: true },
       order: { medicalRecord: { examDate: 'ASC' }, createdAt: 'ASC' },
     });
     expect(injury).toMatchObject({

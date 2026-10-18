@@ -140,22 +140,23 @@ export function costOfVisit(record: Pick<MedicalRecordEntity, 'cost'>): number {
 }
 
 /**
- * Chuyển vết thương sang DTO.
+ * Chuyển một lần ghi nhận chấn thương sang DTO, kèm vùng cơ thể, tọa độ, loại của chấn thương.
  *
- * @param injury Thực thể vết thương
- * @returns InjuryMarkerResponseDto - Vết thương
+ * @param marker Lần ghi nhận đã tải kèm chấn thương (relation injury)
+ * @returns InjuryMarkerResponseDto - Lần ghi nhận chấn thương tại một buổi khám
  */
 export function toInjuryMarkerResponse(
-  injury: InjuryMarkerEntity,
+  marker: InjuryMarkerEntity,
 ): InjuryMarkerResponseDto {
   return {
-    id: injury.id,
-    medicalRecordId: injury.medicalRecordId,
-    bodyRegion: injury.bodyRegion,
-    position: injury.position,
-    injuryType: injury.injuryType,
-    recoveryStatus: injury.recoveryStatus,
-    notes: injury.notes,
+    id: marker.id,
+    medicalRecordId: marker.medicalRecordId,
+    injuryId: marker.injuryId,
+    bodyRegion: marker.injury.bodyRegion,
+    position: marker.injury.position,
+    injuryType: marker.injury.injuryType,
+    recoveryStatus: marker.recoveryStatus,
+    notes: marker.notes,
   };
 }
 

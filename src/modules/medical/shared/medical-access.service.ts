@@ -6,6 +6,7 @@ import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import type { CurrentActorUser } from '../../users/utils/current-user';
+import { RecoveryStatus } from '../constants/injury-marker.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import type { ExposedHorse } from '../types/medical-events.types';
@@ -59,6 +60,36 @@ export class MedicalAccessService {
     return manager.findOne(MedicalCaseEntity, {
       where: { horseId, status: MedicalCaseStatus.OPEN },
     });
+  }
+
+  /**
+   * Mức hồi phục hiện tại của từng chấn thương đang hiển thị của con ngựa
+   *
+   * - Mức hiện tại là mức ở lần ghi nhận mới nhất thuộc buổi khám chưa hủy, xếp theo thời điểm khám rồi thời điểm ghi
+   * - Chấn thương mà mọi buổi khám ghi nó đều đã hủy thì không có trong kết quả
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về map từ UUID chấn thương sang mức hồi phục hiện tại
+   */
+  async currentInjuryStatuses(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<Map<string, RecoveryStatus>> {
+    const rows = await manager.query<
+      Array<{ injuryId: string; recoveryStatus: RecoveryStatus }>
+    >(
+      `SELECT DISTINCT ON (m.injury_id)
+              m.injury_id AS "injuryId", m.recovery_status AS "recoveryStatus"
+         FROM injury_markers m
+         JOIN injuries i ON i.id = m.injury_id
+         JOIN medical_records r ON r.id = m.medical_record_id
+        WHERE i.horse_id = $1
+          AND r.voided_at IS NULL
+        ORDER BY m.injury_id, r.exam_date DESC, m.created_at DESC, m.id DESC`,
+      [horseId],
+    );
+    return new Map(rows.map((row) => [row.injuryId, row.recoveryStatus]));
   }
 
   /**

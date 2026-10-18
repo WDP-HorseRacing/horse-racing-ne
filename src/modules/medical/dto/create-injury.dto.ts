@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   ValidateNested,
 } from 'class-validator';
 import {
@@ -45,6 +46,27 @@ export class CreateInjuryDto {
   @ApiProperty({ enum: InjuryType })
   @IsEnum(InjuryType)
   injuryType!: InjuryType;
+
+  @ApiProperty({
+    enum: RecoveryStatus,
+    description: 'Mức hồi phục tại buổi khám này',
+  })
+  @IsEnum(RecoveryStatus)
+  recoveryStatus!: RecoveryStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class UpdateInjuryStatusDto {
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Chấn thương chưa lành của chính con ngựa',
+  })
+  @IsUUID('4')
+  injuryId!: string;
 
   @ApiProperty({
     enum: RecoveryStatus,

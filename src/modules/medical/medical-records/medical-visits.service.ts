@@ -50,6 +50,7 @@ import {
   VoidMedicalRecordDto,
 } from '../dto';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
+import { InjuryEntity } from '../entities/injury.entity';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
@@ -60,8 +61,8 @@ import {
 } from '../mappers/medical.mapper';
 import {
   assertCaseOpen,
-  assertDistinctInjuries,
   assertHealthChangeReason,
+  assertInjuryUpdates,
   assertNextVisitAt,
   assertPrescriptionDates,
   assertReplacementTarget,
@@ -142,6 +143,7 @@ export class MedicalVisitsService {
    * - Ngựa đang có bệnh án mở: 409, phải ghi vào bệnh án đó
    * - Gắn yêu cầu khám đang chờ của chính con ngựa, chuyển chúng sang EXAMINED
    * - Số đo ghi vào lịch sử số đo cơ thể với nguồn MEDICAL_EXAM; đổi trạng thái sức khỏe bắt buộc lý do
+   * - Chấn thương: ghi mới, hoặc cập nhật mức hồi phục của chấn thương chưa lành của chính con ngựa (trùng hay không thuộc ngựa: 400, đã lành: 409); chấn thương không có trong buổi khám giữ nguyên mức cũ
    * - Ngày hẹn khám định kỳ đang hiệu lực chuyển COMPLETED
    * - Mở bệnh án thì lệnh khóa đang hiệu lực chưa gắn bệnh án được gắn vào bệnh án mới
    * - Cảnh báo chỉ số, event mở bệnh án và đổi trạng thái sức khỏe ghi vào outbox trong cùng transaction
@@ -154,7 +156,7 @@ export class MedicalVisitsService {
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu dữ liệu buổi khám không hợp lệ
    * @throws UnprocessableEntityException Nếu có số đo bất thường chưa xác nhận
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng, đang có bệnh án mở, hoặc yêu cầu khám không còn chờ
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng, đang có bệnh án mở, yêu cầu khám không còn chờ, hoặc cập nhật chấn thương đã lành
    */
   async createStandaloneVisit(
     actor: Actor,
@@ -178,14 +180,15 @@ export class MedicalVisitsService {
         conclusion: body.conclusion,
         initialDiagnosis: body.initialDiagnosis,
         requestCount: body.requestIds?.length ?? 0,
-        injuryCount: body.injuries?.length ?? 0,
+        injuryCount:
+          (body.injuryUpdates?.length ?? 0) + (body.newInjuries?.length ?? 0),
         hasNextVisit: nextVisitAt !== null,
         hasOpenEndedPrescription: (body.prescriptions ?? []).some(
           (item) => !item.endDate,
         ),
       });
       if (nextVisitAt) assertNextVisitAt(nextVisitAt, now);
-      assertDistinctInjuries(body.injuries ?? []);
+      await this.checkInjuryUpdates(manager, horseId, body);
       assertPrescriptionDates(body.prescriptions ?? []);
       const nextStatus = body.healthStatus ?? horse.healthStatus;
       const healthChanged = assertHealthChangeReason(
@@ -244,7 +247,7 @@ export class MedicalVisitsService {
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa ngoài phạm vi
    * @throws BadRequestException Nếu dữ liệu buổi khám không hợp lệ
    * @throws UnprocessableEntityException Nếu có số đo bất thường chưa xác nhận
-   * @throws ConflictException Nếu bệnh án đã đóng, ngựa đã chuyển nhượng, hoặc yêu cầu khám không còn chờ
+   * @throws ConflictException Nếu bệnh án đã đóng, ngựa đã chuyển nhượng, yêu cầu khám không còn chờ, hoặc cập nhật chấn thương đã lành
    */
   async createFollowUpVisit(
     actor: Actor,
@@ -268,7 +271,7 @@ export class MedicalVisitsService {
       assertCaseOpen(medicalCase.status);
       assertVisitExamDate(examDate, now, medicalCase.openedAt);
       if (nextVisitAt) assertNextVisitAt(nextVisitAt, now);
-      assertDistinctInjuries(body.injuries ?? []);
+      await this.checkInjuryUpdates(manager, horseId, body);
       assertPrescriptionDates(body.prescriptions ?? []);
       const nextStatus = body.healthStatus ?? horse.healthStatus;
       const healthChanged = assertHealthChangeReason(
@@ -405,6 +408,7 @@ export class MedicalVisitsService {
         }),
         manager.find(InjuryMarkerEntity, {
           where: { medicalRecordId: recordId },
+          relations: { injury: true },
         }),
       ]);
       return toMedicalRecordResponse(
@@ -496,6 +500,7 @@ export class MedicalVisitsService {
         }),
         manager.find(InjuryMarkerEntity, {
           where: { medicalRecordId: recordId },
+          relations: { injury: true },
         }),
       ]);
       return toMedicalRecordResponse(
@@ -566,6 +571,29 @@ export class MedicalVisitsService {
     });
     if (!medicalCase) throw new NotFoundException('Không tìm thấy bệnh án');
     return medicalCase.horseId;
+  }
+
+  /**
+   * Kiểm tra các chấn thương cần cập nhật mức hồi phục trong buổi khám
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa đã khóa
+   * @param body Nội dung buổi khám
+   * @returns Promise hoàn tất khi danh sách cập nhật hợp lệ
+   * @throws BadRequestException Nếu trùng chấn thương, hoặc chấn thương không thuộc con ngựa
+   * @throws ConflictException Nếu có chấn thương đã lành
+   */
+  private async checkInjuryUpdates(
+    manager: EntityManager,
+    horseId: string,
+    body: MedicalVisitBaseDto,
+  ): Promise<void> {
+    const updates = body.injuryUpdates ?? [];
+    if (updates.length === 0) return;
+    assertInjuryUpdates(
+      updates.map((item) => item.injuryId),
+      await this.access.currentInjuryStatuses(manager, horseId),
+    );
   }
 
   /**
@@ -694,13 +722,40 @@ export class MedicalVisitsService {
         }),
       ),
     );
+    const updates = body.injuryUpdates ?? [];
+    const newInjuries = body.newInjuries ?? [];
+    const updated = updates.length
+      ? await manager.findBy(InjuryEntity, {
+          id: In(updates.map((item) => item.injuryId)),
+        })
+      : [];
+    const discovered = await manager.save(
+      newInjuries.map((item) =>
+        manager.create(InjuryEntity, {
+          horseId: horse.id,
+          bodyRegion: item.bodyRegion,
+          injuryType: item.injuryType,
+          position: item.position,
+          firstMedicalRecordId: visit.id,
+        }),
+      ),
+    );
+    const injuryOf = new Map(
+      [...updated, ...discovered].map((injury) => [injury.id, injury]),
+    );
+    const observations = [
+      ...updates,
+      ...newInjuries.map((item, index) => ({
+        ...item,
+        injuryId: discovered[index].id,
+      })),
+    ];
     const injuries = await manager.save(
-      (body.injuries ?? []).map((item) =>
+      observations.map((item) =>
         manager.create(InjuryMarkerEntity, {
           medicalRecordId: visit.id,
-          bodyRegion: item.bodyRegion,
-          position: item.position,
-          injuryType: item.injuryType,
+          injuryId: item.injuryId,
+          injury: injuryOf.get(item.injuryId),
           recoveryStatus: item.recoveryStatus,
           notes: item.notes ?? null,
         }),

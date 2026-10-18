@@ -189,7 +189,12 @@ describe('MedicalRecordsService.listRecords', () => {
           cost: '0',
         });
       injuries.find.mockResolvedValue([
-        { id: 'i1', medicalRecordId: 'r1', bodyRegion: 'LEFT_FRONT_LEG' },
+        {
+          id: 'i1',
+          medicalRecordId: 'r1',
+          injuryId: 'inj-1',
+          injury: { bodyRegion: 'LEFT_FRONT_LEG' },
+        },
       ]);
       const visit = await service.getRecord(
         actorWith(UserRole.HEAD_TRAINER),

@@ -24,7 +24,7 @@ import {
   MedicalVisitConclusion,
   MedicalVisitKind,
 } from '../constants/medical-visit.enum';
-import { CreateInjuryDto } from './create-injury.dto';
+import { CreateInjuryDto, UpdateInjuryStatusDto } from './create-injury.dto';
 import { CreatePrescriptionDto } from './create-prescription.dto';
 
 /**
@@ -128,15 +128,28 @@ export class MedicalVisitBaseDto {
   prescriptions?: CreatePrescriptionDto[];
 
   @ApiPropertyOptional({
+    type: [UpdateInjuryStatusDto],
+    description:
+      'Mức hồi phục mới của các chấn thương chưa lành; chấn thương không có trong danh sách giữ nguyên mức cũ. Chỉ dùng khi buổi khám thuộc bệnh án',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => UpdateInjuryStatusDto)
+  injuryUpdates?: UpdateInjuryStatusDto[];
+
+  @ApiPropertyOptional({
     type: [CreateInjuryDto],
-    description: 'Chấn thương; chỉ dùng khi buổi khám thuộc bệnh án',
+    description:
+      'Chấn thương phát hiện ở buổi khám này; chỉ dùng khi buổi khám thuộc bệnh án',
   })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
   @ValidateNested({ each: true })
   @Type(() => CreateInjuryDto)
-  injuries?: CreateInjuryDto[];
+  newInjuries?: CreateInjuryDto[];
 
   @ApiPropertyOptional({
     format: 'uuid',

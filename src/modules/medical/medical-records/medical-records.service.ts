@@ -177,6 +177,7 @@ export class MedicalRecordsService {
           }),
           this.injuries.find({
             where: { medicalRecordId: In(recordIds) },
+            relations: { injury: true },
             order: { createdAt: 'ASC' },
           }),
         ])

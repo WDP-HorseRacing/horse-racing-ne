@@ -431,7 +431,7 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
 
     await expect(
       issueVisit(vet.actor, horse, {
-        injuries: [
+        newInjuries: [
           {
             bodyRegion: InjuryBodyRegion.LEFT_FRONT_LEG,
             injuryType: InjuryType.SPRAIN,
