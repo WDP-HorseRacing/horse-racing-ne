@@ -13,7 +13,11 @@ import {
   HealthHistoryItemDto,
   HealthStatusChangeResponseDto,
 } from '../dto/health-status.dto';
-import { HerdBlockDto, HerdCountsDto } from '../dto/medical-dashboard.dto';
+import {
+  DashboardHorseWithoutCaseDto,
+  HerdBlockDto,
+  HerdCountsDto,
+} from '../dto/medical-dashboard.dto';
 import {
   InjuryMarkerResponseDto,
   InjuryTimelineItemDto,
@@ -34,7 +38,7 @@ import type { MedicalCostReportRow } from '../medical-records/medical-cases.repo
 import { healthPriority } from '../policies/medical.policy';
 import type { HorseCheckupAnchorRow } from '../types/medical-checkup.types';
 import type { HealthStatusChange } from '../../horses/shared/horse-health.service';
-import type { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 
 /**
  * Chuyển đơn thuốc sang DTO, chỉ thêm liều lượng và tần suất khi người gọi được xem.
@@ -387,6 +391,46 @@ export function toHerdBlock(
         a.horseName.localeCompare(b.horseName, 'vi'),
     );
   return { counts, horses };
+}
+
+/**
+ * Dựng khối ngựa Chấn thương hoặc Cách ly chưa có bệnh án đang mở của bảng điều khiển y tế
+ *
+ * - Chỉ giữ ngựa Chấn thương hoặc Cách ly không nằm trong openCaseHorseIds
+ * - Cách ly lên trước Chấn thương; cùng trạng thái thì chuyển trạng thái lâu nhất lên trước, không rõ thời điểm (null) lên đầu
+ *
+ * @param rows Đàn ngựa đang hiển thị trên bảng điều khiển
+ * @param openCaseHorseIds Các con ngựa đang có bệnh án mở
+ * @param sinceByHorse Thời điểm chuyển sang trạng thái hiện tại theo từng con ngựa
+ * @returns Danh sách ngựa chưa có bệnh án
+ */
+export function toHorsesWithoutCase(
+  rows: HorseCheckupAnchorRow[],
+  openCaseHorseIds: Set<string>,
+  sinceByHorse: Map<string, Date | null>,
+): DashboardHorseWithoutCaseDto[] {
+  return rows
+    .filter(
+      (row) =>
+        (row.healthStatus === HorseHealthStatus.INJURED ||
+          row.healthStatus === HorseHealthStatus.QUARANTINED) &&
+        !openCaseHorseIds.has(row.horseId),
+    )
+    .map((row) => ({
+      horseId: row.horseId,
+      horseName: row.horseName,
+      barnId: row.barnId,
+      barnName: row.barnName,
+      stallId: row.stallId,
+      stallCode: row.stallCode,
+      healthStatus: row.healthStatus,
+      since: sinceByHorse.get(row.horseId) ?? null,
+    }))
+    .sort(
+      (a, b) =>
+        healthPriority(a.healthStatus) - healthPriority(b.healthStatus) ||
+        (a.since?.getTime() ?? 0) - (b.since?.getTime() ?? 0),
+    );
 }
 
 /**

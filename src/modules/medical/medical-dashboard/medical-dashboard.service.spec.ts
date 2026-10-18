@@ -25,7 +25,11 @@ const horse = (horseId: string, healthStatus: HorseHealthStatus) => ({
 describe('MedicalDashboardService', () => {
   let shared: { herdCheckupAnchors: jest.Mock; dueCareSchedules: jest.Mock };
   let checkups: { checkupItemsFor: jest.Mock };
-  let dashboard: { openCases: jest.Mock; todayPrescriptions: jest.Mock };
+  let dashboard: {
+    openCases: jest.Mock;
+    todayPrescriptions: jest.Mock;
+    healthStatusSince: jest.Mock;
+  };
   let requests: { find: jest.Mock };
   let stableAccess: {
     isBarnScopedTrainer: jest.Mock;
@@ -64,6 +68,7 @@ describe('MedicalDashboardService', () => {
     dashboard = {
       openCases: jest.fn().mockResolvedValue([]),
       todayPrescriptions: jest.fn().mockResolvedValue([]),
+      healthStatusSince: jest.fn().mockResolvedValue([]),
     };
     requests = { find: jest.fn().mockResolvedValue([]) };
     service = new MedicalDashboardService(

@@ -321,3 +321,25 @@ Không đổi API.
 6. Sửa buổi giờ giữ nguyên người dắt HT đã giao tay (trước đây bị gắn lại Groom phụ trách).
 7. Thông báo mới cho Groom khi HT giao dắt một lượt: `category = TRAINING_SESSION`, mức `NORMAL`, `resource = null`, ví dụ "Bạn được giao dắt Gió ở buổi tập Sáng lúc 06:00 ngày 19/10/2026, tại Sân 1, mặt sân Cát.". Gỡ người dắt không có thông báo.
 
+
+## Ngựa Chấn thương/Cách ly chưa có bệnh án và thông báo Cách ly
+
+1. `GET /medical/dashboard` có thêm mảng `horsesWithoutCase`: ngựa đang `INJURED` hoặc `QUARANTINED` mà không có bệnh án đang mở. Cùng bộ lọc `barnId`, `healthStatus` và phạm vi HT như các khối khác; không có ngựa đã chuyển nhượng, đã mất, hồ sơ đã xóa. Xếp Cách ly trước, rồi con chuyển trạng thái lâu nhất trước.
+
+   ```json
+   {
+     "horsesWithoutCase": [
+       {
+         "horseId": "uuid", "horseName": "Gió",
+         "barnId": "uuid", "barnName": "Khu A",
+         "stallId": "uuid", "stallCode": "A-01",
+         "healthStatus": "QUARANTINED",
+         "since": "2026-10-15T02:00:00.000Z"
+       }
+     ]
+   }
+   ```
+
+   `since` là lúc chuyển sang trạng thái hiện tại, `null` nếu nhật ký không có.
+2. Gợi ý: mỗi dòng có nút "Lập phiếu khám" (mở form `POST /horses/:horseId/medical-records` cho ngựa đó; kết luận Có vấn đề sẽ mở bệnh án) và nút đổi trạng thái sức khỏe (`PATCH /horses/:horseId/health-status`) khi đặt nhầm hoặc đã ổn.
+3. Thông báo Cách ly (`category = HEALTH_STATUS`, mức `HIGH`) gửi HT, CM, Groom có thêm câu cuối liệt kê ngựa có thể đã tiếp xúc, tối đa 10 tên, ví dụ: "... Ngựa không được tập và không được đua. Ngựa có thể đã tiếp xúc: Mây (cùng khu), Sương (cùng khu, cùng Groom), Lúa (cùng Groom) và 2 con khác.". Thông báo của chủ ngựa giữ nội dung cũ. Không có ngựa tiếp xúc thì mọi người nhận nội dung cũ. API `PATCH health-status` không đổi.

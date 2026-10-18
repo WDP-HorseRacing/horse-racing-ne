@@ -88,6 +88,47 @@ export class HerdBlockDto {
 }
 
 /**
+ * Một con ngựa đang Chấn thương hoặc Cách ly mà chưa có bệnh án đang mở.
+ */
+export class DashboardHorseWithoutCaseDto {
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @ApiProperty()
+  horseName!: string;
+
+  @ApiProperty({ format: 'uuid', nullable: true })
+  barnId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  barnName!: string | null;
+
+  @ApiProperty({
+    format: 'uuid',
+    nullable: true,
+    description: 'Ô đang xếp; null là ngựa chưa có ô',
+  })
+  stallId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  stallCode!: string | null;
+
+  @ApiProperty({
+    enum: [HorseHealthStatus.INJURED, HorseHealthStatus.QUARANTINED],
+  })
+  healthStatus!: HorseHealthStatus;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description:
+      'Thời điểm chuyển sang trạng thái hiện tại theo nhật ký đổi sức khỏe; null nếu nhật ký không có',
+  })
+  since!: Date | null;
+}
+
+/**
  * Một bệnh án đang mở trên bảng điều khiển.
  */
 export class DashboardOpenCaseDto {
@@ -198,7 +239,7 @@ export class DashboardCareScheduleDto {
 }
 
 /**
- * Bảng điều khiển y tế: năm khối, tính trực tiếp khi mở, không có chi phí.
+ * Bảng điều khiển y tế: bảy khối, tính trực tiếp khi mở, không có chi phí.
  */
 export class MedicalDashboardResponseDto {
   @ApiProperty({ type: HerdBlockDto })
@@ -219,6 +260,13 @@ export class MedicalDashboardResponseDto {
 
   @ApiProperty({ type: [DashboardOpenCaseDto] })
   openCases!: DashboardOpenCaseDto[];
+
+  @ApiProperty({
+    type: [DashboardHorseWithoutCaseDto],
+    description:
+      'Ngựa đang Chấn thương hoặc Cách ly mà chưa có bệnh án đang mở; Cách ly lên trước, rồi chuyển trạng thái lâu nhất lên trước',
+  })
+  horsesWithoutCase!: DashboardHorseWithoutCaseDto[];
 
   @ApiProperty({
     type: [DashboardPrescriptionDto],

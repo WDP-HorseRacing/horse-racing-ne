@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import type { DashboardOpenCaseDto, DashboardPrescriptionDto } from '../dto';
 
@@ -77,6 +78,33 @@ export class MedicalDashboardRepository {
                OR (p.end_date IS NULL AND c.status = $3))
         ORDER BY h.name, p.medicine, p.id`,
       [horseIds, today, MedicalCaseStatus.OPEN],
+    );
+  }
+
+  /**
+   * Thời điểm mỗi con ngựa chuyển sang trạng thái sức khỏe hiện tại, đọc từ nhật ký HORSE
+   *
+   * - Lấy lần gần nhất có trạng thái sau bằng trạng thái hiện tại và khác trạng thái trước
+   * - Ngựa không có dòng nhật ký nào như vậy thì since = null
+   *
+   * @param horseIds Các con ngựa cần tra
+   * @returns Promise trả về thời điểm chuyển trạng thái của từng con ngựa
+   */
+  healthStatusSince(
+    horseIds: string[],
+  ): Promise<Array<{ horseId: string; since: Date | null }>> {
+    if (horseIds.length === 0) return Promise.resolve([]);
+    return this.dataSource.query(
+      `SELECT h.id AS "horseId", MAX(a.created_at) AS "since"
+         FROM horses h
+         LEFT JOIN audit_logs a
+                ON a.entity_type = $1
+               AND a.entity_id = h.id
+               AND a.after_data->>'healthStatus' = h.health_status::text
+               AND a.before_data->>'healthStatus' IS DISTINCT FROM a.after_data->>'healthStatus'
+        WHERE h.id = ANY($2::uuid[])
+        GROUP BY h.id`,
+      [AuditEntityType.HORSE, horseIds],
     );
   }
 }

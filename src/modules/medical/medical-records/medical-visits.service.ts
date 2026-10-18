@@ -708,7 +708,7 @@ export class MedicalVisitsService {
    *
    * - Ghi các cảnh báo chỉ số của buổi khám
    * - Có mở bệnh án: ghi event mở bệnh án
-   * - Trạng thái sức khỏe đổi: ghi event đổi trạng thái sức khỏe
+   * - Trạng thái sức khỏe đổi: ghi event đổi trạng thái sức khỏe; sang Cách ly thì kèm danh sách ngựa có thể đã tiếp xúc (cùng khu, cùng Groom)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -736,6 +736,9 @@ export class MedicalVisitsService {
         horseId,
         from: result.health.from,
         to: result.health.to,
+        ...(result.health.to === HorseHealthStatus.QUARANTINED && {
+          exposedHorses: await this.access.exposedHorses(manager, horseId),
+        }),
       };
       await this.events.publish(manager, MEDICAL_HEALTH_CHANGED_EVENT, event);
     }

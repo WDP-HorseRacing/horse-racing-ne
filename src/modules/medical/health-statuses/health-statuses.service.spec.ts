@@ -17,13 +17,19 @@ import { HealthStatusesService } from './health-statuses.service';
 const vet: Actor = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
 
 describe('HealthStatusesService', () => {
-  let access: { lockHorseForWrite: jest.Mock };
+  let access: { lockHorseForWrite: jest.Mock; exposedHorses: jest.Mock };
   let horseAccess: { findReadableHorseForActor: jest.Mock };
   let horseHealth: { applyHealthStatus: jest.Mock };
   let repository: { history: jest.Mock };
   let events: { publish: jest.Mock };
   let service: HealthStatusesService;
   let manager: object;
+  const exposed = {
+    horseId: 'h2',
+    horseName: 'Mây',
+    sameBarn: true,
+    sameGroom: false,
+  };
 
   beforeEach(() => {
     manager = {};
@@ -32,6 +38,7 @@ describe('HealthStatusesService', () => {
         caller: { id: 'vet-1' },
         horse: { id: 'h1', healthStatus: HorseHealthStatus.ELIGIBLE },
       }),
+      exposedHorses: jest.fn().mockResolvedValue([exposed]),
     };
     horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
     horseHealth = {
@@ -112,8 +119,12 @@ describe('HealthStatusesService', () => {
     expect(events.publish).toHaveBeenCalledWith(
       manager,
       MEDICAL_HEALTH_CHANGED_EVENT,
-      expect.objectContaining({ to: HorseHealthStatus.QUARANTINED }),
+      expect.objectContaining({
+        to: HorseHealthStatus.QUARANTINED,
+        exposedHorses: [exposed],
+      }),
     );
+    expect(access.exposedHorses).toHaveBeenCalledWith(manager, 'h1');
   });
 
   it('reports no change and publishes nothing for the same status', async () => {

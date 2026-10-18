@@ -117,6 +117,41 @@ describe('MedicalNotificationsService', () => {
     },
   );
 
+  it('lists exposed horses to staff only and caps the names when a horse is quarantined', async () => {
+    const exposedHorses = Array.from({ length: 12 }, (_, i) => ({
+      horseId: `x${i}`,
+      horseName: `Ngựa ${i}`,
+      sameBarn: i !== 1,
+      sameGroom: i <= 1,
+    }));
+    await service.notifyHealthChanged({
+      eventId: 'e4q',
+      horseId: 'h1',
+      from: HorseHealthStatus.ELIGIBLE,
+      to: HorseHealthStatus.QUARANTINED,
+      exposedHorses,
+    });
+    const drafts = (
+      notifications.send.mock.calls as Array<[NotificationDraft]>
+    ).map(([draft]) => draft);
+    const base =
+      'Trạng thái sức khỏe của ngựa Winx chuyển từ Đủ điều kiện sang Cách ly. Ngựa không được tập và không được đua.';
+    expect(drafts).toEqual([
+      expect.objectContaining({
+        eventId: 'e4q',
+        recipientIds: ['cm-1', 'ht-1', 'groom-1'],
+        priority: NotificationPriority.HIGH,
+        message: `${base} Ngựa có thể đã tiếp xúc: Ngựa 0 (cùng khu, cùng Groom), Ngựa 1 (cùng Groom), Ngựa 2 (cùng khu), Ngựa 3 (cùng khu), Ngựa 4 (cùng khu), Ngựa 5 (cùng khu), Ngựa 6 (cùng khu), Ngựa 7 (cùng khu), Ngựa 8 (cùng khu), Ngựa 9 (cùng khu) và 2 con khác.`,
+      }),
+      expect.objectContaining({
+        eventId: 'e4q',
+        recipientIds: ['owner-1'],
+        priority: NotificationPriority.HIGH,
+        message: base,
+      }),
+    ]);
+  });
+
   it('tells the owner and the groom in charge at NORMAL level when the horse becomes eligible again', async () => {
     await service.notifyHealthChanged({
       eventId: 'e5',

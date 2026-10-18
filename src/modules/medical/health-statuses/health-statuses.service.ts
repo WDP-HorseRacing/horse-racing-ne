@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
+import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { HorseHealthService } from '../../horses/shared/horse-health.service';
 import { MEDICAL_HEALTH_CHANGED_EVENT } from '../constants/medical-events.constants';
@@ -39,6 +40,7 @@ export class HealthStatusesService {
    * - Bắt buộc lý do; trạng thái mới trùng trạng thái cũ thì không ghi gì và trả changed = false
    * - Được đặt Đủ điều kiện cả khi đang có lệnh khóa; không tự gỡ khóa
    * - Chuyển sang Chấn thương hoặc Cách ly: ghi event báo Head Trainer của khu, Club Manager và Horse Owner vào outbox trong cùng transaction
+   * - Chuyển sang Cách ly: event kèm danh sách ngựa có thể đã tiếp xúc (cùng khu, cùng Groom) chụp trong transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -78,6 +80,9 @@ export class HealthStatusesService {
           horseId,
           from: applied.from,
           to: applied.to,
+          ...(applied.to === HorseHealthStatus.QUARANTINED && {
+            exposedHorses: await this.access.exposedHorses(manager, horseId),
+          }),
         };
         await this.events.publish(manager, MEDICAL_HEALTH_CHANGED_EVENT, event);
       }

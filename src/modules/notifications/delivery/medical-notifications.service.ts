@@ -10,6 +10,7 @@ import type {
   CheckupOverdueEvent,
   ExamRequestHandledEvent,
   ExamRequestUrgentEvent,
+  ExposedHorse,
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
   MedicalCaseClosedEvent,
@@ -58,6 +59,11 @@ const HEALTH_LABELS: Record<HorseHealthStatus, string> = {
   [HorseHealthStatus.INJURED]: 'Chấn thương',
   [HorseHealthStatus.QUARANTINED]: 'Cách ly',
 };
+
+/**
+ * Số ngựa tiếp xúc tối đa ghi tên trong thông báo Cách ly, phần còn lại gộp thành "và N con khác".
+ */
+const EXPOSED_HORSES_SHOWN = 10;
 
 @Injectable()
 export class MedicalNotificationsService {
@@ -176,6 +182,7 @@ export class MedicalNotificationsService {
    * Báo khi trạng thái sức khỏe đổi
    *
    * - Sang Chấn thương hoặc Cách ly: báo Head Trainer của khu, Club Manager, chủ ngựa và Groom phụ trách, mức HIGH
+   * - Sang Cách ly có ngựa có thể đã tiếp xúc: thông báo của Head Trainer, Club Manager và Groom kèm danh sách đó (tối đa EXPOSED_HORSES_SHOWN tên, còn lại ghi "và N con khác"); thông báo của chủ ngựa không kèm
    * - Sang Cần theo dõi: báo Head Trainer của khu, chủ ngựa và Groom phụ trách, mức NORMAL
    * - Về Đủ điều kiện: báo chủ ngựa và Groom phụ trách, mức NORMAL
    *
@@ -211,18 +218,50 @@ export class MedicalNotificationsService {
         }),
       );
     }
-    return this.sendForHorse(
+    const describe = (horse: string) => ({
+      title: `Ngựa ${horse}: ${HEALTH_LABELS[event.to]}`,
+      message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa không được tập và không được đua.`,
+    });
+    const exposed =
+      event.to === HorseHealthStatus.QUARANTINED
+        ? (event.exposedHorses ?? [])
+        : [];
+    if (exposed.length === 0) {
+      return this.sendForHorse(
+        event.eventId,
+        event.horseId,
+        horseResource(event.horseId),
+        { headTrainer: true, clubManagers: true, owner: true, groom: true },
+        NotificationCategory.HEALTH_STATUS,
+        NotificationPriority.HIGH,
+        describe,
+      );
+    }
+    const staff = await this.sendForHorse(
       event.eventId,
       event.horseId,
       horseResource(event.horseId),
-      { headTrainer: true, clubManagers: true, owner: true, groom: true },
+      { headTrainer: true, clubManagers: true, groom: true },
       NotificationCategory.HEALTH_STATUS,
       NotificationPriority.HIGH,
-      (horse) => ({
-        title: `Ngựa ${horse}: ${HEALTH_LABELS[event.to]}`,
-        message: `Trạng thái sức khỏe của ngựa ${horse} chuyển từ ${HEALTH_LABELS[event.from]} sang ${HEALTH_LABELS[event.to]}. Ngựa không được tập và không được đua.`,
-      }),
+      (horse) => {
+        const base = describe(horse);
+        return {
+          ...base,
+          message: `${base.message} ${describeExposedHorses(exposed)}`,
+        };
+      },
     );
+    const owner = await this.sendForHorse(
+      event.eventId,
+      event.horseId,
+      horseResource(event.horseId),
+      { owner: true },
+      NotificationCategory.HEALTH_STATUS,
+      NotificationPriority.HIGH,
+      describe,
+    );
+    return [...staff, ...owner];
   }
 
   /**
@@ -505,6 +544,26 @@ export class MedicalNotificationsService {
     if (audience.groom) ids.push(contact.groomId);
     return [...new Set(ids.filter((id): id is string => !!id))];
   }
+}
+
+/**
+ * Soạn câu liệt kê ngựa có thể đã tiếp xúc, kèm lý do cùng khu, cùng Groom hoặc cả hai
+ *
+ * - Ghi tên tối đa EXPOSED_HORSES_SHOWN con theo thứ tự nhận được, còn lại ghi "và N con khác"
+ *
+ * @param horses Các con ngựa có thể đã tiếp xúc, không rỗng
+ * @returns Câu liệt kê để nối vào nội dung thông báo
+ */
+function describeExposedHorses(horses: ExposedHorse[]): string {
+  const names = horses.slice(0, EXPOSED_HORSES_SHOWN).map((horse) => {
+    const reasons = [
+      ...(horse.sameBarn ? ['cùng khu'] : []),
+      ...(horse.sameGroom ? ['cùng Groom'] : []),
+    ];
+    return `${horse.horseName} (${reasons.join(', ')})`;
+  });
+  const rest = horses.length - names.length;
+  return `Ngựa có thể đã tiếp xúc: ${names.join(', ')}${rest > 0 ? ` và ${rest} con khác` : ''}.`;
 }
 
 /**

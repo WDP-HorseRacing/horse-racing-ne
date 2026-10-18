@@ -52,11 +52,27 @@ export interface TrainingLockReleasedEvent extends MedicalEventBase {
 }
 
 /**
+ * Một con ngựa có thể đã tiếp xúc với ngựa vừa bị Cách ly, chụp lúc đổi trạng thái.
+ *
+ * - sameBarn: đang ở cùng khu
+ * - sameGroom: đang do cùng Groom phụ trách
+ */
+export interface ExposedHorse {
+  horseId: string;
+  horseName: string;
+  sameBarn: boolean;
+  sameGroom: boolean;
+}
+
+/**
  * Trạng thái sức khỏe vừa đổi.
+ *
+ * - exposedHorses: chỉ có khi to = QUARANTINED; các con ngựa có thể đã tiếp xúc, theo tên
  */
 export interface HealthChangedEvent extends MedicalEventBase {
   from: HorseHealthStatus;
   to: HorseHealthStatus;
+  exposedHorses?: ExposedHorse[];
 }
 
 /**

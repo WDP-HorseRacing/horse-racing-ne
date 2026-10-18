@@ -13131,6 +13131,60 @@
           "nextVisitAt"
         ]
       },
+      "DashboardHorseWithoutCaseDto": {
+        "type": "object",
+        "properties": {
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "barnId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "barnName": {
+            "type": "string",
+            "nullable": true
+          },
+          "stallId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Ô đang xếp; null là ngựa chưa có ô"
+          },
+          "stallCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Thời điểm chuyển sang trạng thái hiện tại theo nhật ký đổi sức khỏe; null nếu nhật ký không có"
+          }
+        },
+        "required": [
+          "horseId",
+          "horseName",
+          "barnId",
+          "barnName",
+          "stallId",
+          "stallCode",
+          "healthStatus",
+          "since"
+        ]
+      },
       "DashboardPrescriptionDto": {
         "type": "object",
         "properties": {
@@ -13215,6 +13269,13 @@
               "$ref": "#/components/schemas/DashboardOpenCaseDto"
             }
           },
+          "horsesWithoutCase": {
+            "description": "Ngựa đang Chấn thương hoặc Cách ly mà chưa có bệnh án đang mở; Cách ly lên trước, rồi chuyển trạng thái lâu nhất lên trước",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardHorseWithoutCaseDto"
+            }
+          },
           "todayPrescriptions": {
             "description": "Thuốc cần cho hôm nay: đơn đang hiệu lực theo ngày lịch câu lạc bộ, theo tên ngựa",
             "type": "array",
@@ -13235,6 +13296,7 @@
           "checkups",
           "careSchedules",
           "openCases",
+          "horsesWithoutCase",
           "todayPrescriptions",
           "pendingRequests"
         ]
