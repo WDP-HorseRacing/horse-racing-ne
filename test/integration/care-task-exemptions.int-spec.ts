@@ -63,6 +63,7 @@ describe('Exempting a horse from a shared care task (Postgres)', () => {
       daily,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
   });
 

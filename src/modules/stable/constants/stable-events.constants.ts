@@ -11,6 +11,12 @@ export const GROOM_ASSIGNMENT_CHANGED_EVENT = 'stable.groom-assignment.changed';
 export const CHECKLIST_TASK_ADDED_EVENT = 'stable.checklist.task-added';
 
 /**
+ * Tên domain event phát khi Veterinarian gắn thêm, miễn hoặc gỡ việc riêng của một con ngựa mà không phải Head Trainer của khu.
+ * Payload là CareTaskChangedEvent; module notifications nghe event này để báo Head Trainer của khu chứa ngựa.
+ */
+export const CARE_TASK_CHANGED_EVENT = 'stable.care-task.changed';
+
+/**
  * Tên domain event phát khi Groom báo một sự cố tại chuồng.
  * Payload là IncidentReportedEvent; module notifications nghe event này để báo Head Trainer của khu chứa ngựa.
  */

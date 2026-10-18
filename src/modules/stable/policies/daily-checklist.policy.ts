@@ -3,10 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
+import { UserRole } from '../../../common/enums/role.enum';
 import { shiftDays } from '../../../common/utils/club-date';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
+import type { HorseEntity } from '../../horses/entities/horse.entity';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
+import { assertHorseHasBarn, assertHorseInTrainerBarn } from './stable.policy';
 
 const MAX_CARE_TASK_DAYS = 366;
 const MAX_CHECKLIST_RANGE_DAYS = 31;
@@ -192,6 +195,34 @@ export function assertNoOverlappingCareTask(overlapping: boolean): void {
       'Ngựa đã được gắn việc này trong khoảng ngày chồng nhau',
     );
   }
+}
+
+/**
+ * Chặn người gọi gắn, miễn hoặc gỡ việc riêng của ngựa ngoài phạm vi của mình
+ *
+ * - Veterinarian: mọi ngựa trong CLB, kể cả ngựa chưa có khu
+ * - Head Trainer: ngựa đã có khu và thuộc khu mình phụ trách
+ * - Vai trò khác: 403
+ *
+ * @param roles Vai trò của người gọi
+ * @param horse Con ngựa cần kiểm
+ * @param inTrainerBarn true nếu ngựa thuộc khu người gọi phụ trách
+ * @throws ForbiddenException Nếu người gọi không phải Veterinarian hay Head Trainer, hoặc Head Trainer đổi ngựa ngoài khu mình
+ * @throws ConflictException Nếu Head Trainer đổi ngựa chưa được xếp khu
+ */
+export function assertCareTaskWriter(
+  roles: readonly UserRole[],
+  horse: Pick<HorseEntity, 'barnId'>,
+  inTrainerBarn: boolean,
+): void {
+  if (roles.includes(UserRole.VETERINARIAN)) return;
+  if (!roles.includes(UserRole.HEAD_TRAINER)) {
+    throw new ForbiddenException(
+      'Chỉ Bác sĩ thú y hoặc Huấn luyện viên trưởng của khu được đổi việc riêng của ngựa',
+    );
+  }
+  assertHorseHasBarn(horse);
+  assertHorseInTrainerBarn(inTrainerBarn);
 }
 
 /**

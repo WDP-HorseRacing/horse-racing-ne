@@ -118,6 +118,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       daily,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
   });
 

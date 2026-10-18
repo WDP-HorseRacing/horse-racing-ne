@@ -1,3 +1,5 @@
+import type { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
+
 /**
  * Payload của domain event GROOM_ASSIGNMENT_CHANGED_EVENT, phát sau khi transaction phân công Groom đã commit.
  *
@@ -25,6 +27,29 @@ export interface ChecklistTaskAddedEvent {
   horseId: string;
   groomId: string;
   taskName: string;
+}
+
+/**
+ * Payload của domain event CARE_TASK_CHANGED_EVENT
+ *
+ * - eventId: sinh mới cho mỗi lần đổi, dùng để chống gửi trùng thông báo
+ * - action: ADDED khi gắn dòng mới, REMOVED khi gỡ dòng
+ * - mode: kiểu dòng việc riêng (gắn thêm hoặc miễn)
+ * - fromDate, toDate: khoảng ngày của dòng (dòng bị gỡ: khoảng trước khi gỡ), YYYY-MM-DD
+ * - note: ghi chú hoặc lý do miễn, null nếu không có
+ * - veterinarianId, veterinarianName: bác sĩ đã đổi, chụp lúc đổi
+ */
+export interface CareTaskChangedEvent {
+  eventId: string;
+  horseId: string;
+  action: 'ADDED' | 'REMOVED';
+  mode: HorseCareTaskMode;
+  taskName: string;
+  fromDate: string;
+  toDate: string;
+  note: string | null;
+  veterinarianId: string;
+  veterinarianName: string;
 }
 
 /**

@@ -45,7 +45,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 | Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`. |
 | Khẩu phần | `feeding_plans`, `feeding_plan_items` | Head Trainer của khu | Mỗi ngựa tối đa một bản `ACTIVE`; bản cũ giữ lại làm lịch sử. |
 | Loại việc | `daily_task_types` | Club Manager | Migration tạo sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). Seed demo tách "Cho ăn" thành "Cho ăn sáng" và "Cho ăn tối". |
-| Việc riêng của ngựa | `horse_daily_tasks` | Head Trainer của khu | Cột `mode`: `EXTRA` gắn thêm loại việc không áp mọi ngựa, `EXEMPT` miễn loại việc đang áp mọi ngựa. Việc phát sinh một ngày thì từ ngày = đến ngày. |
+| Việc riêng của ngựa | `horse_daily_tasks` | Head Trainer của khu; bác sĩ mọi ngựa | Cột `mode`: `EXTRA` gắn thêm loại việc không áp mọi ngựa, `EXEMPT` miễn loại việc đang áp mọi ngựa. Việc phát sinh một ngày thì từ ngày = đến ngày. |
 | Checklist | `daily_checklists`, `daily_checklist_items` | Hệ thống sinh, Groom tick | Mỗi ngựa mỗi ngày một checklist. |
 | Sự cố | `incidents` | Groom báo, Head Trainer của khu xử lý | `OPEN` → `RESOLVED`. |
 | Phụ phí chăm sóc riêng | `horse_surcharges` | Club Manager ghi; Head Trainer xác nhận đã áp dụng | Chữ mô tả tự do + phí một ngày + từ ngày, đến ngày. Không nối tự động với khẩu phần hay việc riêng. |
@@ -96,15 +96,20 @@ SỰ CỐ                             Groom báo, HT khu đóng
 1. Club Manager thêm, sửa loại việc (tên duy nhất, cờ "áp mọi ngựa", đang dùng hay ngưng). Không xóa; ngưng dùng thì checklist sinh sau đó (kể cả trong ngày) không còn việc này, checklist đã sinh giữ nguyên.
    - Mỗi loại việc là một dòng trong checklist mỗi ngày. Việc làm nhiều lần trong ngày thì Club Manager khai mỗi lần một loại việc, ví dụ "Cho ăn sáng" và "Cho ăn tối".
    - Khẩu phần (các bữa và món ăn) chỉ là thực đơn để Groom làm theo; khẩu phần không quyết định checklist có những dòng nào.
-2. Head Trainer của khu gắn loại việc cho một ngựa trong khoảng ngày (từ ngày ≤ đến ngày, từ ngày không ở quá khứ, dài tối đa 366 ngày). Một loại việc không gắn trùng khoảng ngày cho cùng một ngựa (409). Loại việc đã ngưng hoặc đã "áp mọi ngựa" thì không gắn riêng được (409).
+2. Head Trainer của khu, hoặc bác sĩ (mọi ngựa trong CLB, không giới hạn khu), gắn loại việc cho một ngựa trong khoảng ngày (từ ngày ≤ đến ngày, từ ngày không ở quá khứ, dài tối đa 366 ngày). Một loại việc không gắn trùng khoảng ngày cho cùng một ngựa (409). Loại việc đã ngưng hoặc đã "áp mọi ngựa" thì không gắn riêng được (409).
 3. Gắn việc có hiệu lực hôm nay khi checklist hôm nay đã có: thêm dòng vào checklist hôm nay; checklist đang `COMPLETED` quay về `IN_PROGRESS`; báo Groom phụ trách.
 4. Gỡ việc riêng: chưa tới ngày bắt đầu thì xóa; đã bắt đầu thì kết thúc ở hôm nay. Checklist đã sinh không đổi.
-5. Miễn việc chung cho một ngựa (dòng `EXEMPT`, ví dụ ngựa sốt nên không tắm trong 5 ngày): Head Trainer của khu chọn một loại việc đang dùng và đang "áp mọi ngựa", khoảng ngày như luật 2, lý do bắt buộc (400 nếu thiếu). Loại việc không áp mọi ngựa: 409. Ghi nhật ký.
+5. Miễn việc chung cho một ngựa (dòng `EXEMPT`, ví dụ ngựa sốt nên không tắm trong 5 ngày): Head Trainer của khu hoặc bác sĩ chọn một loại việc đang dùng và đang "áp mọi ngựa", khoảng ngày như luật 2, lý do bắt buộc (400 nếu thiếu). Loại việc không áp mọi ngựa: 409. Ghi nhật ký.
    - Trong khoảng miễn, checklist sinh ra không có việc đó; hết hạn thì việc tự có lại.
    - Miễn bắt đầu hôm nay khi checklist hôm nay đã sinh: bỏ dòng việc đó nếu chưa tick (dòng đã tick giữ nguyên), rồi tính lại trạng thái; checklist không còn dòng nào thì xóa. Checklist hôm nay chưa sinh thì không sinh thêm, không báo Groom.
    - Gỡ dòng miễn: bắt đầu từ hôm nay trở đi thì xóa; bắt đầu trước hôm nay thì kết thúc ở hôm qua. Việc chung có lại ngay trong checklist hôm nay (chưa có checklist thì sinh) và báo Groom như luật 3.
    - Không trùng khoảng ngày với dòng khác cùng ngựa, cùng loại việc (409), dù là gắn thêm hay miễn.
 6. Club Manager đổi cờ "áp mọi ngựa" của loại việc khi còn dòng gắn thêm hoặc miễn của loại đó chưa hết hạn (ngày kết thúc từ hôm nay trở đi): 409, phải gỡ các dòng đó trước.
+7. Bác sĩ và Head Trainer:
+   - Việc điều trị là chỉ định ngắn ngày (ngâm đá, kiêng tắm): bác sĩ và Head Trainer đều gắn, miễn, gỡ được, cùng mọi luật ở trên. Khẩu phần là dinh dưỡng thường xuyên: chỉ Head Trainer (mục 3).
+   - Head Trainer chỉ làm trên ngựa thuộc khu mình (ngựa ngoài khu 403, ngựa chưa xếp khu 409). Bác sĩ làm trên mọi ngựa, kể cả ngựa chưa xếp khu. Ngựa đã chuyển nhượng hoặc đã mất: 409; hồ sơ đã xóa: 404, như nhau cho cả hai vai trò.
+   - Bác sĩ gắn, miễn hoặc gỡ: báo Head Trainer của khu chứa ngựa (tên ngựa, việc, kiểu gắn thêm/miễn/gỡ, khoảng ngày, lý do nếu có, tên bác sĩ). Head Trainer của khu tự làm thì không báo. Ngựa chưa có khu hoặc khu chưa có Head Trainer hoạt động thì không ai nhận, không chặn ghi. Thông báo cho Groom (luật 3, luật 5) giữ nguyên.
+   - Nhật ký ghi người làm như mọi thao tác khác.
 
 ### 5. Checklist hằng ngày
 
@@ -188,7 +193,8 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa r�
 | Xem khẩu phần (cả lịch sử) | Tất cả | Ngựa thuộc khu mình | Tất cả | Chỉ bản `ACTIVE` của ngựa mình phụ trách | Không |
 | Lập, sửa, xóa nháp, duyệt khẩu phần | Không | Ngựa thuộc khu mình | Không | Không | Không |
 | Loại việc | Thêm, sửa, xem | Xem | Xem | Xem | Không |
-| Gắn, gỡ việc riêng của ngựa | Không | Ngựa thuộc khu mình | Không | Không | Không |
+| Xem việc riêng của ngựa | Tất cả | Ngựa thuộc khu mình | Tất cả | Ngựa mình phụ trách | Không |
+| Gắn, miễn, gỡ việc riêng của ngựa | Không | Ngựa thuộc khu mình | Mọi ngựa | Không | Không |
 | Xem checklist | Tất cả | Ngựa thuộc khu mình | Không | Ngựa mình phụ trách | Không |
 | Tick, gỡ tick | Không | Không | Không | Checklist giao cho mình | Không |
 | Báo sự cố | Không | Không | Không | Mọi ngựa đang ở CLB | Không |
@@ -229,9 +235,9 @@ Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng 
 | GET | `/care-task-types` | CM, HT, VET, GROOM | Danh mục loại việc |
 | POST | `/care-task-types` | CM | Thêm `{ name, appliesToAll }` |
 | PATCH | `/care-task-types/:id` | CM | Sửa `{ name?, appliesToAll?, active? }` |
-| GET | `/horses/:horseId/care-tasks` | CM, HT, GROOM | Việc riêng của ngựa |
-| POST | `/horses/:horseId/care-tasks` | HT | Gắn thêm hoặc miễn `{ taskTypeId, mode?, fromDate, toDate, note? }` (luật 4.2, 4.5) |
-| DELETE | `/horse-care-tasks/:id` | HT | Gỡ việc riêng (luật 4.4, 4.5) |
+| GET | `/horses/:horseId/care-tasks` | CM, HT, VET, GROOM | Việc riêng của ngựa |
+| POST | `/horses/:horseId/care-tasks` | HT, VET | Gắn thêm hoặc miễn `{ taskTypeId, mode?, fromDate, toDate, note? }` (luật 4.2, 4.5, 4.7) |
+| DELETE | `/horse-care-tasks/:id` | HT, VET | Gỡ việc riêng (luật 4.4, 4.5, 4.7) |
 | GET | `/horses/:horseId/checklists` | CM, HT, GROOM | Checklist theo ngày `?from&to` (YYYY-MM-DD; thiếu `from` là hôm nay, thiếu `to` thì bằng `from`; tối đa 31 ngày) |
 | PATCH | `/checklist-items/:id` | GROOM | Tick, gỡ tick `{ done, note? }` |
 | GET | `/grooms/me/today` | GROOM | Màn Hôm nay (luật 7) |

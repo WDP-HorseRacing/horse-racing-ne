@@ -162,6 +162,7 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       daily,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     fees = new DailyFeesService(
       dataSource.getRepository(DailyFeeEntity),

@@ -229,6 +229,7 @@ describe('Findings R3: Flow 4 stable, supplies, fees, reports, media (Postgres)'
       daily,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     fees = new DailyFeesService(
       dataSource.getRepository(DailyFeeEntity),

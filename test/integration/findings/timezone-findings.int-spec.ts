@@ -124,6 +124,7 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
       daily,
       dataSource,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     groomToday = new GroomTodayService(dataSource);
     fees = new DailyFeesService(

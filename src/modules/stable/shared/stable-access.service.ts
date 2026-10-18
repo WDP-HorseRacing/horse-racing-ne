@@ -10,6 +10,7 @@ import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { BarnEntity } from '../entities/barn.entity';
+import { assertCareTaskWriter } from '../policies/daily-checklist.policy';
 import { StallEntity } from '../entities/stall.entity';
 import { StallStatus } from '../constants/stall-status.enum';
 import {
@@ -105,6 +106,42 @@ export class StableAccessService {
     assertHorseHasBarn(horse);
     await this.assertHorseInTrainerBarn(manager, horseId, callerId);
     return horse;
+  }
+
+  /**
+   * Lock con ngựa và kiểm người gọi được gắn, miễn hoặc gỡ việc riêng của nó
+   *
+   * - Lock row ngựa (pessimistic_write) trước khi kiểm, hồ sơ đã xóa coi như không có
+   * - Thứ tự kiểm: có ngựa → chưa chuyển nhượng hay mất → phạm vi người gọi (assertCareTaskWriter)
+   * - Veterinarian: mọi ngựa; Head Trainer: ngựa đã có khu và thuộc khu mình
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về con ngựa đã lock và inTrainerBarn = true nếu người gọi là Head Trainer phụ trách khu của ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc hồ sơ đã xóa
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất, hoặc Head Trainer đổi ngựa chưa có khu
+   * @throws ForbiddenException Nếu người gọi không phải Veterinarian và không phụ trách khu của ngựa
+   */
+  async lockCareTaskHorse(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    horseId: string,
+  ): Promise<{ horse: HorseEntity; inTrainerBarn: boolean }> {
+    const horse = await manager.findOne(HorseEntity, {
+      where: { id: horseId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    assertHorseLifecycleWritable(horse, 'CARE_TASK');
+    const inTrainerBarn =
+      horse.barnId !== null &&
+      this.horseAccess.hasRole(actor, UserRole.HEAD_TRAINER) &&
+      (await this.horseAccess.isHorseInTrainerBarn(manager, horseId, callerId));
+    assertCareTaskWriter(actor.roles, horse, inTrainerBarn);
+    return { horse, inTrainerBarn };
   }
 
   /**

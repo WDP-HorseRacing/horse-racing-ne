@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
@@ -7,6 +8,7 @@ import {
   MoreThanOrEqual,
   Repository,
 } from 'typeorm';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import { clubToday, shiftDays } from '../../../common/utils/club-date';
 import type { FieldError } from '../../../common/utils/field-errors';
@@ -16,7 +18,10 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { currentUserForActor } from '../../users/utils/current-user';
+import {
+  currentUserForActor,
+  type CurrentActorUser,
+} from '../../users/utils/current-user';
 import {
   CareTaskTypeResponseDto,
   CreateCareTaskTypeDto,
@@ -25,6 +30,7 @@ import {
   UpdateCareTaskTypeDto,
 } from '../dto/care-task.dto';
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
+import { CARE_TASK_CHANGED_EVENT } from '../constants/stable-events.constants';
 import { CareTaskTypeEntity } from '../entities/care-task-type.entity';
 import { HorseCareTaskEntity } from '../entities/horse-care-task.entity';
 import {
@@ -41,6 +47,7 @@ import {
 } from '../policies/daily-checklist.policy';
 import { DailyChecklistsService } from '../shared/daily-checklists.service';
 import { StableAccessService } from '../shared/stable-access.service';
+import type { CareTaskChangedEvent } from '../types/stable-events.types';
 
 const CARE_TASK_TYPE_NOT_FOUND = 'Không tìm thấy loại việc';
 const CARE_TASK_TYPE_NAME_TAKEN: FieldError = {
@@ -51,7 +58,7 @@ const HORSE_CARE_TASK_NOT_FOUND = 'Không tìm thấy việc riêng của ngựa
 const TASK_RELATIONS = { taskType: true, creator: true } as const;
 
 /**
- * Danh mục loại việc chăm sóc (Club Manager) và việc riêng gắn cho từng ngựa (Head Trainer của khu)
+ * Danh mục loại việc chăm sóc (Club Manager) và việc riêng gắn cho từng ngựa (Head Trainer của khu, Veterinarian mọi ngựa)
  */
 @Injectable()
 export class CareTasksService {
@@ -64,6 +71,7 @@ export class CareTasksService {
     private readonly checklists: DailyChecklistsService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
@@ -192,7 +200,7 @@ export class CareTasksService {
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @returns Promise trả về các việc riêng của ngựa
-   * @throws ForbiddenException Nếu tài khoản không hoạt động, Head Trainer xem ngựa ngoài khu, hoặc Groom xem ngựa không do mình phụ trách
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, Head Trainer xem ngựa ngoài khu, hoặc Groom xem ngựa không do mình phụ trách (Veterinarian xem mọi ngựa)
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi xem
    */
   async listForHorse(
@@ -217,14 +225,15 @@ export class CareTasksService {
    * - Gắn thêm bắt đầu hôm nay: thêm ngay vào checklist hôm nay (chưa có thì sinh)
    * - Miễn bắt đầu hôm nay: bỏ việc đó khỏi checklist hôm nay nếu chưa tick; đã tick thì giữ
    * - Ghi nhật ký kèm ngựa, loại việc, kiểu dòng, khoảng ngày, ghi chú
+   * - Người gọi không phải Head Trainer của khu (Veterinarian): phát CARE_TASK_CHANGED_EVENT để báo Head Trainer của khu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
    * @param body Loại việc, kiểu dòng (mặc định gắn thêm), khoảng ngày, ghi chú (lý do miễn)
    * @returns Promise trả về việc riêng vừa gắn
-   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc ngựa không thuộc khu người gọi
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc người gọi không phải Veterinarian và ngựa không thuộc khu người gọi
    * @throws NotFoundException Nếu không có ngựa hoặc loại việc
-   * @throws ConflictException Nếu ngựa chưa có khu, đã chuyển nhượng hoặc đã mất; loại việc đã ngưng, gắn thêm loại đã áp mọi ngựa hoặc miễn loại không áp mọi ngựa; hoặc trùng khoảng ngày
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất, Head Trainer gắn cho ngựa chưa có khu; loại việc đã ngưng, gắn thêm loại đã áp mọi ngựa hoặc miễn loại không áp mọi ngựa; hoặc trùng khoảng ngày
    * @throws BadRequestException Nếu khoảng ngày không hợp lệ, hoặc miễn mà không có lý do
    */
   async createForHorse(
@@ -237,11 +246,11 @@ export class CareTasksService {
     const mode = body.mode ?? HorseCareTaskMode.EXTRA;
     const note = body.note?.trim() || null;
     const id = await this.dataSource.transaction(async (manager) => {
-      await this.access.lockOperableHorse(
+      const { inTrainerBarn } = await this.access.lockCareTaskHorse(
         manager,
+        actor,
         caller.id,
         horseId,
-        'CARE_TASK',
       );
       assertCareTaskRange(body.fromDate, body.toDate, today);
       assertExemptionReason(mode, note);
@@ -299,6 +308,15 @@ export class CareTasksService {
         },
         feature: AuditFeature.CARE_TASK,
       });
+      if (!inTrainerBarn) {
+        await this.publishVeterinarianChange(
+          manager,
+          caller,
+          'ADDED',
+          saved,
+          type.name,
+        );
+      }
       return saved.id;
     });
     return toHorseCareTaskResponse(
@@ -312,13 +330,14 @@ export class CareTasksService {
    * - Gắn thêm: chưa bắt đầu thì xóa, đang hiệu lực thì kết thúc ở hôm nay; checklist đã sinh không đổi
    * - Miễn: bắt đầu từ hôm nay trở đi thì xóa, bắt đầu trước hôm nay thì kết thúc ở hôm qua; việc chung có lại ngay trong checklist hôm nay (nếu loại việc còn dùng và còn áp mọi ngựa) và báo Groom
    * - Ghi nhật ký: xóa kèm nội dung dòng, hoặc kết thúc kèm ngày kết thúc trước và sau
+   * - Người gọi không phải Head Trainer của khu (Veterinarian): phát CARE_TASK_CHANGED_EVENT để báo Head Trainer của khu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của việc riêng
    * @returns Promise hoàn tất khi đã gỡ
-   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc ngựa không thuộc khu người gọi
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc người gọi không phải Veterinarian và ngựa không thuộc khu người gọi
    * @throws NotFoundException Nếu không có việc riêng hoặc ngựa
-   * @throws ConflictException Nếu ngựa chưa có khu, đã chuyển nhượng hoặc đã mất, hoặc việc đã kết thúc
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất, Head Trainer gỡ việc của ngựa chưa có khu, hoặc việc đã kết thúc
    */
   async removeForHorse(actor: Actor, id: string): Promise<void> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
@@ -326,11 +345,11 @@ export class CareTasksService {
     await this.dataSource.transaction(async (manager) => {
       const task = await manager.findOneBy(HorseCareTaskEntity, { id });
       if (!task) throw new NotFoundException(HORSE_CARE_TASK_NOT_FOUND);
-      await this.access.lockOperableHorse(
+      const { inTrainerBarn } = await this.access.lockCareTaskHorse(
         manager,
+        actor,
         caller.id,
         task.horseId,
-        'CARE_TASK',
       );
       const removal = careTaskRemovalOf(
         task.mode,
@@ -371,7 +390,51 @@ export class CareTasksService {
       if (task.mode === HorseCareTaskMode.EXEMPT) {
         await this.restoreSharedTaskToday(manager, task, today);
       }
+      if (!inTrainerBarn) {
+        const type = await manager.findOneByOrFail(CareTaskTypeEntity, {
+          id: task.taskTypeId,
+        });
+        await this.publishVeterinarianChange(
+          manager,
+          caller,
+          'REMOVED',
+          task,
+          type.name,
+        );
+      }
     });
+  }
+
+  /**
+   * Ghi vào outbox event bác sĩ vừa gắn thêm, miễn hoặc gỡ việc riêng của ngựa
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param veterinarian Bác sĩ đã đổi
+   * @param action ADDED khi gắn dòng mới, REMOVED khi gỡ dòng
+   * @param task Dòng việc riêng (dòng bị gỡ: giá trị trước khi gỡ)
+   * @param taskName Tên loại việc
+   * @returns Promise hoàn tất khi đã ghi event
+   */
+  private async publishVeterinarianChange(
+    manager: EntityManager,
+    veterinarian: CurrentActorUser,
+    action: CareTaskChangedEvent['action'],
+    task: HorseCareTaskEntity,
+    taskName: string,
+  ): Promise<void> {
+    const event: CareTaskChangedEvent = {
+      eventId: randomUUID(),
+      horseId: task.horseId,
+      action,
+      mode: task.mode,
+      taskName,
+      fromDate: task.fromDate,
+      toDate: task.toDate,
+      note: task.note,
+      veterinarianId: veterinarian.id,
+      veterinarianName: veterinarian.fullName,
+    };
+    await this.events.publish(manager, CARE_TASK_CHANGED_EVENT, event);
   }
 
   /**

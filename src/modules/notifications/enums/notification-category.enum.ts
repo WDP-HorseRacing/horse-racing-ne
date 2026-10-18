@@ -12,7 +12,7 @@
  * - HORSE_LIFECYCLE: vòng đời ngựa thay đổi (ngựa đã mất)
  * - OWNERSHIP: chủ sở hữu ngựa thay đổi do chuyển nhượng nội bộ
  * - PERFORMANCE_ALERT: nhịp tim của ngựa vượt ngưỡng nguy hiểm khi đang tập
- * - DAILY_CHECKLIST: có việc mới trong checklist chăm sóc hôm nay; checklist hôm nay sinh lỗi hoặc đã sinh đủ lại
+ * - DAILY_CHECKLIST: có việc mới trong checklist chăm sóc hôm nay; checklist hôm nay sinh lỗi hoặc đã sinh đủ lại; bác sĩ đổi việc riêng của ngựa
  * - INCIDENT: Groom báo sự cố tại chuồng
  * - SUPPLY: đề xuất bổ sung vật tư mới, đổi trạng thái, hoặc vật tư sắp hết
  * - SURCHARGE: ngựa có phụ phí chăm sóc riêng mới

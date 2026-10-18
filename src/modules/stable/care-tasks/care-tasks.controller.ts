@@ -35,6 +35,7 @@ const TYPE_READERS = [
   UserRole.VETERINARIAN,
   UserRole.GROOM,
 ];
+const TASK_WRITERS = [UserRole.HEAD_TRAINER, UserRole.VETERINARIAN];
 
 @ApiTags('stable')
 @ApiBearerAuth()
@@ -70,7 +71,12 @@ export class CareTasksController {
     return this.careTasks.updateType(actor, id, body);
   }
 
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.GROOM])
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.GROOM,
+  ])
   @Get('horses/:horseId/care-tasks')
   @ApiOperation({ summary: 'Liệt kê việc riêng của ngựa' })
   @ApiOkResponse({ type: [HorseCareTaskResponseDto] })
@@ -81,7 +87,7 @@ export class CareTasksController {
     return this.careTasks.listForHorse(actor, horseId);
   }
 
-  @Access([UserRole.HEAD_TRAINER])
+  @Access(TASK_WRITERS)
   @Post('horses/:horseId/care-tasks')
   @ApiOperation({ summary: 'Gắn việc riêng cho ngựa trong khoảng ngày' })
   @ApiCreatedResponse({ type: HorseCareTaskResponseDto })
@@ -93,7 +99,7 @@ export class CareTasksController {
     return this.careTasks.createForHorse(actor, horseId, body);
   }
 
-  @Access([UserRole.HEAD_TRAINER])
+  @Access(TASK_WRITERS)
   @Delete('horse-care-tasks/:id')
   @HttpCode(204)
   @ApiOperation({

@@ -24,7 +24,9 @@ import type {
   HorseOwnershipTransferredEvent,
   HorseMeasurementAlertEvent,
 } from '../../horses/types/horse.types';
+import { HorseCareTaskMode } from '../../stable/constants/horse-care-task-mode.enum';
 import type {
+  CareTaskChangedEvent,
   ChecklistGenerationFailedEvent,
   ChecklistGenerationRecoveredEvent,
   ChecklistTaskAddedEvent,
@@ -207,6 +209,38 @@ export class HorseNotificationsService {
       priority: NotificationPriority.NORMAL,
       title: 'Có việc mới hôm nay',
       message: `Ngựa ${horseName} có thêm việc "${notice.taskName}" trong checklist hôm nay.`,
+      resource: horseResource(notice.horseId),
+    });
+  }
+
+  /**
+   * Báo Head Trainer của khu chứa ngựa khi bác sĩ gắn thêm, miễn hoặc gỡ việc riêng của ngựa
+   *
+   * - Nêu tên ngựa, việc, kiểu đổi, khoảng ngày, lý do (nếu có) và tên bác sĩ
+   * - Ngựa không có khu, khu không có Head Trainer đang hoạt động, hoặc Head Trainer chính là bác sĩ đã đổi thì không gửi
+   * - Idempotent theo notice.eventId
+   *
+   * @param notice Payload do module stable phát khi bác sĩ đổi việc riêng
+   * @returns Promise trả về id các thông báo đã gửi; không gửi thì trả mảng rỗng
+   */
+  async notifyCareTaskChanged(notice: CareTaskChangedEvent): Promise<string[]> {
+    const horse = await this.recipients.findHorseBarnContact(notice.horseId);
+    if (
+      !horse?.headTrainerId ||
+      horse.headTrainerId === notice.veterinarianId
+    ) {
+      return [];
+    }
+    const change = describeCareTaskChange(notice);
+    const range = `từ ${toDisplayDate(notice.fromDate)} đến ${toDisplayDate(notice.toDate)}`;
+    const reason = notice.note ? ` Lý do: ${notice.note}.` : '';
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds: [horse.headTrainerId],
+      category: NotificationCategory.DAILY_CHECKLIST,
+      priority: NotificationPriority.NORMAL,
+      title: 'Bác sĩ đổi việc riêng của ngựa',
+      message: `Bác sĩ ${notice.veterinarianName} ${change} "${notice.taskName}" (${range}) cho ngựa ${horse.horseName}.${reason}`,
       resource: horseResource(notice.horseId),
     });
   }
@@ -642,4 +676,16 @@ function describeMeasurementAlert(
         message: `Ngựa ${horseName} giảm ${event.dropPercent}% cân nặng trong ${WEIGHT_DROP_WINDOW_DAYS} ngày (từ ${formatMeasurement(event.baselineValue, event.unit)} xuống ${formatMeasurement(event.value, event.unit)}).`,
       };
   }
+}
+
+/**
+ * Chọn cụm động từ mô tả kiểu đổi việc riêng
+ *
+ * @param notice Payload của CARE_TASK_CHANGED_EVENT
+ * @returns "gắn thêm việc", "miễn việc", "gỡ việc gắn thêm" hoặc "gỡ miễn việc"
+ */
+function describeCareTaskChange(notice: CareTaskChangedEvent): string {
+  const exempt = notice.mode === HorseCareTaskMode.EXEMPT;
+  if (notice.action === 'ADDED') return exempt ? 'miễn việc' : 'gắn thêm việc';
+  return exempt ? 'gỡ miễn việc' : 'gỡ việc gắn thêm';
 }

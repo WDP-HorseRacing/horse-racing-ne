@@ -3,11 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
+import { UserRole } from '../../../common/enums/role.enum';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 import {
   assertAppliesToAllChangeable,
   assertAssignableCareTaskType,
+  assertCareTaskWriter,
   assertExemptionReason,
   assertCareTaskRange,
   assertChecklistRange,
@@ -165,6 +167,55 @@ describe('daily checklist policy', () => {
     );
     expect(() => assertChecklistRange('2026-10-02', '2026-10-01')).toThrow(
       BadRequestException,
+    );
+  });
+
+  describe('assertCareTaskWriter', () => {
+    const inBarn = { barnId: 'barn-1' };
+    const noBarn = { barnId: null };
+
+    it.each([
+      [inBarn, true],
+      [inBarn, false],
+      [noBarn, false],
+    ])(
+      'lets a veterinarian change any horse (%o, in barn %s)',
+      (horse, own) => {
+        expect(() =>
+          assertCareTaskWriter([UserRole.VETERINARIAN], horse, own),
+        ).not.toThrow();
+      },
+    );
+
+    it('lets a head trainer change a horse of their own barn only', () => {
+      expect(() =>
+        assertCareTaskWriter([UserRole.HEAD_TRAINER], inBarn, true),
+      ).not.toThrow();
+      expect(() =>
+        assertCareTaskWriter([UserRole.HEAD_TRAINER], inBarn, false),
+      ).toThrow(new ForbiddenException('Ngựa không thuộc khu bạn phụ trách'));
+      expect(() =>
+        assertCareTaskWriter([UserRole.HEAD_TRAINER], noBarn, false),
+      ).toThrow(ConflictException);
+    });
+
+    it('lets a head trainer who is also a veterinarian change a horse of another barn', () => {
+      expect(() =>
+        assertCareTaskWriter(
+          [UserRole.HEAD_TRAINER, UserRole.VETERINARIAN],
+          inBarn,
+          false,
+        ),
+      ).not.toThrow();
+    });
+
+    it.each([[UserRole.CLUB_MANAGER], [UserRole.GROOM]])(
+      'refuses %s',
+      (role) => {
+        expect(() => assertCareTaskWriter([role], inBarn, false)).toThrow(
+          ForbiddenException,
+        );
+      },
     );
   });
 });

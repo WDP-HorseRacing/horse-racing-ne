@@ -343,3 +343,11 @@ Không đổi API.
    `since` là lúc chuyển sang trạng thái hiện tại, `null` nếu nhật ký không có.
 2. Gợi ý: mỗi dòng có nút "Lập phiếu khám" (mở form `POST /horses/:horseId/medical-records` cho ngựa đó; kết luận Có vấn đề sẽ mở bệnh án) và nút đổi trạng thái sức khỏe (`PATCH /horses/:horseId/health-status`) khi đặt nhầm hoặc đã ổn.
 3. Thông báo Cách ly (`category = HEALTH_STATUS`, mức `HIGH`) gửi HT, CM, Groom có thêm câu cuối liệt kê ngựa có thể đã tiếp xúc, tối đa 10 tên, ví dụ: "... Ngựa không được tập và không được đua. Ngựa có thể đã tiếp xúc: Mây (cùng khu), Sương (cùng khu, cùng Groom), Lúa (cùng Groom) và 2 con khác.". Thông báo của chủ ngựa giữ nội dung cũ. Không có ngựa tiếp xúc thì mọi người nhận nội dung cũ. API `PATCH health-status` không đổi.
+
+## Bác sĩ gắn, miễn, gỡ việc riêng của ngựa
+
+1. VET được gọi thêm các route việc riêng, cho mọi ngựa trong CLB (không giới hạn khu, kể cả ngựa chưa xếp khu). Body, response, mã lỗi không đổi:
+   - `GET /horses/:horseId/care-tasks`: CM, HT (khu mình), VET, GROOM (ngựa mình phụ trách).
+   - `POST /horses/:horseId/care-tasks`, `DELETE /horse-care-tasks/:id`: HT (khu mình), VET.
+2. HT giữ nguyên phạm vi khu. Khẩu phần (`feeding-plans`) không đổi, vẫn chỉ HT.
+3. Bác sĩ đổi thì HT của khu nhận thông báo `category = DAILY_CHECKLIST`, mức `NORMAL`, tiêu đề "Bác sĩ đổi việc riêng của ngựa", ví dụ: `Bác sĩ Lan miễn việc "Tắm rửa" (từ 18/10/2026 đến 20/10/2026) cho ngựa Gió. Lý do: Đang sốt, kiêng tắm.`. Kiểu: "gắn thêm việc", "miễn việc", "gỡ việc gắn thêm", "gỡ miễn việc". HT tự làm thì không có thông báo này.
