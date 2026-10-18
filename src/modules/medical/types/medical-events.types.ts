@@ -106,13 +106,18 @@ export interface MedicalCaseCancelledEvent extends MedicalEventBase {
 }
 
 /**
- * Chi phí bệnh án đã đóng vừa được điều chỉnh.
+ * Chi phí của một buổi khám vừa được điều chỉnh.
+ *
+ * - caseId: bệnh án chứa buổi khám, null với buổi khám ngoài bệnh án
+ * - examDate: thời điểm khám, chuỗi ISO
+ * - costOwnerId: chủ của giai đoạn sở hữu chứa ngày khám, null nếu lúc đó ngựa không có chủ
  */
-export interface MedicalCaseCostAdjustedEvent extends MedicalEventBase {
-  caseId: string;
+export interface MedicalVisitCostAdjustedEvent extends MedicalEventBase {
+  recordId: string;
+  caseId: string | null;
+  examDate: string;
   fromCost: number;
   toCost: number;
-  /** Chủ của giai đoạn sở hữu chứa thời điểm đóng bệnh án, null nếu lúc đó ngựa không có chủ */
   costOwnerId: string | null;
 }
 

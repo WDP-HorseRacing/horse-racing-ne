@@ -585,9 +585,22 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     expect(sentTo(vet.id)).not.toHaveLength(0);
   });
 
-  it.todo(
-    'F3-15: the vet who recorded a visit is notified when another vet adjusts its cost',
-  );
+  it('F3-15: the vet who recorded a visit is notified when another vet adjusts its cost', async () => {
+    const { vet, cm, horse } = await scene();
+    const other = await person(UserRole.VETERINARIAN);
+    const visit = await issueVisit(vet.actor, horse, { cost: 1_000_000 });
+    await deliverAll();
+    sent.length = 0;
+
+    await visits.adjustVisitCost(other.actor, visit.id, {
+      cost: 2_000_000,
+      reason: 'Thiếu hóa đơn',
+    });
+    await deliverAll();
+
+    expect(sentTo(cm.id)).not.toHaveLength(0);
+    expect(sentTo(vet.id)).not.toHaveLength(0);
+  });
 
   it('F3-17: a prescription start date years before the exam date is rejected with 400', async () => {
     const { vet, horse } = await scene();

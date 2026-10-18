@@ -192,6 +192,28 @@ export class CreateStandaloneVisitDto extends MedicalVisitBaseDto {
 export class CreateFollowUpVisitDto extends MedicalVisitBaseDto {}
 
 /**
+ * Điều chỉnh chi phí của một buổi khám, bắt buộc lý do.
+ */
+export class AdjustVisitCostDto {
+  @ApiProperty({
+    minimum: 0,
+    maximum: MAX_VISIT_COST_VND,
+    description: 'Chi phí mới của buổi khám, số nguyên VND',
+  })
+  @IsInt()
+  @Min(0)
+  @Max(MAX_VISIT_COST_VND)
+  cost!: number;
+
+  @ApiProperty({ minLength: 1, maxLength: 500 })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason!: string;
+}
+
+/**
  * Hủy buổi khám ghi sai.
  */
 export class VoidMedicalRecordDto {

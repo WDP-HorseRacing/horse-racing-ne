@@ -293,6 +293,20 @@ export function assertRequestsAttachable(
 }
 
 /**
+ * Chỉ điều chỉnh chi phí của buổi khám chưa hủy
+ *
+ * @param voidedAt Thời điểm hủy buổi khám, null nếu chưa hủy
+ * @throws ConflictException Nếu buổi khám đã hủy
+ */
+export function assertVisitCostAdjustable(voidedAt: Date | null): void {
+  if (voidedAt !== null) {
+    throw new ConflictException(
+      'Buổi khám đã hủy, không điều chỉnh chi phí được',
+    );
+  }
+}
+
+/**
  * Buổi khám thay thế chỉ trỏ tới buổi khám đã hủy của cùng con ngựa
  *
  * @param replaced Buổi khám bị thay, hoặc null nếu không tìm thấy

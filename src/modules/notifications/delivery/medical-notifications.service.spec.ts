@@ -294,10 +294,12 @@ describe('MedicalNotificationsService', () => {
   it('skips the notification when the horse is missing', async () => {
     recipients.findHorseMedicalContact.mockResolvedValue(null);
     await expect(
-      service.notifyCaseCostAdjusted({
+      service.notifyVisitCostAdjusted({
         eventId: 'e10',
         horseId: 'h1',
+        recordId: 'r1',
         caseId: 'c1',
+        examDate: '2026-05-20T03:00:00.000Z',
         fromCost: 15000000,
         toCost: 1500000,
         costOwnerId: 'owner-1',
@@ -344,12 +346,17 @@ describe('MedicalNotificationsService', () => {
     });
   });
 
-  describe('notifyCaseCostAdjusted', () => {
-    const adjusted = (costOwnerId: string | null) =>
-      service.notifyCaseCostAdjusted({
+  describe('notifyVisitCostAdjusted', () => {
+    const adjusted = (
+      costOwnerId: string | null,
+      caseId: string | null = 'c1',
+    ) =>
+      service.notifyVisitCostAdjusted({
         eventId: 'e20',
         horseId: 'h1',
-        caseId: 'c1',
+        recordId: 'r1',
+        caseId,
+        examDate: '2026-05-19T18:00:00.000Z',
         fromCost: 15000000,
         toCost: 1500000,
         costOwnerId,
@@ -366,6 +373,17 @@ describe('MedicalNotificationsService', () => {
       expect(sentDraft()).toMatchObject({
         recipientIds: ['cm-1', 'owner-1'],
         resource: caseResource,
+        message:
+          'Chi phí buổi khám ngày 20/05/2026 của ngựa Winx được điều chỉnh từ 15.000.000 đ thành 1.500.000 đ.',
+      });
+    });
+
+    it('points a visit outside any case to the horse', async () => {
+      await adjusted('owner-1', null);
+      expect(sentDraft().resource).toEqual({
+        type: NotificationResourceType.HORSE,
+        id: 'h1',
+        horseId: 'h1',
       });
     });
 
@@ -386,7 +404,7 @@ describe('MedicalNotificationsService', () => {
         expect.objectContaining({
           recipientIds: ['owner-old'],
           resource: null,
-          title: 'Điều chỉnh chi phí bệnh án ngựa Winx',
+          title: 'Điều chỉnh chi phí khám ngựa Winx',
         }),
       );
       expect(recipients.isActiveUserWithRole).toHaveBeenCalledWith(

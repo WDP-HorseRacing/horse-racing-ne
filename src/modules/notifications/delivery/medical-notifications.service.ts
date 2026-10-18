@@ -14,7 +14,7 @@ import type {
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
   MedicalCaseClosedEvent,
-  MedicalCaseCostAdjustedEvent,
+  MedicalVisitCostAdjustedEvent,
   MedicalCaseOpenedEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
@@ -359,18 +359,19 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo Club Manager và chủ chịu khoản chi phí khi chi phí bệnh án đã đóng được điều chỉnh
+   * Báo Club Manager và chủ chịu khoản chi phí khi chi phí của một buổi khám được điều chỉnh
    *
-   * - Chủ chịu chi phí là chủ của giai đoạn sở hữu chứa thời điểm đóng bệnh án (event.costOwnerId), không phải chủ hiện tại
-   * - Chủ đó vẫn là chủ hiện tại: nhận cùng thông báo trỏ tới bệnh án
+   * - Chủ chịu chi phí là chủ của giai đoạn sở hữu chứa ngày khám (event.costOwnerId), không phải chủ hiện tại
+   * - Thông báo trỏ tới bệnh án chứa buổi khám; buổi khám ngoài bệnh án thì trỏ tới hồ sơ ngựa
+   * - Chủ đó vẫn là chủ hiện tại: nhận cùng thông báo
    * - Chủ đó không còn là chủ hiện tại: nhận thông báo không trỏ tới đâu (resource null), chỉ khi còn là HORSE_OWNER đang ACTIVE
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
-   * @param event Payload của MEDICAL_CASE_COST_ADJUSTED_EVENT
+   * @param event Payload của MEDICAL_VISIT_COST_ADJUSTED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
    */
-  async notifyCaseCostAdjusted(
-    event: MedicalCaseCostAdjustedEvent,
+  async notifyVisitCostAdjusted(
+    event: MedicalVisitCostAdjustedEvent,
   ): Promise<string[]> {
     const contact = await this.recipients.findHorseMedicalContact(
       event.horseId,
@@ -385,8 +386,8 @@ export class MedicalNotificationsService {
       eventId: event.eventId,
       category: NotificationCategory.MEDICAL_CASE,
       priority: NotificationPriority.NORMAL,
-      title: `Điều chỉnh chi phí bệnh án ngựa ${contact.horseName}`,
-      message: `Chi phí bệnh án của ngựa ${contact.horseName} được điều chỉnh từ ${formatVnd(event.fromCost)} thành ${formatVnd(event.toCost)}.`,
+      title: `Điều chỉnh chi phí khám ngựa ${contact.horseName}`,
+      message: `Chi phí buổi khám ngày ${toDisplayDate(toClubDate(event.examDate))} của ngựa ${contact.horseName} được điều chỉnh từ ${formatVnd(event.fromCost)} thành ${formatVnd(event.toCost)}.`,
     };
     const ownerIsCurrent =
       event.costOwnerId !== null && event.costOwnerId === contact.ownerId;
@@ -400,11 +401,17 @@ export class MedicalNotificationsService {
           ...(ownerIsCurrent && event.costOwnerId ? [event.costOwnerId] : []),
         ]),
       ],
-      resource: {
-        type: NotificationResourceType.MEDICAL_CASE,
-        id: event.caseId,
-        horseId: event.horseId,
-      },
+      resource: event.caseId
+        ? {
+            type: NotificationResourceType.MEDICAL_CASE,
+            id: event.caseId,
+            horseId: event.horseId,
+          }
+        : {
+            type: NotificationResourceType.HORSE,
+            id: event.horseId,
+            horseId: event.horseId,
+          },
     });
     if (
       event.costOwnerId === null ||

@@ -5,7 +5,6 @@ import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_CLOSED_EVENT,
-  MEDICAL_CASE_COST_ADJUSTED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
@@ -14,6 +13,7 @@ import {
   MEDICAL_HEALTH_CHANGED_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
+  MEDICAL_VISIT_COST_ADJUSTED_EVENT,
 } from '../../medical/constants/medical-events.constants';
 import type {
   CareScheduleDueEvent,
@@ -24,8 +24,8 @@ import type {
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
   MedicalCaseClosedEvent,
-  MedicalCaseCostAdjustedEvent,
   MedicalCaseOpenedEvent,
+  MedicalVisitCostAdjustedEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
 } from '../../medical/types/medical-events.types';
@@ -124,14 +124,16 @@ export class MedicalEventsListener {
   }
 
   /**
-   * Nghe MEDICAL_CASE_COST_ADJUSTED_EVENT và báo chủ ngựa, Club Manager
+   * Nghe MEDICAL_VISIT_COST_ADJUSTED_EVENT và báo chủ ngựa, Club Manager
    *
    * @param event Payload của event
    * @returns Promise hoàn tất khi đã gửi xong
    */
-  @OnEvent(MEDICAL_CASE_COST_ADJUSTED_EVENT, OUTBOX_LISTENER_OPTIONS)
-  async onCaseCostAdjusted(event: MedicalCaseCostAdjustedEvent): Promise<void> {
-    await this.medical.notifyCaseCostAdjusted(event);
+  @OnEvent(MEDICAL_VISIT_COST_ADJUSTED_EVENT, OUTBOX_LISTENER_OPTIONS)
+  async onVisitCostAdjusted(
+    event: MedicalVisitCostAdjustedEvent,
+  ): Promise<void> {
+    await this.medical.notifyVisitCostAdjusted(event);
   }
 
   /**

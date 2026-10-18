@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import {
@@ -17,6 +18,7 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
+  AdjustVisitCostDto,
   CareInstructionsResponseDto,
   CreateStandaloneVisitDto,
   MedicalRecordResponseDto,
@@ -112,5 +114,21 @@ export class MedicalRecordsController {
     @Body() body: VoidMedicalRecordDto,
   ): Promise<MedicalRecordResponseDto> {
     return this.visits.voidVisit(actor, id, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Patch('medical-records/:id/cost')
+  @ApiOperation({
+    summary: 'Adjust the cost of a medical visit with a reason',
+    description:
+      'Bắt buộc lý do, không giới hạn thời gian, bệnh án đang mở hay đã đóng đều được. Số mới trùng số cũ thì không ghi nhật ký và không gửi thông báo. Báo Club Manager và chủ của giai đoạn sở hữu chứa ngày khám. Buổi khám đã hủy, hoặc ngựa đã chuyển nhượng hay đã mất: 409.',
+  })
+  @ApiOkResponse({ type: MedicalRecordResponseDto })
+  adjustCost(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: AdjustVisitCostDto,
+  ): Promise<MedicalRecordResponseDto> {
+    return this.visits.adjustVisitCost(actor, id, body);
   }
 }

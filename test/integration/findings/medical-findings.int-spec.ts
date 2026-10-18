@@ -111,9 +111,26 @@ describe('Medical findings (Postgres)', () => {
     expect(await horseHealth(horse)).toBe(HorseHealthStatus.ELIGIBLE);
   });
 
-  it.todo(
-    'F3-1: cost of a visit in a case closed with a date of death can still be adjusted',
-  );
+  it('F3-1: cost of a visit in a case closed with a date of death can still be adjusted', async () => {
+    const vet = await newVet();
+    const horse = await seed.horse('Winx');
+    const caseId = await seed.medicalCase(horse, vet.id);
+    const recordId = await seed.visit(horse, vet.id, new Date().toISOString(), {
+      caseId,
+      cost: 50_000_000,
+    });
+    await cases.closeCase(vet.actor, caseId, {
+      finalConclusion: 'Ngựa mất',
+      dateOfDeath: clubToday(),
+    });
+
+    await expect(
+      visits.adjustVisitCost(vet.actor, recordId, {
+        cost: 5_000_000,
+        reason: 'Gõ nhầm số',
+      }),
+    ).resolves.toMatchObject({ cost: 5_000_000 });
+  });
 
   it('F3-5: voiding a visit outside any case is audited with the standalone visit feature', async () => {
     const vet = await newVet();

@@ -54,6 +54,7 @@ import {
   isGroomOnly,
   isGroomOnlyForExamRequests,
   canSeeMedicalCost,
+  assertVisitCostAdjustable,
   isVisitCostHidden,
   visibleVisitCost,
   resolveLockOnClose,
@@ -448,6 +449,13 @@ describe('medical.policy', () => {
             new Date('2026-02-28T00:00:00Z'),
           ),
         ).toBe(false);
+      });
+
+      it('adjusts the cost of a visit only while it is not voided', () => {
+        expect(() => assertVisitCostAdjustable(null)).not.toThrow();
+        expect(() =>
+          assertVisitCostAdjustable(new Date('2026-07-01T00:00:00Z')),
+        ).toThrow(ConflictException);
       });
 
       it('sums only the visits not voided that the viewer may see', () => {

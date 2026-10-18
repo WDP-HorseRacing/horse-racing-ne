@@ -3394,6 +3394,53 @@
         ]
       }
     },
+    "/api/v1/medical-records/{id}/cost": {
+      "patch": {
+        "description": "Bắt buộc lý do, không giới hạn thời gian, bệnh án đang mở hay đã đóng đều được. Số mới trùng số cũ thì không ghi nhật ký và không gửi thông báo. Báo Club Manager và chủ của giai đoạn sở hữu chứa ngày khám. Buổi khám đã hủy, hoặc ngựa đã chuyển nhượng hay đã mất: 409.",
+        "operationId": "MedicalRecordsController_adjustCost",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustVisitCostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adjust the cost of a medical visit with a reason",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
     "/api/v1/horses/{horseId}/training-locks": {
       "post": {
         "description": "Ngựa đã có khóa hiệu lực hoặc đã chuyển nhượng: 409. Ngày dự kiến gỡ ở quá khứ: 400. Ngựa đang có bệnh án mở thì khóa gắn vào bệnh án.",
@@ -14101,6 +14148,26 @@
           }
         },
         "required": [
+          "reason"
+        ]
+      },
+      "AdjustVisitCostDto": {
+        "type": "object",
+        "properties": {
+          "cost": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000000000,
+            "description": "Chi phí mới của buổi khám, số nguyên VND"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "cost",
           "reason"
         ]
       },

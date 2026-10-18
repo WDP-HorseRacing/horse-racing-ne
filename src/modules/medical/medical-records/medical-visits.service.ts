@@ -22,6 +22,8 @@ import {
   HealthStatusChange,
   HorseHealthService,
 } from '../../horses/shared/horse-health.service';
+import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
+import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import {
@@ -29,6 +31,7 @@ import {
   MEDICAL_CASE_OPENED_EVENT,
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
+  MEDICAL_VISIT_COST_ADJUSTED_EVENT,
 } from '../constants/medical-events.constants';
 import {
   MedicalCaseStatus,
@@ -39,6 +42,7 @@ import {
   MedicalVisitKind,
 } from '../constants/medical-visit.enum';
 import {
+  AdjustVisitCostDto,
   CreateFollowUpVisitDto,
   CreateStandaloneVisitDto,
   MedicalRecordResponseDto,
@@ -50,7 +54,10 @@ import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
-import { toMedicalRecordResponse } from '../mappers/medical.mapper';
+import {
+  costOfVisit,
+  toMedicalRecordResponse,
+} from '../mappers/medical.mapper';
 import {
   assertCaseOpen,
   assertDistinctInjuries,
@@ -61,6 +68,7 @@ import {
   assertRequestsAttachable,
   assertStandaloneVisitAllowed,
   assertStandaloneVisitInput,
+  assertVisitCostAdjustable,
   assertVisitExamDate,
   resolveVisitVoid,
 } from '../policies/medical.policy';
@@ -75,6 +83,7 @@ import type {
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
   MedicalCaseOpenedEvent,
+  MedicalVisitCostAdjustedEvent,
 } from '../types/medical-events.types';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 
@@ -122,6 +131,7 @@ export class MedicalVisitsService {
     private readonly measurements: HorseMeasurementsService,
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
+    private readonly ownerships: HorseOwnershipService,
   ) {}
 
   /**
@@ -396,6 +406,97 @@ export class MedicalVisitsService {
       ]);
       return toMedicalRecordResponse(
         { ...visit, voidedAt, voidReason: body.reason },
+        prescriptions,
+        injuries,
+        true,
+        true,
+        false,
+      );
+    });
+  }
+
+  /**
+   * Điều chỉnh chi phí của một buổi khám, bắt buộc lý do
+   *
+   * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row buổi khám; không giới hạn thời gian, bệnh án đóng hay mở đều được
+   * - Số mới trùng số cũ thì không ghi gì và không báo
+   * - Ghi nhật ký giá trị trước, sau và lý do; event báo lại Club Manager và chủ của giai đoạn sở hữu chứa ngày khám, ghi vào outbox trong cùng transaction
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param recordId UUID của buổi khám
+   * @param body Chi phí mới và lý do
+   * @returns Promise trả về buổi khám sau khi điều chỉnh
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có buổi khám, hoặc ngựa ngoài phạm vi
+   * @throws ConflictException Nếu buổi khám đã hủy, hoặc ngựa đã chuyển nhượng hay đã mất
+   */
+  async adjustVisitCost(
+    actor: Actor,
+    recordId: string,
+    body: AdjustVisitCostDto,
+  ): Promise<MedicalRecordResponseDto> {
+    const found = await this.medicalRecords.findOne({
+      where: { id: recordId },
+    });
+    if (!found) throw new NotFoundException('Không tìm thấy buổi khám');
+    return this.dataSource.transaction(async (manager) => {
+      const { caller } = await this.access.lockHorseForWrite(
+        manager,
+        actor,
+        found.horseId,
+      );
+      const visit = await manager.findOneOrFail(MedicalRecordEntity, {
+        where: { id: recordId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      assertVisitCostAdjustable(visit.voidedAt);
+      const previous = costOfVisit(visit);
+      const cost = String(body.cost);
+      if (previous !== body.cost) {
+        await manager.update(MedicalRecordEntity, { id: recordId }, { cost });
+        await this.audit.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.MEDICAL_RECORD,
+          entityId: recordId,
+          before: { cost: previous },
+          after: { cost: body.cost },
+          reason: body.reason,
+          feature:
+            visit.kind === MedicalVisitKind.FOLLOW_UP
+              ? MEDICAL_AUDIT_FEATURE.CASE_VISIT
+              : MEDICAL_AUDIT_FEATURE.STANDALONE_VISIT,
+        });
+        const costOwner = ownershipAt(
+          await this.ownerships.periodsOfHorse(manager, visit.horseId),
+          visit.examDate,
+        );
+        const event: MedicalVisitCostAdjustedEvent = {
+          eventId: randomUUID(),
+          horseId: visit.horseId,
+          recordId,
+          caseId: visit.caseId,
+          examDate: visit.examDate.toISOString(),
+          fromCost: previous,
+          toCost: body.cost,
+          costOwnerId: costOwner?.ownerId ?? null,
+        };
+        await this.events.publish(
+          manager,
+          MEDICAL_VISIT_COST_ADJUSTED_EVENT,
+          event,
+        );
+      }
+      const [prescriptions, injuries] = await Promise.all([
+        manager.find(PrescriptionEntity, {
+          where: { medicalRecordId: recordId },
+        }),
+        manager.find(InjuryMarkerEntity, {
+          where: { medicalRecordId: recordId },
+        }),
+      ]);
+      return toMedicalRecordResponse(
+        { ...visit, cost },
         prescriptions,
         injuries,
         true,

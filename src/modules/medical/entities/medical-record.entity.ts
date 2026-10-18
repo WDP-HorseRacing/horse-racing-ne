@@ -13,7 +13,7 @@ import { MedicalCaseEntity } from './medical-case.entity';
 /**
  * MedicalRecordEntity: một buổi khám của ngựa.
  * Buổi khám ngoài bệnh án có caseId null (trừ buổi mở bệnh án); buổi tái khám luôn thuộc một bệnh án.
- * Không sửa, không xóa; ghi sai thì hủy bằng voidedAt và voidReason.
+ * Không sửa, không xóa, trừ chi phí được điều chỉnh kèm lý do; ghi sai thì hủy bằng voidedAt và voidReason.
  */
 @Entity({ name: 'medical_records' })
 @Check('medical_records_cost_chk', '"cost" >= 0')

@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 217 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 218 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -112,6 +112,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/medical-cases/{caseId}/close-preview` | Preview what must be handled before closing a case |
 | POST | `/api/v1/medical-cases/{caseId}/visits` | Record a follow-up visit in an open case |
 | GET | `/api/v1/medical-records/{id}` | Get a medical visit |
+| PATCH | `/api/v1/medical-records/{id}/cost` | Adjust the cost of a medical visit with a reason |
 | POST | `/api/v1/medical-records/{id}/void` | Void a wrongly recorded medical visit |
 | GET | `/api/v1/medical/checkups` | Routine checkup schedule of the herd |
 | GET | `/api/v1/medical/cost-report` | Medical cost report by exam date |

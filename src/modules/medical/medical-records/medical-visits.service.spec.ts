@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
@@ -11,6 +12,7 @@ import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import { HorseMeasurementsService } from '../../horses/horse-measurements/horse-measurements.service';
 import { HorseHealthService } from '../../horses/shared/horse-health.service';
+import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
 import { CareScheduleStatus } from '../constants/care-schedule.enum';
 import {
   InjuryBodyRegion,
@@ -19,7 +21,10 @@ import {
 } from '../constants/injury-marker.enum';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
-import { MEDICAL_EXAM_REQUEST_HANDLED_EVENT } from '../constants/medical-events.constants';
+import {
+  MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+  MEDICAL_VISIT_COST_ADJUSTED_EVENT,
+} from '../constants/medical-events.constants';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
@@ -69,6 +74,7 @@ describe('MedicalVisitsService', () => {
   };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
+  let ownerships: { periodsOfHorse: jest.Mock };
   let service: MedicalVisitsService;
 
   const standalone = (
@@ -151,6 +157,20 @@ describe('MedicalVisitsService', () => {
       }),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    ownerships = {
+      periodsOfHorse: jest.fn().mockResolvedValue([
+        {
+          ownerId: 'owner-a',
+          startedAt: new Date('2026-01-01T00:00:00Z'),
+          endedAt: new Date('2026-06-01T00:00:00Z'),
+        },
+        {
+          ownerId: 'owner-b',
+          startedAt: new Date('2026-06-01T00:00:00Z'),
+          endedAt: null,
+        },
+      ]),
+    };
     events = {
       publish: jest.fn((tx: unknown, name: string) => {
         steps.push(tx === manager ? name : `${name} outside tx`);
@@ -175,6 +195,7 @@ describe('MedicalVisitsService', () => {
       measurements as unknown as HorseMeasurementsService,
       audit,
       events,
+      ownerships as unknown as HorseOwnershipService,
     );
   });
 
@@ -717,6 +738,117 @@ describe('MedicalVisitsService', () => {
       await service.voidVisit(vet, 'r1', { reason: 'Nhập 30.5 độ' });
       expect(measurements.voidExamMeasurements).toHaveBeenCalled();
       expect(updatesOn(MedicalCaseEntity)).toHaveLength(0);
+    });
+  });
+
+  describe('adjustVisitCost', () => {
+    const visit = (overrides: Row = {}) => ({
+      id: 'r1',
+      horseId: HORSE_ID,
+      caseId: 'case-1',
+      kind: MedicalVisitKind.FOLLOW_UP,
+      examDate: new Date('2026-05-20T03:00:00Z'),
+      cost: '15000000',
+      voidedAt: null,
+      ...overrides,
+    });
+    const adjust = (cost = 1500000) =>
+      service.adjustVisitCost(vet, 'r1', { cost, reason: 'Gõ thừa số 0' });
+
+    it('answers not found for a missing visit', async () => {
+      await expect(adjust()).rejects.toThrow(NotFoundException);
+      expectNothingWritten();
+    });
+
+    it.each([
+      ['not found for a horse outside the caller scope', NotFoundException],
+      ['forbidden for an inactive account', ForbiddenException],
+      ['conflict for a transferred or deceased horse', ConflictException],
+    ])('propagates %s', async (_label, error) => {
+      rows.set(MedicalRecordEntity, visit());
+      access.lockHorseForWrite.mockRejectedValue(new error());
+      await expect(adjust()).rejects.toThrow(error);
+      expectNothingWritten();
+    });
+
+    it('answers conflict for a voided visit', async () => {
+      rows.set(MedicalRecordEntity, visit({ voidedAt: new Date() }));
+      await expect(adjust()).rejects.toThrow(ConflictException);
+      expectNothingWritten();
+    });
+
+    it('writes nothing and tells nobody when the cost is unchanged', async () => {
+      rows.set(MedicalRecordEntity, visit());
+      await expect(adjust(15000000)).resolves.toMatchObject({
+        cost: 15000000,
+      });
+      expectNothingWritten();
+    });
+
+    it('locks the horse then the visit, audits before and after with the reason and tells the owner of the exam date period', async () => {
+      rows.set(MedicalRecordEntity, visit());
+
+      const result = await adjust();
+
+      expect(access.lockHorseForWrite).toHaveBeenCalledWith(
+        manager,
+        vet,
+        HORSE_ID,
+      );
+      expect(manager.findOneOrFail).toHaveBeenCalledWith(MedicalRecordEntity, {
+        where: { id: 'r1' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(updatesOn(MedicalRecordEntity)).toEqual([
+        [MedicalRecordEntity, { id: 'r1' }, { cost: '1500000' }],
+      ]);
+      expect(audit.record).toHaveBeenCalledWith(manager, {
+        actorId: 'vet-1',
+        action: 'UPDATE',
+        entityType: AuditEntityType.MEDICAL_RECORD,
+        entityId: 'r1',
+        before: { cost: 15000000 },
+        after: { cost: 1500000 },
+        reason: 'Gõ thừa số 0',
+        feature: 'MED_CASE_VISIT',
+      });
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_VISIT_COST_ADJUSTED_EVENT,
+        {
+          eventId: expect.any(String) as unknown,
+          horseId: HORSE_ID,
+          recordId: 'r1',
+          caseId: 'case-1',
+          examDate: '2026-05-20T03:00:00.000Z',
+          fromCost: 15000000,
+          toCost: 1500000,
+          costOwnerId: 'owner-a',
+        },
+      );
+      expect(steps).toEqual([MEDICAL_VISIT_COST_ADJUSTED_EVENT, 'commit']);
+      expect(result).toMatchObject({ cost: 1500000, costHidden: false });
+    });
+
+    it('audits a visit outside any case with the standalone visit feature and names no owner when the horse had none', async () => {
+      rows.set(
+        MedicalRecordEntity,
+        visit({
+          caseId: null,
+          kind: MedicalVisitKind.ROUTINE,
+          examDate: new Date('2025-12-31T00:00:00Z'),
+        }),
+      );
+      await adjust();
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({ feature: 'MED_VISIT' }),
+      );
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_VISIT_COST_ADJUSTED_EVENT,
+        expect.objectContaining({ caseId: null, costOwnerId: null }),
+      );
     });
   });
 });
