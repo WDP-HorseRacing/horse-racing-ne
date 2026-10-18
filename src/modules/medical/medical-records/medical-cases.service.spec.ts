@@ -363,12 +363,21 @@ describe('MedicalCasesService', () => {
         reason: 'Viêm gân',
       };
       manager.count.mockResolvedValue(2);
+      access.currentInjuryStatuses.mockResolvedValue(
+        new Map([
+          ['inj-1', RecoveryStatus.HEALED],
+          ['inj-2', RecoveryStatus.RECOVERING],
+          ['inj-3', RecoveryStatus.ACUTE],
+        ]),
+      );
       const result = await service.closePreview(vet, 'case-1');
+      expect(access.currentInjuryStatuses).toHaveBeenCalledWith(manager, 'h1');
       expect(result).toMatchObject({
         activeLock: expect.objectContaining({ id: 'lock-1' }) as unknown,
         healthStatus: HorseHealthStatus.INJURED,
         healthWarning: true,
         pendingRequestCount: 2,
+        unhealedInjuryCount: 2,
         deathImpact: { summary: 'Ngựa mất' },
       });
     });

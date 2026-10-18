@@ -47,6 +47,7 @@ import {
 import {
   assertCaseOpen,
   assertInjuriesHealedBeforeClose,
+  unhealedInjuryCount,
   assertNoLockChoiceOnDeath,
   canSeeDosage,
   resolveLockOnClose,
@@ -184,7 +185,7 @@ export class MedicalCasesService {
   }
 
   /**
-   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ, và hệ quả nếu đóng kèm ghi nhận ngựa mất
+   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ, số chấn thương chưa lành, và hệ quả nếu đóng kèm ghi nhận ngựa mất
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -204,18 +205,20 @@ export class MedicalCasesService {
     );
     assertCaseOpen(medicalCase.status);
     const manager = this.dataSource.manager;
-    const [activeLock, pendingRequestCount, deathImpact] = await Promise.all([
-      manager.findOne(TrainingLockEntity, {
-        where: { caseId, status: TrainingLockStatus.ACTIVE },
-      }),
-      manager.count(MedicalExamRequestEntity, {
-        where: {
-          horseId: medicalCase.horseId,
-          status: ExamRequestStatus.PENDING,
-        },
-      }),
-      this.horseStatuses.previewDeath(horse, manager),
-    ]);
+    const [activeLock, pendingRequestCount, deathImpact, injuryStatuses] =
+      await Promise.all([
+        manager.findOne(TrainingLockEntity, {
+          where: { caseId, status: TrainingLockStatus.ACTIVE },
+        }),
+        manager.count(MedicalExamRequestEntity, {
+          where: {
+            horseId: medicalCase.horseId,
+            status: ExamRequestStatus.PENDING,
+          },
+        }),
+        this.horseStatuses.previewDeath(horse, manager),
+        this.access.currentInjuryStatuses(manager, medicalCase.horseId),
+      ]);
     return {
       activeLock: activeLock ? toCaseActiveLock(activeLock) : null,
       healthStatus: horse.healthStatus,
@@ -223,6 +226,7 @@ export class MedicalCasesService {
         horse.healthStatus === HorseHealthStatus.INJURED ||
         horse.healthStatus === HorseHealthStatus.QUARANTINED,
       pendingRequestCount,
+      unhealedInjuryCount: unhealedInjuryCount(injuryStatuses),
       deathImpact,
     };
   }

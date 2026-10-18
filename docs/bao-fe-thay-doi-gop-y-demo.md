@@ -442,4 +442,4 @@ Mỗi vết chấn thương nay có mã riêng (`injuryId`) và sống qua nhi�
    - Mặc định gọi `unhealedOnly=true`, tô màu điểm theo `currentRecoveryStatus`.
    - Có nút xem cả vết đã lành (bỏ query).
    - Bấm một điểm thì hiện `history` của vết đó.
-6. Đóng bệnh án (`POST /medical-cases/:caseId/close`): 409 mới "Còn chấn thương chưa lành, hãy ghi buổi khám đánh dấu đã lành trước khi đóng bệnh án". Đóng kèm `dateOfDeath` thì không bị chặn. Màn xem trước đóng bệnh án chưa có cờ báo trước lỗi này; FE có thể tự kiểm bằng `GET /horses/:horseId/injuries?unhealedOnly=true`.
+6. Đóng bệnh án (`POST /medical-cases/:caseId/close`): 409 mới "Còn chấn thương chưa lành, hãy ghi buổi khám đánh dấu đã lành trước khi đóng bệnh án". Đóng kèm `dateOfDeath` thì không bị chặn. `GET /medical-cases/:caseId/close-preview` có thêm `unhealedInjuryCount` (số vết chưa lành); lớn hơn 0 thì FE báo trước và gợi ý ghi buổi tái khám đánh dấu Đã lành, danh sách vết lấy từ `GET /horses/:horseId/injuries?unhealedOnly=true`.

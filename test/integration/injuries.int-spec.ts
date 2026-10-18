@@ -245,6 +245,9 @@ describe('Injuries across visits (Postgres)', () => {
         status: 409,
       });
       expect(await caseStatus(caseId)).toBe(MedicalCaseStatus.OPEN);
+      expect(
+        (await cases.closePreview(author, caseId)).unhealedInjuryCount,
+      ).toBe(1);
     });
 
     it('closes once every injury is healed', async () => {

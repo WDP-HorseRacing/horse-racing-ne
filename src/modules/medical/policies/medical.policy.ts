@@ -448,6 +448,20 @@ export function assertNoLockChoiceOnDeath(
 }
 
 /**
+ * Đếm chấn thương chưa lành, tức mức hồi phục hiện tại khác Đã lành
+ *
+ * @param currentStatuses Mức hồi phục hiện tại của từng chấn thương đang hiển thị của con ngựa
+ * @returns Số chấn thương chưa lành
+ */
+export function unhealedInjuryCount(
+  currentStatuses: Map<string, RecoveryStatus>,
+): number {
+  return [...currentStatuses.values()].filter(
+    (status) => status !== RecoveryStatus.HEALED,
+  ).length;
+}
+
+/**
  * Chỉ đóng bệnh án khi mọi chấn thương của con ngựa đã lành
  *
  * - Đóng kèm ghi nhận ngựa mất thì không chặn
@@ -461,11 +475,7 @@ export function assertInjuriesHealedBeforeClose(
   recordsDeath: boolean,
 ): void {
   if (recordsDeath) return;
-  if (
-    [...currentStatuses.values()].some(
-      (status) => status !== RecoveryStatus.HEALED,
-    )
-  ) {
+  if (unhealedInjuryCount(currentStatuses) > 0) {
     throw new ConflictException(
       'Còn chấn thương chưa lành, hãy ghi buổi khám đánh dấu đã lành trước khi đóng bệnh án',
     );

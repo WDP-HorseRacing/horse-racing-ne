@@ -13969,6 +13969,10 @@
             "type": "number",
             "description": "Số yêu cầu khám còn đang chờ của con ngựa"
           },
+          "unhealedInjuryCount": {
+            "type": "number",
+            "description": "Số chấn thương chưa lành của con ngựa; lớn hơn 0 thì đóng bệnh án trả 409, trừ khi kèm ngày mất"
+          },
           "deathImpact": {
             "description": "Hệ quả nếu đóng bệnh án kèm ngày mất, cùng dạng với xem trước đổi vòng đời sang DECEASED",
             "allOf": [
@@ -13983,6 +13987,7 @@
           "healthStatus",
           "healthWarning",
           "pendingRequestCount",
+          "unhealedInjuryCount",
           "deathImpact"
         ]
       },

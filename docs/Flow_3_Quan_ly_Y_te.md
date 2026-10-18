@@ -604,7 +604,7 @@ Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi k
    - Lệnh khóa huấn luyện tự gỡ với lý do "Gỡ do ngựa mất". Bác sĩ không chọn gỡ hay giữ khóa; gửi kèm lựa chọn khóa thì báo lỗi.
    - Một bước lỗi thì hủy toàn bộ, bệnh án vẫn Đang điều trị.
    - Gửi cả thông báo đóng bệnh án (nghiệp vụ 10) và thông báo ngựa mất (F1.8).
-4c. Còn chấn thương chưa lành (mức hiện tại khác Đã lành, F3.6 mục 2) thì không đóng được (409); bác sĩ ghi buổi tái khám đánh dấu Đã lành trước. Đóng kèm ghi nhận ngựa mất (mục 4b) thì không chặn.
+4c. Còn chấn thương chưa lành (mức hiện tại khác Đã lành, F3.6 mục 2) thì không đóng được (409); bác sĩ ghi buổi tái khám đánh dấu Đã lành trước. Đóng kèm ghi nhận ngựa mất (mục 4b) thì không chặn. Màn xem trước khi đóng hiện số chấn thương chưa lành để bác sĩ biết trước.
 5. Nếu trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly, hệ thống cảnh báo và hỏi bác sĩ có muốn cập nhật trạng thái trước khi đóng không. Bác sĩ vẫn được phép đóng, vì có trường hợp ngựa hồi phục dần mà bệnh án đã kết thúc.
 6. Nếu con ngựa còn yêu cầu khám đang chờ, hệ thống báo số lượng để bác sĩ biết, kèm nút mở hàng đợi yêu cầu khám; các yêu cầu này vẫn ở hàng đợi và được xử lý như bình thường sau khi đóng. *(BA chốt)*
 7. Sau khi đóng, bệnh án chuyển sang chỉ đọc. Không mở lại bệnh án đã đóng; vấn đề tái phát thì khám ngoài bệnh án (F3.3) và mở bệnh án mới.
@@ -622,7 +622,7 @@ Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi k
 | **Actor phụ** | HORSE OWNER, CLUB MANAGER (nhận thông báo), Hệ thống (ghi nhật ký) |
 | **Tiền điều kiện** | Bệnh án đang ở trạng thái Đang điều trị. |
 | **Hậu điều kiện** | Bệnh án chuyển sang Đã đóng và chỉ đọc (trừ chi phí từng buổi khám, điều chỉnh theo F3.6). |
-| **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án và chọn "Đóng bệnh án".<br>2. Hệ thống hiển thị biểu mẫu kết luận cuối, kèm tổng chi phí các buổi khám, lệnh khóa liên quan, trạng thái sức khỏe hiện tại và yêu cầu khám đang chờ.<br>3. VETERINARIAN nhập kết luận cuối.<br>4. VETERINARIAN xác nhận.<br>5. Hệ thống đóng bệnh án, xử lý lệnh khóa theo lựa chọn, gửi thông báo và ghi nhật ký. |
+| **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án và chọn "Đóng bệnh án".<br>2. Hệ thống hiển thị biểu mẫu kết luận cuối, kèm tổng chi phí các buổi khám, lệnh khóa liên quan, trạng thái sức khỏe hiện tại, yêu cầu khám đang chờ và số chấn thương chưa lành.<br>3. VETERINARIAN nhập kết luận cuối.<br>4. VETERINARIAN xác nhận.<br>5. Hệ thống đóng bệnh án, xử lý lệnh khóa theo lựa chọn, gửi thông báo và ghi nhật ký. |
 | **Luồng thay thế** | A1. Khóa huấn luyện còn hiệu lực -> bác sĩ chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ.<br>A2. Trạng thái sức khỏe vẫn là Chấn thương hoặc Cách ly -> hệ thống cảnh báo, bác sĩ có thể cập nhật trạng thái rồi đóng.<br>A3. Bác sĩ thấy chi phí một buổi khám nhập sai -> điều chỉnh theo UC-F3-06 (A6), trước hoặc sau khi đóng.<br>A4. Ngựa mất trong lúc điều trị -> bác sĩ nhập ngày mất; hệ thống đóng bệnh án và ghi nhận ngựa mất cùng lúc (F1.8). |
 | **Luồng ngoại lệ** | E1. Không nhập kết luận cuối -> báo lỗi.<br>E2. Đóng bệnh án đã đóng -> trả về 409.<br>E3. Khóa còn hiệu lực mà không chọn cách xử lý, hoặc chọn giữ khóa mà ngày dự kiến gỡ ở quá khứ -> báo lỗi.<br>E4. Có ngày mất mà vẫn chọn gỡ hoặc giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh -> báo lỗi tại ô tương ứng, không đóng bệnh án.<br>E5. Còn chấn thương chưa lành và không ghi nhận ngựa mất -> trả về 409, không đóng bệnh án. |
 
