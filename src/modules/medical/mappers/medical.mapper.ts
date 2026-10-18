@@ -19,7 +19,8 @@ import {
 } from '../dto/medical-dashboard.dto';
 import {
   InjuryMarkerResponseDto,
-  InjuryTimelineItemDto,
+  InjuryHistoryItemDto,
+  InjuryResponseDto,
 } from '../dto/injury-marker.response.dto';
 import { MedicalCaseResponseDto } from '../dto/medical-case.response.dto';
 import { TrainingLockResponseDto } from '../dto/training-lock.response.dto';
@@ -243,19 +244,45 @@ export function toCareScheduleResponse(
 }
 
 /**
- * Chuyển chấn thương sang dòng diễn biến; cần tải kèm quan hệ medicalRecord.
+ * Gom các lần ghi nhận thành danh sách chấn thương, mỗi chấn thương kèm diễn biến và mức hồi phục hiện tại.
  *
- * @param injury Thực thể chấn thương đã tải kèm buổi khám
- * @returns InjuryTimelineItemDto - Chấn thương kèm thời điểm khám và bệnh án
+ * - Thứ tự chấn thương theo lần ghi nhận đầu tiên của nó trong danh sách đầu vào
+ * - Mức hiện tại là mức của lần ghi nhận cuối cùng
+ *
+ * @param markers Các lần ghi nhận đã tải kèm chấn thương và buổi khám, xếp theo thời điểm khám rồi thời điểm ghi tăng dần
+ * @returns InjuryResponseDto[] - Các chấn thương
  */
-export function toInjuryTimelineItem(
-  injury: InjuryMarkerEntity,
-): InjuryTimelineItemDto {
-  return {
-    ...toInjuryMarkerResponse(injury),
-    examDate: injury.medicalRecord.examDate,
-    caseId: injury.medicalRecord.caseId,
-  };
+export function toInjuryResponses(
+  markers: InjuryMarkerEntity[],
+): InjuryResponseDto[] {
+  const byInjury = new Map<string, InjuryResponseDto>();
+  for (const marker of markers) {
+    const item: InjuryHistoryItemDto = {
+      medicalRecordId: marker.medicalRecordId,
+      examDate: marker.medicalRecord.examDate,
+      caseId: marker.medicalRecord.caseId,
+      recoveryStatus: marker.recoveryStatus,
+      notes: marker.notes,
+    };
+    const found = byInjury.get(marker.injuryId);
+    if (found) {
+      found.history.push(item);
+      found.currentRecoveryStatus = item.recoveryStatus;
+      continue;
+    }
+    byInjury.set(marker.injuryId, {
+      id: marker.injury.id,
+      horseId: marker.injury.horseId,
+      bodyRegion: marker.injury.bodyRegion,
+      injuryType: marker.injury.injuryType,
+      position: marker.injury.position,
+      firstMedicalRecordId: marker.injury.firstMedicalRecordId,
+      firstExamDate: item.examDate,
+      currentRecoveryStatus: item.recoveryStatus,
+      history: [item],
+    });
+  }
+  return [...byInjury.values()];
 }
 
 /**

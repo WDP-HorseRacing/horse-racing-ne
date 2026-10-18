@@ -3,6 +3,7 @@ export * from './create-injury.dto';
 export * from './create-prescription.dto';
 export * from './create-training-lock.dto';
 export * from './injury-marker.response.dto';
+export * from './injury-query.dto';
 export * from './medical-record.response.dto';
 export * from './prescription.response.dto';
 export * from './release-training-lock.dto';

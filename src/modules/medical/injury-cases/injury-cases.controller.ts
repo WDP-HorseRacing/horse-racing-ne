@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -8,7 +8,8 @@ import {
 import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { InjuryTimelineItemDto } from '../dto/injury-marker.response.dto';
+import { InjuryResponseDto } from '../dto/injury-marker.response.dto';
+import { InjuryListQueryDto } from '../dto/injury-query.dto';
 import { InjuryCasesService } from './injury-cases.service';
 
 @ApiTags('medical')
@@ -25,16 +26,17 @@ export class InjuryCasesController {
   ])
   @Get('horses/:horseId/injuries')
   @ApiOperation({
-    summary: 'List horse injury timeline',
+    summary: 'List horse injuries with current recovery status and history',
     description:
-      'Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem.',
+      'Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, xem đầy đủ. Groom không xem. Mức hồi phục hiện tại lấy từ lần ghi nhận mới nhất của buổi khám chưa hủy; chấn thương mà mọi buổi khám ghi nó đã hủy thì không trả về.',
     operationId: 'MedicalController_listInjuries',
   })
-  @ApiOkResponse({ type: [InjuryTimelineItemDto] })
+  @ApiOkResponse({ type: [InjuryResponseDto] })
   listInjuries(
     @CurrentUser() actor: Actor,
     @Param('horseId', ParseUUIDPipe) horseId: string,
-  ): Promise<InjuryTimelineItemDto[]> {
-    return this.injuryCases.listInjuries(actor, horseId);
+    @Query() query: InjuryListQueryDto,
+  ): Promise<InjuryResponseDto[]> {
+    return this.injuryCases.listInjuries(actor, horseId, query);
   }
 }

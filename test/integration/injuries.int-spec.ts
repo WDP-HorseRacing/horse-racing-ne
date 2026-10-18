@@ -16,6 +16,8 @@ import {
   MedicalVisitConclusion,
   MedicalVisitKind,
 } from '../../src/modules/medical/constants/medical-visit.enum';
+import { InjuryCasesModule } from '../../src/modules/medical/injury-cases/injury-cases.module';
+import { InjuryCasesService } from '../../src/modules/medical/injury-cases/injury-cases.service';
 import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
 import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
 import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
@@ -35,6 +37,7 @@ describe('Injuries across visits (Postgres)', () => {
   let seed: ReturnType<typeof fixtures>;
   let visits: MedicalVisitsService;
   let cases: MedicalCasesService;
+  let reads: InjuryCasesService;
 
   beforeAll(async () => {
     db = await startTestPostgres();
@@ -49,10 +52,12 @@ describe('Injuries across visits (Postgres)', () => {
         }),
         DomainEventsModule,
         MedicalRecordsModule,
+        InjuryCasesModule,
       ],
     }).compile();
     visits = moduleRef.get(MedicalVisitsService);
     cases = moduleRef.get(MedicalCasesService);
+    reads = moduleRef.get(InjuryCasesService);
   });
 
   afterAll(async () => {
@@ -263,6 +268,118 @@ describe('Injuries across visits (Postgres)', () => {
       await close(author, caseId, clubToday());
 
       expect(await caseStatus(caseId)).toBe(MedicalCaseStatus.CLOSED);
+    });
+  });
+
+  describe('listing injuries', () => {
+    const list = (actor: Actor, horse: string, unhealedOnly?: boolean) =>
+      reads.listInjuries(actor, horse, { unhealedOnly });
+
+    it('keeps the status of an injury left out of a later visit', async () => {
+      const author = await vet();
+      const horse = await seed.horse('Gió');
+      const { caseId, injuryIds } = await discover(author, horse);
+
+      await visits.createFollowUpVisit(author, caseId, {
+        examDate: daysAgo(1),
+        diagnosis: 'Khám bụng, không xem chân',
+      });
+
+      const [injury] = await list(author, horse);
+      expect(injury).toMatchObject({
+        id: injuryIds[0],
+        currentRecoveryStatus: RecoveryStatus.ACUTE,
+      });
+      expect(injury.history).toHaveLength(1);
+    });
+
+    it('orders the history by exam date, a backdated visit included', async () => {
+      const author = await vet();
+      const horse = await seed.horse('Gió');
+      const { visit, caseId, injuryIds } = await discover(author, horse);
+      const later = await followUp(author, caseId, 1, [
+        { injuryId: injuryIds[0], recoveryStatus: RecoveryStatus.RECOVERING },
+      ]);
+      const backdated = await followUp(author, caseId, 2, [
+        { injuryId: injuryIds[0], recoveryStatus: RecoveryStatus.ACUTE },
+      ]);
+
+      const [injury] = await list(author, horse);
+
+      expect(injury.history.map((item) => item.medicalRecordId)).toEqual([
+        visit.id,
+        backdated.id,
+        later.id,
+      ]);
+      expect(injury).toMatchObject({
+        firstMedicalRecordId: visit.id,
+        firstExamDate: visit.examDate,
+        currentRecoveryStatus: RecoveryStatus.RECOVERING,
+        bodyRegion: InjuryBodyRegion.LEFT_FRONT_LEG,
+        position: { x: 0.1, y: 0.4, z: 0 },
+      });
+      expect(injury.history[0]).toMatchObject({
+        caseId,
+        examDate: visit.examDate,
+        recoveryStatus: RecoveryStatus.ACUTE,
+      });
+    });
+
+    it('goes back to the previous status when the update visit is voided', async () => {
+      const author = await vet();
+      const horse = await seed.horse('Gió');
+      const { caseId } = await discover(author, horse);
+      const [{ id }] = await list(author, horse);
+      const update = await followUp(author, caseId, 1, [
+        { injuryId: id, recoveryStatus: RecoveryStatus.HEALED },
+      ]);
+
+      await visits.voidVisit(author, update.id, { reason: 'Ghi nhầm' });
+
+      const [injury] = await list(author, horse);
+      expect(injury.currentRecoveryStatus).toBe(RecoveryStatus.ACUTE);
+      expect(injury.history).toHaveLength(1);
+    });
+
+    it('hides an injury once the visit that discovered it is voided', async () => {
+      const author = await vet();
+      const horse = await seed.horse('Gió');
+      const { caseId, injuryIds } = await discover(author, horse);
+      const found = await visits.createFollowUpVisit(author, caseId, {
+        examDate: daysAgo(1),
+        newInjuries: [sprain(0.3)],
+      });
+
+      await visits.voidVisit(author, found.id, { reason: 'Nhầm ngựa' });
+
+      expect((await list(author, horse)).map((item) => item.id)).toEqual(
+        injuryIds,
+      );
+    });
+
+    it('lists only injuries not healed when asked, ordered by first exam date', async () => {
+      const author = await vet();
+      const horse = await seed.horse('Gió');
+      const { caseId, injuryIds } = await discover(author, horse, [
+        sprain(0.1),
+        sprain(0.2),
+      ]);
+      const later = await visits.createFollowUpVisit(author, caseId, {
+        examDate: daysAgo(2),
+        newInjuries: [sprain(0.3)],
+      });
+      const laterId = later.injuries[0].injuryId;
+      await followUp(author, caseId, 1, [
+        { injuryId: injuryIds[0], recoveryStatus: RecoveryStatus.HEALED },
+      ]);
+
+      const all = (await list(author, horse)).map((item) => item.id);
+      expect(all.slice(0, 2).sort()).toEqual([...injuryIds].sort());
+      expect(all[2]).toBe(laterId);
+      expect((await list(author, horse, true)).map((item) => item.id)).toEqual([
+        injuryIds[1],
+        laterId,
+      ]);
     });
   });
 });
