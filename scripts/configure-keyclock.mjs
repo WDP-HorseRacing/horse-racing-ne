@@ -257,8 +257,14 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   //     nhung van nam lai trong realm va chiem email -> Club Manager tao lai
   //     cung email se bi 409. Flow nay chi cho qua khi realm da co user cung
   //     email (tuc la da duoc Club Manager cap), con lai dung o Keycloak.
+  //     Lien ket lan dau bat nhap mat khau cua tai khoan do
+  //     (`idp-username-password-form`), khong tu gan theo email.
   const linkFlowAlias = 'link existing only';
-  const linkSteps = ['idp-detect-existing-broker-user', 'idp-auto-link'];
+  const linkSteps = [
+    'idp-detect-existing-broker-user',
+    'idp-username-password-form',
+  ];
+  const removedSteps = ['idp-auto-link'];
   const flowPath = `/authentication/flows/${encodeURIComponent(linkFlowAlias)}/executions`;
 
   const flows = (await admin.get('/authentication/flows')).data;
@@ -274,6 +280,15 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   }
 
   let executions = (await admin.get(flowPath)).data;
+  for (const execution of executions) {
+    if (removedSteps.includes(execution.providerId)) {
+      await admin.delete(`/authentication/executions/${execution.id}`);
+      console.log(
+        `da go buoc "${execution.providerId}" khoi flow "${linkFlowAlias}"`,
+      );
+    }
+  }
+  executions = (await admin.get(flowPath)).data;
   for (const provider of linkSteps) {
     if (!executions.some((e) => e.providerId === provider)) {
       await admin.post(`${flowPath}/execution`, { provider });
@@ -294,9 +309,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     alias: 'google',
     providerId: 'google',
     enabled: true,
-    // trustEmail: tin email Google tra ve da xac minh -> cho phep lien ket tu
-    // dong voi tai khoan cung email da co san trong realm. Buoc `idp-auto-link`
-    // khong hoi lai chu tai khoan, nen CHI dung flow nay cho IdP xac minh email.
+    // trustEmail: tin email Google tra ve da xac minh de tim tai khoan cung
+    // email; viec gan van phai qua buoc nhap mat khau cua flow lien ket.
     trustEmail: true,
     storeToken: false,
     addReadTokenRoleOnCreate: false,
