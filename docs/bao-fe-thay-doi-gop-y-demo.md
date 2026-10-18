@@ -47,7 +47,7 @@ Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, 
 
    - `POST /classes/:classId/sessions/bulk`: thêm nhiều buổi một lần (dùng cho nút "lặp lại hằng tuần" trên lịch).
      - Body `{ "sessions": [ ...giống body thêm một buổi ] }`, 1–100 buổi.
-     - Một buổi lỗi thì không lưu buổi nào. Câu báo có tiền tố `Buổi N: `, ô lỗi là `sessions.{i}`.
+     - Một buổi lỗi thì không lưu buổi nào. Câu báo có tiền tố `Buổi N: ` (N đếm từ 1). Ô lỗi là `sessions.{i}.{ô}` (vd `sessions.0.subjectId`); lỗi không gắn ô thì là `sessions.{i}` (i đếm từ 0).
    - `GET /classes/:classId/enrollable-horses`: ngựa ghi danh được vào lớp lúc này, trả `[{ horseId, horseName, horsePhotoUrl }]`. Đã tự loại ngựa đã ghi danh, ngựa trùng giờ và ngựa vượt giới hạn tập trong ngày (mục 2).
 6. **Luật mới khi thêm hoặc sửa buổi**: môn của buổi phải có trong giai đoạn của lớp chứa ngày đó. Sai thì 409 `Môn {tên} không có trong giai đoạn {n} của lớp`.
 7. Sửa buổi (kéo đổi giờ, đổi môn...) và sửa cấu hình chạy thử chỉ được khi buổi `SCHEDULED` và chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu). Các trường hợp khác: 409 `Chỉ sửa được buổi tập đã lên lịch, trước giờ mở điểm danh (30 phút trước giờ bắt đầu)`. FE nên khóa kéo thả buổi từ mốc này.
@@ -100,7 +100,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 2. Ngựa chuyển sang Cần theo dõi, hoặc về Đủ điều kiện (`HEALTH_STATUS`).
 3. Cảnh báo sốt, sụt cân (`MEASUREMENT_ALERT`).
 4. Chỉ số tập vượt ngưỡng nguy hiểm (`PERFORMANCE_ALERT`, mức HIGH).
-5. Giải nghệ, chuyển nhượng, kích hoạt lại (`HORSE_LIFECYCLE`).
+5. Giải nghệ, kích hoạt lại (`HORSE_LIFECYCLE`). Bán ra ngoài (`TRANSFERRED`) không báo chủ cũ, vì giai đoạn sở hữu đã kết thúc (xem mục 8).
 6. Phụ phí mới (`SURCHARGE`).
 
 ## 6. Nhật ký đăng nhập
@@ -112,8 +112,8 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 
 ## 7. Chấn thương bắt buộc tọa độ 3D
 
-1. Khi ghi chấn thương trong buổi khám, `injuries[].position` `{ x, y, z }` (số) là bắt buộc. Thiếu, gửi `null` hoặc thiếu một trục đều là 400.
-2. Response chấn thương và diễn biến chấn thương luôn có `position`, không còn `null`.
+1. Đã thay bằng mục "Chấn thương theo từng vết" ở cuối file: body buổi khám không còn `injuries`, gửi lên sẽ bị 400.
+2. Vết mới (`newInjuries[]`) bắt buộc `position` `{ x, y, z }` (số); thiếu, `null` hoặc thiếu một trục là 400. Cập nhật vết cũ (`injuryUpdates[]`) không gửi `position`, vị trí cố định từ lúc phát hiện.
 
 ## 8. Chủ sở hữu và tạo ngựa
 
@@ -136,7 +136,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
    - `GET /past-horses`: các con mình từng sở hữu, đã kết thúc giai đoạn (chuyển nhượng nội bộ hoặc bán ra ngoài), không còn là chủ hiện tại, bỏ hồ sơ đã xóa. Mỗi dòng: `{ horseId, name, photoUrl, periods: [{ startedAt, endedAt }] }`, mới nhất trước.
    - `GET /past-horses/:horseId`: thêm `gender`, `dateOfBirth`, `color`, `ancestors` (phả hệ 2 đời, chỉ tên, `canOpen` luôn false). Không từng sở hữu hoặc đang là chủ hiện tại: 404.
    - Không trả chủ mới, khu, ô, sức khỏe, khóa tập. Các tab khác của hồ sơ ngựa vẫn chỉ cho chủ hiện tại.
-6. `GET /reports/club/finance` có thêm `unowned`: phần của các ngày ngựa ở CLB mà không có chủ (còn xảy ra khi khôi phục hồ sơ đã xóa mà chủ cũ không còn hoạt động), cộng chi phí bệnh án đóng lúc ngựa không có chủ. Không có thì các số bằng 0.
+6. `GET /reports/club/finance` có thêm `unowned`: phần của các ngày ngựa ở CLB mà không có chủ (còn xảy ra khi khôi phục hồ sơ đã xóa mà chủ cũ không còn hoạt động), cộng chi phí các buổi khám (theo ngày khám) lúc ngựa không có chủ. Không có thì các số bằng 0.
 
    ```json
    "unowned": { "billedDays": 4, "dailyFee": 800000, "medicalCost": 300000, "surcharge": 80000, "total": 1180000 }
@@ -144,6 +144,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 
    - `billedDays`: tổng số ngày tính phí (mỗi ngựa mỗi ngày tính một). `ownerCharges` = tổng `owners` + `unowned`.
    - `GET /reports/owner/costs` không đổi.
+7. `PATCH /horses/:horseId` nhận `ownerId` để gán chủ cho ngựa đang không có chủ (vd sau khi khôi phục hồ sơ đã xóa). Chủ phải là HORSE_OWNER đang hoạt động. Gửi `null`: 400 ở ô `ownerId` "Không bỏ trống chủ sở hữu được, đổi chủ bằng chức năng chuyển nhượng nội bộ". Ngựa đã có chủ khác: 409 "Ngựa đã có chủ sở hữu, đổi chủ bằng chức năng chuyển nhượng nội bộ".
 
 ## 9. Không đổi API, chỉ cần biết
 
