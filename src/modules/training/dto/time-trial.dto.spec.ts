@@ -4,33 +4,61 @@ import {
   CreateTimeTrialDto,
   CreateTrialResultDto,
   UpdateTimeTrialDto,
-  UpdateTrialResultVideoDto,
+  UpdateTrialResultDto,
 } from './time-trial.dto';
 
 const VIDEO_ID = '11111111-1111-4111-8111-111111111111';
 
 async function failedFields(body: object): Promise<string[]> {
-  const errors = await validate(
-    plainToInstance(UpdateTrialResultVideoDto, body),
-  );
+  const errors = await validate(plainToInstance(UpdateTrialResultDto, body));
   return errors.map((error) => error.property);
 }
 
-describe('UpdateTrialResultVideoDto', () => {
-  it('accepts a uuid', async () => {
+describe('UpdateTrialResultDto', () => {
+  it('accepts a uuid or null for the video without a reason', async () => {
     await expect(failedFields({ videoMediaId: VIDEO_ID })).resolves.toEqual([]);
-  });
-
-  it('accepts null to remove the video', async () => {
     await expect(failedFields({ videoMediaId: null })).resolves.toEqual([]);
   });
 
-  it('rejects a missing field and a non-uuid string', async () => {
-    await expect(failedFields({})).resolves.toEqual(['videoMediaId']);
+  it('accepts an empty body', async () => {
+    await expect(failedFields({})).resolves.toEqual([]);
+  });
+
+  it('rejects a non-uuid video', async () => {
     await expect(failedFields({ videoMediaId: 'abc' })).resolves.toEqual([
       'videoMediaId',
     ]);
   });
+
+  it('accepts a time or notes correction with a trimmed reason', async () => {
+    const dto = plainToInstance(UpdateTrialResultDto, {
+      elapsedMs: 59000,
+      notes: null,
+      reason: '  Nhập nhầm  ',
+    });
+
+    await expect(validate(dto)).resolves.toEqual([]);
+    expect(dto.reason).toBe('Nhập nhầm');
+  });
+
+  it.each([
+    { elapsedMs: 59000 },
+    { notes: 'x' },
+    { notes: null },
+    { elapsedMs: 59000, reason: '   ' },
+    { notes: 'x', reason: 'x'.repeat(501) },
+  ])('requires a non-blank reason up to 500 chars: %j', async (body) => {
+    await expect(failedFields(body)).resolves.toEqual(['reason']);
+  });
+
+  it.each([0, 1.5, null, 3_600_001])(
+    'rejects elapsedMs %p',
+    async (elapsedMs) => {
+      await expect(failedFields({ elapsedMs, reason: 'x' })).resolves.toEqual([
+        'elapsedMs',
+      ]);
+    },
+  );
 });
 
 describe('trial time caps', () => {

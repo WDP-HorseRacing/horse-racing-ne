@@ -25,8 +25,8 @@ import {
   assertSessionOperational,
   assertSessionWindowInClass,
   assertTrainableHorse,
-  assertTrialVideoEditable,
-  TRIAL_VIDEO_EDIT_WINDOW_MS,
+  assertSessionRecordEditable,
+  SESSION_RECORD_EDIT_WINDOW_MS,
   assertHorseEnrollable,
   assertClassOpenForSessions,
   assertSubjectExercise,
@@ -526,13 +526,13 @@ describe('session overlap policy', () => {
     });
   });
 
-  describe('assertTrialVideoEditable', () => {
+  describe('assertSessionRecordEditable', () => {
     const endAt = new Date('2026-10-10T02:00:00Z');
-    const deadline = new Date(endAt.getTime() + TRIAL_VIDEO_EDIT_WINDOW_MS);
+    const deadline = new Date(endAt.getTime() + SESSION_RECORD_EDIT_WINDOW_MS);
 
     it('allows editing right up to the 7th day after the scheduled end, inclusive', () => {
       expect(() =>
-        assertTrialVideoEditable(
+        assertSessionRecordEditable(
           TrainingSessionStatus.COMPLETED,
           endAt,
           deadline,
@@ -542,19 +542,23 @@ describe('session overlap policy', () => {
 
     it('rejects one millisecond past the deadline', () => {
       expect(() =>
-        assertTrialVideoEditable(
+        assertSessionRecordEditable(
           TrainingSessionStatus.COMPLETED,
           endAt,
           new Date(deadline.getTime() + 1),
         ),
-      ).toThrow(new ConflictException('Quá hạn gắn video chạy thử'));
+      ).toThrow(new ConflictException('Quá hạn sửa kết quả buổi tập'));
     });
 
     it('rejects a cancelled session even within the window', () => {
       expect(() =>
-        assertTrialVideoEditable(TrainingSessionStatus.CANCELLED, endAt, endAt),
+        assertSessionRecordEditable(
+          TrainingSessionStatus.CANCELLED,
+          endAt,
+          endAt,
+        ),
       ).toThrow(
-        new ConflictException('Buổi tập đã hủy, không sửa video chạy thử'),
+        new ConflictException('Buổi tập đã hủy, không sửa kết quả được'),
       );
     });
   });

@@ -3948,6 +3948,51 @@
         "tags": [
           "performance"
         ]
+      },
+      "patch": {
+        "description": "Chỉ Head Trainer phụ trách lớp, ngựa thuộc khu mình; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Bắt buộc reason; field bỏ trống giữ nguyên, comment null để xóa nhận xét.",
+        "operationId": "PerformanceEvaluationsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePerformanceEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceEvaluationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sửa điểm hoặc nhận xét của đánh giá lượt tập",
+        "tags": [
+          "performance"
+        ]
       }
     },
     "/api/v1/horses/{id}/alerts": {
@@ -7736,8 +7781,8 @@
     },
     "/api/v1/session-participants/{id}/trial-results/{attemptNo}": {
       "patch": {
-        "description": "Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Gửi videoMediaId null để gỡ video; chỉ video thay đổi.",
-        "operationId": "TrialResultsController_updateVideo",
+        "description": "Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.",
+        "operationId": "TrialResultsController_update",
         "parameters": [
           {
             "name": "id",
@@ -7761,7 +7806,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTrialResultVideoDto"
+                "$ref": "#/components/schemas/UpdateTrialResultDto"
               }
             }
           }
@@ -7783,7 +7828,7 @@
             "bearer": []
           }
         ],
-        "summary": "Gắn, đổi hoặc gỡ video của một lần chạy thử",
+        "summary": "Sửa video, thời gian hoặc ghi chú của một lần chạy thử",
         "tags": [
           "training"
         ]
@@ -14215,7 +14260,8 @@
               "DAILY_CHECKLIST",
               "INCIDENT",
               "SUPPLY",
-              "SURCHARGE"
+              "SURCHARGE",
+              "TRAINING_SESSION"
             ]
           },
           "priority": {
@@ -14384,6 +14430,31 @@
           "score",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "UpdatePerformanceEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Điểm mới; bỏ trống để giữ nguyên"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true,
+            "description": "Nhận xét mới; gửi null để xóa, bỏ trống để giữ nguyên"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do sửa"
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "HorseAlertDto": {
@@ -18320,19 +18391,33 @@
           "elapsedMs"
         ]
       },
-      "UpdateTrialResultVideoDto": {
+      "UpdateTrialResultDto": {
         "type": "object",
         "properties": {
           "videoMediaId": {
             "type": "string",
             "format": "uuid",
             "nullable": true,
-            "description": "Id video chạy thử đã tải lên với mục đích TRIAL_VIDEO bởi chính người sửa; gửi null để gỡ video"
+            "description": "Id video chạy thử đã tải lên với mục đích TRIAL_VIDEO bởi chính người sửa; gửi null để gỡ video, bỏ trống để giữ nguyên"
+          },
+          "elapsedMs": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 3600000,
+            "description": "Thời gian chạy mới (ms); bỏ trống để giữ nguyên"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ghi chú mới; gửi null để xóa, bỏ trống để giữ nguyên"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Lý do sửa; bắt buộc khi gửi elapsedMs hoặc notes"
           }
-        },
-        "required": [
-          "videoMediaId"
-        ]
+        }
       },
       "TrainingClassResponseDto": {
         "type": "object",

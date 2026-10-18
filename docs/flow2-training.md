@@ -97,8 +97,17 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
       - Ghi danh: mỗi buổi trong lịch của ngựa ở lớp này phải đạt giới hạn so với lịch ở lớp khác của ngựa, không thì 409 cả thao tác. Danh sách ngựa ghi danh được (4a) tự bỏ ngựa vướng.
       - Lượt dừng sớm (mục 5 luật 13) được xét y như lượt hoàn thành.
 7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
-   1. Head Trainer phụ trách lớp gắn, đổi hoặc gỡ (`videoMediaId = null`) video của một lần chạy thử bằng `PATCH /session-participants/:id/trial-results/:attemptNo`, không kiểm khu của ngựa. Làm được tới 7 ngày sau giờ kết thúc dự kiến của buổi; buổi đã hủy thì 409. Chỉ video thay đổi, các số đo giữ nguyên.
+   1. Sửa một lần chạy thử sau khi ghi (`PATCH /session-participants/:id/trial-results/:attemptNo`, body `{ videoMediaId?, elapsedMs?, notes?, reason? }`): chỉ Head Trainer phụ trách lớp, không kiểm khu của ngựa.
+      - Hạn sửa (luật chung cho video, thời gian, ghi chú chạy thử và đánh giá ở luật 9): tới 7 ngày sau giờ kết thúc dự kiến của buổi, đúng mốc vẫn sửa được; quá hạn 409 "Quá hạn sửa kết quả buổi tập"; buổi đã hủy 409 "Buổi tập đã hủy, không sửa kết quả được". Lượt hoàn thành và lượt dừng sớm sửa như nhau.
+      - Video: gắn, đổi hoặc gỡ (`videoMediaId = null`), không cần lý do.
+      - Thời gian (`elapsedMs`, số nguyên 1 ms tới 1 giờ như khi ghi) và ghi chú (`notes`, null để xóa): bắt buộc `reason`, cắt khoảng trắng hai đầu, 1–500 ký tự; thiếu hoặc trống thì 400.
+      - Field bỏ trống giữ nguyên. Không sửa số lần chạy, người ghi; không xóa lần chạy.
+      - Có field đổi khác: ghi một dòng nhật ký (chức năng `TIME_TRIAL`) gồm giá trị trước, sau của các field đổi, lý do (nếu có) và người sửa. Không đổi gì thì không ghi, trả lần chạy như cũ.
+      - Không báo chủ ngựa. Thành tích tốt nhất của lượt (`bestTrialMs` ở báo cáo tiến độ ngựa) tính lại theo thời gian mới.
 8. Danh sách lượt tập của buổi (`GET /training-sessions/:sessionId/participants`) kèm `horseName`, `horsePhotoUrl` (link có hạn, null nếu ngựa chưa có ảnh) và `assignedGroomName` (null nếu chưa giao Groom); danh sách ghi danh của lớp (`GET /classes/:classId/enrollments`) kèm `horseName`, `horsePhotoUrl`. Ngựa hoặc Groom đã xóa mềm vẫn hiện tên; các endpoint ghi giữ response cũ.
+9. Đánh giá lượt tập (`POST /session-participants/:id/evaluation`, `{ score, comment? }`, điểm 1–10): Head Trainer phụ trách lớp, ngựa thuộc khu mình, lượt hoàn thành hoặc dừng sớm; mỗi lượt một đánh giá.
+   1. Sửa đánh giá (`PATCH /session-participants/:id/evaluation`, `{ score?, comment?, reason }`): cùng quyền như khi ghi, cùng hạn sửa ở luật 7.1. `reason` bắt buộc như luật 7.1; `comment` null để xóa nhận xét; field bỏ trống giữ nguyên; không đổi người đánh giá. Lượt chưa có đánh giá thì 404.
+   2. Có field đổi khác: ghi một dòng nhật ký (chức năng `PERF_EVAL`) gồm giá trị trước, sau, lý do và người sửa. Không báo chủ ngựa.
 
 ### 5. Ngựa có được tập buổi này không
 
@@ -162,7 +171,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | Tạo, sửa lớp, buổi, chạy thử, ghi danh | Không | Lớp mình phụ trách | Không | Không | Không |
 | Điểm danh, báo vắng, báo sẵn sàng | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
 | Bắt đầu, hoàn thành, dừng sớm lượt, ghi kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
-| Đánh giá buổi | Không | Có | Không | Không | Không |
+| Đánh giá buổi, sửa đánh giá (7 ngày sau buổi) | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
+| Sửa video, thời gian, ghi chú chạy thử (7 ngày sau buổi) | Không | Lớp mình phụ trách | Không | Không | Không |
 | Ngưỡng nhịp tim/tốc độ | Xem | Xem ngựa thuộc khu mình | Xem | Không | Không |
 | Bàn giao Head Trainer | Có | Không | Không | Không | Không |
 
@@ -202,8 +212,9 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | GET | `/time-trials/:id` | Theo quyền xem buổi | Một cấu hình chạy thử |
 | PATCH | `/session-participants/:id/groom` | HT | Giao Groom dắt ngựa |
 | GET/POST | `/session-participants/:id/trial-results` | Xem: theo quyền xem lượt; ghi: HT | Kết quả chạy thử của lượt |
-| PATCH | `/session-participants/:id/trial-results/:attemptNo` | HT | Gắn, đổi hoặc gỡ video của một lần chạy thử `{ videoMediaId }` |
+| PATCH | `/session-participants/:id/trial-results/:attemptNo` | HT của lớp | Sửa video, thời gian, ghi chú của một lần chạy thử `{ videoMediaId?, elapsedMs?, notes?, reason? }` (mục 4 luật 7.1) |
 | GET/POST | `/session-participants/:id/evaluation` | Xem: theo quyền xem lượt; ghi: HT | Đánh giá lượt tập |
+| PATCH | `/session-participants/:id/evaluation` | HT | Sửa điểm, nhận xét `{ score?, comment?, reason }` (mục 4 luật 9.1) |
 | POST | `/session-participants/:id/check-in`, `/ready`, `/absent` | HT, GROOM | Điểm danh, báo sẵn sàng, báo vắng |
 | POST | `/session-participants/:id/start`, `/complete` | HT | Bắt đầu, hoàn thành lượt tập |
 | POST | `/session-participants/:id/stop` | HT | Dừng sớm lượt đang tập `{ reason }` |

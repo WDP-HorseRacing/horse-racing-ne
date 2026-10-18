@@ -710,31 +710,35 @@ export function assertClassOpenForSessions(status: TrainingClassStatus): void {
 }
 
 /**
- * Thời gian cho phép gắn, đổi hoặc gỡ video chạy thử kể từ giờ kết thúc dự kiến của buổi tập (7 ngày)
+ * Thời gian cho phép sửa số liệu đã ghi của buổi tập (video, thời gian, ghi chú chạy thử, đánh giá) kể từ giờ kết thúc dự kiến của buổi (7 ngày)
  */
-export const TRIAL_VIDEO_EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+export const SESSION_RECORD_EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Chỉ cho gắn, đổi hoặc gỡ video chạy thử khi buổi chưa hủy và chưa quá hạn
+ * Chỉ cho sửa số liệu đã ghi của buổi tập khi buổi chưa hủy và chưa quá hạn
  *
+ * - Áp dụng cho video, thời gian, ghi chú chạy thử và điểm, nhận xét đánh giá
  * - Buổi đã hủy: 409
  * - Quá giờ kết thúc dự kiến của buổi cộng 7 ngày: 409; đúng mốc đó vẫn còn được sửa
  *
  * @param sessionStatus Trạng thái của buổi tập
  * @param scheduledEndAt Giờ kết thúc dự kiến của buổi tập
  * @param now Thời điểm hiện tại
- * @throws ConflictException Nếu buổi đã hủy hoặc đã quá hạn gắn video
+ * @throws ConflictException Nếu buổi đã hủy hoặc đã quá hạn sửa
  */
-export function assertTrialVideoEditable(
+export function assertSessionRecordEditable(
   sessionStatus: TrainingSessionStatus,
   scheduledEndAt: Date,
   now: Date,
 ): void {
   if (sessionStatus === TrainingSessionStatus.CANCELLED) {
-    throw new ConflictException('Buổi tập đã hủy, không sửa video chạy thử');
+    throw new ConflictException('Buổi tập đã hủy, không sửa kết quả được');
   }
-  if (now.getTime() > scheduledEndAt.getTime() + TRIAL_VIDEO_EDIT_WINDOW_MS) {
-    throw new ConflictException('Quá hạn gắn video chạy thử');
+  if (
+    now.getTime() >
+    scheduledEndAt.getTime() + SESSION_RECORD_EDIT_WINDOW_MS
+  ) {
+    throw new ConflictException('Quá hạn sửa kết quả buổi tập');
   }
 }
 

@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 217 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 218 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -142,6 +142,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/horses/{id}/thresholds` | Xem ngưỡng nhịp tim/tốc độ đang áp cho ngựa |
 | GET | `/api/v1/horses/{id}/workload` | Khối lượng tập của ngựa trong một khoảng ngày (lượt đã hoàn thành) |
 | GET | `/api/v1/session-participants/{id}/evaluation` |  |
+| PATCH | `/api/v1/session-participants/{id}/evaluation` | Sửa điểm hoặc nhận xét của đánh giá lượt tập |
 | POST | `/api/v1/session-participants/{id}/evaluation` |  |
 | GET | `/api/v1/session-participants/{id}/metrics` | Xem các điểm đo nhịp tim/tốc độ của lượt tập theo thời gian |
 | POST | `/api/v1/session-participants/{id}/metrics` | Nhận một điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra |
@@ -267,7 +268,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | POST | `/api/v1/session-participants/{id}/stop` | Dừng sớm lượt đang tập, bắt buộc lý do |
 | GET | `/api/v1/session-participants/{id}/trial-results` |  |
 | POST | `/api/v1/session-participants/{id}/trial-results` |  |
-| PATCH | `/api/v1/session-participants/{id}/trial-results/{attemptNo}` | Gắn, đổi hoặc gỡ video của một lần chạy thử |
+| PATCH | `/api/v1/session-participants/{id}/trial-results/{attemptNo}` | Sửa video, thời gian hoặc ghi chú của một lần chạy thử |
 | GET | `/api/v1/time-trials/{id}` |  |
 | GET | `/api/v1/training-plans` | Liệt kê giáo án (Head Trainer: của mình) |
 | POST | `/api/v1/training-plans` | Tạo giáo án ghép môn theo tuần |

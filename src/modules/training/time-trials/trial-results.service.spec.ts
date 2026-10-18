@@ -179,7 +179,7 @@ describe('TrialResultsService', () => {
     });
   });
 
-  describe('updateVideo', () => {
+  describe('update', () => {
     const endedSession = (overrides: object = {}) => ({
       id: 's1',
       status: TrainingSessionStatus.COMPLETED,
@@ -204,7 +204,7 @@ describe('TrialResultsService', () => {
     });
 
     it('sets the video after the session ended and returns a signed videoUrl', async () => {
-      const result = await service.updateVideo(actor, 'p1', 2, {
+      const result = await service.update(actor, 'p1', 2, {
         videoMediaId: VIDEO_ID,
       });
 
@@ -232,14 +232,73 @@ describe('TrialResultsService', () => {
         entityId: 'r1',
         before: { videoMediaId: null },
         after: { videoMediaId: VIDEO_ID },
+        reason: null,
         feature: 'TIME_TRIAL',
       });
+    });
+
+    it('corrects the time and notes, keeps the recorder and logs before/after with the reason', async () => {
+      const result = await service.update(actor, 'p1', 2, {
+        elapsedMs: 59000,
+        notes: 'Bấm giờ lại',
+        reason: 'Nhập nhầm',
+      });
+
+      expect(media.assertAttachableTrialVideo).not.toHaveBeenCalled();
+      expect(manager.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attemptNo: 2,
+          elapsedMs: '59000',
+          notes: 'Bấm giờ lại',
+          recordedBy: 'ht-9',
+          videoMediaId: null,
+        }),
+      );
+      expect(result).toMatchObject({ elapsedMs: 59000, notes: 'Bấm giờ lại' });
+      expect(audit.record).toHaveBeenCalledWith(manager, {
+        actorId: 'ht-1',
+        action: 'UPDATE',
+        entityType: 'TRIAL_RESULT',
+        entityId: 'r1',
+        before: { elapsedMs: 61000, notes: 'n' },
+        after: { elapsedMs: 59000, notes: 'Bấm giờ lại' },
+        reason: 'Nhập nhầm',
+        feature: 'TIME_TRIAL',
+      });
+    });
+
+    it('logs only the fields that changed', async () => {
+      await service.update(actor, 'p1', 2, {
+        elapsedMs: 61000,
+        notes: null,
+        reason: 'Xóa ghi chú',
+      });
+
+      expect(audit.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          before: { notes: 'n' },
+          after: { notes: null },
+          reason: 'Xóa ghi chú',
+        }),
+      );
+    });
+
+    it('writes nothing when no field changes', async () => {
+      await service.update(actor, 'p1', 2, {
+        elapsedMs: 61000,
+        notes: 'n',
+        reason: 'Không đổi',
+      });
+
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
     });
 
     it('writes no audit row when the video stays the same', async () => {
       manager.findOne.mockResolvedValue({ id: 'r1', videoMediaId: null });
 
-      await service.updateVideo(actor, 'p1', 2, { videoMediaId: null });
+      await service.update(actor, 'p1', 2, { videoMediaId: null });
 
       expect(audit.record).not.toHaveBeenCalled();
     });
@@ -247,7 +306,7 @@ describe('TrialResultsService', () => {
     it('removes the video with null without media checks or signing', async () => {
       manager.findOne.mockResolvedValue({ id: 'r1', videoMediaId: VIDEO_ID });
 
-      const result = await service.updateVideo(actor, 'p1', 2, {
+      const result = await service.update(actor, 'p1', 2, {
         videoMediaId: null,
       });
 
@@ -262,7 +321,7 @@ describe('TrialResultsService', () => {
       );
 
       await expect(
-        service.updateVideo(actor, 'p1', 2, { videoMediaId: VIDEO_ID }),
+        service.update(actor, 'p1', 2, { videoMediaId: VIDEO_ID }),
       ).rejects.toThrow(BadRequestException);
       expect(transaction).not.toHaveBeenCalled();
     });
@@ -273,7 +332,7 @@ describe('TrialResultsService', () => {
       });
 
       await expect(
-        service.updateVideo(actor, 'p1', 2, { videoMediaId: null }),
+        service.update(actor, 'p1', 2, { videoMediaId: null }),
       ).rejects.toThrow(ForbiddenException);
       expect(access.assertCanManageClass).toHaveBeenCalledWith(
         actor,
@@ -288,7 +347,7 @@ describe('TrialResultsService', () => {
       manager.findOne.mockResolvedValue(null);
 
       await expect(
-        service.updateVideo(actor, 'p1', 9, { videoMediaId: null }),
+        service.update(actor, 'p1', 9, { videoMediaId: null }),
       ).rejects.toThrow(new NotFoundException('Không tìm thấy lần chạy thử'));
     });
 
@@ -298,8 +357,10 @@ describe('TrialResultsService', () => {
       );
 
       await expect(
-        service.updateVideo(actor, 'p1', 2, { videoMediaId: null }),
-      ).rejects.toThrow(ConflictException);
+        service.update(actor, 'p1', 2, { elapsedMs: 1, reason: 'x' }),
+      ).rejects.toThrow(
+        new ConflictException('Buổi tập đã hủy, không sửa kết quả được'),
+      );
       expect(manager.save).not.toHaveBeenCalled();
     });
 
@@ -311,8 +372,8 @@ describe('TrialResultsService', () => {
       );
 
       await expect(
-        service.updateVideo(actor, 'p1', 2, { videoMediaId: null }),
-      ).rejects.toThrow(new ConflictException('Quá hạn gắn video chạy thử'));
+        service.update(actor, 'p1', 2, { elapsedMs: 1, reason: 'x' }),
+      ).rejects.toThrow(new ConflictException('Quá hạn sửa kết quả buổi tập'));
       expect(manager.save).not.toHaveBeenCalled();
     });
   });

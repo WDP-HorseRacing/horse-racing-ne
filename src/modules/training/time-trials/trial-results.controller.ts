@@ -21,7 +21,7 @@ import { UserRole } from '../../users/user.enums';
 import {
   CreateTrialResultDto,
   TrialResultResponseDto,
-  UpdateTrialResultVideoDto,
+  UpdateTrialResultDto,
 } from '../dto/time-trial.dto';
 import { TrialResultsService } from './trial-results.service';
 
@@ -51,17 +51,17 @@ export class TrialResultsController {
   @Access([UserRole.HEAD_TRAINER])
   @Patch('session-participants/:id/trial-results/:attemptNo')
   @ApiOperation({
-    summary: 'Gắn, đổi hoặc gỡ video của một lần chạy thử',
+    summary: 'Sửa video, thời gian hoặc ghi chú của một lần chạy thử',
     description:
-      'Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Gửi videoMediaId null để gỡ video; chỉ video thay đổi.',
+      'Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.',
   })
   @ApiOkResponse({ type: TrialResultResponseDto })
-  updateVideo(
+  update(
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
     @Param('attemptNo', ParseIntPipe) attemptNo: number,
-    @Body() body: UpdateTrialResultVideoDto,
+    @Body() body: UpdateTrialResultDto,
   ) {
-    return this.results.updateVideo(actor, id, attemptNo, body);
+    return this.results.update(actor, id, attemptNo, body);
   }
 }

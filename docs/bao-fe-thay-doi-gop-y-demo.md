@@ -269,3 +269,27 @@ Không đổi API.
 
    Bỏ `source`, `profiles`; `activeLimits` đổi tên thành `limits`.
 3. Nhật ký thao tác: bỏ giá trị `feature = PERF_THRESHOLD` và `entityType = PERFORMANCE_THRESHOLD`. FE xóa hai giá trị này khỏi bộ lọc và bảng nhãn.
+
+## Sửa kết quả chạy thử và đánh giá sau buổi
+
+1. Hạn sửa chung: HT sửa được tới 7 ngày sau giờ kết thúc dự kiến của buổi; buổi đã hủy hoặc quá hạn thì 409. Lượt `COMPLETED` và `STOPPED` sửa như nhau. Không báo chủ ngựa.
+2. `PATCH /session-participants/:id/trial-results/:attemptNo` (HT của lớp) nhận thêm `elapsedMs`, `notes`, `reason`; mọi field đều tùy chọn, bỏ trống là giữ nguyên:
+
+   ```json
+   { "elapsedMs": 75000, "notes": "Bấm lại theo video", "reason": "Bấm giờ nhầm" }
+   ```
+
+   - Body cũ `{ "videoMediaId": "uuid" }` hoặc `{ "videoMediaId": null }` chạy như trước, không cần `reason`.
+   - Gửi `elapsedMs` (1–3.600.000) hoặc `notes` (null để xóa) thì bắt buộc `reason` 1–500 ký tự sau khi cắt khoảng trắng; thiếu hoặc trống là 400.
+   - Body `{}` trước đây là 400, giờ trả 200 và không đổi gì.
+   - Không sửa `attemptNo`, không xóa lần chạy.
+   - Schema request đổi tên `UpdateTrialResultVideoDto` → `UpdateTrialResultDto`.
+3. Route mới `PATCH /session-participants/:id/evaluation` (HT phụ trách lớp, ngựa thuộc khu mình), response như `GET`:
+
+   ```json
+   { "score": 8, "comment": null, "reason": "Chấm nhầm" }
+   ```
+
+   - `reason` bắt buộc 1–500 ký tự; `score` 1–10 và `comment` (null để xóa) tùy chọn. Lượt chưa có đánh giá là 404.
+4. Câu báo 409 của PATCH video đổi chung cho cả 3 thao tác: "Quá hạn sửa kết quả buổi tập" (trước là "Quá hạn gắn video chạy thử"), "Buổi tập đã hủy, không sửa kết quả được" (trước là "Buổi tập đã hủy, không sửa video chạy thử").
+5. Báo cáo tiến độ ngựa (`bestTrialMs`, `evaluation`) tự lấy giá trị mới sau khi sửa. Nhật ký thao tác ghi giá trị trước, sau và `reason` (`feature = TIME_TRIAL` / `PERF_EVAL`, `action = UPDATE`).

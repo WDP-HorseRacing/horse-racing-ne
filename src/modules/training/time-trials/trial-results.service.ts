@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { changedFieldsDiff } from '../../../common/utils/record-diff';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
@@ -14,7 +15,7 @@ import { MediaService } from '../../media/services/media.service';
 import {
   CreateTrialResultDto,
   TrialResultResponseDto,
-  UpdateTrialResultVideoDto,
+  UpdateTrialResultDto,
 } from '../dto/time-trial.dto';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
@@ -22,7 +23,7 @@ import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrialResultEntity } from '../entities/trial-result.entity';
 import { toTrialResultResponse } from '../mappers/trial-result.mapper';
-import { assertTrialVideoEditable } from '../policies/training.policy';
+import { assertSessionRecordEditable } from '../policies/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
 
@@ -193,32 +194,32 @@ export class TrialResultsService {
   }
 
   /**
-   * Gắn, đổi hoặc gỡ video của một lần chạy thử, kể cả sau khi buổi tập kết thúc
+   * Sửa video, thời gian hoặc ghi chú của một lần chạy thử, kể cả sau khi buổi tập kết thúc
    *
    * - Chỉ Head Trainer đang phụ trách lớp của lượt tập; không kiểm khu chuồng của ngựa
+   * - Field bỏ trống giữ nguyên; không sửa số lần chạy và người ghi
    * - Video khác null phải do chính người sửa tải lên với mục đích TRIAL_VIDEO và đã có trên storage; kiểm trước khi mở transaction
    * - videoMediaId null: gỡ video khỏi lần chạy, tệp cũ vẫn nằm trên storage
    * - Buổi đã hủy hoặc quá 7 ngày kể từ giờ kết thúc dự kiến: 409
-   * - Chỉ đổi video, giữ nguyên thời gian, ghi chú và người ghi
-   * - Video đổi khác: ghi nhật ký video trước và sau
+   * - Có field đổi khác: ghi một dòng nhật ký gồm giá trị trước, sau của các field đổi và lý do (nếu có); không đổi gì thì không ghi
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param participantId UUID của lượt tham gia buổi tập
-   * @param attemptNo Số lần chạy cần sửa video
-   * @param body Id video mới, hoặc null để gỡ video
+   * @param attemptNo Số lần chạy cần sửa
+   * @param body Video, thời gian, ghi chú mới và lý do sửa
    * @returns Promise trả về lần chạy sau khi sửa kèm videoUrl
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phải Head Trainer phụ trách lớp
    * @throws NotFoundException Nếu không có lượt tập, không có lần chạy, hoặc video không tồn tại hay không do người gọi tải lên
    * @throws BadRequestException Nếu video không phải TRIAL_VIDEO, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
-   * @throws ConflictException Nếu buổi đã hủy, quá hạn gắn video hoặc video chưa có trên storage
+   * @throws ConflictException Nếu buổi đã hủy, quá hạn sửa hoặc video chưa có trên storage
    */
-  async updateVideo(
+  async update(
     actor: Actor,
     participantId: string,
     attemptNo: number,
-    body: UpdateTrialResultVideoDto,
+    body: UpdateTrialResultDto,
   ): Promise<TrialResultResponseDto> {
-    if (body.videoMediaId !== null) {
+    if (body.videoMediaId) {
       const uploader = await this.access.currentUser(actor);
       await this.media.assertAttachableTrialVideo(
         uploader.id,
@@ -244,25 +245,34 @@ export class TrialResultsService {
       if (!result) {
         throw new NotFoundException('Không tìm thấy lần chạy thử');
       }
-      assertTrialVideoEditable(
+      assertSessionRecordEditable(
         session.status,
         session.scheduledEndAt,
         new Date(),
       );
-      const previousVideoId = result.videoMediaId;
-      result.videoMediaId = body.videoMediaId;
-      const saved = await manager.save(result);
-      if (previousVideoId !== saved.videoMediaId) {
-        await this.auditService.record(manager, {
-          actorId: caller.id,
-          action: AuditAction.UPDATE,
-          entityType: AuditEntityType.TRIAL_RESULT,
-          entityId: saved.id,
-          before: { videoMediaId: previousVideoId },
-          after: { videoMediaId: saved.videoMediaId },
-          feature: AuditFeature.TIME_TRIAL,
-        });
+      const diff = changedFieldsDiff(trialResultAuditData(result), {
+        videoMediaId: body.videoMediaId,
+        elapsedMs: body.elapsedMs,
+        notes: body.notes,
+      });
+      if (!diff) return result;
+      if (diff.after.videoMediaId !== undefined) {
+        result.videoMediaId = diff.after.videoMediaId;
       }
+      if (diff.after.elapsedMs !== undefined) {
+        result.elapsedMs = String(diff.after.elapsedMs);
+      }
+      if (diff.after.notes !== undefined) result.notes = diff.after.notes;
+      const saved = await manager.save(result);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.TRIAL_RESULT,
+        entityId: saved.id,
+        ...diff,
+        reason: body.reason ?? null,
+        feature: AuditFeature.TIME_TRIAL,
+      });
       return saved;
     });
     const videoUrl = row.videoMediaId
@@ -270,4 +280,22 @@ export class TrialResultsService {
       : null;
     return toTrialResultResponse(row, videoUrl);
   }
+}
+
+/**
+ * Lấy các field sửa được của một lần chạy thử để so sánh và ghi nhật ký
+ *
+ * @param row Lần chạy thử đang lưu
+ * @returns Video, thời gian (ms, dạng số) và ghi chú của lần chạy
+ */
+function trialResultAuditData(row: TrialResultEntity): {
+  videoMediaId: string | null;
+  elapsedMs: number;
+  notes: string | null;
+} {
+  return {
+    videoMediaId: row.videoMediaId,
+    elapsedMs: Number(row.elapsedMs),
+    notes: row.notes,
+  };
 }
