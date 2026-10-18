@@ -1,4 +1,6 @@
-import { EntityManager } from 'typeorm';
+import { TrainingAccessService } from './training-access.service';
+import { DataSource, EntityManager } from 'typeorm';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
@@ -11,6 +13,8 @@ type Row = Record<string, unknown>;
 function buildQueryBuilder(rows: Row[]) {
   const qb = {
     innerJoin: jest.fn().mockReturnThis(),
+    innerJoinAndSelect: jest.fn().mockReturnThis(),
+    withDeleted: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     setLock: jest.fn().mockReturnThis(),
@@ -59,7 +63,7 @@ describe('TrainingOperationsFacade.withdrawHorseFromClasses', () => {
   let refresh: jest.SpyInstance;
 
   beforeEach(() => {
-    facade = new TrainingOperationsFacade();
+    facade = new TrainingOperationsFacade({} as TrainingAccessService);
     refresh = jest
       .spyOn(facade, 'refreshSessionStatus')
       .mockResolvedValue({} as never);
@@ -185,7 +189,7 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
   let facade: TrainingOperationsFacade;
 
   beforeEach(() => {
-    facade = new TrainingOperationsFacade();
+    facade = new TrainingOperationsFacade({} as TrainingAccessService);
     jest.spyOn(facade, 'refreshSessionStatus').mockResolvedValue({} as never);
   });
 
@@ -235,7 +239,9 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
 });
 
 describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
-  const facade = new TrainingOperationsFacade();
+  const facade = new TrainingOperationsFacade(
+    new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+  );
 
   it('targets open future participants of the horse assigned to the old groom or to nobody', async () => {
     const { manager, participantQb } = buildManager([], []);
@@ -295,10 +301,19 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
   });
 
   it('reassigns the found participants to the new groom and returns their ids', async () => {
-    const rows = [
-      { id: 'p1', assignedGroomId: 'g-old' },
-      { id: 'p2', assignedGroomId: 'g-old' },
-    ];
+    const session = {
+      status: TrainingSessionStatus.SCHEDULED,
+      name: 'Sáng',
+      scheduledStartAt: AT,
+      scheduledEndAt: new Date(AT.getTime() + 3_600_000),
+    };
+    const rows = ['p1', 'p2'].map((id) => ({
+      id,
+      sessionId: id,
+      assignedGroomId: 'g-old',
+      session,
+      horse: { name: 'Gió' },
+    }));
     const { manager, save } = buildManager([], rows);
 
     const moved = await facade.moveFutureParticipantsToGroom(
@@ -326,7 +341,7 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
 
 describe('TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock', () => {
   it('uses the same >= cut-off as leaving a class, so a session starting at the lock time is cancelled', async () => {
-    const facade = new TrainingOperationsFacade();
+    const facade = new TrainingOperationsFacade({} as TrainingAccessService);
     const { manager, participantQb } = buildManager([], []);
 
     await facade.cancelFutureParticipationsByTrainingLock(
@@ -344,7 +359,7 @@ describe('TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock', ()
 });
 
 describe('TrainingOperationsFacade.refreshSessionStatus', () => {
-  const facade = new TrainingOperationsFacade();
+  const facade = new TrainingOperationsFacade({} as TrainingAccessService);
 
   function sessionManager(
     status: TrainingSessionStatus,

@@ -66,6 +66,8 @@ function setup() {
       endDate: '2099-10-31',
     }),
     assertCanManageClass: jest.fn(),
+    groomRunClashes: jest.fn().mockResolvedValue([]),
+    lockUsers: jest.fn(),
   };
   const service = new TrainingSessionsService(
     {} as Repository<TrainingSessionEntity>,
@@ -168,6 +170,8 @@ function setupCreate(
       endDate: '2099-10-31',
     }),
     assertCanManageClass: jest.fn(),
+    groomRunClashes: jest.fn().mockResolvedValue([]),
+    lockUsers: jest.fn(),
   };
   const service = new TrainingSessionsService(
     {} as Repository<TrainingSessionEntity>,

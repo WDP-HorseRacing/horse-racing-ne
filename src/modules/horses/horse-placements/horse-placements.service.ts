@@ -205,7 +205,7 @@ export class HorsePlacementsService {
    * @throws BadRequestException Nếu ô không thuộc khu của ngựa, hoặc groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phụ trách khu của ngựa
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng hoặc đã mất, khu không hoạt động, ô không còn trống, groom không còn hoạt động hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng hoặc đã mất, khu không hoạt động, ô không còn trống, groom không còn hoạt động, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt hoặc có thao tác khác chạy cùng lúc
    */
   async placeHorse(
     actor: Actor,

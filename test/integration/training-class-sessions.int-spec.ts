@@ -46,7 +46,9 @@ describe('Training class queries over its sessions (Postgres)', () => {
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),
       access,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       {
         signDownloadUrls: () => Promise.resolve(new Map()),

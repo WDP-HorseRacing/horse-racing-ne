@@ -22,8 +22,13 @@ import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import { HORSE_SCHEDULE_SESSION_STATUSES } from '../policies/training.policy';
+import {
+  findGroomRunClashes,
+  HORSE_SCHEDULE_SESSION_STATUSES,
+} from '../policies/training.policy';
+import { toGroomRun } from '../utils/groom-run';
 import type {
+  GroomRun,
   HorseBrief,
   HorseClassSession,
   HorseSessionHolding,
@@ -212,6 +217,87 @@ export class TrainingAccessService {
       scheduledStartAt: session.scheduledStartAt,
       scheduledEndAt: session.scheduledEndAt,
     }));
+  }
+
+  /**
+   * Khóa row user của nhiều người theo thứ tự UUID
+   *
+   * - Bỏ id trùng; id không có user thì bỏ qua
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param userIds UUID các user cần khóa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockUsers(manager: EntityManager, userIds: string[]): Promise<void> {
+    const ids = [...new Set(userIds)].sort();
+    if (ids.length === 0) return;
+    await manager.find(UserEntity, {
+      select: { id: true },
+      where: { id: In(ids) },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+  }
+
+  /**
+   * Lấy các lượt tập Groom được giao dắt có buổi giao với một khoảng giờ, mọi trạng thái
+   *
+   * - Kèm tên ngựa (kể cả hồ sơ đã xóa mềm), tên, giờ và trạng thái buổi
+   *
+   * @param manager EntityManager dùng để query
+   * @param groomId UUID của Groom
+   * @param from Đầu khoảng giờ
+   * @param to Cuối khoảng giờ
+   * @returns Promise trả về các lượt Groom đang dắt trong khoảng giờ
+   */
+  async groomRunsBetween(
+    manager: EntityManager,
+    groomId: string,
+    from: Date,
+    to: Date,
+  ): Promise<GroomRun[]> {
+    const rows = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .innerJoinAndSelect('participant.session', 'session')
+      .innerJoinAndSelect('participant.horse', 'horse')
+      .withDeleted()
+      .where('participant.assignedGroomId = :groomId', { groomId })
+      .andWhere('session.scheduledStartAt < :to', { to })
+      .andWhere('session.scheduledEndAt > :from', { from })
+      .getMany();
+    return rows.map(toGroomRun);
+  }
+
+  /**
+   * Tìm các cặp lượt trùng giờ khi gắn người dắt cho nhiều lượt cùng lúc
+   *
+   * - Gom lượt theo Groom; mỗi Groom đọc lượt đang dắt trong khoảng giờ của các lượt sắp gắn (groomRunsBetween) rồi xét bằng findGroomRunClashes
+   * - Không lock user của Groom
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param runs Các lượt sắp gắn, mỗi lượt kèm UUID Groom được gắn
+   * @returns Promise trả về các cặp lượt sắp gắn và lượt đang dắt trùng giờ
+   */
+  async groomRunClashes(
+    manager: EntityManager,
+    runs: ReadonlyArray<{ groomId: string; run: GroomRun }>,
+  ): Promise<Array<{ run: GroomRun; clash: GroomRun }>> {
+    const byGroom = new Map<string, GroomRun[]>();
+    for (const { groomId, run } of runs) {
+      byGroom.set(groomId, [...(byGroom.get(groomId) ?? []), run]);
+    }
+    const clashes: Array<{ run: GroomRun; clash: GroomRun }> = [];
+    for (const [groomId, own] of byGroom) {
+      const busy = await this.groomRunsBetween(
+        manager,
+        groomId,
+        new Date(Math.min(...own.map((run) => +run.scheduledStartAt))),
+        new Date(Math.max(...own.map((run) => +run.scheduledEndAt))),
+      );
+      clashes.push(...findGroomRunClashes(own, busy));
+    }
+    return clashes;
   }
 
   /**

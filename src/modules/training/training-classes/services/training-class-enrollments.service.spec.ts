@@ -70,7 +70,7 @@ function setup(
     }),
     assertTrainerBarn: jest.fn(),
   };
-  const operations = new TrainingOperationsFacade();
+  const operations = new TrainingOperationsFacade({} as TrainingAccessService);
   const refresh = jest
     .spyOn(operations, 'refreshSessionStatus')
     .mockResolvedValue({} as never);
@@ -303,7 +303,7 @@ describe('TrainingClassEnrollmentsService.list', () => {
         find: jest.fn().mockResolvedValue(rows),
       } as unknown as Repository<HorseEnrollmentEntity>,
       access as unknown as TrainingAccessService,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade({} as TrainingAccessService),
       { manager: {} } as unknown as DataSource,
       media as unknown as MediaService,
       { record: jest.fn() },

@@ -38,6 +38,7 @@ import {
 } from '../../mappers/horse-enrollment.mapper';
 import { TrainingAccessService } from '../../shared/training-access.service';
 import {
+  assertNoGroomRunClashes,
   assertHorseEnrollable,
   assertNoHoldingOverlap,
   HORSE_SCHEDULE_SESSION_STATUSES,
@@ -48,6 +49,7 @@ import {
   sessionsByHorse,
   initialParticipantEligibility,
 } from '../../policies/training.policy';
+import type { GroomRun } from '../../types/training-session.types';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
 import { horseListDisplay } from '../../utils/horse-list-display';
 
@@ -374,12 +376,13 @@ export class TrainingClassEnrollmentsService {
    * - Buổi chưa có lượt của ngựa: tạo lượt mới theo điều kiện huấn luyện hiện tại
    * - Buổi có lượt cũ CANCELLED (do rời lớp): dùng lại lượt đó, gắn ghi danh mới và đặt lại như lượt mới tạo
    * - Buổi có lượt cũ ở trạng thái khác: giữ nguyên
+   * - Lượt mới hoặc dùng lại gắn Groom phụ trách ngựa lúc bắt đầu buổi; khóa user các Groom đó theo thứ tự UUID rồi mới ghi lượt; Groom đang dắt lượt khác trùng giờ thì từ chối cả lần ghi danh (assertNoGroomRunClashes)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param enrollment Lượt ghi danh vừa tạo
    * @param horse Ngựa được ghi danh, đã khóa
    * @returns Promise hoàn tất khi các lượt tham gia đã được lưu
-   * @throws ConflictException Nếu ngựa đã có buổi tập trùng giờ ở lớp khác, hoặc vượt giới hạn tập trong ngày
+   * @throws ConflictException Nếu ngựa đã có buổi tập trùng giờ ở lớp khác, vượt giới hạn tập trong ngày, hoặc Groom phụ trách bị trùng giờ với lượt khác đang dắt
    */
   private async addToFuturePublishedSessions(
     manager: EntityManager,
@@ -418,6 +421,8 @@ export class TrainingClassEnrollmentsService {
         );
       }
     }
+    const writes: SessionParticipantEntity[] = [];
+    const assigned: Array<{ groomId: string; run: GroomRun }> = [];
     for (const session of sessions) {
       const exists = await manager.findOneBy(SessionParticipantEntity, {
         sessionId: session.id,
@@ -450,7 +455,7 @@ export class TrainingClassEnrollmentsService {
           sessionId: session.id,
           horseId: horse.id,
         });
-      await manager.save(
+      writes.push(
         Object.assign(participant, {
           horseEnrollmentId: enrollment.id,
           assignedGroomId: groom?.groomId ?? null,
@@ -462,7 +467,29 @@ export class TrainingClassEnrollmentsService {
           ...initialParticipantEligibility(eligibility, !!lock),
         }),
       );
+      if (groom) {
+        assigned.push({
+          groomId: groom.groomId,
+          run: {
+            sessionId: session.id,
+            status: participant.status,
+            sessionStatus: session.status,
+            sessionName: session.name,
+            horseName: horse.name,
+            scheduledStartAt: session.scheduledStartAt,
+            scheduledEndAt: session.scheduledEndAt,
+          },
+        });
+      }
     }
+    await this.access.lockUsers(
+      manager,
+      assigned.map(({ groomId }) => groomId),
+    );
+    for (const row of writes) await manager.save(row);
+    assertNoGroomRunClashes(
+      await this.access.groomRunClashes(manager, assigned),
+    );
   }
 
   /**

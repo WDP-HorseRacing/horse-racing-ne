@@ -1,6 +1,8 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -29,6 +31,7 @@ import {
   toSessionParticipantResponse,
 } from '../mappers/session-participant.mapper';
 import {
+  assertGroomFreeForRun,
   assertParticipantAbsent,
   assertParticipantCheckIn,
   assertParticipantComplete,
@@ -45,6 +48,8 @@ import {
 } from '../constants/participant-window.constants';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TrainingOperationsFacade } from '../shared/training-operations.facade';
+import { TRAINING_RUN_GROOM_ASSIGNED_EVENT } from '../constants/training-events.constants';
+import type { TrainingRunGroomAssignedEvent } from '../types/training-session.types';
 import { horseListDisplay } from '../utils/horse-list-display';
 
 @Injectable()
@@ -57,6 +62,7 @@ export class SessionParticipantsService {
     private readonly dataSource: DataSource,
     private readonly media: MediaService,
     private readonly auditService: AuditService,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
@@ -154,6 +160,23 @@ export class SessionParticipantsService {
     return new Set(locks.map((lock) => lock.horseId));
   }
 
+  /**
+   * Giao hoặc gỡ Groom dắt một lượt tập
+   *
+   * - Lock buổi tập, user của Groom được giao (nếu có), rồi lượt tập trước khi kiểm
+   * - Groom mới đang dắt lượt còn mở ở buổi khác chưa hủy trùng giờ: 409 (assertGroomFreeForRun)
+   * - Người dắt đổi: ghi nhật ký người dắt trước và sau
+   * - Người dắt đổi sang Groom khác: ghi TRAINING_RUN_GROOM_ASSIGNED_EVENT vào outbox để báo Groom mới; gỡ người dắt thì không ghi
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia
+   * @param body Groom được giao, null để gỡ
+   * @returns Promise trả về lượt tham gia sau khi giao
+   * @throws NotFoundException Nếu không có lượt tham gia hoặc buổi tập
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp hoặc ngựa ngoài khu của Head Trainer
+   * @throws ConflictException Nếu buổi không ở trạng thái thực thi, lượt đã kết thúc, hoặc Groom đang dắt lượt khác trùng giờ
+   * @throws BadRequestException Nếu groomId không phải Groom đang hoạt động
+   */
   async assignGroom(
     actor: Actor,
     participantId: string,
@@ -169,6 +192,7 @@ export class SessionParticipantsService {
         manager,
         snapshot.sessionId,
       );
+      if (body.groomId) await this.access.lockUsers(manager, [body.groomId]);
       const participant = await this.access.lockedParticipant(
         manager,
         participantId,
@@ -201,6 +225,25 @@ export class SessionParticipantsService {
         );
       }
       if (body.groomId) await this.access.assertGroom(manager, body.groomId);
+      if (body.groomId && body.groomId !== participant.assignedGroomId) {
+        assertGroomFreeForRun(
+          {
+            sessionId: session.id,
+            status: participant.status,
+            sessionStatus: session.status,
+            sessionName: session.name,
+            horseName: context.horse.name,
+            scheduledStartAt: session.scheduledStartAt,
+            scheduledEndAt: session.scheduledEndAt,
+          },
+          await this.access.groomRunsBetween(
+            manager,
+            body.groomId,
+            session.scheduledStartAt,
+            session.scheduledEndAt,
+          ),
+        );
+      }
       const previousGroomId = participant.assignedGroomId;
       participant.assignedGroomId = body.groomId ?? null;
       const saved = await manager.save(participant);
@@ -211,6 +254,25 @@ export class SessionParticipantsService {
           participantId,
           { assignedGroomId: previousGroomId },
           { assignedGroomId: saved.assignedGroomId },
+        );
+      }
+      if (saved.assignedGroomId && previousGroomId !== saved.assignedGroomId) {
+        const assigned: TrainingRunGroomAssignedEvent = {
+          eventId: randomUUID(),
+          participantId,
+          groomId: saved.assignedGroomId,
+          horseId: saved.horseId,
+          horseName: context.horse.name,
+          sessionId: session.id,
+          sessionName: session.name,
+          scheduledStartAt: session.scheduledStartAt.toISOString(),
+          location: session.location,
+          surface: session.surface,
+        };
+        await this.events.publish(
+          manager,
+          TRAINING_RUN_GROOM_ASSIGNED_EVENT,
+          assigned,
         );
       }
       return saved;

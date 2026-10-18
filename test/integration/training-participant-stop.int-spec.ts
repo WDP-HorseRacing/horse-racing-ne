@@ -1,3 +1,4 @@
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { randomUUID } from 'node:crypto';
 import {
   ConflictException,
@@ -48,10 +49,13 @@ describe('Stopping a participant run early (Postgres)', () => {
     participants = new SessionParticipantsService(
       dataSource.getRepository(SessionParticipantEntity),
       access,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       media,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     trials = new TrialResultsService(
       dataSource.getRepository(TrialResultEntity),
@@ -63,7 +67,9 @@ describe('Stopping a participant run early (Postgres)', () => {
     evaluations = new PerformanceEvaluationsService(
       dataSource.getRepository(PerformanceEvaluationEntity),
       access,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       new AuditService(),
     );

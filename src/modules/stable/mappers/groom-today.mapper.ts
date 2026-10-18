@@ -29,6 +29,7 @@ export interface GroomTodayHorseSource {
  * @param dayStart Đầu ngày theo giờ CLB
  * @param horses Dữ liệu từng ngựa; mỗi lượt tập đã load session
  * @param otherSchedules Lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, đã load horse
+ * @param assistedRuns Lượt Groom được giao dắt ở ngựa Groom không phụ trách, đã load session và horse
  * @returns Response màn Hôm nay
  */
 export function toGroomTodayResponse(
@@ -36,6 +37,7 @@ export function toGroomTodayResponse(
   dayStart: Date,
   horses: readonly GroomTodayHorseSource[],
   otherSchedules: readonly CareScheduleEntity[],
+  assistedRuns: readonly SessionParticipantEntity[],
 ): GroomTodayResponseDto {
   return plainToInstance(
     GroomTodayResponseDto,
@@ -48,15 +50,7 @@ export function toGroomTodayResponse(
         stallCode: source.stallCode,
         checklist: source.checklist,
         feedingPlan: source.feedingPlan,
-        trainingRuns: source.runs.map((run) => ({
-          participantId: run.id,
-          sessionId: run.sessionId,
-          sessionName: run.session.name,
-          scheduledStartAt: run.session.scheduledStartAt,
-          scheduledEndAt: run.session.scheduledEndAt,
-          status: run.status,
-          stoppedReason: run.stoppedReason,
-        })),
+        trainingRuns: source.runs.map(toRun),
         careSchedules: source.schedules.map((schedule) => ({
           id: schedule.id,
           type: schedule.type,
@@ -74,7 +68,32 @@ export function toGroomTodayResponse(
         overdue: schedule.dueAt < dayStart,
         notes: schedule.notes,
       })),
+      assistedRuns: assistedRuns.map((run) => ({
+        ...toRun(run),
+        horseId: run.horseId,
+        horseName: run.horse.name,
+      })),
     },
     MAPPER_OPTIONS,
   );
+}
+
+/**
+ * Chuyển một lượt tập Groom được giao dắt sang dữ liệu response
+ *
+ * @param run Lượt tập đã load session
+ * @returns Dữ liệu lượt tập kèm giờ, địa điểm, mặt sân của buổi
+ */
+function toRun(run: SessionParticipantEntity) {
+  return {
+    participantId: run.id,
+    sessionId: run.sessionId,
+    sessionName: run.session.name,
+    scheduledStartAt: run.session.scheduledStartAt,
+    scheduledEndAt: run.session.scheduledEndAt,
+    location: run.session.location,
+    surface: run.session.surface,
+    status: run.status,
+    stoppedReason: run.stoppedReason,
+  };
 }

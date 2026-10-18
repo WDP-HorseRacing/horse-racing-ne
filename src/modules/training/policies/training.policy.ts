@@ -31,10 +31,21 @@ import {
 import { CHECK_IN_OPENS_BEFORE_MS } from '../constants/participant-window.constants';
 import type {
   ClassSessionLoad,
+  GroomRun,
   HorseBrief,
   HorseClassSession,
   SessionWindow,
 } from '../types/training-session.types';
+
+/**
+ * Trạng thái lượt tập còn mở, tính vào lịch dắt của Groom
+ */
+const OPEN_GROOM_RUN_STATUSES: ReadonlyArray<SessionParticipantStatus> = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.PRESENT,
+  SessionParticipantStatus.READY,
+  SessionParticipantStatus.ONGOING,
+];
 
 /**
  * Trạng thái buổi tập được tính vào lịch của ngựa ở một lớp
@@ -179,6 +190,101 @@ export function assertNoHoldingOverlap(
         `Ngựa ${horseName} đã có buổi tập trùng giờ ở lớp ${clash.classCode}`,
       );
     }
+  }
+}
+
+/**
+ * Tìm các cặp lượt Groom phải dắt trùng giờ nhau
+ *
+ * - Chỉ xét lượt còn mở (PLANNED, PRESENT, READY, ONGOING) của buổi chưa hủy, ở cả hai phía
+ * - Hai lượt trùng khi khoảng giờ buổi giao nhau; sát mép không trùng
+ * - Bỏ qua cặp cùng một buổi
+ *
+ * @param runs Các lượt sắp giao cho Groom
+ * @param busy Các lượt Groom đang được giao dắt
+ * @returns Các cặp lượt sắp giao và lượt đang dắt trùng giờ, theo thứ tự của runs rồi busy
+ */
+export function findGroomRunClashes(
+  runs: ReadonlyArray<GroomRun>,
+  busy: ReadonlyArray<GroomRun>,
+): Array<{ run: GroomRun; clash: GroomRun }> {
+  const open = busy.filter(isOpenGroomRun);
+  return runs
+    .filter(isOpenGroomRun)
+    .flatMap((run) =>
+      open
+        .filter(
+          (other) =>
+            other.sessionId !== run.sessionId &&
+            sessionWindowsOverlap(run, other),
+        )
+        .map((clash) => ({ run, clash })),
+    );
+}
+
+/**
+ * Chặn giao người dắt cho một lượt khi Groom đang dắt lượt khác trùng giờ
+ *
+ * @param run Lượt sắp giao cho Groom
+ * @param busy Các lượt Groom đang được giao dắt
+ * @throws ConflictException Nếu trùng giờ; câu báo nêu ngựa, tên buổi và giờ bắt đầu theo giờ CLB của lượt đang dắt
+ */
+export function assertGroomFreeForRun(
+  run: GroomRun,
+  busy: ReadonlyArray<GroomRun>,
+): void {
+  const [first] = findGroomRunClashes([run], busy);
+  if (first) {
+    throw new ConflictException(
+      `Groom đang dắt ngựa ${first.clash.horseName} ở buổi "${first.clash.sessionName}" lúc ${formatClubDateTime(first.clash.scheduledStartAt)}, trùng giờ với lượt này`,
+    );
+  }
+}
+
+/**
+ * Chặn chuyển các lượt tập của ngựa sang Groom mới khi Groom mới đang dắt lượt khác trùng giờ
+ *
+ * @param runs Các lượt sẽ chuyển sang Groom mới
+ * @param busy Các lượt Groom mới đang được giao dắt
+ * @throws ConflictException Nếu có lượt trùng giờ; câu báo liệt kê từng cặp buổi và giờ theo giờ CLB
+ */
+export function assertGroomFreeForMovedRuns(
+  runs: ReadonlyArray<GroomRun>,
+  busy: ReadonlyArray<GroomRun>,
+): void {
+  const clashes = findGroomRunClashes(runs, busy);
+  if (clashes.length) {
+    const list = clashes
+      .map(
+        ({ run, clash }) =>
+          `buổi "${run.sessionName}" lúc ${formatClubDateTime(run.scheduledStartAt)} trùng lượt ngựa ${clash.horseName} ở buổi "${clash.sessionName}" lúc ${formatClubDateTime(clash.scheduledStartAt)}`,
+      )
+      .join('; ');
+    throw new ConflictException(
+      `Groom mới đang dắt lượt trùng giờ: ${list}. Giao lại người dắt các lượt này trước khi đổi Groom`,
+    );
+  }
+}
+
+/**
+ * Chặn gắn người dắt tự động khi Groom được gắn đang dắt lượt khác trùng giờ
+ *
+ * @param clashes Các cặp lượt sắp gắn và lượt Groom đang dắt trùng giờ (findGroomRunClashes)
+ * @throws ConflictException Nếu có cặp trùng; câu báo liệt kê từng cặp ngựa, buổi và giờ theo giờ CLB
+ */
+export function assertNoGroomRunClashes(
+  clashes: ReadonlyArray<{ run: GroomRun; clash: GroomRun }>,
+): void {
+  if (clashes.length) {
+    const list = clashes
+      .map(
+        ({ run, clash }) =>
+          `ngựa ${run.horseName} ở buổi "${run.sessionName}" lúc ${formatClubDateTime(run.scheduledStartAt)} trùng lượt ngựa ${clash.horseName} ở buổi "${clash.sessionName}" lúc ${formatClubDateTime(clash.scheduledStartAt)}`,
+      )
+      .join('; ');
+    throw new ConflictException(
+      `Người dắt bị trùng giờ: ${list}. Giao lại người dắt các lượt này trước`,
+    );
   }
 }
 
@@ -769,4 +875,17 @@ export function classPhaseOn<T extends { position: number; weeks: number }>(
     if (days < weekEnd * 7) return phase;
   }
   return undefined;
+}
+
+/**
+ * Kiểm lượt tập còn mở và buổi chưa hủy
+ *
+ * @param run Lượt tập cần xét
+ * @returns true nếu lượt còn tính vào lịch dắt của Groom
+ */
+function isOpenGroomRun(run: GroomRun): boolean {
+  return (
+    OPEN_GROOM_RUN_STATUSES.includes(run.status) &&
+    run.sessionStatus !== TrainingSessionStatus.CANCELLED
+  );
 }

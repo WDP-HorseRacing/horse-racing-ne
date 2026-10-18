@@ -18,6 +18,10 @@ import {
   horseScheduleClashError,
   horsesClashingWithClass,
   sessionWindowsOverlap,
+  findGroomRunClashes,
+  assertGroomFreeForRun,
+  assertGroomFreeForMovedRuns,
+  assertNoGroomRunClashes,
   assertParticipantAbsent,
   assertParticipantActionWindow,
   assertParticipantComplete,
@@ -38,6 +42,7 @@ import {
   initialParticipantEligibility,
   totalPlanWeeks,
 } from './training.policy';
+import type { GroomRun } from '../types/training-session.types';
 
 describe('training policy', () => {
   it('rejects a reference horse', () => {
@@ -337,6 +342,119 @@ describe('assertClassOpenForSessions', () => {
       );
     },
   );
+});
+
+describe('groom run clash policy', () => {
+  const run = (
+    sessionId: string,
+    start: string,
+    end: string,
+    extra: Partial<GroomRun> = {},
+  ): GroomRun => ({
+    sessionId,
+    status: SessionParticipantStatus.PLANNED,
+    sessionStatus: TrainingSessionStatus.SCHEDULED,
+    sessionName: sessionId,
+    horseName: `Ngựa ${sessionId}`,
+    scheduledStartAt: new Date(start),
+    scheduledEndAt: new Date(end),
+    ...extra,
+  });
+  const target = run('A', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z');
+
+  it('finds a run of another session whose window intersects', () => {
+    const busy = run('B', '2026-10-10T01:30:00Z', '2026-10-10T03:00:00Z');
+    expect(findGroomRunClashes([target], [busy])).toEqual([
+      { run: target, clash: busy },
+    ]);
+  });
+
+  it('does not count runs that only touch at the edge or share the session', () => {
+    expect(
+      findGroomRunClashes(
+        [target],
+        [
+          run('B', '2026-10-10T02:00:00Z', '2026-10-10T03:00:00Z'),
+          run('C', '2026-10-10T00:00:00Z', '2026-10-10T01:00:00Z'),
+          run('A', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z'),
+        ],
+      ),
+    ).toEqual([]);
+  });
+
+  it('ignores cancelled sessions and closed runs on either side', () => {
+    const at = ['2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z'] as const;
+    const closed = [
+      SessionParticipantStatus.COMPLETED,
+      SessionParticipantStatus.STOPPED,
+      SessionParticipantStatus.ABSENT,
+      SessionParticipantStatus.SKIPPED,
+      SessionParticipantStatus.INELIGIBLE,
+      SessionParticipantStatus.CANCELLED,
+      SessionParticipantStatus.CANCELLED_BY_LOCK,
+    ].map((status) => run('B', ...at, { status }));
+    const cancelled = run('C', ...at, {
+      sessionStatus: TrainingSessionStatus.CANCELLED,
+    });
+    expect(findGroomRunClashes([target], [...closed, cancelled])).toEqual([]);
+    expect(findGroomRunClashes([cancelled], [run('B', ...at)])).toEqual([]);
+  });
+
+  it('counts runs that are present, ready or ongoing', () => {
+    const busy = [
+      SessionParticipantStatus.PRESENT,
+      SessionParticipantStatus.READY,
+      SessionParticipantStatus.ONGOING,
+    ].map((status, index) =>
+      run(`B${index}`, '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', {
+        status,
+      }),
+    );
+    expect(findGroomRunClashes([target], busy)).toHaveLength(3);
+  });
+
+  it('rejects assigning a run with the horse, session and club time of the clash', () => {
+    const busy = run('B', '2026-10-10T01:30:00Z', '2026-10-10T03:00:00Z', {
+      sessionName: 'Sáng',
+      horseName: 'Sấm',
+    });
+    expect(() => assertGroomFreeForRun(target, [busy])).toThrow(
+      new ConflictException(
+        'Groom đang dắt ngựa Sấm ở buổi "Sáng" lúc 08:30 ngày 10/10/2026, trùng giờ với lượt này',
+      ),
+    );
+    expect(() => assertGroomFreeForRun(target, [])).not.toThrow();
+  });
+
+  it('rejects moving runs and lists every clash', () => {
+    const second = run('D', '2026-10-11T01:00:00Z', '2026-10-11T02:00:00Z');
+    const busy = [
+      run('B', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z'),
+      run('E', '2026-10-11T01:30:00Z', '2026-10-11T02:30:00Z'),
+    ];
+    expect(() => assertGroomFreeForMovedRuns([target, second], busy)).toThrow(
+      new ConflictException(
+        'Groom mới đang dắt lượt trùng giờ: buổi "A" lúc 08:00 ngày 10/10/2026 trùng lượt ngựa Ngựa B ở buổi "B" lúc 08:00 ngày 10/10/2026; buổi "D" lúc 08:00 ngày 11/10/2026 trùng lượt ngựa Ngựa E ở buổi "E" lúc 08:30 ngày 11/10/2026. Giao lại người dắt các lượt này trước khi đổi Groom',
+      ),
+    );
+    expect(() => assertGroomFreeForMovedRuns([target], [])).not.toThrow();
+  });
+
+  it('rejects automatic groom assignment listing each clashing pair', () => {
+    const clash = run('B', '2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z', {
+      horseName: 'Sấm',
+    });
+    expect(() =>
+      assertNoGroomRunClashes([
+        { run: { ...target, horseName: 'Gió' }, clash },
+      ]),
+    ).toThrow(
+      new ConflictException(
+        'Người dắt bị trùng giờ: ngựa Gió ở buổi "A" lúc 08:00 ngày 10/10/2026 trùng lượt ngựa Sấm ở buổi "B" lúc 08:30 ngày 10/10/2026. Giao lại người dắt các lượt này trước',
+      ),
+    );
+    expect(() => assertNoGroomRunClashes([])).not.toThrow();
+  });
 });
 
 describe('session overlap policy', () => {

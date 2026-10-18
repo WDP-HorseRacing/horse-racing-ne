@@ -1,3 +1,5 @@
+import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
+import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
@@ -14,7 +16,9 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments (Postgres)'
   let db: TestPostgres;
   let dataSource: DataSource;
   let seed: ReturnType<typeof fixtures>;
-  const facade = new TrainingOperationsFacade();
+  const facade = new TrainingOperationsFacade(
+    new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+  );
 
   beforeAll(async () => {
     db = await startTestPostgres();

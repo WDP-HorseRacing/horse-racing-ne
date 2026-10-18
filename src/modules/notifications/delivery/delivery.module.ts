@@ -38,6 +38,7 @@ import { RealtimeChannel } from './realtime.channel';
 import { SupplyEventsListener } from './supply-events.listener';
 import { SurchargeAddedListener } from './surcharge-added.listener';
 import { TrainingSessionCancelledListener } from './training-session-cancelled.listener';
+import { TrainingRunGroomAssignedListener } from './training-run-groom-assigned.listener';
 import { SupplyNotificationsService } from './supply-notifications.service';
 
 @Module({
@@ -78,6 +79,7 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     HorseLifecycleChangedListener,
     SurchargeAddedListener,
     TrainingSessionCancelledListener,
+    TrainingRunGroomAssignedListener,
     IncidentStaleListener,
     MedicalEventsListener,
     PerformanceNotificationsService,

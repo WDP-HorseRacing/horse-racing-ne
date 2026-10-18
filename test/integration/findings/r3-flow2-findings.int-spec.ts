@@ -122,7 +122,9 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     const media = {
       signDownloadUrls: () => Promise.resolve(new Map<string, string>()),
     } as unknown as MediaService;
-    facade = new TrainingOperationsFacade();
+    facade = new TrainingOperationsFacade(
+      new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+    );
     sessionsService = new TrainingSessionsService(
       dataSource.getRepository(TrainingSessionEntity),
       access,
@@ -137,6 +139,7 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
       dataSource,
       media,
       audit,
+      new DomainEventPublisher(),
     );
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),

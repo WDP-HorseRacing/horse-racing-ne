@@ -66,7 +66,9 @@ describe('Đổi khu của ngựa đang có lượt tập (Postgres)', () => {
       new DomainEventPublisher(),
       dataSource,
       audit,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       {} as GroomAssignmentsService,
       new HorsePlacementsRepository(dataSource),
     );

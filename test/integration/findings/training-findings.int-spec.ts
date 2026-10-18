@@ -74,7 +74,9 @@ describe('Training findings (Postgres)', () => {
     );
     const audit = new AuditService();
     const media = {} as MediaService;
-    facade = new TrainingOperationsFacade();
+    facade = new TrainingOperationsFacade(
+      new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+    );
     sessionsService = new TrainingSessionsService(
       dataSource.getRepository(TrainingSessionEntity),
       access,
@@ -89,6 +91,7 @@ describe('Training findings (Postgres)', () => {
       dataSource,
       media,
       audit,
+      new DomainEventPublisher(),
     );
     trialResults = new TrialResultsService(
       dataSource.getRepository(TrialResultEntity),

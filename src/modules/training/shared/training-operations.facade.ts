@@ -14,10 +14,13 @@ import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import {
+  assertGroomFreeForMovedRuns,
   eligibilityForSession,
   initialParticipantEligibility,
 } from '../policies/training.policy';
 import type { ParticipantEligibilityChange } from '../types/training-session.types';
+import { toGroomRun } from '../utils/groom-run';
+import { TrainingAccessService } from './training-access.service';
 import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
 
 /**
@@ -92,6 +95,8 @@ function isEnrollmentNotYetStarted(
 
 @Injectable()
 export class TrainingOperationsFacade {
+  constructor(private readonly access: TrainingAccessService) {}
+
   /**
    * Kiểm lượt tập đã tập xong, gồm hoàn thành hoặc dừng sớm
    *
@@ -497,6 +502,7 @@ export class TrainingOperationsFacade {
    * - Chuyển lượt đang giao cho groom cũ và lượt chưa ai dắt; lượt giao cho người khác giữ nguyên
    * - `previousGroomId` null: chỉ điền các lượt chưa ai dắt
    * - Chỉ lượt PLANNED/PRESENT/READY của buổi bắt đầu từ `from` trở đi; lượt ONGOING và lượt đã kết thúc giữ tên người đã làm
+   * - Lock các lượt sẽ chuyển rồi kiểm Groom mới không dắt lượt nào trùng giờ (assertGroomFreeForMovedRuns) trước khi ghi
    * - Không kiểm quyền, nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
@@ -505,6 +511,7 @@ export class TrainingOperationsFacade {
    * @param toGroomId UUID groom mới
    * @param from Thời điểm đổi groom; buổi bắt đầu từ thời điểm này trở đi được chuyển
    * @returns Promise trả về UUID các lượt tham gia đã chuyển
+   * @throws ConflictException Nếu một lượt sẽ chuyển trùng giờ với lượt Groom mới đang dắt
    */
   async moveFutureParticipantsToGroom(
     manager: EntityManager,
@@ -516,11 +523,9 @@ export class TrainingOperationsFacade {
     const participants = await manager
       .getRepository(SessionParticipantEntity)
       .createQueryBuilder('participant')
-      .innerJoin(
-        TrainingSessionEntity,
-        'session',
-        'session.id = participant.session_id',
-      )
+      .innerJoinAndSelect('participant.session', 'session')
+      .innerJoinAndSelect('participant.horse', 'horse')
+      .withDeleted()
       .where('participant.horse_id = :horseId', { horseId })
       .andWhere(
         previousGroomId
@@ -534,6 +539,16 @@ export class TrainingOperationsFacade {
       .andWhere('session.scheduled_start_at >= :from', { from })
       .setLock('pessimistic_write', undefined, ['participant'])
       .getMany();
+    if (participants.length) {
+      const moving = participants.map(toGroomRun);
+      const busy = await this.access.groomRunsBetween(
+        manager,
+        toGroomId,
+        new Date(Math.min(...moving.map((run) => +run.scheduledStartAt))),
+        new Date(Math.max(...moving.map((run) => +run.scheduledEndAt))),
+      );
+      assertGroomFreeForMovedRuns(moving, busy);
+    }
     for (const participant of participants) {
       participant.assignedGroomId = toGroomId;
     }

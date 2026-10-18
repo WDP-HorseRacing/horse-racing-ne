@@ -228,7 +228,9 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
       audit,
     );
     const trainingAccess = new TrainingAccessService(dataSource, horseAccess);
-    const facade = new TrainingOperationsFacade();
+    const facade = new TrainingOperationsFacade(
+      new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+    );
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),
       trainingAccess,
@@ -244,6 +246,7 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
       dataSource,
       {} as MediaService,
       audit,
+      new DomainEventPublisher(),
     );
     evaluations = new PerformanceEvaluationsService(
       dataSource.getRepository(PerformanceEvaluationEntity),

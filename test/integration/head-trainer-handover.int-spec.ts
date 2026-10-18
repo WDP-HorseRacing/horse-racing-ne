@@ -48,7 +48,9 @@ describe('HeadTrainerHandoverService (Postgres)', () => {
           new HorseAccessService(dataSource),
         ),
       ),
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       new AuditService(),
     );
   });

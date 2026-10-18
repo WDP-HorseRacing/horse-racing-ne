@@ -244,7 +244,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),
       trainingAccess,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       {} as MediaService,
       audit,

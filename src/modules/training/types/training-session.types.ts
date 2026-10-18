@@ -1,5 +1,6 @@
 import type { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import type { TrainingIntensity } from '../enums/training-intensity.enum';
+import type { TrainingSessionStatus } from '../enums/training-session-status.enum';
 
 /**
  * Khoảng giờ của một buổi tập, tính từ giờ bắt đầu tới trước giờ kết thúc.
@@ -7,6 +8,17 @@ import type { TrainingIntensity } from '../enums/training-intensity.enum';
 export interface SessionWindow {
   scheduledStartAt: Date;
   scheduledEndAt: Date;
+}
+
+/**
+ * Lượt tập có người dắt, kèm giờ và trạng thái buổi, dùng để xét Groom dắt hai lượt trùng giờ.
+ */
+export interface GroomRun extends SessionWindow {
+  sessionId: string;
+  status: SessionParticipantStatus;
+  sessionStatus: TrainingSessionStatus;
+  sessionName: string;
+  horseName: string;
 }
 
 /**
@@ -84,4 +96,25 @@ export interface TrainingSessionCancelledEvent {
   scheduledStartAt: string;
   reason: string;
   runs: Array<{ horseId: string; groomId: string | null }>;
+}
+
+/**
+ * Payload của domain event TRAINING_RUN_GROOM_ASSIGNED_EVENT
+ *
+ * - eventId: sinh mới mỗi lần giao, dùng để chống gửi trùng thông báo
+ * - groomId: Groom vừa được giao dắt lượt
+ * - scheduledStartAt: giờ bắt đầu dự kiến của buổi, chuỗi ISO
+ * - location, surface: địa điểm và mặt sân của buổi, null nếu buổi chưa ghi
+ */
+export interface TrainingRunGroomAssignedEvent {
+  eventId: string;
+  participantId: string;
+  groomId: string;
+  horseId: string;
+  horseName: string;
+  sessionId: string;
+  sessionName: string;
+  scheduledStartAt: string;
+  location: string | null;
+  surface: string | null;
 }

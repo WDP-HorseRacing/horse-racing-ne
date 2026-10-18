@@ -49,7 +49,9 @@ describe('Correcting trial results and evaluations after a session (Postgres)', 
     evaluations = new PerformanceEvaluationsService(
       dataSource.getRepository(PerformanceEvaluationEntity),
       access,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       new AuditService(),
     );

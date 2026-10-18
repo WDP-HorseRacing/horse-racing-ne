@@ -16686,6 +16686,16 @@
             "type": "string",
             "nullable": true,
             "description": "Lý do dừng sớm, null nếu lượt không dừng sớm"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Địa điểm của buổi tập"
+          },
+          "surface": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mặt sân của buổi tập"
           }
         },
         "required": [
@@ -16840,6 +16850,80 @@
           "horseName"
         ]
       },
+      "GroomTodayAssistedRunResponseDto": {
+        "type": "object",
+        "properties": {
+          "participantId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Lượt tập"
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionName": {
+            "type": "string",
+            "description": "Tên buổi tập"
+          },
+          "scheduledStartAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scheduledEndAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "PRESENT",
+              "READY",
+              "ONGOING",
+              "COMPLETED",
+              "STOPPED",
+              "ABSENT",
+              "SKIPPED",
+              "INELIGIBLE",
+              "CANCELLED_BY_LOCK",
+              "CANCELLED"
+            ]
+          },
+          "stoppedReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Lý do dừng sớm, null nếu lượt không dừng sớm"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Địa điểm của buổi tập"
+          },
+          "surface": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mặt sân của buổi tập"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "participantId",
+          "sessionId",
+          "sessionName",
+          "scheduledStartAt",
+          "scheduledEndAt",
+          "status",
+          "horseId",
+          "horseName"
+        ]
+      },
       "GroomTodayResponseDto": {
         "type": "object",
         "properties": {
@@ -16861,12 +16945,20 @@
             "items": {
               "$ref": "#/components/schemas/GroomTodayOtherCareScheduleResponseDto"
             }
+          },
+          "assistedRuns": {
+            "description": "Lượt tập hôm nay Groom được giao dắt ở ngựa Groom không phụ trách, theo giờ bắt đầu",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroomTodayAssistedRunResponseDto"
+            }
           }
         },
         "required": [
           "date",
           "horses",
-          "otherCareSchedules"
+          "otherCareSchedules",
+          "assistedRuns"
         ]
       },
       "TickChecklistItemDto": {

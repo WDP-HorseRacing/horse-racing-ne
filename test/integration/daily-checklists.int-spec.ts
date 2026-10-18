@@ -1,3 +1,4 @@
+import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import {
   BadRequestException,
   ConflictException,
@@ -180,7 +181,9 @@ describe('Daily checklists and care tasks (Postgres)', () => {
         new StableAccessService(new HorseAccessService(dataSource)),
         new HorseAccessService(dataSource),
         daily,
-        new TrainingOperationsFacade(dataSource),
+        new TrainingOperationsFacade(
+          new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+        ),
         new GroomAssignmentsRepository(dataSource),
       );
 

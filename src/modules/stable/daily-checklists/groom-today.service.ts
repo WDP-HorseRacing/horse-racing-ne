@@ -62,9 +62,10 @@ export class GroomTodayService {
    * - Khu, ô chuồng hiện tại
    * - Checklist hôm nay (nếu đã sinh)
    * - Khẩu phần đang áp dụng
-   * - Lượt tập hôm nay Groom được giao dắt, bỏ buổi nháp và buổi đã hủy
+   * - Lượt tập hôm nay Groom được giao dắt, bỏ buổi đã hủy
    * - Lịch chăm sóc Groom là người làm (giao Groom phụ trách ở ngựa mình phụ trách, hoặc giao đích danh cho mình), đến hạn tới hết hôm nay mà chưa làm
    * - Lịch giao đích danh ở ngựa Groom không phụ trách: tách ra otherCareSchedules
+   * - Lượt tập Groom được giao dắt ở ngựa Groom không phụ trách: tách ra assistedRuns
    *
    * @param actor Thông tin danh tính từ Access Token
    * @returns Promise trả về ngày hôm nay và việc của từng ngựa
@@ -94,10 +95,18 @@ export class GroomTodayService {
     const otherSchedules = schedules.filter(
       (schedule) => !ownHorseIds.has(schedule.horseId),
     );
+    const runs = await this.runsOf(manager, caller.id, dayStart, dayEnd);
+    const assistedRuns = runs.filter((run) => !ownHorseIds.has(run.horseId));
     if (horseIds.length === 0) {
-      return toGroomTodayResponse(date, dayStart, [], otherSchedules);
+      return toGroomTodayResponse(
+        date,
+        dayStart,
+        [],
+        otherSchedules,
+        assistedRuns,
+      );
     }
-    const [stalls, checklists, plans, runs] = await Promise.all([
+    const [stalls, checklists, plans] = await Promise.all([
       manager.find(StallAssignmentEntity, {
         where: { horseId: In(horseIds), endAt: IsNull() },
         relations: { stall: true },
@@ -113,7 +122,6 @@ export class GroomTodayService {
         relations: PLAN_RELATIONS,
         withDeleted: true,
       }),
-      this.runsOf(manager, caller.id, horseIds, dayStart, dayEnd),
     ]);
     const stallByHorse = new Map(
       stalls.map((row) => [row.horseId, row.stall.code]),
@@ -138,6 +146,7 @@ export class GroomTodayService {
         ),
       })),
       otherSchedules,
+      assistedRuns,
     );
   }
 
@@ -180,19 +189,19 @@ export class GroomTodayService {
   }
 
   /**
-   * Lấy các lượt tập Groom được giao dắt có buổi bắt đầu trong ngày, bỏ buổi nháp, buổi đã hủy và lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện
+   * Lấy các lượt tập Groom được giao dắt ở mọi ngựa có buổi bắt đầu trong ngày, bỏ buổi đã hủy và lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện
+   *
+   * - Kèm ngựa, kể cả hồ sơ đã xóa mềm
    *
    * @param manager EntityManager dùng để query
    * @param groomId UUID của Groom
-   * @param horseIds UUID các ngựa Groom đang phụ trách
    * @param dayStart Đầu ngày theo giờ CLB
    * @param dayEnd Đầu ngày hôm sau theo giờ CLB
-   * @returns Promise trả về các lượt tập kèm buổi, theo giờ bắt đầu
+   * @returns Promise trả về các lượt tập kèm buổi và ngựa, theo giờ bắt đầu
    */
   private runsOf(
     manager: EntityManager,
     groomId: string,
-    horseIds: string[],
     dayStart: Date,
     dayEnd: Date,
   ): Promise<SessionParticipantEntity[]> {
@@ -200,8 +209,9 @@ export class GroomTodayService {
       .getRepository(SessionParticipantEntity)
       .createQueryBuilder('participant')
       .innerJoinAndSelect('participant.session', 'session')
+      .innerJoinAndSelect('participant.horse', 'horse')
+      .withDeleted()
       .where('participant.assignedGroomId = :groomId', { groomId })
-      .andWhere('participant.horseId IN (:...horseIds)', { horseIds })
       .andWhere('session.scheduledStartAt >= :dayStart', { dayStart })
       .andWhere('session.scheduledStartAt < :dayEnd', { dayEnd })
       .andWhere('session.status NOT IN (:...hidden)', {

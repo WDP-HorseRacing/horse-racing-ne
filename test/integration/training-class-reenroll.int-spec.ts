@@ -33,7 +33,9 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       {
         signDownloadUrls: () => Promise.resolve(new Map()),
@@ -97,7 +99,9 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
         `UPDATE horse_enrollments SET status = 'LEFT', left_at = $2 WHERE id = $1`,
         [enrollmentId, leftAt],
       );
-      await new TrainingOperationsFacade().cancelParticipantsFromEnrollments(
+      await new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ).cancelParticipantsFromEnrollments(
         manager,
         [enrollmentId],
         leftAt,

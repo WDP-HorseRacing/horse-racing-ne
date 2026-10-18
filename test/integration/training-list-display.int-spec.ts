@@ -1,3 +1,4 @@
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
@@ -52,15 +53,20 @@ describe('Training list endpoints return horse name, photo and groom name (Postg
     participants = new SessionParticipantsService(
       dataSource.getRepository(SessionParticipantEntity),
       access,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       media,
       new AuditService(),
+      new DomainEventPublisher(),
     );
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),
       access,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       media,
       new AuditService(),

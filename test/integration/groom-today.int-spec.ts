@@ -34,6 +34,7 @@ describe('Groom today view (Postgres)', () => {
   let trainerId: string;
   let gio: string;
   let may: string;
+  let sam: string;
   let today: string;
 
   const actorOf = async (id: string, role: UserRole): Promise<Actor> => {
@@ -111,10 +112,10 @@ describe('Groom today view (Postgres)', () => {
     const barn = await seed.barn('Khu A');
     gio = await seed.horse('Gió', { barnId: barn });
     may = await seed.horse('Mây', { barnId: barn });
-    const other = await seed.horse('Sấm', { barnId: barn });
+    sam = await seed.horse('Sấm', { barnId: barn });
     await assign(may, groomId);
     await assign(gio, groomId);
-    await assign(other, otherGroomId);
+    await assign(sam, otherGroomId);
     await dataSource.query(
       `INSERT INTO daily_task_types (version, name, applies_to_all) VALUES (1, 'Cho ăn', true)`,
     );
@@ -131,7 +132,12 @@ describe('Groom today view (Postgres)', () => {
     const result = await service.today(
       await actorOf(await seed.user(UserRole.GROOM), UserRole.GROOM),
     );
-    expect(result).toEqual({ date: today, horses: [], otherCareSchedules: [] });
+    expect(result).toEqual({
+      date: today,
+      horses: [],
+      otherCareSchedules: [],
+      assistedRuns: [],
+    });
   });
 
   it('lists the groom horses by name with barn, stall and today checklist', async () => {
@@ -286,6 +292,85 @@ describe('Groom today view (Postgres)', () => {
         status: 'STOPPED',
         stoppedReason: 'Ngựa đau chân',
       }),
+    ]);
+  });
+
+  it('shows the location and surface of each run', async () => {
+    const { classId } = await seed.trainingClass(trainerId);
+    await dataSource.query(
+      `INSERT INTO horse_enrollments (version, class_id, horse_id, status, enrolled_at)
+       VALUES (1, $1, $2, 'ACTIVE', now())`,
+      [classId, gio],
+    );
+    await run(classId, gio, { start: clubDateTimeToInstant(today, '06:00') });
+    await dataSource.query(
+      `UPDATE training_sessions SET location = 'Sân số 2', surface = 'Cát'`,
+    );
+
+    const [first] = (await service.today(groom)).horses;
+
+    expect(first.trainingRuns).toEqual([
+      expect.objectContaining({ location: 'Sân số 2', surface: 'Cát' }),
+    ]);
+  });
+
+  it('lists runs the groom leads for horses groomed by someone else as assisted runs', async () => {
+    const { classId } = await seed.trainingClass(trainerId);
+    for (const horseId of [gio, sam]) {
+      await dataSource.query(
+        `INSERT INTO horse_enrollments (version, class_id, horse_id, status, enrolled_at)
+         VALUES (1, $1, $2, 'ACTIVE', now())`,
+        [classId, horseId],
+      );
+    }
+    const at = (time: string) => clubDateTimeToInstant(today, time);
+    await run(classId, gio, { start: at('05:00'), name: 'Của mình' });
+    await run(classId, sam, { start: at('09:00'), name: 'Hộ chiều' });
+    await run(classId, sam, { start: at('06:00'), name: 'Hộ sáng' });
+    await run(classId, sam, { start: at('07:00'), status: 'CANCELLED' });
+    await run(classId, sam, { start: at('08:00'), runStatus: 'ABSENT' });
+    await run(classId, sam, { start: at('10:00'), groomId: otherGroomId });
+    await dataSource.query(
+      `UPDATE training_sessions SET location = 'Sân 1', surface = 'Cỏ' WHERE name = 'Hộ sáng'`,
+    );
+
+    const result = await service.today(groom);
+
+    expect(
+      result.horses[0].trainingRuns.map((item) => item.sessionName),
+    ).toEqual(['Của mình']);
+    expect(result.assistedRuns).toEqual([
+      expect.objectContaining({
+        horseId: sam,
+        horseName: 'Sấm',
+        sessionName: 'Hộ sáng',
+        location: 'Sân 1',
+        surface: 'Cỏ',
+        status: 'PLANNED',
+      }),
+      expect.objectContaining({ sessionName: 'Hộ chiều' }),
+    ]);
+  });
+
+  it('shows assisted runs to a groom who looks after no horse', async () => {
+    const helperId = await seed.user(UserRole.GROOM);
+    const { classId } = await seed.trainingClass(trainerId);
+    await dataSource.query(
+      `INSERT INTO horse_enrollments (version, class_id, horse_id, status, enrolled_at)
+       VALUES (1, $1, $2, 'ACTIVE', now())`,
+      [classId, sam],
+    );
+    await run(classId, sam, {
+      start: clubDateTimeToInstant(today, '06:00'),
+      name: 'Dắt hộ',
+      groomId: helperId,
+    });
+
+    const result = await service.today(await actorOf(helperId, UserRole.GROOM));
+
+    expect(result.horses).toEqual([]);
+    expect(result.assistedRuns.map((item) => item.sessionName)).toEqual([
+      'Dắt hộ',
     ]);
   });
 

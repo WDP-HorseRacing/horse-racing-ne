@@ -84,11 +84,11 @@ export class GroomAssignmentsService {
    *
    * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác.
    * - Ngựa phải đã được xếp khu, chưa chuyển nhượng và chưa bị xóa; khu của ngựa phải đang ACTIVE (lock khu như khi xếp ô).
-   * - Lock row user của groom trong transaction rồi mới kiểm groom còn là GROOM đang ACTIVE.
+   * - Lock ngựa, khu của ngựa, rồi row user của groom trong transaction, sau đó mới kiểm groom còn là GROOM đang ACTIVE.
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist từ hôm nay trở đi của groom cũ sang groom mới, kể cả checklist đã hoàn thành.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
    * - Ngựa chưa có checklist hôm nay thì sinh cho groom mới.
-   * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); nhật ký ghi thêm movedParticipantIds.
+   * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); một lượt trùng giờ với lượt groom mới đang dắt thì 409 cả thao tác; nhật ký ghi thêm movedParticipantIds.
    * - Ghi GROOM_ASSIGNMENT_CHANGED_EVENT vào outbox trong cùng transaction để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách.
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -97,7 +97,7 @@ export class GroomAssignmentsService {
    * @returns Promise chứa phân công groom đang mở của ngựa sau thao tác
    * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    */
   async assign(
@@ -138,7 +138,7 @@ export class GroomAssignmentsService {
    * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
    */
   async assignInTransaction(
     manager: EntityManager,
@@ -150,10 +150,6 @@ export class GroomAssignmentsService {
     changedEvent: GroomAssignmentChangedEvent | null;
   }> {
     return mapUniqueViolation(async () => {
-      const groom = await manager.findOne(UserEntity, {
-        where: { id: groomId },
-        lock: { mode: 'pessimistic_write' },
-      });
       // Kiểm tra trạng thái của con ngựa (k tranfer) và quyền của người gọi
       const horse = await this.access.lockOperableHorse(
         manager,
@@ -163,6 +159,10 @@ export class GroomAssignmentsService {
       );
       // Kiểm tra trạng thái của khu chuồng
       await this.access.lockActiveBarn(manager, horse.barnId);
+      const groom = await manager.findOne(UserEntity, {
+        where: { id: groomId },
+        lock: { mode: 'pessimistic_write' },
+      });
       // Kiểm tra groom có hợp lệ không (active và đúng role)
       assertAssignableGroom(groom);
       const current = await manager.findOne(GroomAssignmentEntity, {

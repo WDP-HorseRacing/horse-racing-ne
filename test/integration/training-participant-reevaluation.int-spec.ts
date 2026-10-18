@@ -1,3 +1,5 @@
+import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
+import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
@@ -31,7 +33,9 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
     db = await startTestPostgres();
     dataSource = db.dataSource;
     seed = fixtures(dataSource);
-    facade = new TrainingOperationsFacade();
+    facade = new TrainingOperationsFacade(
+      new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+    );
     listener = new ParticipantEligibilityListener(
       dataSource,
       facade,

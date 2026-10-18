@@ -83,7 +83,9 @@ describe('Users audit trail (Postgres)', () => {
           new HorseAccessService(dataSource),
         ),
       ),
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       audit,
     );
   });

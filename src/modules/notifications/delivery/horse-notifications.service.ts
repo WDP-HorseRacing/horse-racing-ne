@@ -33,7 +33,10 @@ import type {
   IncidentStaleEvent,
 } from '../../stable/types/stable-events.types';
 import type { SurchargeAddedEvent } from '../../billing/types/billing-events.types';
-import type { TrainingSessionCancelledEvent } from '../../training/types/training-session.types';
+import type {
+  TrainingRunGroomAssignedEvent,
+  TrainingSessionCancelledEvent,
+} from '../../training/types/training-session.types';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { horseResource } from '../mappers/notification.mapper';
@@ -305,6 +308,33 @@ export class HorseNotificationsService {
       );
     }
     return sent;
+  }
+
+  /**
+   * Báo Groom vừa được Head Trainer giao dắt một lượt tập
+   *
+   * - Thông báo nêu ngựa, buổi, giờ bắt đầu theo giờ CLB, địa điểm và mặt sân nếu buổi có ghi
+   * - Idempotent theo notice.eventId
+   *
+   * @param notice Payload do module training phát khi giao người dắt
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  notifyRunGroomAssigned(
+    notice: TrainingRunGroomAssignedEvent,
+  ): Promise<string[]> {
+    const place = [
+      notice.location ? `tại ${notice.location}` : null,
+      notice.surface ? `mặt sân ${notice.surface}` : null,
+    ].filter(Boolean);
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds: [notice.groomId],
+      category: NotificationCategory.TRAINING_SESSION,
+      priority: NotificationPriority.NORMAL,
+      title: `Được giao dắt ${notice.horseName}`,
+      message: `Bạn được giao dắt ${notice.horseName} ở buổi tập ${notice.sessionName} lúc ${formatClubDateTime(notice.scheduledStartAt)}${place.length ? `, ${place.join(', ')}` : ''}.`,
+      resource: null,
+    });
   }
 
   /**

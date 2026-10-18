@@ -127,6 +127,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 6. Mỗi ngày 00:05 (giờ CLB) và một lần khi khởi động, hệ thống chuyển mọi checklist ngày cũ còn `PENDING`/`IN_PROGRESS` sang `INCOMPLETE`. Chạy lại hoặc chạy bù đều cho cùng kết quả. Lỗi thì việc này tự thử lại riêng theo cùng nhịp ở luật 2, không chờ và không chặn việc sinh checklist hôm nay. Việc tự chuyển này không ghi nhật ký.
 7. Việc còn thiếu không dời sang ngày sau.
 8. Đổi Groom phụ trách: checklist hôm nay (kể cả đã xong) chuyển cho Groom mới; việc đã tick giữ nguyên người tick.
+   Các lượt tập tương lai chuyển sang Groom mới (Flow 2) mà một lượt trùng giờ với lượt Groom mới đang dắt ở buổi khác thì chặn 409 cả thao tác, không lưu gì, câu báo liệt kê từng cặp buổi trùng để Head Trainer giao lại người dắt trước. Xếp ô kèm giao Groom (`PUT /horses/:id/placement`) áp cùng luật.
 
 ### 6. Sự cố
 
@@ -150,10 +151,12 @@ SỰ CỐ                             Groom báo, HT khu đóng
 - Khu, ô chuồng hiện tại.
 - Checklist hôm nay (đã sinh theo luật 5.2; chưa có thì để trống).
 - Khẩu phần `ACTIVE` theo bữa.
-- Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu; bỏ buổi đã hủy, bỏ lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện.
+- Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu, kèm địa điểm (`location`) và mặt sân (`surface`) của buổi; bỏ buổi đã hủy, bỏ lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện.
 - Lịch chăm sóc Groom là người làm (Flow 3 F3.11: giao Groom phụ trách ở ngựa mình phụ trách, hoặc giao đích danh cho mình) đến hạn tới hết hôm nay mà chưa làm, kể cả lịch quá hạn (đánh dấu `overdue`). Lịch giao đích danh ở ngựa Groom không phụ trách nằm riêng ở `otherCareSchedules` (kèm tên ngựa).
 
-Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách rỗng.
+Lượt Groom được giao dắt ở ngựa Groom không phụ trách (dắt hộ) nằm riêng ở `assistedRuns`, cùng bộ lọc trên, kèm tên ngựa.
+
+Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa rỗng, nhưng vẫn thấy lượt dắt hộ.
 
 ### 8. Phụ phí chăm sóc riêng
 

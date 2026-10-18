@@ -293,3 +293,31 @@ Không đổi API.
    - `reason` bắt buộc 1–500 ký tự; `score` 1–10 và `comment` (null để xóa) tùy chọn. Lượt chưa có đánh giá là 404.
 4. Câu báo 409 của PATCH video đổi chung cho cả 3 thao tác: "Quá hạn sửa kết quả buổi tập" (trước là "Quá hạn gắn video chạy thử"), "Buổi tập đã hủy, không sửa kết quả được" (trước là "Buổi tập đã hủy, không sửa video chạy thử").
 5. Báo cáo tiến độ ngựa (`bestTrialMs`, `evaluation`) tự lấy giá trị mới sau khi sửa. Nhật ký thao tác ghi giá trị trước, sau và `reason` (`feature = TIME_TRIAL` / `PERF_EVAL`, `action = UPDATE`).
+
+## Groom biết đúng việc, đúng giờ, đúng chỗ
+
+1. `GET /grooms/me/today`: mỗi lượt trong `horses[].trainingRuns` có thêm `location`, `surface` (chuỗi hoặc null) của buổi.
+2. Thêm mảng `assistedRuns`: lượt hôm nay Groom được giao dắt ở ngựa Groom không phụ trách, theo giờ bắt đầu, cùng field với `trainingRuns` kèm `horseId`, `horseName`. Groom không phụ trách ngựa nào vẫn có mảng này.
+
+   ```json
+   {
+     "date": "2026-10-18",
+     "horses": [],
+     "otherCareSchedules": [],
+     "assistedRuns": [
+       {
+         "participantId": "uuid", "sessionId": "uuid", "sessionName": "Sức bền sáng",
+         "scheduledStartAt": "2026-10-17T23:00:00.000Z", "scheduledEndAt": "2026-10-18T00:00:00.000Z",
+         "location": "Sân 1", "surface": "Cát", "status": "PLANNED", "stoppedReason": null,
+         "horseId": "uuid", "horseName": "Sấm"
+       }
+     ]
+   }
+   ```
+
+3. 409 mới khi `PATCH /session-participants/:id/groom`: "Groom đang dắt ngựa Sấm ở buổi "Sức bền" lúc 06:30 ngày 19/10/2026, trùng giờ với lượt này".
+4. 409 mới khi `PUT /horses/:id/groom` và `PUT /horses/:id/placement`: "Groom mới đang dắt lượt trùng giờ: buổi "Sáng" lúc 06:00 ngày 19/10/2026 trùng lượt ngựa Sấm ở buổi "Sức bền" lúc 06:30 ngày 19/10/2026. Giao lại người dắt các lượt này trước khi đổi Groom" (nhiều cặp nối bằng "; "). Không lưu gì; FE hiện câu báo để HT giao lại người dắt trước.
+5. 409 mới khi thêm buổi (`POST /classes/:classId/sessions`, `.../sessions/bulk`), sửa buổi (`PATCH /training-sessions/:sessionId`) và ghi danh (`POST /classes/:classId/enrollments`) nếu người dắt của một lượt bị trùng giờ: "Người dắt bị trùng giờ: ngựa Gió ở buổi "Buổi mới" lúc 08:30 ngày 10/01/2030 trùng lượt ngựa Sấm ở buổi "Buổi" lúc 08:00 ngày 10/01/2030. Giao lại người dắt các lượt này trước". Không lưu gì. Thêm nhiều buổi thì câu báo có tiền tố "Buổi {n}: " như các lỗi khác.
+6. Sửa buổi giờ giữ nguyên người dắt HT đã giao tay (trước đây bị gắn lại Groom phụ trách).
+7. Thông báo mới cho Groom khi HT giao dắt một lượt: `category = TRAINING_SESSION`, mức `NORMAL`, `resource = null`, ví dụ "Bạn được giao dắt Gió ở buổi tập Sáng lúc 06:00 ngày 19/10/2026, tại Sân 1, mặt sân Cát.". Gỡ người dắt không có thông báo.
+

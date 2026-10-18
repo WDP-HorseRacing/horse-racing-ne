@@ -54,7 +54,9 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
     enrollments = new TrainingClassEnrollmentsService(
       dataSource.getRepository(HorseEnrollmentEntity),
       access,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       {
         signDownloadUrls: () => Promise.resolve(new Map()),

@@ -1,3 +1,4 @@
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { randomUUID } from 'node:crypto';
 import { ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -33,12 +34,15 @@ describe('SessionParticipantsService eligibility at check-in and start (Postgres
     service = new SessionParticipantsService(
       dataSource.getRepository(SessionParticipantEntity),
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       dataSource,
       {
         signDownloadUrls: () => Promise.resolve(new Map()),
       } as unknown as MediaService,
       new AuditService(),
+      new DomainEventPublisher(),
     );
   });
 

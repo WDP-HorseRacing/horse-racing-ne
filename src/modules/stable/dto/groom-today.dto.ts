@@ -37,6 +37,32 @@ export class GroomTodayRunResponseDto {
     description: 'Lý do dừng sớm, null nếu lượt không dừng sớm',
   })
   stoppedReason!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Địa điểm của buổi tập',
+  })
+  location!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Mặt sân của buổi tập',
+  })
+  surface!: string | null;
+}
+
+export class GroomTodayAssistedRunResponseDto extends GroomTodayRunResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @Expose()
+  @ApiProperty()
+  horseName!: string;
 }
 
 export class GroomTodayCareScheduleResponseDto {
@@ -149,4 +175,13 @@ export class GroomTodayResponseDto {
       'Lịch chăm sóc giao đích danh cho Groom ở ngựa Groom không phụ trách, đến hạn tới hết hôm nay mà chưa làm, ngày đến hạn sớm nhất lên trên',
   })
   otherCareSchedules!: GroomTodayOtherCareScheduleResponseDto[];
+
+  @Expose()
+  @Type(() => GroomTodayAssistedRunResponseDto)
+  @ApiProperty({
+    type: [GroomTodayAssistedRunResponseDto],
+    description:
+      'Lượt tập hôm nay Groom được giao dắt ở ngựa Groom không phụ trách, theo giờ bắt đầu',
+  })
+  assistedRuns!: GroomTodayAssistedRunResponseDto[];
 }

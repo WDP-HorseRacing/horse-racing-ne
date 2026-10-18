@@ -1,3 +1,5 @@
+import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
+import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
 import { HttpException } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -273,7 +275,9 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     handover = new HeadTrainerHandoverService(
       dataSource,
       barns,
-      new TrainingOperationsFacade(),
+      new TrainingOperationsFacade(
+        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
+      ),
       audit,
     );
     items = new SupplyItemsService(

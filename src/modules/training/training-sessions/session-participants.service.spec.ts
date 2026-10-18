@@ -1,6 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import type { MediaService } from '../../media/services/media.service';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -71,6 +72,7 @@ describe('SessionParticipantsService.list', () => {
       { manager } as unknown as DataSource,
       media as unknown as MediaService,
       { record: jest.fn() },
+      new DomainEventPublisher(),
     );
   });
 
@@ -188,7 +190,9 @@ describe('SessionParticipantsService.absent', () => {
       lockedParticipant: jest.fn().mockResolvedValue(row),
       assertCanOperateParticipant: jest.fn().mockResolvedValue(undefined),
     };
-    const operations = new TrainingOperationsFacade();
+    const operations = new TrainingOperationsFacade(
+      {} as TrainingAccessService,
+    );
     const refresh = jest
       .spyOn(operations, 'refreshSessionStatus')
       .mockResolvedValue({} as never);
@@ -203,6 +207,7 @@ describe('SessionParticipantsService.absent', () => {
       } as unknown as DataSource,
       {} as MediaService,
       { record: jest.fn() },
+      new DomainEventPublisher(),
     );
     return { service, row, refresh, manager };
   }
@@ -295,7 +300,9 @@ describe('SessionParticipantsService.stop', () => {
       lockedParticipant: jest.fn().mockResolvedValue(row),
       assertCanOperateParticipant: jest.fn().mockResolvedValue(undefined),
     };
-    const operations = new TrainingOperationsFacade();
+    const operations = new TrainingOperationsFacade(
+      {} as TrainingAccessService,
+    );
     const refresh = jest
       .spyOn(operations, 'refreshSessionStatus')
       .mockResolvedValue({} as never);
@@ -311,6 +318,7 @@ describe('SessionParticipantsService.stop', () => {
       } as unknown as DataSource,
       {} as MediaService,
       audit,
+      new DomainEventPublisher(),
     );
     return { service, row, refresh, manager, audit };
   }

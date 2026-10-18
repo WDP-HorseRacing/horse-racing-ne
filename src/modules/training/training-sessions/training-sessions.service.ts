@@ -41,6 +41,7 @@ import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
 import {
+  assertNoGroomRunClashes,
   assertNoOverlappingClassSession,
   assertSessionCancellable,
   assertSessionEditable,
@@ -61,6 +62,7 @@ import { TrainingAccessService } from '../shared/training-access.service';
 import { sessionAuditData } from '../utils/training-audit';
 import { TRAINING_SESSION_CANCELLED_EVENT } from '../constants/training-events.constants';
 import type {
+  GroomRun,
   SessionWindow,
   TrainingSessionCancelledEvent,
 } from '../types/training-session.types';
@@ -770,10 +772,12 @@ export class TrainingSessionsService {
    * Đồng bộ lượt tập của một buổi đã lên lịch với các ngựa đang học lớp vào giờ bắt đầu của buổi
    *
    * - Ngựa có khoảng ghi danh chưa hủy chứa giờ bắt đầu mà chưa có lượt: tạo lượt mới; lượt cũ đã hủy thì dùng lại và đặt lại như lượt mới
-   * - Lượt chờ điểm danh, hủy do khóa, không đủ điều kiện: chấm lại điều kiện tập theo cường độ của buổi, gắn Groom phụ trách ngựa lúc bắt đầu
+   * - Lượt chờ điểm danh, hủy do khóa, không đủ điều kiện: chấm lại điều kiện tập theo cường độ của buổi; lượt đã có người dắt giữ người dắt, lượt chưa có người dắt gắn Groom phụ trách ngựa lúc bắt đầu
+   * - Lượt mới hoặc dùng lại: gắn Groom phụ trách ngựa lúc bắt đầu
+   * - Người dắt của lượt còn mở đang dắt lượt khác trùng giờ ở buổi khác: 409 (assertNoGroomRunClashes)
    * - Lượt chờ điểm danh, hủy do khóa, không đủ điều kiện của ngựa không còn học lớp vào giờ bắt đầu: hủy
    * - Lượt đã điểm danh trở đi giữ nguyên
-   * - Khóa từng con ngựa theo thứ tự UUID trước khi ghi
+   * - Khóa từng con ngựa theo thứ tự UUID, rồi khóa user các Groom làm người dắt theo thứ tự UUID, rồi mới ghi lượt
    *
    * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
@@ -781,6 +785,7 @@ export class TrainingSessionsService {
    * @param session Buổi tập đã khóa và đã lưu
    * @returns Promise trả về số lượt mới tạo hoặc dùng lại
    * @throws ForbiddenException Nếu Head Trainer gặp ngựa ngoài khu mình phụ trách
+   * @throws ConflictException Nếu người dắt của một lượt bị trùng giờ với lượt khác đang dắt
    */
   private async syncParticipants(
     manager: EntityManager,
@@ -808,6 +813,8 @@ export class TrainingSessionsService {
       ...new Set([...enrollments.keys(), ...participants.keys()]),
     ].sort();
     let created = 0;
+    const writes: SessionParticipantEntity[] = [];
+    const assigned: Array<{ groomId: string; run: GroomRun }> = [];
     for (const horseId of horseIds) {
       const participant = participants.get(horseId);
       const reusable =
@@ -828,7 +835,7 @@ export class TrainingSessionsService {
             cancelReason: NOT_ENROLLED_AT_START_REASON,
             ineligibilityReason: null,
           });
-          await manager.save(participant);
+          writes.push(participant);
         }
         continue;
       }
@@ -847,11 +854,11 @@ export class TrainingSessionsService {
         }),
         session.intensity,
       );
-      const groom = await this.findGroomAt(
-        manager,
-        horseId,
-        session.scheduledStartAt,
-      );
+      const groomId =
+        (!reusable && participant?.assignedGroomId) ||
+        ((await this.findGroomAt(manager, horseId, session.scheduledStartAt))
+          ?.groomId ??
+          null);
       const row =
         participant ??
         manager.create(SessionParticipantEntity, {
@@ -859,10 +866,10 @@ export class TrainingSessionsService {
           horseId,
         });
       if (reusable) created += 1;
-      await manager.save(
+      writes.push(
         Object.assign(row, {
           horseEnrollmentId: enrollment.id,
-          assignedGroomId: groom?.groomId ?? null,
+          assignedGroomId: groomId,
           ...(reusable && {
             checkedInAt: null,
             startedAt: null,
@@ -873,7 +880,29 @@ export class TrainingSessionsService {
           ...initialParticipantEligibility(eligibility, activeLock),
         }),
       );
+      if (groomId) {
+        assigned.push({
+          groomId,
+          run: {
+            sessionId: session.id,
+            status: row.status,
+            sessionStatus: session.status,
+            sessionName: session.name,
+            horseName: horse.name,
+            scheduledStartAt: session.scheduledStartAt,
+            scheduledEndAt: session.scheduledEndAt,
+          },
+        });
+      }
     }
+    await this.access.lockUsers(
+      manager,
+      assigned.map(({ groomId }) => groomId),
+    );
+    for (const row of writes) await manager.save(row);
+    assertNoGroomRunClashes(
+      await this.access.groomRunClashes(manager, assigned),
+    );
     return created;
   }
 
