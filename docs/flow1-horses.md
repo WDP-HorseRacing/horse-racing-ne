@@ -663,7 +663,10 @@ Chỉ CLUB MANAGER tạo, sửa, xóa khu và ô. Flow 1 dựa vào danh mục n
 4. Ô đang có ngựa không xóa được và không chuyển sang khu khác được.
 5. Không đổi ô trống sang Bảo trì, không chuyển ô trống sang khu khác và không xóa ô trống nếu việc đó làm khu thiếu ô cho ngựa đang "Chờ xếp ô".
 6. Thêm, sửa, xóa khu và ô đều ghi nhật ký.
-7. Đổi HEAD TRAINER phụ trách của khu không rút ngựa trong khu khỏi lớp của HEAD TRAINER cũ (khác với đổi khu cho từng con ở F1.6). *(BA chốt)*
+7. Không đổi được HEAD TRAINER phụ trách của khu sang người khác khi HEAD TRAINER cũ còn lớp đang chạy có ngựa của khu đang học: báo 409 kèm mã các lớp đó. Lớp thuộc HEAD TRAINER đã tạo lớp chứ không thuộc khu, còn HEAD TRAINER chỉ thao tác buổi tập với ngựa trong khu mình, nên nếu cho đổi thì các buổi của lớp đó không ai bắt đầu hay kết thúc được (cùng lý do với việc đổi khu cho từng con ở F1.6 rút ngựa khỏi lớp của HEAD TRAINER khu cũ). Cách gỡ:
+   - HEAD TRAINER cũ cho các ngựa đó rời lớp hoặc kết thúc lớp, rồi CLUB MANAGER đổi lại.
+   - Hoặc CLUB MANAGER dùng bàn giao HEAD TRAINER (`POST /users/:id/head-trainer-handover`, Flow 2 mục 7): chuyển một lần mọi khu, giáo án và lớp đang chạy sang HEAD TRAINER mới; bị chặn nếu buổi của lớp được chuyển trùng giờ với buổi ở lớp của người nhận.
+   - Gỡ HEAD TRAINER khỏi khu còn ngựa vẫn bị chặn theo mục 2.
 
 ## Phụ lục 2: Việc còn nợ khi triển khai
 

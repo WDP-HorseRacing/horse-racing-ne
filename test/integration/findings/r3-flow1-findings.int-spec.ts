@@ -507,18 +507,48 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
     expect(await outboxCount()).toBeGreaterThan(0);
   });
 
-  it('F1-11 lets the club manager change the barn head trainer while the old one still runs classes there', async () => {
+  it('F1-11 blocks changing the barn head trainer while the old one still runs a class with a horse of the barn', async () => {
     const { trainerId: oldId, barn } = await barnWithTrainer();
     const newId = await seed.user(UserRole.HEAD_TRAINER);
-    const horse = await seed.horse('Lớp cũ', { barnId: barn });
-    await enrolledInFutureSession(oldId, horse);
+    const finishing = await seed.horse('Lớp kết thúc', { barnId: barn });
+    const leaving = await seed.horse('Rời lớp', { barnId: barn });
+    const { classId: finishingClass } = await enrolledInFutureSession(
+      oldId,
+      finishing,
+    );
+    const { classId: leavingClass } = await enrolledInFutureSession(
+      oldId,
+      leaving,
+    );
+    const change = () =>
+      barns
+        .update(cm, barn, { headTrainerId: newId })
+        .then(() => 'changed')
+        .catch((error: Error) => `${error.constructor.name}: ${error.message}`);
 
-    const outcome = await barns
-      .update(cm, barn, { headTrainerId: newId })
-      .then(() => 'changed')
-      .catch((error: Error) => error.message);
+    const whileBothRun = await change();
+    await dataSource.query(
+      `UPDATE training_classes SET status = 'COMPLETED' WHERE id = $1`,
+      [finishingClass],
+    );
+    const afterClassFinished = await change();
+    await dataSource.query(
+      `UPDATE horse_enrollments SET status = 'LEFT' WHERE class_id = $1`,
+      [leavingClass],
+    );
+    const afterHorseLeft = await change();
 
-    expect(outcome).toBe('changed');
+    expect(whileBothRun).toMatch(/^ConflictException: /);
+    expect(whileBothRun).toContain(finishingClass.slice(0, 8));
+    expect(whileBothRun).toContain(leavingClass.slice(0, 8));
+    expect(afterClassFinished).toMatch(/^ConflictException: /);
+    expect(afterClassFinished).not.toContain(finishingClass.slice(0, 8));
+    expect(afterHorseLeft).toBe('changed');
+    const [row] = await dataSource.query<{ head_trainer_id: string }[]>(
+      'SELECT head_trainer_id FROM barns WHERE id = $1',
+      [barn],
+    );
+    expect(row.head_trainer_id).toBe(newId);
   });
 
   it('F1-15 hides the transfer reason from a veterinarian reading the ownership history', async () => {
