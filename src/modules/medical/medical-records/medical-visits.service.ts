@@ -70,6 +70,7 @@ import {
   assertStandaloneVisitInput,
   assertVisitCostAdjustable,
   assertVisitExamDate,
+  assertVisitVoidAuthor,
   resolveVisitVoid,
 } from '../policies/medical.policy';
 import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
@@ -305,6 +306,7 @@ export class MedicalVisitsService {
    * Hủy buổi khám ghi sai
    *
    * - Chỉ Veterinarian (kiểm ở controller), bắt buộc lý do
+   * - Chỉ bác sĩ ghi buổi khám mới được hủy; bác sĩ khác: 403
    * - Buổi đã hủy: 409. Buổi tái khám hủy được kể cả khi bệnh án đã đóng (không đổi chi phí, kết luận)
    * - Buổi mở bệnh án chỉ hủy được khi bệnh án còn đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy, lệnh khóa tách khỏi bệnh án, event hủy bệnh án ghi vào outbox trong cùng transaction (báo Club Manager và chủ ngựa)
    * - Số đo của buổi khám bị xóa mềm khỏi lịch sử số đo cơ thể; trạng thái sức khỏe không tự quay lại
@@ -314,7 +316,7 @@ export class MedicalVisitsService {
    * @param recordId UUID của buổi khám
    * @param body Lý do hủy
    * @returns Promise trả về buổi khám sau khi hủy
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc người gọi không phải bác sĩ ghi buổi khám
    * @throws NotFoundException Nếu không có buổi khám, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu buổi khám không được hủy, hoặc ngựa đã chuyển nhượng
    */
@@ -337,6 +339,7 @@ export class MedicalVisitsService {
         where: { id: recordId },
         lock: { mode: 'pessimistic_write' },
       });
+      assertVisitVoidAuthor(visit.vetId, caller.id);
       const medicalCase = visit.caseId
         ? await manager.findOneOrFail(MedicalCaseEntity, {
             where: { id: visit.caseId },

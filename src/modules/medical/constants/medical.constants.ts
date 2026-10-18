@@ -53,6 +53,12 @@ export const OPEN_CASE_BLOCKS_DECEASED_MESSAGE =
   'Ngựa còn bệnh án đang điều trị, bác sĩ cần đóng bệnh án trước khi ghi nhận ngựa mất';
 
 /**
+ * Thông báo 403 khi bác sĩ hủy buổi khám do bác sĩ khác ghi.
+ */
+export const VISIT_VOID_AUTHOR_ONLY_MESSAGE =
+  'Chỉ bác sĩ ghi phiếu khám mới được hủy phiếu này';
+
+/**
  * Câu chặn khi còn bệnh án đang mở, theo trạng thái làm hồ sơ chỉ được xem
  */
 export const OPEN_CASE_BLOCKS_READ_ONLY_MESSAGES: Record<

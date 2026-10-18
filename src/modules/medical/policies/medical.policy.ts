@@ -37,6 +37,7 @@ import {
   MEDICAL_CHECKUP_CYCLE_DAYS,
   NO_LOCK_CHOICE_ON_DEATH_MESSAGE,
   VISIT_BACKDATE_MAX_DAYS,
+  VISIT_VOID_AUTHOR_ONLY_MESSAGE,
 } from '../constants/medical.constants';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -335,6 +336,22 @@ export function assertCaseOpen(status: MedicalCaseStatus): void {
     throw new ConflictException(
       'Bệnh án không còn đang điều trị (đã đóng hoặc đã hủy), chỉ được xem',
     );
+  }
+}
+
+/**
+ * Chỉ bác sĩ ghi buổi khám mới được hủy buổi khám đó
+ *
+ * @param visitVetId UUID của bác sĩ ghi buổi khám
+ * @param callerId UUID của người gọi
+ * @throws ForbiddenException Nếu người gọi không phải bác sĩ ghi buổi khám
+ */
+export function assertVisitVoidAuthor(
+  visitVetId: string,
+  callerId: string,
+): void {
+  if (visitVetId !== callerId) {
+    throw new ForbiddenException(VISIT_VOID_AUTHOR_ONLY_MESSAGE);
   }
 }
 

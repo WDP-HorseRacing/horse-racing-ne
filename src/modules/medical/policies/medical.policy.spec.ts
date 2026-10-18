@@ -50,6 +50,7 @@ import {
   assertStandaloneVisitAllowed,
   assertStandaloneVisitInput,
   resolveVisitVoid,
+  assertVisitVoidAuthor,
   canSeeDosage,
   isGroomOnly,
   isGroomOnlyForExamRequests,
@@ -332,6 +333,13 @@ describe('medical.policy', () => {
         ConflictException,
       );
       expect(() => assertCaseOpen(MedicalCaseStatus.OPEN)).not.toThrow();
+    });
+
+    it('lets only the author vet void a visit', () => {
+      expect(() => assertVisitVoidAuthor('vet-1', 'vet-1')).not.toThrow();
+      expect(() => assertVisitVoidAuthor('vet-1', 'vet-2')).toThrow(
+        ForbiddenException,
+      );
     });
 
     it('decides what voiding a visit does', () => {

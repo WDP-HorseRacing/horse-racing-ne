@@ -613,6 +613,7 @@ describe('MedicalVisitsService', () => {
     const visit = (overrides: Row = {}) => ({
       id: 'r1',
       horseId: HORSE_ID,
+      vetId: 'vet-1',
       caseId: null,
       conclusion: MedicalVisitConclusion.NORMAL,
       voidedAt: null,
@@ -633,6 +634,23 @@ describe('MedicalVisitsService', () => {
         service.voidVisit(vet, 'r1', { reason: 'Sai' }),
       ).rejects.toThrow(ConflictException);
       expect(measurements.voidExamMeasurements).not.toHaveBeenCalled();
+      expectNothingWritten();
+    });
+
+    it('forbids a vet other than the author before the visit rules', async () => {
+      rows.set(
+        MedicalRecordEntity,
+        visit({ vetId: 'vet-2', voidedAt: new Date() }),
+      );
+      await expect(
+        service.voidVisit(vet, 'r1', { reason: 'Sai' }),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Chỉ bác sĩ ghi phiếu khám mới được hủy phiếu này',
+        ),
+      );
+      expect(measurements.voidExamMeasurements).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
       expectNothingWritten();
     });
 

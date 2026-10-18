@@ -104,7 +104,7 @@ export class MedicalRecordsController {
   @ApiOperation({
     summary: 'Void a wrongly recorded medical visit',
     description:
-      'Bắt buộc lý do. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.',
+      'Bắt buộc lý do. Chỉ bác sĩ ghi buổi khám mới được hủy, bác sĩ khác: 403. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.',
     operationId: 'MedicalDetailsController_voidRecord',
   })
   @ApiCreatedResponse({ type: MedicalRecordResponseDto })

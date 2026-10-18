@@ -379,3 +379,7 @@ Không đổi API.
    - `GET /medical/cost-report` lọc theo **ngày khám** (không còn theo ngày đóng), gồm cả buổi khám ngoài bệnh án. Đổi `caseCount` thành `visitCount` (số buổi khám chưa hủy) ở tổng và từng dòng. `ownerId` lọc theo chủ của giai đoạn chứa ngày khám; `barnId` vẫn theo khu hiện tại.
    - `GET /reports/owner/costs`, `GET /reports/club/finance`: `medicalCost` tính theo ngày khám; từng ngựa đổi `caseCount` thành `visitCount`.
 7. Chuyển chủ nội bộ `POST /horses/:horseId/ownership-transfers` không còn 409 khi ngựa đang có bệnh án mở. Bán ra ngoài và ghi nhận mất khi còn bệnh án mở vẫn 409 như cũ.
+
+## Hủy buổi khám: chỉ bác sĩ ghi phiếu
+
+1. `POST /medical-records/:id/void`: bác sĩ hủy buổi khám do bác sĩ khác ghi nhận 403 "Chỉ bác sĩ ghi phiếu khám mới được hủy phiếu này". `PATCH /medical-records/:id/cost` không đổi.

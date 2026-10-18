@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -406,7 +407,7 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     expect(messages).toContain('Mây');
   });
 
-  it('N21: the author vet is notified when another vet voids their visit', async () => {
+  it('N21: another vet cannot void a visit they did not record (403, visit stays)', async () => {
     const { horse } = await scene();
     const author = await person(UserRole.VETERINARIAN);
     const other = await person(UserRole.VETERINARIAN);
@@ -414,10 +415,15 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
       kind: MedicalVisitKind.ROUTINE,
       conclusion: MedicalVisitConclusion.NORMAL,
     });
-    await visits.voidVisit(other.actor, visit.id, { reason: 'Nhầm ngựa' });
-    await deliverAll();
 
-    expect(sentTo(author.id)).not.toHaveLength(0);
+    await expect(
+      visits.voidVisit(other.actor, visit.id, { reason: 'Nhầm ngựa' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    const [row] = await dataSource.query<{ voided_at: Date | null }[]>(
+      'SELECT voided_at FROM medical_records WHERE id = $1',
+      [visit.id],
+    );
+    expect(row.voided_at).toBeNull();
   });
 
   it('D4: two distinct sprains on the same leg can be recorded in one visit', async () => {
