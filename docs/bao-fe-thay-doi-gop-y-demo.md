@@ -383,3 +383,8 @@ Không đổi API.
 ## Hủy buổi khám: chỉ bác sĩ ghi phiếu
 
 1. `POST /medical-records/:id/void`: bác sĩ hủy buổi khám do bác sĩ khác ghi nhận 403 "Chỉ bác sĩ ghi phiếu khám mới được hủy phiếu này". `PATCH /medical-records/:id/cost` không đổi.
+
+## Head Trainer không có hai buổi trùng giờ ở hai lớp
+
+1. 409 mới khi thêm buổi (`POST /classes/:classId/sessions`, `.../sessions/bulk`) và đổi giờ buổi (`PATCH /training-sessions/:sessionId`) nếu HT của lớp đã có buổi chưa hủy trùng giờ ở lớp khác của mình: "Trùng giờ với lịch của Huấn luyện viên trưởng: lớp KD-02, 06:00 ngày 10/10/2026". Không lưu gì. Thêm nhiều buổi thì câu báo có tiền tố "Buổi {n}: " như các lỗi khác.
+2. 409 mới khi `POST /users/:id/head-trainer-handover` nếu buổi của lớp được chuyển trùng giờ với buổi ở lớp của HT nhận: "Huấn luyện viên trưởng nhận có buổi trùng giờ: lớp KD-01 lúc 06:00 ngày 10/10/2026 trùng lớp KD-05 lúc 06:30 ngày 10/10/2026. Đổi giờ các buổi này trước khi bàn giao" (nhiều cặp nối bằng "; "). Không chuyển gì.

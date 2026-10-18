@@ -51,6 +51,7 @@ import {
   classPhaseOn,
   eligibilityForSession,
   assertClassDailyLoad,
+  assertHeadTrainerFreeForSession,
   findDailyLoadConflict,
   findHorseScheduleClashes,
   horseDailyLoadError,
@@ -178,7 +179,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập vừa tạo ở trạng thái SCHEDULED
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có lớp
-   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, môn không có trong giai đoạn chứa ngày của buổi, buổi trùng giờ với buổi chưa hủy khác của lớp, hoặc trùng giờ với lịch ở lớp khác của ngựa đang học lớp vào giờ đó
+   * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, môn không có trong giai đoạn chứa ngày của buổi, buổi trùng giờ với buổi chưa hủy khác của lớp, trùng giờ với lịch ở lớp khác của ngựa đang học lớp vào giờ đó, hoặc trùng giờ với buổi chưa hủy ở lớp khác của Head Trainer phụ trách lớp
    * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, môn học không tồn tại, loại buổi gửi lên khác loại buổi của môn, hoặc nội dung buổi sai theo loại môn
    */
   async createSession(
@@ -211,7 +212,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về các buổi vừa tạo, sớm nhất trước
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có lớp
-   * @throws ConflictException Nếu lớp đã kết thúc, có buổi trùng giờ, hoặc môn không có trong giai đoạn chứa ngày của buổi
+   * @throws ConflictException Nếu lớp đã kết thúc, có buổi trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp), hoặc môn không có trong giai đoạn chứa ngày của buổi
    * @throws BadRequestException Nếu có buổi sai giờ, nằm ngoài thời gian của lớp, môn không tồn tại hoặc nội dung sai theo loại môn
    */
   async createSessions(
@@ -295,7 +296,7 @@ export class TrainingSessionsService {
    * @param trainingClass Lớp đã khóa, đang chạy
    * @param body Nội dung buổi tập
    * @returns Promise trả về buổi vừa lưu
-   * @throws ConflictException Nếu buổi trùng giờ, hoặc môn không có trong giai đoạn chứa ngày của buổi
+   * @throws ConflictException Nếu buổi trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp), hoặc môn không có trong giai đoạn chứa ngày của buổi
    * @throws BadRequestException Nếu giờ sai hoặc ngoài thời gian của lớp, môn không tồn tại, loại buổi khác loại của môn, hoặc nội dung sai theo loại môn
    * @throws ForbiddenException Nếu có ngựa ngoài khu của Head Trainer
    */
@@ -356,6 +357,7 @@ export class TrainingSessionsService {
       { ...window, intensity: body.intensity },
       true,
     );
+    await this.assertHeadTrainerFree(manager, trainingClass, window);
     const session = await manager.save(
       manager.create(TrainingSessionEntity, {
         classId,
@@ -411,7 +413,7 @@ export class TrainingSessionsService {
   /**
    * Sửa buổi tập đã lên lịch chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu), rồi đồng bộ lại lượt tập
    *
-   * - Đổi giờ: kiểm trùng giờ trong lớp và trùng giờ của ngựa như khi thêm buổi
+   * - Đổi giờ: kiểm trùng giờ trong lớp, trùng giờ của ngựa và trùng giờ của Head Trainer phụ trách lớp như khi thêm buổi
    * - Sau khi lưu, lượt tập được đồng bộ theo giờ bắt đầu và cường độ mới (syncParticipants)
    * - Ghi nhật ký các field nội dung đã đổi
    *
@@ -421,7 +423,7 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập sau khi sửa
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có buổi tập hoặc lớp
-   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ
+   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp)
    * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp hoặc môn học không tồn tại
    */
   async updateSession(
@@ -514,6 +516,9 @@ export class TrainingSessionsService {
           next,
           timeChanged,
         );
+        if (timeChanged) {
+          await this.assertHeadTrainerFree(manager, trainingClass, next);
+        }
       }
       Object.assign(session, {
         subjectId: body.subjectId ?? session.subjectId,
@@ -702,6 +707,38 @@ export class TrainingSessionsService {
         ),
       );
     }
+  }
+
+  /**
+   * Chặn buổi tập trùng giờ với buổi chưa hủy ở lớp khác của Head Trainer phụ trách lớp
+   *
+   * - Lớp chưa có Head Trainer: bỏ qua
+   * - Khóa user Head Trainer trước khi đọc lịch, để hai lần xếp buổi của cùng Head Trainer chạy tuần tự
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param trainingClass Lớp đã khóa của buổi đang thêm hoặc sửa
+   * @param window Khoảng giờ của buổi đang thêm hoặc sửa
+   * @returns Promise hoàn tất khi Head Trainer rảnh trong khoảng giờ
+   * @throws ConflictException Nếu trùng giờ với buổi ở lớp khác của Head Trainer; câu báo nêu mã lớp và giờ bắt đầu của buổi trùng
+   */
+  private async assertHeadTrainerFree(
+    manager: EntityManager,
+    trainingClass: TrainingClassEntity,
+    window: SessionWindow,
+  ): Promise<void> {
+    const headTrainerId = trainingClass.headTrainerId;
+    if (!headTrainerId) return;
+    await this.access.lockUsers(manager, [headTrainerId]);
+    assertHeadTrainerFreeForSession(
+      window,
+      await this.access.headTrainerSessions(
+        manager,
+        [headTrainerId],
+        window.scheduledStartAt,
+        window.scheduledEndAt,
+        trainingClass.id,
+      ),
+    );
   }
 
   /**

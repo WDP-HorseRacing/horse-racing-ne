@@ -47,7 +47,7 @@ export class HeadTrainerHandoverService {
    * @throws ForbiddenException Nếu tài khoản người gọi không hoạt động
    * @throws NotFoundException Nếu người bàn giao không phải Head Trainer
    * @throws BadRequestException Nếu người nhận trùng người bàn giao, không có hoặc không phải Head Trainer
-   * @throws ConflictException Nếu người nhận không ở trạng thái hoạt động
+   * @throws ConflictException Nếu người nhận không ở trạng thái hoạt động, hoặc một buổi của lớp sẽ chuyển trùng giờ với buổi ở lớp của người nhận (không chuyển gì)
    */
   async handover(
     actor: Actor,

@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { TrainingAccessService } from './training-access.service';
 import { DataSource, EntityManager } from 'typeorm';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
@@ -441,5 +442,64 @@ describe('TrainingOperationsFacade.refreshSessionStatus', () => {
     await facade.refreshSessionStatus(manager, 's1');
     expect(session.status).toBe(TrainingSessionStatus.COMPLETED);
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe('TrainingOperationsFacade.handOverHeadTrainerWork', () => {
+  const htSession = (
+    headTrainerId: string,
+    classCode: string,
+    start: string,
+  ) => ({
+    sessionId: `s-${classCode}`,
+    classId: `c-${classCode}`,
+    classCode,
+    headTrainerId,
+    scheduledStartAt: new Date(start),
+    scheduledEndAt: new Date(new Date(start).getTime() + 3_600_000),
+  });
+  const setup = (sessions: ReturnType<typeof htSession>[]) => {
+    const access = {
+      headTrainerSessions: jest.fn().mockResolvedValue(sessions),
+    };
+    const update = jest.fn().mockResolvedValue({ affected: 1 });
+    const manager = { update } as unknown as EntityManager;
+    const facade = new TrainingOperationsFacade(
+      access as unknown as TrainingAccessService,
+    );
+    return { facade, access, update, manager };
+  };
+
+  it('refuses with 409 and writes nothing when a moved session clashes with the receiver', async () => {
+    const { facade, access, update, manager } = setup([
+      htSession('from', 'A', '2099-10-10T01:00:00Z'),
+      htSession('to', 'B', '2099-10-10T01:30:00Z'),
+    ]);
+
+    await expect(
+      facade.handOverHeadTrainerWork(manager, 'from', 'to'),
+    ).rejects.toThrow(
+      new ConflictException(
+        'Huấn luyện viên trưởng nhận có buổi trùng giờ: lớp A lúc 08:00 ngày 10/10/2099 trùng lớp B lúc 08:30 ngày 10/10/2099. Đổi giờ các buổi này trước khi bàn giao',
+      ),
+    );
+    expect(access.headTrainerSessions).toHaveBeenCalledWith(
+      manager,
+      ['from', 'to'],
+      expect.any(Date),
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('moves plans and classes when the schedules do not clash', async () => {
+    const { facade, update, manager } = setup([
+      htSession('from', 'A', '2099-10-10T01:00:00Z'),
+      htSession('to', 'B', '2099-10-10T02:00:00Z'),
+    ]);
+
+    await expect(
+      facade.handOverHeadTrainerWork(manager, 'from', 'to'),
+    ).resolves.toEqual({ plansMoved: 1, classesMoved: 1 });
+    expect(update).toHaveBeenCalledTimes(2);
   });
 });

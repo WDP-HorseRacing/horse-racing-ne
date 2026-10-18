@@ -13,6 +13,8 @@ import {
   assertSessionEditable,
   assertNoHoldingOverlap,
   assertNoOverlappingClassSession,
+  assertHeadTrainerFreeForSession,
+  assertHeadTrainerFreeForMovedClasses,
   findHorseScheduleClashes,
   findOverlappingHolding,
   horseScheduleClashError,
@@ -842,5 +844,63 @@ describe('findDailyLoadConflict', () => {
     expect(dailyLoadMessage({ other, reason: 'HEAVY_DAY_LIMIT' })).toBe(
       'đã có buổi Nặng trong ngày (lớp K2, 08:00 ngày 10/10/2026)',
     );
+  });
+});
+
+describe('head trainer schedule policy', () => {
+  const htSession = (classCode: string, start: string, end: string) => ({
+    sessionId: `s-${classCode}-${start}`,
+    classId: `c-${classCode}`,
+    classCode,
+    headTrainerId: 'ht',
+    scheduledStartAt: new Date(start),
+    scheduledEndAt: new Date(end),
+  });
+  const window = {
+    scheduledStartAt: new Date('2026-10-10T01:00:00Z'),
+    scheduledEndAt: new Date('2026-10-10T02:00:00Z'),
+  };
+
+  it('rejects a session overlapping a session of another class of the head trainer, naming the first clash', () => {
+    expect(() =>
+      assertHeadTrainerFreeForSession(window, [
+        htSession('B', '2026-10-10T00:00:00Z', '2026-10-10T01:00:00Z'),
+        htSession('C', '2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+        htSession('D', '2026-10-10T01:45:00Z', '2026-10-10T02:15:00Z'),
+      ]),
+    ).toThrow(
+      new ConflictException(
+        'Trùng giờ với lịch của Huấn luyện viên trưởng: lớp C, 08:30 ngày 10/10/2026',
+      ),
+    );
+  });
+
+  it('accepts a session touching the head trainer sessions only at the edge', () => {
+    expect(() =>
+      assertHeadTrainerFreeForSession(window, [
+        htSession('B', '2026-10-10T00:00:00Z', '2026-10-10T01:00:00Z'),
+        htSession('C', '2026-10-10T02:00:00Z', '2026-10-10T03:00:00Z'),
+      ]),
+    ).not.toThrow();
+    expect(() => assertHeadTrainerFreeForSession(window, [])).not.toThrow();
+  });
+
+  it('rejects a handover listing each moved session clashing with the receiver', () => {
+    const moving = [
+      htSession('A', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z'),
+      htSession('A', '2026-10-11T01:00:00Z', '2026-10-11T02:00:00Z'),
+    ];
+    const busy = [
+      htSession('X', '2026-10-10T01:30:00Z', '2026-10-10T02:30:00Z'),
+      htSession('Y', '2026-10-11T02:00:00Z', '2026-10-11T03:00:00Z'),
+    ];
+    expect(() => assertHeadTrainerFreeForMovedClasses(moving, busy)).toThrow(
+      new ConflictException(
+        'Huấn luyện viên trưởng nhận có buổi trùng giờ: lớp A lúc 08:00 ngày 10/10/2026 trùng lớp X lúc 08:30 ngày 10/10/2026. Đổi giờ các buổi này trước khi bàn giao',
+      ),
+    );
+    expect(() =>
+      assertHeadTrainerFreeForMovedClasses(moving, busy.slice(1)),
+    ).not.toThrow();
   });
 });

@@ -408,7 +408,14 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     const outcome = await outcomeOf(
       sessionsService.createSession(trainer, other.classId, {
         name: 'Buổi lớp khác',
-        subjectId: await subject(TrainingIntensity.LIGHT),
+        subjectId: (
+          await dataSource.query<Array<{ subject_id: string }>>(
+            `SELECT s.subject_id FROM training_class_phase_subjects s
+               JOIN training_class_phases p ON p.id = s.phase_id
+              WHERE p.class_id = $1`,
+            [other.classId],
+          )
+        )[0].subject_id,
         intensity: TrainingIntensity.LIGHT,
         plannedDistanceM: 1200,
         scheduledStartAt: start.toISOString(),
@@ -416,7 +423,9 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
       }),
     );
 
-    expect(outcome).toMatch(/^409/);
+    expect(outcome).toMatch(
+      /^409 Trùng giờ với lịch của Huấn luyện viên trưởng: lớp /,
+    );
   });
 
   it('D1: a training lock can carry a maximum allowed intensity (e.g. LIGHT)', () => {

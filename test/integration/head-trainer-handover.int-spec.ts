@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { UserStatus } from '../../src/common/enums/user-status.enum';
@@ -141,5 +142,100 @@ describe('HeadTrainerHandoverService (Postgres)', () => {
       Array<{ head_trainer_id: string }>
     >('SELECT head_trainer_id FROM barns WHERE id = $1', [barn]);
     expect(barnRow.head_trainer_id).toBe(fromId);
+  });
+
+  describe('sessions of the moved classes and of the receiver', () => {
+    const session = (
+      classId: string,
+      start: string,
+      end: string,
+      status = 'SCHEDULED',
+    ) =>
+      dataSource.query(
+        `INSERT INTO training_sessions (id, version, class_id, name, scheduled_start_at, scheduled_end_at, status, intensity, planned_distance_m)
+         VALUES ($1, 1, $2, 'Buổi', $3, $4, $5, 'LIGHT', 3000)`,
+        [randomUUID(), classId, start, end, status],
+      );
+    const headTrainersOfClasses = async () =>
+      Object.fromEntries(
+        (
+          await dataSource.query<
+            Array<{ code: string; head_trainer_id: string }>
+          >('SELECT code, head_trainer_id FROM training_classes')
+        ).map((row) => [row.code, row.head_trainer_id]),
+      );
+    const dates = { startDate: '2026-01-01', endDate: '2099-12-31' };
+
+    it('refuses with 409 and moves nothing when a moved session overlaps a session of the receiver', async () => {
+      const barn = await barnOf(fromId);
+      const moved = await seed.trainingClass(fromId, { ...dates, code: 'A' });
+      const own = await seed.trainingClass(toId, { ...dates, code: 'B' });
+      await session(
+        moved.classId,
+        '2099-01-10T01:00:00Z',
+        '2099-01-10T02:00:00Z',
+      );
+      await session(
+        own.classId,
+        '2099-01-10T01:30:00Z',
+        '2099-01-10T02:30:00Z',
+      );
+
+      await expect(
+        service.handover(manager, fromId, { toHeadTrainerId: toId }),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Huấn luyện viên trưởng nhận có buổi trùng giờ: lớp A lúc 08:00 ngày 10/01/2099 trùng lớp B lúc 08:30 ngày 10/01/2099. Đổi giờ các buổi này trước khi bàn giao',
+        ),
+      );
+      expect(await headTrainersOfClasses()).toEqual({ A: fromId, B: toId });
+      const [barnRow] = await dataSource.query<
+        Array<{ head_trainer_id: string }>
+      >('SELECT head_trainer_id FROM barns WHERE id = $1', [barn]);
+      expect(barnRow.head_trainer_id).toBe(fromId);
+      const plans = await dataSource.query<Array<{ head_trainer_id: string }>>(
+        'SELECT head_trainer_id FROM training_plans WHERE id = $1',
+        [moved.planId],
+      );
+      expect(plans).toEqual([{ head_trainer_id: fromId }]);
+    });
+
+    it('moves the classes when the overlapping sessions are cancelled, already over or only touch at the edge', async () => {
+      const moved = await seed.trainingClass(fromId, { ...dates, code: 'A' });
+      const own = await seed.trainingClass(toId, { ...dates, code: 'B' });
+      await session(
+        moved.classId,
+        '2099-01-10T01:00:00Z',
+        '2099-01-10T02:00:00Z',
+      );
+      await session(
+        own.classId,
+        '2099-01-10T02:00:00Z',
+        '2099-01-10T03:00:00Z',
+      );
+      await session(
+        own.classId,
+        '2099-01-10T01:30:00Z',
+        '2099-01-10T02:30:00Z',
+        'CANCELLED',
+      );
+      await session(
+        moved.classId,
+        '2026-01-10T01:00:00Z',
+        '2026-01-10T02:00:00Z',
+        'COMPLETED',
+      );
+      await session(
+        own.classId,
+        '2026-01-10T01:00:00Z',
+        '2026-01-10T02:00:00Z',
+        'COMPLETED',
+      );
+
+      await expect(
+        service.handover(manager, fromId, { toHeadTrainerId: toId }),
+      ).resolves.toMatchObject({ classesMoved: 1 });
+      expect(await headTrainersOfClasses()).toEqual({ A: toId, B: toId });
+    });
   });
 });

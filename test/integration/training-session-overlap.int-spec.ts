@@ -143,6 +143,13 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
     return sessionId;
   };
 
+  const handToAnotherHeadTrainer = async (classId: string) => {
+    await dataSource.query(
+      'UPDATE training_classes SET head_trainer_id = $1 WHERE id = $2',
+      [await seed.user(UserRole.HEAD_TRAINER), classId],
+    );
+  };
+
   const participantsOf = (sessionId: string) =>
     dataSource.query<Array<{ horse_id: string }>>(
       'SELECT horse_id FROM session_participants WHERE session_id = $1',
@@ -583,6 +590,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
     });
 
     it('ignores the other class once the horse left it before the session', async () => {
+      await handToAnotherHeadTrainer(classA);
       const winx = await seed.horse('Winx', { barnId });
       await leftEnrollment(classA, winx, '2030-01-01T00:00:00Z');
       await enroll(classB, winx);
@@ -607,6 +615,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
     });
 
     it('ignores a horse that left this class before the new session', async () => {
+      await handToAnotherHeadTrainer(classA);
       const winx = await seed.horse('Winx', { barnId });
       await enroll(classA, winx);
       await leftEnrollment(classB, winx, '2030-01-01T00:00:00Z');
@@ -631,6 +640,7 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
     });
 
     it('ignores cancelled, completed and past sessions in the other class', async () => {
+      await handToAnotherHeadTrainer(classA);
       const winx = await seed.horse('Winx', { barnId });
       await enroll(classA, winx);
       await enroll(classB, winx);

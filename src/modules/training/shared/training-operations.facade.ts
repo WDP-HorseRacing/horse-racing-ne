@@ -15,6 +15,7 @@ import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import {
   assertGroomFreeForMovedRuns,
+  assertHeadTrainerFreeForMovedClasses,
   eligibilityForSession,
   initialParticipantEligibility,
 } from '../policies/training.policy';
@@ -655,18 +656,29 @@ export class TrainingOperationsFacade {
    *
    * - Giáo án: mọi giáo án của người bàn giao
    * - Lớp: ACTIVE; lớp COMPLETED hoặc CANCELLED giữ người cũ
-   * - Không kiểm quyền và không kiểm người nhận, nơi gọi tự kiểm
+   * - Trước khi ghi, kiểm các buổi chưa hủy chưa kết thúc của lớp sẽ chuyển không trùng giờ với buổi ở lớp của người nhận (assertHeadTrainerFreeForMovedClasses)
+   * - Không kiểm quyền, không khóa và không kiểm người nhận, nơi gọi tự làm
    *
    * @param manager EntityManager của transaction đang chạy
    * @param fromHeadTrainerId UUID Head Trainer bàn giao
    * @param toHeadTrainerId UUID Head Trainer nhận
    * @returns Promise trả về số giáo án và số lớp đã chuyển
+   * @throws ConflictException Nếu một buổi của lớp sẽ chuyển trùng giờ với buổi ở lớp của người nhận
    */
   async handOverHeadTrainerWork(
     manager: EntityManager,
     fromHeadTrainerId: string,
     toHeadTrainerId: string,
   ): Promise<{ plansMoved: number; classesMoved: number }> {
+    const upcoming = await this.access.headTrainerSessions(
+      manager,
+      [fromHeadTrainerId, toHeadTrainerId],
+      new Date(),
+    );
+    assertHeadTrainerFreeForMovedClasses(
+      upcoming.filter((s) => s.headTrainerId === fromHeadTrainerId),
+      upcoming.filter((s) => s.headTrainerId === toHeadTrainerId),
+    );
     const plans = await manager.update(
       TrainingPlanEntity,
       { headTrainerId: fromHeadTrainerId },

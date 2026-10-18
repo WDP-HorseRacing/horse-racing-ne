@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -36,8 +36,9 @@ function setup() {
     notes: 'Ghi chú cũ',
     status: TrainingSessionStatus.SCHEDULED,
   };
+  const save = jest.fn((row: unknown) => Promise.resolve(row));
   const manager = {
-    save: jest.fn((row: unknown) => Promise.resolve(row)),
+    save,
     existsBy: jest.fn().mockResolvedValue(false),
     find: jest.fn().mockResolvedValue([]),
     getRepository: jest.fn(() => ({
@@ -68,6 +69,7 @@ function setup() {
     assertCanManageClass: jest.fn(),
     groomRunClashes: jest.fn().mockResolvedValue([]),
     lockUsers: jest.fn(),
+    headTrainerSessions: jest.fn().mockResolvedValue([]),
   };
   const service = new TrainingSessionsService(
     {} as Repository<TrainingSessionEntity>,
@@ -76,7 +78,7 @@ function setup() {
     { record: jest.fn() },
     { publish: jest.fn() },
   );
-  return { service, session };
+  return { service, session, manager, save, access };
 }
 
 describe('TrainingSessionsService.updateSession', () => {
@@ -115,7 +117,52 @@ describe('TrainingSessionsService.updateSession', () => {
     expect(result.location).toBe('Sân B');
     expect(result.surface).toBe('Cỏ');
   });
+
+  it('trả 409 khi đổi giờ trùng buổi ở lớp khác của Head Trainer, không lưu', async () => {
+    const { service, manager, save, access } = setup();
+    access.headTrainerSessions.mockResolvedValue([busyOfHeadTrainer]);
+
+    await expect(
+      service.updateSession(actor, 's1', {
+        scheduledStartAt: '2099-10-11T01:00:00.000Z',
+        scheduledEndAt: '2099-10-11T02:00:00.000Z',
+      }),
+    ).rejects.toThrow(headTrainerClash);
+    expect(access.lockUsers).toHaveBeenCalledWith(manager, ['ht']);
+    expect(access.headTrainerSessions).toHaveBeenCalledWith(
+      manager,
+      ['ht'],
+      new Date('2099-10-11T01:00:00.000Z'),
+      new Date('2099-10-11T02:00:00.000Z'),
+      'c1',
+    );
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('không kiểm lịch Head Trainer khi không đổi giờ', async () => {
+    const { service, access } = setup();
+    access.headTrainerSessions.mockResolvedValue([busyOfHeadTrainer]);
+
+    await service.updateSession(actor, 's1', {
+      intensity: TrainingIntensity.LIGHT,
+    });
+
+    expect(access.headTrainerSessions).not.toHaveBeenCalled();
+  });
 });
+
+const busyOfHeadTrainer = {
+  sessionId: 's9',
+  classId: 'c9',
+  classCode: 'K9',
+  headTrainerId: 'ht',
+  scheduledStartAt: new Date('2099-10-11T00:30:00.000Z'),
+  scheduledEndAt: new Date('2099-10-11T01:30:00.000Z'),
+};
+
+const headTrainerClash = new ConflictException(
+  'Trùng giờ với lịch của Huấn luyện viên trưởng: lớp K9, 07:30 ngày 11/10/2099',
+);
 
 describe('UpdateTrainingSessionDto', () => {
   it('chấp nhận null ở location, surface, notes', async () => {
@@ -172,6 +219,7 @@ function setupCreate(
     assertCanManageClass: jest.fn(),
     groomRunClashes: jest.fn().mockResolvedValue([]),
     lockUsers: jest.fn(),
+    headTrainerSessions: jest.fn().mockResolvedValue([]),
   };
   const service = new TrainingSessionsService(
     {} as Repository<TrainingSessionEntity>,
@@ -180,7 +228,7 @@ function setupCreate(
     { record: jest.fn() },
     { publish: jest.fn() },
   );
-  return { service, manager };
+  return { service, manager, access };
 }
 
 const newSession = (
@@ -282,5 +330,40 @@ describe('TrainingSessionsService.createSession', () => {
 
     expect(created.sessionType).toBe(TrainingSessionType.REGULAR);
     expect(manager.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('trả 409 khi trùng buổi ở lớp khác của Head Trainer, không lưu', async () => {
+    const { service, manager, access } = setupCreate(regular);
+    access.headTrainerSessions.mockResolvedValue([
+      {
+        ...busyOfHeadTrainer,
+        scheduledStartAt: new Date('2099-10-10T00:30:00.000Z'),
+        scheduledEndAt: new Date('2099-10-10T01:30:00.000Z'),
+      },
+    ]);
+
+    await expect(
+      service.createSession(actor, 'c1', newSession()),
+    ).rejects.toThrow(
+      new ConflictException(
+        'Trùng giờ với lịch của Huấn luyện viên trưởng: lớp K9, 07:30 ngày 10/10/2099',
+      ),
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('bỏ qua lịch Head Trainer khi lớp chưa có Head Trainer', async () => {
+    const { service, access } = setupCreate(regular);
+    access.lockedTrainingClass.mockResolvedValue({
+      id: 'c1',
+      status: TrainingClassStatus.ACTIVE,
+      headTrainerId: null,
+      startDate: '2099-10-01',
+      endDate: '2099-10-31',
+    });
+
+    await service.createSession(actor, 'c1', newSession());
+
+    expect(access.headTrainerSessions).not.toHaveBeenCalled();
   });
 });

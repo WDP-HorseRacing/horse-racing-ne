@@ -29,6 +29,7 @@ import {
 import { toGroomRun } from '../utils/groom-run';
 import type {
   GroomRun,
+  HeadTrainerSession,
   HorseBrief,
   HorseClassSession,
   HorseSessionHolding,
@@ -344,6 +345,50 @@ export class TrainingAccessService {
         '(enrollment.left_at IS NULL OR session.scheduled_start_at < enrollment.left_at)',
       )
       .getRawMany<HorseClassSession>();
+  }
+
+  /**
+   * Lấy các buổi chưa hủy ở những lớp do một hoặc nhiều Head Trainer phụ trách, có giờ giao với một khoảng giờ
+   *
+   * - Buổi giao khoảng giờ khi kết thúc sau `from` và (nếu có `to`) bắt đầu trước `to`; sát mép không tính
+   * - Kèm UUID, mã lớp và Head Trainer của lớp; sắp theo giờ bắt đầu
+   *
+   * @param manager EntityManager dùng để query
+   * @param headTrainerIds UUID các Head Trainer cần xét, không rỗng
+   * @param from Đầu khoảng giờ
+   * @param to Cuối khoảng giờ; bỏ trống là không giới hạn
+   * @param excludeClassId UUID lớp không xét; bỏ trống là xét mọi lớp
+   * @returns Promise trả về các buổi trong khoảng giờ, sớm nhất trước
+   */
+  async headTrainerSessions(
+    manager: EntityManager,
+    headTrainerIds: string[],
+    from: Date,
+    to?: Date,
+    excludeClassId?: string,
+  ): Promise<HeadTrainerSession[]> {
+    const query = manager
+      .createQueryBuilder(TrainingSessionEntity, 'session')
+      .innerJoin(TrainingClassEntity, 'class', 'class.id = session.class_id')
+      .select('session.id', 'sessionId')
+      .addSelect('class.id', 'classId')
+      .addSelect('class.code', 'classCode')
+      .addSelect('class.head_trainer_id', 'headTrainerId')
+      .addSelect('session.scheduled_start_at', 'scheduledStartAt')
+      .addSelect('session.scheduled_end_at', 'scheduledEndAt')
+      .where('class.head_trainer_id IN (:...headTrainerIds)', {
+        headTrainerIds,
+      })
+      .andWhere('session.status <> :cancelled', {
+        cancelled: TrainingSessionStatus.CANCELLED,
+      })
+      .andWhere('session.scheduled_end_at > :from', { from })
+      .orderBy('session.scheduled_start_at', 'ASC');
+    if (to) query.andWhere('session.scheduled_start_at < :to', { to });
+    if (excludeClassId) {
+      query.andWhere('class.id <> :excludeClassId', { excludeClassId });
+    }
+    return query.getRawMany<HeadTrainerSession>();
   }
 
   async findTrainingClass(

@@ -32,6 +32,7 @@ import { CHECK_IN_OPENS_BEFORE_MS } from '../constants/participant-window.consta
 import type {
   ClassSessionLoad,
   GroomRun,
+  HeadTrainerSession,
   HorseBrief,
   HorseClassSession,
   SessionWindow,
@@ -371,6 +372,53 @@ export function horseScheduleClashError(
   return new ConflictException(
     `Trùng giờ với lịch của ngựa: ${items.join(', ')}`,
   );
+}
+
+/**
+ * Chặn buổi tập trùng giờ với buổi ở lớp khác của Head Trainer phụ trách lớp
+ *
+ * - Lấy buổi trùng đầu tiên theo thứ tự của busy
+ *
+ * @param window Khoảng giờ của buổi đang thêm hoặc sửa
+ * @param busy Các buổi chưa hủy ở lớp khác của Head Trainer, sớm nhất trước
+ * @throws ConflictException Nếu trùng giờ; câu báo nêu mã lớp và giờ bắt đầu theo giờ CLB của buổi trùng
+ */
+export function assertHeadTrainerFreeForSession(
+  window: SessionWindow,
+  busy: ReadonlyArray<HeadTrainerSession>,
+): void {
+  const clash = busy.find((other) => sessionWindowsOverlap(window, other));
+  if (clash) {
+    throw new ConflictException(
+      `Trùng giờ với lịch của Huấn luyện viên trưởng: lớp ${clash.classCode}, ${formatClubDateTime(clash.scheduledStartAt)}`,
+    );
+  }
+}
+
+/**
+ * Chặn bàn giao lớp khi buổi của lớp được chuyển trùng giờ với buổi ở lớp của Head Trainer nhận
+ *
+ * @param moving Các buổi chưa hủy của các lớp sẽ chuyển
+ * @param busy Các buổi chưa hủy ở lớp của Head Trainer nhận
+ * @throws ConflictException Nếu có cặp buổi trùng giờ; câu báo liệt kê từng cặp mã lớp và giờ theo giờ CLB
+ */
+export function assertHeadTrainerFreeForMovedClasses(
+  moving: ReadonlyArray<HeadTrainerSession>,
+  busy: ReadonlyArray<HeadTrainerSession>,
+): void {
+  const list = moving.flatMap((session) =>
+    busy
+      .filter((other) => sessionWindowsOverlap(session, other))
+      .map(
+        (other) =>
+          `lớp ${session.classCode} lúc ${formatClubDateTime(session.scheduledStartAt)} trùng lớp ${other.classCode} lúc ${formatClubDateTime(other.scheduledStartAt)}`,
+      ),
+  );
+  if (list.length) {
+    throw new ConflictException(
+      `Huấn luyện viên trưởng nhận có buổi trùng giờ: ${list.join('; ')}. Đổi giờ các buổi này trước khi bàn giao`,
+    );
+  }
 }
 
 /**

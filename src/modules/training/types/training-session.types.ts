@@ -31,6 +31,16 @@ export interface ClassSessionLoad extends SessionWindow {
 }
 
 /**
+ * Buổi tập của một lớp kèm Head Trainer phụ trách lớp, dùng để xét Head Trainer phụ trách hai buổi trùng giờ.
+ */
+export interface HeadTrainerSession extends SessionWindow {
+  sessionId: string;
+  classId: string;
+  classCode: string;
+  headTrainerId: string;
+}
+
+/**
  * Buổi tập của một ngựa ở một lớp, kèm mã lớp và cường độ của buổi.
  */
 export interface HorseClassSession extends ClassSessionLoad {

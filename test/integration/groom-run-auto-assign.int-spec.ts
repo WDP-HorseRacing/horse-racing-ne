@@ -122,10 +122,10 @@ describe('Grooms assigned automatically to training runs (Postgres)', () => {
       ...dates,
       code: 'A',
     }));
-    const { classId: classB } = await seed.trainingClass(trainerId, {
-      ...dates,
-      code: 'B',
-    });
+    const { classId: classB } = await seed.trainingClass(
+      await seed.user(UserRole.HEAD_TRAINER),
+      { ...dates, code: 'B' },
+    );
     gio = await seed.horse('Gió', { barnId });
     const sam = await seed.horse('Sấm', { barnId });
     for (const horseId of [gio, sam]) {
