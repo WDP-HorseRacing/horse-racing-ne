@@ -443,3 +443,9 @@ Mỗi vết chấn thương nay có mã riêng (`injuryId`) và sống qua nhi�
    - Có nút xem cả vết đã lành (bỏ query).
    - Bấm một điểm thì hiện `history` của vết đó.
 6. Đóng bệnh án (`POST /medical-cases/:caseId/close`): 409 mới "Còn chấn thương chưa lành, hãy ghi buổi khám đánh dấu đã lành trước khi đóng bệnh án". Đóng kèm `dateOfDeath` thì không bị chặn. `GET /medical-cases/:caseId/close-preview` có thêm `unhealedInjuryCount` (số vết chưa lành); lớn hơn 0 thì FE báo trước và gợi ý ghi buổi tái khám đánh dấu Đã lành, danh sách vết lấy từ `GET /horses/:horseId/injuries?unhealedOnly=true`.
+
+## Head Trainer xem mọi khu chuồng
+
+1. `GET /barns` và `GET /medical/dashboard` giờ trả mọi khu cho HT (trước đây chỉ khu HT phụ trách).
+2. Cả hai nhận thêm query `mine=true` (tùy chọn, mọi vai trò): chỉ các khu người gọi phụ trách. Dùng cho bộ lọc "Khu của tôi".
+3. `GET /medical/dashboard?barnId=...` chọn khu không do HT phụ trách không còn 403, trả dữ liệu khu đó. Gửi cùng `mine=true` thì lấy phần giao: khu không do người gọi phụ trách thì đàn rỗng.

@@ -207,6 +207,8 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa r�
 
 Sai vai trò hoặc ngoài phạm vi: 403. Không tìm thấy: 404. Sai trạng thái: 409.
 
+Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc bộ (bảng điều khiển, bảng điều khiển y tế, hồ sơ ngựa, danh sách và chi tiết khu chuồng, sơ đồ ô chuồng); thao tác và xem chi tiết công việc chỉ trong khu, lớp mình phụ trách (chỉ số buổi tập và đánh giá của lớp mình và ngựa thuộc khu mình, việc riêng của ngựa, ngưỡng nhịp tim/tốc độ).
+
 ## IV. API
 
 | Phương thức | Đường dẫn | Ai gọi | Công dụng |

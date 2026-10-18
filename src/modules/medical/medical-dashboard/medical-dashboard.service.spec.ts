@@ -1,4 +1,3 @@
-import { ForbiddenException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
@@ -31,19 +30,11 @@ describe('MedicalDashboardService', () => {
     healthStatusSince: jest.Mock;
   };
   let requests: { find: jest.Mock };
-  let stableAccess: {
-    isBarnScopedTrainer: jest.Mock;
-    trainerBarnIds: jest.Mock;
-  };
+  let stableAccess: { trainerBarnIds: jest.Mock };
   let service: MedicalDashboardService;
 
   beforeEach(() => {
     stableAccess = {
-      isBarnScopedTrainer: jest.fn(
-        (actor: { roles: UserRole[] }) =>
-          actor.roles.includes(UserRole.HEAD_TRAINER) &&
-          !actor.roles.includes(UserRole.CLUB_MANAGER),
-      ),
       trainerBarnIds: jest.fn().mockResolvedValue(['b1', 'b3']),
     };
     shared = {
@@ -174,36 +165,46 @@ describe('MedicalDashboardService', () => {
     expect(result.pendingRequests).toEqual([]);
   });
 
-  describe('head trainer scope', () => {
+  describe('barn scope', () => {
     const trainer = { sub: 'kc-ht', roles: [UserRole.HEAD_TRAINER] };
 
-    it('shows only the barns the head trainer runs', async () => {
+    it('shows every barn to a head trainer by default', async () => {
       await service.get(trainer, {});
-      expect(stableAccess.trainerBarnIds).toHaveBeenCalledWith(requests, 'u1');
-      expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({
-        barnIds: ['b1', 'b3'],
-      });
-    });
-
-    it('accepts one of their own barns', async () => {
-      await service.get(trainer, { barnId: 'b3' });
-      expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({ barnId: 'b3' });
-    });
-
-    it('rejects another barn with 403 before reading the herd', async () => {
-      await expect(service.get(trainer, { barnId: 'b2' })).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(shared.herdCheckupAnchors).not.toHaveBeenCalled();
-    });
-
-    it('does not limit a head trainer who is also club manager', async () => {
-      await service.get(
-        { sub: 'kc-x', roles: [UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER] },
-        {},
-      );
       expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({});
       expect(stableAccess.trainerBarnIds).not.toHaveBeenCalled();
+    });
+
+    it('lets a head trainer pick a barn they do not run', async () => {
+      await expect(
+        service.get(trainer, { barnId: 'b2' }),
+      ).resolves.toHaveProperty('herd');
+      expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({ barnId: 'b2' });
+    });
+
+    it.each([
+      [[UserRole.HEAD_TRAINER]],
+      [[UserRole.CLUB_MANAGER]],
+      [[UserRole.VETERINARIAN]],
+    ])(
+      'limits to the barns the caller runs with mine for %p',
+      async (roles) => {
+        await service.get({ sub: 'kc-x', roles }, { mine: true });
+        expect(stableAccess.trainerBarnIds).toHaveBeenCalledWith(
+          requests,
+          'u1',
+        );
+        expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({
+          barnIds: ['b1', 'b3'],
+        });
+      },
+    );
+
+    it('passes both barnId and mine so the herd is their intersection', async () => {
+      await service.get(trainer, { barnId: 'b2', mine: true });
+      expect(shared.herdCheckupAnchors).toHaveBeenCalledWith({
+        barnId: 'b2',
+        barnIds: ['b1', 'b3'],
+      });
     });
   });
 });

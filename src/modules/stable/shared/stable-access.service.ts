@@ -209,23 +209,6 @@ export class StableAccessService {
   }
 
   /**
-   * Kiểm người gọi là Head Trainer chỉ được xem các khu mình phụ trách
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @returns true nếu người gọi có vai trò Head Trainer và không có vai trò Club Manager, Veterinarian
-   */
-  isBarnScopedTrainer(actor: Actor): boolean {
-    return (
-      this.horseAccess.hasRole(actor, UserRole.HEAD_TRAINER) &&
-      !this.horseAccess.hasRole(
-        actor,
-        UserRole.CLUB_MANAGER,
-        UserRole.VETERINARIAN,
-      )
-    );
-  }
-
-  /**
    * Lấy UUID các khu chuồng (chưa xóa) do một Head Trainer phụ trách
    *
    * @param manager EntityManager dùng để query

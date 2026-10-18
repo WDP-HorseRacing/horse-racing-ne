@@ -149,22 +149,6 @@ export function assertHorseInTrainerBarn(isInTrainerBarn: boolean): void {
 }
 
 /**
- * Chặn Head Trainer chọn khu không do mình phụ trách khi xem dữ liệu theo khu
- *
- * @param trainerBarnIds UUID các khu người gọi phụ trách
- * @param barnId UUID khu được chọn
- * @throws ForbiddenException Nếu khu được chọn không do người gọi phụ trách
- */
-export function assertBarnInTrainerScope(
-  trainerBarnIds: readonly string[],
-  barnId: string,
-): void {
-  if (!trainerBarnIds.includes(barnId)) {
-    throw new ForbiddenException('Khu không thuộc bạn phụ trách');
-  }
-}
-
-/**
  * Chặn xếp ô hoặc giao groom khi hồ sơ ngựa chỉ được xem (đã chuyển nhượng hoặc đã mất). Ngựa đã giải nghệ vẫn được
  *
  * @param horse Con ngựa cần kiểm

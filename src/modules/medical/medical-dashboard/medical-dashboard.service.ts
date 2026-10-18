@@ -3,7 +3,6 @@ import { DataSource, In } from 'typeorm';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { assertBarnInTrainerScope } from '../../stable/policies/stable.policy';
 import { StableAccessService } from '../../stable/shared/stable-access.service';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import { ExamRequestStatus } from '../constants/exam-request.enum';
@@ -41,13 +40,13 @@ export class MedicalDashboardService {
    * - Yêu cầu khám đang chờ, Khẩn lên trước
    * - Thuốc cần cho hôm nay: đơn thuốc đang hiệu lực theo ngày lịch câu lạc bộ, kèm liều và tần suất
    * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu áp cho mọi khối; bộ lọc trạng thái sức khỏe áp cho danh sách ngựa của sơ đồ đàn và các khối còn lại, không áp cho số đếm
-   * - Head Trainer (không kiêm Club Manager, Veterinarian) chỉ xem các khu mình phụ trách; không chọn khu thì lấy mọi khu mình phụ trách
+   * - Mặc định cả CLB cho mọi vai trò được xem; barnId: chỉ một khu; mine = true: chỉ các khu người gọi phụ trách; đi cùng nhau thì lấy phần giao (khu không do người gọi phụ trách thì đàn rỗng)
    * - careAssignee = me: khối lịch tiêm phòng, tẩy giun, kiểm tra móng chỉ giữ lịch có người làm hiện tại là người gọi
    *
    * @param actor Thông tin danh tính từ Access Token
-   * @param query Lọc theo khu, trạng thái sức khỏe và người làm lịch chăm sóc
+   * @param query Lọc theo khu, khu mình phụ trách, trạng thái sức khỏe và người làm lịch chăm sóc
    * @returns Promise trả về bảy khối thông tin y tế
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc Head Trainer chọn khu không do mình phụ trách
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    */
   async get(
     actor: Actor,
@@ -56,7 +55,7 @@ export class MedicalDashboardService {
     const caller = await this.horseAccess.currentUser(actor);
     const today = toClubDate(new Date());
     const herd = await this.checkups.herdCheckupAnchors(
-      await this.barnFilter(actor, caller.id, query.barnId),
+      await this.barnFilter(caller.id, query),
     );
     const rows = query.healthStatus
       ? herd.filter((row) => row.healthStatus === query.healthStatus)
@@ -120,31 +119,28 @@ export class MedicalDashboardService {
   }
 
   /**
-   * Chọn bộ lọc khu cho bảng điều khiển theo phạm vi của người gọi
+   * Dựng bộ lọc khu cho bảng điều khiển
    *
-   * - Không bị giới hạn theo khu: lọc đúng khu được chọn, không chọn thì cả CLB
-   * - Head Trainer bị giới hạn: khu được chọn phải do mình phụ trách; không chọn thì mọi khu mình phụ trách
+   * - barnId: chỉ khu đó
+   * - mine = true: chỉ các khu người gọi phụ trách; đi cùng barnId thì lấy phần giao
+   * - Không lọc gì: cả CLB
    *
-   * @param actor Thông tin danh tính từ Access Token
    * @param callerId UUID của người gọi
-   * @param barnId Khu được chọn, bỏ trống nếu không chọn
+   * @param query Bộ lọc barnId và mine
    * @returns Promise trả về bộ lọc khu cho đàn ngựa
-   * @throws ForbiddenException Nếu Head Trainer chọn khu không do mình phụ trách
    */
   private async barnFilter(
-    actor: Actor,
     callerId: string,
-    barnId: string | undefined,
+    query: MedicalDashboardQueryDto,
   ): Promise<HerdFilter> {
-    if (!this.stableAccess.isBarnScopedTrainer(actor)) {
-      return barnId ? { barnId } : {};
-    }
-    const barnIds = await this.stableAccess.trainerBarnIds(
-      this.dataSource.manager,
-      callerId,
-    );
-    if (!barnId) return { barnIds };
-    assertBarnInTrainerScope(barnIds, barnId);
-    return { barnId };
+    return {
+      ...(query.barnId && { barnId: query.barnId }),
+      ...(query.mine && {
+        barnIds: await this.stableAccess.trainerBarnIds(
+          this.dataSource.manager,
+          callerId,
+        ),
+      }),
+    };
   }
 }

@@ -183,6 +183,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | Ngưỡng nhịp tim/tốc độ | Xem | Xem ngựa thuộc khu mình | Xem | Không | Không |
 | Bàn giao Head Trainer | Có | Không | Không | Không | Không |
 
+Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc bộ (bảng điều khiển, bảng điều khiển y tế, hồ sơ ngựa, danh sách và chi tiết khu chuồng, sơ đồ ô chuồng); thao tác và xem chi tiết công việc chỉ trong khu, lớp mình phụ trách (chỉ số buổi tập và đánh giá của lớp mình và ngựa thuộc khu mình, việc riêng của ngựa, ngưỡng nhịp tim/tốc độ).
+
 ## IV. API
 
 | Phương thức | Đường dẫn | Ai gọi | Công dụng |

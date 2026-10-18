@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Expose, Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -12,6 +13,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { trimValue } from '../../../common/utils/dto-input';
+import { toQueryBoolean } from '../../../common/utils/query-boolean';
 import { BarnStatus } from '../constants/barn-status.enum';
 
 export class CreateBarnDto {
@@ -49,6 +51,16 @@ export class UpdateBarnDto extends PartialType(CreateBarnDto) {
   @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsUUID()
   headTrainerId?: string | null;
+}
+
+export class BarnListQueryDto {
+  @ApiPropertyOptional({
+    description: 'Chỉ các khu người gọi phụ trách',
+  })
+  @IsOptional()
+  @Transform(toQueryBoolean)
+  @IsBoolean()
+  mine?: boolean;
 }
 
 export class BarnResponseDto {

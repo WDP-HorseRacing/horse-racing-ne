@@ -2852,7 +2852,7 @@
     },
     "/api/v1/medical/dashboard": {
       "get": {
-        "description": "Bảy khối: sơ đồ đàn theo sức khỏe, lịch khám đến hạn/quá hạn, lịch tiêm phòng/tẩy giun/kiểm tra móng đến hạn, bệnh án đang mở, ngựa Chấn thương/Cách ly chưa có bệnh án, thuốc cần cho hôm nay, yêu cầu khám đang chờ. Head Trainer chỉ xem các khu mình phụ trách: không chọn khu thì lấy mọi khu mình phụ trách, chọn khu khác thì 403. Groom và Horse Owner: 403.",
+        "description": "Bảy khối: sơ đồ đàn theo sức khỏe, lịch khám đến hạn/quá hạn, lịch tiêm phòng/tẩy giun/kiểm tra móng đến hạn, bệnh án đang mở, ngựa Chấn thương/Cách ly chưa có bệnh án, thuốc cần cho hôm nay, yêu cầu khám đang chờ. Mặc định cả CLB cho mọi vai trò được xem; barnId lọc một khu; mine=true chỉ các khu người gọi phụ trách, đi cùng barnId thì lấy phần giao (khu không do mình phụ trách thì đàn rỗng). Groom và Horse Owner: 403.",
         "operationId": "MedicalDashboardController_get",
         "parameters": [
           {
@@ -2888,6 +2888,15 @@
               "enum": [
                 "me"
               ]
+            }
+          },
+          {
+            "name": "mine",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ ngựa thuộc các khu người gọi phụ trách; đi cùng barnId thì lấy phần giao",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -5104,9 +5113,19 @@
     },
     "/api/v1/barns": {
       "get": {
-        "description": "Mỗi khu kèm tên Head Trainer phụ trách, availableStallCount (số ô trống trừ số ngựa của khu đang chờ xếp ô, không âm; bằng 0 là không xếp thêm ngựa được) và pendingStallHorseCount (số ngựa của khu chưa xóa, chưa chuyển nhượng, chưa có ô). Head Trainer chỉ thấy các khu mình phụ trách.",
+        "description": "Mỗi khu kèm tên Head Trainer phụ trách, availableStallCount (số ô trống trừ số ngựa của khu đang chờ xếp ô, không âm; bằng 0 là không xếp thêm ngựa được) và pendingStallHorseCount (số ngựa của khu chưa xóa, chưa chuyển nhượng, chưa có ô). Mặc định trả mọi khu cho mọi vai trò; mine=true chỉ trả các khu người gọi phụ trách.",
         "operationId": "BarnsController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "mine",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ các khu người gọi phụ trách",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",

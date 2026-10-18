@@ -237,7 +237,7 @@ describe('BarnsService', () => {
         { barnId: 'b2', freeStallCount: 1, pendingStallHorseCount: 3 },
       ]);
       const actor: Actor = { sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] };
-      const result = await service.list(actor);
+      const result = await service.list(actor, {});
       expect(result).toMatchObject([
         {
           id: 'b1',
@@ -286,7 +286,7 @@ describe('BarnsService', () => {
         },
       ]);
       const actor: Actor = { sub: 'kc-cm', roles: [UserRole.CLUB_MANAGER] };
-      await expect(service.list(actor)).resolves.toMatchObject([
+      await expect(service.list(actor, {})).resolves.toMatchObject([
         { headTrainerFullName: 'Trainer A', hasActiveHeadTrainer: false },
       ]);
     });
@@ -303,25 +303,32 @@ describe('BarnsService', () => {
       manager.query.mockResolvedValue([]);
     });
 
-    it('lists only the barns a head trainer runs', async () => {
-      await service.list({ sub: 'kc-ht', roles: [UserRole.HEAD_TRAINER] });
-      expect(barnRepository.find).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { headTrainerId: 'ht-1' } }),
-      );
-    });
+    const roles = [
+      [UserRole.HEAD_TRAINER],
+      [UserRole.CLUB_MANAGER],
+      [UserRole.VETERINARIAN],
+    ];
 
-    it.each([
-      [[UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER]],
-      [[UserRole.HEAD_TRAINER, UserRole.VETERINARIAN]],
-      [[UserRole.VETERINARIAN]],
-      [[UserRole.GROOM]],
-    ])('lists every barn for %p', async (roles) => {
-      await service.list({ sub: 'kc-x', roles });
-      const [[options]] = barnRepository.find.mock.calls as [
-        [{ where?: unknown }],
-      ];
-      expect(options.where).toBeUndefined();
-    });
+    it.each(roles.map((r) => [r]))(
+      'lists every barn for %p by default',
+      async (actorRoles) => {
+        await service.list({ sub: 'kc-x', roles: actorRoles }, {});
+        const [[options]] = barnRepository.find.mock.calls as [
+          [{ where?: unknown }],
+        ];
+        expect(options.where).toBeUndefined();
+      },
+    );
+
+    it.each(roles.map((r) => [r]))(
+      'lists only the barns the caller runs for %p with mine',
+      async (actorRoles) => {
+        await service.list({ sub: 'kc-x', roles: actorRoles }, { mine: true });
+        expect(barnRepository.find).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { headTrainerId: 'ht-1' } }),
+        );
+      },
+    );
   });
 
   describe('Club Manager writes', () => {

@@ -53,6 +53,8 @@
 
 Các quy ước của Flow 1 (phạm vi vai trò, trạng thái vòng đời, nhật ký thao tác, mã lỗi 404 / 403 / 409) vẫn áp dụng nguyên vẹn. Phần này chỉ bổ sung những quy ước riêng của luồng y tế.
 
+Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc bộ (bảng điều khiển, bảng điều khiển y tế, hồ sơ ngựa, danh sách và chi tiết khu chuồng, sơ đồ ô chuồng); thao tác và xem chi tiết công việc chỉ trong khu, lớp mình phụ trách (chỉ số buổi tập và đánh giá của lớp mình và ngựa thuộc khu mình, việc riêng của ngựa, ngưỡng nhịp tim/tốc độ).
+
 ### 1. Hai loại buổi khám
 
 1. **Buổi khám ngoài bệnh án** (F3.3): con ngựa chưa có bệnh án đang mở. Có hai loại:
@@ -172,7 +174,7 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
 |---|---|---|---|
 | VETERINARIAN | Xem | Toàn câu lạc bộ | Vai trò chính sử dụng màn hình này. |
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | Xem để nắm tình hình, không thao tác y tế. |
-| HEAD TRAINER | Xem | Khu mình phụ trách | Dùng để biết con nào không tập được. Chọn khu khác: 403. |
+| HEAD TRAINER | Xem | Toàn câu lạc bộ | Dùng để biết con nào không tập được. Bộ lọc "Khu của tôi" chỉ lấy các khu mình phụ trách; đi cùng bộ lọc một khu thì lấy phần giao (chọn khu không do mình phụ trách thì đàn rỗng). |
 | GROOM | Không | | Xem trạng thái sức khỏe trong hồ sơ ngựa (F1.3). |
 | HORSE OWNER | Không | | Xem phần của ngựa mình tại F3.10. |
 

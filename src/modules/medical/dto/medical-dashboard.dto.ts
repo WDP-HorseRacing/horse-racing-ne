@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { toQueryBoolean } from '../../../common/utils/query-boolean';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../constants/care-schedule.enum';
 import { CheckupItemDto } from './checkup.dto';
@@ -27,6 +29,15 @@ export class MedicalDashboardQueryDto {
   @IsOptional()
   @IsIn(['me'])
   careAssignee?: 'me';
+
+  @ApiPropertyOptional({
+    description:
+      'Chỉ ngựa thuộc các khu người gọi phụ trách; đi cùng barnId thì lấy phần giao',
+  })
+  @IsOptional()
+  @Transform(toQueryBoolean)
+  @IsBoolean()
+  mine?: boolean;
 }
 
 /**

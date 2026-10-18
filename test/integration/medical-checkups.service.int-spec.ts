@@ -204,6 +204,12 @@ describe('MedicalCheckupsService (Postgres)', () => {
         'West injured',
       ]);
       await expect(names({ barnIds: [] })).resolves.toEqual([]);
+      await expect(names({ barnId: east, barnIds: [west] })).resolves.toEqual(
+        [],
+      );
+      await expect(
+        names({ barnId: west, barnIds: [east, west] }),
+      ).resolves.toEqual(['West injured']);
     });
 
     it('names the barn of each horse, null when the horse has no barn', async () => {

@@ -121,10 +121,12 @@ Phần này áp dụng cho toàn bộ các chức năng F1.1 đến F1.8, không
 | Vai trò | Phạm vi xem | Phạm vi thao tác |
 |---|---|---|
 | CLUB MANAGER | Toàn câu lạc bộ, kể cả hồ sơ đã xóa | Toàn câu lạc bộ |
-| HEAD TRAINER | Toàn câu lạc bộ; danh sách khu chuồng và bảng điều khiển y tế: chỉ khu mình phụ trách (kiêm CLUB MANAGER hoặc VETERINARIAN thì không giới hạn) | Ngựa thuộc khu chuồng mình phụ trách |
+| HEAD TRAINER | Toàn câu lạc bộ; danh sách khu chuồng và bảng điều khiển y tế có bộ lọc "Khu của tôi" | Ngựa thuộc khu chuồng mình phụ trách |
 | VETERINARIAN | Toàn câu lạc bộ | Toàn câu lạc bộ (nội dung y tế, thuộc Flow 3) |
 | GROOM | Toàn câu lạc bộ | Ngựa được phân công phụ trách |
 | HORSE OWNER | Ngựa mình đang sở hữu; ngựa đã bán chỉ xem bản cơ bản (mục 5) | Không thao tác |
+
+Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc bộ (bảng điều khiển, bảng điều khiển y tế, hồ sơ ngựa, danh sách và chi tiết khu chuồng, sơ đồ ô chuồng); thao tác và xem chi tiết công việc chỉ trong khu, lớp mình phụ trách (chỉ số buổi tập và đánh giá của lớp mình và ngựa thuộc khu mình, việc riêng của ngựa, ngưỡng nhịp tim/tốc độ).
 
 1. Một khu chuồng có đúng một HEAD TRAINER phụ trách. Một HEAD TRAINER có thể phụ trách nhiều khu.
 2. Ngựa chưa được xếp khu thì không HEAD TRAINER nào thao tác được, chỉ CLUB MANAGER xử lý.

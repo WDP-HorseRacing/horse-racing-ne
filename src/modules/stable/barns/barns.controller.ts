@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -23,6 +24,7 @@ import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
   BarnListItemDto,
+  BarnListQueryDto,
   BarnResponseDto,
   CreateBarnDto,
   UpdateBarnDto,
@@ -45,11 +47,14 @@ export class BarnsController {
   @ApiOperation({
     summary: 'List barns of the club with their head trainer',
     description:
-      'Mỗi khu kèm tên Head Trainer phụ trách, availableStallCount (số ô trống trừ số ngựa của khu đang chờ xếp ô, không âm; bằng 0 là không xếp thêm ngựa được) và pendingStallHorseCount (số ngựa của khu chưa xóa, chưa chuyển nhượng, chưa có ô). Head Trainer chỉ thấy các khu mình phụ trách.',
+      'Mỗi khu kèm tên Head Trainer phụ trách, availableStallCount (số ô trống trừ số ngựa của khu đang chờ xếp ô, không âm; bằng 0 là không xếp thêm ngựa được) và pendingStallHorseCount (số ngựa của khu chưa xóa, chưa chuyển nhượng, chưa có ô). Mặc định trả mọi khu cho mọi vai trò; mine=true chỉ trả các khu người gọi phụ trách.',
   })
   @ApiOkResponse({ type: [BarnListItemDto] })
-  list(@CurrentUser() actor: Actor): Promise<BarnListItemDto[]> {
-    return this.barnsService.list(actor);
+  list(
+    @CurrentUser() actor: Actor,
+    @Query() query: BarnListQueryDto,
+  ): Promise<BarnListItemDto[]> {
+    return this.barnsService.list(actor, query);
   }
 
   @Access([

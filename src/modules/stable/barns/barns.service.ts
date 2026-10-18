@@ -25,6 +25,7 @@ import { BarnStatus } from '../constants/barn-status.enum';
 import { STABLE_AUDIT_FEATURE } from '../constants/stable-audit.constants';
 import {
   BarnListItemDto,
+  BarnListQueryDto,
   BarnResponseDto,
   CreateBarnDto,
   UpdateBarnDto,
@@ -72,17 +73,19 @@ export class BarnsService {
    * - Ngựa chờ xếp ô: ngựa thuộc khu (horses.barn_id), chưa xóa mềm, lifecycle khác TRANSFERRED và không có phân công ô đang mở.
    * - Số chỗ còn nhận = ô trống − ngựa chờ xếp ô, không nhỏ hơn 0.
    * - hasActiveHeadTrainer: Head Trainer phụ trách còn ACTIVE và còn vai trò HEAD_TRAINER (điều kiện để xếp ngựa vào khu).
-   * - Head Trainer (không kiêm Club Manager, Veterinarian) chỉ thấy các khu mình phụ trách.
+   * - Mặc định trả mọi khu cho mọi vai trò; mine = true: chỉ các khu người gọi phụ trách.
    *
    * @param actor Thông tin danh tính từ Access Token
+   * @param query Bộ lọc mine
    * @returns Promise chứa danh sách khu, sắp theo tên
    */
-  async list(actor: Actor): Promise<BarnListItemDto[]> {
+  async list(
+    actor: Actor,
+    query: BarnListQueryDto,
+  ): Promise<BarnListItemDto[]> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const barns = await this.barnRepository.find({
-      ...(this.access.isBarnScopedTrainer(actor) && {
-        where: { headTrainerId: caller.id },
-      }),
+      ...(query.mine && { where: { headTrainerId: caller.id } }),
       relations: { headTrainer: true },
       order: { name: 'ASC' },
     });
