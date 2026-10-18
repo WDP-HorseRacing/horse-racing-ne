@@ -1,22 +1,13 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuditModule } from '../../audit/audit.module';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
-import { PerformanceThresholdEntity } from '../entities/performance-threshold.entity';
-import { PerformanceSharedModule } from '../shared/performance-shared.module';
 import { PerformanceThresholdsController } from './performance-thresholds.controller';
 import { PerformanceThresholdsService } from './performance-thresholds.service';
 
 /**
- * Lắp ráp use case xem và đặt ngưỡng nhịp tim/tốc độ của ngựa
+ * Lắp ráp use case xem ngưỡng nhịp tim/tốc độ của ngựa
  */
 @Module({
-  imports: [
-    AuditModule,
-    TypeOrmModule.forFeature([PerformanceThresholdEntity]),
-    HorsesSharedModule,
-    PerformanceSharedModule,
-  ],
+  imports: [HorsesSharedModule],
   controllers: [PerformanceThresholdsController],
   providers: [PerformanceThresholdsService],
 })

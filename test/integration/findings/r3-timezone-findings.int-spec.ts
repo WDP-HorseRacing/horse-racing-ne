@@ -50,12 +50,8 @@ import { MedicalVisitsService } from '../../../src/modules/medical/medical-recor
 import { TrainingLocksModule } from '../../../src/modules/medical/training-locks/training-locks.module';
 import { TrainingLockService } from '../../../src/modules/medical/training-locks/training-locks.service';
 import { IngestMetricDto } from '../../../src/modules/performance/dto/ingest-metric.dto';
-import { UpsertThresholdDto } from '../../../src/modules/performance/dto/upsert-threshold.dto';
 import { PerformanceMetricsService } from '../../../src/modules/performance/performance-metrics/performance-metrics.service';
-import { PerformanceThresholdsModule } from '../../../src/modules/performance/performance-thresholds/performance-thresholds.module';
-import { PerformanceThresholdsService } from '../../../src/modules/performance/performance-thresholds/performance-thresholds.service';
 import type { PerformanceMetric } from '../../../src/modules/performance/schemas/performance-metric.schema';
-import { PerformanceAccessService } from '../../../src/modules/performance/shared/performance-access.service';
 import type { RealtimeGateway } from '../../../src/modules/realtime/realtime.gateway';
 import { CreateTrainingClassDto } from '../../../src/modules/training/dto/training-class.dto';
 import {
@@ -132,7 +128,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
   let careSchedules: CareSchedulesService;
   let checkups: CheckupsService;
   let locks: TrainingLockService;
-  let thresholds: PerformanceThresholdsService;
   let measurements: HorseMeasurementsService;
   let sessions: TrainingSessionsService;
   let classes: TrainingClassesService;
@@ -214,7 +209,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
         MedicalRecordsModule,
         CareSchedulesModule,
         TrainingLocksModule,
-        PerformanceThresholdsModule,
       ],
     }).compile();
     visits = moduleRef.get(MedicalVisitsService);
@@ -222,7 +216,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     careSchedules = moduleRef.get(CareSchedulesService);
     checkups = moduleRef.get(CheckupsService);
     locks = moduleRef.get(TrainingLockService);
-    thresholds = moduleRef.get(PerformanceThresholdsService);
 
     const audit = new AuditService();
     const events = new DomainEventPublisher();
@@ -266,7 +259,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     metrics = new PerformanceMetricsService(
       metricModel,
       trainingAccess,
-      new PerformanceAccessService(dataSource),
       events,
       { emitToUser: () => undefined } as unknown as RealtimeGateway,
       dataSource,
@@ -460,30 +452,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
         one('SELECT due_at AS v FROM care_schedules WHERE horse_id = $1', [
           gio,
         ]),
-    );
-    expectClubTime(result, LATER);
-  });
-
-  it('TZ3-11 performance threshold effectiveFrom without offset is club time', async () => {
-    const body = {
-      profileName: 'Hồi phục',
-      effectiveFrom: LATER,
-      limits: {
-        heartRateWarningBpm: 180,
-        heartRateCriticalBpm: 200,
-        maxSpeedMps: 16,
-      },
-    } as UpsertThresholdDto;
-    const result = await interpret(
-      UpsertThresholdDto,
-      body,
-      'effectiveFrom',
-      () => thresholds.upsert(trainer, gio, body),
-      () =>
-        one(
-          'SELECT effective_from AS v FROM performance_thresholds WHERE horse_id = $1',
-          [gio],
-        ),
     );
     expectClubTime(result, LATER);
   });

@@ -1,44 +1,21 @@
 import { plainToInstance } from 'class-transformer';
-import {
-  HorseThresholdsResponseDto,
-  ThresholdLimitsDto,
-  ThresholdProfileResponseDto,
-} from '../dto/upsert-threshold.dto';
-import { PerformanceThresholdEntity } from '../entities/performance-threshold.entity';
-import type { ActiveThreshold } from '../types/performance.types';
-
-const MAPPER_OPTIONS = { excludeExtraneousValues: true } as const;
+import { HorseThresholdsResponseDto } from '../dto/horse-thresholds.dto';
+import type { ThresholdLimits } from '../types/performance.types';
 
 /**
- * Chuyển một phiên bản ngưỡng sang response DTO
+ * Ghép con ngựa và bộ ngưỡng đang áp thành response DTO
  *
- * @param row Phiên bản ngưỡng của ngựa
- * @returns Phiên bản ngưỡng để trả ra API
- */
-export function toThresholdProfileResponse(
-  row: PerformanceThresholdEntity,
-): ThresholdProfileResponseDto {
-  return plainToInstance(ThresholdProfileResponseDto, row, MAPPER_OPTIONS);
-}
-
-/**
- * Ghép ngưỡng đang áp và lịch sử phiên bản của con ngựa thành response DTO
- *
- * @param active Bộ ngưỡng đang áp tại thời điểm gọi
- * @param profiles Các phiên bản ngưỡng riêng của ngựa, mới nhất đứng đầu
- * @returns Ngưỡng đang áp kèm nguồn và lịch sử phiên bản
+ * @param horseId UUID của ngựa
+ * @param limits Bộ ngưỡng đang áp
+ * @returns Ngưỡng đang áp của con ngựa để trả ra API
  */
 export function toHorseThresholdsResponse(
-  active: ActiveThreshold,
-  profiles: PerformanceThresholdEntity[],
+  horseId: string,
+  limits: ThresholdLimits,
 ): HorseThresholdsResponseDto {
-  return {
-    source: active.source,
-    activeLimits: plainToInstance(
-      ThresholdLimitsDto,
-      active.limits,
-      MAPPER_OPTIONS,
-    ),
-    profiles: profiles.map(toThresholdProfileResponse),
-  };
+  return plainToInstance(
+    HorseThresholdsResponseDto,
+    { horseId, limits },
+    { excludeExtraneousValues: true },
+  );
 }

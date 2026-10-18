@@ -1,7 +1,7 @@
 import type { ThresholdLimits } from '../types/performance.types';
 
 /**
- * Ngưỡng mặc định của CLB, áp cho ngựa chưa có bộ ngưỡng riêng đang hiệu lực
+ * Ngưỡng chung của CLB, áp cho mọi con ngựa khi chấm mức điểm đo
  */
 export const DEFAULT_THRESHOLD_LIMITS: ThresholdLimits = {
   heartRateWarningBpm: 220,

@@ -10,6 +10,7 @@ import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import type { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 import { TrainingAccessService } from '../../training/shared/training-access.service';
 import {
+  DEFAULT_THRESHOLD_LIMITS,
   PARTICIPANT_METRIC_LIMIT,
   PERFORMANCE_METRIC_CRITICAL_EVENT,
   PERFORMANCE_METRICS_SOCKET_EVENT,
@@ -32,7 +33,6 @@ import {
   isPlausibleMetric,
 } from '../policies/performance.policy';
 import { PerformanceMetric } from '../schemas/performance-metric.schema';
-import { PerformanceAccessService } from '../shared/performance-access.service';
 import type {
   ClassifiedMetric,
   ParticipantMetricAggregate,
@@ -54,7 +54,6 @@ export class PerformanceMetricsService {
     @InjectModel(PerformanceMetric.name)
     private readonly metrics: Model<PerformanceMetric>,
     private readonly trainingAccess: TrainingAccessService,
-    private readonly performanceAccess: PerformanceAccessService,
     private readonly events: DomainEventPublisher,
     private readonly realtime: RealtimeGateway,
     private readonly dataSource: DataSource,
@@ -66,7 +65,7 @@ export class PerformanceMetricsService {
    * - Không kiểm danh tính người gửi
    * - Điểm đo không hợp lệ (tốc độ quá trần, thời điểm đo ngoài lượt tập) bị bỏ, không lưu và không chấm cảnh báo
    * - Điểm đo trùng cảm biến và thời điểm đo (trong lô hoặc đã lưu trước đó) bị bỏ qua
-   * - Mỗi điểm được chấm mức cảnh báo theo ngưỡng đang áp cho con ngựa
+   * - Mỗi điểm được chấm mức cảnh báo theo ngưỡng chung của CLB
    * - Điểm mới lưu được đẩy qua socket tới Head Trainer của lớp; lớp chưa có Head Trainer thì không đẩy
    * - Lô có điểm CRITICAL thì ghi event vào outbox; mỗi lượt tập chỉ sinh một thông báo
    *
@@ -86,10 +85,6 @@ export class PerformanceMetricsService {
     );
     assertParticipantRecording(participant.status);
     const now = new Date();
-    const { limits } = await this.performanceAccess.activeThreshold(
-      participant.horseId,
-      now,
-    );
     const plausible = metrics.filter((metric) =>
       isPlausibleMetric(
         { recordedAt: new Date(metric.recordedAt), speedMps: metric.speedMps },
@@ -102,7 +97,11 @@ export class PerformanceMetricsService {
       recordedAt: new Date(metric.recordedAt),
       heartRateBpm: metric.heartRateBpm,
       speedMps: roundDecimal(String(metric.speedMps), SPEED_SCALE),
-      alertLevel: classifyMetric(metric.heartRateBpm, metric.speedMps, limits),
+      alertLevel: classifyMetric(
+        metric.heartRateBpm,
+        metric.speedMps,
+        DEFAULT_THRESHOLD_LIMITS,
+      ),
     }));
     const fresh = await this.withoutStored(
       participantId,

@@ -6,7 +6,6 @@ import {
   PerformanceMetric,
   PerformanceMetricSchema,
 } from '../schemas/performance-metric.schema';
-import { PerformanceSharedModule } from '../shared/performance-shared.module';
 import { PerformanceMetricsController } from './performance-metrics.controller';
 import { PerformanceMetricsService } from './performance-metrics.service';
 
@@ -19,7 +18,6 @@ import { PerformanceMetricsService } from './performance-metrics.service';
       { name: PerformanceMetric.name, schema: PerformanceMetricSchema },
     ]),
     TrainingSharedModule,
-    PerformanceSharedModule,
     RealtimeModule,
   ],
   controllers: [PerformanceMetricsController],

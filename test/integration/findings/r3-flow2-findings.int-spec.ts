@@ -1,4 +1,6 @@
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
+import { RequestMethod } from '@nestjs/common';
+import { METHOD_METADATA } from '@nestjs/common/constants';
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -23,10 +25,10 @@ import type { NotificationDeliveryService } from '../../../src/modules/notificat
 import { NotificationRecipientsRepository } from '../../../src/modules/notifications/delivery/notification-recipients.repository';
 import { PerformanceNotificationsService } from '../../../src/modules/notifications/delivery/performance-notifications.service';
 import { PERFORMANCE_METRIC_CRITICAL_EVENT } from '../../../src/modules/performance/constants/performance.constants';
-import { ThresholdLimitsDto } from '../../../src/modules/performance/dto/upsert-threshold.dto';
 import { PerformanceEvaluationEntity } from '../../../src/modules/performance/entities/performance-evaluation.entity';
 import { PerformanceEvaluationsService } from '../../../src/modules/performance/evaluations/performance-evaluations.service';
 import { PerformanceMetricsController } from '../../../src/modules/performance/performance-metrics/performance-metrics.controller';
+import { PerformanceThresholdsController } from '../../../src/modules/performance/performance-thresholds/performance-thresholds.controller';
 import type { PerformanceMetricCriticalEvent } from '../../../src/modules/performance/types/performance.types';
 import { DashboardRepository } from '../../../src/modules/reports/dashboard/dashboard.repository';
 import { DashboardService } from '../../../src/modules/reports/dashboard/dashboard.service';
@@ -361,18 +363,24 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     );
   });
 
-  it('N11: a critical heart-rate threshold above 250 bpm is rejected', async () => {
-    const errors = await validate(
-      plainToInstance(ThresholdLimitsDto, {
-        heartRateWarningBpm: 220,
-        heartRateCriticalBpm: 300,
-        maxSpeedMps: 18,
-      }),
+  it('N11: nobody can change the heart-rate thresholds of a horse', async () => {
+    const prototype =
+      PerformanceThresholdsController.prototype as unknown as Record<
+        string,
+        object
+      >;
+    const [table] = await dataSource.query<Array<{ name: string | null }>>(
+      `SELECT to_regclass('performance_thresholds')::text AS name`,
     );
 
-    expect(errors.map((error) => error.property)).toContain(
-      'heartRateCriticalBpm',
-    );
+    expect({
+      writeRoutes: methodsOf(prototype).filter(
+        (name) =>
+          Reflect.getMetadata(METHOD_METADATA, prototype[name]) !==
+          RequestMethod.GET,
+      ),
+      perHorseTable: table.name,
+    }).toEqual({ writeRoutes: [], perHorseTable: null });
   });
 
   it('N12: trial results and evaluations offer a correction operation besides the video', () => {

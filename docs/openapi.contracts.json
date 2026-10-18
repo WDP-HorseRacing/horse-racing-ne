@@ -78,7 +78,6 @@
                 "NOTIFICATION",
                 "PERFORMANCE_EVALUATION",
                 "PERFORMANCE_METRIC",
-                "PERFORMANCE_THRESHOLD",
                 "RACE",
                 "RACE_REGISTRATION",
                 "DAILY_CHECKLIST",
@@ -4370,51 +4369,7 @@
             "bearer": []
           }
         ],
-        "summary": "Xem ngưỡng nhịp tim/tốc độ đang áp và lịch sử phiên bản của ngựa",
-        "tags": [
-          "performance"
-        ]
-      },
-      "put": {
-        "operationId": "PerformanceThresholdsController_upsert",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpsertThresholdDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ThresholdProfileResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Tạo phiên bản ngưỡng nhịp tim/tốc độ mới cho ngựa",
+        "summary": "Xem ngưỡng nhịp tim/tốc độ đang áp cho ngựa",
         "tags": [
           "performance"
         ]
@@ -9585,7 +9540,6 @@
               "NOTIFICATION",
               "PERFORMANCE_EVALUATION",
               "PERFORMANCE_METRIC",
-              "PERFORMANCE_THRESHOLD",
               "RACE",
               "RACE_REGISTRATION",
               "DAILY_CHECKLIST",
@@ -9735,7 +9689,6 @@
               "NOTIFICATION",
               "PERFORMANCE_EVALUATION",
               "PERFORMANCE_METRIC",
-              "PERFORMANCE_THRESHOLD",
               "RACE",
               "RACE_REGISTRATION",
               "DAILY_CHECKLIST",
@@ -12832,7 +12785,6 @@
               "INCIDENT",
               "CHECKLIST",
               "PERF_EVAL",
-              "PERF_THRESHOLD",
               "DAILY_FEE",
               "HORSE_SURCHARGE",
               "AUTH"
@@ -14836,20 +14788,14 @@
         "properties": {
           "heartRateWarningBpm": {
             "type": "number",
-            "minimum": 1,
-            "maximum": 300,
             "description": "Nhịp tim vượt mức này là WARNING"
           },
           "heartRateCriticalBpm": {
             "type": "number",
-            "minimum": 1,
-            "maximum": 300,
             "description": "Nhịp tim vượt mức này là CRITICAL"
           },
           "maxSpeedMps": {
             "type": "number",
-            "minimum": 1,
-            "maximum": 30,
             "description": "Tốc độ (m/s) vượt mức này là WARNING"
           }
         },
@@ -14859,100 +14805,24 @@
           "maxSpeedMps"
         ]
       },
-      "ThresholdProfileResponseDto": {
+      "HorseThresholdsResponseDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
           "horseId": {
             "type": "string",
             "format": "uuid"
           },
-          "profileName": {
-            "type": "string"
-          },
-          "ruleVersion": {
-            "type": "number",
-            "description": "Phiên bản, tăng dần theo từng con ngựa"
-          },
-          "effectiveFrom": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "effectiveTo": {
-            "type": "object",
-            "format": "date-time",
-            "nullable": true
-          },
           "limits": {
-            "$ref": "#/components/schemas/ThresholdLimitsDto"
-          }
-        },
-        "required": [
-          "id",
-          "horseId",
-          "profileName",
-          "ruleVersion",
-          "effectiveFrom",
-          "limits"
-        ]
-      },
-      "HorseThresholdsResponseDto": {
-        "type": "object",
-        "properties": {
-          "source": {
-            "type": "string",
-            "enum": [
-              "HORSE",
-              "CLUB_DEFAULT"
-            ],
-            "description": "Ngưỡng đang áp lấy từ bộ riêng của ngựa hay mặc định CLB"
-          },
-          "activeLimits": {
-            "description": "Ngưỡng đang áp tại thời điểm gọi",
+            "description": "Ngưỡng chung của CLB dùng để chấm mức điểm đo",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ThresholdLimitsDto"
               }
             ]
-          },
-          "profiles": {
-            "description": "Mọi phiên bản ngưỡng riêng của ngựa, mới nhất đứng đầu",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ThresholdProfileResponseDto"
-            }
           }
         },
         "required": [
-          "source",
-          "activeLimits",
-          "profiles"
-        ]
-      },
-      "UpsertThresholdDto": {
-        "type": "object",
-        "properties": {
-          "profileName": {
-            "type": "string"
-          },
-          "effectiveFrom": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "effectiveTo": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "limits": {
-            "$ref": "#/components/schemas/ThresholdLimitsDto"
-          }
-        },
-        "required": [
-          "profileName",
-          "effectiveFrom",
+          "horseId",
           "limits"
         ]
       },

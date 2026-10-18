@@ -16,7 +16,6 @@ import {
   PerformanceMetric,
   PerformanceMetricSchema,
 } from '../../src/modules/performance/schemas/performance-metric.schema';
-import { PerformanceAccessService } from '../../src/modules/performance/shared/performance-access.service';
 import type { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { fixtures } from './fixtures';
@@ -55,7 +54,6 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     service = new PerformanceMetricsService(
       metrics,
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
-      new PerformanceAccessService(dataSource),
       new DomainEventPublisher(),
       { emitToUser } as unknown as RealtimeGateway,
       dataSource,

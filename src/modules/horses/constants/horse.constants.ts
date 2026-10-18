@@ -317,7 +317,6 @@ export const HORSE_BUSINESS_TABLES: Readonly<Record<string, string>> = {
   feeding_plans: 'khẩu phần ăn',
   daily_checklists: 'checklist hằng ngày',
   incidents: 'báo cáo sự cố',
-  performance_thresholds: 'ngưỡng hiệu suất',
 };
 
 /**

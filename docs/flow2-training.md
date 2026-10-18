@@ -131,7 +131,10 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 
 1. Không có thiết bị đo thật; script `pnpm sim` đóng vai cảm biến, mỗi giây gửi một điểm đo.
 2. Chỉ nhận điểm đo khi lượt đang tập (`ONGOING`). Điểm trùng cảm biến và thời điểm đo bị bỏ qua.
-3. Ngưỡng mặc định CLB: nhịp tim cảnh báo 220 bpm, nguy hiểm 240 bpm, tốc độ tối đa 18 m/s. Chỉ Head Trainer của khu đặt ngưỡng riêng cho từng ngựa theo phiên bản có khoảng hiệu lực.
+3. Mọi ngựa dùng chung một bộ ngưỡng CLB: nhịp tim cảnh báo 220 bpm, nguy hiểm 240 bpm, tốc độ tối đa 18 m/s. Không ai đổi được ngưỡng, kể cả Head Trainer.
+   - Không có ngưỡng riêng từng ngựa: đề bài chỉ yêu cầu HT xem cảnh báo vượt ngưỡng, không yêu cầu đặt ngưỡng; cho HT tự đặt thì đặt cao (tới 300 bpm) là tắt được cảnh báo khẩn; hệ thống đo thật (Equimetre, StrideSAFE) cũng không cho huấn luyện viên tự đặt ngưỡng báo động; đề tài dùng dữ liệu giả lập nên một bộ ngưỡng chung là đủ.
+   - Ba con số là giả định của dự án, chưa có bác sĩ thú y xác nhận, dựa trên số liệu tham khảo: nhịp tim tối đa đo được của ngựa Thoroughbred khoảng 207–214 bpm ([AAEP 2005](https://www.ivis.org/library/aaep/aaep-annual-convention-seattle-2005/heart-rate-and-velocity-derived-from-a-global-positioning-system-assesses-fitness-thoroughbred), [SciELO](https://scielo.br/j/cr/a/D6vCyQ979T9RzCVJBzzQhWQ/?lang=en)); ngựa đua chạy giải khoảng 16–18 m/s.
+   - Hướng mở rộng khi có cảm biến thật: bác sĩ nhập nhịp tim tối đa đo được của từng ngựa, ngưỡng tính theo phần trăm của số đó.
 4. Mức cảnh báo mỗi điểm: vượt ngưỡng nguy hiểm là `CRITICAL`; vượt ngưỡng cảnh báo nhịp tim hoặc tốc độ tối đa là `WARNING`; còn lại `NORMAL`.
 5. Head Trainer của lớp nhận điểm đo realtime qua socket, sự kiện `performance.metrics`.
 6. Có điểm `CRITICAL`: thông báo KHẨN cho mọi bác sĩ và Head Trainer của lớp, mỗi lượt tập một lần; chủ ngựa nhận một thông báo riêng mức HIGH báo bác sĩ và Head Trainer đã được báo.
@@ -160,7 +163,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | Điểm danh, báo vắng, báo sẵn sàng | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
 | Bắt đầu, hoàn thành, dừng sớm lượt, ghi kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
 | Đánh giá buổi | Không | Có | Không | Không | Không |
-| Ngưỡng nhịp tim/tốc độ | Xem | Đặt cho ngựa thuộc khu mình | Xem | Không | Không |
+| Ngưỡng nhịp tim/tốc độ | Xem | Xem ngựa thuộc khu mình | Xem | Không | Không |
 | Bàn giao Head Trainer | Có | Không | Không | Không | Không |
 
 ## IV. API
@@ -210,7 +213,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | GET | `/horses/:id/alerts` | CM, VET, HT của khu | Lịch sử cảnh báo `?level&from&to&page&limit` |
 | GET | `/horses/:id/workload` | Ai xem được hồ sơ ngựa | Khối lượng tập `?from&to` |
 | GET | `/horses/:horseId/training/classes`, `/horses/:horseId/training/sessions` | CM, HT, VET, OWNER | Lớp và buổi tập của ngựa (tab huấn luyện) |
-| GET/PUT | `/horses/:id/thresholds` | Xem: HT, CM, VET; đặt: HT | Ngưỡng của ngựa |
+| GET | `/horses/:id/thresholds` | HT, CM, VET | Ngưỡng chung CLB đang áp cho ngựa |
 | POST | `/users/:id/head-trainer-handover` | CM | Bàn giao Head Trainer `{ toHeadTrainerId }` |
 
 Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.

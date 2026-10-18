@@ -254,3 +254,18 @@ Không đổi API.
    - Báo cáo tiến độ ngựa (`GET /reports/horses/:horseId/progress`): thêm `totals.stopped` và `weekly[].stopped`; `trainedMinutes` cộng cả lượt dừng sớm, `completed` và `plannedDistanceM` thì không.
    - Dashboard báo cáo (`GET /reports/dashboard`): thêm `training.stopped` và `weekly[].stopped`.
 5. FE cần thêm nhãn và màu cho `STOPPED` ở mọi chỗ hiển thị trạng thái lượt.
+
+## Bỏ ngưỡng nhịp tim/tốc độ riêng từng ngựa
+
+1. Bỏ route `PUT /horses/:id/thresholds` (gọi vào giờ trả 404). Không ai đặt ngưỡng riêng cho ngựa nữa; FE bỏ màn/nút đặt ngưỡng.
+2. `GET /horses/:id/thresholds` giữ nguyên quyền (HT của khu, CM, VET) nhưng đổi response: mọi ngựa dùng chung một bộ ngưỡng CLB.
+
+   ```json
+   {
+     "horseId": "uuid",
+     "limits": { "heartRateWarningBpm": 220, "heartRateCriticalBpm": 240, "maxSpeedMps": 18 }
+   }
+   ```
+
+   Bỏ `source`, `profiles`; `activeLimits` đổi tên thành `limits`.
+3. Nhật ký thao tác: bỏ giá trị `feature = PERF_THRESHOLD` và `entityType = PERFORMANCE_THRESHOLD`. FE xóa hai giá trị này khỏi bộ lọc và bảng nhãn.

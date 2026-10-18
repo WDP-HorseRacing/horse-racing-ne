@@ -19,7 +19,7 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | Users         | `users`                                                                                  |
 | Horses        | `horses`, `horse_ownerships`, `horse_measurements`                                       |
 | Training      | `training_subjects`, `training_plans`, `training_plan_phases`, `training_plan_subjects`, `training_classes`, `training_class_phases`, `training_class_phase_subjects`, `horse_enrollments`, `training_sessions`, `session_participants`, `time_trials`, `trial_results` |
-| Performance   | `performance_thresholds`, `performance_evaluations` (số đo `performance_metrics` ở MongoDB) |
+| Performance   | `performance_evaluations` (số đo `performance_metrics` ở MongoDB; ngưỡng là hằng số chung CLB) |
 | Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
 | Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `daily_task_types`, `horse_daily_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
 | Racing        | `races`, `race_registrations`                                                            |
@@ -62,7 +62,7 @@ Nghiệp vụ, quyền và state machine của nhóm bảng này mô tả trong 
   - RETIRED: hủy giáo án SCHEDULED/ACTIVE cùng buổi tập SCHEDULED, rút đăng ký thi đấu còn mở ở race PLANNED/OPEN (`WITHDRAWN`); giữ ô chuồng, lịch chăm sóc, khóa huấn luyện.
   - TRANSFERRED: như RETIRED, thêm đóng sở hữu, groom, xếp chuồng (ô về AVAILABLE) và tự gỡ khóa huấn luyện (`released_by = null`).
   - Ngựa đang có buổi tập IN_PROGRESS hoặc race IN_PROGRESS thì trả 409.
-- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `medical_cases`, `medical_exam_requests`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`, `performance_thresholds`.
+- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `medical_cases`, `medical_exam_requests`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`.
 
 Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_id`/`dam_id`, giới hạn `depth` 1–4 (mặc định 2).
 
