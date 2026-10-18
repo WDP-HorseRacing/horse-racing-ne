@@ -239,6 +239,30 @@ Không đổi API.
 3. FE cần thêm biểu tượng cho `category = TRAINING_SESSION`.
 
 
+## Tiêm phòng, tẩy giun chỉ giao bác sĩ
+
+1. `POST /horses/:horseId/care-schedules` và `PATCH /care-schedules/:id` (khi đổi cách giao): lịch loại Tiêm phòng hoặc Tẩy giun giao cho Groom (`assigneeType: GROOM`) trả 400 ở ô `assigneeType`: "Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ". Chỉ giao bác sĩ (`VET`) hoặc để chưa giao ai. Kiểm tra móng vẫn giao Groom hoặc bác sĩ như cũ.
+2. Sửa lịch mà không đổi cách giao (dời ngày, ghi chú) không bị kiểm luật này.
+
+## Xuất kho thuốc và ghi chú lần xuất
+
+1. `POST /supplies/items/:id/usages` với vật tư loại thuốc (`MEDICINE`): chỉ VET và CM xuất được; HT, GROOM nhận 403 "Chỉ Veterinarian hoặc Club Manager được xuất thuốc". FE ẩn nút xuất ở vật tư loại thuốc với HT, GROOM.
+2. Mọi lần xuất (mọi loại vật tư) bắt buộc `note` (tối đa 500 ký tự). Thiếu hoặc toàn khoảng trắng: 400 ở ô `note` "Phải ghi chú lần xuất".
+
+## Bảng điều khiển y tế: khối Thuốc cần cho hôm nay
+
+1. `GET /medical/dashboard` có thêm `todayPrescriptions`: các đơn thuốc đang hiệu lực hôm nay theo ngày lịch CLB, xếp theo tên ngựa rồi tên thuốc. Mỗi dòng `{ prescriptionId, horseId, horseName, medicine, dosage, frequency, startDate, endDate (null nếu dùng tới khi đóng bệnh án), medicalRecordId, caseId (null nếu buổi khám ngoài bệnh án) }`.
+2. Bộ lọc khu (`barnId`, `mine`) áp cho khối này; đơn của buổi khám đã hủy không hiện.
+
+## Đơn thuốc của buổi khám không mở bệnh án phải có ngày kết thúc
+
+1. `POST /horses/:horseId/medical-records` mà buổi khám không mở bệnh án: mọi dòng `prescriptions` bắt buộc có `endDate`. Thiếu: 400 "Đơn thuốc của buổi khám không mở bệnh án phải có ngày kết thúc". Buổi khám mở bệnh án và tái khám (`POST /medical-cases/:caseId/visits`) vẫn được để trống `endDate` (dùng tới khi đóng bệnh án).
+
+## Thông báo đến hạn khám định kỳ
+
+1. Thông báo mới cho mọi VET khi ngựa đến hạn khám định kỳ mà chưa có ngày hẹn khám: tiêu đề "Ngựa {tên} đến hạn khám định kỳ", nội dung "{tên} đến hạn khám định kỳ ngày dd/mm/yyyy. Vui lòng đặt lịch khám.". Loại `CARE_REMINDER`, mức `NORMAL`, gắn với ngựa (bấm vào mở hồ sơ ngựa). Mỗi hạn khám chỉ báo một lần.
+2. Các nhắc lịch y tế chạy lúc 05:00 sáng mỗi ngày (trước là 07:00).
+
 ## Dừng sớm lượt tập
 
 1. Trạng thái lượt tập mới `STOPPED` (dừng sớm), là trạng thái kết thúc như `COMPLETED`: không điểm danh, bắt đầu, giao Groom lại; vẫn ghi kết quả chạy thử và đánh giá được.
