@@ -13,7 +13,6 @@ import { HorseOwnershipsService } from '../../src/modules/horses/horse-ownership
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { HorseOwnershipService } from '../../src/modules/horses/shared/horse-ownership.service';
 import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
-import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -55,7 +54,6 @@ describe('HorseOwnershipsService (Postgres)', () => {
       dataSource.getRepository(HorseOwnershipEntity),
       access,
       new HorseOwnershipService(),
-      new MedicalAccessService(access, dataSource),
       dataSource,
       new AuditService(),
       { publish },
@@ -154,10 +152,12 @@ describe('HorseOwnershipsService (Postgres)', () => {
     ).rejects.toThrow('Không tìm thấy ngựa');
   });
 
-  it('blocks a horse with an open medical case and changes nothing', async () => {
+  it('transfers a horse with an open medical case and keeps the case open', async () => {
     const { b, horse, actor } = await setupHorse();
     const vet = await seed.user(UserRole.VETERINARIAN);
-    await seed.medicalCase(horse, vet, { status: MedicalCaseStatus.OPEN });
+    const caseId = await seed.medicalCase(horse, vet, {
+      status: MedicalCaseStatus.OPEN,
+    });
 
     await expect(
       service.transfer(actor, horse, {
@@ -165,13 +165,15 @@ describe('HorseOwnershipsService (Postgres)', () => {
         reason: 'HĐ 12',
         version: 1,
       }),
-    ).rejects.toThrow(
-      new ConflictException(
-        'Ngựa còn bệnh án đang điều trị, bác sĩ cần đóng bệnh án trước khi chuyển chủ',
-      ),
+    ).resolves.toMatchObject({ id: horse });
+
+    expect((await horseRow(horse)).version).toBe(2);
+    const [medicalCase] = await dataSource.query<{ status: string }[]>(
+      'SELECT status FROM medical_cases WHERE id = $1',
+      [caseId],
     );
-    expect((await horseRow(horse)).version).toBe(1);
-    expect(publish).not.toHaveBeenCalled();
+    expect(medicalCase.status).toBe(MedicalCaseStatus.OPEN);
+    expect(publish).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a stale version and a second concurrent transfer keeps one open period', async () => {

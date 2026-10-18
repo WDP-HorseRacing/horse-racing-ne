@@ -36,7 +36,6 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
 import { HorsePedigreeRepository } from '../../../src/modules/horses/shared/horse-pedigree.repository';
 import { HorsePedigreeService } from '../../../src/modules/horses/shared/horse-pedigree.service';
-import { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
 import { BarnsService } from '../../../src/modules/stable/barns/barns.service';
 import { BarnEntity } from '../../../src/modules/stable/entities/barn.entity';
 import { StallAssignmentEntity } from '../../../src/modules/stable/entities/stall-assignment.entity';
@@ -168,7 +167,6 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
       dataSource.getRepository(HorseOwnershipEntity),
       access,
       new HorseOwnershipService(),
-      new MedicalAccessService(access, dataSource),
       dataSource,
       audit,
       events,

@@ -7,11 +7,9 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { MedicalAccessService } from '../../medical/shared/medical-access.service';
 import {
   HORSE_AUDIT_FEATURE,
   HORSE_OWNERSHIP_TRANSFERRED_EVENT,
-  OPEN_CASE_BLOCKS_OWNERSHIP_TRANSFER_MESSAGE,
   STALE_HORSE_MESSAGE,
 } from '../constants/horse.constants';
 import type {
@@ -36,7 +34,6 @@ export class HorseOwnershipsService {
     private readonly ownershipRecords: Repository<HorseOwnershipEntity>,
     private readonly access: HorseAccessService,
     private readonly ownerships: HorseOwnershipService,
-    private readonly medicalAccess: MedicalAccessService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly events: DomainEventPublisher,
@@ -46,7 +43,7 @@ export class HorseOwnershipsService {
    * Chuyển nhượng nội bộ ngựa sang một chủ khác trong câu lạc bộ, trong cùng một transaction
    *
    * - Khóa row ngựa; hồ sơ đã xóa: Club Manager nhận 409, phải khôi phục trước
-   * - Kiểm lần lượt: version, luật chuyển nhượng (assertOwnershipTransfer), chủ mới là HORSE_OWNER đang hoạt động (khóa chia sẻ row tài khoản), ngựa không còn bệnh án đang mở
+   * - Kiểm lần lượt: version, luật chuyển nhượng (assertOwnershipTransfer), chủ mới là HORSE_OWNER đang hoạt động (khóa chia sẻ row tài khoản)
    * - Đóng giai đoạn sở hữu hiện tại và mở giai đoạn mới tại thời điểm ghi nhận (chủ mới bắt đầu sở hữu từ lúc này); cập nhật horses.owner_id và tăng version
    * - Không đổi vòng đời, khu, ô, Groom, lớp
    * - Ghi nhật ký kèm lý do và ghi HORSE_OWNERSHIP_TRANSFERRED_EVENT vào outbox để báo chủ cũ và chủ mới
@@ -58,7 +55,7 @@ export class HorseOwnershipsService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
    * @throws BadRequestException Nếu chủ mới trùng chủ hiện tại hoặc không phải HORSE_OWNER
-   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa, version đã cũ, ngựa đã chuyển nhượng hoặc đã mất, ngựa chưa có chủ, chủ mới không còn hoạt động, hoặc ngựa còn bệnh án đang mở
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa, version đã cũ, ngựa đã chuyển nhượng hoặc đã mất, ngựa chưa có chủ, hoặc chủ mới không còn hoạt động
    */
   async transfer(
     actor: Actor,
@@ -84,11 +81,6 @@ export class HorseOwnershipsService {
       assertAssignableOwner(
         await this.access.lockOwnerAccount(manager, body.newOwnerId),
       );
-      if (await this.medicalAccess.findOpenCase(horseId, manager)) {
-        throw new ConflictException(
-          OPEN_CASE_BLOCKS_OWNERSHIP_TRANSFER_MESSAGE,
-        );
-      }
       const result = await manager
         .getRepository(HorseEntity)
         .update(

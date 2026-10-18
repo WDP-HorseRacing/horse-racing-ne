@@ -20,7 +20,6 @@ import { HorseStatusesService } from '../../../src/modules/horses/horse-statuses
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
 import { MedicalCaseStatus } from '../../../src/modules/medical/constants/medical-case.enum';
-import { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
 import { FinanceReportsRepository } from '../../../src/modules/reports/finance-reports/finance-reports.repository';
 import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
 import { HorseReportsRepository } from '../../../src/modules/reports/horse-reports/horse-reports.repository';
@@ -178,7 +177,6 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
       dataSource.getRepository(HorseOwnershipEntity),
       access,
       new HorseOwnershipService(),
-      new MedicalAccessService(access, dataSource),
       dataSource,
       new AuditService(),
       { publish: jest.fn().mockResolvedValue(undefined) },

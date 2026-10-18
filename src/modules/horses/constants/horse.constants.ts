@@ -168,12 +168,6 @@ export const HORSE_LIFECYCLE_CHANGED_EVENT = 'horse.lifecycle-changed';
 export const HORSE_OWNERSHIP_TRANSFERRED_EVENT = 'horse.ownership.transferred';
 
 /**
- * Câu chặn 409 khi chuyển nhượng nội bộ ngựa còn bệnh án đang mở.
- */
-export const OPEN_CASE_BLOCKS_OWNERSHIP_TRANSFER_MESSAGE =
-  'Ngựa còn bệnh án đang điều trị, bác sĩ cần đóng bệnh án trước khi chuyển chủ';
-
-/**
  * Kết luận ghi vào lệnh khóa huấn luyện khi hệ thống tự gỡ do ngựa chuyển nhượng.
  */
 export const TRANSFER_LOCK_RELEASE_CONCLUSION = 'Gỡ do chuyển nhượng';

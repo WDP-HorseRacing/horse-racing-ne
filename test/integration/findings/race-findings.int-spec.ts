@@ -183,7 +183,6 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
       dataSource.getRepository(HorseOwnershipEntity),
       horseAccess,
       new HorseOwnershipService(),
-      new MedicalAccessService(horseAccess, dataSource),
       dataSource,
       audit,
       { publish: jest.fn().mockResolvedValue(undefined) },
