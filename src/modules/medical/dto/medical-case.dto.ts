@@ -3,14 +3,11 @@ import { Transform } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
-  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
-  Max,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 import {
@@ -18,11 +15,6 @@ import {
   MedicalCaseStatus,
 } from '../constants/medical-case.enum';
 import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
-
-/**
- * Chi phí tối đa nhập được cho một bệnh án (VND).
- */
-export const MAX_CASE_COST_VND = 10_000_000_000;
 
 /**
  * Lọc danh sách bệnh án của một con ngựa.
@@ -35,7 +27,7 @@ export class MedicalCaseListQueryDto {
 }
 
 /**
- * Đóng bệnh án và chốt chi phí.
+ * Đóng bệnh án và chốt kết luận cuối.
  */
 export class CloseMedicalCaseDto {
   @ApiProperty({ minLength: 1, maxLength: 4000 })
@@ -44,16 +36,6 @@ export class CloseMedicalCaseDto {
   @MinLength(1)
   @MaxLength(4000)
   finalConclusion!: string;
-
-  @ApiProperty({
-    minimum: 0,
-    maximum: MAX_CASE_COST_VND,
-    description: 'Tổng chi phí điều trị, số nguyên VND',
-  })
-  @IsInt()
-  @Min(0)
-  @Max(MAX_CASE_COST_VND)
-  totalCost!: number;
 
   @ApiPropertyOptional({
     enum: CaseLockDecision,
@@ -87,25 +69,7 @@ export class CloseMedicalCaseDto {
 }
 
 /**
- * Điều chỉnh chi phí bệnh án đã đóng.
- */
-export class AdjustCaseCostDto {
-  @ApiProperty({ minimum: 0, maximum: MAX_CASE_COST_VND })
-  @IsInt()
-  @Min(0)
-  @Max(MAX_CASE_COST_VND)
-  totalCost!: number;
-
-  @ApiProperty({ minLength: 1, maxLength: 500 })
-  @Transform(trimValue)
-  @IsString()
-  @MinLength(1)
-  @MaxLength(500)
-  reason!: string;
-}
-
-/**
- * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án.
+ * Báo cáo tổng chi phí y tế theo khoảng ngày khám.
  */
 export class MedicalCostReportQueryDto {
   @ApiProperty({
@@ -129,7 +93,7 @@ export class MedicalCostReportQueryDto {
 
   @ApiPropertyOptional({
     format: 'uuid',
-    description: 'Chủ ngựa hiện tại trên hồ sơ',
+    description: 'Chủ của giai đoạn sở hữu chứa ngày khám',
   })
   @IsOptional()
   @IsUUID('4')

@@ -556,7 +556,6 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
             () =>
               cases.closeCase(vet, caseId, {
                 finalConclusion: 'Không qua khỏi',
-                totalCost: 0,
                 dateOfDeath: today,
               }),
             () => incidents.refer(trainer, incidentId, { urgent: false }),

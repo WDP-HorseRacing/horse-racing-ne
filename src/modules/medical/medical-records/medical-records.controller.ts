@@ -40,7 +40,7 @@ export class MedicalRecordsController {
   @ApiOperation({
     summary: 'List horse medical visits',
     description:
-      'Mọi buổi khám trong và ngoài bệnh án, kể cả buổi đã hủy, mới nhất lên trên. Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.',
+      'Mọi buổi khám trong và ngoài bệnh án, kể cả buổi đã hủy, mới nhất lên trên. Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency, buổi khám thuộc giai đoạn chủ khác có cost null và costHidden true. Head Trainer không có key cost, costHidden. Groom không xem.',
     operationId: 'MedicalController_listRecords',
   })
   @ApiOkResponse({ type: [MedicalRecordResponseDto] })
@@ -56,7 +56,7 @@ export class MedicalRecordsController {
   @ApiOperation({
     summary: 'Record a medical visit outside a case',
     description:
-      'Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.',
+      'Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). cost tùy chọn, bỏ trống là 0. Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.',
     operationId: 'MedicalController_createRecord',
   })
   @ApiCreatedResponse({ type: MedicalRecordResponseDto })

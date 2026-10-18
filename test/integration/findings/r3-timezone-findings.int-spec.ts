@@ -336,7 +336,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     );
     const body = {
       finalConclusion: 'Ổn định',
-      totalCost: 1_000_000,
       lockDecision: CaseLockDecision.KEEP,
       lockExpectedEnd: LATER,
     } as CloseMedicalCaseDto;
@@ -366,7 +365,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     const errors = validateSync(
       plainToInstance(CloseMedicalCaseDto, {
         finalConclusion: 'Mất',
-        totalCost: 0,
         dateOfDeath: `${D}T23:20:00`,
       }),
     );

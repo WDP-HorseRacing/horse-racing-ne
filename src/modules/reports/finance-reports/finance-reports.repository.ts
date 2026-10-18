@@ -3,7 +3,6 @@ import { DataSource } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import { MedicalCaseStatus } from '../../medical/constants/medical-case.enum';
 import { SupplyStockMovementType } from '../../supplies/enums/supply-stock-movement-type.enum';
 import type {
   DailyFeeRow,
@@ -158,42 +157,39 @@ export class FinanceReportsRepository {
   }
 
   /**
-   * Tính chi phí các bệnh án đóng trong kỳ theo chủ và con ngựa
+   * Tính chi phí các buổi khám chưa hủy trong kỳ theo chủ và con ngựa
    *
-   * - Chi phí thuộc người đang là chủ lúc bệnh án đóng; lúc đó ngựa không có chủ thì ownerId là null
+   * - Buổi khám rơi vào kỳ theo ngày khám
+   * - Chi phí thuộc người đang là chủ vào lúc khám; lúc đó ngựa không có chủ thì ownerId là null
    *
    * @param period Khoảng ngày của báo cáo
-   * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi bệnh án
-   * @returns Promise trả về tên, số bệnh án và tổng chi phí theo chủ và ngựa
+   * @param ownerId Chỉ tính cho một chủ; bỏ trống là mọi buổi khám
+   * @returns Promise trả về tên, số buổi khám và tổng chi phí theo chủ và ngựa
    */
   medicalCharges(
     period: ReportPeriod,
     ownerId?: string,
   ): Promise<MedicalChargeRow[]> {
-    const params: unknown[] = [
-      period.start,
-      period.end,
-      MedicalCaseStatus.CLOSED,
-    ];
+    const params: unknown[] = [period.start, period.end];
     if (ownerId) params.push(ownerId);
     return this.dataSource.query(
       `SELECT o.owner_id AS "ownerId",
               u.full_name AS "ownerName",
-              c.horse_id AS "horseId",
+              r.horse_id AS "horseId",
               h.name AS "horseName",
-              COUNT(*)::int AS "caseCount",
-              COALESCE(SUM(c.total_cost), 0)::text AS "medicalCost"
-         FROM medical_cases c
+              COUNT(*)::int AS "visitCount",
+              COALESCE(SUM(r.cost), 0)::text AS "medicalCost"
+         FROM medical_records r
          LEFT JOIN horse_ownerships o
-           ON o.horse_id = c.horse_id
-          AND o.started_at <= c.closed_at
-          AND (o.ended_at IS NULL OR c.closed_at < o.ended_at)
+           ON o.horse_id = r.horse_id
+          AND o.started_at <= r.exam_date
+          AND (o.ended_at IS NULL OR r.exam_date < o.ended_at)
          LEFT JOIN users u ON u.id = o.owner_id
-         JOIN horses h ON h.id = c.horse_id
-        WHERE c.status = $3
-          AND c.closed_at >= $1
-          AND c.closed_at < $2
-          ${ownerId ? 'AND o.owner_id = $4' : ''}
+         JOIN horses h ON h.id = r.horse_id
+        WHERE r.voided_at IS NULL
+          AND r.exam_date >= $1
+          AND r.exam_date < $2
+          ${ownerId ? 'AND o.owner_id = $3' : ''}
         GROUP BY 1, 2, 3, 4`,
       params,
     );

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
 
 /**
  * Một dòng báo cáo chi phí, đọc thô từ DB (tổng chi phí dạng chuỗi).
@@ -9,7 +8,7 @@ import { MedicalCaseStatus } from '../constants/medical-case.enum';
 export interface MedicalCostReportRow {
   horseId: string;
   horseName: string;
-  caseCount: number;
+  visitCount: number;
   totalCost: string;
 }
 
@@ -18,11 +17,12 @@ export class MedicalCasesRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Tổng chi phí các bệnh án đã đóng theo từng con ngựa, lọc theo khoảng ngày đóng
+   * Tổng chi phí các buổi khám chưa hủy theo từng con ngựa, lọc theo khoảng ngày khám
    *
-   * - Ngày đóng tính theo lịch câu lạc bộ, lấy cả hai đầu khoảng
+   * - Ngày khám tính theo lịch câu lạc bộ, lấy cả hai đầu khoảng
+   * - Gồm buổi khám trong và ngoài bệnh án
    * - Lọc khu theo hồ sơ ngựa hiện tại; tính cả hồ sơ đã xóa
-   * - Lọc chủ theo giai đoạn sở hữu: bệnh án thuộc chủ đang sở hữu ngựa lúc bệnh án được đóng (started_at <= closed_at < ended_at)
+   * - Lọc chủ theo giai đoạn sở hữu: buổi khám thuộc chủ đang sở hữu ngựa lúc khám (started_at <= exam_date < ended_at)
    *
    * @param filter Khoảng ngày (YYYY-MM-DD), khu và chủ ngựa (tùy chọn)
    * @returns Promise trả về mỗi con ngựa một dòng, chi phí cao nhất lên trên
@@ -33,12 +33,7 @@ export class MedicalCasesRepository {
     barnId?: string;
     ownerId?: string;
   }): Promise<MedicalCostReportRow[]> {
-    const params: unknown[] = [
-      MedicalCaseStatus.CLOSED,
-      CLUB_TIME_ZONE,
-      filter.from,
-      filter.to,
-    ];
+    const params: unknown[] = [CLUB_TIME_ZONE, filter.from, filter.to];
     const conditions: string[] = [];
     if (filter.barnId) {
       params.push(filter.barnId);
@@ -48,24 +43,24 @@ export class MedicalCasesRepository {
       params.push(filter.ownerId);
       conditions.push(
         `AND EXISTS (SELECT 1 FROM horse_ownerships o
-                      WHERE o.horse_id = c.horse_id
+                      WHERE o.horse_id = r.horse_id
                         AND o.owner_id = $${params.length}
-                        AND o.started_at <= c.closed_at
-                        AND (o.ended_at IS NULL OR c.closed_at < o.ended_at))`,
+                        AND o.started_at <= r.exam_date
+                        AND (o.ended_at IS NULL OR r.exam_date < o.ended_at))`,
       );
     }
     return this.dataSource.query(
       `SELECT h.id AS "horseId",
               h.name AS "horseName",
-              COUNT(c.id)::int AS "caseCount",
-              SUM(c.total_cost)::text AS "totalCost"
-         FROM medical_cases c
-         JOIN horses h ON h.id = c.horse_id
-        WHERE c.status = $1
-          AND (c.closed_at AT TIME ZONE $2)::date BETWEEN $3::date AND $4::date
+              COUNT(r.id)::int AS "visitCount",
+              SUM(r.cost)::text AS "totalCost"
+         FROM medical_records r
+         JOIN horses h ON h.id = r.horse_id
+        WHERE r.voided_at IS NULL
+          AND (r.exam_date AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
           ${conditions.join(' ')}
         GROUP BY h.id, h.name
-        ORDER BY SUM(c.total_cost) DESC, h.name`,
+        ORDER BY SUM(r.cost) DESC, h.name`,
       params,
     );
   }

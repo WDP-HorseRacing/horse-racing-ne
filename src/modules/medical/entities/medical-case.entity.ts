@@ -1,4 +1,4 @@
-import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -6,10 +6,9 @@ import { MedicalCaseStatus } from '../constants/medical-case.enum';
 
 /**
  * MedicalCaseEntity: bệnh án, nơi gom nhiều buổi khám của cùng một vấn đề.
- * Mỗi con ngựa có tối đa một bệnh án OPEN; kết luận cuối và chi phí chỉ có khi CLOSED.
+ * Mỗi con ngựa có tối đa một bệnh án OPEN; kết luận cuối chỉ có khi CLOSED.
  */
 @Entity({ name: 'medical_cases' })
-@Check('medical_cases_total_cost_chk', '"total_cost" >= 0')
 @Index('medical_cases_open_horse_uq', ['horseId'], {
   unique: true,
   where: `status = '${MedicalCaseStatus.OPEN}'`,
@@ -50,7 +49,4 @@ export class MedicalCaseEntity extends MutableRecordEntity {
 
   @Column({ name: 'final_conclusion', type: 'text', nullable: true })
   finalConclusion!: string | null;
-
-  @Column({ name: 'total_cost', type: 'bigint', nullable: true })
-  totalCost!: string | null;
 }

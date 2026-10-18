@@ -414,6 +414,8 @@ describe('Outbox findings (Postgres + Mongo + Redis)', () => {
       horseId,
       caseId: randomUUID(),
       totalCost: 15_000_000,
+      ownerId: owner,
+      ownerCost: 15_000_000,
     });
     await dataSource.query(`UPDATE horses SET owner_id = $1 WHERE id = $2`, [
       newOwner,

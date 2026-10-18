@@ -51,7 +51,6 @@ describe('medical records and cases controllers access', () => {
     ['record a follow-up', MedicalCasesController, 'addVisit'],
     ['preview closing', MedicalCasesController, 'closePreview'],
     ['close a case', MedicalCasesController, 'close'],
-    ['adjust the cost', MedicalCasesController, 'adjustCost'],
   ])('lets only VETERINARIAN %s', (_label, controller, method) => {
     expect(rolesOf(controller, method)).toEqual([UserRole.VETERINARIAN]);
   });

@@ -153,14 +153,14 @@ export interface SurchargeRow {
 }
 
 /**
- * Chi phí các bệnh án đã đóng của một con ngựa trong kỳ, tính cho chủ lúc đóng, đọc từ DB
+ * Chi phí các buổi khám chưa hủy của một con ngựa trong kỳ, tính cho chủ vào ngày khám, đọc từ DB
  */
 export interface MedicalChargeRow {
   ownerId: string | null;
   ownerName: string | null;
   horseId: string;
   horseName: string;
-  caseCount: number;
+  visitCount: number;
   medicalCost: string;
 }
 

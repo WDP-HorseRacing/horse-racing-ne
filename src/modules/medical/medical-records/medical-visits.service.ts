@@ -399,6 +399,8 @@ export class MedicalVisitsService {
         prescriptions,
         injuries,
         true,
+        true,
+        false,
       );
     });
   }
@@ -518,7 +520,6 @@ export class MedicalVisitsService {
         closedAt: null,
         closedBy: null,
         finalConclusion: null,
-        totalCost: null,
       }),
     );
     const attached = await this.lockWrites.attachActiveLockToCase(
@@ -573,6 +574,7 @@ export class MedicalVisitsService {
         careInstructions: body.careInstructions || null,
         voidedAt: null,
         voidReason: null,
+        cost: String(body.cost ?? 0),
         replacesRecordId: body.replacesRecordId ?? null,
       }),
     );
@@ -638,6 +640,7 @@ export class MedicalVisitsService {
         caseId: input.caseId,
         examDate: input.examDate,
         resultingStatus: nextStatus,
+        cost: body.cost ?? 0,
         requestIds: input.requests.map((request) => request.id),
         prescriptionCount: prescriptions.length,
         injuryCount: injuries.length,
@@ -649,7 +652,14 @@ export class MedicalVisitsService {
       feature: input.feature,
     });
     return {
-      response: toMedicalRecordResponse(visit, prescriptions, injuries, true),
+      response: toMedicalRecordResponse(
+        visit,
+        prescriptions,
+        injuries,
+        true,
+        true,
+        false,
+      ),
       alerts,
       health,
     };

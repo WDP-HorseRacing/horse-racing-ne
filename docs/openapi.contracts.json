@@ -2907,7 +2907,7 @@
     },
     "/api/v1/horses/{horseId}/medical-cases": {
       "get": {
-        "description": "Mới nhất lên trên. totalCost là tổng chi phí các bệnh án đã đóng. Head Trainer không có key chi phí; chi phí bệnh án chưa đóng là null.",
+        "description": "Mới nhất lên trên. totalCost của mỗi bệnh án cộng các buổi khám chưa hủy của bệnh án; totalCost của danh sách cộng mọi buổi khám chưa hủy của ngựa, trong và ngoài bệnh án. Horse Owner chỉ được cộng buổi khám thuộc giai đoạn mình sở hữu. Head Trainer không có key chi phí.",
         "operationId": "MedicalCasesController_listCases",
         "parameters": [
           {
@@ -2993,7 +2993,7 @@
     },
     "/api/v1/medical-cases/{caseId}/visits": {
       "post": {
-        "description": "Bệnh án đã đóng: 409. Thời điểm khám không sớm hơn ngày mở bệnh án.",
+        "description": "cost tùy chọn, bỏ trống là 0. Bệnh án đã đóng: 409. Thời điểm khám không sớm hơn ngày mở bệnh án.",
         "operationId": "MedicalCasesController_addVisit",
         "parameters": [
           {
@@ -3115,54 +3115,7 @@
             "bearer": []
           }
         ],
-        "summary": "Close a case with final conclusion and total cost",
-        "tags": [
-          "medical"
-        ]
-      }
-    },
-    "/api/v1/medical-cases/{caseId}/cost": {
-      "patch": {
-        "description": "Bệnh án chưa đóng: 409.",
-        "operationId": "MedicalCasesController_adjustCost",
-        "parameters": [
-          {
-            "name": "caseId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdjustCaseCostDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MedicalCaseResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Adjust the cost of a closed case with a reason",
+        "summary": "Close a case with final conclusion",
         "tags": [
           "medical"
         ]
@@ -3170,7 +3123,7 @@
     },
     "/api/v1/medical/cost-report": {
       "get": {
-        "description": "Lọc theo khu hoặc chủ ngựa hiện tại trên hồ sơ.",
+        "description": "Cộng chi phí các buổi khám chưa hủy (trong và ngoài bệnh án) có ngày khám trong khoảng, theo lịch câu lạc bộ. Lọc theo khu hiện tại của ngựa, hoặc theo chủ của giai đoạn sở hữu chứa ngày khám.",
         "operationId": "MedicalCasesController_costReport",
         "parameters": [
           {
@@ -3206,7 +3159,7 @@
             "name": "ownerId",
             "required": false,
             "in": "query",
-            "description": "Chủ ngựa hiện tại trên hồ sơ",
+            "description": "Chủ của giai đoạn sở hữu chứa ngày khám",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -3230,7 +3183,7 @@
             "bearer": []
           }
         ],
-        "summary": "Medical cost report by closing date",
+        "summary": "Medical cost report by exam date",
         "tags": [
           "medical"
         ]
@@ -3238,7 +3191,7 @@
     },
     "/api/v1/horses/{horseId}/medical-records": {
       "get": {
-        "description": "Mọi buổi khám trong và ngoài bệnh án, kể cả buổi đã hủy, mới nhất lên trên. Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency. Groom không xem.",
+        "description": "Mọi buổi khám trong và ngoài bệnh án, kể cả buổi đã hủy, mới nhất lên trên. Head Trainer, Veterinarian, Club Manager: toàn câu lạc bộ. Horse Owner: chỉ ngựa đang sở hữu, đơn thuốc không có dosage và frequency, buổi khám thuộc giai đoạn chủ khác có cost null và costHidden true. Head Trainer không có key cost, costHidden. Groom không xem.",
         "operationId": "MedicalController_listRecords",
         "parameters": [
           {
@@ -3276,7 +3229,7 @@
         ]
       },
       "post": {
-        "description": "Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.",
+        "description": "Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). cost tùy chọn, bỏ trống là 0. Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.",
         "operationId": "MedicalController_createRecord",
         "parameters": [
           {
@@ -13342,12 +13295,7 @@
           },
           "totalCost": {
             "type": "number",
-            "nullable": true,
-            "description": "VND; không có key với Head Trainer. null khi bệnh án chưa đóng hoặc costHidden = true"
-          },
-          "costHidden": {
-            "type": "boolean",
-            "description": "true khi chi phí thuộc thời gian sở hữu của chủ khác (chỉ xảy ra với Horse Owner), khi đó totalCost là null; không có key với Head Trainer"
+            "description": "Tổng chi phí các buổi khám chưa hủy của bệnh án (VND); với Horse Owner chỉ cộng buổi khám thuộc giai đoạn mình sở hữu; không có key với Head Trainer"
           }
         },
         "required": [
@@ -13372,7 +13320,7 @@
           },
           "totalCost": {
             "type": "number",
-            "description": "Tổng chi phí các bệnh án đã đóng; với Horse Owner chỉ cộng bệnh án thuộc thời gian mình sở hữu; không có key với Head Trainer"
+            "description": "Tổng chi phí mọi buổi khám chưa hủy của ngựa, trong và ngoài bệnh án (VND); với Horse Owner chỉ cộng buổi khám thuộc giai đoạn mình sở hữu; không có key với Head Trainer"
           }
         },
         "required": [
@@ -13556,6 +13504,15 @@
             "format": "uuid",
             "nullable": true
           },
+          "cost": {
+            "type": "number",
+            "nullable": true,
+            "description": "Chi phí của buổi khám (VND); không có key với Head Trainer; null khi costHidden = true"
+          },
+          "costHidden": {
+            "type": "boolean",
+            "description": "true khi buổi khám thuộc giai đoạn sở hữu của chủ khác (chỉ xảy ra với Horse Owner), khi đó cost là null; không có key với Head Trainer"
+          },
           "prescriptions": {
             "type": "array",
             "items": {
@@ -13628,12 +13585,7 @@
           },
           "totalCost": {
             "type": "number",
-            "nullable": true,
-            "description": "VND; không có key với Head Trainer. null khi bệnh án chưa đóng hoặc costHidden = true"
-          },
-          "costHidden": {
-            "type": "boolean",
-            "description": "true khi chi phí thuộc thời gian sở hữu của chủ khác (chỉ xảy ra với Horse Owner), khi đó totalCost là null; không có key với Head Trainer"
+            "description": "Tổng chi phí các buổi khám chưa hủy của bệnh án (VND); với Horse Owner chỉ cộng buổi khám thuộc giai đoạn mình sở hữu; không có key với Head Trainer"
           },
           "visits": {
             "type": "array",
@@ -13821,6 +13773,12 @@
             "type": "string",
             "format": "uuid",
             "description": "Buổi khám đã hủy mà buổi này ghi thay"
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000000000,
+            "description": "Chi phí của buổi khám, số nguyên VND; bỏ trống là 0"
           }
         }
       },
@@ -13900,12 +13858,6 @@
             "minLength": 1,
             "maxLength": 4000
           },
-          "totalCost": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 10000000000,
-            "description": "Tổng chi phí điều trị, số nguyên VND"
-          },
           "lockDecision": {
             "type": "string",
             "enum": [
@@ -13926,27 +13878,7 @@
           }
         },
         "required": [
-          "finalConclusion",
-          "totalCost"
-        ]
-      },
-      "AdjustCaseCostDto": {
-        "type": "object",
-        "properties": {
-          "totalCost": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 10000000000
-          },
-          "reason": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        },
-        "required": [
-          "totalCost",
-          "reason"
+          "finalConclusion"
         ]
       },
       "MedicalCostReportRowDto": {
@@ -13959,8 +13891,9 @@
           "horseName": {
             "type": "string"
           },
-          "caseCount": {
-            "type": "number"
+          "visitCount": {
+            "type": "number",
+            "description": "Số buổi khám chưa hủy trong khoảng ngày"
           },
           "totalCost": {
             "type": "number"
@@ -13969,7 +13902,7 @@
         "required": [
           "horseId",
           "horseName",
-          "caseCount",
+          "visitCount",
           "totalCost"
         ]
       },
@@ -13984,8 +13917,9 @@
             "type": "string",
             "format": "date"
           },
-          "caseCount": {
-            "type": "number"
+          "visitCount": {
+            "type": "number",
+            "description": "Số buổi khám chưa hủy trong khoảng ngày"
           },
           "totalCost": {
             "type": "number"
@@ -14000,7 +13934,7 @@
         "required": [
           "from",
           "to",
-          "caseCount",
+          "visitCount",
           "totalCost",
           "items"
         ]
@@ -14078,6 +14012,12 @@
             "type": "string",
             "format": "uuid",
             "description": "Buổi khám đã hủy mà buổi này ghi thay"
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10000000000,
+            "description": "Chi phí của buổi khám, số nguyên VND; bỏ trống là 0"
           },
           "kind": {
             "type": "string",
@@ -15534,9 +15474,9 @@
             "type": "number",
             "description": "Phí nuôi theo ngày (VND)"
           },
-          "caseCount": {
+          "visitCount": {
             "type": "number",
-            "description": "Số bệnh án đóng trong kỳ"
+            "description": "Số buổi khám chưa hủy trong kỳ"
           },
           "medicalCost": {
             "type": "number",
@@ -15556,7 +15496,7 @@
           "horseName",
           "billedDays",
           "dailyFee",
-          "caseCount",
+          "visitCount",
           "medicalCost",
           "surcharge",
           "total"

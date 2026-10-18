@@ -8,7 +8,7 @@ import { InjuryMarkerResponseDto } from './injury-marker.response.dto';
 import { PrescriptionResponseDto } from './prescription.response.dto';
 
 /**
- * Một buổi khám, kèm đơn thuốc và chấn thương.
+ * Một buổi khám, kèm đơn thuốc và chấn thương. cost và costHidden không có key với Head Trainer.
  */
 export class MedicalRecordResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -57,6 +57,22 @@ export class MedicalRecordResponseDto {
 
   @ApiProperty({ format: 'uuid', nullable: true })
   replacesRecordId!: string | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    required: false,
+    description:
+      'Chi phí của buổi khám (VND); không có key với Head Trainer; null khi costHidden = true',
+  })
+  cost?: number | null;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'true khi buổi khám thuộc giai đoạn sở hữu của chủ khác (chỉ xảy ra với Horse Owner), khi đó cost là null; không có key với Head Trainer',
+  })
+  costHidden?: boolean;
 
   @ApiProperty({ type: [PrescriptionResponseDto] })
   prescriptions!: PrescriptionResponseDto[];

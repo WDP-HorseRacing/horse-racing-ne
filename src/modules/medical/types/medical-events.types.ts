@@ -84,11 +84,17 @@ export interface MedicalCaseOpenedEvent extends MedicalEventBase {
 }
 
 /**
- * Bệnh án vừa đóng, kèm chi phí chốt.
+ * Bệnh án vừa đóng, kèm chi phí chụp lúc đóng.
+ *
+ * - totalCost: tổng chi phí các buổi khám chưa hủy của bệnh án
+ * - ownerId: chủ của ngựa lúc đóng, null nếu ngựa không có chủ
+ * - ownerCost: phần chi phí thuộc các giai đoạn sở hữu của ownerId, null khi ownerId null
  */
 export interface MedicalCaseClosedEvent extends MedicalEventBase {
   caseId: string;
   totalCost: number;
+  ownerId: string | null;
+  ownerCost: number | null;
 }
 
 /**

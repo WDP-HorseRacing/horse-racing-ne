@@ -25,7 +25,7 @@ export interface FinanceSource {
 /**
  * Dựng báo cáo chi phí của một chủ ngựa
  *
- * - Mỗi ngựa có ít nhất một ngày còn ở CLB dưới tên chủ trong kỳ, hoặc có bệnh án của chủ đóng trong kỳ, một dòng; kể cả khi không phát sinh chi phí
+ * - Mỗi ngựa có ít nhất một ngày còn ở CLB dưới tên chủ trong kỳ, hoặc có buổi khám trong kỳ thuộc giai đoạn của chủ, một dòng; kể cả khi không phát sinh chi phí
  *
  * @param owner Chủ của báo cáo
  * @param source Phí ngày, chi phí y tế và phụ phí của chủ trong kỳ
@@ -59,7 +59,7 @@ export function toOwnerCost(
         horseName,
         billedDays: fee.reduce((sum, row) => sum + row.billedDays, 0),
         dailyFee,
-        caseCount: medical.reduce((sum, row) => sum + row.caseCount, 0),
+        visitCount: medical.reduce((sum, row) => sum + row.visitCount, 0),
         medicalCost,
         surcharge,
         total: dailyFee + medicalCost + surcharge,
@@ -90,8 +90,8 @@ export function toOwnerCost(
 /**
  * Dựng báo cáo tài chính CLB
  *
- * - Tổng của CLB gồm mọi ngựa, kể cả các ngày và bệnh án không có chủ
- * - Bảng từng chủ gồm mọi chủ có ngựa còn ở CLB trong kỳ hoặc có bệnh án đóng trong kỳ, sắp theo tên; mỗi chủ chỉ cộng phần của chủ đó
+ * - Tổng của CLB gồm mọi ngựa, kể cả các ngày và buổi khám không có chủ
+ * - Bảng từng chủ gồm mọi chủ có ngựa còn ở CLB trong kỳ hoặc có buổi khám trong kỳ, sắp theo tên; mỗi chủ chỉ cộng phần của chủ đó
  * - Phần không có chủ (ownerId null) gom vào unowned, kèm tổng số ngày tính phí
  *
  * @param source Phí ngày, chi phí y tế và phụ phí của mọi chủ trong kỳ

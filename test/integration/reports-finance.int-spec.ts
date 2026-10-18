@@ -150,17 +150,25 @@ describe('Reports finance (Postgres)', () => {
       );
     }
 
-    const closed = (horseId: string, closedAt: string, totalCost: number) =>
-      seed.medicalCase(horseId, vet, {
-        status: MedicalCaseStatus.CLOSED,
-        openedAt: '2026-08-01T00:00:00Z',
-        closedAt,
-        totalCost,
-      });
-    await closed(gio, '2026-10-09T03:00:00Z', 1000000);
-    await closed(gio, '2026-10-11T03:00:00Z', 2000000);
-    await closed(gio, '2026-09-20T03:00:00Z', 5000000);
-    await closed(sao, '2026-10-03T03:00:00Z', 300000);
+    const acrossOwners = await seed.medicalCase(gio, vet, {
+      status: MedicalCaseStatus.CLOSED,
+      openedAt: '2026-10-09T03:00:00Z',
+      closedAt: '2026-10-11T03:00:00Z',
+    });
+    const paid = (
+      horseId: string,
+      examDate: string,
+      cost: number,
+      options: { caseId?: string; voided?: boolean } = {},
+    ) => seed.visit(horseId, vet, examDate, { ...options, cost });
+    await paid(gio, '2026-10-09T03:00:00Z', 1000000, { caseId: acrossOwners });
+    await paid(gio, '2026-10-11T03:00:00Z', 2000000, { caseId: acrossOwners });
+    await paid(gio, '2026-10-11T04:00:00Z', 9000000, {
+      caseId: acrossOwners,
+      voided: true,
+    });
+    await paid(gio, '2026-09-20T03:00:00Z', 5000000);
+    await paid(sao, '2026-10-03T03:00:00Z', 300000);
     await seed.medicalCase(sao, vet, { openedAt: '2026-10-04T00:00:00Z' });
 
     const [item] = await dataSource.query<Array<{ id: string }>>(
@@ -232,7 +240,7 @@ describe('Reports finance (Postgres)', () => {
           horseName: 'Gió',
           billedDays: 5,
           dailyFee: 700000,
-          caseCount: 1,
+          visitCount: 1,
           medicalCost: 1000000,
           surcharge: 100000,
           total: 1800000,
@@ -242,7 +250,7 @@ describe('Reports finance (Postgres)', () => {
           horseName: 'Mây',
           billedDays: 4,
           dailyFee: 500000,
-          caseCount: 0,
+          visitCount: 0,
           medicalCost: 0,
           surcharge: 60000,
           total: 560000,
@@ -395,31 +403,25 @@ describe('Reports finance (Postgres)', () => {
     ]);
   });
 
-  it('charges medical costs inside the period on the club calendar, keeps deleted profiles and skips cancelled cases', async () => {
+  it('charges medical costs by exam date inside the period on the club calendar, keeps deleted profiles and skips voided visits', async () => {
     const lan = await ownerNamed('Lan');
     const vet = await seed.user(UserRole.VETERINARIAN);
     const suong = await seed.horse('Sương', { ownerId: lan });
     await seed.ownership(suong, lan, '2026-09-01T00:00:00Z');
     const removed = await seed.horse('Xóa', { ownerId: lan, deleted: true });
     await seed.ownership(removed, lan, '2026-09-01T00:00:00Z');
-    const closed = (horseId: string, closedAt: string, totalCost: number) =>
-      seed.medicalCase(horseId, vet, {
-        status: MedicalCaseStatus.CLOSED,
-        openedAt: '2026-09-01T00:00:00Z',
-        closedAt,
-        totalCost,
-      });
-    await closed(suong, '2026-09-30T16:59:00Z', 1);
-    await closed(suong, '2026-09-30T17:00:00Z', 10);
-    await closed(suong, '2026-10-12T16:59:00Z', 100);
-    await closed(suong, '2026-10-12T17:00:00Z', 1000);
-    await closed(removed, '2026-10-05T03:00:00Z', 10000);
-    await seed.medicalCase(suong, vet, {
-      status: MedicalCaseStatus.CANCELLED,
-      openedAt: '2026-10-05T00:00:00Z',
-      closedAt: '2026-10-06T00:00:00Z',
-      totalCost: 100000,
-    });
+    const paid = (
+      horseId: string,
+      examDate: string,
+      cost: number,
+      voided = false,
+    ) => seed.visit(horseId, vet, examDate, { cost, voided });
+    await paid(suong, '2026-09-30T16:59:00Z', 1);
+    await paid(suong, '2026-09-30T17:00:00Z', 10);
+    await paid(suong, '2026-10-12T16:59:00Z', 100);
+    await paid(suong, '2026-10-12T17:00:00Z', 1000);
+    await paid(removed, '2026-10-05T03:00:00Z', 10000);
+    await paid(suong, '2026-10-06T00:00:00Z', 100000, true);
 
     const rows = await new FinanceReportsRepository(dataSource).medicalCharges(
       {
@@ -437,7 +439,7 @@ describe('Reports finance (Postgres)', () => {
           ownerName: 'Lan',
           horseId: suong,
           horseName: 'Sương',
-          caseCount: 2,
+          visitCount: 2,
           medicalCost: '110',
         },
         {
@@ -445,7 +447,7 @@ describe('Reports finance (Postgres)', () => {
           ownerName: 'Lan',
           horseId: removed,
           horseName: 'Xóa',
-          caseCount: 1,
+          visitCount: 1,
           medicalCost: '10000',
         },
       ],

@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
@@ -16,6 +16,7 @@ import { MedicalCaseEntity } from './medical-case.entity';
  * Không sửa, không xóa; ghi sai thì hủy bằng voidedAt và voidReason.
  */
 @Entity({ name: 'medical_records' })
+@Check('medical_records_cost_chk', '"cost" >= 0')
 @Index('medical_records_horse_exam_idx', ['horseId', 'examDate'])
 @Index('medical_records_case_idx', ['caseId'])
 export class MedicalRecordEntity extends BaseRecordEntity {
@@ -69,6 +70,9 @@ export class MedicalRecordEntity extends BaseRecordEntity {
 
   @Column({ name: 'void_reason', type: 'text', nullable: true })
   voidReason!: string | null;
+
+  @Column({ type: 'bigint', default: 0 })
+  cost!: string;
 
   @Column({ name: 'replaces_record_id', type: 'uuid', nullable: true })
   replacesRecordId!: string | null;

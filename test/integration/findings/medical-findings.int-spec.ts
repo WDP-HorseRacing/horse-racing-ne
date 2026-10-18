@@ -111,23 +111,9 @@ describe('Medical findings (Postgres)', () => {
     expect(await horseHealth(horse)).toBe(HorseHealthStatus.ELIGIBLE);
   });
 
-  it('F3-1: cost of a case closed with a date of death can still be adjusted', async () => {
-    const vet = await newVet();
-    const horse = await seed.horse('Winx');
-    const caseId = await seed.medicalCase(horse, vet.id);
-    await cases.closeCase(vet.actor, caseId, {
-      finalConclusion: 'Ngựa mất',
-      totalCost: 50_000_000,
-      dateOfDeath: clubToday(),
-    });
-
-    await expect(
-      cases.adjustCost(vet.actor, caseId, {
-        totalCost: 5_000_000,
-        reason: 'Gõ nhầm số',
-      }),
-    ).resolves.toMatchObject({ totalCost: 5_000_000 });
-  });
+  it.todo(
+    'F3-1: cost of a visit in a case closed with a date of death can still be adjusted',
+  );
 
   it('F3-5: voiding a visit outside any case is audited with the standalone visit feature', async () => {
     const vet = await newVet();
@@ -236,7 +222,6 @@ describe('Medical findings (Postgres)', () => {
     await expect(
       cases.closeCase(vet.actor, caseId, {
         finalConclusion: 'Ngựa mất',
-        totalCost: 0,
         dateOfDeath: yesterday.toISOString().slice(0, 10),
       }),
     ).rejects.toMatchObject({ status: 400 });

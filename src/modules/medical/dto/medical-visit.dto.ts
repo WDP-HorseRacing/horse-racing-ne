@@ -7,10 +7,13 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -23,6 +26,11 @@ import {
 } from '../constants/medical-visit.enum';
 import { CreateInjuryDto } from './create-injury.dto';
 import { CreatePrescriptionDto } from './create-prescription.dto';
+
+/**
+ * Chi phí tối đa nhập được cho một buổi khám (VND).
+ */
+export const MAX_VISIT_COST_VND = 10_000_000_000;
 
 /**
  * Các trường chung của một buổi khám.
@@ -137,6 +145,17 @@ export class MedicalVisitBaseDto {
   @IsOptional()
   @IsUUID('4')
   replacesRecordId?: string;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: MAX_VISIT_COST_VND,
+    description: 'Chi phí của buổi khám, số nguyên VND; bỏ trống là 0',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(MAX_VISIT_COST_VND)
+  cost?: number;
 }
 
 /**

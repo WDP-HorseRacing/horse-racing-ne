@@ -44,7 +44,6 @@ import {
   examRequestSourceFor,
   isUrgentAlert,
   assertCaseOpen,
-  assertCostAdjustable,
   assertNextVisitAt,
   assertReplacementTarget,
   assertRequestsAttachable,
@@ -55,6 +54,8 @@ import {
   isGroomOnly,
   isGroomOnlyForExamRequests,
   canSeeMedicalCost,
+  isVisitCostHidden,
+  visibleVisitCost,
   resolveLockOnClose,
   assertNoLockChoiceOnDeath,
   assertHealthChangeReason,
@@ -409,13 +410,58 @@ describe('medical.policy', () => {
       }
     });
 
-    it('only adjusts the cost of a closed case', () => {
-      expect(() => assertCostAdjustable(MedicalCaseStatus.OPEN)).toThrow(
-        ConflictException,
-      );
-      expect(() =>
-        assertCostAdjustable(MedicalCaseStatus.CLOSED),
-      ).not.toThrow();
+    describe('visit cost of an owner', () => {
+      const periods = [
+        {
+          id: 'p1',
+          ownerId: 'a',
+          startedAt: new Date('2026-03-01T00:00:00Z'),
+          endedAt: new Date('2026-06-01T00:00:00Z'),
+        },
+        {
+          id: 'p2',
+          ownerId: 'b',
+          startedAt: new Date('2026-06-01T00:00:00Z'),
+          endedAt: null,
+        },
+      ];
+      const ownerA = { seesCost: true, owner: { ownerId: 'a', periods } };
+      const visit = (examDate: string, cost: string, voided = false) => ({
+        examDate: new Date(examDate),
+        cost,
+        voidedAt: voided ? new Date('2026-07-01T00:00:00Z') : null,
+      });
+
+      it('charges a visit to the owner of the period holding the exam date', () => {
+        expect(
+          isVisitCostHidden(ownerA, new Date('2026-05-31T23:59:59Z')),
+        ).toBe(false);
+        expect(
+          isVisitCostHidden(ownerA, new Date('2026-06-01T00:00:00Z')),
+        ).toBe(true);
+        expect(
+          isVisitCostHidden(ownerA, new Date('2026-02-28T00:00:00Z')),
+        ).toBe(true);
+        expect(
+          isVisitCostHidden(
+            { seesCost: true, owner: null },
+            new Date('2026-02-28T00:00:00Z'),
+          ),
+        ).toBe(false);
+      });
+
+      it('sums only the visits not voided that the viewer may see', () => {
+        const visits = [
+          visit('2026-04-01T00:00:00Z', '5000000'),
+          visit('2026-05-01T00:00:00Z', '1000000', true),
+          visit('2026-08-01T00:00:00Z', '3000000'),
+        ];
+        expect(visibleVisitCost(ownerA, visits)).toBe(5000000);
+        expect(visibleVisitCost({ seesCost: true, owner: null }, visits)).toBe(
+          8000000,
+        );
+        expect(visibleVisitCost(ownerA, [])).toBe(0);
+      });
     });
 
     it('never shows the cost to a head trainer and never shows dosage to an owner', () => {

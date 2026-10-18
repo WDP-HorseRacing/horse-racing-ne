@@ -10,6 +10,7 @@ import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-aler
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { OwnershipPeriod } from '../../horses/types/horse.types';
+import type { MedicalCostViewer } from '../types/medical-cost.types';
 import {
   CareAssigneeType,
   CareScheduleStatus,
@@ -415,40 +416,57 @@ export function assertNoLockChoiceOnDeath(
 }
 
 /**
- * Chỉ điều chỉnh chi phí của bệnh án đã đóng
+ * Kiểm tra chi phí của buổi khám có thuộc về một chủ không: thuộc chủ của giai đoạn sở hữu chứa ngày khám
  *
- * @param status Trạng thái bệnh án
- * @throws ConflictException Nếu bệnh án chưa đóng
- */
-export function assertCostAdjustable(status: MedicalCaseStatus): void {
-  if (status !== MedicalCaseStatus.CLOSED) {
-    throw new ConflictException('Chỉ điều chỉnh chi phí của bệnh án đã đóng');
-  }
-}
-
-/**
- * Kiểm tra chi phí của bệnh án có thuộc về một chủ không
+ * - Lúc khám ngựa không có chủ: không thuộc chủ nào
  *
- * - Bệnh án chưa đóng (chưa có chi phí chốt): luôn thuộc
- * - Bệnh án đã đóng: thuộc chủ của giai đoạn sở hữu chứa thời điểm đóng
- *
- * @param medicalCase Trạng thái và thời điểm đóng của bệnh án
+ * @param examDate Thời điểm khám
  * @param periods Các giai đoạn sở hữu của con ngựa
  * @param ownerId UUID của chủ cần kiểm
- * @returns True nếu chi phí bệnh án thuộc về chủ này
+ * @returns True nếu chi phí buổi khám thuộc về chủ này
  */
-export function isCaseCostOfOwner(
-  medicalCase: { status: MedicalCaseStatus; closedAt: Date | null },
+export function isVisitCostOfOwner(
+  examDate: Date,
   periods: OwnershipPeriod[],
   ownerId: string,
 ): boolean {
-  if (
-    medicalCase.status !== MedicalCaseStatus.CLOSED ||
-    !medicalCase.closedAt
-  ) {
-    return true;
-  }
-  return ownershipAt(periods, medicalCase.closedAt)?.ownerId === ownerId;
+  return ownershipAt(periods, examDate)?.ownerId === ownerId;
+}
+
+/**
+ * Kiểm tra chi phí của buổi khám có phải ẩn với người gọi không
+ *
+ * @param viewer Quyền xem chi phí của người gọi
+ * @param examDate Thời điểm khám
+ * @returns True nếu người gọi xem theo phạm vi Horse Owner và buổi khám thuộc giai đoạn của chủ khác hoặc lúc ngựa không có chủ
+ */
+export function isVisitCostHidden(
+  viewer: MedicalCostViewer,
+  examDate: Date,
+): boolean {
+  return (
+    viewer.owner !== null &&
+    !isVisitCostOfOwner(examDate, viewer.owner.periods, viewer.owner.ownerId)
+  );
+}
+
+/**
+ * Cộng chi phí các buổi khám chưa hủy mà người gọi được xem
+ *
+ * @param viewer Quyền xem chi phí của người gọi
+ * @param visits Các buổi khám (gồm cả buổi đã hủy, sẽ bị bỏ qua)
+ * @returns Tổng chi phí VND, 0 nếu không có buổi nào được tính
+ */
+export function visibleVisitCost(
+  viewer: MedicalCostViewer,
+  visits: Array<{ examDate: Date; cost: string; voidedAt: Date | null }>,
+): number {
+  return visits
+    .filter(
+      (visit) =>
+        visit.voidedAt === null && !isVisitCostHidden(viewer, visit.examDate),
+    )
+    .reduce((sum, visit) => sum + Number(visit.cost), 0);
 }
 
 /**

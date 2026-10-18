@@ -311,7 +311,6 @@ describe('Training findings (Postgres)', () => {
         caseId,
         {
           finalConclusion: 'Ngựa ngã chết',
-          totalCost: 1_000_000,
           dateOfDeath: clubToday(),
         },
       );

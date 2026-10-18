@@ -46,6 +46,8 @@ describe('MedicalEventsListener', () => {
         horseId: 'h1',
         caseId: 'c1',
         totalCost: 0,
+        ownerId: null,
+        ownerCost: null,
       }),
     ).rejects.toThrow('db down');
   });

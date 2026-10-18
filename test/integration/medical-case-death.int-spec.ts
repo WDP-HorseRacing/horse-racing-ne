@@ -89,7 +89,7 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
       [horse],
     );
     const [caseRow] = await dataSource.query<Record<string, unknown>[]>(
-      'SELECT status, total_cost FROM medical_cases WHERE id = $1',
+      'SELECT status FROM medical_cases WHERE id = $1',
       [caseId],
     );
     const events = await dataSource.query<{ event_name: string }[]>(
@@ -120,10 +120,17 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
 
   it('closes the case and records the death in one transaction', async () => {
     const { horse, caseId, lockId, request, actor } = await setup();
+    const [{ vet_id: vetId }] = await dataSource.query<{ vet_id: string }[]>(
+      'SELECT opened_by AS vet_id FROM medical_cases WHERE id = $1',
+      [caseId],
+    );
+    await seed.visit(horse, vetId, new Date().toISOString(), {
+      caseId,
+      cost: 5_000_000,
+    });
 
     const result = await service.closeCase(actor, caseId, {
       finalConclusion: 'Ngựa mất do suy tim',
-      totalCost: 5_000_000,
       dateOfDeath: clubToday(),
     });
 
@@ -135,10 +142,7 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
       barn_id: null,
       date_of_death: clubToday(),
     });
-    expect(after.medicalCase).toEqual({
-      status: 'CLOSED',
-      total_cost: '5000000',
-    });
+    expect(after.medicalCase).toEqual({ status: 'CLOSED' });
     expect(after.events).toEqual(
       expect.arrayContaining([MEDICAL_CASE_CLOSED_EVENT, HORSE_DECEASED_EVENT]),
     );
@@ -164,7 +168,6 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
     await expect(
       service.closeCase(actor, caseId, {
         finalConclusion: 'Ngựa mất',
-        totalCost: 0,
         dateOfDeath: clubToday(),
         lockDecision: CaseLockDecision.RELEASE,
       }),
@@ -183,7 +186,6 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
     await expect(
       service.closeCase(actor, caseId, {
         finalConclusion: 'Ngựa mất',
-        totalCost: 0,
         dateOfDeath: '2999-01-01',
       }),
     ).rejects.toThrow('Ngày mất không được ở tương lai');
@@ -196,7 +198,6 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
 
     await service.closeCase(actor, caseId, {
       finalConclusion: 'Khỏi bệnh',
-      totalCost: 1_000_000,
       lockDecision: CaseLockDecision.RELEASE,
     });
 

@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -19,7 +18,6 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
-  AdjustCaseCostDto,
   CloseMedicalCaseDto,
   CreateFollowUpVisitDto,
   MedicalCaseClosePreviewResponseDto,
@@ -49,7 +47,7 @@ export class MedicalCasesController {
   @ApiOperation({
     summary: 'List horse medical cases',
     description:
-      'Mới nhất lên trên. totalCost là tổng chi phí các bệnh án đã đóng. Head Trainer không có key chi phí; chi phí bệnh án chưa đóng là null.',
+      'Mới nhất lên trên. totalCost của mỗi bệnh án cộng các buổi khám chưa hủy của bệnh án; totalCost của danh sách cộng mọi buổi khám chưa hủy của ngựa, trong và ngoài bệnh án. Horse Owner chỉ được cộng buổi khám thuộc giai đoạn mình sở hữu. Head Trainer không có key chi phí.',
   })
   @ApiOkResponse({ type: MedicalCaseListResponseDto })
   listCases(
@@ -78,7 +76,7 @@ export class MedicalCasesController {
   @ApiOperation({
     summary: 'Record a follow-up visit in an open case',
     description:
-      'Bệnh án đã đóng: 409. Thời điểm khám không sớm hơn ngày mở bệnh án.',
+      'cost tùy chọn, bỏ trống là 0. Bệnh án đã đóng: 409. Thời điểm khám không sớm hơn ngày mở bệnh án.',
   })
   @ApiCreatedResponse({ type: MedicalRecordResponseDto })
   addVisit(
@@ -105,7 +103,7 @@ export class MedicalCasesController {
   @Access([UserRole.VETERINARIAN])
   @Post('medical-cases/:caseId/close')
   @ApiOperation({
-    summary: 'Close a case with final conclusion and total cost',
+    summary: 'Close a case with final conclusion',
     description:
       'Lệnh khóa gắn bệnh án còn hiệu lực thì bắt buộc lockDecision (RELEASE hoặc KEEP kèm lockExpectedEnd). Bệnh án đã đóng: 409.',
   })
@@ -118,26 +116,12 @@ export class MedicalCasesController {
     return this.cases.closeCase(actor, caseId, body);
   }
 
-  @Access([UserRole.VETERINARIAN])
-  @Patch('medical-cases/:caseId/cost')
-  @ApiOperation({
-    summary: 'Adjust the cost of a closed case with a reason',
-    description: 'Bệnh án chưa đóng: 409.',
-  })
-  @ApiOkResponse({ type: MedicalCaseResponseDto })
-  adjustCost(
-    @CurrentUser() actor: Actor,
-    @Param('caseId', ParseUUIDPipe) caseId: string,
-    @Body() body: AdjustCaseCostDto,
-  ): Promise<MedicalCaseResponseDto> {
-    return this.cases.adjustCost(actor, caseId, body);
-  }
-
   @Access([UserRole.CLUB_MANAGER])
   @Get('medical/cost-report')
   @ApiOperation({
-    summary: 'Medical cost report by closing date',
-    description: 'Lọc theo khu hoặc chủ ngựa hiện tại trên hồ sơ.',
+    summary: 'Medical cost report by exam date',
+    description:
+      'Cộng chi phí các buổi khám chưa hủy (trong và ngoài bệnh án) có ngày khám trong khoảng, theo lịch câu lạc bộ. Lọc theo khu hiện tại của ngựa, hoặc theo chủ của giai đoạn sở hữu chứa ngày khám.',
   })
   @ApiOkResponse({ type: MedicalCostReportResponseDto })
   costReport(

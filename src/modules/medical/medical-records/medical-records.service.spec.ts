@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
@@ -13,10 +14,15 @@ function actorWith(role: UserRole): Actor {
 }
 
 describe('MedicalRecordsService.listRecords', () => {
-  let records: { find: jest.Mock };
+  let records: { find: jest.Mock; manager: object };
   let prescriptions: { find: jest.Mock };
   let injuries: { find: jest.Mock };
-  let horseAccess: { findReadableHorseForActor: jest.Mock };
+  let horseAccess: {
+    currentUser: jest.Mock;
+    findReadableHorse: jest.Mock;
+    scopeOf: jest.Mock;
+  };
+  let ownerships: { periodsOfHorse: jest.Mock };
   let service: MedicalRecordsService;
 
   beforeEach(() => {
@@ -30,8 +36,10 @@ describe('MedicalRecordsService.listRecords', () => {
           resultingStatus: 'INJURED',
           vetId: 'vet-1',
           voidedAt: null,
+          cost: '500000',
         },
       ]),
+      manager: {},
     };
     prescriptions = {
       find: jest.fn().mockResolvedValue([
@@ -47,12 +55,35 @@ describe('MedicalRecordsService.listRecords', () => {
       ]),
     };
     injuries = { find: jest.fn().mockResolvedValue([]) };
-    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = {
+      currentUser: jest.fn().mockResolvedValue({ id: 'u1' }),
+      findReadableHorse: jest.fn().mockResolvedValue({ id: 'h1' }),
+      scopeOf: jest.fn((actor: Actor) =>
+        actor.roles.includes(UserRole.HORSE_OWNER)
+          ? { kind: 'OWNER', userId: 'u1' }
+          : { kind: 'ALL' },
+      ),
+    };
+    ownerships = {
+      periodsOfHorse: jest.fn().mockResolvedValue([
+        {
+          ownerId: 'u0',
+          startedAt: new Date('2026-01-01T00:00:00Z'),
+          endedAt: new Date('2026-09-01T00:00:00Z'),
+        },
+        {
+          ownerId: 'u1',
+          startedAt: new Date('2026-09-01T00:00:00Z'),
+          endedAt: null,
+        },
+      ]),
+    };
     service = new MedicalRecordsService(
       horseAccess as unknown as HorseAccessService,
       records as unknown as Repository<MedicalRecordEntity>,
       prescriptions as unknown as Repository<PrescriptionEntity>,
       injuries as unknown as Repository<InjuryMarkerEntity>,
+      ownerships as unknown as HorseOwnershipService,
     );
   });
 
@@ -78,12 +109,17 @@ describe('MedicalRecordsService.listRecords', () => {
 
   it('lets a club manager read the records of a deleted horse the access service returns', async () => {
     const manager = actorWith(UserRole.CLUB_MANAGER);
-    horseAccess.findReadableHorseForActor.mockResolvedValue({
+    horseAccess.findReadableHorse.mockResolvedValue({
       id: 'h1',
       deletedAt: new Date('2026-09-01T00:00:00Z'),
     });
     const result = await service.listRecords(manager, 'h1');
-    expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(manager, 'h1');
+    expect(horseAccess.findReadableHorse).toHaveBeenCalledWith(
+      records.manager,
+      manager,
+      'u1',
+      'h1',
+    );
     expect(result).toHaveLength(1);
   });
 
@@ -114,7 +150,7 @@ describe('MedicalRecordsService.listRecords', () => {
   });
 
   it('answers not found for a horse outside the caller scope', async () => {
-    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorse.mockRejectedValue(new NotFoundException());
     await expect(
       service.listRecords(actorWith(UserRole.HORSE_OWNER), 'h1'),
     ).rejects.toThrow(NotFoundException);
@@ -129,14 +165,14 @@ describe('MedicalRecordsService.listRecords', () => {
       await expect(
         service.getRecord(actorWith(UserRole.VETERINARIAN), 'r404'),
       ).rejects.toThrow(NotFoundException);
-      expect(horseAccess.findReadableHorseForActor).not.toHaveBeenCalled();
+      expect(horseAccess.findReadableHorse).not.toHaveBeenCalled();
     });
 
     it('answers not found when the horse of the visit is outside the caller scope', async () => {
       (records as { findOne?: jest.Mock }).findOne = jest
         .fn()
         .mockResolvedValue({ id: 'r1', horseId: 'h9' });
-      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorse.mockRejectedValue(new NotFoundException());
       await expect(
         service.getRecord(actorWith(UserRole.HORSE_OWNER), 'r1'),
       ).rejects.toThrow(NotFoundException);
@@ -146,7 +182,12 @@ describe('MedicalRecordsService.listRecords', () => {
     it('returns the visit with its injuries', async () => {
       (records as { findOne?: jest.Mock }).findOne = jest
         .fn()
-        .mockResolvedValue({ id: 'r1', horseId: 'h1' });
+        .mockResolvedValue({
+          id: 'r1',
+          horseId: 'h1',
+          examDate: new Date('2026-09-10T08:00:00Z'),
+          cost: '0',
+        });
       injuries.find.mockResolvedValue([
         { id: 'i1', medicalRecordId: 'r1', bodyRegion: 'LEFT_FRONT_LEG' },
       ]);
@@ -154,11 +195,58 @@ describe('MedicalRecordsService.listRecords', () => {
         actorWith(UserRole.HEAD_TRAINER),
         'r1',
       );
-      expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(
+      expect(horseAccess.findReadableHorse).toHaveBeenCalledWith(
         expect.anything(),
+        expect.anything(),
+        'u1',
         'h1',
       );
       expect(visit.injuries).toHaveLength(1);
+      expect(visit).not.toHaveProperty('cost');
+    });
+  });
+
+  describe('cost', () => {
+    it.each([UserRole.CLUB_MANAGER, UserRole.VETERINARIAN])(
+      'gives %s the cost of every visit',
+      async (role) => {
+        const [record] = await service.listRecords(actorWith(role), 'h1');
+        expect(record).toMatchObject({ cost: 500000, costHidden: false });
+        expect(ownerships.periodsOfHorse).not.toHaveBeenCalled();
+      },
+    );
+
+    it('gives a head trainer no cost key', async () => {
+      const [record] = await service.listRecords(
+        actorWith(UserRole.HEAD_TRAINER),
+        'h1',
+      );
+      expect(record).not.toHaveProperty('cost');
+      expect(record).not.toHaveProperty('costHidden');
+    });
+
+    it('gives a horse owner the cost of a visit in their period right away, even in an open case', async () => {
+      const [record] = await service.listRecords(
+        actorWith(UserRole.HORSE_OWNER),
+        'h1',
+      );
+      expect(record).toMatchObject({ cost: 500000, costHidden: false });
+    });
+
+    it('hides from a horse owner the cost of a visit in the period of another owner', async () => {
+      records.find.mockResolvedValue([
+        {
+          id: 'r0',
+          examDate: new Date('2026-08-31T23:59:00Z'),
+          cost: '700000',
+          voidedAt: null,
+        },
+      ]);
+      const [record] = await service.listRecords(
+        actorWith(UserRole.HORSE_OWNER),
+        'h1',
+      );
+      expect(record).toMatchObject({ cost: null, costHidden: true });
     });
   });
 });
@@ -193,6 +281,7 @@ describe('MedicalRecordsService.getCareInstructions', () => {
       records as unknown as Repository<MedicalRecordEntity>,
       {} as Repository<PrescriptionEntity>,
       {} as Repository<InjuryMarkerEntity>,
+      {} as HorseOwnershipService,
     );
   });
 

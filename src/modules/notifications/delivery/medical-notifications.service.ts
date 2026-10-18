@@ -315,21 +315,25 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo chủ ngựa và Club Manager khi bệnh án đóng, kèm chi phí chốt
+   * Báo Club Manager và chủ ngựa khi bệnh án đóng, kèm chi phí chụp lúc đóng
+   *
+   * - Club Manager: tổng chi phí của cả bệnh án
+   * - Chủ ngựa hiện tại: chỉ phần chi phí thuộc giai đoạn mình sở hữu (event.ownerCost); lúc đóng ngựa không có chủ thì không báo chủ
    *
    * @param event Payload của MEDICAL_CASE_CLOSED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
    */
-  notifyCaseClosed(event: MedicalCaseClosedEvent): Promise<string[]> {
-    return this.sendForHorse(
+  async notifyCaseClosed(event: MedicalCaseClosedEvent): Promise<string[]> {
+    const resource = {
+      type: NotificationResourceType.MEDICAL_CASE,
+      id: event.caseId,
+      horseId: event.horseId,
+    };
+    const toManagers = await this.sendForHorse(
       event.eventId,
       event.horseId,
-      {
-        type: NotificationResourceType.MEDICAL_CASE,
-        id: event.caseId,
-        horseId: event.horseId,
-      },
-      { clubManagers: true, owner: true },
+      resource,
+      { clubManagers: true },
       NotificationCategory.MEDICAL_CASE,
       NotificationPriority.NORMAL,
       (horse) => ({
@@ -337,6 +341,21 @@ export class MedicalNotificationsService {
         message: `Bệnh án của ngựa ${horse} đã đóng. Tổng chi phí điều trị: ${formatVnd(event.totalCost)}.`,
       }),
     );
+    if (event.ownerCost === null) return toManagers;
+    const ownerCost = event.ownerCost;
+    const toOwner = await this.sendForHorse(
+      event.eventId,
+      event.horseId,
+      resource,
+      { owner: true },
+      NotificationCategory.MEDICAL_CASE,
+      NotificationPriority.NORMAL,
+      (horse) => ({
+        title: `Đóng bệnh án ngựa ${horse}`,
+        message: `Bệnh án của ngựa ${horse} đã đóng. Chi phí điều trị của bạn: ${formatVnd(ownerCost)}.`,
+      }),
+    );
+    return [...toManagers, ...toOwner];
   }
 
   /**

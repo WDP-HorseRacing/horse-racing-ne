@@ -185,20 +185,42 @@ describe('MedicalNotificationsService', () => {
     });
   });
 
-  it('sends a closed case with its cost to the owner and club managers', async () => {
-    await service.notifyCaseClosed({
+  it('sends club managers the cost of the whole case and the owner only their part', async () => {
+    const sent = await service.notifyCaseClosed({
       eventId: 'e6',
       horseId: 'h1',
       caseId: 'c1',
-      totalCost: 1500000,
+      totalCost: 5000000,
+      ownerId: 'owner-1',
+      ownerCost: 2000000,
     });
-    expect(sentDraft().recipientIds).toEqual(['cm-1', 'owner-1']);
-    expect(sentDraft().message).toContain('1.500.000');
-    expect(sentDraft().resource).toEqual({
+    const drafts = (
+      notifications.send.mock.calls as Array<[NotificationDraft]>
+    ).map(([draft]) => draft);
+    expect(drafts.map((draft) => [draft.recipientIds, draft.message])).toEqual([
+      [['cm-1'], expect.stringContaining('5.000.000') as unknown],
+      [['owner-1'], expect.stringContaining('2.000.000') as unknown],
+    ]);
+    expect(drafts.map((draft) => draft.eventId)).toEqual(['e6', 'e6']);
+    expect(drafts[1].resource).toEqual({
       type: NotificationResourceType.MEDICAL_CASE,
       id: 'c1',
       horseId: 'h1',
     });
+    expect(sent).toEqual(['cm-1', 'owner-1']);
+  });
+
+  it('sends a closed case only to club managers when the horse had no owner at closing', async () => {
+    await service.notifyCaseClosed({
+      eventId: 'e6',
+      horseId: 'h1',
+      caseId: 'c1',
+      totalCost: 300000,
+      ownerId: null,
+      ownerCost: null,
+    });
+    expect(notifications.send).toHaveBeenCalledTimes(1);
+    expect(sentDraft().recipientIds).toEqual(['cm-1']);
   });
 
   it('skips the owner when the horse has no active owner', async () => {

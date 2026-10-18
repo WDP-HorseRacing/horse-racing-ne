@@ -18,7 +18,8 @@ export class OwnerCostHorseDto {
   @ApiProperty() horseName!: string;
   @ApiProperty({ description: 'Số ngày tính phí nuôi' }) billedDays!: number;
   @ApiProperty({ description: 'Phí nuôi theo ngày (VND)' }) dailyFee!: number;
-  @ApiProperty({ description: 'Số bệnh án đóng trong kỳ' }) caseCount!: number;
+  @ApiProperty({ description: 'Số buổi khám chưa hủy trong kỳ' })
+  visitCount!: number;
   @ApiProperty({ description: 'Chi phí y tế (VND)' }) medicalCost!: number;
   @ApiProperty({ description: 'Phụ phí chăm sóc riêng (VND)' })
   surcharge!: number;

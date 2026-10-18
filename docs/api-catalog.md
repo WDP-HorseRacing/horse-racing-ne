@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 218 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 217 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -108,14 +108,13 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/horses/{horseId}/training-locks` | List current and past training locks of a horse |
 | POST | `/api/v1/horses/{horseId}/training-locks` | Set a veterinary training lock |
 | GET | `/api/v1/medical-cases/{caseId}` | Get a medical case with its visits |
-| POST | `/api/v1/medical-cases/{caseId}/close` | Close a case with final conclusion and total cost |
+| POST | `/api/v1/medical-cases/{caseId}/close` | Close a case with final conclusion |
 | GET | `/api/v1/medical-cases/{caseId}/close-preview` | Preview what must be handled before closing a case |
-| PATCH | `/api/v1/medical-cases/{caseId}/cost` | Adjust the cost of a closed case with a reason |
 | POST | `/api/v1/medical-cases/{caseId}/visits` | Record a follow-up visit in an open case |
 | GET | `/api/v1/medical-records/{id}` | Get a medical visit |
 | POST | `/api/v1/medical-records/{id}/void` | Void a wrongly recorded medical visit |
 | GET | `/api/v1/medical/checkups` | Routine checkup schedule of the herd |
-| GET | `/api/v1/medical/cost-report` | Medical cost report by closing date |
+| GET | `/api/v1/medical/cost-report` | Medical cost report by exam date |
 | GET | `/api/v1/medical/dashboard` | Medical dashboard |
 | GET | `/api/v1/training-locks/{id}` | Get a training lock |
 | POST | `/api/v1/training-locks/{id}/release` | Release a training lock with a reason |

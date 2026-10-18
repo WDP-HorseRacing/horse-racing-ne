@@ -1,5 +1,4 @@
 import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import { CareInstructionsResponseDto } from '../dto/care-instructions.response.dto';
 import { CareScheduleResponseDto } from '../dto/care-schedule.response.dto';
@@ -63,19 +62,23 @@ export function toPrescriptionResponse(
 }
 
 /**
- * Chuyển một buổi khám kèm đơn thuốc và chấn thương sang DTO.
+ * Chuyển một buổi khám kèm đơn thuốc và chấn thương sang DTO, loại chi phí theo quyền người gọi.
  *
  * @param record Thực thể buổi khám
  * @param prescriptions Các đơn thuốc của buổi khám
  * @param injuries Các chấn thương ghi trong buổi khám
  * @param includeDosage Người gọi có được xem liều lượng, tần suất của đơn thuốc không
- * @returns MedicalRecordResponseDto - Buổi khám kèm đơn thuốc, chấn thương
+ * @param seesCost Người gọi có được xem chi phí không (Head Trainer thì không)
+ * @param costHidden Buổi khám thuộc giai đoạn sở hữu của chủ khác, phải ẩn chi phí với người gọi
+ * @returns MedicalRecordResponseDto - không có key cost, costHidden khi seesCost là false; cost null khi costHidden là true
  */
 export function toMedicalRecordResponse(
   record: MedicalRecordEntity,
   prescriptions: PrescriptionEntity[],
   injuries: InjuryMarkerEntity[],
   includeDosage: boolean,
+  seesCost: boolean,
+  costHidden: boolean,
 ): MedicalRecordResponseDto {
   return {
     id: record.id,
@@ -92,6 +95,9 @@ export function toMedicalRecordResponse(
     voidedAt: record.voidedAt,
     voidReason: record.voidReason,
     replacesRecordId: record.replacesRecordId,
+    ...(seesCost
+      ? { cost: costHidden ? null : costOfVisit(record), costHidden }
+      : {}),
     prescriptions: prescriptions.map((prescription) =>
       toPrescriptionResponse(prescription, includeDosage),
     ),
@@ -100,17 +106,15 @@ export function toMedicalRecordResponse(
 }
 
 /**
- * Chuyển bệnh án sang DTO, loại chi phí theo quyền người gọi.
+ * Chuyển bệnh án sang DTO, kèm tổng chi phí người gọi được xem.
  *
  * @param medicalCase Thực thể bệnh án
- * @param seesCost Người gọi có được xem chi phí không (Head Trainer thì không)
- * @param costHidden Chi phí thuộc giai đoạn sở hữu của chủ khác, phải ẩn với người gọi
- * @returns MedicalCaseResponseDto - không có key totalCost, costHidden khi seesCost là false; totalCost null khi bệnh án chưa đóng hoặc costHidden là true
+ * @param totalCost Tổng chi phí người gọi được xem (VND); undefined khi người gọi không được xem chi phí (Head Trainer)
+ * @returns MedicalCaseResponseDto - không có key totalCost khi totalCost là undefined
  */
 export function toMedicalCaseResponse(
   medicalCase: MedicalCaseEntity,
-  seesCost: boolean,
-  costHidden: boolean,
+  totalCost: number | undefined,
 ): MedicalCaseResponseDto {
   return {
     id: medicalCase.id,
@@ -121,23 +125,18 @@ export function toMedicalCaseResponse(
     initialDiagnosis: medicalCase.initialDiagnosis,
     closedAt: medicalCase.closedAt,
     finalConclusion: medicalCase.finalConclusion,
-    ...(seesCost
-      ? { totalCost: costHidden ? null : costOf(medicalCase), costHidden }
-      : {}),
+    ...(totalCost !== undefined ? { totalCost } : {}),
   };
 }
 
 /**
- * Đọc chi phí bệnh án (cột bigint trả về dạng chuỗi) thành số, chỉ khi bệnh án đã đóng.
+ * Đọc chi phí buổi khám (cột bigint trả về dạng chuỗi) thành số.
  *
- * @param medicalCase Thực thể bệnh án
- * @returns Chi phí VND, null khi bệnh án chưa đóng
+ * @param record Buổi khám
+ * @returns Chi phí VND
  */
-export function costOf(medicalCase: MedicalCaseEntity): number | null {
-  return medicalCase.status === MedicalCaseStatus.CLOSED &&
-    medicalCase.totalCost !== null
-    ? Number(medicalCase.totalCost)
-    : null;
+export function costOfVisit(record: Pick<MedicalRecordEntity, 'cost'>): number {
+  return Number(record.cost);
 }
 
 /**
@@ -434,12 +433,12 @@ export function toHorsesWithoutCase(
 }
 
 /**
- * Dựng báo cáo chi phí y tế theo ngựa trong một khoảng ngày đóng bệnh án
+ * Dựng báo cáo chi phí y tế theo ngựa trong một khoảng ngày khám
  *
  * @param from Ngày bắt đầu (YYYY-MM-DD)
  * @param to Ngày kết thúc (YYYY-MM-DD)
- * @param rows Chi phí và số bệnh án đã đóng của từng ngựa
- * @returns MedicalCostReportResponseDto kèm tổng số bệnh án và tổng chi phí
+ * @param rows Chi phí và số buổi khám chưa hủy của từng ngựa
+ * @returns MedicalCostReportResponseDto kèm tổng số buổi khám và tổng chi phí
  */
 export function toMedicalCostReport(
   from: string,
@@ -449,13 +448,13 @@ export function toMedicalCostReport(
   const items = rows.map((row) => ({
     horseId: row.horseId,
     horseName: row.horseName,
-    caseCount: row.caseCount,
+    visitCount: row.visitCount,
     totalCost: Number(row.totalCost),
   }));
   return {
     from,
     to,
-    caseCount: items.reduce((sum, item) => sum + item.caseCount, 0),
+    visitCount: items.reduce((sum, item) => sum + item.visitCount, 0),
     totalCost: items.reduce((sum, item) => sum + item.totalCost, 0),
     items,
   };

@@ -5,7 +5,7 @@ import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import { MedicalRecordResponseDto } from './medical-record.response.dto';
 
 /**
- * Một bệnh án. totalCost không có key với Head Trainer, và là null khi bệnh án chưa đóng.
+ * Một bệnh án. totalCost không có key với Head Trainer.
  */
 export class MedicalCaseResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -34,23 +34,15 @@ export class MedicalCaseResponseDto {
 
   @ApiProperty({
     type: Number,
-    nullable: true,
     required: false,
     description:
-      'VND; không có key với Head Trainer. null khi bệnh án chưa đóng hoặc costHidden = true',
+      'Tổng chi phí các buổi khám chưa hủy của bệnh án (VND); với Horse Owner chỉ cộng buổi khám thuộc giai đoạn mình sở hữu; không có key với Head Trainer',
   })
-  totalCost?: number | null;
-
-  @ApiProperty({
-    required: false,
-    description:
-      'true khi chi phí thuộc thời gian sở hữu của chủ khác (chỉ xảy ra với Horse Owner), khi đó totalCost là null; không có key với Head Trainer',
-  })
-  costHidden?: boolean;
+  totalCost?: number;
 }
 
 /**
- * Danh sách bệnh án của một con ngựa và tổng chi phí các bệnh án đã đóng.
+ * Danh sách bệnh án của một con ngựa và tổng chi phí y tế của ngựa.
  */
 export class MedicalCaseListResponseDto {
   @ApiProperty({ type: [MedicalCaseResponseDto] })
@@ -60,7 +52,7 @@ export class MedicalCaseListResponseDto {
     type: Number,
     required: false,
     description:
-      'Tổng chi phí các bệnh án đã đóng; với Horse Owner chỉ cộng bệnh án thuộc thời gian mình sở hữu; không có key với Head Trainer',
+      'Tổng chi phí mọi buổi khám chưa hủy của ngựa, trong và ngoài bệnh án (VND); với Horse Owner chỉ cộng buổi khám thuộc giai đoạn mình sở hữu; không có key với Head Trainer',
   })
   totalCost?: number;
 }
@@ -123,15 +115,15 @@ export class MedicalCostReportRowDto {
   @ApiProperty()
   horseName!: string;
 
-  @ApiProperty()
-  caseCount!: number;
+  @ApiProperty({ description: 'Số buổi khám chưa hủy trong khoảng ngày' })
+  visitCount!: number;
 
   @ApiProperty()
   totalCost!: number;
 }
 
 /**
- * Báo cáo tổng chi phí y tế theo khoảng ngày đóng bệnh án.
+ * Báo cáo tổng chi phí y tế theo khoảng ngày khám.
  */
 export class MedicalCostReportResponseDto {
   @ApiProperty({ format: 'date' })
@@ -140,8 +132,8 @@ export class MedicalCostReportResponseDto {
   @ApiProperty({ format: 'date' })
   to!: string;
 
-  @ApiProperty()
-  caseCount!: number;
+  @ApiProperty({ description: 'Số buổi khám chưa hủy trong khoảng ngày' })
+  visitCount!: number;
 
   @ApiProperty()
   totalCost!: number;
