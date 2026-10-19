@@ -557,18 +557,18 @@ export function assertLifecycleChanged(
  * Xác định các việc cần chạy khi ngựa đổi vòng đời, dựa vào trạng thái hiện tại (from) và trạng thái đích (to).
  *
  * Các kịch bản chính:
- * 1. Giải nghệ (ACTIVE -> RETIRED): 
+ * 1. Giải nghệ (ACTIVE -> RETIRED):
  *    - Rút khỏi lớp đang học và giải đua chưa diễn ra.
  *    - Các tài nguyên thực tế (khu, ô chuồng, groom và bệnh án y tế) được giữ nguyên.
- * 2. Đang giải nghệ đem chuyển nhượng (RETIRED -> TRANSFERRED): 
- *    - Rút khỏi lớp (để phòng hờ). 
+ * 2. Đang giải nghệ đem chuyển nhượng (RETIRED -> TRANSFERRED):
+ *    - Rút khỏi lớp (để phòng hờ).
  *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế, đóng sự cố đang mở, chốt chăm sóc chuồng (khẩu phần, việc riêng, checklist hôm nay).
- * 3. Đang hoạt động đem chuyển nhượng (ACTIVE -> TRANSFERRED): 
+ * 3. Đang hoạt động đem chuyển nhượng (ACTIVE -> TRANSFERRED):
  *    - Gộp cả (1) và (2): rút khỏi lớp, rút giải đua, và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế, đóng sự cố).
  * 4. Ghi nhận ngựa mất (ACTIVE/RETIRED -> DECEASED): làm như chuyển nhượng từ trạng thái đó.
- * 5. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE): 
- *    - Lớp học và giải đua cũ không tự khôi phục. 
- *    - Từ RETIRED: giữ nguyên trạng thái sức khỏe hiện tại. 
+ * 5. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE):
+ *    - Lớp học và giải đua cũ không tự khôi phục.
+ *    - Từ RETIRED: giữ nguyên trạng thái sức khỏe hiện tại.
  *    - Từ TRANSFERRED: tự động đặt sức khỏe về UNDER_OBSERVATION, đưa ngựa vào trạng thái "Chờ xếp khu", bắt buộc chọn chủ mới.
  *
  * Chú ý: Thao tác chuyển nhượng kết thúc giai đoạn sở hữu và bỏ trống "Chủ sở hữu"; lịch sử vẫn giữ trong horse_ownerships.
