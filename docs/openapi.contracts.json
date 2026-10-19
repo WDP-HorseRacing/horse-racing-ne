@@ -1032,6 +1032,7 @@
             "description": "Chỉ lấy bản ghi đo từ thời điểm này",
             "schema": {
               "format": "date-time",
+              "example": "2026-10-23T00:30:00+07:00",
               "type": "string"
             }
           },
@@ -1042,6 +1043,7 @@
             "description": "Chỉ lấy bản ghi đo tới thời điểm này",
             "schema": {
               "format": "date-time",
+              "example": "2026-10-23T00:30:00+07:00",
               "type": "string"
             }
           },
@@ -10503,6 +10505,7 @@
           "measuredAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Mặc định là thời điểm hiện tại. Không ở tương lai, lùi tối đa 7 ngày"
           },
           "confirmAbnormal": {
@@ -12366,6 +12369,7 @@
           "dueAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày đến hạn, không ở quá khứ"
           },
           "assigneeType": {
@@ -12397,6 +12401,7 @@
           "dueAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày đến hạn mới; dời ngày bắt buộc reason"
           },
           "assigneeType": {
@@ -12433,6 +12438,7 @@
           "nextDueAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày đến hạn lần tới; có thì tạo lịch mới cùng loại. Chỉ Veterinarian được nhập"
           }
         }
@@ -12566,6 +12572,7 @@
           "scheduledAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày giờ hẹn; không ở quá khứ, không muộn hơn hạn khám khi ngựa chưa quá hạn"
           },
           "reason": {
@@ -13908,6 +13915,7 @@
           "nextVisitAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày hẹn tái khám; chỉ dùng khi buổi khám thuộc bệnh án, không ở quá khứ"
           },
           "measurements": {
@@ -14045,6 +14053,7 @@
           "lockExpectedEnd": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày dự kiến gỡ khóa; bắt buộc khi lockDecision là KEEP"
           },
           "deceased": {
@@ -14153,6 +14162,7 @@
           "nextVisitAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày hẹn tái khám; chỉ dùng khi buổi khám thuộc bệnh án, không ở quá khứ"
           },
           "measurements": {
@@ -14312,6 +14322,7 @@
           "lockEnd": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Ngày dự kiến gỡ, chỉ để tham khảo; không ở quá khứ"
           }
         },
@@ -14797,7 +14808,8 @@
           },
           "recordedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00"
           },
           "heartRateBpm": {
             "type": "number",
@@ -19252,7 +19264,8 @@
           },
           "enrolledAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00"
           }
         },
         "required": [
@@ -19314,7 +19327,8 @@
         "properties": {
           "leftAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00"
           },
           "reason": {
             "type": "string"
@@ -19826,11 +19840,13 @@
           "scheduledStartAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Giờ bắt đầu, phải sau thời điểm hiện tại (khi sửa buổi chỉ kiểm nếu đổi giờ bắt đầu), không thì 400 ở ô scheduledStartAt"
           },
           "scheduledEndAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00"
           },
           "location": {
             "type": "string",
@@ -19913,11 +19929,13 @@
           "scheduledStartAt": {
             "type": "string",
             "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00",
             "description": "Giờ bắt đầu, phải sau thời điểm hiện tại (khi sửa buổi chỉ kiểm nếu đổi giờ bắt đầu), không thì 400 ở ô scheduledStartAt"
           },
           "scheduledEndAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-10-23T00:30:00+07:00"
           },
           "location": {
             "type": "string",

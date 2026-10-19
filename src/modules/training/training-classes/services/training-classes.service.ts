@@ -5,9 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
-import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
 import type { Actor } from '../../../../common/types/actor';
-import { clubToday, toClubDate } from '../../../../common/utils/club-date';
+import {
+  clubDateTimeToInstant,
+  clubToday,
+  shiftDays,
+  toClubDate,
+} from '../../../../common/utils/club-date';
 import { fieldConflict } from '../../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../../common/utils/record-diff';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
@@ -418,13 +422,15 @@ export class TrainingClassesService {
           `Sức chứa mới không được nhỏ hơn số ngựa đang ghi danh (${activeEnrollments})`,
         );
       }
+      const rangeStart = clubDateTimeToInstant(startDate, '00:00');
+      const rangeEnd = clubDateTimeToInstant(shiftDays(endDate, 1), '00:00');
       const outsideSessions = await manager
         .getRepository(TrainingSessionEntity)
         .createQueryBuilder('session')
         .where('session.class_id = :classId', { classId })
         .andWhere(
-          '((session.scheduled_start_at AT TIME ZONE :timeZone)::date < :startDate OR (session.scheduled_end_at AT TIME ZONE :timeZone)::date > :endDate)',
-          { startDate, endDate, timeZone: CLUB_TIME_ZONE },
+          '(session.scheduled_start_at < :rangeStart OR session.scheduled_end_at >= :rangeEnd)',
+          { rangeStart, rangeEnd },
         )
         .getCount();
       if (outsideSessions) {
@@ -437,8 +443,8 @@ export class TrainingClassesService {
         .createQueryBuilder('enrollment')
         .where('enrollment.class_id = :classId', { classId })
         .andWhere(
-          "(enrollment.enrolled_at::date < :startDate OR enrollment.enrolled_at::date > :endDate OR (enrollment.left_at IS NOT NULL AND enrollment.left_at::date > :endDate))",
-          { startDate, endDate },
+          '(enrollment.enrolled_at < :rangeStart OR enrollment.enrolled_at >= :rangeEnd OR (enrollment.left_at IS NOT NULL AND enrollment.left_at >= :rangeEnd))',
+          { rangeStart, rangeEnd },
         )
         .getCount();
       if (outsideEnrollments) {
