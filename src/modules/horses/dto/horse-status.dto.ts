@@ -1,12 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -24,7 +22,7 @@ export class UpdateHorseLifecycleDto {
     minLength: 1,
     maxLength: 500,
     description:
-      'Lý do đổi vòng đời, bắt buộc. Với DECEASED là nguyên nhân mất',
+      'Lý do đổi vòng đời, bắt buộc. Với DECEASED là nguyên nhân mất; ngày mất do hệ thống ghi là ngày ghi nhận theo lịch câu lạc bộ',
   })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
@@ -33,19 +31,6 @@ export class UpdateHorseLifecycleDto {
   @MinLength(1)
   @MaxLength(500)
   reason!: string;
-
-  @ApiPropertyOptional({
-    format: 'date',
-    type: String,
-    description:
-      'Ngày mất. Bắt buộc khi lifecycleStatus = DECEASED, không gửi với trạng thái khác (400). Không ở tương lai, không trước ngày sinh',
-  })
-  @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'Ngày mất phải có dạng YYYY-MM-DD',
-  })
-  @IsDateString({ strict: true })
-  dateOfDeath?: string;
 
   @ApiPropertyOptional({
     format: 'uuid',
@@ -132,6 +117,36 @@ export class HorseLifecyclePreviewResponseDto {
       'Số sự cố tại chuồng đang mở sẽ tự đóng (chuyển nhượng, ghi nhận đã mất)',
   })
   incidentsClosed!: number;
+
+  @ApiProperty({
+    description:
+      'Số khẩu phần đang áp dụng sẽ chuyển ARCHIVED (chuyển nhượng, ghi nhận đã mất)',
+  })
+  feedingPlansArchived!: number;
+
+  @ApiProperty({
+    description:
+      'Số bản nháp khẩu phần sẽ bị xóa (chuyển nhượng, ghi nhận đã mất)',
+  })
+  draftFeedingPlansDeleted!: number;
+
+  @ApiProperty({
+    description:
+      'Số việc riêng (gắn thêm hoặc miễn) đang áp dụng sẽ kết thúc ở hôm nay (chuyển nhượng, ghi nhận đã mất)',
+  })
+  careTasksEnded!: number;
+
+  @ApiProperty({
+    description:
+      'Số việc riêng chưa tới ngày bắt đầu sẽ bị xóa (chuyển nhượng, ghi nhận đã mất)',
+  })
+  careTasksDeleted!: number;
+
+  @ApiProperty({
+    description:
+      'true nếu checklist hôm nay còn PENDING hoặc IN_PROGRESS sẽ chuyển CANCELLED, việc đã tick giữ nguyên (chuyển nhượng, ghi nhận đã mất)',
+  })
+  checklistCancelled!: boolean;
 
   @ApiPropertyOptional({
     enum: HorseHealthStatus,

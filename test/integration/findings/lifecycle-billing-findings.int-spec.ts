@@ -142,11 +142,10 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
     };
   };
 
-  const recordDeath = (horse: string, dateOfDeath: string) =>
+  const recordDeath = (horse: string) =>
     statuses.updateLifecycle(cm, horse, {
       lifecycleStatus: HorseLifecycleStatus.DECEASED,
       reason: 'Đau bụng',
-      dateOfDeath,
     });
 
   beforeAll(async () => {
@@ -207,7 +206,7 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
   describe('B3 consequences of death on daily care', () => {
     it('B3a archives the ACTIVE feeding plan when the horse dies', async () => {
       const { horse, planId } = await stableHorse();
-      await recordDeath(horse, today);
+      await recordDeath(horse);
 
       const [plan] = await dataSource.query<{ status: string }[]>(
         'SELECT status FROM feeding_plans WHERE id = $1',
@@ -218,7 +217,7 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
 
     it('B3b rejects the old groom ticking today’s checklist of a dead horse', async () => {
       const { horse, itemId, groom } = await stableHorse();
-      await recordDeath(horse, today);
+      await recordDeath(horse);
 
       await expect(
         checklists.tick(groom, itemId, { done: true }),
@@ -227,7 +226,7 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
 
     it('B3c does not mark the dead horse’s checklist INCOMPLETE on the next day', async () => {
       const { horse } = await stableHorse();
-      await recordDeath(horse, today);
+      await recordDeath(horse);
       await dataSource.query(
         'UPDATE daily_checklists SET checklist_date = $1 WHERE horse_id = $2',
         [shiftDays(today, -1), horse],
@@ -243,15 +242,19 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
     });
   });
 
-  it('B4 stops billing from the backdated date of death', async () => {
+  it('B4 records the date of death as the recording day, so billing never runs past it', async () => {
     await feeFromLongAgo();
     const { owner, horse } = await ownedHorse('Mây');
-    const dateOfDeath = shiftDays(today, -4);
-    await recordDeath(horse, dateOfDeath);
+    await recordDeath(horse);
 
+    const [row] = await dataSource.query<{ date_of_death: string }[]>(
+      `SELECT to_char(date_of_death, 'YYYY-MM-DD') AS date_of_death FROM horses WHERE id = $1`,
+      [horse],
+    );
+    expect(row.date_of_death).toBe(today);
     const from = shiftDays(today, -6);
     const to = shiftDays(today, -1);
-    expect(await billedDays(owner, horse, from, to)).toBe(2);
+    expect(await billedDays(owner, horse, from, to)).toBe(6);
   });
 
   it('B8 counts the fee days of an ACTIVE horse without owner in the club finance report', async () => {
@@ -323,13 +326,11 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
     ).toBe(0);
   });
 
-  it('F1-12 rejects recording death again with another date on a dead horse', async () => {
+  it('F1-12 rejects recording death again on a dead horse', async () => {
     const { horse } = await ownedHorse('Sương');
-    await recordDeath(horse, shiftDays(today, -2));
+    await recordDeath(horse);
 
-    await expect(
-      recordDeath(horse, shiftDays(today, -1)),
-    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(recordDeath(horse)).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('F1-18 moves a READY run of a session that already started to the new groom', async () => {

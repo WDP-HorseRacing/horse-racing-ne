@@ -35,7 +35,7 @@ export const OPEN_CASE_BLOCKS_TRANSFER_MESSAGE =
 export const DECEASED_CANCEL_REASON = 'Do ngựa mất';
 
 /**
- * Thông báo 400 khi đóng bệnh án kèm ngày mất mà vẫn chọn gỡ hoặc giữ lệnh khóa.
+ * Thông báo 400 khi đóng bệnh án kèm ghi nhận ngựa mất mà vẫn chọn gỡ hoặc giữ lệnh khóa.
  */
 export const NO_LOCK_CHOICE_ON_DEATH_MESSAGE =
   'Ngựa mất thì lệnh khóa huấn luyện tự gỡ, không chọn gỡ hay giữ khóa';

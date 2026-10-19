@@ -90,6 +90,22 @@ export function assertChecklistToday(
 }
 
 /**
+ * Chặn ghi lên checklist đã hủy
+ *
+ * @param status Trạng thái checklist
+ * @throws ConflictException Nếu checklist đã hủy vì ngựa đã chuyển nhượng hoặc đã mất
+ */
+export function assertChecklistNotCancelled(
+  status: DailyChecklistStatus,
+): void {
+  if (status === DailyChecklistStatus.CANCELLED) {
+    throw new ConflictException(
+      'Checklist đã hủy vì ngựa đã chuyển nhượng hoặc đã mất, không sửa được',
+    );
+  }
+}
+
+/**
  * Kiểm khoảng ngày của việc riêng: bắt đầu từ hôm nay, kết thúc không trước ngày bắt đầu, dài tối đa 366 ngày
  *
  * @param fromDate Ngày bắt đầu, YYYY-MM-DD

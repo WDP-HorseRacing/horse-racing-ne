@@ -212,12 +212,11 @@ export type ReadOnlyLifecycleStatus =
  *
  * - horse: ngựa đã khóa row
  * - recordedBy: UUID người ghi nhận
- * - dateOfDeath: ngày mất (YYYY-MM-DD); reason: nguyên nhân mất
+ * - reason: nguyên nhân mất
  */
 export interface HorseDeath {
   horse: HorseEntity;
   recordedBy: string;
-  dateOfDeath: string;
   reason: string;
 }
 
@@ -371,6 +370,7 @@ export interface HorseDetailParts {
  * - releaseTrainingLock: tự gỡ lệnh khóa huấn luyện đang ACTIVE.
  * - settleMedicalWork: chốt phần y tế khi chuyển nhượng: chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
  * - closeIncidents: đóng các sự cố tại chuồng đang mở, không ghi người đóng.
+ * - settleStableCare: chốt chăm sóc chuồng: lưu trữ khẩu phần đang áp dụng, xóa bản nháp, kết thúc việc riêng ở hôm nay, xóa việc riêng chưa bắt đầu, hủy checklist hôm nay chưa xong.
  * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại (chỉ khi kích hoạt lại từ chuyển nhượng).
  * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
  * - Chủ sở hữu không bị đổi ở đây: chuyển nhượng vẫn giữ chủ.
@@ -384,6 +384,7 @@ export interface LifecycleSideEffects {
   releaseTrainingLock: boolean;
   settleMedicalWork: boolean;
   closeIncidents: boolean;
+  settleStableCare: boolean;
   resetHealth: boolean;
   reactivateFromTransfer: boolean;
   endOwnership: boolean;
@@ -403,6 +404,11 @@ export interface LifecycleImpactRow {
   examRequestsToDismiss: number;
   careSchedulesToCancel: number;
   openIncidents: number;
+  feedingPlansToArchive: number;
+  draftFeedingPlansToDelete: number;
+  careTasksToEnd: number;
+  careTasksToDelete: number;
+  checklistToCancel: boolean;
 }
 
 /**

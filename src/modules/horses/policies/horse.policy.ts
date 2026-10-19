@@ -308,44 +308,6 @@ export function lifecycleTransitionError(
 }
 
 /**
- * Kiểm tra ngày mất gửi kèm khi đổi vòng đời
- *
- * - Sang DECEASED: bắt buộc ngày mất, không ở tương lai, không trước ngày sinh (nếu biết)
- * - Sang trạng thái khác: không được gửi ngày mất
- *
- * @param to Trạng thái vòng đời muốn chuyển sang
- * @param dateOfDeath Ngày mất (YYYY-MM-DD), undefined nếu không gửi
- * @param dateOfBirth Ngày sinh của ngựa (YYYY-MM-DD), null nếu không biết
- * @param today Ngày hôm nay theo giờ câu lạc bộ (YYYY-MM-DD)
- * @throws BadRequestException Nếu thiếu, thừa hoặc sai ngày mất, lỗi gắn ô `dateOfDeath`
- */
-export function assertDateOfDeath(
-  to: HorseLifecycleStatus,
-  dateOfDeath: string | undefined,
-  dateOfBirth: string | null,
-  today: string,
-): void {
-  if (to !== HorseLifecycleStatus.DECEASED) {
-    if (dateOfDeath !== undefined) {
-      throw fieldBadRequest(
-        'dateOfDeath',
-        'Chỉ nhập ngày mất khi ghi nhận ngựa mất',
-      );
-    }
-    return;
-  }
-  if (dateOfDeath === undefined) {
-    throw fieldBadRequest('dateOfDeath', 'Cần nhập ngày mất');
-  }
-  if (dateOfDeath > today) {
-    throw fieldBadRequest('dateOfDeath', 'Ngày mất không được ở tương lai');
-  }
-  if (dateOfBirth && dateOfDeath < dateOfBirth) {
-    throw fieldBadRequest('dateOfDeath', 'Ngày mất không được trước ngày sinh');
-  }
-}
-
-/**
  * Kiểm tra vòng đời làm hồ sơ chỉ được xem (trạng thái thuộc READ_ONLY_LIFECYCLE_STATUSES)
  *
  * @param lifecycleStatus Vòng đời của ngựa
@@ -568,7 +530,7 @@ export function assertLifecycleChanged(
  *    - Các tài nguyên thực tế (khu, ô chuồng, groom và bệnh án y tế) được giữ nguyên.
  * 2. Đang giải nghệ đem chuyển nhượng (RETIRED -> TRANSFERRED): 
  *    - Rút khỏi lớp (để phòng hờ). 
- *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế, đóng sự cố đang mở.
+ *    - Dọn dẹp tài nguyên: trả ô chuồng, kết thúc groom, bỏ khu, gỡ khóa huấn luyện, chốt bệnh án y tế, đóng sự cố đang mở, chốt chăm sóc chuồng (khẩu phần, việc riêng, checklist hôm nay).
  * 3. Đang hoạt động đem chuyển nhượng (ACTIVE -> TRANSFERRED): 
  *    - Gộp cả (1) và (2): rút khỏi lớp, rút giải đua, và dọn dẹp sạch sẽ tài nguyên (trả ô, bỏ khu, kết thúc groom, chốt y tế, đóng sự cố).
  * 4. Ghi nhận ngựa mất (ACTIVE/RETIRED -> DECEASED): làm như chuyển nhượng từ trạng thái đó.
@@ -603,6 +565,7 @@ export function lifecycleSideEffects(
     releaseTrainingLock: becomesReadOnly,
     settleMedicalWork: becomesReadOnly,
     closeIncidents: becomesReadOnly,
+    settleStableCare: becomesReadOnly,
     resetHealth: reactivateFromTransfer,
     reactivateFromTransfer,
     endOwnership: to === HorseLifecycleStatus.TRANSFERRED,
@@ -665,6 +628,26 @@ export function lifecycleImpactSummary(
   if (effects.closeIncidents && impact.openIncidents > 0) {
     facts.push(`${impact.openIncidents} sự cố đang mở`);
     actions.push('đóng các sự cố đó');
+  }
+  if (effects.settleStableCare && impact.feedingPlansToArchive > 0) {
+    facts.push('khẩu phần đang áp dụng');
+    actions.push('lưu trữ khẩu phần');
+  }
+  if (effects.settleStableCare && impact.draftFeedingPlansToDelete > 0) {
+    facts.push(`${impact.draftFeedingPlansToDelete} bản nháp khẩu phần`);
+    actions.push('xóa các bản nháp đó');
+  }
+  if (effects.settleStableCare && impact.careTasksToEnd > 0) {
+    facts.push(`${impact.careTasksToEnd} việc riêng đang áp dụng`);
+    actions.push('kết thúc các việc riêng đó ở hôm nay');
+  }
+  if (effects.settleStableCare && impact.careTasksToDelete > 0) {
+    facts.push(`${impact.careTasksToDelete} việc riêng chưa bắt đầu`);
+    actions.push('xóa các việc riêng chưa bắt đầu');
+  }
+  if (effects.settleStableCare && impact.checklistToCancel) {
+    facts.push('checklist hôm nay chưa xong');
+    actions.push('hủy checklist hôm nay');
   }
   if (effects.reactivateFromTransfer) {
     actions.push(

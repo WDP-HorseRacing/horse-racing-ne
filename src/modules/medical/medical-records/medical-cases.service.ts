@@ -239,15 +239,15 @@ export class MedicalCasesService {
    * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
    * - Còn chấn thương chưa lành: 409, trừ khi đóng kèm ghi nhận ngựa mất
    * - Ghi event vào outbox trong cùng transaction: báo chủ ngựa và Club Manager kèm tổng chi phí các buổi khám chưa hủy lúc đóng và phần của chủ hiện tại; gỡ khóa thì báo Head Trainer và Club Manager
-   * - Có ngày mất: không nhận lựa chọn gỡ hay giữ khóa; sau khi đóng thì ghi nhận ngựa mất trong cùng transaction (HorseStatusesService.recordDeathInTransaction), lấy kết luận cuối làm nguyên nhân mất; một bước lỗi thì hủy toàn bộ
+   * - Kèm ghi nhận ngựa mất (deceased = true): không nhận lựa chọn gỡ hay giữ khóa; sau khi đóng thì ghi nhận ngựa mất trong cùng transaction (HorseStatusesService.recordDeathInTransaction), lấy kết luận cuối làm nguyên nhân mất, ngày mất là hôm nay theo lịch câu lạc bộ; một bước lỗi thì hủy toàn bộ
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
-   * @param body Kết luận cuối, cách xử lý lệnh khóa và ngày mất nếu ngựa mất
+   * @param body Kết luận cuối, cách xử lý lệnh khóa và cờ ghi nhận ngựa mất
    * @returns Promise trả về bệnh án sau khi đóng, kèm tổng chi phí
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
-   * @throws BadRequestException Nếu còn khóa mà không chọn cách xử lý, ngày dự kiến gỡ không hợp lệ, có ngày mất mà vẫn chọn gỡ hay giữ khóa, hoặc ngày mất ở tương lai hay trước ngày sinh
+   * @throws BadRequestException Nếu còn khóa mà không chọn cách xử lý, ngày dự kiến gỡ không hợp lệ, hoặc ghi nhận ngựa mất mà vẫn chọn gỡ hay giữ khóa
    * @throws ConflictException Nếu bệnh án đã đóng, ngựa đã chuyển nhượng hay đã mất, hoặc còn chấn thương chưa lành
    */
   async closeCase(
@@ -276,11 +276,11 @@ export class MedicalCasesService {
       const lockExpectedEnd = body.lockExpectedEnd
         ? new Date(body.lockExpectedEnd)
         : undefined;
-      if (body.dateOfDeath !== undefined) {
+      if (body.deceased === true) {
         assertNoLockChoiceOnDeath(body.lockDecision, body.lockExpectedEnd);
       }
       const decision =
-        body.dateOfDeath === undefined
+        body.deceased !== true
           ? resolveLockOnClose(
               activeLock !== null,
               body.lockDecision,
@@ -290,7 +290,7 @@ export class MedicalCasesService {
           : undefined;
       assertInjuriesHealedBeforeClose(
         await this.access.currentInjuryStatuses(manager, horseId),
-        body.dateOfDeath !== undefined,
+        body.deceased === true,
       );
 
       const changes = {
@@ -343,9 +343,7 @@ export class MedicalCasesService {
           status: MedicalCaseStatus.CLOSED,
           finalConclusion: body.finalConclusion,
           ...(decision !== undefined ? { lockDecision: decision } : {}),
-          ...(body.dateOfDeath !== undefined
-            ? { dateOfDeath: body.dateOfDeath }
-            : {}),
+          ...(body.deceased === true ? { deceased: true } : {}),
           ...(activeLock ? { trainingLockId: activeLock.id } : {}),
         },
         feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
@@ -394,11 +392,10 @@ export class MedicalCasesService {
           lockEvent,
         );
       }
-      if (body.dateOfDeath !== undefined) {
+      if (body.deceased === true) {
         await this.horseStatuses.recordDeathInTransaction(manager, {
           horse,
           recordedBy: caller.id,
-          dateOfDeath: body.dateOfDeath,
           reason: body.finalConclusion,
         });
       }

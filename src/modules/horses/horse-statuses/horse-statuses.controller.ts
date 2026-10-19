@@ -35,7 +35,7 @@ export class HorseStatusesController {
   @ApiOperation({
     summary: 'Preview the consequences of a lifecycle change',
     description:
-      'Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại).',
+      'Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, khẩu phần lưu trữ, bản nháp khẩu phần xóa, việc riêng kết thúc hoặc xóa, checklist hôm nay hủy, sức khỏe đặt lại).',
   })
   @ApiOkResponse({ type: HorseLifecyclePreviewResponseDto })
   previewLifecycle(
@@ -51,7 +51,7 @@ export class HorseStatusesController {
   @ApiOperation({
     summary: 'Change horse lifecycle status',
     description:
-      'Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Ghi nhận đã mất (DECEASED, từ ACTIVE hoặc RETIRED): bắt buộc dateOfDeath (không ở tương lai, không trước ngày sinh), dọn như chuyển nhượng, giữ chủ sở hữu, không đặt lại sức khỏe; ngựa đã mất không đổi được vòng đời (409). Chuyển nhượng hoặc ghi nhận mất khi còn bệnh án đang mở trả 409. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe.',
+      'Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt chăm sóc chuồng (khẩu phần ACTIVE thành ARCHIVED, xóa bản nháp, việc riêng đang chạy kết thúc ở hôm nay, xóa việc riêng chưa bắt đầu, checklist hôm nay chưa xong thành CANCELLED), kết thúc giai đoạn sở hữu và bỏ trống chủ. Ghi nhận đã mất (DECEASED, từ ACTIVE hoặc RETIRED): ngày mất ghi là hôm nay theo lịch câu lạc bộ, dọn như chuyển nhượng, giữ chủ sở hữu, không đặt lại sức khỏe; ngựa đã mất không đổi được vòng đời (409). Chuyển nhượng hoặc ghi nhận mất khi còn bệnh án đang mở trả 409. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe.',
   })
   @ApiOkResponse({ type: HorseResponseDto })
   updateLifecycle(

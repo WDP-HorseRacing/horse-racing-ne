@@ -24,6 +24,7 @@ import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
 import { toDailyChecklistResponse } from '../mappers/daily-checklist.mapper';
 import {
   assertChecklistGroom,
+  assertChecklistNotCancelled,
   assertChecklistRange,
   assertChecklistToday,
 } from '../policies/daily-checklist.policy';
@@ -103,7 +104,7 @@ export class ChecklistsService {
    * @returns Promise trả về checklist sau khi tick
    * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc checklist không giao cho người gọi
    * @throws NotFoundException Nếu không có việc trong checklist
-   * @throws ConflictException Nếu checklist không phải của hôm nay
+   * @throws ConflictException Nếu checklist không phải của hôm nay, hoặc đã hủy vì ngựa đã chuyển nhượng hoặc đã mất
    */
   async tick(
     actor: Actor,
@@ -123,6 +124,7 @@ export class ChecklistsService {
       });
       assertChecklistGroom(checklist.groomId, caller.id);
       assertChecklistToday(checklist.checklistDate, today);
+      assertChecklistNotCancelled(checklist.status);
       const item = await manager.findOneByOrFail(DailyChecklistItemEntity, {
         id: itemId,
       });

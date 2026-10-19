@@ -9,7 +9,7 @@ import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
+import { clubToday } from '../../../src/common/utils/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { HorseOwnershipEntity } from '../../../src/modules/horses/entities/horse-ownership.entity';
 import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-status.enum';
@@ -284,20 +284,19 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
     expect(Date.now() - started).toBeLessThan(900);
   });
 
-  it('R-1 two CMs record DECEASED for the same horse with different dates: one wins, the other gets 409', async () => {
+  it('R-1 two CMs record DECEASED for the same horse at once: one wins, the other gets 409', async () => {
     const rounds: Array<{ outcomes: string[]; stored: string }> = [];
     for (let i = 0; i < ROUNDS; i++) {
       const horse = await barnHorse(`Sương ${i}`);
-      const death = (dateOfDeath: string) => () =>
+      const death = () =>
         statuses.updateLifecycle(cm, horse, {
           lifecycleStatus: HorseLifecycleStatus.DECEASED,
           reason: 'Đau bụng',
-          dateOfDeath,
         });
       const outcomes = await contend(
         'SELECT 1 FROM horses WHERE id = $1 FOR UPDATE',
         [horse],
-        [death(shiftDays(today, -2)), death(shiftDays(today, -1))],
+        [death, death],
       );
       const [row] = await dataSource.query<{ date_of_death: string }[]>(
         `SELECT to_char(date_of_death, 'YYYY-MM-DD') AS date_of_death FROM horses WHERE id = $1`,
@@ -357,7 +356,6 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
             statuses.updateLifecycle(cm, horse, {
               lifecycleStatus: HorseLifecycleStatus.DECEASED,
               reason: 'Ngã',
-              dateOfDeath: today,
             }),
           () => incidents.refer(trainer, incidentId, { urgent: false }),
         ],

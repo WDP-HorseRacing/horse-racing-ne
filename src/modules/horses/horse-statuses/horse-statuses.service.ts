@@ -12,6 +12,7 @@ import { TrainingLockService } from '../../medical/training-locks/training-locks
 import { RaceRegistrationsRepository } from '../../racing/race-registrations/race-registrations.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { IncidentWritesService } from '../../stable/shared/incident-writes.service';
+import { StableLifecycleService } from '../../stable/shared/stable-lifecycle.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 import {
@@ -39,7 +40,6 @@ import { toHorseResponse } from '../mappers/horse.mapper';
 import { toLifecyclePreviewResponse } from '../mappers/horse-statuses.mapper';
 import {
   assertAssignableOwner,
-  assertDateOfDeath,
   assertLifecycleChanged,
   assertLifecycleOwner,
   assertLifecycleTransition,
@@ -121,6 +121,7 @@ export class HorseStatusesService {
     private readonly trainingLocks: TrainingLockService,
     private readonly medicalLifecycle: MedicalLifecycleService,
     private readonly incidentWrites: IncidentWritesService,
+    private readonly stableLifecycle: StableLifecycleService,
     private readonly racing: RaceRegistrationsRepository,
     private readonly events: DomainEventPublisher,
     private readonly training: TrainingOperationsFacade,
@@ -132,8 +133,8 @@ export class HorseStatusesService {
    *
    * - Khóa row ngựa trước khi kiểm tra
    * - Giải nghệ: rút khỏi lớp đang học (training), rút đăng ký thi đấu chưa diễn ra (racing); giữ khu, ô, groom, y tế
-   * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical); ghi HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT vào outbox trong cùng transaction để báo Groom vừa bị kết thúc phân công; rút khỏi lớp đang học (training), đang ACTIVE thì rút thêm đăng ký thi đấu chưa diễn ra (racing); trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); đóng sự cố tại chuồng đang mở với kết quả "Ngựa đã chuyển nhượng" (stable); bỏ khu; kết thúc giai đoạn sở hữu và bỏ trống chủ
-   * - Ghi nhận đã mất (từ ACTIVE hoặc RETIRED): bắt buộc ngày mất (không ở tương lai, không trước ngày sinh); làm như chuyển nhượng từ trạng thái đó, gỡ khóa huấn luyện với lý do "Gỡ do ngựa mất", lý do hủy y tế "Do ngựa mất", đóng sự cố với kết quả "Ngựa đã mất"; giữ chủ sở hữu; ghi HORSE_DECEASED_EVENT vào outbox (kèm khu và Groom trước khi dọn) thay cho HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT
+   * - Chuyển nhượng: bị chặn 409 nếu ngựa còn bệnh án đang mở; tự bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn khám và lịch chăm sóc chưa làm (medical); ghi HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT vào outbox trong cùng transaction để báo Groom vừa bị kết thúc phân công; rút khỏi lớp đang học (training), đang ACTIVE thì rút thêm đăng ký thi đấu chưa diễn ra (racing); trả ô, kết thúc groom (stable); tự gỡ lệnh khóa huấn luyện với lý do "Gỡ do chuyển nhượng" (medical); đóng sự cố tại chuồng đang mở với kết quả "Ngựa đã chuyển nhượng" (stable); chốt chăm sóc chuồng: khẩu phần ACTIVE chuyển ARCHIVED, xóa bản nháp, việc riêng đang chạy kết thúc ở hôm nay, xóa việc riêng chưa bắt đầu, checklist hôm nay còn PENDING hoặc IN_PROGRESS chuyển CANCELLED (stable); bỏ khu; kết thúc giai đoạn sở hữu và bỏ trống chủ
+   * - Ghi nhận đã mất (từ ACTIVE hoặc RETIRED): ngày mất là hôm nay theo lịch câu lạc bộ; làm như chuyển nhượng từ trạng thái đó, gỡ khóa huấn luyện với lý do "Gỡ do ngựa mất", lý do hủy y tế "Do ngựa mất", đóng sự cố với kết quả "Ngựa đã mất", chốt chăm sóc chuồng như chuyển nhượng; giữ chủ sở hữu; ghi HORSE_DECEASED_EVENT vào outbox (kèm khu và Groom trước khi dọn) thay cho HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT
    * - Giải nghệ, chuyển nhượng, kích hoạt lại: ghi HORSE_LIFECYCLE_CHANGED_EVENT vào outbox để báo chủ ngựa
    * - Ngựa đã mất: mọi lần đổi vòng đời bị chặn 409
    * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe và chủ; từ chuyển nhượng thì bắt buộc chọn chủ mới (HORSE_OWNER đang hoạt động, khóa chia sẻ row tài khoản khi kiểm) và mở giai đoạn sở hữu mới, sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu"
@@ -143,7 +144,7 @@ export class HorseStatusesService {
    * - Ghi nhận đã mất khi ngựa đang có lượt tập ONGOING: lượt đó bị hủy với lý do "Ngựa đã mất" (ongoingRunsCancelled trong nhật ký); đang đua vẫn đổi được
    * - Bắt buộc lý do; ghi nhật ký kèm lý do
    * - Gửi đúng trạng thái hiện tại (mọi trạng thái, kể cả ngựa đã mất): 409 "Ngựa <tên> đã ở trạng thái <nhãn trạng thái>", không ghi gì
-   * - Nhật ký ghi thêm hệ quả thực sự xảy ra: số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, incidentsClosed, raceRegistrationsWithdrawn, chủ trước và sau (ownerId); hệ quả không chạy thì không có key
+   * - Nhật ký ghi thêm hệ quả thực sự xảy ra: số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, incidentsClosed, raceRegistrationsWithdrawn, chủ trước và sau (ownerId); chăm sóc chuồng chỉ ghi key có xảy ra: feedingPlansArchived, draftFeedingPlansDeleted, careTasksEnded, careTasksDeleted, checklistCancelled; hệ quả không chạy thì không có key
    * - Hồ sơ đã xóa: Club Manager nhận 409, phải khôi phục trước (qua HorseAccessService.lockWritableHorse)
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -152,7 +153,7 @@ export class HorseStatusesService {
    * @returns Promise trả về hồ sơ ngựa sau khi đổi
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
-   * @throws BadRequestException Nếu thiếu, thừa hoặc sai ngày mất; thiếu, thừa hoặc sai vai trò chủ sở hữu
+   * @throws BadRequestException Nếu thiếu, thừa hoặc sai vai trò chủ sở hữu
    * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), gửi đúng trạng thái hiện tại, không được chuyển giữa hai trạng thái, ngựa đã mất, chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở, giải nghệ hay chuyển nhượng khi ngựa đang tập, hoặc chủ sở hữu được chọn không ở trạng thái hoạt động
    */
   async updateLifecycle(
@@ -177,12 +178,11 @@ export class HorseStatusesService {
    * Ghi nhận ngựa mất trong transaction đang mở, chạy đủ hệ quả như khi Club Manager ghi nhận mất
    *
    * - Người gọi phải khóa row ngựa trước và đã đóng bệnh án đang mở trong cùng transaction
-   * - Kiểm cặp trạng thái và ngày mất, dọn ô, groom, lớp, khóa huấn luyện, việc y tế đang chờ, ghi nhật ký và HORSE_DECEASED_EVENT vào outbox
+   * - Kiểm cặp trạng thái, ghi ngày mất là hôm nay theo lịch câu lạc bộ, dọn ô, groom, lớp, khóa huấn luyện, việc y tế đang chờ, ghi nhật ký và HORSE_DECEASED_EVENT vào outbox
    *
    * @param manager EntityManager của transaction đang mở
-   * @param death Ngựa đã khóa, người ghi nhận, ngày mất và nguyên nhân mất
+   * @param death Ngựa đã khóa, người ghi nhận và nguyên nhân mất
    * @returns Promise hoàn tất khi đã ghi nhận ngựa mất
-   * @throws BadRequestException Nếu ngày mất ở tương lai hoặc trước ngày sinh
    * @throws ConflictException Nếu trạng thái hiện tại không chuyển được sang Đã mất, hoặc ngựa còn bệnh án đang mở
    */
   async recordDeathInTransaction(
@@ -192,7 +192,6 @@ export class HorseStatusesService {
     await this.applyLifecycleChange(manager, death.recordedBy, death.horse, {
       lifecycleStatus: HorseLifecycleStatus.DECEASED,
       reason: death.reason,
-      dateOfDeath: death.dateOfDeath,
     });
   }
 
@@ -273,21 +272,32 @@ export class HorseStatusesService {
   ): Promise<HorseLifecyclePreviewResponseDto> {
     const id = horse.id;
     const effects = lifecycleSideEffects(horse.lifecycleStatus, to);
-    const [counts, hasActiveTrainingLock, medical] = await Promise.all([
-      this.statuses.lifecycleImpact(manager, id),
-      this.access.hasActiveTrainingLock(id, manager),
-      // Lấy những yêu cầu khám đang yêu cầu và lịch đã SCEDULE về medical khi change
-      effects.settleMedicalWork
-        ? this.medicalLifecycle.readOnlyImpact(id, manager)
-        : {
-            examRequestsToDismiss: 0,
-            careSchedulesToCancel: 0,
-          },
-    ]);
+    const [counts, hasActiveTrainingLock, medical, stableCare] =
+      await Promise.all([
+        this.statuses.lifecycleImpact(manager, id),
+        this.access.hasActiveTrainingLock(id, manager),
+        // Lấy những yêu cầu khám đang yêu cầu và lịch đã SCEDULE về medical khi change
+        effects.settleMedicalWork
+          ? this.medicalLifecycle.readOnlyImpact(id, manager)
+          : {
+              examRequestsToDismiss: 0,
+              careSchedulesToCancel: 0,
+            },
+        effects.settleStableCare
+          ? this.stableLifecycle.readOnlyImpact(manager, id, clubToday())
+          : {
+              feedingPlansToArchive: 0,
+              draftFeedingPlansToDelete: 0,
+              careTasksToEnd: 0,
+              careTasksToDelete: 0,
+              checklistToCancel: false,
+            },
+      ]);
     const impact = {
       ...counts,
       hasActiveTrainingLock,
       ...medical,
+      ...stableCare,
     };
     return toLifecyclePreviewResponse({
       horse,
@@ -305,14 +315,14 @@ export class HorseStatusesService {
   /**
    * Đổi vòng đời của con ngựa đã khóa và chạy toàn bộ hệ quả trong transaction đang mở
    *
-   * - Kiểm cặp trạng thái, ngày mất và chủ sở hữu gửi kèm, chạy hệ quả, cập nhật hồ sơ, ghi lịch sử sở hữu nếu đổi chủ, ghi nhật ký và event vào outbox
+   * - Kiểm cặp trạng thái và chủ sở hữu gửi kèm, chạy hệ quả, cập nhật hồ sơ, ghi lịch sử sở hữu nếu đổi chủ, ghi nhật ký và event vào outbox
    *
    * @param manager EntityManager của transaction đang mở
    * @param callerId UUID của người đổi vòng đời
    * @param horse Ngựa đã khóa, khác trạng thái đích
-   * @param body Trạng thái vòng đời mới, lý do và ngày mất
+   * @param body Trạng thái vòng đời mới, lý do và chủ sở hữu mới
    * @returns Promise hoàn tất khi đã ghi hết thay đổi
-   * @throws BadRequestException Nếu thiếu, thừa hoặc sai ngày mất; thiếu, thừa hoặc sai vai trò chủ sở hữu
+   * @throws BadRequestException Nếu thiếu, thừa hoặc sai vai trò chủ sở hữu
    * @throws ConflictException Nếu không được chuyển giữa hai trạng thái, chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở, hoặc chủ sở hữu được chọn không ở trạng thái hoạt động
    */
   private async applyLifecycleChange(
@@ -323,20 +333,15 @@ export class HorseStatusesService {
   ): Promise<void> {
     const id = horse.id;
     assertLifecycleTransition(horse.lifecycleStatus, body.lifecycleStatus);
-    assertDateOfDeath(
-      body.lifecycleStatus,
-      body.dateOfDeath,
-      horse.dateOfBirth,
-      clubToday(),
-    );
     const effects = lifecycleSideEffects(
       horse.lifecycleStatus,
       body.lifecycleStatus,
     );
     assertLifecycleOwner(effects, body.ownerId);
+    const today = clubToday();
     const dateOfDeath =
       body.lifecycleStatus === HorseLifecycleStatus.DECEASED
-        ? { dateOfDeath: body.dateOfDeath }
+        ? { dateOfDeath: today }
         : {};
     if (
       blocksOngoingRun(body.lifecycleStatus) &&
@@ -409,7 +414,7 @@ export class HorseStatusesService {
         horseId: id,
         barnId: horse.barnId,
         groomId: applied.endedGroomId,
-        dateOfDeath: body.dateOfDeath as string,
+        dateOfDeath: today,
         reason: body.reason,
       };
       await this.events.publish(manager, HORSE_DECEASED_EVENT, event);
@@ -448,9 +453,9 @@ export class HorseStatusesService {
   /**
    * Chạy các hệ quả của việc đổi vòng đời trong transaction đang mở
    *
-   * - Thứ tự chạy: xử lý y tế khi chuyển nhượng, đóng sự cố tại chuồng đang mở, rút khỏi lớp đang học, đổi chủ (chuyển nhượng: bỏ trống chủ; kích hoạt lại từ chuyển nhượng: kiểm chủ mới, khóa chia sẻ row tài khoản), rút đăng ký thi đấu chưa diễn ra, trả ô, kết thúc groom, gỡ lệnh khóa huấn luyện
+   * - Thứ tự chạy: xử lý y tế khi chuyển nhượng, đóng sự cố tại chuồng đang mở, rút khỏi lớp đang học, đổi chủ (chuyển nhượng: bỏ trống chủ; kích hoạt lại từ chuyển nhượng: kiểm chủ mới, khóa chia sẻ row tài khoản), rút đăng ký thi đấu chưa diễn ra, trả ô, kết thúc groom, gỡ lệnh khóa huấn luyện, chốt chăm sóc chuồng
    * - Hệ quả không chạy theo effects thì bỏ qua và không có key trong before/after
-   * - Ô hoặc groom không có gì để đóng thì không ghi key tương ứng
+   * - Ô hoặc groom không có gì để đóng thì không ghi key tương ứng; chăm sóc chuồng chỉ ghi key có số khác 0 hoặc true
    *
    * @param manager EntityManager của transaction đang mở
    * @param change Ngựa đã khóa, trạng thái mới kèm lý do, các hệ quả cần chạy và thời điểm đổi
@@ -545,6 +550,16 @@ export class HorseStatusesService {
             ? DECEASED_LOCK_RELEASE_CONCLUSION
             : TRANSFER_LOCK_RELEASE_CONCLUSION,
         );
+    }
+    if (effects.settleStableCare) {
+      const settled = await this.stableLifecycle.settleBeforeReadOnly(
+        manager,
+        id,
+        clubToday(),
+      );
+      for (const [key, value] of Object.entries(settled)) {
+        if (value) after[key] = value;
+      }
     }
     return { before, after, endedGroomId, ownerChange };
   }

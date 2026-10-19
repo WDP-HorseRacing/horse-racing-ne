@@ -1867,7 +1867,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status/preview": {
       "get": {
-        "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, sức khỏe đặt lại).",
+        "description": "Không ghi gì. Trả về có được đổi không và từng hệ quả (số lớp bị rút, đăng ký bị rút, ô bị trả, groom kết thúc, khu bị bỏ, khóa huấn luyện tự gỡ, khẩu phần lưu trữ, bản nháp khẩu phần xóa, việc riêng kết thúc hoặc xóa, checklist hôm nay hủy, sức khỏe đặt lại).",
         "operationId": "HorseStatusesController_previewLifecycle",
         "parameters": [
           {
@@ -1918,7 +1918,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status": {
       "patch": {
-        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện; giữ chủ sở hữu. Ghi nhận đã mất (DECEASED, từ ACTIVE hoặc RETIRED): bắt buộc dateOfDeath (không ở tương lai, không trước ngày sinh), dọn như chuyển nhượng, giữ chủ sở hữu, không đặt lại sức khỏe; ngựa đã mất không đổi được vòng đời (409). Chuyển nhượng hoặc ghi nhận mất khi còn bệnh án đang mở trả 409. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe.",
+        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt chăm sóc chuồng (khẩu phần ACTIVE thành ARCHIVED, xóa bản nháp, việc riêng đang chạy kết thúc ở hôm nay, xóa việc riêng chưa bắt đầu, checklist hôm nay chưa xong thành CANCELLED), kết thúc giai đoạn sở hữu và bỏ trống chủ. Ghi nhận đã mất (DECEASED, từ ACTIVE hoặc RETIRED): ngày mất ghi là hôm nay theo lịch câu lạc bộ, dọn như chuyển nhượng, giữ chủ sở hữu, không đặt lại sức khỏe; ngựa đã mất không đổi được vòng đời (409). Chuyển nhượng hoặc ghi nhận mất khi còn bệnh án đang mở trả 409. Kích hoạt lại từ chuyển nhượng: sức khỏe về UNDER_OBSERVATION; từ giải nghệ giữ nguyên sức khỏe.",
         "operationId": "HorseStatusesController_updateLifecycle",
         "parameters": [
           {
@@ -12061,6 +12061,26 @@
             "type": "number",
             "description": "Số sự cố tại chuồng đang mở sẽ tự đóng (chuyển nhượng, ghi nhận đã mất)"
           },
+          "feedingPlansArchived": {
+            "type": "number",
+            "description": "Số khẩu phần đang áp dụng sẽ chuyển ARCHIVED (chuyển nhượng, ghi nhận đã mất)"
+          },
+          "draftFeedingPlansDeleted": {
+            "type": "number",
+            "description": "Số bản nháp khẩu phần sẽ bị xóa (chuyển nhượng, ghi nhận đã mất)"
+          },
+          "careTasksEnded": {
+            "type": "number",
+            "description": "Số việc riêng (gắn thêm hoặc miễn) đang áp dụng sẽ kết thúc ở hôm nay (chuyển nhượng, ghi nhận đã mất)"
+          },
+          "careTasksDeleted": {
+            "type": "number",
+            "description": "Số việc riêng chưa tới ngày bắt đầu sẽ bị xóa (chuyển nhượng, ghi nhận đã mất)"
+          },
+          "checklistCancelled": {
+            "type": "boolean",
+            "description": "true nếu checklist hôm nay còn PENDING hoặc IN_PROGRESS sẽ chuyển CANCELLED, việc đã tick giữ nguyên (chuyển nhượng, ghi nhận đã mất)"
+          },
           "healthResetTo": {
             "type": "string",
             "enum": [
@@ -12102,6 +12122,11 @@
           "examRequestsDismissed",
           "careSchedulesCancelled",
           "incidentsClosed",
+          "feedingPlansArchived",
+          "draftFeedingPlansDeleted",
+          "careTasksEnded",
+          "careTasksDeleted",
+          "checklistCancelled",
           "pendingBarnAfter",
           "ownerRequired"
         ]
@@ -12122,12 +12147,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 500,
-            "description": "Lý do đổi vòng đời, bắt buộc. Với DECEASED là nguyên nhân mất"
-          },
-          "dateOfDeath": {
-            "type": "string",
-            "format": "date",
-            "description": "Ngày mất. Bắt buộc khi lifecycleStatus = DECEASED, không gửi với trạng thái khác (400). Không ở tương lai, không trước ngày sinh"
+            "description": "Lý do đổi vòng đời, bắt buộc. Với DECEASED là nguyên nhân mất; ngày mất do hệ thống ghi là ngày ghi nhận theo lịch câu lạc bộ"
           },
           "ownerId": {
             "type": "string",
@@ -13985,10 +14005,10 @@
           },
           "unhealedInjuryCount": {
             "type": "number",
-            "description": "Số chấn thương chưa lành của con ngựa; lớn hơn 0 thì đóng bệnh án trả 409, trừ khi kèm ngày mất"
+            "description": "Số chấn thương chưa lành của con ngựa; lớn hơn 0 thì đóng bệnh án trả 409, trừ khi kèm ghi nhận ngựa mất"
           },
           "deathImpact": {
-            "description": "Hệ quả nếu đóng bệnh án kèm ngày mất, cùng dạng với xem trước đổi vòng đời sang DECEASED",
+            "description": "Hệ quả nếu đóng bệnh án kèm ghi nhận ngựa mất, cùng dạng với xem trước đổi vòng đời sang DECEASED",
             "allOf": [
               {
                 "$ref": "#/components/schemas/HorseLifecyclePreviewResponseDto"
@@ -14026,10 +14046,9 @@
             "format": "date-time",
             "description": "Ngày dự kiến gỡ khóa; bắt buộc khi lockDecision là KEEP"
           },
-          "dateOfDeath": {
-            "type": "string",
-            "format": "date",
-            "description": "Ngày mất (YYYY-MM-DD). Có giá trị thì đóng bệnh án và ghi nhận ngựa mất cùng lúc, lấy kết luận cuối làm lý do; không gửi kèm lockDecision, lockExpectedEnd. Không ở tương lai, không trước ngày sinh"
+          "deceased": {
+            "type": "boolean",
+            "description": "true thì đóng bệnh án và ghi nhận ngựa mất cùng lúc, lấy kết luận cuối làm lý do, ngày mất là ngày ghi nhận theo lịch câu lạc bộ; không gửi kèm lockDecision, lockExpectedEnd"
           }
         },
         "required": [
@@ -16623,7 +16642,8 @@
               "PENDING",
               "IN_PROGRESS",
               "COMPLETED",
-              "INCOMPLETE"
+              "INCOMPLETE",
+              "CANCELLED"
             ]
           },
           "groom": {

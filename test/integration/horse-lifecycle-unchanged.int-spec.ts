@@ -7,7 +7,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday } from '../../src/common/utils/club-date';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseStatusesModule } from '../../src/modules/horses/horse-statuses/horse-statuses.module';
 import { HorseStatusesService } from '../../src/modules/horses/horse-statuses/horse-statuses.service';
@@ -85,13 +85,11 @@ describe('Horse lifecycle: sending the current status (Postgres)', () => {
   });
 
   it('rejects DECEASED -> DECEASED with 409 and keeps the first date of death', async () => {
-    const today = clubToday();
-    const firstDate = shiftDays(today, -2);
+    const firstDate = clubToday();
     const horse = await seed.horse('Sương');
     await statuses.updateLifecycle(cm, horse, {
       lifecycleStatus: HorseLifecycleStatus.DECEASED,
       reason: 'Đau bụng',
-      dateOfDeath: firstDate,
     });
     const auditsAfterDeath = await auditCount(horse);
 
@@ -99,7 +97,6 @@ describe('Horse lifecycle: sending the current status (Postgres)', () => {
       statuses.updateLifecycle(cm, horse, {
         lifecycleStatus: HorseLifecycleStatus.DECEASED,
         reason: 'Ghi lại ngày mất',
-        dateOfDeath: shiftDays(today, -1),
       }),
     ).rejects.toThrow(
       new ConflictException('Ngựa Sương đã ở trạng thái Đã mất'),

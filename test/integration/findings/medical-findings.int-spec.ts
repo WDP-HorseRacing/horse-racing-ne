@@ -125,7 +125,7 @@ describe('Medical findings (Postgres)', () => {
     });
     await cases.closeCase(vet.actor, caseId, {
       finalConclusion: 'Ngựa mất',
-      dateOfDeath: clubToday(),
+      deceased: true,
     });
 
     await expect(
@@ -223,7 +223,7 @@ describe('Medical findings (Postgres)', () => {
     ).resolves.toMatchObject({ replacesRecordId: first.id });
   });
 
-  it('F3-2: a date of death earlier than the latest non-voided visit is rejected with 400', async () => {
+  it('F3-2: the date of death recorded on case close is never earlier than the latest non-voided visit', async () => {
     const vet = await newVet();
     const horse = await seed.horse('Winx');
     const caseId = await seed.medicalCase(horse, vet.id, {
@@ -237,15 +237,17 @@ describe('Medical findings (Postgres)', () => {
         caseId,
       },
     );
-    const yesterday = new Date(`${clubToday()}T00:00:00Z`);
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
-    await expect(
-      cases.closeCase(vet.actor, caseId, {
-        finalConclusion: 'Ngựa mất',
-        dateOfDeath: yesterday.toISOString().slice(0, 10),
-      }),
-    ).rejects.toMatchObject({ status: 400 });
+    await cases.closeCase(vet.actor, caseId, {
+      finalConclusion: 'Ngựa mất',
+      deceased: true,
+    });
+
+    const [row] = await dataSource.query<{ date_of_death: string }[]>(
+      `SELECT to_char(date_of_death, 'YYYY-MM-DD') AS date_of_death FROM horses WHERE id = $1`,
+      [horse],
+    );
+    expect(row.date_of_death).toBe(clubToday());
   });
 
   it('N7: a GROOM cannot be assigned a VACCINATION care schedule nor complete it', async () => {

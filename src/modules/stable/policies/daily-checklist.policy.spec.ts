@@ -14,6 +14,7 @@ import {
   assertCareTaskRange,
   assertChecklistRange,
   assertChecklistGroom,
+  assertChecklistNotCancelled,
   assertChecklistToday,
   assertNoOverlappingCareTask,
   careTaskRemovalOf,
@@ -42,6 +43,24 @@ describe('daily checklist policy', () => {
     expect(() => assertChecklistToday('2026-10-09', '2026-10-10')).toThrow(
       ConflictException,
     );
+  });
+
+  it('rejects writing a cancelled checklist with 409', () => {
+    expect(() =>
+      assertChecklistNotCancelled(DailyChecklistStatus.CANCELLED),
+    ).toThrow(
+      new ConflictException(
+        'Checklist đã hủy vì ngựa đã chuyển nhượng hoặc đã mất, không sửa được',
+      ),
+    );
+  });
+
+  it.each([
+    DailyChecklistStatus.PENDING,
+    DailyChecklistStatus.IN_PROGRESS,
+    DailyChecklistStatus.COMPLETED,
+  ])('lets a %s checklist be written', (status) => {
+    expect(() => assertChecklistNotCancelled(status)).not.toThrow();
   });
 
   describe('assertCareTaskRange', () => {

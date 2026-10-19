@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,6 +9,7 @@ import type { Actor } from '../../src/common/types/actor';
 import { clubToday } from '../../src/common/utils/club-date';
 import { HORSE_DECEASED_EVENT } from '../../src/modules/horses/constants/horse.constants';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
+import { HorseStatusesService } from '../../src/modules/horses/horse-statuses/horse-statuses.service';
 import { CaseLockDecision } from '../../src/modules/medical/constants/medical-case.enum';
 import { MEDICAL_CASE_CLOSED_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
 import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
@@ -20,7 +21,7 @@ import {
   type TestPostgres,
 } from './postgres';
 
-describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
+describe('MedicalCasesService.closeCase recording a death (Postgres)', () => {
   let db: TestPostgres;
   let dataSource: DataSource;
   let moduleRef: TestingModule;
@@ -131,7 +132,7 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
 
     const result = await service.closeCase(actor, caseId, {
       finalConclusion: 'Ngựa mất do suy tim',
-      dateOfDeath: clubToday(),
+      deceased: true,
     });
 
     expect(result).toMatchObject({ status: 'CLOSED', totalCost: 5_000_000 });
@@ -161,14 +162,14 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
     expect(exam.status).toBe('DISMISSED');
   });
 
-  it('rejects a lock choice with a date of death and changes nothing', async () => {
+  it('rejects a lock choice when recording a death and changes nothing', async () => {
     const { horse, caseId, actor } = await setup();
     const before = await state(horse, caseId);
 
     await expect(
       service.closeCase(actor, caseId, {
         finalConclusion: 'Ngựa mất',
-        dateOfDeath: clubToday(),
+        deceased: true,
         lockDecision: CaseLockDecision.RELEASE,
       }),
     ).rejects.toThrow(
@@ -179,21 +180,27 @@ describe('MedicalCasesService.closeCase with date of death (Postgres)', () => {
     expect(await state(horse, caseId)).toEqual(before);
   });
 
-  it('rolls back the case close when the date of death is invalid', async () => {
+  it('rolls back the case close when recording the death fails', async () => {
     const { horse, caseId, actor } = await setup();
     const before = await state(horse, caseId);
+    jest
+      .spyOn(
+        moduleRef.get(HorseStatusesService, { strict: false }),
+        'recordDeathInTransaction',
+      )
+      .mockRejectedValueOnce(new ConflictException('Ghi nhận mất thất bại'));
 
     await expect(
       service.closeCase(actor, caseId, {
         finalConclusion: 'Ngựa mất',
-        dateOfDeath: '2999-01-01',
+        deceased: true,
       }),
-    ).rejects.toThrow('Ngày mất không được ở tương lai');
+    ).rejects.toThrow('Ghi nhận mất thất bại');
     expect(await state(horse, caseId)).toEqual(before);
     expect(before.medicalCase).toMatchObject({ status: 'OPEN' });
   });
 
-  it('keeps the horse in the club when closing without a date of death', async () => {
+  it('keeps the horse in the club when closing without recording a death', async () => {
     const { horse, caseId, actor } = await setup();
 
     await service.closeCase(actor, caseId, {

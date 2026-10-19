@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsOptional,
@@ -55,17 +56,12 @@ export class CloseMedicalCaseDto {
   lockExpectedEnd?: string;
 
   @ApiPropertyOptional({
-    format: 'date',
-    type: String,
     description:
-      'Ngày mất (YYYY-MM-DD). Có giá trị thì đóng bệnh án và ghi nhận ngựa mất cùng lúc, lấy kết luận cuối làm lý do; không gửi kèm lockDecision, lockExpectedEnd. Không ở tương lai, không trước ngày sinh',
+      'true thì đóng bệnh án và ghi nhận ngựa mất cùng lúc, lấy kết luận cuối làm lý do, ngày mất là ngày ghi nhận theo lịch câu lạc bộ; không gửi kèm lockDecision, lockExpectedEnd',
   })
   @IsOptional()
-  @Matches(DATE_ONLY_PATTERN, {
-    message: 'Ngày mất phải có dạng YYYY-MM-DD',
-  })
-  @IsDateString({ strict: true })
-  dateOfDeath?: string;
+  @IsBoolean()
+  deceased?: boolean;
 }
 
 /**

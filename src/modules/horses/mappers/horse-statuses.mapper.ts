@@ -65,6 +65,15 @@ export function toLifecyclePreviewResponse({
       ? impact.careSchedulesToCancel
       : 0,
     incidentsClosed: effects.closeIncidents ? impact.openIncidents : 0,
+    feedingPlansArchived: effects.settleStableCare
+      ? impact.feedingPlansToArchive
+      : 0,
+    draftFeedingPlansDeleted: effects.settleStableCare
+      ? impact.draftFeedingPlansToDelete
+      : 0,
+    careTasksEnded: effects.settleStableCare ? impact.careTasksToEnd : 0,
+    careTasksDeleted: effects.settleStableCare ? impact.careTasksToDelete : 0,
+    checklistCancelled: effects.settleStableCare && impact.checklistToCancel,
     healthResetTo: effects.resetHealth
       ? HorseHealthStatus.UNDER_OBSERVATION
       : null,

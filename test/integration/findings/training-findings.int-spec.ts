@@ -311,7 +311,7 @@ describe('Training findings (Postgres)', () => {
         caseId,
         {
           finalConclusion: 'Ngựa ngã chết',
-          dateOfDeath: clubToday(),
+          deceased: true,
         },
       );
 

@@ -33,7 +33,6 @@ import {
   assertLifecycleWritable,
   isActiveHorseOwner,
   assertDateOfBirth,
-  assertDateOfDeath,
   assertDistinctMeasurementTypes,
   assertGenderKeepsPedigree,
   assertLifecycleTransition,
@@ -415,6 +414,7 @@ describe('horse.policy', () => {
       releaseTrainingLock: false,
       settleMedicalWork: false,
       closeIncidents: false,
+      settleStableCare: false,
       resetHealth: false,
       reactivateFromTransfer: false,
       endOwnership: false,
@@ -427,6 +427,7 @@ describe('horse.policy', () => {
       releaseTrainingLock: true,
       settleMedicalWork: true,
       closeIncidents: true,
+      settleStableCare: true,
     };
 
     it('retires an ACTIVE horse by cancelling training and withdrawing registrations only', () => {
@@ -481,6 +482,18 @@ describe('horse.policy', () => {
           HorseLifecycleStatus.ACTIVE,
         ),
       ).toEqual({ ...none, resetHealth: true, reactivateFromTransfer: true });
+    });
+
+    it.each([
+      [HorseLifecycleStatus.ACTIVE, HorseLifecycleStatus.TRANSFERRED, true],
+      [HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.TRANSFERRED, true],
+      [HorseLifecycleStatus.ACTIVE, HorseLifecycleStatus.DECEASED, true],
+      [HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.DECEASED, true],
+      [HorseLifecycleStatus.ACTIVE, HorseLifecycleStatus.RETIRED, false],
+      [HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.ACTIVE, false],
+      [HorseLifecycleStatus.TRANSFERRED, HorseLifecycleStatus.ACTIVE, false],
+    ])('settles stable care from %s to %s: %s', (from, to, expected) => {
+      expect(lifecycleSideEffects(from, to).settleStableCare).toBe(expected);
     });
   });
 
@@ -868,6 +881,11 @@ describe('horse.policy', () => {
       examRequestsToDismiss: 0,
       careSchedulesToCancel: 0,
       openIncidents: 0,
+      feedingPlansToArchive: 0,
+      draftFeedingPlansToDelete: 0,
+      careTasksToEnd: 0,
+      careTasksToDelete: 0,
+      checklistToCancel: false,
     };
 
     it('lists the facts and the actions of a retirement', () => {
@@ -933,6 +951,48 @@ describe('horse.policy', () => {
       ).toMatch(
         /^Winx đang có 2 sự cố đang mở\. Nếu .* sẽ đóng các sự cố đó\.$/,
       );
+    });
+
+    it('mentions the stable care settled by a death', () => {
+      expect(
+        lifecycleImpactSummary(
+          'Winx',
+          HorseLifecycleStatus.DECEASED,
+          lifecycleSideEffects(
+            HorseLifecycleStatus.RETIRED,
+            HorseLifecycleStatus.DECEASED,
+          ),
+          {
+            ...impact,
+            stallCode: null,
+            groomName: null,
+            barnName: null,
+            activeClasses: 0,
+            hasActiveTrainingLock: false,
+            feedingPlansToArchive: 1,
+            draftFeedingPlansToDelete: 1,
+            careTasksToEnd: 2,
+            careTasksToDelete: 1,
+            checklistToCancel: true,
+          },
+        ),
+      ).toBe(
+        'Winx đang có khẩu phần đang áp dụng, 1 bản nháp khẩu phần, 2 việc riêng đang áp dụng, 1 việc riêng chưa bắt đầu, checklist hôm nay chưa xong. Nếu ghi nhận đã mất sẽ lưu trữ khẩu phần, xóa các bản nháp đó, kết thúc các việc riêng đó ở hôm nay, xóa các việc riêng chưa bắt đầu, hủy checklist hôm nay.',
+      );
+    });
+
+    it('does not mention stable care when retiring', () => {
+      expect(
+        lifecycleImpactSummary(
+          'Winx',
+          HorseLifecycleStatus.RETIRED,
+          lifecycleSideEffects(
+            HorseLifecycleStatus.ACTIVE,
+            HorseLifecycleStatus.RETIRED,
+          ),
+          { ...impact, feedingPlansToArchive: 1, checklistToCancel: true },
+        ),
+      ).not.toMatch(/khẩu phần|checklist/);
     });
 
     it('says nothing else changes when a retired horse comes back', () => {
@@ -1408,89 +1468,6 @@ describe('horse.policy', () => {
           errors: [{ field: 'ownerId', message }],
         });
       }
-    });
-  });
-
-  describe('assertDateOfDeath', () => {
-    const today = '2026-10-06';
-    const expectFieldError = (fn: () => void, message: string) => {
-      expect(fn).toThrow(new BadRequestException(message));
-      try {
-        fn();
-      } catch (error) {
-        expect((error as BadRequestException).getResponse()).toEqual({
-          message,
-          errors: [{ field: 'dateOfDeath', message }],
-        });
-      }
-    };
-
-    it('accepts today, a past date and the date of birth', () => {
-      for (const date of ['2026-10-06', '2026-01-01', '2020-05-01']) {
-        expect(() =>
-          assertDateOfDeath(
-            HorseLifecycleStatus.DECEASED,
-            date,
-            '2020-05-01',
-            today,
-          ),
-        ).not.toThrow();
-      }
-    });
-
-    it('requires the date when recording a death', () => {
-      expectFieldError(
-        () =>
-          assertDateOfDeath(
-            HorseLifecycleStatus.DECEASED,
-            undefined,
-            null,
-            today,
-          ),
-        'Cần nhập ngày mất',
-      );
-    });
-
-    it('rejects a future date', () => {
-      expectFieldError(
-        () =>
-          assertDateOfDeath(
-            HorseLifecycleStatus.DECEASED,
-            '2026-10-07',
-            null,
-            today,
-          ),
-        'Ngày mất không được ở tương lai',
-      );
-    });
-
-    it('rejects a date before the date of birth', () => {
-      expectFieldError(
-        () =>
-          assertDateOfDeath(
-            HorseLifecycleStatus.DECEASED,
-            '2020-04-30',
-            '2020-05-01',
-            today,
-          ),
-        'Ngày mất không được trước ngày sinh',
-      );
-    });
-
-    it('rejects a date on another status and ignores a missing one', () => {
-      expectFieldError(
-        () =>
-          assertDateOfDeath(
-            HorseLifecycleStatus.RETIRED,
-            '2026-10-01',
-            null,
-            today,
-          ),
-        'Chỉ nhập ngày mất khi ghi nhận ngựa mất',
-      );
-      expect(() =>
-        assertDateOfDeath(HorseLifecycleStatus.RETIRED, undefined, null, today),
-      ).not.toThrow();
     });
   });
 

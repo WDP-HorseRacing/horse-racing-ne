@@ -5,7 +5,6 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday } from '../../src/common/utils/club-date';
 import {
   InjuryBodyRegion,
   InjuryType,
@@ -230,10 +229,10 @@ describe('Injuries across visits (Postgres)', () => {
   });
 
   describe('closing the case', () => {
-    const close = (actor: Actor, caseId: string, dateOfDeath?: string) =>
+    const close = (actor: Actor, caseId: string, deceased?: boolean) =>
       cases.closeCase(actor, caseId, {
         finalConclusion: 'Kết thúc điều trị',
-        ...(dateOfDeath ? { dateOfDeath } : {}),
+        ...(deceased ? { deceased } : {}),
       });
 
     const caseStatus = async (caseId: string) => {
@@ -282,7 +281,7 @@ describe('Injuries across visits (Postgres)', () => {
       const horse = await seed.horse('Gió');
       const { caseId } = await discover(author, horse);
 
-      await close(author, caseId, clubToday());
+      await close(author, caseId, true);
 
       expect(await caseStatus(caseId)).toBe(MedicalCaseStatus.CLOSED);
     });

@@ -1,6 +1,6 @@
 # Flow 4 — Chăm sóc chuồng trại và dinh dưỡng hằng ngày
 
-> Cập nhật: 18/10/2026
+> Cập nhật: 19/10/2026
 
 ## I. Đề bài liên quan
 
@@ -90,6 +90,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 6. Bản nháp còn dòng dùng vật tư đã xóa thì không duyệt được (409); sửa bản nháp trước.
 7. Duyệt: Head Trainer của khu chuyển `DRAFT` thành `ACTIVE`, ghi người duyệt, thời điểm hiệu lực. Bản `ACTIVE` cũ của ngựa (nếu có) chuyển `ARCHIVED`, ghi thời điểm hết hiệu lực. Không cần bác sĩ duyệt.
 8. Ngựa chuyển sang khu khác: khẩu phần giữ nguyên; Head Trainer khu mới lập bản mới khi cần.
+9. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction đổi vòng đời, bản `ACTIVE` chuyển `ARCHIVED` (ghi thời điểm hết hiệu lực), bản `DRAFT` bị xóa cùng các dòng, bản `ARCHIVED` giữ nguyên. Ngựa giải nghệ giữ nguyên khẩu phần.
 
 ### 4. Loại việc và việc riêng của ngựa
 
@@ -110,6 +111,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
    - Head Trainer chỉ làm trên ngựa thuộc khu mình (ngựa ngoài khu 403, ngựa chưa xếp khu 409). Bác sĩ làm trên mọi ngựa, kể cả ngựa chưa xếp khu. Ngựa đã chuyển nhượng hoặc đã mất: 409; hồ sơ đã xóa: 404, như nhau cho cả hai vai trò.
    - Bác sĩ gắn, miễn hoặc gỡ: báo Head Trainer của khu chứa ngựa (tên ngựa, việc, kiểu gắn thêm/miễn/gỡ, khoảng ngày, lý do nếu có, tên bác sĩ). Head Trainer của khu tự làm thì không báo. Ngựa chưa có khu hoặc khu chưa có Head Trainer hoạt động thì không ai nhận, không chặn ghi. Thông báo cho Groom (luật 3, luật 5) giữ nguyên.
    - Nhật ký ghi người làm như mọi thao tác khác.
+8. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction đổi vòng đời, mọi việc riêng của ngựa (gắn thêm và miễn) đã bắt đầu và còn chạy sau hôm nay kết thúc ở hôm nay; việc chưa tới ngày bắt đầu bị xóa; việc đã kết thúc giữ nguyên. Không báo ai. Ngựa giải nghệ giữ nguyên việc riêng.
 
 ### 5. Checklist hằng ngày
 
@@ -127,12 +129,14 @@ SỰ CỐ                             Groom báo, HT khu đóng
    - `IN_PROGRESS`: xong một phần.
    - `COMPLETED`: xong hết, ghi thời điểm hoàn thành.
    - `INCOMPLETE`: ngày đã qua mà chưa xong; checklist bị khóa.
+   - `CANCELLED`: hủy vì ngựa chuyển nhượng hoặc ghi nhận đã mất trong ngày (luật 9); checklist bị khóa.
 4. Groom phụ trách tick hoặc gỡ tick từng việc, kèm ghi chú, chỉ trong ngày. Mỗi việc lưu ai tick, lúc nào. Việc không có giờ phải làm; chỉ cần xong trong ngày.
 5. Ghi lên checklist của ngày đã qua: 409.
 6. Mỗi ngày 00:05 (giờ CLB) và một lần khi khởi động, hệ thống chuyển mọi checklist ngày cũ còn `PENDING`/`IN_PROGRESS` sang `INCOMPLETE`. Chạy lại hoặc chạy bù đều cho cùng kết quả. Lỗi thì việc này tự thử lại riêng theo cùng nhịp ở luật 2, không chờ và không chặn việc sinh checklist hôm nay. Việc tự chuyển này không ghi nhật ký.
 7. Việc còn thiếu không dời sang ngày sau.
 8. Đổi Groom phụ trách: checklist hôm nay (kể cả đã xong) chuyển cho Groom mới; việc đã tick giữ nguyên người tick.
    Các lượt tập tương lai chuyển sang Groom mới (Flow 2) mà một lượt trùng giờ với lượt Groom mới đang dắt ở buổi khác thì chặn 409 cả thao tác, không lưu gì, câu báo liệt kê từng cặp buổi trùng để Head Trainer giao lại người dắt trước. Xếp ô kèm giao Groom (`PUT /horses/:id/placement`) áp cùng luật.
+9. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction đổi vòng đời, checklist hôm nay còn `PENDING`/`IN_PROGRESS` chuyển `CANCELLED`; việc đã tick giữ làm lịch sử; checklist đã `COMPLETED` giữ nguyên. Tick hoặc gỡ tick checklist `CANCELLED`: 409. Việc chuyển `INCOMPLETE` (luật 6) không đụng tới checklist `CANCELLED`. Ngựa giải nghệ giữ nguyên checklist.
 
 ### 6. Sự cố
 

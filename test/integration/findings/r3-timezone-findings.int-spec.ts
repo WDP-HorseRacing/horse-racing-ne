@@ -349,23 +349,25 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     expectClubTime(result, LATER);
   });
 
-  it('TZ3-4 lifecycle dateOfDeath with a time part is rejected by the DTO (date-only field)', () => {
+  it('TZ3-4 lifecycle DTO no longer takes a dateOfDeath (the server records the club date)', () => {
     const errors = validateSync(
       plainToInstance(UpdateHorseLifecycleDto, {
         lifecycleStatus: HorseLifecycleStatus.DECEASED,
         reason: 'Ngã',
         dateOfDeath: `${D}T23:20:00`,
       }),
+      { whitelist: true, forbidNonWhitelisted: true },
     );
     expect(failedProperties(errors)).toContain('dateOfDeath');
   });
 
-  it('TZ3-5 close case dateOfDeath with a time part is rejected by the DTO (date-only field)', () => {
+  it('TZ3-5 close case DTO no longer takes a dateOfDeath (the server records the club date)', () => {
     const errors = validateSync(
       plainToInstance(CloseMedicalCaseDto, {
         finalConclusion: 'Mất',
         dateOfDeath: `${D}T23:20:00`,
       }),
+      { whitelist: true, forbidNonWhitelisted: true },
     );
     expect(failedProperties(errors)).toContain('dateOfDeath');
   });

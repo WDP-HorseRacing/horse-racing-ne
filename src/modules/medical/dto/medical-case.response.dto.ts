@@ -99,14 +99,14 @@ export class MedicalCaseClosePreviewResponseDto {
 
   @ApiProperty({
     description:
-      'Số chấn thương chưa lành của con ngựa; lớn hơn 0 thì đóng bệnh án trả 409, trừ khi kèm ngày mất',
+      'Số chấn thương chưa lành của con ngựa; lớn hơn 0 thì đóng bệnh án trả 409, trừ khi kèm ghi nhận ngựa mất',
   })
   unhealedInjuryCount!: number;
 
   @ApiProperty({
     type: HorseLifecyclePreviewResponseDto,
     description:
-      'Hệ quả nếu đóng bệnh án kèm ngày mất, cùng dạng với xem trước đổi vòng đời sang DECEASED',
+      'Hệ quả nếu đóng bệnh án kèm ghi nhận ngựa mất, cùng dạng với xem trước đổi vòng đời sang DECEASED',
   })
   deathImpact!: HorseLifecyclePreviewResponseDto;
 }
