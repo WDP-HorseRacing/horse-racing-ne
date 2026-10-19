@@ -34,7 +34,6 @@ import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
 import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
@@ -171,9 +170,9 @@ export class TrainingSessionsService {
    *
    * - Giờ bắt đầu phải sau thời điểm hiện tại
    * - Loại buổi lấy theo môn của buổi; gửi kèm loại buổi thì phải trùng loại buổi của môn
-   * - Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly theo cự ly dự kiến, thời gian mục tiêu) trong cùng transaction
+   * - Thời gian mục tiêu chỉ cho buổi chạy thử; không gửi là không có mục tiêu
    * - Lượt tập tạo theo điều kiện tập hiện tại của từng ngựa, như luật của syncParticipants
-   * - Ghi nhật ký kèm lớp, trạng thái, nội dung buổi và số lượt đã tạo; buổi chạy thử kèm thời gian mục tiêu
+   * - Ghi nhật ký kèm lớp, trạng thái, nội dung buổi (gồm thời gian mục tiêu) và số lượt đã tạo
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param classId UUID của lớp
@@ -290,7 +289,7 @@ export class TrainingSessionsService {
   }
 
   /**
-   * Lưu một buổi tập vào lớp đã khóa, kèm cấu hình chạy thử, lượt tập và nhật ký
+   * Lưu một buổi tập vào lớp đã khóa, kèm lượt tập và nhật ký
    *
    * @param manager EntityManager của transaction đang chạy
    * @param actor Thông tin danh tính từ Access Token
@@ -369,6 +368,7 @@ export class TrainingSessionsService {
         sessionType: subject.sessionType,
         intensity: body.intensity,
         plannedDistanceM: body.plannedDistanceM,
+        targetTimeMs,
         scheduledStartAt: new Date(body.scheduledStartAt),
         scheduledEndAt: new Date(body.scheduledEndAt),
         location: body.location ?? null,
@@ -377,16 +377,6 @@ export class TrainingSessionsService {
         status: TrainingSessionStatus.SCHEDULED,
       }),
     );
-    if (subject.sessionType === TrainingSessionType.TIME_TRIAL) {
-      await manager.save(
-        manager.create(TimeTrialEntity, {
-          sessionId: session.id,
-          distanceM: String(body.plannedDistanceM),
-          targetTimeMs: targetTimeMs === null ? null : String(targetTimeMs),
-          notes: null,
-        }),
-      );
-    }
     const participantsCreated = await this.syncParticipants(
       manager,
       actor,
@@ -403,9 +393,6 @@ export class TrainingSessionsService {
         classId,
         status: session.status,
         ...sessionAuditData(session),
-        ...(session.sessionType === TrainingSessionType.TIME_TRIAL && {
-          targetTimeMs,
-        }),
         participantsCreated,
       },
       feature: AuditFeature.TRAIN_SESSION,
@@ -416,6 +403,8 @@ export class TrainingSessionsService {
   /**
    * Sửa buổi tập đã lên lịch chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu), rồi đồng bộ lại lượt tập
    *
+   * - Loại buổi luôn lấy theo môn của buổi (môn mới nếu đổi môn)
+   * - Đổi môn, cự ly hoặc thời gian mục tiêu: nội dung phải đúng theo loại môn như khi thêm buổi; không gửi thời gian mục tiêu thì giữ giá trị cũ, riêng buổi thành buổi thường thì bỏ mục tiêu; gửi null để bỏ mục tiêu
    * - Đổi giờ bắt đầu: giờ mới phải sau thời điểm hiện tại
    * - Đổi giờ: kiểm trùng giờ trong lớp, trùng giờ của ngựa và trùng giờ của Head Trainer phụ trách lớp như khi thêm buổi
    * - Sau khi lưu, lượt tập được đồng bộ theo giờ bắt đầu và cường độ mới (syncParticipants)
@@ -427,8 +416,8 @@ export class TrainingSessionsService {
    * @returns Promise trả về buổi tập sau khi sửa
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có buổi tập hoặc lớp
-   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp)
-   * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp, môn học không tồn tại, hoặc đổi giờ bắt đầu sang thời điểm không sau hiện tại (kiểm sau cùng, ngay trước khi lưu)
+   * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp)
+   * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp, môn học không tồn tại, nội dung sai theo loại môn, hoặc đổi giờ bắt đầu sang thời điểm không sau hiện tại (kiểm sau cùng, ngay trước khi lưu)
    */
   async updateSession(
     actor: Actor,
@@ -450,20 +439,6 @@ export class TrainingSessionsService {
       assertClassOpenForSessions(trainingClass.status);
       assertSessionEditable(session, new Date());
       const before = sessionAuditData(session);
-      const nextSessionType = body.sessionType ?? session.sessionType;
-      if (nextSessionType !== session.sessionType) {
-        const configuredTrial = await manager.findOneBy(TimeTrialEntity, {
-          sessionId,
-        });
-        if (
-          configuredTrial &&
-          nextSessionType !== TrainingSessionType.TIME_TRIAL
-        ) {
-          throw new ConflictException(
-            'Không thể đổi về buổi thường khi đã có cấu hình chạy thử',
-          );
-        }
-      }
       const start = body.scheduledStartAt
         ? new Date(body.scheduledStartAt)
         : session.scheduledStartAt;
@@ -494,6 +469,21 @@ export class TrainingSessionsService {
           nextSubject,
           start,
         );
+      }
+      const nextSessionType = nextSubject?.sessionType ?? session.sessionType;
+      const nextDistance = body.plannedDistanceM ?? session.plannedDistanceM;
+      const nextTargetTimeMs =
+        body.targetTimeMs !== undefined
+          ? body.targetTimeMs
+          : nextSessionType === TrainingSessionType.TIME_TRIAL
+            ? session.targetTimeMs
+            : null;
+      if (
+        body.subjectId !== undefined ||
+        body.plannedDistanceM !== undefined ||
+        body.targetTimeMs !== undefined
+      ) {
+        assertSubjectExercise(nextSessionType, nextDistance, nextTargetTimeMs);
       }
       const timeChanged =
         start.getTime() !== session.scheduledStartAt.getTime() ||
@@ -532,7 +522,8 @@ export class TrainingSessionsService {
         name: body.name ?? session.name,
         sessionType: nextSessionType,
         intensity: body.intensity ?? session.intensity,
-        plannedDistanceM: body.plannedDistanceM ?? session.plannedDistanceM,
+        plannedDistanceM: nextDistance,
+        targetTimeMs: nextTargetTimeMs,
         scheduledStartAt: start,
         scheduledEndAt: end,
         location:

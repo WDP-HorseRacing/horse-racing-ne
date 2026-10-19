@@ -50,7 +50,7 @@ Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, 
      - Một buổi lỗi thì không lưu buổi nào. Câu báo có tiền tố `Buổi N: ` (N đếm từ 1). Ô lỗi là `sessions.{i}.{ô}` (vd `sessions.0.subjectId`); lỗi không gắn ô thì là `sessions.{i}` (i đếm từ 0).
    - `GET /classes/:classId/enrollable-horses`: ngựa ghi danh được vào lớp lúc này, trả `[{ horseId, horseName, horsePhotoUrl }]`. Đã tự loại ngựa đã ghi danh, ngựa trùng giờ và ngựa vượt giới hạn tập trong ngày (mục 2).
 6. **Luật mới khi thêm hoặc sửa buổi**: môn của buổi phải có trong giai đoạn của lớp chứa ngày đó. Sai thì 409 `Môn {tên} không có trong giai đoạn {n} của lớp`.
-7. Sửa buổi (kéo đổi giờ, đổi môn...) và sửa cấu hình chạy thử chỉ được khi buổi `SCHEDULED` và chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu). Các trường hợp khác: 409 `Chỉ sửa được buổi tập đã lên lịch, trước giờ mở điểm danh (30 phút trước giờ bắt đầu)`. FE nên khóa kéo thả buổi từ mốc này.
+7. Sửa buổi (kéo đổi giờ, đổi môn, thời gian mục tiêu...) chỉ được khi buổi `SCHEDULED` và chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu). Các trường hợp khác: 409 `Chỉ sửa được buổi tập đã lên lịch, trước giờ mở điểm danh (30 phút trước giờ bắt đầu)`. FE nên khóa kéo thả buổi từ mốc này.
 8. Điểm danh, báo vắng, sẵn sàng, bắt đầu trên buổi đã hoàn thành hoặc đã hủy: câu báo 409 đổi thành `Buổi tập đã kết thúc hoặc đã hủy, không thao tác được`.
 
 ## 2. Cường độ chỉ còn Nhẹ và Nặng, có giới hạn tập trong ngày
@@ -521,3 +521,18 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
      - `GET /medical/cost-report`: query `from`, `to`.
      - `POST /horses/:horseId/medical-records`, `POST /medical-cases/:caseId/visits`: `prescriptions[].startDate`, `prescriptions[].endDate`.
    - Không đổi hành vi, chỉ có thể bớt một câu lỗi thừa: `POST /horses`, `PATCH /horses/:horseId` (`dateOfBirth`); `POST /horses/:horseId/care-tasks` (`fromDate`, `toDate`); `GET /horses/:horseId/checklists`, `GET /audit-logs`, `GET /reports/dashboard`, `GET /reports/club/finance`, `GET /reports/owner/costs`, `GET /reports/horses/:horseId/progress`, `GET /reports/horses/:horseId/health` (query `from`, `to`); `POST /horses/:horseId/surcharges` (`startDate`, `endDate`); `POST /daily-fees` (`effectiveFrom`).
+
+## Buổi chạy thử: loại buổi theo môn, mục tiêu nằm trên buổi
+
+1. `PATCH /training-sessions/:sessionId`:
+   - Không nhận `sessionType` nữa, gửi lên là 400. Loại buổi luôn theo môn: đổi `subjectId` sang môn chạy thử thì buổi thành chạy thử và ghi được kết quả; đổi sang môn thường thì thành buổi thường.
+   - Nhận thêm `targetTimeMs` (số ms hoặc `null`), kiểm như khi thêm buổi. Buổi thường gửi số là 400 "Chỉ môn chạy thử mới có thời gian mục tiêu". Đổi sang môn chạy thử mà cự ly 0 là 400 "Môn chạy thử phải có cự ly lớn hơn 0".
+   - Không gửi `targetTimeMs` thì giữ giá trị cũ. Buổi đổi sang môn thường thì tự về `null`. Gửi `null` để bỏ mục tiêu.
+   - Câu 409 "Không thể đổi về buổi thường khi đã có cấu hình chạy thử" không còn.
+2. Response buổi tập (`GET /classes/:classId/sessions`, `GET /training-sessions/:sessionId`, `POST`, `PATCH`...) có thêm `targetTimeMs` (`null` là không có mục tiêu, buổi thường luôn `null`).
+3. Bỏ 4 API cấu hình chạy thử: `GET`, `POST`, `PATCH /training-sessions/:id/time-trial` và `GET /time-trials/:id`.
+   - Cự ly chạy thử là `plannedDistanceM` của buổi.
+   - Thời gian mục tiêu là `targetTimeMs` của buổi.
+   - Ghi chú chạy thử là `notes` của buổi; dữ liệu cũ đã được gộp vào đó.
+4. `POST /session-participants/:id/trial-results`: không còn 404 "Buổi tập chưa có cấu hình chạy thử". Buổi chạy thử nào cũng ghi được kết quả khi đã bắt đầu.
+5. Kết quả chạy thử (`GET/POST /session-participants/:id/trial-results`, `PATCH .../trial-results/:attemptNo`) bỏ field `timeTrialId`.

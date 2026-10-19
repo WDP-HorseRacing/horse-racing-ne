@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 218 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 214 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -269,17 +269,13 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/session-participants/{id}/trial-results` |  |
 | POST | `/api/v1/session-participants/{id}/trial-results` |  |
 | PATCH | `/api/v1/session-participants/{id}/trial-results/{attemptNo}` | Sửa video, thời gian hoặc ghi chú của một lần chạy thử |
-| GET | `/api/v1/time-trials/{id}` |  |
 | GET | `/api/v1/training-plans` | Liệt kê giáo án (Head Trainer: của mình) |
 | POST | `/api/v1/training-plans` | Tạo giáo án ghép môn theo tuần |
 | DELETE | `/api/v1/training-plans/{id}` | Xóa giáo án chưa có lớp dùng |
 | GET | `/api/v1/training-plans/{id}` | Xem một giáo án kèm các môn |
 | PUT | `/api/v1/training-plans/{id}` | Thay nội dung giáo án của mình |
-| GET | `/api/v1/training-sessions/{id}/time-trial` |  |
-| PATCH | `/api/v1/training-sessions/{id}/time-trial` |  |
-| POST | `/api/v1/training-sessions/{id}/time-trial` |  |
 | GET | `/api/v1/training-sessions/{sessionId}` |  |
-| PATCH | `/api/v1/training-sessions/{sessionId}` |  |
+| PATCH | `/api/v1/training-sessions/{sessionId}` | Sửa buổi tập chưa tới giờ mở điểm danh |
 | POST | `/api/v1/training-sessions/{sessionId}/cancel` |  |
 | GET | `/api/v1/training-sessions/{sessionId}/participants` |  |
 | GET | `/api/v1/training-subjects` | Liệt kê danh mục môn học |

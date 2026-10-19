@@ -12,7 +12,6 @@ import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { TrainingAccessService } from '../shared/training-access.service';
@@ -29,6 +28,7 @@ function setup() {
     sessionType: TrainingSessionType.REGULAR,
     intensity: TrainingIntensity.HEAVY,
     plannedDistanceM: 3000,
+    targetTimeMs: null as number | null,
     scheduledStartAt: new Date('2099-10-10T01:00:00.000Z'),
     scheduledEndAt: new Date('2099-10-10T02:00:00.000Z'),
     location: 'Sân A',
@@ -302,34 +302,27 @@ describe('TrainingSessionsService.createSession', () => {
     expect(manager.save).not.toHaveBeenCalled();
   });
 
-  it('lấy loại buổi theo môn và tạo sẵn cấu hình chạy thử', async () => {
+  it('lấy loại buổi theo môn và lưu thời gian mục tiêu vào buổi', async () => {
     const { service, manager } = setupCreate(trial);
 
     const created = await service.createSession(
       actor,
       'c1',
-      newSession({
-        sessionType: TrainingSessionType.TIME_TRIAL,
-        targetTimeMs: null,
-      }),
+      newSession({ targetTimeMs: 62000 }),
     );
 
     expect(created.sessionType).toBe(TrainingSessionType.TIME_TRIAL);
-    expect(manager.create).toHaveBeenCalledWith(TimeTrialEntity, {
-      sessionId: 'new',
-      distanceM: '1200',
-      targetTimeMs: null,
-      notes: null,
-    });
+    expect(created.targetTimeMs).toBe(62000);
+    expect(manager.save).toHaveBeenCalledTimes(1);
   });
 
-  it('không tạo cấu hình chạy thử cho buổi thường', async () => {
-    const { service, manager } = setupCreate(regular);
+  it('buổi thường không có thời gian mục tiêu', async () => {
+    const { service } = setupCreate(regular);
 
     const created = await service.createSession(actor, 'c1', newSession());
 
     expect(created.sessionType).toBe(TrainingSessionType.REGULAR);
-    expect(manager.save).toHaveBeenCalledTimes(1);
+    expect(created.targetTimeMs).toBeNull();
   });
 
   it('trả 409 khi trùng buổi ở lớp khác của Head Trainer, không lưu', async () => {
@@ -462,5 +455,104 @@ describe('TrainingSessionsService scheduling in the past', () => {
     expect(result.scheduledStartAt).toEqual(
       new Date('2099-10-11T01:00:00.000Z'),
     );
+  });
+});
+
+function setupSubjectSwitch(
+  current: { sessionType: TrainingSessionType; targetTimeMs: number | null },
+  next: { id: string; sessionType: TrainingSessionType },
+) {
+  const ctx = setup();
+  Object.assign(ctx.session, { subjectId: 'old', ...current });
+  Object.assign(ctx.manager, {
+    findOneBy: jest.fn().mockResolvedValue(next),
+    find: jest.fn((target: unknown) =>
+      Promise.resolve(
+        target === TrainingClassPhaseEntity
+          ? [{ position: 1, weeks: 52, subjects: [{ subjectId: next.id }] }]
+          : [],
+      ),
+    ),
+  });
+  return ctx;
+}
+
+describe('TrainingSessionsService.updateSession loại buổi theo môn', () => {
+  const trial = { id: 'trial', sessionType: TrainingSessionType.TIME_TRIAL };
+  const regular = { id: 'regular', sessionType: TrainingSessionType.REGULAR };
+
+  it('đổi buổi thường sang môn chạy thử: buổi thành chạy thử, nhận thời gian mục tiêu', async () => {
+    const { service } = setupSubjectSwitch(
+      { sessionType: TrainingSessionType.REGULAR, targetTimeMs: null },
+      trial,
+    );
+
+    const result = await service.updateSession(actor, 's1', {
+      subjectId: 'trial',
+      targetTimeMs: 62000,
+    });
+
+    expect(result.sessionType).toBe(TrainingSessionType.TIME_TRIAL);
+    expect(result.targetTimeMs).toBe(62000);
+  });
+
+  it('đổi buổi chạy thử sang môn thường: buổi thành buổi thường, bỏ thời gian mục tiêu', async () => {
+    const { service } = setupSubjectSwitch(
+      { sessionType: TrainingSessionType.TIME_TRIAL, targetTimeMs: 62000 },
+      regular,
+    );
+
+    const result = await service.updateSession(actor, 's1', {
+      subjectId: 'regular',
+    });
+
+    expect(result.sessionType).toBe(TrainingSessionType.REGULAR);
+    expect(result.targetTimeMs).toBeNull();
+  });
+
+  it('buổi chạy thử đổi cự ly giữ thời gian mục tiêu cũ', async () => {
+    const { service } = setupSubjectSwitch(
+      { sessionType: TrainingSessionType.TIME_TRIAL, targetTimeMs: 62000 },
+      trial,
+    );
+
+    const result = await service.updateSession(actor, 's1', {
+      plannedDistanceM: 1600,
+    });
+
+    expect(result.plannedDistanceM).toBe(1600);
+    expect(result.targetTimeMs).toBe(62000);
+  });
+
+  it('trả 400 khi đổi sang môn thường mà gửi thời gian mục tiêu, không lưu', async () => {
+    const { service, save } = setupSubjectSwitch(
+      { sessionType: TrainingSessionType.TIME_TRIAL, targetTimeMs: 62000 },
+      regular,
+    );
+
+    await expect(
+      service.updateSession(actor, 's1', {
+        subjectId: 'regular',
+        targetTimeMs: 62000,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('Chỉ môn chạy thử mới có thời gian mục tiêu'),
+    );
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('trả 400 khi đổi sang môn chạy thử mà cự ly 0, không lưu', async () => {
+    const { service, save, session } = setupSubjectSwitch(
+      { sessionType: TrainingSessionType.REGULAR, targetTimeMs: null },
+      trial,
+    );
+    session.plannedDistanceM = 0;
+
+    await expect(
+      service.updateSession(actor, 's1', { subjectId: 'trial' }),
+    ).rejects.toThrow(
+      new BadRequestException('Môn chạy thử phải có cự ly lớn hơn 0'),
+    );
+    expect(save).not.toHaveBeenCalled();
   });
 });

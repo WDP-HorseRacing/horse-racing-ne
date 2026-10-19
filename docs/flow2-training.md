@@ -40,7 +40,7 @@ LỚP HỌC            HT phụ trách, ngựa ghi danh, ngày bắt đầu – 
 | Giáo án | `training_plans`, `training_plan_phases`, `training_plan_subjects` | Head Trainer sở hữu | Chia giai đoạn theo thứ tự, mỗi giai đoạn bao nhiêu tuần; trong giai đoạn mỗi môn có số buổi tối thiểu mỗi tuần. Dùng lại cho các lớp của chính Head Trainer đó. |
 | Lớp học | `training_classes` | Head Trainer | Tạo từ một giáo án của Head Trainer phụ trách lớp. Ngày kết thúc tự tính. |
 | Giáo án của lớp | `training_class_phases`, `training_class_phase_subjects` | Hệ thống chép lúc tạo lớp | Sửa giáo án mẫu sau đó không đổi giáo án của lớp. Chưa sửa riêng được. |
-| Buổi tập | `training_sessions` | Head Trainer | Thuộc lớp, gắn môn học. Lưu bản chép cường độ, cự ly, mặt sân của môn lúc tạo. |
+| Buổi tập | `training_sessions` | Head Trainer | Thuộc lớp, gắn môn học. Lưu bản chép cường độ, cự ly, mặt sân của môn lúc tạo. Buổi chạy thử lưu luôn thời gian mục tiêu (`target_time_ms`, buổi thường luôn null) và dùng cự ly, ghi chú của buổi; không có bảng cấu hình chạy thử riêng. |
 | Lượt tập | `session_participants` | Hệ thống tạo khi thêm, sửa buổi hoặc ghi danh | Điểm danh, sẵn sàng, bắt đầu, hoàn thành theo từng ngựa. |
 
 Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong một buổi, mọi ngựa cùng một bài.
@@ -71,7 +71,9 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 3. Ngày kết thúc lớp = ngày bắt đầu + tổng số tuần của giáo án − 1 ngày. Giai đoạn nối tiếp nhau từ ngày bắt đầu, mỗi tuần 7 ngày.
    - Tiến độ xếp lịch (`GET /classes/:classId/progress`): từng tuần của lớp (tuần thứ n gồm 7 ngày từ ngày bắt đầu + (n − 1) × 7), mỗi môn của giai đoạn đã xếp bao nhiêu buổi chưa hủy so với số buổi tối thiểu; buổi tính vào tuần theo ngày bắt đầu (lịch CLB). Kèm thời lượng tối thiểu của lớp và tổng thời lượng các buổi chưa hủy đã xếp (phút). Thiếu hay vượt chỉ để hiển thị, không chặn.
 4. Mỗi buổi phải nằm trong thời gian của lớp, so theo ngày lịch CLB (giờ Việt Nam).
-5. Loại buổi lấy theo môn của buổi. Thêm buổi vào lớp bắt buộc có môn; loại buổi gửi kèm (nếu có) phải khớp môn. Khi thêm buổi chạy thử vào lớp, cấu hình chạy thử được tạo ngay trong cùng request (`targetTimeMs` không bắt buộc, `null` là không có mục tiêu).
+5. Loại buổi lấy theo môn của buổi. Thêm buổi vào lớp bắt buộc có môn; loại buổi gửi kèm (nếu có) phải khớp môn. Buổi chạy thử nhận `targetTimeMs` (không bắt buộc, `null` là không có mục tiêu); buổi thường gửi `targetTimeMs` thì 400 "Chỉ môn chạy thử mới có thời gian mục tiêu"; buổi chạy thử cự ly 0 thì 400 "Môn chạy thử phải có cự ly lớn hơn 0".
+   - Sửa buổi theo đúng luật trên: không gửi được `sessionType` (400); đổi môn thì loại buổi đổi theo môn mới. Đổi môn, cự ly hoặc `targetTimeMs` thì kiểm lại như khi thêm buổi.
+   - `targetTimeMs` khi sửa: không gửi thì giữ giá trị cũ; buổi thành buổi thường thì tự về `null`; gửi `null` để bỏ mục tiêu.
 6. Lớp tạo ra là Đang chạy (không có nháp, không có bước kích hoạt). Lớp chỉ đổi sang Hoàn thành hoặc Đã hủy (`PATCH /classes/:classId/status`, gửi trạng thái khác là 400).
 7. Đổi ngày bắt đầu của lớp thì ngày kết thúc tự tính lại theo giáo án của lớp; buổi nằm ngoài khoảng mới thì chặn.
 8. Lớp không đổi được giáo án hay Head Trainer sau khi tạo. Đổi Head Trainer chỉ qua bàn giao (mục 7).
@@ -81,7 +83,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 
 1. Thêm, sửa buổi khi lớp đang chạy. Lớp đã hoàn thành hoặc đã hủy thì không.
 2. Buổi không có nháp: lưu là Đã lên lịch và có hiệu lực ngay. Mỗi ngựa đang học lớp vào giờ bắt đầu có một lượt tập theo điều kiện tập hiện tại (mục 5).
-3. Sửa buổi (kéo đổi giờ, đổi môn, cường độ, cự ly...) và sửa cấu hình chạy thử: chỉ khi buổi Đã lên lịch và chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu), không thì 409. Từ lúc mở điểm danh, muốn đổi thì hủy buổi rồi thêm buổi mới. Sửa xong, lượt tập được đồng bộ lại: ngựa học lớp vào giờ mới mà chưa có lượt thì có lượt (lượt đã hủy được dùng lại); lượt Chờ điểm danh, Hủy do khóa, Không đủ điều kiện được chấm lại theo cường độ mới; lượt đã có người dắt (kể cả người Head Trainer giao tay) giữ người dắt, lượt chưa có người dắt thì gắn Groom phụ trách lúc bắt đầu; ngựa không còn học lớp vào giờ mới thì lượt bị hủy, lý do "Ngựa không học lớp vào giờ mới của buổi".
+3. Sửa buổi (kéo đổi giờ, đổi môn, cường độ, cự ly, thời gian mục tiêu...): chỉ khi buổi Đã lên lịch và chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu), không thì 409. Từ lúc mở điểm danh, muốn đổi thì hủy buổi rồi thêm buổi mới. Sửa xong, lượt tập được đồng bộ lại: ngựa học lớp vào giờ mới mà chưa có lượt thì có lượt (lượt đã hủy được dùng lại); lượt Chờ điểm danh, Hủy do khóa, Không đủ điều kiện được chấm lại theo cường độ mới; lượt đã có người dắt (kể cả người Head Trainer giao tay) giữ người dắt, lượt chưa có người dắt thì gắn Groom phụ trách lúc bắt đầu; ngựa không còn học lớp vào giờ mới thì lượt bị hủy, lý do "Ngựa không học lớp vào giờ mới của buổi".
 4. Môn của buổi phải có trong giai đoạn của lớp chứa ngày bắt đầu của buổi (lịch CLB), không thì 409 "Môn {tên} không có trong giai đoạn {n} của lớp". Kiểm khi thêm buổi, và khi sửa buổi có đổi môn hoặc đổi giờ bắt đầu. Xếp nhiều hơn số buổi tối thiểu vẫn được.
 5. Thêm nhiều buổi một lần (`POST /classes/:classId/sessions/bulk`, 1–100 buổi, dùng cho nút lặp lại trên lịch): lưu theo thứ tự giờ bắt đầu, mỗi buổi áp đúng luật của thêm từng buổi, kể cả trùng giờ với các buổi vừa thêm trước nó. Một buổi lỗi thì không lưu buổi nào; câu báo có tiền tố "Buổi {thứ tự trong body}: " và ô lỗi `sessions.{chỉ số}`.
 6. Xóa buổi trên lịch là hủy buổi (`POST /training-sessions/:sessionId/cancel`): buổi giữ lại ở trạng thái Đã hủy, lượt chưa tập bị hủy. Người dắt từng lượt vừa bị hủy nhận thông báo (mức HIGH), mỗi Groom một tin liệt kê các ngựa của mình; lượt chưa có người dắt thì báo Groom đang phụ trách ngựa. Hủy cả lớp không gửi thông báo này.
@@ -217,12 +219,9 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | GET/POST | `/classes/:classId/sessions` | Xem: theo quyền xem lớp; thêm: HT | Buổi của lớp |
 | POST | `/classes/:classId/sessions/bulk` | HT | Thêm nhiều buổi một lần `{ sessions: [...] }` |
 | GET | `/training-sessions/:sessionId` | Theo quyền xem lớp | Một buổi |
-| PATCH | `/training-sessions/:sessionId` | HT | Sửa buổi chưa tới giờ, chưa có ngựa điểm danh; đổi được `subjectId` (gửi `null` để xóa `location`, `surface`, `notes`) |
+| PATCH | `/training-sessions/:sessionId` | HT | Sửa buổi chưa tới giờ, chưa có ngựa điểm danh; đổi được `subjectId` (loại buổi theo môn), `targetTimeMs` (gửi `null` để xóa `targetTimeMs`, `location`, `surface`, `notes`) |
 | POST | `/training-sessions/:sessionId/cancel` | HT | Hủy buổi |
 | GET | `/training-sessions/:sessionId/participants` | Theo quyền xem buổi | Lượt tập của buổi, kèm `horseName`, `horsePhotoUrl`, `assignedGroomName` |
-| GET/POST | `/training-sessions/:id/time-trial` | Xem: theo quyền xem buổi; tạo: HT | Cấu hình chạy thử của buổi |
-| PATCH | `/training-sessions/:id/time-trial` | HT | Sửa cấu hình chạy thử của buổi chưa tới giờ |
-| GET | `/time-trials/:id` | Theo quyền xem buổi | Một cấu hình chạy thử |
 | PATCH | `/session-participants/:id/groom` | HT | Giao Groom dắt ngựa |
 | GET/POST | `/session-participants/:id/trial-results` | Xem: theo quyền xem lượt; ghi: HT | Kết quả chạy thử của lượt |
 | PATCH | `/session-participants/:id/trial-results/:attemptNo` | HT của lớp | Sửa video, thời gian, ghi chú của một lần chạy thử `{ videoMediaId?, elapsedMs?, notes?, reason? }` (mục 4 luật 7.1) |

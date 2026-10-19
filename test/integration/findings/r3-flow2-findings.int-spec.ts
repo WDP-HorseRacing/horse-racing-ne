@@ -40,7 +40,6 @@ import {
 import { CreateTrainingSubjectDto } from '../../../src/modules/training/dto/training-subject.dto';
 import { HorseEnrollmentEntity } from '../../../src/modules/training/entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../../src/modules/training/entities/session-participant.entity';
-import { TimeTrialEntity } from '../../../src/modules/training/entities/time-trial.entity';
 import { TrainingClassEntity } from '../../../src/modules/training/entities/training-class.entity';
 import { TrainingSessionEntity } from '../../../src/modules/training/entities/training-session.entity';
 import { TrainingSubjectEntity } from '../../../src/modules/training/entities/training-subject.entity';
@@ -52,7 +51,6 @@ import { HorseTrainingRepository } from '../../../src/modules/training/horse-tra
 import { HorseTrainingService } from '../../../src/modules/training/horse-training/horse-training.service';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
-import { TimeTrialsService } from '../../../src/modules/training/time-trials/time-trials.service';
 import { TrialResultsService } from '../../../src/modules/training/time-trials/trial-results.service';
 import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
 import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
@@ -97,7 +95,6 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
   let enrollments: TrainingClassEnrollmentsService;
   let classes: TrainingClassesService;
   let subjects: TrainingSubjectsService;
-  let timeTrials: TimeTrialsService;
   let evaluations: PerformanceEvaluationsService;
   let horseTraining: HorseTrainingService;
   let dashboard: DashboardService;
@@ -157,12 +154,6 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     );
     subjects = new TrainingSubjectsService(
       dataSource.getRepository(TrainingSubjectEntity),
-      access,
-      dataSource,
-      audit,
-    );
-    timeTrials = new TimeTrialsService(
-      dataSource.getRepository(TimeTrialEntity),
       access,
       dataSource,
       audit,
@@ -627,30 +618,15 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     });
   });
 
-  it('F2-10: time-trial distance has one source: session and trial config stay equal after editing the config', async () => {
-    const created = await sessionsService.createSession(trainer, classId, {
-      name: 'Chạy thử',
-      subjectId: await subject(
-        TrainingIntensity.HEAVY,
-        TrainingSessionType.TIME_TRIAL,
-      ),
-      intensity: TrainingIntensity.HEAVY,
-      plannedDistanceM: 1200,
-      scheduledStartAt: new Date(Date.now() + 120 * HOUR).toISOString(),
-      scheduledEndAt: new Date(Date.now() + 121 * HOUR).toISOString(),
-    });
-
-    await timeTrials.update(trainer, created.id, { distanceM: 1600 });
-
-    const [row] = await dataSource.query<
-      Array<{ session: number; trial: number }>
-    >(
-      `SELECT s.planned_distance_m::float AS session, t.distance_m::float AS trial
-         FROM training_sessions s JOIN time_trials t ON t.session_id = s.id
-        WHERE s.id = $1`,
-      [created.id],
+  it('F2-10: time-trial distance has one source: no time-trial table stores a distance', async () => {
+    const columns = await dataSource.query<Array<{ table_name: string }>>(
+      `SELECT table_name FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name IN ('time_trials', 'trial_results')
+          AND column_name LIKE '%distance%'`,
     );
-    expect(row.session).toBe(row.trial);
+
+    expect(columns).toEqual([]);
   });
 
   it('F2-11: a groom not assigned to the run cannot read its evaluation', async () => {

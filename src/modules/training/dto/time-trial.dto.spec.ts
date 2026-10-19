@@ -1,11 +1,10 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { CreateTrialResultDto, UpdateTrialResultDto } from './time-trial.dto';
 import {
-  CreateTimeTrialDto,
-  CreateTrialResultDto,
-  UpdateTimeTrialDto,
-  UpdateTrialResultDto,
-} from './time-trial.dto';
+  CreateTrainingSessionDto,
+  UpdateTrainingSessionDto,
+} from './training-session.dto';
 
 const VIDEO_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -64,12 +63,24 @@ describe('UpdateTrialResultDto', () => {
 describe('trial time caps', () => {
   it.each([
     [
-      'CreateTimeTrialDto.targetTimeMs',
-      CreateTimeTrialDto,
-      { distanceM: 1000 },
+      'CreateTrainingSessionDto.targetTimeMs',
+      CreateTrainingSessionDto,
+      {
+        name: 'Chạy thử',
+        subjectId: VIDEO_ID,
+        intensity: 'LIGHT',
+        plannedDistanceM: 1000,
+        scheduledStartAt: '2030-01-01T01:00:00Z',
+        scheduledEndAt: '2030-01-01T02:00:00Z',
+      },
       'targetTimeMs',
     ],
-    ['UpdateTimeTrialDto.targetTimeMs', UpdateTimeTrialDto, {}, 'targetTimeMs'],
+    [
+      'UpdateTrainingSessionDto.targetTimeMs',
+      UpdateTrainingSessionDto,
+      {},
+      'targetTimeMs',
+    ],
     [
       'CreateTrialResultDto.elapsedMs',
       CreateTrialResultDto,

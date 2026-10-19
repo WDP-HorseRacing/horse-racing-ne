@@ -20,7 +20,6 @@ import {
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrialResultEntity } from '../entities/trial-result.entity';
 import { toTrialResultResponse } from '../mappers/trial-result.mapper';
 import { assertSessionRecordEditable } from '../policies/training.policy';
@@ -90,7 +89,7 @@ export class TrialResultsService {
    * @param body Số lần chạy, thời gian, ghi chú và video (nếu có)
    * @returns Promise trả về lần chạy vừa ghi kèm videoUrl
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không được thao tác lượt tập này
-   * @throws NotFoundException Nếu không có lượt tập, chưa có cấu hình Time Trial, hoặc video không tồn tại hay không do người gọi tải lên
+   * @throws NotFoundException Nếu không có lượt tập, hoặc video không tồn tại hay không do người gọi tải lên
    * @throws BadRequestException Nếu video không phải TRIAL_VIDEO, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
    * @throws ConflictException Nếu buổi hoặc lượt tập sai trạng thái, video chưa có trên storage hoặc lần chạy đã tồn tại
    */
@@ -150,14 +149,7 @@ export class TrialResultsService {
       ) {
         throw new ConflictException('Lượt tập không được ghi kết quả chạy thử');
       }
-      const trial = await manager.findOneBy(TimeTrialEntity, {
-        sessionId: session.id,
-      });
-      if (!trial) {
-        throw new NotFoundException('Buổi tập chưa có cấu hình chạy thử');
-      }
       const duplicate = await manager.findOneBy(TrialResultEntity, {
-        timeTrialId: trial.id,
         sessionParticipantId: participantId,
         attemptNo: body.attemptNo,
       });
@@ -166,7 +158,6 @@ export class TrialResultsService {
       }
       const result = await manager.save(
         manager.create(TrialResultEntity, {
-          timeTrialId: trial.id,
           sessionParticipantId: participantId,
           attemptNo: body.attemptNo,
           elapsedMs: String(body.elapsedMs),

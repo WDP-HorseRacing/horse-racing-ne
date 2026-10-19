@@ -200,19 +200,14 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
        VALUES ($1, 1, $2, 8, 'Ổn', $3)`,
       [randomUUID(), staffId, heavy],
     );
-    const timeTrial = randomUUID();
-    await dataSource.query(
-      `INSERT INTO time_trials (id, version, session_id, distance_m) VALUES ($1, 1, $2, 1200)`,
-      [timeTrial, week2],
-    );
     for (const [attemptNo, ms] of [
       [1, '75000'],
       [2, '72000'],
     ] as const) {
       await dataSource.query(
-        `INSERT INTO trial_results (id, version, time_trial_id, session_participant_id, attempt_no, elapsed_ms, recorded_by, recorded_at)
-         VALUES ($1, 1, $2, $3, $4, $5, $6, '2026-10-12T01:30:00Z')`,
-        [randomUUID(), timeTrial, light, attemptNo, ms, staffId],
+        `INSERT INTO trial_results (id, version, session_participant_id, attempt_no, elapsed_ms, recorded_by, recorded_at)
+         VALUES ($1, 1, $2, $3, $4, $5, '2026-10-12T01:30:00Z')`,
+        [randomUUID(), light, attemptNo, ms, staffId],
       );
     }
 
@@ -299,15 +294,10 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
       '2026-10-13T03:00:00Z',
       '2026-10-13T03:10:00Z',
     );
-    const timeTrial = randomUUID();
     await dataSource.query(
-      `INSERT INTO time_trials (id, version, session_id, distance_m) VALUES ($1, 1, $2, 1200)`,
-      [timeTrial, trialSession],
-    );
-    await dataSource.query(
-      `INSERT INTO trial_results (id, version, time_trial_id, session_participant_id, attempt_no, elapsed_ms, recorded_by, recorded_at)
-       VALUES ($1, 1, $2, $3, 1, '81000', $4, '2026-10-13T03:05:00Z')`,
-      [randomUUID(), timeTrial, stopped, staffId],
+      `INSERT INTO trial_results (id, version, session_participant_id, attempt_no, elapsed_ms, recorded_by, recorded_at)
+       VALUES ($1, 1, $2, 1, '81000', $3, '2026-10-13T03:05:00Z')`,
+      [randomUUID(), stopped, staffId],
     );
 
     const report = await service.progress(owner, gio, period);

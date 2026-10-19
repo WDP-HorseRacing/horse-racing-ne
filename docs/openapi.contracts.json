@@ -7573,162 +7573,6 @@
         ]
       }
     },
-    "/api/v1/training-sessions/{id}/time-trial": {
-      "get": {
-        "operationId": "TimeTrialsController_getBySession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TimeTrialResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "training"
-        ]
-      },
-      "post": {
-        "operationId": "TimeTrialsController_create",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTimeTrialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TimeTrialResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "training"
-        ]
-      },
-      "patch": {
-        "operationId": "TimeTrialsController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTimeTrialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TimeTrialResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "training"
-        ]
-      }
-    },
-    "/api/v1/time-trials/{id}": {
-      "get": {
-        "operationId": "TimeTrialsController_get",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TimeTrialResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "training"
-        ]
-      }
-    },
     "/api/v1/session-participants/{id}/trial-results": {
       "get": {
         "operationId": "TrialResultsController_list",
@@ -8939,6 +8783,7 @@
         ]
       },
       "patch": {
+        "description": "Loại buổi luôn lấy theo môn của buổi, không gửi được sessionType. Đổi môn, cự ly hoặc targetTimeMs thì nội dung phải đúng theo loại môn như khi thêm buổi (400). targetTimeMs không gửi thì giữ giá trị cũ, buổi thành buổi thường thì về null; gửi null để bỏ mục tiêu.",
         "operationId": "TrainingSessionsController_update",
         "parameters": [
           {
@@ -8977,6 +8822,7 @@
             "bearer": []
           }
         ],
+        "summary": "Sửa buổi tập chưa tới giờ mở điểm danh",
         "tags": [
           "training"
         ]
@@ -18578,93 +18424,10 @@
           "meta"
         ]
       },
-      "TimeTrialResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sessionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "distanceM": {
-            "type": "number",
-            "description": "Cự ly chạy thử (mét)"
-          },
-          "targetTimeMs": {
-            "type": "number",
-            "nullable": true,
-            "description": "Thời gian mục tiêu (ms); null là không có mục tiêu"
-          },
-          "notes": {
-            "type": "object"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "sessionId",
-          "distanceM",
-          "createdAt"
-        ]
-      },
-      "CreateTimeTrialDto": {
-        "type": "object",
-        "properties": {
-          "distanceM": {
-            "type": "number",
-            "minimum": 0.01
-          },
-          "targetTimeMs": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 3600000,
-            "nullable": true,
-            "description": "Thời gian mục tiêu (ms); null là không có mục tiêu"
-          },
-          "notes": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "distanceM"
-        ]
-      },
-      "UpdateTimeTrialDto": {
-        "type": "object",
-        "properties": {
-          "distanceM": {
-            "type": "number",
-            "minimum": 0.01,
-            "description": "Cự ly chạy thử (mét)"
-          },
-          "targetTimeMs": {
-            "type": "object",
-            "minimum": 1,
-            "maximum": 3600000,
-            "nullable": true,
-            "description": "Thời gian mục tiêu (ms); gửi null để xóa"
-          },
-          "notes": {
-            "type": "object",
-            "nullable": true,
-            "description": "Gửi null để xóa ghi chú"
-          }
-        }
-      },
       "TrialResultResponseDto": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "timeTrialId": {
             "type": "string",
             "format": "uuid"
           },
@@ -18702,7 +18465,6 @@
         },
         "required": [
           "id",
-          "timeTrialId",
           "sessionParticipantId",
           "attemptNo",
           "elapsedMs",
@@ -19774,6 +19536,11 @@
             "type": "number",
             "description": "Cự ly dự kiến của buổi tập (mét)"
           },
+          "targetTimeMs": {
+            "type": "number",
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms) của buổi chạy thử; null là không có mục tiêu, buổi thường luôn null"
+          },
           "scheduledStartAt": {
             "format": "date-time",
             "type": "string"
@@ -19920,13 +19687,6 @@
             "type": "string",
             "maxLength": 160
           },
-          "sessionType": {
-            "type": "string",
-            "enum": [
-              "REGULAR",
-              "TIME_TRIAL"
-            ]
-          },
           "subjectId": {
             "type": "string",
             "format": "uuid",
@@ -19956,6 +19716,13 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-10-23T00:30:00+07:00"
+          },
+          "targetTimeMs": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 3600000,
+            "nullable": true,
+            "description": "Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu"
           },
           "location": {
             "type": "string",

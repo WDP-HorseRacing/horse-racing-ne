@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
@@ -13,6 +13,10 @@ import { TrainingSubjectEntity } from './training-subject.entity';
  */
 @Entity({ name: 'training_sessions' })
 @Index('training_sessions_class_start_idx', ['classId', 'scheduledStartAt'])
+@Check(
+  'training_sessions_target_time_ck',
+  `"session_type" = 'TIME_TRIAL' OR "target_time_ms" IS NULL`,
+)
 export class TrainingSessionEntity extends MutableRecordEntity {
   @Column({ name: 'class_id', type: 'uuid' })
   classId!: string;
@@ -51,6 +55,9 @@ export class TrainingSessionEntity extends MutableRecordEntity {
 
   @Column({ name: 'planned_distance_m', type: 'integer' })
   plannedDistanceM!: number;
+
+  @Column({ name: 'target_time_ms', type: 'integer', nullable: true })
+  targetTimeMs!: number | null;
 
   @Column({ name: 'scheduled_start_at', type: 'timestamptz' })
   scheduledStartAt!: Date;

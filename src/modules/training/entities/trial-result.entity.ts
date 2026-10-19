@@ -3,25 +3,12 @@ import { MutableRecordEntity } from '../../../common/database/base-record.entity
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { SessionParticipantEntity } from './session-participant.entity';
-import { TimeTrialEntity } from './time-trial.entity';
 
 @Entity({ name: 'trial_results' })
-@Index('trial_results_attempt_uq', [
-  'timeTrialId',
-  'sessionParticipantId',
-  'attemptNo',
-], { unique: true })
+@Index('trial_results_attempt_uq', ['sessionParticipantId', 'attemptNo'], {
+  unique: true,
+})
 export class TrialResultEntity extends MutableRecordEntity {
-  @Column({ name: 'time_trial_id', type: 'uuid' })
-  timeTrialId!: string;
-
-  @ManyToOne(() => TimeTrialEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({
-    name: 'time_trial_id',
-    foreignKeyConstraintName: 'FK_trial_results_time_trial',
-  })
-  timeTrial!: TimeTrialEntity;
-
   @Column({ name: 'session_participant_id', type: 'uuid' })
   sessionParticipantId!: string;
 

@@ -18,7 +18,7 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | ------------- | ---------------------------------------------------------------------------------------- |
 | Users         | `users`                                                                                  |
 | Horses        | `horses`, `horse_ownerships`, `horse_measurements`                                       |
-| Training      | `training_subjects`, `training_plans`, `training_plan_phases`, `training_plan_subjects`, `training_classes`, `training_class_phases`, `training_class_phase_subjects`, `horse_enrollments`, `training_sessions`, `session_participants`, `time_trials`, `trial_results` |
+| Training      | `training_subjects`, `training_plans`, `training_plan_phases`, `training_plan_subjects`, `training_classes`, `training_class_phases`, `training_class_phase_subjects`, `horse_enrollments`, `training_sessions`, `session_participants`, `trial_results` |
 | Performance   | `performance_evaluations` (số đo `performance_metrics` ở MongoDB; ngưỡng là hằng số chung CLB) |
 | Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injuries`, `injury_markers`, `training_locks`, `care_schedules` |
 | Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `daily_task_types`, `horse_daily_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |

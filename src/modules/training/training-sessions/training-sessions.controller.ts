@@ -67,6 +67,11 @@ export class TrainingSessionsController {
 
   @Access([UserRole.HEAD_TRAINER])
   @Patch('training-sessions/:sessionId')
+  @ApiOperation({
+    summary: 'Sửa buổi tập chưa tới giờ mở điểm danh',
+    description:
+      'Loại buổi luôn lấy theo môn của buổi, không gửi được sessionType. Đổi môn, cự ly hoặc targetTimeMs thì nội dung phải đúng theo loại môn như khi thêm buổi (400). targetTimeMs không gửi thì giữ giá trị cũ, buổi thành buổi thường thì về null; gửi null để bỏ mục tiêu.',
+  })
   @ApiOkResponse({ type: TrainingSessionResponseDto })
   update(
     @CurrentUser() actor: Actor,

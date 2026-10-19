@@ -8,7 +8,6 @@ import { DataSource, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { MediaService } from '../../media/services/media.service';
-import { TimeTrialEntity } from '../entities/time-trial.entity';
 import { TrialResultEntity } from '../entities/trial-result.entity';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
@@ -69,9 +68,7 @@ describe('TrialResultsService', () => {
     results = { find: jest.fn().mockResolvedValue([]) };
     manager = {
       findOne: jest.fn(),
-      findOneBy: jest.fn((entity: unknown) =>
-        Promise.resolve(entity === TimeTrialEntity ? { id: 'tt1' } : null),
-      ),
+      findOneBy: jest.fn().mockResolvedValue(null),
       create: jest.fn((_entity: unknown, row: object) => ({
         id: 'r1',
         ...row,

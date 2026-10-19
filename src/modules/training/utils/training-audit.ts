@@ -1,4 +1,3 @@
-import type { TimeTrialEntity } from '../entities/time-trial.entity';
 import type { TrainingClassEntity } from '../entities/training-class.entity';
 import type { TrainingSessionEntity } from '../entities/training-session.entity';
 import type { TrainingSubjectEntity } from '../entities/training-subject.entity';
@@ -84,7 +83,7 @@ export function classAuditData(row: TrainingClassEntity) {
  * - Giờ bắt đầu, kết thúc đổi sang chuỗi ISO
  *
  * @param session Buổi tập
- * @returns Môn, tên, loại buổi, cường độ, cự ly, giờ, địa điểm, mặt sân, ghi chú
+ * @returns Môn, tên, loại buổi, cường độ, cự ly, thời gian mục tiêu, giờ, địa điểm, mặt sân, ghi chú
  */
 export function sessionAuditData(session: TrainingSessionEntity) {
   return {
@@ -93,25 +92,11 @@ export function sessionAuditData(session: TrainingSessionEntity) {
     sessionType: session.sessionType,
     intensity: session.intensity,
     plannedDistanceM: session.plannedDistanceM,
+    targetTimeMs: session.targetTimeMs,
     scheduledStartAt: session.scheduledStartAt.toISOString(),
     scheduledEndAt: session.scheduledEndAt.toISOString(),
     location: session.location,
     surface: session.surface,
     notes: session.notes,
-  };
-}
-
-/**
- * Lấy các field của cấu hình chạy thử được ghi nhật ký, số đã đổi sang number
- *
- * @param trial Cấu hình chạy thử
- * @returns Cự ly, thời gian mục tiêu, ghi chú
- */
-export function timeTrialAuditData(trial: TimeTrialEntity) {
-  return {
-    distanceM: Number(trial.distanceM),
-    targetTimeMs:
-      trial.targetTimeMs === null ? null : Number(trial.targetTimeMs),
-    notes: trial.notes,
   };
 }

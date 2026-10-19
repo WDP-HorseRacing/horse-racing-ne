@@ -101,10 +101,6 @@ describe('Stopping a participant run early (Postgres)', () => {
        VALUES ($1, 1, $2, 'Chạy thử', 'TIME_TRIAL', now() - interval '10 minutes', now() + interval '50 minutes', 'IN_PROGRESS', 'HEAVY', 1200)`,
       [sessionId, classId],
     );
-    await dataSource.query(
-      `INSERT INTO time_trials (id, version, session_id, distance_m) VALUES ($1, 1, $2, 1200)`,
-      [randomUUID(), sessionId],
-    );
     const participantIds: string[] = [];
     for (const [index, status] of statuses.entries()) {
       const horse = await seed.horse(`Ngựa ${index}`, { barnId: barn });

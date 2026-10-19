@@ -88,11 +88,6 @@ describe('Correcting trial results and evaluations after a session (Postgres)', 
        VALUES ($1, 1, $2, 'Chạy thử', 'TIME_TRIAL', $3::timestamptz - interval '1 hour', $3::timestamptz, 'COMPLETED', 'HEAVY', 1200)`,
       [sessionId, classId, endAt],
     );
-    const timeTrialId = randomUUID();
-    await dataSource.query(
-      `INSERT INTO time_trials (id, version, session_id, distance_m) VALUES ($1, 1, $2, 1200)`,
-      [timeTrialId, sessionId],
-    );
     const horseId = await seed.horse('Gió', { barnId: barn });
     const enrollmentId = randomUUID();
     await dataSource.query(
@@ -118,17 +113,9 @@ describe('Correcting trial results and evaluations after a session (Postgres)', 
       [2, '68000'],
     ] as const) {
       await dataSource.query(
-        `INSERT INTO trial_results (id, version, time_trial_id, session_participant_id, attempt_no, elapsed_ms, notes, recorded_by, recorded_at)
-         VALUES ($1, 1, $2, $3, $4, $5, 'Bấm tay', $6, $7)`,
-        [
-          randomUUID(),
-          timeTrialId,
-          participantId,
-          attemptNo,
-          elapsedMs,
-          trainerId,
-          endAt,
-        ],
+        `INSERT INTO trial_results (id, version, session_participant_id, attempt_no, elapsed_ms, notes, recorded_by, recorded_at)
+         VALUES ($1, 1, $2, $3, $4, 'Bấm tay', $5, $6)`,
+        [randomUUID(), participantId, attemptNo, elapsedMs, trainerId, endAt],
       );
     }
     await dataSource.query(

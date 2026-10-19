@@ -81,13 +81,27 @@ describe('UpdateTrainingSessionDto', () => {
     ).resolves.toEqual([]);
   });
 
-  it('does not accept a target time', async () => {
+  it('does not accept a session type', async () => {
     const errors = await validate(
-      plainToInstance(UpdateTrainingSessionDto, { targetTimeMs: 62000 }),
+      plainToInstance(UpdateTrainingSessionDto, {
+        sessionType: TrainingSessionType.TIME_TRIAL,
+      }),
       { whitelist: true, forbidNonWhitelisted: true },
     );
-    expect(errors.map((error) => error.property)).toEqual(['targetTimeMs']);
+    expect(errors.map((error) => error.property)).toEqual(['sessionType']);
   });
+
+  it.each([62000, null])(
+    'accepts a target time of %p',
+    async (targetTimeMs) => {
+      await expect(
+        validate(plainToInstance(UpdateTrainingSessionDto, { targetTimeMs }), {
+          whitelist: true,
+          forbidNonWhitelisted: true,
+        }),
+      ).resolves.toEqual([]);
+    },
+  );
 });
 
 describe('Training session text length limits', () => {

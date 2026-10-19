@@ -125,10 +125,10 @@ export class CreateTrainingSessionsDto {
 
 export class UpdateTrainingSessionDto extends PartialType(
   OmitType(CreateTrainingSessionDto, [
+    'sessionType',
     'location',
     'surface',
     'notes',
-    'targetTimeMs',
   ] as const),
 ) {
   @ApiPropertyOptional({ nullable: true, type: String, maxLength: 160 })
@@ -184,6 +184,15 @@ export class TrainingSessionResponseDto {
   @ApiProperty({ description: 'Cự ly dự kiến của buổi tập (mét)' })
   @Expose()
   plannedDistanceM!: number;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description:
+      'Thời gian mục tiêu (ms) của buổi chạy thử; null là không có mục tiêu, buổi thường luôn null',
+  })
+  @Expose()
+  targetTimeMs!: number | null;
 
   @ApiProperty({ format: 'date-time' })
   @Expose()

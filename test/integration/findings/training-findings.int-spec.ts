@@ -339,10 +339,6 @@ describe('Training findings (Postgres)', () => {
       type: 'TIME_TRIAL',
       subjectId: await trialSubject(),
     });
-    await dataSource.query(
-      `INSERT INTO time_trials (id, version, session_id, distance_m) VALUES ($1, 1, $2, 1200)`,
-      [randomUUID(), trial],
-    );
     const run = await participant(trial, winx, 'ONGOING');
     await participantsService.complete(trainer, run);
     expect(await sessionStatus(trial)).toBe('COMPLETED');

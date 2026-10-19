@@ -532,21 +532,11 @@ describe('Flow 1 read queries (Postgres)', () => {
 
       it('lists trial results by participant then attempt, with elapsed time as text', async () => {
         const recorder = await seed.user(UserRole.HEAD_TRAINER);
-        const [{ session_id: sessionId }] = await dataSource.query<
-          Array<{ session_id: string }>
-        >('SELECT session_id FROM session_participants WHERE id = $1', [
-          ids.soon,
-        ]);
-        const timeTrial = randomUUID();
-        await dataSource.query(
-          `INSERT INTO time_trials (id, version, session_id, distance_m) VALUES ($1, 1, $2, 1200)`,
-          [timeTrial, sessionId],
-        );
         const trial = (participantId: string, attemptNo: number, ms: string) =>
           dataSource.query(
-            `INSERT INTO trial_results (id, version, time_trial_id, session_participant_id, attempt_no, elapsed_ms, recorded_by, recorded_at)
-             VALUES ($1, 1, $2, $3, $4, $5, $6, '2026-10-02T02:00:00Z')`,
-            [randomUUID(), timeTrial, participantId, attemptNo, ms, recorder],
+            `INSERT INTO trial_results (id, version, session_participant_id, attempt_no, elapsed_ms, recorded_by, recorded_at)
+             VALUES ($1, 1, $2, $3, $4, $5, '2026-10-02T02:00:00Z')`,
+            [randomUUID(), participantId, attemptNo, ms, recorder],
           );
         await trial(ids.soon, 2, '61000');
         await trial(ids.other, 1, '59000');

@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform } from 'class-transformer';
 import {
   IsInt,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -17,89 +16,6 @@ import {
   MAX_TRIAL_TIME_MESSAGE,
   MAX_TRIAL_TIME_MS,
 } from '../constants/trial-time.constants';
-
-export class CreateTimeTrialDto {
-  @ApiProperty({ minimum: 0.01 })
-  @IsNumber()
-  @Min(0.01)
-  distanceM!: number;
-
-  @ApiPropertyOptional({
-    type: Number,
-    minimum: 1,
-    maximum: MAX_TRIAL_TIME_MS,
-    nullable: true,
-    description: 'Thời gian mục tiêu (ms); null là không có mục tiêu',
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
-  targetTimeMs?: number | null;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  notes?: string;
-}
-
-export class UpdateTimeTrialDto {
-  @ApiPropertyOptional({ minimum: 0.01, description: 'Cự ly chạy thử (mét)' })
-  @IsOptional()
-  @IsNumber()
-  @Min(0.01)
-  distanceM?: number;
-
-  @ApiPropertyOptional({
-    minimum: 1,
-    maximum: MAX_TRIAL_TIME_MS,
-    nullable: true,
-    description: 'Thời gian mục tiêu (ms); gửi null để xóa',
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
-  targetTimeMs?: number | null;
-
-  @ApiPropertyOptional({
-    nullable: true,
-    description: 'Gửi null để xóa ghi chú',
-  })
-  @IsOptional()
-  @IsString()
-  notes?: string | null;
-}
-
-export class TimeTrialResponseDto {
-  @ApiProperty({ format: 'uuid' })
-  @Expose()
-  id!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  @Expose()
-  sessionId!: string;
-
-  @ApiProperty({ type: Number, description: 'Cự ly chạy thử (mét)' })
-  @Expose()
-  distanceM!: number;
-
-  @ApiPropertyOptional({
-    type: Number,
-    nullable: true,
-    description: 'Thời gian mục tiêu (ms); null là không có mục tiêu',
-  })
-  @Expose()
-  targetTimeMs!: number | null;
-
-  @ApiPropertyOptional()
-  @Expose()
-  notes!: string | null;
-
-  @ApiProperty({ format: 'date-time' })
-  @Expose()
-  createdAt!: Date;
-}
 
 export class CreateTrialResultDto {
   @ApiProperty({ minimum: 1 })
@@ -132,10 +48,6 @@ export class TrialResultResponseDto {
   @ApiProperty({ format: 'uuid' })
   @Expose()
   id!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  @Expose()
-  timeTrialId!: string;
 
   @ApiProperty({ format: 'uuid' })
   @Expose()
