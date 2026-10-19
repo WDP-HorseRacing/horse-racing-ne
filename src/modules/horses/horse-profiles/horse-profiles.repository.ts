@@ -35,7 +35,7 @@ export class HorseProfilesRepository {
    *
    * - Mặc định bỏ hồ sơ đã xóa; includeDeleted gộp thêm hồ sơ đã xóa (quyền do service kiểm)
    * - myBarns: ngựa thuộc khu người gọi làm Head Trainer; myHorses: ngựa người gọi đang là Groom phụ trách
-   * - placementStatus tính từ vòng đời, horses.barn_id và dòng xếp ô đang mở
+   * - placementStatus tính từ vòng đời, horses.barn_id, dòng xếp ô đang mở và dòng giao Groom đang mở
    * - Sắp xếp mặc định: chấn thương/cách ly, rồi cần theo dõi, rồi còn lại; cùng nhóm theo tên tiếng Việt
    *
    * @param scope Phạm vi xem của người gọi
@@ -57,10 +57,10 @@ export class HorseProfilesRepository {
   }
 
   /**
-   * Lấy khu (theo horses.barn_id) và ô đang mở của từng con ngựa, kể cả hồ sơ đã xóa.
+   * Lấy khu (theo horses.barn_id), ô đang mở và Groom đang phụ trách của từng con ngựa, kể cả hồ sơ đã xóa.
    *
    * - Khu hoặc ô đã bị xóa mềm thì coi như không có
-   * - Ngựa nào cũng có đúng một dòng, thiếu khu hoặc ô thì cột tương ứng là null
+   * - Ngựa nào cũng có đúng một dòng, thiếu khu, ô hoặc Groom thì cột tương ứng là null
    *
    * @param horseIds UUID các con ngựa
    * @returns Promise trả về vị trí của từng con ngựa
@@ -77,11 +77,17 @@ export class HorseProfilesRepository {
         'assignment.horseId = horse.id AND assignment.endAt IS NULL',
       )
       .leftJoin('assignment.stall', 'stall', 'stall.deletedAt IS NULL')
+      .leftJoin(
+        GroomAssignmentEntity,
+        'groomAssignment',
+        'groomAssignment.horseId = horse.id AND groomAssignment.endAt IS NULL',
+      )
       .select('horse.id', 'horseId')
       .addSelect('barn.id', 'barnId')
       .addSelect('barn.name', 'barnName')
       .addSelect('stall.id', 'stallId')
       .addSelect('stall.code', 'stallCode')
+      .addSelect('groomAssignment.groomId', 'groomId')
       .where('horse.id IN (:...horseIds)', { horseIds })
       .getRawMany<HorseLocationRow>();
   }
@@ -282,6 +288,7 @@ const PLACEMENT_STATUS_SQL = `CASE
   WHEN horse.lifecycle_status IN (${READ_ONLY_LIFECYCLE_STATUSES.map((status) => `'${status}'`).join(', ')}) THEN '${HorsePlacementStatus.NOT_APPLICABLE}'
   WHEN horse.barn_id IS NULL THEN '${HorsePlacementStatus.PENDING_BARN}'
   WHEN NOT EXISTS (SELECT 1 FROM stall_assignments sa WHERE sa.horse_id = horse.id AND sa.end_at IS NULL) THEN '${HorsePlacementStatus.PENDING_STALL}'
+  WHEN NOT EXISTS (SELECT 1 FROM groom_assignments ga WHERE ga.horse_id = horse.id AND ga.end_at IS NULL) THEN '${HorsePlacementStatus.PENDING_GROOM}'
   ELSE '${HorsePlacementStatus.PLACED}'
 END`;
 

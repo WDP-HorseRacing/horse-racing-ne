@@ -1551,12 +1551,13 @@
             "name": "placementStatus",
             "required": false,
             "in": "query",
-            "description": "PENDING_BARN: \"Chờ xếp khu\". PENDING_STALL: \"Chờ xếp ô\". PLACED: đã có khu và ô. NOT_APPLICABLE: đã chuyển nhượng hoặc đã mất",
+            "description": "PENDING_BARN: \"Chờ xếp khu\". PENDING_STALL: \"Chờ xếp ô\". PENDING_GROOM: \"Chờ giao Groom\" (đã có khu và ô, chưa có Groom). PLACED: đã có khu, ô và Groom. NOT_APPLICABLE: đã chuyển nhượng hoặc đã mất",
             "schema": {
               "type": "string",
               "enum": [
                 "PENDING_BARN",
                 "PENDING_STALL",
+                "PENDING_GROOM",
                 "PLACED",
                 "NOT_APPLICABLE"
               ]
@@ -10877,9 +10878,11 @@
             "enum": [
               "PENDING_BARN",
               "PENDING_STALL",
+              "PENDING_GROOM",
               "PLACED",
               "NOT_APPLICABLE"
-            ]
+            ],
+            "description": "PENDING_BARN: \"Chờ xếp khu\". PENDING_STALL: \"Chờ xếp ô\". PENDING_GROOM: \"Chờ giao Groom\" (đã có khu và ô, chưa có Groom). PLACED: đã có khu, ô và Groom. NOT_APPLICABLE: đã chuyển nhượng hoặc đã mất"
           }
         },
         "required": [

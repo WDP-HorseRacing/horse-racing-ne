@@ -554,3 +554,7 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
 ## Danh sách ngựa: ngựa đã chuyển đi, đã mất xếp cuối
 
 1. `GET /horses` với `sortBy=HEALTH_PRIORITY` (mặc định): ngựa `TRANSFERRED`/`DECEASED` luôn xếp sau mọi ngựa còn lại, bất kể `healthStatus` (`sortOrder=DESC` thì lên đầu). Request, response không đổi.
+
+## Danh sách ngựa: thêm tình trạng "Chờ giao Groom"
+
+1. `placementStatus` (response `location.placementStatus` của `GET /horses`, `GET /horses/:id` và bộ lọc `GET /horses?placementStatus=`) có thêm giá trị `PENDING_GROOM`: đã có khu và ô nhưng chưa có Groom phụ trách. Ngựa trước đây hiện `PLACED` mà chưa có Groom nay hiện `PENDING_GROOM`; `PLACED` giờ là đủ khu, ô và Groom.

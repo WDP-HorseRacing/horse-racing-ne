@@ -61,6 +61,7 @@ export interface PedigreeAncestorRow {
  *
  * - Khu lấy từ horses.barn_id (Club Manager xếp), null nếu chưa xếp khu.
  * - Ô lấy từ dòng xếp ô đang mở, null nếu chưa xếp ô.
+ * - Groom lấy từ dòng giao Groom đang mở, null nếu chưa giao Groom.
  */
 export interface HorseLocationRow {
   horseId: string;
@@ -68,6 +69,7 @@ export interface HorseLocationRow {
   barnName: string | null;
   stallId: string | null;
   stallCode: string | null;
+  groomId: string | null;
 }
 
 /**

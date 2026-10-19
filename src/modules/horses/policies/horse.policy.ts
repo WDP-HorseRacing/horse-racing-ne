@@ -978,23 +978,26 @@ export function canRecordMeasurement(
 }
 
 /**
- * Tính tình trạng xếp chỗ của ngựa: Chờ xếp khu, Chờ xếp ô hoặc đã xếp
+ * Tính tình trạng xếp chỗ của ngựa: Chờ xếp khu, Chờ xếp ô, Chờ giao Groom hoặc đã xếp
  *
  * @param lifecycleStatus Vòng đời của ngựa
  * @param barnId Khu của ngựa, null nếu chưa xếp
  * @param stallId Ô đang mở của ngựa, null nếu chưa xếp
+ * @param groomId Groom đang phụ trách ngựa, null nếu chưa giao
  * @returns Tình trạng xếp chỗ; ngựa đã chuyển nhượng hoặc đã mất luôn là NOT_APPLICABLE
  */
 export function placementStatusOf(
   lifecycleStatus: HorseLifecycleStatus,
   barnId: string | null,
   stallId: string | null,
+  groomId: string | null,
 ): HorsePlacementStatus {
   if (isReadOnlyLifecycle(lifecycleStatus)) {
     return HorsePlacementStatus.NOT_APPLICABLE;
   }
   if (!barnId) return HorsePlacementStatus.PENDING_BARN;
   if (!stallId) return HorsePlacementStatus.PENDING_STALL;
+  if (!groomId) return HorsePlacementStatus.PENDING_GROOM;
   return HorsePlacementStatus.PLACED;
 }
 

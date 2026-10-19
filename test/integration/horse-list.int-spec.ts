@@ -11,6 +11,7 @@ import {
   HorseLifecycleStatus,
 } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseProfilesRepository } from '../../src/modules/horses/horse-profiles/horse-profiles.repository';
+import { placementStatusOf } from '../../src/modules/horses/policies/horse.policy';
 import type { HorseScope } from '../../src/modules/horses/types/horse.types';
 import { fixtures } from './fixtures';
 import {
@@ -194,6 +195,52 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
     ).resolves.toEqual(['Đã đi', 'Đã mất']);
   });
 
+  it('shows PENDING_GROOM for a horse with barn and stall but no groom, in the list filter and the location row alike', async () => {
+    const groom = await seed.user(UserRole.GROOM);
+    const barn = await barnLedBy('Khu A', caller);
+    const stallId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO stalls (id, version, barn_id, code) VALUES ($1, 1, $2, 'A-01')`,
+      [stallId, barn],
+    );
+    const horse = await seed.horse('Chờ Groom', { barnId: barn });
+    await dataSource.query(
+      `INSERT INTO stall_assignments (id, version, horse_id, stall_id, start_at)
+       VALUES ($1, 1, $2, $3, now())`,
+      [randomUUID(), horse, stallId],
+    );
+    await groomAssignment(horse, groom, true);
+    const statusOfRow = async () => {
+      const [row] = await repository.locationsByHorseIds([horse]);
+      return placementStatusOf(
+        HorseLifecycleStatus.ACTIVE,
+        row.barnId,
+        row.stallId,
+        row.groomId,
+      );
+    };
+
+    await expect(
+      names({ placementStatus: HorsePlacementStatus.PENDING_GROOM }),
+    ).resolves.toEqual(['Chờ Groom']);
+    await expect(
+      names({ placementStatus: HorsePlacementStatus.PLACED }),
+    ).resolves.toEqual([]);
+    await expect(statusOfRow()).resolves.toBe(
+      HorsePlacementStatus.PENDING_GROOM,
+    );
+
+    await groomAssignment(horse, groom, false);
+
+    await expect(
+      names({ placementStatus: HorsePlacementStatus.PENDING_GROOM }),
+    ).resolves.toEqual([]);
+    await expect(
+      names({ placementStatus: HorsePlacementStatus.PLACED }),
+    ).resolves.toEqual(['Chờ Groom']);
+    await expect(statusOfRow()).resolves.toBe(HorsePlacementStatus.PLACED);
+  });
+
   it('sorts by health priority then Vietnamese name, and pages with a total', async () => {
     await seed.horse('Bình', { health: HorseHealthStatus.ELIGIBLE });
     await seed.horse('Ánh', { health: HorseHealthStatus.UNDER_OBSERVATION });
@@ -297,6 +344,7 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
         barnName: 'Khu A',
         stallId: a01,
         stallCode: 'A-01',
+        groomId: null,
       });
       expect(byHorse.get(moved)).toMatchObject({
         stallId: a02,
@@ -308,6 +356,7 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
         barnName: null,
         stallId: null,
         stallCode: null,
+        groomId: null,
       });
       expect(byHorse.get(inGoneBarn)).toMatchObject({
         barnId: null,

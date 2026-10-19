@@ -710,10 +710,10 @@ function normalizeMicrochip(value: string | null | undefined): string | null {
 }
 
 /**
- * Tạo vị trí rỗng cho ngựa không có dòng vị trí (chưa có khu, chưa có ô).
+ * Tạo vị trí rỗng cho ngựa không có dòng vị trí (chưa có khu, chưa có ô, chưa có Groom).
  *
  * @param horseId UUID của ngựa
- * @returns Vị trí với khu và ô đều null
+ * @returns Vị trí với khu, ô và Groom đều null
  */
 function emptyLocation(horseId: string): HorseLocationRow {
   return {
@@ -722,5 +722,6 @@ function emptyLocation(horseId: string): HorseLocationRow {
     barnName: null,
     stallId: null,
     stallCode: null,
+    groomId: null,
   };
 }

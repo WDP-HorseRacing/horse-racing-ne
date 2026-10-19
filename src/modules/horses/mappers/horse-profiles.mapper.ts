@@ -113,6 +113,7 @@ function toLocation(
       horse.lifecycleStatus,
       location.barnId,
       location.stallId,
+      location.groomId,
     ),
   };
 }

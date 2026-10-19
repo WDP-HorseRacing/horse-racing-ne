@@ -716,6 +716,7 @@ describe('HorseProfilesService', () => {
           barnName: 'Khu A',
           stallId: 's1',
           stallCode: 'A-01',
+          groomId: null,
         },
       ]);
     });

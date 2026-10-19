@@ -382,26 +382,32 @@ describe('horse.policy', () => {
   describe('placementStatusOf', () => {
     it('returns NOT_APPLICABLE for a TRANSFERRED horse', () => {
       expect(
-        placementStatusOf(HorseLifecycleStatus.TRANSFERRED, 'b1', 's1'),
+        placementStatusOf(HorseLifecycleStatus.TRANSFERRED, 'b1', 's1', 'g1'),
       ).toBe(HorsePlacementStatus.NOT_APPLICABLE);
     });
 
     it('returns PENDING_BARN without a barn', () => {
-      expect(placementStatusOf(HorseLifecycleStatus.ACTIVE, null, null)).toBe(
-        HorsePlacementStatus.PENDING_BARN,
-      );
+      expect(
+        placementStatusOf(HorseLifecycleStatus.ACTIVE, null, null, null),
+      ).toBe(HorsePlacementStatus.PENDING_BARN);
     });
 
     it('returns PENDING_STALL with a barn but no stall', () => {
-      expect(placementStatusOf(HorseLifecycleStatus.RETIRED, 'b1', null)).toBe(
-        HorsePlacementStatus.PENDING_STALL,
-      );
+      expect(
+        placementStatusOf(HorseLifecycleStatus.RETIRED, 'b1', null, 'g1'),
+      ).toBe(HorsePlacementStatus.PENDING_STALL);
     });
 
-    it('returns PLACED with both barn and stall', () => {
-      expect(placementStatusOf(HorseLifecycleStatus.ACTIVE, 'b1', 's1')).toBe(
-        HorsePlacementStatus.PLACED,
-      );
+    it('returns PENDING_GROOM with a barn and stall but no groom', () => {
+      expect(
+        placementStatusOf(HorseLifecycleStatus.ACTIVE, 'b1', 's1', null),
+      ).toBe(HorsePlacementStatus.PENDING_GROOM);
+    });
+
+    it('returns PLACED with barn, stall and groom', () => {
+      expect(
+        placementStatusOf(HorseLifecycleStatus.ACTIVE, 'b1', 's1', 'g1'),
+      ).toBe(HorsePlacementStatus.PLACED);
     });
   });
 
@@ -1443,9 +1449,9 @@ describe('horse.policy', () => {
         racingEligible: false,
         reasons: [EligibilityReason.LIFECYCLE_DECEASED],
       });
-      expect(placementStatusOf(HorseLifecycleStatus.DECEASED, null, null)).toBe(
-        HorsePlacementStatus.NOT_APPLICABLE,
-      );
+      expect(
+        placementStatusOf(HorseLifecycleStatus.DECEASED, null, null, null),
+      ).toBe(HorsePlacementStatus.NOT_APPLICABLE);
       expect(
         barnChangeBlockedReason(HorseLifecycleStatus.DECEASED, null, 'b1'),
       ).toBe('Ngựa đã mất, hồ sơ chỉ đọc');

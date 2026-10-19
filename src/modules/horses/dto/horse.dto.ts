@@ -136,7 +136,11 @@ export class HorseLocationDto {
   })
   stall!: HorseStallSummaryDto | null;
 
-  @ApiProperty({ enum: HorsePlacementStatus })
+  @ApiProperty({
+    enum: HorsePlacementStatus,
+    description:
+      'PENDING_BARN: "Chờ xếp khu". PENDING_STALL: "Chờ xếp ô". PENDING_GROOM: "Chờ giao Groom" (đã có khu và ô, chưa có Groom). PLACED: đã có khu, ô và Groom. NOT_APPLICABLE: đã chuyển nhượng hoặc đã mất',
+  })
   placementStatus!: HorsePlacementStatus;
 }
 export class HorsePersonDto {
