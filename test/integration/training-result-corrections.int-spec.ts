@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
@@ -223,27 +223,21 @@ describe('Correcting trial results and evaluations after a session (Postgres)', 
     ]);
   });
 
-  it('refuses both corrections more than 7 days after the scheduled end and keeps the data', async () => {
+  it('accepts both corrections more than 7 days after the scheduled end', async () => {
     const run = await seedRun('COMPLETED', 8);
 
-    await expect(
-      trials.update(run.trainer, run.participantId, 2, {
-        elapsedMs: 75000,
-        reason: 'Bấm giờ nhầm',
-      }),
-    ).rejects.toThrow(new ConflictException('Quá hạn sửa kết quả buổi tập'));
-    await expect(
-      evaluations.update(run.trainer, run.participantId, {
-        score: 8,
-        reason: 'Chấm nhầm',
-      }),
-    ).rejects.toThrow(new ConflictException('Quá hạn sửa kết quả buổi tập'));
+    await trials.update(run.trainer, run.participantId, 2, {
+      elapsedMs: 75000,
+      reason: 'Bấm giờ nhầm',
+    });
+    await evaluations.update(run.trainer, run.participantId, {
+      score: 8,
+      reason: 'Chấm nhầm',
+    });
 
     const [row] = await reports.participants(run.horseId, run.period);
-    expect(row).toMatchObject({ bestTrialMs: '68000', score: 6 });
-    await expect(dataSource.query('SELECT 1 FROM audit_logs')).resolves.toEqual(
-      [],
-    );
+    expect(row).toMatchObject({ bestTrialMs: '70000', score: 8 });
+    await expect(auditsOf('TRIAL_RESULT')).resolves.toHaveLength(1);
   });
 
   it('refuses a head trainer of another class', async () => {

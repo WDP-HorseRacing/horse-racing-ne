@@ -166,16 +166,16 @@ describe('PerformanceEvaluationsService.update', () => {
     expect(manager.save).not.toHaveBeenCalled();
   });
 
-  it('returns 409 when more than 7 days passed since the scheduled end', async () => {
+  it('still edits a session that ended more than 7 days ago', async () => {
     access.lockedSession.mockResolvedValue(
       endedSession({
-        scheduledEndAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        scheduledEndAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       }),
     );
 
-    await expect(
-      service.update(actor, 'p1', { score: 8, reason: 'x' }),
-    ).rejects.toThrow(new ConflictException('Quá hạn sửa kết quả buổi tập'));
-    expect(manager.save).not.toHaveBeenCalled();
+    const result = await service.update(actor, 'p1', { score: 8, reason: 'x' });
+
+    expect(result.score).toBe(8);
+    expect(manager.save).toHaveBeenCalled();
   });
 });

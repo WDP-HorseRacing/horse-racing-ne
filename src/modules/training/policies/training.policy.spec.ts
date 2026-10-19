@@ -32,7 +32,6 @@ import {
   assertSessionWindowInClass,
   assertTrainableHorse,
   assertSessionRecordEditable,
-  SESSION_RECORD_EDIT_WINDOW_MS,
   assertHorseEnrollable,
   assertClassOpenForSessions,
   assertSubjectExercise,
@@ -647,36 +646,15 @@ describe('session overlap policy', () => {
   });
 
   describe('assertSessionRecordEditable', () => {
-    const endAt = new Date('2026-10-10T02:00:00Z');
-    const deadline = new Date(endAt.getTime() + SESSION_RECORD_EDIT_WINDOW_MS);
-
-    it('allows editing right up to the 7th day after the scheduled end, inclusive', () => {
+    it('allows editing a completed session with no time limit', () => {
       expect(() =>
-        assertSessionRecordEditable(
-          TrainingSessionStatus.COMPLETED,
-          endAt,
-          deadline,
-        ),
+        assertSessionRecordEditable(TrainingSessionStatus.COMPLETED),
       ).not.toThrow();
     });
 
-    it('rejects one millisecond past the deadline', () => {
+    it('rejects a cancelled session', () => {
       expect(() =>
-        assertSessionRecordEditable(
-          TrainingSessionStatus.COMPLETED,
-          endAt,
-          new Date(deadline.getTime() + 1),
-        ),
-      ).toThrow(new ConflictException('Quá hạn sửa kết quả buổi tập'));
-    });
-
-    it('rejects a cancelled session even within the window', () => {
-      expect(() =>
-        assertSessionRecordEditable(
-          TrainingSessionStatus.CANCELLED,
-          endAt,
-          endAt,
-        ),
+        assertSessionRecordEditable(TrainingSessionStatus.CANCELLED),
       ).toThrow(
         new ConflictException('Buổi tập đã hủy, không sửa kết quả được'),
       );

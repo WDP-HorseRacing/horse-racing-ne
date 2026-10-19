@@ -139,6 +139,44 @@ describe('TrialResultsService', () => {
       });
     });
 
+    it('records a result after the session has completed', async () => {
+      access.lockedSession.mockResolvedValue({
+        id: 's1',
+        sessionType: TrainingSessionType.TIME_TRIAL,
+        status: TrainingSessionStatus.COMPLETED,
+      });
+      access.lockedParticipant.mockResolvedValue({
+        status: SessionParticipantStatus.COMPLETED,
+      });
+
+      const result = await service.create(actor, 'p1', body);
+
+      expect(result.elapsedMs).toBe(61000);
+      expect(manager.save).toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        TrainingSessionStatus.SCHEDULED,
+        'Buổi tập chưa bắt đầu, chưa ghi kết quả được',
+      ],
+      [
+        TrainingSessionStatus.CANCELLED,
+        'Buổi tập đã hủy, không ghi kết quả được',
+      ],
+    ])('returns 409 when the session is %s', async (status, message) => {
+      access.lockedSession.mockResolvedValue({
+        id: 's1',
+        sessionType: TrainingSessionType.TIME_TRIAL,
+        status,
+      });
+
+      await expect(service.create(actor, 'p1', body)).rejects.toThrow(
+        new ConflictException(message),
+      );
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
     it('skips the media checks and returns a null videoUrl without video', async () => {
       const result = await service.create(actor, 'p1', body);
 
@@ -364,17 +402,20 @@ describe('TrialResultsService', () => {
       expect(manager.save).not.toHaveBeenCalled();
     });
 
-    it('returns 409 when more than 7 days passed since the scheduled end', async () => {
+    it('still edits a session that ended more than 7 days ago', async () => {
       access.lockedSession.mockResolvedValue(
         endedSession({
-          scheduledEndAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+          scheduledEndAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         }),
       );
 
-      await expect(
-        service.update(actor, 'p1', 2, { elapsedMs: 1, reason: 'x' }),
-      ).rejects.toThrow(new ConflictException('Quá hạn sửa kết quả buổi tập'));
-      expect(manager.save).not.toHaveBeenCalled();
+      const result = await service.update(actor, 'p1', 2, {
+        elapsedMs: 1,
+        reason: 'x',
+      });
+
+      expect(result.elapsedMs).toBe(1);
+      expect(manager.save).toHaveBeenCalled();
     });
   });
 });

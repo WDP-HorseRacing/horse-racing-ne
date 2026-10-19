@@ -3968,7 +3968,7 @@
         ]
       },
       "patch": {
-        "description": "Chỉ Head Trainer phụ trách lớp, ngựa thuộc khu mình; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Bắt buộc reason; field bỏ trống giữ nguyên, comment null để xóa nhận xét.",
+        "description": "Chỉ Head Trainer phụ trách lớp, ngựa thuộc khu mình; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Bắt buộc reason; field bỏ trống giữ nguyên, comment null để xóa nhận xét.",
         "operationId": "PerformanceEvaluationsController_update",
         "parameters": [
           {
@@ -7809,7 +7809,7 @@
     },
     "/api/v1/session-participants/{id}/trial-results/{attemptNo}": {
       "patch": {
-        "description": "Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy và chưa quá 7 ngày kể từ giờ kết thúc dự kiến. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.",
+        "description": "Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.",
         "operationId": "TrialResultsController_update",
         "parameters": [
           {

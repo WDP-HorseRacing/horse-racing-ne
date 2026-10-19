@@ -99,7 +99,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    7. Head Trainer phụ trách lớp không có hai buổi trùng giờ ở hai lớp khác nhau của mình. Thêm buổi (kể cả thêm nhiều buổi một lần) hoặc đổi giờ buổi mà trùng với buổi chưa hủy ở lớp khác do cùng Head Trainer phụ trách thì chặn 409, không lưu gì: "Trùng giờ với lịch của Huấn luyện viên trưởng: lớp {mã lớp}, {giờ bắt đầu CLB của buổi trùng}" (buổi trùng bắt đầu sớm nhất). Kiểm sau luật 8.5 và 8.6. Sửa buổi không đổi giờ thì không kiểm. Lớp của Head Trainer khác hoặc lớp chưa có Head Trainer không tính.
 7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
    1. Sửa một lần chạy thử sau khi ghi (`PATCH /session-participants/:id/trial-results/:attemptNo`, body `{ videoMediaId?, elapsedMs?, notes?, reason? }`): chỉ Head Trainer phụ trách lớp, không kiểm khu của ngựa.
-      - Hạn sửa (luật chung cho video, thời gian, ghi chú chạy thử và đánh giá ở luật 9): tới 7 ngày sau giờ kết thúc dự kiến của buổi, đúng mốc vẫn sửa được; quá hạn 409 "Quá hạn sửa kết quả buổi tập"; buổi đã hủy 409 "Buổi tập đã hủy, không sửa kết quả được". Lượt hoàn thành và lượt dừng sớm sửa như nhau.
+      - Hạn sửa (luật chung cho video, thời gian, ghi chú chạy thử và đánh giá ở luật 9): không giới hạn thời gian sau khi buổi kết thúc; buổi đã hủy 409 "Buổi tập đã hủy, không sửa kết quả được". Lượt hoàn thành và lượt dừng sớm sửa như nhau.
       - Video: gắn, đổi hoặc gỡ (`videoMediaId = null`), không cần lý do.
       - Thời gian (`elapsedMs`, số nguyên 1 ms tới 1 giờ như khi ghi) và ghi chú (`notes`, null để xóa): bắt buộc `reason`, cắt khoảng trắng hai đầu, 1–500 ký tự; thiếu hoặc trống thì 400.
       - Field bỏ trống giữ nguyên. Không sửa số lần chạy, người ghi; không xóa lần chạy.
@@ -137,7 +137,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
     - Lý do chữ tự do bắt buộc, cắt khoảng trắng hai đầu, 1–500 ký tự; trống thì 400.
     - Lượt thành Dừng sớm (`STOPPED`), lưu `stoppedReason`; giờ kết thúc lưu vào `completedAt` như hoàn thành nên thời lượng thực vẫn tính được.
     - Ghi một dòng nhật ký (chức năng `TRAIN_RUN`, trạng thái trước và sau, lý do = lý do dừng).
-    - Lượt dừng sớm đã kết thúc: không điểm danh, bắt đầu, giao Groom lại; không nhận thêm điểm đo. Vẫn ghi được kết quả chạy thử (khi buổi còn Đang diễn ra) và đánh giá như lượt hoàn thành.
+    - Lượt dừng sớm đã kết thúc: không điểm danh, bắt đầu, giao Groom lại; không nhận thêm điểm đo. Vẫn ghi được kết quả chạy thử (khi buổi Đang diễn ra hoặc đã hoàn thành, không giới hạn thời gian; buổi Đã lên lịch 409 "Buổi tập chưa bắt đầu, chưa ghi kết quả được", buổi đã hủy 409 "Buổi tập đã hủy, không ghi kết quả được") và đánh giá như lượt hoàn thành.
     - Không gửi thông báo, không tự gửi yêu cầu khám, không đổi sức khỏe ngựa.
     - Lượt tạo trước khi có trạng thái này giữ nguyên Hoàn thành. Tự hoàn thành lượt bị quên (luật 11) không đổi.
 11. Tab buổi tập của ngựa (`GET /horses/:horseId/training/sessions`): `when=upcoming` là lượt còn mở (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) bất kể giờ, cùng lượt Không đủ điều kiện của buổi chưa tới giờ; `when=history` là lượt đã kết thúc (kể cả Dừng sớm, kèm `stoppedReason`), kể cả lượt chạy xong trước giờ lịch. Lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ không nằm ở tab nào.
@@ -178,8 +178,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 | Tạo, sửa lớp, buổi, chạy thử, ghi danh | Không | Lớp mình phụ trách | Không | Không | Không |
 | Điểm danh, báo vắng, báo sẵn sàng | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Lượt mình được giao | Không |
 | Bắt đầu, hoàn thành, dừng sớm lượt, ghi kết quả chạy thử | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
-| Đánh giá buổi, sửa đánh giá (7 ngày sau buổi) | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
-| Sửa video, thời gian, ghi chú chạy thử (7 ngày sau buổi) | Không | Lớp mình phụ trách | Không | Không | Không |
+| Đánh giá buổi, sửa đánh giá | Không | Lớp mình phụ trách, ngựa thuộc khu mình | Không | Không | Không |
+| Sửa video, thời gian, ghi chú chạy thử | Không | Lớp mình phụ trách | Không | Không | Không |
 | Ngưỡng nhịp tim/tốc độ | Xem | Xem ngựa thuộc khu mình | Xem | Không | Không |
 | Bàn giao Head Trainer | Có | Không | Không | Không | Không |
 

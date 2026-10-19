@@ -109,7 +109,7 @@ export class PerformanceEvaluationsService {
    *
    * - Quyền như khi tạo đánh giá: Head Trainer phụ trách lớp, ngựa thuộc khu mình
    * - Field bỏ trống giữ nguyên; comment null là xóa nhận xét; không đổi người đánh giá
-   * - Buổi đã hủy hoặc quá 7 ngày kể từ giờ kết thúc dự kiến: 409
+   * - Buổi đã hủy: 409; không giới hạn thời gian sau khi buổi kết thúc
    * - Có field đổi khác: ghi một dòng nhật ký gồm giá trị trước, sau của các field đổi và lý do; không đổi gì thì không ghi
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -118,7 +118,7 @@ export class PerformanceEvaluationsService {
    * @returns Promise trả về đánh giá sau khi sửa
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không được thao tác lượt tập này
    * @throws NotFoundException Nếu không có lượt tập hoặc lượt tập chưa có đánh giá
-   * @throws ConflictException Nếu buổi đã hủy hoặc quá hạn sửa
+   * @throws ConflictException Nếu buổi đã hủy
    */
   async update(
     actor: Actor,
@@ -146,11 +146,7 @@ export class PerformanceEvaluationsService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!evaluation) throw new NotFoundException('Lượt tập chưa có đánh giá');
-      assertSessionRecordEditable(
-        session.status,
-        session.scheduledEndAt,
-        new Date(),
-      );
+      assertSessionRecordEditable(session.status);
       const diff = changedFieldsDiff(
         { score: evaluation.score, comment: evaluation.comment },
         { score: body.score, comment: body.comment },

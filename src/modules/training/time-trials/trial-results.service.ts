@@ -79,7 +79,8 @@ export class TrialResultsService {
   /**
    * Ghi một lần chạy thử cho lượt tập, có thể kèm video đã tải lên
    *
-   * - Chỉ Head Trainer phụ trách lớp, buổi TIME_TRIAL đang IN_PROGRESS, lượt tập ONGOING hoặc COMPLETED
+   * - Chỉ Head Trainer phụ trách lớp, buổi TIME_TRIAL đang IN_PROGRESS hoặc đã COMPLETED (không giới hạn thời gian sau khi buổi kết thúc), lượt tập ONGOING hoặc COMPLETED
+   * - Buổi SCHEDULED hoặc CANCELLED: 409
    * - Video (videoMediaId) phải do chính người ghi tải lên với mục đích TRIAL_VIDEO và đã có trên storage đúng như khai báo; kiểm trước khi mở transaction
    * - Mỗi lần chạy (attemptNo) của một lượt tập chỉ ghi một lần
    * - Ghi nhật ký kèm lượt tập, số lần chạy, thời gian, ghi chú, video
@@ -135,8 +136,13 @@ export class TrialResultsService {
       if (session.sessionType !== TrainingSessionType.TIME_TRIAL) {
         throw new ConflictException('Buổi tập không phải buổi chạy thử');
       }
-      if (session.status !== TrainingSessionStatus.IN_PROGRESS) {
-        throw new ConflictException('Buổi tập chưa ở trạng thái đang diễn ra');
+      if (session.status === TrainingSessionStatus.SCHEDULED) {
+        throw new ConflictException(
+          'Buổi tập chưa bắt đầu, chưa ghi kết quả được',
+        );
+      }
+      if (session.status === TrainingSessionStatus.CANCELLED) {
+        throw new ConflictException('Buổi tập đã hủy, không ghi kết quả được');
       }
       if (
         participant.status !== SessionParticipantStatus.ONGOING &&
@@ -200,7 +206,7 @@ export class TrialResultsService {
    * - Field bỏ trống giữ nguyên; không sửa số lần chạy và người ghi
    * - Video khác null phải do chính người sửa tải lên với mục đích TRIAL_VIDEO và đã có trên storage; kiểm trước khi mở transaction
    * - videoMediaId null: gỡ video khỏi lần chạy, tệp cũ vẫn nằm trên storage
-   * - Buổi đã hủy hoặc quá 7 ngày kể từ giờ kết thúc dự kiến: 409
+   * - Buổi đã hủy: 409; không giới hạn thời gian sau khi buổi kết thúc
    * - Có field đổi khác: ghi một dòng nhật ký gồm giá trị trước, sau của các field đổi và lý do (nếu có); không đổi gì thì không ghi
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -211,7 +217,7 @@ export class TrialResultsService {
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phải Head Trainer phụ trách lớp
    * @throws NotFoundException Nếu không có lượt tập, không có lần chạy, hoặc video không tồn tại hay không do người gọi tải lên
    * @throws BadRequestException Nếu video không phải TRIAL_VIDEO, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
-   * @throws ConflictException Nếu buổi đã hủy, quá hạn sửa hoặc video chưa có trên storage
+   * @throws ConflictException Nếu buổi đã hủy hoặc video chưa có trên storage
    */
   async update(
     actor: Actor,
@@ -245,11 +251,7 @@ export class TrialResultsService {
       if (!result) {
         throw new NotFoundException('Không tìm thấy lần chạy thử');
       }
-      assertSessionRecordEditable(
-        session.status,
-        session.scheduledEndAt,
-        new Date(),
-      );
+      assertSessionRecordEditable(session.status);
       const diff = changedFieldsDiff(trialResultAuditData(result), {
         videoMediaId: body.videoMediaId,
         elapsedMs: body.elapsedMs,
