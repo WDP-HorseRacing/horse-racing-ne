@@ -52,6 +52,12 @@ const OPEN_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.READY,
 ];
 
+const LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES = [
+  ...OPEN_PARTICIPANT_STATUSES,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
+];
+
 const HAPPENED_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.COMPLETED,
   SessionParticipantStatus.STOPPED,
@@ -406,7 +412,7 @@ export class TrainingOperationsFacade {
   /**
    * Hủy các lượt tham gia chưa diễn ra của những enrollment vừa rời lớp.
    *
-   * - Chỉ hủy lượt PLANNED/PRESENT/READY của buổi có giờ bắt đầu từ `from` trở đi
+   * - Chỉ hủy lượt PLANNED/PRESENT/READY/CANCELLED_BY_LOCK/INELIGIBLE của buổi có giờ bắt đầu từ `from` trở đi
    * - Lượt ONGOING, lượt đã kết thúc và buổi trước `from` giữ nguyên
    * - Khóa các lượt sẽ hủy; lượt vừa được thao tác khác chuyển sang ONGOING thì không bị hủy
    * - Buổi không còn lượt nào mở thì cập nhật lại trạng thái buổi
@@ -436,7 +442,7 @@ export class TrainingOperationsFacade {
         enrollmentIds,
       })
       .andWhere('participant.status IN (:...statuses)', {
-        statuses: OPEN_PARTICIPANT_STATUSES,
+        statuses: LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES,
       })
       .andWhere('session.scheduled_start_at >= :from', { from })
       .setLock('pessimistic_write', undefined, ['participant'])

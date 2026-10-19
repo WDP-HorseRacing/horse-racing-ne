@@ -203,7 +203,7 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
     expect(getRepository).not.toHaveBeenCalled();
   });
 
-  it('only targets open participants of sessions starting from the given time', async () => {
+  it('targets open, locked and ineligible participants of sessions starting from the given time', async () => {
     const { manager, participantQb } = buildManager([], []);
 
     await facade.cancelParticipantsFromEnrollments(
@@ -224,6 +224,8 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
           SessionParticipantStatus.PLANNED,
           SessionParticipantStatus.PRESENT,
           SessionParticipantStatus.READY,
+          SessionParticipantStatus.CANCELLED_BY_LOCK,
+          SessionParticipantStatus.INELIGIBLE,
         ],
       },
     );
@@ -236,6 +238,33 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
       undefined,
       ['participant'],
     );
+  });
+  it('cancels locked and ineligible participants with the given reason and refreshes their sessions', async () => {
+    const locked = {
+      ...participant('p1', 's1'),
+      status: SessionParticipantStatus.CANCELLED_BY_LOCK,
+    };
+    const ineligible = {
+      ...participant('p2', 's2'),
+      status: SessionParticipantStatus.INELIGIBLE,
+    };
+    const { manager, save } = buildManager([], [locked, ineligible]);
+    const refresh = jest.spyOn(facade, 'refreshSessionStatus');
+
+    await expect(
+      facade.cancelParticipantsFromEnrollments(manager, ['e1'], AT, 'Rời lớp'),
+    ).resolves.toBe(2);
+
+    for (const row of [locked, ineligible]) {
+      expect(row.status).toBe(SessionParticipantStatus.CANCELLED);
+      expect(row.cancelReason).toBe('Rời lớp');
+    }
+    expect(save).toHaveBeenCalledWith(SessionParticipantEntity, [
+      locked,
+      ineligible,
+    ]);
+    expect(refresh).toHaveBeenCalledWith(manager, 's1');
+    expect(refresh).toHaveBeenCalledWith(manager, 's2');
   });
 });
 

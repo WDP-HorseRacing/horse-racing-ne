@@ -86,7 +86,7 @@ function setup(
 }
 
 describe('TrainingClassEnrollmentsService.leave', () => {
-  it('marks the enrollment LEFT and cancels open participants from leftAt', async () => {
+  it('marks the enrollment LEFT and cancels open, locked and ineligible participants from leftAt', async () => {
     const enrollment = buildEnrollment();
     const participants = [
       {
@@ -127,6 +127,8 @@ describe('TrainingClassEnrollmentsService.leave', () => {
           SessionParticipantStatus.PLANNED,
           SessionParticipantStatus.PRESENT,
           SessionParticipantStatus.READY,
+          SessionParticipantStatus.CANCELLED_BY_LOCK,
+          SessionParticipantStatus.INELIGIBLE,
         ],
       },
     );

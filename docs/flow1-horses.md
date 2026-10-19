@@ -684,7 +684,7 @@ Flow 2 đã có lớp học nhiều ngựa (`training_classes`, `horse_enrollmen
 
 | # | Việc | Docs | Cách làm |
 |---|---|---|---|
-| 1 | Training export hàm rút ngựa khỏi lớp | F1.6 mục 4, F1.8 mục 1 | `withdrawHorseFromClasses`: enrollment ACTIVE → LEFT (chưa bắt đầu học thì CANCELLED); hủy lượt tập PLANNED/PRESENT/READY của buổi từ lúc rút trở đi; buổi đã học và lượt ONGOING giữ nguyên. `leave()` (HT bấm rời lớp) dùng chung phần hủy lượt |
+| 1 | Training export hàm rút ngựa khỏi lớp | F1.6 mục 4, F1.8 mục 1 | `withdrawHorseFromClasses`: enrollment ACTIVE → LEFT (chưa bắt đầu học thì CANCELLED); hủy lượt tập PLANNED/PRESENT/READY/CANCELLED_BY_LOCK/INELIGIBLE của buổi từ lúc rút trở đi; buổi đã học và lượt ONGOING giữ nguyên. `leave()` (HT bấm rời lớp) dùng chung phần hủy lượt |
 | 2 | Đổi khu thì rút ngựa khỏi lớp của Head Trainer khu cũ | F1.6 mục 4, use case bước 6 | `assignBarn` gọi hàm ở việc 1, lọc theo HT khu cũ. Khu mới cùng HT với khu cũ thì giữ lớp (quyết định, `headTrainerToLeaveOnBarnChange`) |
 | 3 | Giải nghệ / chuyển nhượng thì rút ngựa khỏi lớp | F1.8 mục 1, 2 | `updateLifecycle` (cờ `withdrawFromClasses`) gọi hàm ở việc 1; bỏ `cancelOpenTrainingPlans` |
 | 4 | Đổi Groom thì chuyển đầu việc buổi tập tương lai sang Groom mới | F1.7 mục 6 | `moveFutureParticipantsToGroom`: chỉ chuyển lượt đang giao cho Groom cũ; lượt HT đã giao tay cho người khác giữ nguyên (quyết định) |
