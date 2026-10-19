@@ -6,6 +6,14 @@ import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationResourceType } from '../enums/notification-resource-type.enum';
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { NotificationRecipientsRepository } from './notification-recipients.repository';
+import type {
+  HealthChangedEvent,
+  MedicalCaseCancelledEvent,
+  MedicalCaseClosedEvent,
+  MedicalCaseOpenedEvent,
+  TrainingLockReleasedEvent,
+  TrainingLockSetEvent,
+} from '../../medical/types/medical-events.types';
 import type { NotificationDraft } from '../types/notification.types';
 import { MedicalNotificationsService } from './medical-notifications.service';
 import { NotificationDeliveryService } from './notification-delivery.service';
@@ -74,6 +82,7 @@ describe('MedicalNotificationsService', () => {
       lockId: 'l1',
       reason: 'Hồi phục sau viêm gân',
       expectedEnd: null,
+      ownerId: 'owner-1',
     });
     expect(sentDraft()).toMatchObject({
       recipientIds: ['cm-1', 'ht-1', 'owner-1', 'groom-1'],
@@ -97,6 +106,7 @@ describe('MedicalNotificationsService', () => {
       horseId: 'h1',
       lockId: 'l1',
       conclusion: 'Đã hồi phục',
+      ownerId: 'owner-1',
     });
     expect(sentDraft().recipientIds).toEqual(['cm-1', 'owner-1']);
   });
@@ -109,6 +119,7 @@ describe('MedicalNotificationsService', () => {
         horseId: 'h1',
         from: HorseHealthStatus.ELIGIBLE,
         to,
+        ownerId: 'owner-1',
       });
       expect(sentDraft()).toMatchObject({
         recipientIds: ['cm-1', 'ht-1', 'owner-1', 'groom-1'],
@@ -130,6 +141,7 @@ describe('MedicalNotificationsService', () => {
       from: HorseHealthStatus.ELIGIBLE,
       to: HorseHealthStatus.QUARANTINED,
       exposedHorses,
+      ownerId: 'owner-1',
     });
     const drafts = (
       notifications.send.mock.calls as Array<[NotificationDraft]>
@@ -158,6 +170,7 @@ describe('MedicalNotificationsService', () => {
       horseId: 'h1',
       from: HorseHealthStatus.INJURED,
       to: HorseHealthStatus.ELIGIBLE,
+      ownerId: 'owner-1',
     });
     expect(sentDraft()).toMatchObject({
       recipientIds: ['owner-1', 'groom-1'],
@@ -173,6 +186,7 @@ describe('MedicalNotificationsService', () => {
       horseId: 'h1',
       from: HorseHealthStatus.ELIGIBLE,
       to: HorseHealthStatus.UNDER_OBSERVATION,
+      ownerId: 'owner-1',
     });
     expect(sentDraft()).toMatchObject({
       eventId: 'e5b',
@@ -229,11 +243,13 @@ describe('MedicalNotificationsService', () => {
       headTrainerId: 'ht-1',
       ownerId: null,
     });
+    recipients.isActiveUserWithRole.mockResolvedValue(false);
     await service.notifyCaseOpened({
       eventId: 'e7',
       horseId: 'h1',
       caseId: 'c1',
       initialDiagnosis: 'Viêm gân',
+      ownerId: 'owner-1',
     });
     expect(sentDraft().recipientIds).toEqual(['cm-1']);
   });
@@ -432,6 +448,7 @@ describe('MedicalNotificationsService', () => {
       horseId: 'h1',
       caseId: 'c1',
       reason: 'Mở nhầm ngựa',
+      ownerId: 'owner-1',
     });
     expect(sentDraft().recipientIds).toEqual(['cm-1', 'owner-1']);
     expect(sentDraft().message).toContain('Mở nhầm ngựa');
@@ -444,7 +461,202 @@ describe('MedicalNotificationsService', () => {
       lockId: 'l1',
       reason: 'Nghỉ',
       expectedEnd: '2026-10-04T17:00:00.000Z',
+      ownerId: 'owner-1',
     });
     expect(sentDraft().message).toContain('Dự kiến gỡ: 2026-10-05');
+  });
+
+  describe('owner at event time', () => {
+    const caseResource = {
+      type: NotificationResourceType.MEDICAL_CASE,
+      id: 'c1',
+      horseId: 'h1',
+    };
+    const lockResource = {
+      type: NotificationResourceType.TRAINING_LOCK,
+      id: 'l1',
+      horseId: 'h1',
+    };
+    const horseRef = {
+      type: NotificationResourceType.HORSE,
+      id: 'h1',
+      horseId: 'h1',
+    };
+    const handlers: Array<{
+      name: string;
+      resource: unknown;
+      run: (
+        s: MedicalNotificationsService,
+        ownerId: string | null | undefined,
+      ) => Promise<string[]>;
+    }> = [
+      {
+        name: 'notifyLockSet',
+        resource: lockResource,
+        run: (s, ownerId) =>
+          s.notifyLockSet({
+            eventId: 'e',
+            horseId: 'h1',
+            lockId: 'l1',
+            reason: 'Nghỉ',
+            expectedEnd: null,
+            ownerId,
+          } as TrainingLockSetEvent),
+      },
+      {
+        name: 'notifyLockReleased',
+        resource: lockResource,
+        run: (s, ownerId) =>
+          s.notifyLockReleased({
+            eventId: 'e',
+            horseId: 'h1',
+            lockId: 'l1',
+            conclusion: 'Ổn',
+            ownerId,
+          } as TrainingLockReleasedEvent),
+      },
+      ...[
+        HorseHealthStatus.INJURED,
+        HorseHealthStatus.UNDER_OBSERVATION,
+        HorseHealthStatus.ELIGIBLE,
+      ].map((to) => ({
+        name: `notifyHealthChanged → ${to}`,
+        resource: horseRef,
+        run: (
+          s: MedicalNotificationsService,
+          ownerId: string | null | undefined,
+        ) =>
+          s.notifyHealthChanged({
+            eventId: 'e',
+            horseId: 'h1',
+            from:
+              to === HorseHealthStatus.ELIGIBLE
+                ? HorseHealthStatus.INJURED
+                : HorseHealthStatus.ELIGIBLE,
+            to,
+            ownerId,
+          } as HealthChangedEvent),
+      })),
+      {
+        name: 'notifyHealthChanged → QUARANTINED with exposed horses',
+        resource: horseRef,
+        run: (s, ownerId) =>
+          s.notifyHealthChanged({
+            eventId: 'e',
+            horseId: 'h1',
+            from: HorseHealthStatus.ELIGIBLE,
+            to: HorseHealthStatus.QUARANTINED,
+            exposedHorses: [
+              {
+                horseId: 'x',
+                horseName: 'X',
+                sameBarn: true,
+                sameGroom: false,
+              },
+            ],
+            ownerId,
+          } as HealthChangedEvent),
+      },
+      {
+        name: 'notifyCaseOpened',
+        resource: caseResource,
+        run: (s, ownerId) =>
+          s.notifyCaseOpened({
+            eventId: 'e',
+            horseId: 'h1',
+            caseId: 'c1',
+            initialDiagnosis: 'Viêm gân',
+            ownerId,
+          } as MedicalCaseOpenedEvent),
+      },
+      {
+        name: 'notifyCaseCancelled',
+        resource: caseResource,
+        run: (s, ownerId) =>
+          s.notifyCaseCancelled({
+            eventId: 'e',
+            horseId: 'h1',
+            caseId: 'c1',
+            reason: 'Mở nhầm',
+            ownerId,
+          } as MedicalCaseCancelledEvent),
+      },
+      {
+        name: 'notifyCaseClosed',
+        resource: caseResource,
+        run: (s, ownerId) =>
+          s.notifyCaseClosed({
+            eventId: 'e',
+            horseId: 'h1',
+            caseId: 'c1',
+            totalCost: 5000000,
+            ownerId,
+            ownerCost: ownerId === null ? null : 2000000,
+          } as MedicalCaseClosedEvent),
+      },
+    ];
+    const ownerDrafts = () =>
+      (notifications.send.mock.calls as Array<[NotificationDraft]>)
+        .map(([draft]) => draft)
+        .filter((draft) =>
+          draft.recipientIds.some((id) => id.startsWith('owner-')),
+        );
+
+    describe.each(handlers)('$name', ({ resource, run }) => {
+      it('sends to the owner with the link when the owner is unchanged', async () => {
+        await run(service, 'owner-1');
+        expect(ownerDrafts().map((d) => [d.recipientIds, d.resource])).toEqual([
+          [expect.arrayContaining(['owner-1']), resource],
+        ]);
+      });
+
+      it('sends to the owner at event time without a link, not to the new owner', async () => {
+        recipients.findHorseMedicalContact.mockResolvedValue({
+          horseName: 'Winx',
+          headTrainerId: 'ht-1',
+          ownerId: 'owner-2',
+          groomId: 'groom-1',
+        });
+        await run(service, 'owner-1');
+        expect(ownerDrafts().map((d) => [d.recipientIds, d.resource])).toEqual([
+          [['owner-1'], null],
+        ]);
+        expect(recipients.isActiveUserWithRole).toHaveBeenCalledWith(
+          'owner-1',
+          UserRole.HORSE_OWNER,
+        );
+      });
+
+      it('skips the owner at event time who is no longer an active horse owner', async () => {
+        recipients.findHorseMedicalContact.mockResolvedValue({
+          horseName: 'Winx',
+          headTrainerId: 'ht-1',
+          ownerId: 'owner-2',
+          groomId: 'groom-1',
+        });
+        recipients.isActiveUserWithRole.mockResolvedValue(false);
+        await run(service, 'owner-1');
+        expect(ownerDrafts()).toEqual([]);
+      });
+
+      it('tells no owner when the horse had no owner at event time', async () => {
+        await run(service, null);
+        expect(ownerDrafts()).toEqual([]);
+      });
+
+      it('falls back to the current owner for an old payload without ownerId', async () => {
+        recipients.findHorseMedicalContact.mockResolvedValue({
+          horseName: 'Winx',
+          headTrainerId: 'ht-1',
+          ownerId: 'owner-2',
+          groomId: 'groom-1',
+        });
+        await run(service, undefined);
+        expect(ownerDrafts().map((d) => [d.recipientIds, d.resource])).toEqual([
+          [expect.arrayContaining(['owner-2']), resource],
+        ]);
+        expect(recipients.isActiveUserWithRole).not.toHaveBeenCalled();
+      });
+    });
   });
 });

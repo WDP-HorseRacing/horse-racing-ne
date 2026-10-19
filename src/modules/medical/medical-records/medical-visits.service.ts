@@ -224,7 +224,7 @@ export class MedicalVisitsService {
         feature: MEDICAL_AUDIT_FEATURE.STANDALONE_VISIT,
       });
       const visitResult = { ...written, openedCase };
-      await this.publishVisitEvents(manager, horseId, visitResult);
+      await this.publishVisitEvents(manager, horse, visitResult);
       return visitResult;
     });
     return result.response;
@@ -295,7 +295,7 @@ export class MedicalVisitsService {
         feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
       });
       const visitResult = { ...written, openedCase: null };
-      await this.publishVisitEvents(manager, horseId, visitResult);
+      await this.publishVisitEvents(manager, horse, visitResult);
       return visitResult;
     });
     return result.response;
@@ -329,7 +329,7 @@ export class MedicalVisitsService {
     });
     if (!found) throw new NotFoundException('Không tìm thấy buổi khám');
     return this.dataSource.transaction(async (manager) => {
-      const { caller } = await this.access.lockHorseForWrite(
+      const { caller, horse } = await this.access.lockHorseForWrite(
         manager,
         actor,
         found.horseId,
@@ -395,6 +395,7 @@ export class MedicalVisitsService {
           horseId: cancelledCase.horseId,
           caseId: cancelledCase.id,
           reason: body.reason,
+          ownerId: horse.ownerId,
         };
         await this.events.publish(manager, MEDICAL_CASE_CANCELLED_EVENT, event);
       }
@@ -876,15 +877,16 @@ export class MedicalVisitsService {
    * - Trạng thái sức khỏe đổi: ghi event đổi trạng thái sức khỏe; sang Cách ly thì kèm danh sách ngựa có thể đã tiếp xúc (cùng khu, cùng Groom)
    *
    * @param manager EntityManager của transaction đang chạy
-   * @param horseId UUID của ngựa
+   * @param horse Ngựa đã khóa trong transaction
    * @param result Kết quả ghi buổi khám
    * @returns Promise hoàn tất khi đã ghi xong các event vào outbox
    */
   private async publishVisitEvents(
     manager: EntityManager,
-    horseId: string,
+    horse: HorseEntity,
     result: VisitWriteResult,
   ): Promise<void> {
+    const horseId = horse.id;
     await this.measurements.publishAlerts(manager, result.alerts);
     if (result.openedCase) {
       const event: MedicalCaseOpenedEvent = {
@@ -892,6 +894,7 @@ export class MedicalVisitsService {
         horseId,
         caseId: result.openedCase.id,
         initialDiagnosis: result.openedCase.initialDiagnosis,
+        ownerId: horse.ownerId,
       };
       await this.events.publish(manager, MEDICAL_CASE_OPENED_EVENT, event);
     }
@@ -904,6 +907,7 @@ export class MedicalVisitsService {
         ...(result.health.to === HorseHealthStatus.QUARANTINED && {
           exposedHorses: await this.access.exposedHorses(manager, horseId),
         }),
+        ownerId: horse.ownerId,
       };
       await this.events.publish(manager, MEDICAL_HEALTH_CHANGED_EVENT, event);
     }

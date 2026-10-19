@@ -72,7 +72,7 @@ export class TrainingLockService {
     const now = new Date();
     const lockEnd = body.lockEnd ? new Date(body.lockEnd) : null;
     const lock = await this.dataSource.transaction(async (manager) => {
-      const { caller } = await this.access.lockHorseForWrite(
+      const { caller, horse } = await this.access.lockHorseForWrite(
         manager,
         actor,
         horseId,
@@ -117,6 +117,7 @@ export class TrainingLockService {
         lockId: saved.id,
         reason: saved.reason,
         expectedEnd: saved.lockEnd?.toISOString() ?? null,
+        ownerId: horse.ownerId,
       };
       await this.events.publish(
         manager,
@@ -150,7 +151,7 @@ export class TrainingLockService {
   ): Promise<TrainingLockResponseDto> {
     const { horseId } = await this.findLock(lockId);
     const released = await this.dataSource.transaction(async (manager) => {
-      const { caller } = await this.access.lockHorseForWrite(
+      const { caller, horse } = await this.access.lockHorseForWrite(
         manager,
         actor,
         horseId,
@@ -180,6 +181,7 @@ export class TrainingLockService {
         horseId,
         lockId,
         conclusion: body.conclusion,
+        ownerId: horse.ownerId,
       };
       await this.events.publish(
         manager,

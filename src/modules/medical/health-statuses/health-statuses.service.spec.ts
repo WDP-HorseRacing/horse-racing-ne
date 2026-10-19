@@ -36,7 +36,11 @@ describe('HealthStatusesService', () => {
     access = {
       lockHorseForWrite: jest.fn().mockResolvedValue({
         caller: { id: 'vet-1' },
-        horse: { id: 'h1', healthStatus: HorseHealthStatus.ELIGIBLE },
+        horse: {
+          id: 'h1',
+          healthStatus: HorseHealthStatus.ELIGIBLE,
+          ownerId: 'owner-a',
+        },
       }),
       exposedHorses: jest.fn().mockResolvedValue([exposed]),
     };
@@ -122,6 +126,7 @@ describe('HealthStatusesService', () => {
       expect.objectContaining({
         to: HorseHealthStatus.QUARANTINED,
         exposedHorses: [exposed],
+        ownerId: 'owner-a',
       }),
     );
     expect(access.exposedHorses).toHaveBeenCalledWith(manager, 'h1');

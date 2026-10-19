@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../src/common/enums/role.enum';
+import { HorseHealthStatus } from '../../../src/modules/horses/enums/horse-status.enum';
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import {
   OUTBOX_LISTENER_OPTIONS,
@@ -22,9 +23,13 @@ import {
 import { OutboxEventEntity } from '../../../src/common/infrastructure/events/outbox-event.entity';
 import { OutboxRelayService } from '../../../src/common/infrastructure/events/outbox-relay.service';
 import {
+  MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_CLOSED_EVENT,
+  MEDICAL_CASE_OPENED_EVENT,
+  MEDICAL_HEALTH_CHANGED_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
+  MEDICAL_VISIT_COST_ADJUSTED_EVENT,
 } from '../../../src/modules/medical/constants/medical-events.constants';
 import { MedicalEventsListener } from '../../../src/modules/notifications/delivery/medical-events.listener';
 import { MedicalNotificationsService } from '../../../src/modules/notifications/delivery/medical-notifications.service';
@@ -429,6 +434,128 @@ describe('Outbox findings (Postgres + Mongo + Redis)', () => {
       oldOwner: await got(owner),
       newOwner: await got(newOwner),
     }).toEqual({ oldOwner: true, newOwner: false });
+  });
+
+  describe('OB-8 every owner-facing medical event goes to the owner at event time', () => {
+    const events: Array<
+      [string, (horseId: string, ownerId: string) => Record<string, unknown>]
+    > = [
+      [
+        MEDICAL_TRAINING_LOCK_SET_EVENT,
+        (horseId, ownerId) => ({ ...lockSet(horseId), ownerId }),
+      ],
+      [
+        MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
+        (horseId, ownerId) => ({
+          eventId: randomUUID(),
+          horseId,
+          lockId: randomUUID(),
+          conclusion: 'Ổn',
+          ownerId,
+        }),
+      ],
+      [
+        MEDICAL_HEALTH_CHANGED_EVENT,
+        (horseId, ownerId) => ({
+          eventId: randomUUID(),
+          horseId,
+          from: HorseHealthStatus.ELIGIBLE,
+          to: HorseHealthStatus.INJURED,
+          ownerId,
+        }),
+      ],
+      [
+        MEDICAL_CASE_OPENED_EVENT,
+        (horseId, ownerId) => ({
+          eventId: randomUUID(),
+          horseId,
+          caseId: randomUUID(),
+          initialDiagnosis: 'Viêm gân',
+          ownerId,
+        }),
+      ],
+      [
+        MEDICAL_CASE_CANCELLED_EVENT,
+        (horseId, ownerId) => ({
+          eventId: randomUUID(),
+          horseId,
+          caseId: randomUUID(),
+          reason: 'Mở nhầm',
+          ownerId,
+        }),
+      ],
+      [
+        MEDICAL_VISIT_COST_ADJUSTED_EVENT,
+        (horseId, ownerId) => ({
+          eventId: randomUUID(),
+          horseId,
+          recordId: randomUUID(),
+          caseId: null,
+          examDate: '2026-10-01T03:00:00.000Z',
+          fromCost: 100_000,
+          toCost: 200_000,
+          costOwnerId: ownerId,
+        }),
+      ],
+    ];
+
+    const resourcesOf = async (recipientId: string) =>
+      (
+        await notifications
+          .find({ recipientId }, { resource: 1, _id: 0 })
+          .lean()
+      ).map((n) => n.resource ?? null);
+
+    it.each(events)(
+      '%s: old owner gets it without a link, new owner gets nothing',
+      async (name, build) => {
+        const { horseId, owner } = await scene();
+        const newOwner = await f.user(UserRole.HORSE_OWNER);
+        await publish(name, build(horseId, owner));
+        await dataSource.query(
+          `UPDATE horses SET owner_id = $1 WHERE id = $2`,
+          [newOwner, horseId],
+        );
+        await relay.relayBatch();
+
+        expect({
+          oldOwner: await resourcesOf(owner),
+          newOwner: await resourcesOf(newOwner),
+        }).toEqual({ oldOwner: [null], newOwner: [] });
+      },
+    );
+
+    it.each(events)(
+      '%s: unchanged owner gets it with a link',
+      async (name, build) => {
+        const { horseId, owner } = await scene();
+        await publish(name, build(horseId, owner));
+        await relay.relayBatch();
+
+        expect(await resourcesOf(owner)).toEqual([
+          expect.objectContaining({ horseId }),
+        ]);
+      },
+    );
+
+    it('an old lock-set payload without ownerId falls back to the current owner', async () => {
+      const { horseId, owner } = await scene();
+      const newOwner = await f.user(UserRole.HORSE_OWNER);
+      await publish(MEDICAL_TRAINING_LOCK_SET_EVENT, lockSet(horseId));
+      await dataSource.query(`UPDATE horses SET owner_id = $1 WHERE id = $2`, [
+        newOwner,
+        horseId,
+      ]);
+      await relay.relayBatch();
+
+      expect({
+        oldOwner: await resourcesOf(owner),
+        newOwner: await resourcesOf(newOwner),
+      }).toEqual({
+        oldOwner: [],
+        newOwner: [expect.objectContaining({ horseId })],
+      });
+    });
   });
 
   it('OB-9 processed rows older than retention are purged; pending rows kept', async () => {

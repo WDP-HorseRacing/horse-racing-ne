@@ -13,6 +13,7 @@ describe('MedicalEventsListener', () => {
       lockId: 'l1',
       reason: 'Nghỉ',
       expectedEnd: null,
+      ownerId: 'owner-1',
     };
 
     await listener.onLockSet(event);

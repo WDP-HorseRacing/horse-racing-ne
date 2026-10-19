@@ -29,7 +29,20 @@ import { horseResource } from '../mappers/notification.mapper';
 import { NotificationDeliveryService } from './notification-delivery.service';
 
 /**
+ * Event y tế mà thông báo dựa vào.
+ *
+ * - ownerId: chủ của ngựa lúc phát event; undefined khi event không mang trường này, kể cả payload cũ ghi vào outbox trước khi có trường
+ */
+interface MedicalEventRef {
+  eventId: string;
+  horseId: string;
+  ownerId?: string | null;
+}
+
+/**
  * Nhóm người nhận của một thông báo y tế.
+ *
+ * - owner: chủ của ngựa lúc phát event (MedicalEventRef.ownerId), không phải chủ lúc giao
  */
 interface MedicalAudience {
   veterinarians?: boolean;
@@ -82,8 +95,7 @@ export class MedicalNotificationsService {
    */
   notifyUrgentExamRequest(event: ExamRequestUrgentEvent): Promise<string[]> {
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       horseResource(event.horseId),
       { veterinarians: true },
       NotificationCategory.EXAM_REQUEST,
@@ -106,8 +118,7 @@ export class MedicalNotificationsService {
   notifyExamRequestHandled(event: ExamRequestHandledEvent): Promise<string[]> {
     const examined = event.outcome === ExamRequestStatus.EXAMINED;
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       horseResource(event.horseId),
       { extraUserIds: [event.requestedBy] },
       NotificationCategory.EXAM_REQUEST,
@@ -136,8 +147,7 @@ export class MedicalNotificationsService {
       ? ` Dự kiến gỡ: ${toClubDate(event.expectedEnd)}.`
       : '';
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       {
         type: NotificationResourceType.TRAINING_LOCK,
         id: event.lockId,
@@ -161,8 +171,7 @@ export class MedicalNotificationsService {
    */
   notifyLockReleased(event: TrainingLockReleasedEvent): Promise<string[]> {
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       {
         type: NotificationResourceType.TRAINING_LOCK,
         id: event.lockId,
@@ -192,8 +201,7 @@ export class MedicalNotificationsService {
   async notifyHealthChanged(event: HealthChangedEvent): Promise<string[]> {
     if (event.to === HorseHealthStatus.UNDER_OBSERVATION) {
       return this.sendForHorse(
-        event.eventId,
-        event.horseId,
+        event,
         horseResource(event.horseId),
         { headTrainer: true, owner: true, groom: true },
         NotificationCategory.HEALTH_STATUS,
@@ -206,8 +214,7 @@ export class MedicalNotificationsService {
     }
     if (event.to === HorseHealthStatus.ELIGIBLE) {
       return this.sendForHorse(
-        event.eventId,
-        event.horseId,
+        event,
         horseResource(event.horseId),
         { owner: true, groom: true },
         NotificationCategory.HEALTH_STATUS,
@@ -228,8 +235,7 @@ export class MedicalNotificationsService {
         : [];
     if (exposed.length === 0) {
       return this.sendForHorse(
-        event.eventId,
-        event.horseId,
+        event,
         horseResource(event.horseId),
         { headTrainer: true, clubManagers: true, owner: true, groom: true },
         NotificationCategory.HEALTH_STATUS,
@@ -238,8 +244,7 @@ export class MedicalNotificationsService {
       );
     }
     const staff = await this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       horseResource(event.horseId),
       { headTrainer: true, clubManagers: true, groom: true },
       NotificationCategory.HEALTH_STATUS,
@@ -253,8 +258,7 @@ export class MedicalNotificationsService {
       },
     );
     const owner = await this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       horseResource(event.horseId),
       { owner: true },
       NotificationCategory.HEALTH_STATUS,
@@ -272,8 +276,7 @@ export class MedicalNotificationsService {
    */
   notifyCaseOpened(event: MedicalCaseOpenedEvent): Promise<string[]> {
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       {
         type: NotificationResourceType.MEDICAL_CASE,
         id: event.caseId,
@@ -297,8 +300,7 @@ export class MedicalNotificationsService {
    */
   notifyCaseCancelled(event: MedicalCaseCancelledEvent): Promise<string[]> {
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       {
         type: NotificationResourceType.MEDICAL_CASE,
         id: event.caseId,
@@ -318,7 +320,7 @@ export class MedicalNotificationsService {
    * Báo Club Manager và chủ ngựa khi bệnh án đóng, kèm chi phí chụp lúc đóng
    *
    * - Club Manager: tổng chi phí của cả bệnh án
-   * - Chủ ngựa hiện tại: chỉ phần chi phí thuộc giai đoạn mình sở hữu (event.ownerCost); lúc đóng ngựa không có chủ thì không báo chủ
+   * - Chủ ngựa lúc đóng: chỉ phần chi phí thuộc giai đoạn mình sở hữu (event.ownerCost); lúc đóng ngựa không có chủ thì không báo chủ
    *
    * @param event Payload của MEDICAL_CASE_CLOSED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -330,8 +332,7 @@ export class MedicalNotificationsService {
       horseId: event.horseId,
     };
     const toManagers = await this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       resource,
       { clubManagers: true },
       NotificationCategory.MEDICAL_CASE,
@@ -344,8 +345,7 @@ export class MedicalNotificationsService {
     if (event.ownerCost === null) return toManagers;
     const ownerCost = event.ownerCost;
     const toOwner = await this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       resource,
       { owner: true },
       NotificationCategory.MEDICAL_CASE,
@@ -439,8 +439,7 @@ export class MedicalNotificationsService {
    */
   notifyCheckupDue(event: CheckupDueEvent): Promise<string[]> {
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       horseResource(event.horseId),
       { veterinarians: true },
       NotificationCategory.CARE_REMINDER,
@@ -460,8 +459,7 @@ export class MedicalNotificationsService {
    */
   notifyCheckupOverdue(event: CheckupOverdueEvent): Promise<string[]> {
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       horseResource(event.horseId),
       { veterinarians: true, clubManagers: true },
       NotificationCategory.CARE_REMINDER,
@@ -481,8 +479,7 @@ export class MedicalNotificationsService {
    */
   notifyCareScheduleDue(event: CareScheduleDueEvent): Promise<string[]> {
     return this.sendForHorse(
-      event.eventId,
-      event.horseId,
+      event,
       horseResource(event.horseId),
       { veterinarians: true, extraUserIds: [event.assigneeId] },
       NotificationCategory.CARE_REMINDER,
@@ -498,10 +495,12 @@ export class MedicalNotificationsService {
    * Gom người nhận theo nhóm rồi gửi một thông báo về một con ngựa
    *
    * - Người nhận trùng nhau chỉ nhận một lần; không có ai để báo thì không gửi
+   * - Chủ ngựa là chủ lúc phát event (event.ownerId); payload cũ không có trường này thì lấy chủ hiện tại
+   * - Chủ lúc phát event vẫn là chủ hiện tại: nhận cùng thông báo
+   * - Chủ lúc phát event không còn là chủ hiện tại: nhận thông báo không trỏ tới đâu (resource null), chỉ khi còn là HORSE_OWNER đang ACTIVE; chủ hiện tại không nhận
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
-   * @param eventId Khóa chống gửi trùng
-   * @param horseId UUID của ngựa
+   * @param event Khóa chống gửi trùng, ngựa và chủ lúc phát event
    * @param resource Đối tượng mà thông báo trỏ tới
    * @param audience Các nhóm người nhận
    * @param category Loại nghiệp vụ của thông báo
@@ -510,40 +509,65 @@ export class MedicalNotificationsService {
    * @returns Promise trả về id những người nhận vừa được lưu mới
    */
   private async sendForHorse(
-    eventId: string,
-    horseId: string,
+    event: MedicalEventRef,
     resource: NotificationResource,
     audience: MedicalAudience,
     category: NotificationCategory,
     priority: NotificationPriority,
     describe: (horseName: string) => { title: string; message: string },
   ): Promise<string[]> {
-    const contact = await this.recipients.findHorseMedicalContact(horseId);
+    const contact = await this.recipients.findHorseMedicalContact(
+      event.horseId,
+    );
     if (!contact) {
       this.logger.warn(
-        `Bỏ qua thông báo y tế ${eventId}: không tìm thấy ngựa ${horseId}`,
+        `Bỏ qua thông báo y tế ${event.eventId}: không tìm thấy ngựa ${event.horseId}`,
       );
       return [];
     }
-    const recipientIds = await this.resolveAudience(audience, contact);
-    if (recipientIds.length === 0) {
-      return [];
-    }
-    return this.notifications.send({
-      eventId,
-      recipientIds,
+    const ownerId = audience.owner
+      ? event.ownerId === undefined
+        ? contact.ownerId
+        : event.ownerId
+      : null;
+    const ownerIsCurrent = ownerId !== null && ownerId === contact.ownerId;
+    const draft = {
+      eventId: event.eventId,
       category,
       priority,
       ...describe(contact.horseName),
-      resource,
+    };
+    const recipientIds = await this.resolveAudience(audience, {
+      ...contact,
+      ownerId: ownerIsCurrent ? ownerId : null,
     });
+    const sent =
+      recipientIds.length === 0
+        ? []
+        : await this.notifications.send({ ...draft, recipientIds, resource });
+    if (
+      ownerId === null ||
+      ownerIsCurrent ||
+      !(await this.recipients.isActiveUserWithRole(
+        ownerId,
+        UserRole.HORSE_OWNER,
+      ))
+    ) {
+      return sent;
+    }
+    const toPastOwner = await this.notifications.send({
+      ...draft,
+      recipientIds: [ownerId],
+      resource: null,
+    });
+    return [...sent, ...toPastOwner];
   }
 
   /**
    * Đổi nhóm người nhận thành danh sách id không trùng
    *
    * @param audience Các nhóm người nhận
-   * @param contact Head Trainer, chủ và Groom phụ trách của con ngựa
+   * @param contact Head Trainer, chủ cần báo kèm đường dẫn và Groom phụ trách của con ngựa
    * @returns Promise trả về danh sách id người nhận
    */
   private async resolveAudience(

@@ -385,6 +385,7 @@ export class MedicalCasesService {
           horseId,
           lockId: activeLock.id,
           conclusion: CLOSE_CASE_LOCK_RELEASE_CONCLUSION,
+          ownerId: horse.ownerId,
         };
         await this.events.publish(
           manager,

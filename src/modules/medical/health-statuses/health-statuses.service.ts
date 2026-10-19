@@ -83,6 +83,7 @@ export class HealthStatusesService {
           ...(applied.to === HorseHealthStatus.QUARANTINED && {
             exposedHorses: await this.access.exposedHorses(manager, horseId),
           }),
+          ownerId: horse.ownerId,
         };
         await this.events.publish(manager, MEDICAL_HEALTH_CHANGED_EVENT, event);
       }

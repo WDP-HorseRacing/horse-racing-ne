@@ -146,7 +146,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, người làm lịch (xem F3.11 mục 1) |
 
 1. Ngựa chưa được xếp khu thì không có HEAD TRAINER nhận thông báo, khi đó chỉ gửi cho các vai trò còn lại.
-2. Ngựa chưa có chủ, hoặc chủ không còn là tài khoản HORSE OWNER đang hoạt động, thì bỏ qua người nhận HORSE OWNER. Tương tự, ngựa chưa có GROOM phụ trách hoặc GROOM đó không còn hoạt động thì bỏ qua người nhận GROOM; GROOM lấy theo phân công lúc gửi thông báo.
+2. HORSE OWNER là chủ của ngựa lúc xảy ra sự kiện, không phải chủ lúc thông báo được gửi. Ngựa đã chuyển nhượng trước khi gửi thì chủ cũ vẫn nhận nhưng thông báo không mở được hồ sơ ngựa, chủ mới không nhận. Lúc xảy ra sự kiện ngựa chưa có chủ, hoặc chủ đó không còn là tài khoản HORSE OWNER đang hoạt động, thì bỏ qua người nhận HORSE OWNER. Tương tự, ngựa chưa có GROOM phụ trách hoặc GROOM đó không còn hoạt động thì bỏ qua người nhận GROOM; GROOM lấy theo phân công lúc gửi thông báo.
 3. Gỡ khóa do chuyển nhượng hoặc do ngựa mất không gửi thông báo riêng; hệ quả này đã nằm trong nhật ký đổi vòng đời của F1.8.
 4. Thông báo đến hạn khám, quá hạn khám và lịch chăm sóc đến hạn do hệ thống kiểm tra mỗi ngày một lần. Mỗi con ngựa chỉ nhận một thông báo cho mỗi hạn; khám xong thì hạn mới được tính và có thể báo lại khi hạn mới quá.
 5. Ca Khẩn chỉ báo một lần lúc tạo hoặc lúc nâng lên Khẩn, không nhắc lại. Khóa quá ngày dự kiến gỡ không gửi nhắc.

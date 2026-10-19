@@ -36,19 +36,25 @@ export interface ExamRequestHandledEvent extends MedicalEventBase {
 
 /**
  * Bác sĩ đặt khóa huấn luyện.
+ *
+ * - ownerId: chủ của ngựa lúc phát event, null nếu ngựa không có chủ
  */
 export interface TrainingLockSetEvent extends MedicalEventBase {
   lockId: string;
   reason: string;
   expectedEnd: string | null;
+  ownerId: string | null;
 }
 
 /**
  * Bác sĩ gỡ khóa huấn luyện; gỡ do chuyển nhượng không phát event này.
+ *
+ * - ownerId: chủ của ngựa lúc phát event, null nếu ngựa không có chủ
  */
 export interface TrainingLockReleasedEvent extends MedicalEventBase {
   lockId: string;
   conclusion: string;
+  ownerId: string | null;
 }
 
 /**
@@ -68,19 +74,24 @@ export interface ExposedHorse {
  * Trạng thái sức khỏe vừa đổi.
  *
  * - exposedHorses: chỉ có khi to = QUARANTINED; các con ngựa có thể đã tiếp xúc, theo tên
+ * - ownerId: chủ của ngựa lúc phát event, null nếu ngựa không có chủ
  */
 export interface HealthChangedEvent extends MedicalEventBase {
   from: HorseHealthStatus;
   to: HorseHealthStatus;
   exposedHorses?: ExposedHorse[];
+  ownerId: string | null;
 }
 
 /**
  * Bệnh án vừa mở.
+ *
+ * - ownerId: chủ của ngựa lúc phát event, null nếu ngựa không có chủ
  */
 export interface MedicalCaseOpenedEvent extends MedicalEventBase {
   caseId: string;
   initialDiagnosis: string;
+  ownerId: string | null;
 }
 
 /**
@@ -99,10 +110,13 @@ export interface MedicalCaseClosedEvent extends MedicalEventBase {
 
 /**
  * Bệnh án mở nhầm vừa bị hủy cùng buổi mở bệnh án.
+ *
+ * - ownerId: chủ của ngựa lúc phát event, null nếu ngựa không có chủ
  */
 export interface MedicalCaseCancelledEvent extends MedicalEventBase {
   caseId: string;
   reason: string;
+  ownerId: string | null;
 }
 
 /**

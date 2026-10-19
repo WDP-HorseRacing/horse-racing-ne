@@ -477,6 +477,11 @@ describe('MedicalCasesService', () => {
         [manager, MEDICAL_CASE_CLOSED_EVENT],
         [manager, MEDICAL_TRAINING_LOCK_RELEASED_EVENT],
       ]);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
+        expect.objectContaining({ lockId: 'lock-1', ownerId: 'owner-b' }),
+      );
     });
 
     it('snapshots in the closed event the cost of the whole case and the part of the current owner', async () => {

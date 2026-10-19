@@ -124,7 +124,11 @@ describe('MedicalVisitsService', () => {
 
   beforeEach(() => {
     steps = [];
-    horse = { id: HORSE_ID, healthStatus: HorseHealthStatus.ELIGIBLE };
+    horse = {
+      id: HORSE_ID,
+      healthStatus: HorseHealthStatus.ELIGIBLE,
+      ownerId: 'owner-a',
+    };
     rows = new Map();
     let sequence = 0;
     manager = {
@@ -414,6 +418,16 @@ describe('MedicalVisitsService', () => {
         MEDICAL_HEALTH_CHANGED_EVENT,
         'commit',
       ]);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_CASE_OPENED_EVENT,
+        expect.objectContaining({ horseId: HORSE_ID, ownerId: 'owner-a' }),
+      );
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_HEALTH_CHANGED_EVENT,
+        expect.objectContaining({ horseId: HORSE_ID, ownerId: 'owner-a' }),
+      );
     });
 
     it.each([
@@ -786,6 +800,11 @@ describe('MedicalVisitsService', () => {
         { caseId: null },
       ]);
       expect(steps).toEqual([MEDICAL_CASE_CANCELLED_EVENT, 'commit']);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_CASE_CANCELLED_EVENT,
+        expect.objectContaining({ caseId: 'case-1', ownerId: 'owner-a' }),
+      );
     });
 
     it('voids a follow-up visit of a closed case', async () => {
