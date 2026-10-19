@@ -4,8 +4,11 @@ import type {
 } from '../dto';
 import type { HorseEntity } from '../entities/horse.entity';
 import { HorseLifecycleStatus } from '../enums/horse-status.enum';
-import { restoreImpactSummary } from '../policies/horse.policy';
-import type { ParentUsage } from '../types/horse.types';
+import {
+  rebilledChargesSummary,
+  restoreImpactSummary,
+} from '../policies/horse.policy';
+import type { ParentUsage, RebilledCharges } from '../types/horse.types';
 
 /**
  * Dựng kết quả xem trước việc xóa hồ sơ ngựa
@@ -43,17 +46,27 @@ export function toDeletionPreviewResponse(
  * @param horse Hồ sơ ngựa đã xóa
  * @param barnCleared Tên khu ngựa sẽ rời, null nếu ngựa không có khu
  * @param ownerCleared Tên chủ sẽ bị bỏ trống, null nếu giữ chủ
+ * @param rebilled Phí báo cáo sẽ tính lại cho những ngày hồ sơ bị xóa
+ * @param rebilledOwnerName Tên chủ chịu phí tính lại, null nếu ngựa không có chủ
  * @returns Các hệ quả và câu tóm tắt
  */
 export function toRestorePreviewResponse(
   horse: HorseEntity,
   barnCleared: string | null,
   ownerCleared: string | null,
+  rebilled: RebilledCharges,
+  rebilledOwnerName: string | null,
 ): HorseRestorePreviewResponseDto {
+  const fees = rebilledChargesSummary(rebilled, rebilledOwnerName);
+  const impact = restoreImpactSummary(horse.name, barnCleared, ownerCleared);
   return {
     horseId: horse.id,
     barnCleared,
     ownerCleared,
-    summary: restoreImpactSummary(horse.name, barnCleared, ownerCleared),
+    rebilledDays: rebilled.billedDays,
+    rebilledDailyFee: rebilled.dailyFee,
+    rebilledSurcharge: rebilled.surcharge,
+    rebilledOwnerName,
+    summary: fees ? `${impact} ${fees}` : impact,
   };
 }

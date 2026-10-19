@@ -49,6 +49,7 @@ import {
   assertParentProfiles,
   barnChangeBlockedReason,
   barnChangeSummary,
+  rebilledChargesSummary,
   restoreImpactSummary,
   canRecordMeasurement,
   evaluateEligibility,
@@ -1259,6 +1260,39 @@ describe('horse.policy', () => {
       expect(restoreImpactSummary('Winx', null, null)).toBe(
         'Nếu khôi phục, Winx trở lại như trước khi xóa.',
       );
+    });
+  });
+
+  describe('rebilledChargesSummary', () => {
+    it('names the owner with the daily fee days and the surcharge', () => {
+      expect(
+        rebilledChargesSummary(
+          { billedDays: 29, dailyFee: 2900000, surcharge: 150000 },
+          'Trần Văn Chủ',
+        ),
+      ).toBe(
+        'Báo cáo phí sẽ tính lại cho chủ Trần Văn Chủ: phí ngày 29 ngày (2.900.000 đ), phụ phí 150.000 đ.',
+      );
+    });
+
+    it('puts the fees of a horse without owner into the unowned line', () => {
+      expect(
+        rebilledChargesSummary(
+          { billedDays: 3, dailyFee: 300000, surcharge: 0 },
+          null,
+        ),
+      ).toBe(
+        'Báo cáo phí sẽ tính lại vào mục Chưa có chủ: phí ngày 3 ngày (300.000 đ).',
+      );
+    });
+
+    it('returns null when nothing will be billed again', () => {
+      expect(
+        rebilledChargesSummary(
+          { billedDays: 0, dailyFee: 0, surcharge: 0 },
+          'Trần Văn Chủ',
+        ),
+      ).toBeNull();
     });
   });
 

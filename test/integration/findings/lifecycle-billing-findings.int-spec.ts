@@ -8,7 +8,11 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
+import {
+  clubToday,
+  shiftDays,
+  toClubDate,
+} from '../../../src/common/utils/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { HorseOwnershipEntity } from '../../../src/modules/horses/entities/horse-ownership.entity';
 import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-status.enum';
@@ -328,7 +332,7 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
     );
   });
 
-  it('F1-6 does not bill the days the profile stayed deleted', async () => {
+  it('F1-6 bills the deleted days again after restore, as the restore preview says', async () => {
     await feeFromLongAgo();
     const { owner, horse } = await ownedHorse('Bão');
     await deletions.remove(cm, horse, { reason: 'Xóa nhầm' });
@@ -340,16 +344,36 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
       `UPDATE audit_logs SET created_at = now() - interval '29 days' WHERE entity_id = $1`,
       [horse],
     );
-    await deletions.restore(cm, horse, { reason: 'Khôi phục' });
+    const [row] = await dataSource.query<
+      { deleted_at: Date; full_name: string }[]
+    >(
+      `SELECT h.deleted_at, u.full_name FROM horses h JOIN users u ON u.id = h.owner_id WHERE h.id = $1`,
+      [horse],
+    );
+    const deletedDay = toClubDate(row.deleted_at);
+    await dataSource.query(
+      `INSERT INTO horse_surcharges (version, horse_id, description, daily_amount, start_date, end_date, created_by)
+       VALUES (1, $1, 'Bổ sung khớp', 5000, $2, $3, $4)`,
+      [horse, shiftDays(today, -9), shiftDays(today, 40), cmId],
+    );
 
-    expect(
-      await billedDays(
-        owner,
-        horse,
-        shiftDays(today, -27),
-        shiftDays(today, -1),
-      ),
-    ).toBe(0);
+    const preview = await deletions.previewRestore(cm, horse);
+    await deletions.restore(cm, horse, { reason: 'Khôi phục' });
+    const report = await finance.ownerCost(cm, {
+      from: deletedDay,
+      to: today,
+      ownerId: owner,
+    });
+    const line = report.horses.find((item) => item.horseId === horse);
+
+    expect(line).toMatchObject({ billedDays: 30, dailyFee: 30 * FEE });
+    expect(preview).toMatchObject({
+      rebilledDays: line?.billedDays,
+      rebilledDailyFee: line?.dailyFee,
+      rebilledSurcharge: line?.surcharge,
+      rebilledOwnerName: row.full_name,
+    });
+    expect(preview.rebilledSurcharge).toBe(10 * 5000);
   });
 
   it('F1-12 rejects recording death again on a dead horse', async () => {

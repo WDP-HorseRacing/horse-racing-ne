@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
+import { clubToday, toClubDate } from '../../../common/utils/club-date';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { BarnEntity } from '../../stable/entities/barn.entity';
@@ -56,7 +57,7 @@ describe('HorseDeletionsService', () => {
     lockActiveHorseOwner: jest.Mock;
     invalidOwnerName: jest.Mock;
   };
-  let deletions: { businessDataLabels: jest.Mock };
+  let deletions: { businessDataLabels: jest.Mock; rebilledCharges: jest.Mock };
   let audit: { record: jest.Mock };
   let service: HorseDeletionsService;
 
@@ -128,6 +129,9 @@ describe('HorseDeletionsService', () => {
     };
     deletions = {
       businessDataLabels: jest.fn().mockResolvedValue([]),
+      rebilledCharges: jest
+        .fn()
+        .mockResolvedValue({ billedDays: 0, dailyFee: 0, surcharge: 0 }),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     const typedDataSource = dataSource as unknown as DataSource;
@@ -383,6 +387,10 @@ describe('HorseDeletionsService', () => {
         horseId: HORSE_ID,
         barnCleared: 'Khu A',
         ownerCleared: null,
+        rebilledDays: 0,
+        rebilledDailyFee: 0,
+        rebilledSurcharge: 0,
+        rebilledOwnerName: null,
         summary: 'Nếu khôi phục, Gió sẽ rời khu "Khu A" và vào Chờ xếp khu.',
       });
       expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
@@ -411,6 +419,43 @@ describe('HorseDeletionsService', () => {
         barnCleared: null,
         ownerCleared: null,
         summary: 'Nếu khôi phục, Gió trở lại như trước khi xóa.',
+      });
+    });
+
+    it('adds the fees the report will bill again for the deleted days to the owner', async () => {
+      horse.barnId = null;
+      horse.ownerId = 'o1';
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === UserEntity
+            ? {
+                id: CALLER_ID,
+                status: UserStatus.ACTIVE,
+                role: UserRole.CLUB_MANAGER,
+                fullName: 'Trần Văn Chủ',
+              }
+            : null,
+        ),
+      );
+      deletions.rebilledCharges.mockResolvedValue({
+        billedDays: 29,
+        dailyFee: 2900000,
+        surcharge: 150000,
+      });
+      const result = await preview();
+      expect(deletions.rebilledCharges).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+        toClubDate(horse.deletedAt!),
+        clubToday(),
+      );
+      expect(result).toMatchObject({
+        rebilledDays: 29,
+        rebilledDailyFee: 2900000,
+        rebilledSurcharge: 150000,
+        rebilledOwnerName: 'Trần Văn Chủ',
+        summary:
+          'Nếu khôi phục, Gió trở lại như trước khi xóa. Báo cáo phí sẽ tính lại cho chủ Trần Văn Chủ: phí ngày 29 ngày (2.900.000 đ), phụ phí 150.000 đ.',
       });
     });
   });

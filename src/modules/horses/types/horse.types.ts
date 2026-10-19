@@ -270,6 +270,19 @@ export interface ParentUsage {
 }
 
 /**
+ * Phí báo cáo sẽ tính lại cho những ngày hồ sơ bị xóa khi khôi phục.
+ *
+ * - billedDays: số ngày có mức phí ngày
+ * - dailyFee: tổng phí ngày (VND)
+ * - surcharge: tổng phụ phí chăm sóc riêng (VND)
+ */
+export interface RebilledCharges {
+  billedDays: number;
+  dailyFee: number;
+  surcharge: number;
+}
+
+/**
  * Các field của ngựa con cần để kiểm tra cha mẹ của nó
  */
 export interface ChildProfile {

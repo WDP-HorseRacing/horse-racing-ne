@@ -77,7 +77,32 @@ export class HorseRestorePreviewResponseDto {
 
   @ApiProperty({
     description:
-      'Câu tóm tắt hệ quả, ví dụ "Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu."',
+      'Số ngày tính phí ngày mà báo cáo phí sẽ tính lại cho thời gian hồ sơ bị xóa (từ ngày xóa tới hôm nay)',
+  })
+  rebilledDays!: number;
+
+  @ApiProperty({
+    description: 'Tổng phí ngày (VND) sẽ tính lại cho thời gian hồ sơ bị xóa',
+  })
+  rebilledDailyFee!: number;
+
+  @ApiProperty({
+    description:
+      'Tổng phụ phí chăm sóc riêng (VND) sẽ tính lại cho thời gian hồ sơ bị xóa',
+  })
+  rebilledSurcharge!: number;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description:
+      'Tên chủ chịu phí tính lại (chủ trong thời gian hồ sơ bị xóa), null nếu ngựa không có chủ và phí vào mục Chưa có chủ',
+  })
+  rebilledOwnerName!: string | null;
+
+  @ApiProperty({
+    description:
+      'Câu tóm tắt hệ quả, ví dụ "Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu. Báo cáo phí sẽ tính lại cho chủ Trần Văn Chủ: phí ngày 29 ngày (2.900.000 đ)."',
   })
   summary!: string;
 }

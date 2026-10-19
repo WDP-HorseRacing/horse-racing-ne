@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { clubToday, toClubDate } from '../../../common/utils/club-date';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { BarnEntity } from '../../stable/entities/barn.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 import {
   DeleteHorseDto,
   HorseDeletionPreviewResponseDto,
@@ -126,6 +128,7 @@ export class HorseDeletionsService {
    *
    * - Ngựa có khu: báo tên khu sẽ rời (khôi phục luôn đưa ngựa vào Chờ xếp khu)
    * - Ngựa có chủ không còn là HORSE_OWNER đang hoạt động: báo tên chủ sẽ bị bỏ trống
+   * - Báo phí ngày và phụ phí báo cáo sẽ tính lại cho những ngày hồ sơ bị xóa (từ ngày xóa tới hôm nay), kèm tên chủ chịu phí
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
@@ -142,13 +145,27 @@ export class HorseDeletionsService {
     const horse = await this.access.findByIdWithDeleted(id);
     assertDeletedHorse(horse);
     const manager = this.dataSource.manager;
-    const [barnCleared, ownerCleared] = await Promise.all([
-      horse.barnId ? this.barnName(manager, horse.barnId) : null,
-      horse.ownerId
-        ? this.access.invalidOwnerName(horse.ownerId, manager)
-        : null,
-    ]);
-    return toRestorePreviewResponse(horse, barnCleared, ownerCleared);
+    const [barnCleared, ownerCleared, rebilled, rebilledOwnerName] =
+      await Promise.all([
+        horse.barnId ? this.barnName(manager, horse.barnId) : null,
+        horse.ownerId
+          ? this.access.invalidOwnerName(horse.ownerId, manager)
+          : null,
+        this.deletions.rebilledCharges(
+          manager,
+          id,
+          toClubDate(horse.deletedAt),
+          clubToday(),
+        ),
+        horse.ownerId ? this.ownerName(manager, horse.ownerId) : null,
+      ]);
+    return toRestorePreviewResponse(
+      horse,
+      barnCleared,
+      ownerCleared,
+      rebilled,
+      rebilledOwnerName,
+    );
   }
 
   /**
@@ -233,5 +250,24 @@ export class HorseDeletionsService {
       withDeleted: true,
     });
     return barn?.name ?? null;
+  }
+
+  /**
+   * Lấy tên chủ ngựa, kể cả tài khoản đã khóa hoặc đã xóa
+   *
+   * @param manager EntityManager dùng để đọc
+   * @param ownerId UUID tài khoản chủ
+   * @returns Promise trả về họ tên chủ, null nếu không có tài khoản
+   */
+  private async ownerName(
+    manager: EntityManager,
+    ownerId: string,
+  ): Promise<string | null> {
+    const owner = await manager.findOne(UserEntity, {
+      select: { fullName: true },
+      where: { id: ownerId },
+      withDeleted: true,
+    });
+    return owner?.fullName ?? null;
   }
 }

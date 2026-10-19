@@ -58,6 +58,7 @@ import type {
   HorseScope,
   ParentCandidate,
   ParentUsage,
+  RebilledCharges,
   BarnChangeImpactRow,
 } from '../types/horse.types';
 
@@ -405,7 +406,7 @@ export function isActiveHorseOwner(
  */
 export function assertDeletedHorse<T extends { deletedAt: Date | null }>(
   horse: T | null,
-): asserts horse is T {
+): asserts horse is T & { deletedAt: Date } {
   if (!horse) throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
   if (horse.deletedAt === null) {
     throw new ConflictException(HORSE_NOT_DELETED_MESSAGE);
@@ -452,6 +453,37 @@ export function restoreImpactSummary(
     return `Nếu khôi phục, ${horseName} trở lại như trước khi xóa.`;
   }
   return `Nếu khôi phục, ${horseName} sẽ ${actions.join(', ')}.`;
+}
+
+/**
+ * Tạo câu báo phí sẽ tính lại cho những ngày hồ sơ bị xóa khi khôi phục
+ *
+ * - Không có phí ngày và phụ phí nào: trả null
+ * - Ngựa có chủ: phí tính cho chủ đó; không có chủ: phí vào mục Chưa có chủ
+ *
+ * @param charges Số ngày tính phí, tổng phí ngày và tổng phụ phí sẽ tính lại
+ * @param ownerName Tên chủ chịu phí, null nếu ngựa không có chủ
+ * @returns Câu báo, ví dụ: Báo cáo phí sẽ tính lại cho chủ Trần Văn Chủ: phí ngày 29 ngày (2.900.000 đ), phụ phí 150.000 đ.
+ */
+export function rebilledChargesSummary(
+  charges: RebilledCharges,
+  ownerName: string | null,
+): string | null {
+  const money = (amount: number) =>
+    `${new Intl.NumberFormat('vi-VN').format(amount)} đ`;
+  const parts: string[] = [];
+  if (charges.billedDays > 0) {
+    parts.push(
+      `phí ngày ${charges.billedDays} ngày (${money(charges.dailyFee)})`,
+    );
+  }
+  if (charges.surcharge > 0) {
+    parts.push(`phụ phí ${money(charges.surcharge)}`);
+  }
+  if (parts.length === 0) return null;
+  const target =
+    ownerName === null ? 'vào mục Chưa có chủ' : `cho chủ ${ownerName}`;
+  return `Báo cáo phí sẽ tính lại ${target}: ${parts.join(', ')}.`;
 }
 
 /**

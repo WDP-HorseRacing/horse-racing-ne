@@ -10249,13 +10249,33 @@
             "nullable": true,
             "description": "Tên chủ sẽ bị bỏ trống khi tài khoản không còn là chủ ngựa đang hoạt động, null nếu giữ chủ"
           },
+          "rebilledDays": {
+            "type": "number",
+            "description": "Số ngày tính phí ngày mà báo cáo phí sẽ tính lại cho thời gian hồ sơ bị xóa (từ ngày xóa tới hôm nay)"
+          },
+          "rebilledDailyFee": {
+            "type": "number",
+            "description": "Tổng phí ngày (VND) sẽ tính lại cho thời gian hồ sơ bị xóa"
+          },
+          "rebilledSurcharge": {
+            "type": "number",
+            "description": "Tổng phụ phí chăm sóc riêng (VND) sẽ tính lại cho thời gian hồ sơ bị xóa"
+          },
+          "rebilledOwnerName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Tên chủ chịu phí tính lại (chủ trong thời gian hồ sơ bị xóa), null nếu ngựa không có chủ và phí vào mục Chưa có chủ"
+          },
           "summary": {
             "type": "string",
-            "description": "Câu tóm tắt hệ quả, ví dụ \"Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu.\""
+            "description": "Câu tóm tắt hệ quả, ví dụ \"Nếu khôi phục, Winx sẽ rời khu “Khu A” và vào Chờ xếp khu. Báo cáo phí sẽ tính lại cho chủ Trần Văn Chủ: phí ngày 29 ngày (2.900.000 đ).\""
           }
         },
         "required": [
           "horseId",
+          "rebilledDays",
+          "rebilledDailyFee",
+          "rebilledSurcharge",
           "summary"
         ]
       },

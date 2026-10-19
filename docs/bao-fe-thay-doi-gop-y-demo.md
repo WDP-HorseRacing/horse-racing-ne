@@ -145,6 +145,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
    - `billedDays`: tổng số ngày tính phí (mỗi ngựa mỗi ngày tính một). `ownerCharges` = tổng `owners` + `unowned`.
    - `GET /reports/owner/costs` không đổi.
 7. `PATCH /horses/:horseId` nhận `ownerId` để gán chủ cho ngựa đang không có chủ (vd sau khi khôi phục hồ sơ đã xóa). Chủ phải là HORSE_OWNER đang hoạt động. Gửi `null`: 400 ở ô `ownerId` "Không bỏ trống chủ sở hữu được, đổi chủ bằng chức năng chuyển nhượng nội bộ". Ngựa đã có chủ khác: 409 "Ngựa đã có chủ sở hữu, đổi chủ bằng chức năng chuyển nhượng nội bộ".
+8. `GET /horses/:horseId/restore-preview` có thêm `rebilledDays`, `rebilledDailyFee`, `rebilledSurcharge` (VND) và `rebilledOwnerName` (null khi ngựa không có chủ): phí báo cáo sẽ tính lại cho những ngày hồ sơ bị xóa nếu khôi phục; `summary` có thêm câu "Báo cáo phí sẽ tính lại cho chủ X: phí ngày N ngày (... đ), phụ phí ... đ." khi có phí. FE hiện số này ở bảng xác nhận khôi phục.
 
 ## 9. Không đổi API, chỉ cần biết
 
