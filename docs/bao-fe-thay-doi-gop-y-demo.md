@@ -1,6 +1,6 @@
 # Thay đổi API cần FE cập nhật (đợt sửa theo góp ý demo)
 
-Cập nhật: 2026-10-18
+Cập nhật: 2026-10-19
 
 Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, HT = Head Trainer, VET = bác sĩ thú y, GROOM = người chăm ngựa, OWNER = chủ ngựa. Lỗi vẫn theo format chung. Schema chi tiết: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
@@ -477,3 +477,46 @@ Mỗi vết chấn thương nay có mã riêng (`injuryId`) và sống qua nhi�
 1. `GET /barns` và `GET /medical/dashboard` giờ trả mọi khu cho HT (trước đây chỉ khu HT phụ trách).
 2. Cả hai nhận thêm query `mine=true` (tùy chọn, mọi vai trò): chỉ các khu người gọi phụ trách. Dùng cho bộ lọc "Khu của tôi".
 3. `GET /medical/dashboard?barnId=...` chọn khu không do HT phụ trách không còn 403, trả dữ liệu khu đó. Gửi cùng `mine=true` thì lấy phần giao: khu không do người gọi phụ trách thì đàn rỗng.
+
+## Chuẩn thời gian
+
+API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
+
+1. **Thời điểm** (có giờ): ISO 8601 bắt buộc kèm múi giờ.
+   - Đúng: `2026-10-23T00:30:00+07:00`, hoặc `2026-10-22T17:30:00Z` (lấy từ `toISOString()`). Giây và phần lẻ giây tùy chọn.
+   - Sai (400): `2026-10-23T00:30:00` (thiếu múi giờ), `2026-10-23` (thiếu giờ), `2026-10-23 00:30:00+07:00` (dấu cách thay `T`), `+0700` (thiếu dấu `:`).
+2. **Ngày lịch** (không có giờ): đúng `YYYY-MM-DD`, vd `2026-10-23`. Gửi kèm giờ (vd `2026-10-20T17:00:00Z`) hoặc ngày không có thật (vd `2026-02-30`) là 400.
+3. **Response**:
+   - Thời điểm luôn là UTC dạng `...Z`, vd `2026-10-22T17:30:00.000Z`. FE parse rồi để thư viện đổi sang giờ của máy. Không tự cộng 7 giờ.
+   - Ngày lịch luôn là `YYYY-MM-DD`. Hiển thị bằng cách tách chuỗi. Không parse thành `Date`/`DateTime`: `new Date('2026-10-23')` là 00:00 UTC, máy ở múi giờ âm sẽ hiện thành 22/10.
+4. **Câu báo lỗi 400** (`errors[].field` là tên ô; ô lồng thì `field` và tên ô trong câu đều là đường dẫn, vd "sessions.0.scheduledStartAt phải là thời điểm ISO 8601 có múi giờ, vd 2026-10-23T00:30:00+07:00"):
+   - Ô thời điểm: "`<tên ô>` phải là thời điểm ISO 8601 có múi giờ, vd 2026-10-23T00:30:00+07:00", vd "measuredAt phải là thời điểm ISO 8601 có múi giờ, vd 2026-10-23T00:30:00+07:00".
+   - Ô ngày có câu riêng giữ câu cũ: "Từ ngày phải có dạng YYYY-MM-DD", "Đến ngày phải có dạng YYYY-MM-DD", "Ngày bắt đầu phải có dạng YYYY-MM-DD", "Ngày kết thúc phải có dạng YYYY-MM-DD", "Ngày sinh phải có dạng YYYY-MM-DD", "Ngày hiệu lực phải có dạng YYYY-MM-DD". Trước đây ô sai dạng có thể nhận hai câu (thêm câu ISO 8601); nay chỉ một câu.
+   - Ô ngày không có câu riêng: "`<tên ô>` phải là ngày dạng YYYY-MM-DD", vd "startDate phải là ngày dạng YYYY-MM-DD".
+5. **Ô thời điểm** (trước đây nhận cả chuỗi thiếu múi giờ):
+
+   | Endpoint | Ô |
+   | --- | --- |
+   | `POST /classes/:classId/sessions`, `PATCH /training-sessions/:sessionId` | `scheduledStartAt`, `scheduledEndAt` |
+   | `POST /classes/:classId/sessions/bulk` | `sessions[].scheduledStartAt`, `sessions[].scheduledEndAt` |
+   | `POST /classes/:classId/enrollments` | `enrolledAt` |
+   | `PATCH /enrollments/:id/leave` | `leftAt` |
+   | `POST /horses/:horseId/measurements` | `measuredAt` |
+   | `GET /horses/:horseId/measurements` | query `from`, `to` |
+   | `POST /horses/:horseId/care-schedules`, `PATCH /care-schedules/:id` | `dueAt` |
+   | `POST /care-schedules/:id/complete` | `nextDueAt` |
+   | `PUT /horses/:horseId/checkup-appointment` | `scheduledAt` |
+   | `POST /horses/:horseId/medical-records`, `POST /medical-cases/:caseId/visits` | `nextVisitAt` |
+   | `POST /medical-cases/:caseId/close` | `lockExpectedEnd` |
+   | `POST /horses/:horseId/training-locks` | `lockEnd` |
+   | `POST /session-participants/:id/metrics` | `recordedAt` |
+   | `POST /session-participants/:id/metrics/batch` | `metrics[].recordedAt` |
+
+6. **Ô ngày lịch**:
+   - Trước đây nhận cả chuỗi có giờ rồi tự cắt lấy 10 ký tự đầu, nay 400:
+     - `POST /classes`, `PATCH /classes/:classId`: `startDate`.
+     - `GET /horses/:id/alerts`, `GET /horses/:id/workload`: query `from`, `to`.
+   - Trước đây chỉ kiểm dạng, nay chặn thêm ngày không có thật (vd `2026-02-30`):
+     - `GET /medical/cost-report`: query `from`, `to`.
+     - `POST /horses/:horseId/medical-records`, `POST /medical-cases/:caseId/visits`: `prescriptions[].startDate`, `prescriptions[].endDate`.
+   - Không đổi hành vi, chỉ có thể bớt một câu lỗi thừa: `POST /horses`, `PATCH /horses/:horseId` (`dateOfBirth`); `POST /horses/:horseId/care-tasks` (`fromDate`, `toDate`); `GET /horses/:horseId/checklists`, `GET /audit-logs`, `GET /reports/dashboard`, `GET /reports/club/finance`, `GET /reports/owner/costs`, `GET /reports/horses/:horseId/progress`, `GET /reports/horses/:horseId/health` (query `from`, `to`); `POST /horses/:horseId/surcharges` (`startDate`, `endDate`); `POST /daily-fees` (`effectiveFrom`).

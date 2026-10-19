@@ -539,3 +539,40 @@ Trong class (service, repository, listener):
 ESLint `@typescript-eslint/member-ordering` (mức warn) canh thứ tự nhóm trong
 class. Thứ tự bên trong mỗi nhóm và thứ tự cấp file kiểm khi review. Sắp lại
 file cũ thì để riêng một commit, chỉ di chuyển code, không sửa nội dung.
+
+## 16. Thời điểm và ngày lịch
+
+Dữ liệu thời gian chỉ có hai loại:
+
+| Loại | Ví dụ | Request | Response | Cột DB |
+| --- | --- | --- | --- | --- |
+| Thời điểm | giờ buổi tập, `measuredAt`, `dueAt`, `lockEnd` | ISO 8601 bắt buộc có múi giờ: `2026-10-23T00:30:00+07:00` hoặc `2026-10-22T17:30:00Z` | Luôn UTC `...Z` (`toISOString`) | `timestamptz` |
+| Ngày lịch | `dateOfBirth`, `startDate` của lớp, `fromDate`/`toDate`, lọc theo ngày | Đúng `YYYY-MM-DD` | Đúng `YYYY-MM-DD` | `date` |
+
+Quy tắc:
+
+- DTO dùng validator chung ở `src/common/utils/dto-input.ts`: `@IsIsoInstant()` cho
+  thời điểm, `@IsDateOnly()` cho ngày lịch (truyền `message` nếu ô cần câu riêng).
+  Không dùng `@IsDateString()`: nó nhận chuỗi thiếu múi giờ và chuỗi có giờ cho ô
+  ngày.
+- Logic không phụ thuộc múi giờ của process. Mọi thứ về "ngày" (hôm nay, ngày của
+  một thời điểm, đầu ngày) theo `CLUB_TIME_ZONE`
+  (`src/common/constants/club.constants.ts`) qua helper ở
+  `src/common/utils/club-date.ts`: `clubToday`, `toClubDate`,
+  `clubDateTimeToInstant`, `shiftDays`.
+- So một thời điểm với một ngày D: BE đổi D thành khoảng nửa mở
+  `[00:00 ngày D, 00:00 ngày D+1)` theo giờ CLB, truyền hai đầu dạng `Date` làm
+  tham số SQL, so bằng `>=` và `<`.
+
+  ```ts
+  const from = clubDateTimeToInstant(startDate, '00:00');
+  const to = clubDateTimeToInstant(shiftDays(endDate, 1), '00:00');
+  qb.andWhere('e.enrolled_at >= :from AND e.enrolled_at < :to', { from, to });
+  ```
+
+- DB chỉ lưu và so. Cấm `<cột timestamptz>::date`, `CURRENT_DATE`, `now()::date`
+  (kết quả đổi theo `TimeZone` của session DB). Ép tham số chuỗi `'YYYY-MM-DD'`
+  bằng `$1::date` thì được. Báo cáo gom theo ngày, tuần đã dùng
+  `AT TIME ZONE $n` với `CLUB_TIME_ZONE` thì giữ.
+- Server và DB chạy ở múi giờ nào cũng được (mặc định khi deploy là UTC). Đổi múi
+  giờ của CLB chỉ cần đổi `CLUB_TIME_ZONE`.
