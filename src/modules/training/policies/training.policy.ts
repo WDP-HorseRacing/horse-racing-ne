@@ -3,6 +3,7 @@ import {
   formatClubDateTime,
   toClubDate,
 } from '../../../common/utils/club-date';
+import { fieldBadRequest } from '../../../common/utils/field-errors';
 import { EligibilityReason } from '../../horses/enums/eligibility-reason.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';
@@ -116,6 +117,27 @@ export function assertSessionWindowInClass(
   const endDay = toClubDate(new Date(end));
   if (startDay < dateOnly(startDate) || endDay > dateOnly(endDate)) {
     throw new BadRequestException('Buổi tập phải nằm trong thời gian của lớp');
+  }
+}
+
+/**
+ * Kiểm giờ bắt đầu buổi tập nằm sau thời điểm hiện tại
+ *
+ * - Giờ bắt đầu bằng đúng thời điểm hiện tại cũng bị chặn
+ *
+ * @param scheduledStartAt Thời điểm bắt đầu buổi
+ * @param now Thời điểm hiện tại
+ * @throws BadRequestException Nếu giờ bắt đầu không sau thời điểm hiện tại, lỗi gắn ô `scheduledStartAt`
+ */
+export function assertSessionStartInFuture(
+  scheduledStartAt: Date,
+  now: Date,
+): void {
+  if (scheduledStartAt.getTime() <= now.getTime()) {
+    throw fieldBadRequest(
+      'scheduledStartAt',
+      'Giờ bắt đầu buổi tập phải sau thời điểm hiện tại',
+    );
   }
 }
 
@@ -847,6 +869,24 @@ export function classEndDate(startDate: string, totalWeeks: number): string {
   const end = new Date(`${dateOnly(startDate)}T00:00:00.000Z`);
   end.setUTCDate(end.getUTCDate() + totalWeeks * 7 - 1);
   return end.toISOString().slice(0, 10);
+}
+
+/**
+ * Kiểm ngày bắt đầu lớp không ở quá khứ theo lịch CLB
+ *
+ * - Bắt đầu đúng hôm nay vẫn hợp lệ
+ *
+ * @param startDate Ngày bắt đầu lớp, dạng YYYY-MM-DD hoặc chuỗi ISO
+ * @param today Ngày hôm nay theo lịch CLB dạng YYYY-MM-DD
+ * @throws BadRequestException Nếu ngày bắt đầu trước hôm nay, lỗi gắn ô `startDate`
+ */
+export function assertClassStartNotPast(
+  startDate: string,
+  today: string,
+): void {
+  if (dateOnly(startDate) < today) {
+    throw fieldBadRequest('startDate', 'Ngày bắt đầu không được ở quá khứ');
+  }
 }
 
 /**

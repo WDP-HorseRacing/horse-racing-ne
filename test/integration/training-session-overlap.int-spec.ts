@@ -644,6 +644,8 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
       const winx = await seed.horse('Winx', { barnId });
       await enroll(classA, winx);
       await enroll(classB, winx);
+      const fromNow = (minutes: number) =>
+        new Date(Date.now() + minutes * 60_000).toISOString();
       await session(
         classA,
         '2030-01-10T01:00:00Z',
@@ -656,17 +658,12 @@ describe('Overlapping training sessions of a horse (Postgres)', () => {
         '2030-01-11T02:00:00Z',
         'COMPLETED',
       );
-      await session(
-        classA,
-        '2026-02-01T01:00:00Z',
-        '2026-02-01T02:00:00Z',
-        'SCHEDULED',
-      );
+      await session(classA, fromNow(-60), fromNow(120), 'SCHEDULED');
 
       for (const [start, end] of [
         ['2030-01-10T01:00:00Z', '2030-01-10T02:00:00Z'],
         ['2030-01-11T01:00:00Z', '2030-01-11T02:00:00Z'],
-        ['2026-02-01T01:00:00Z', '2026-02-01T02:00:00Z'],
+        [fromNow(30), fromNow(90)],
       ]) {
         const created = await sessions.createSession(
           trainer,

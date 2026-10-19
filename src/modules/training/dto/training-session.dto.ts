@@ -59,7 +59,11 @@ export class CreateTrainingSessionDto {
   @Max(20000)
   plannedDistanceM!: number;
 
-  @ApiProperty({ format: 'date-time' })
+  @ApiProperty({
+    format: 'date-time',
+    description:
+      'Giờ bắt đầu, phải sau thời điểm hiện tại (khi sửa buổi chỉ kiểm nếu đổi giờ bắt đầu), không thì 400 ở ô scheduledStartAt',
+  })
   @IsDateString()
   scheduledStartAt!: string;
 

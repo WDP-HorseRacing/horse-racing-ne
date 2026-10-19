@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
 import type { Actor } from '../../../../common/types/actor';
-import { toClubDate } from '../../../../common/utils/club-date';
+import { clubToday, toClubDate } from '../../../../common/utils/club-date';
 import { fieldConflict } from '../../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../../common/utils/record-diff';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
@@ -47,6 +47,7 @@ import {
   assertClassCancellable,
   assertClassCompletable,
   assertClassEditable,
+  assertClassStartNotPast,
   classEndDate,
   dateOnly,
   totalPlanWeeks,
@@ -68,6 +69,7 @@ export class TrainingClassesService {
    * Head Trainer tạo lớp đang chạy do mình phụ trách theo giáo án của mình, trong một transaction
    *
    * - Lớp chép các giai đoạn và môn của giáo án lúc tạo; sửa giáo án sau đó không đổi lớp
+   * - Ngày bắt đầu không được trước hôm nay theo lịch CLB
    * - Ngày kết thúc = ngày bắt đầu + tổng số tuần của giáo án
    * - Không tạo buổi tập; Head Trainer xếp buổi sau khi tạo lớp
    * - Ghi nhật ký kèm thông tin lớp và giáo án
@@ -77,7 +79,7 @@ export class TrainingClassesService {
    * @returns Promise trả về lớp vừa tạo
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws ConflictException Nếu mã lớp đã tồn tại
-   * @throws BadRequestException Nếu giáo án không thuộc Head Trainer gọi
+   * @throws BadRequestException Nếu giáo án không thuộc Head Trainer gọi, hoặc ngày bắt đầu ở quá khứ (kiểm sau cùng)
    */
   async create(
     actor: Actor,
@@ -97,6 +99,7 @@ export class TrainingClassesService {
         headTrainerId,
       );
       const startDate = dateOnly(body.startDate);
+      assertClassStartNotPast(startDate, clubToday());
       const saved = await manager.save(
         manager.create(TrainingClassEntity, {
           code,
@@ -445,6 +448,9 @@ export class TrainingClassesService {
         throw new ConflictException(
           'Khoảng ngày mới không bao phủ các ghi danh hiện có',
         );
+      }
+      if (startDate !== row.startDate) {
+        assertClassStartNotPast(startDate, clubToday());
       }
       Object.assign(row, {
         name: body.name ?? row.name,

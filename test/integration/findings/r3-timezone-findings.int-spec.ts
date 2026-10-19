@@ -515,7 +515,11 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
 
   it('TZ3-15 class create: startDate sent as an instant (Z) is taken as the club date of that instant', async () => {
     const { planId } = await seed.trainingClass(trainerId);
-    const startInstant = clubDateTimeToInstant(D, '03:00').toISOString();
+    const futureDay = '2099-10-15';
+    const startInstant = clubDateTimeToInstant(
+      futureDay,
+      '03:00',
+    ).toISOString();
     const body = {
       code: 'TZ315',
       name: 'Lớp sáng',
@@ -524,12 +528,12 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     } as CreateTrainingClassDto;
     const errors = validateSync(plainToInstance(CreateTrainingClassDto, body));
     const result = failedProperties(errors).includes('startDate')
-      ? D
+      ? futureDay
       : await classes.create(trainer, body).then(
           (row) => row.startDate,
           (e: Error) => `${e.constructor.name}: ${e.message}`,
         );
-    expect(result).toBe(D);
+    expect(result).toBe(futureDay);
   });
 
   it('TZ3-16 enrollment enrolledAt without offset is club time', async () => {

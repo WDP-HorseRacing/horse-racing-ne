@@ -34,6 +34,8 @@ import {
   assertSessionRecordEditable,
   assertHorseEnrollable,
   assertClassOpenForSessions,
+  assertClassStartNotPast,
+  assertSessionStartInFuture,
   assertSubjectExercise,
   classEndDate,
   classPhaseOn,
@@ -880,5 +882,50 @@ describe('head trainer schedule policy', () => {
     expect(() =>
       assertHeadTrainerFreeForMovedClasses(moving, busy.slice(1)),
     ).not.toThrow();
+  });
+});
+
+describe('scheduling in the past', () => {
+  const pastField = (field: string, message: string) => ({
+    response: { message, errors: [{ field, message }] },
+  });
+
+  it('rejects a session starting exactly now and accepts one a millisecond later', () => {
+    const now = new Date('2026-10-19T01:00:00.000Z');
+    let error: unknown;
+    try {
+      assertSessionStartInFuture(new Date(now), now);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error).toMatchObject(
+      pastField(
+        'scheduledStartAt',
+        'Giờ bắt đầu buổi tập phải sau thời điểm hiện tại',
+      ),
+    );
+    expect(() =>
+      assertSessionStartInFuture(new Date(now.getTime() + 1), now),
+    ).not.toThrow();
+  });
+
+  it('accepts a class starting today and rejects one starting yesterday', () => {
+    expect(() =>
+      assertClassStartNotPast('2026-10-19', '2026-10-19'),
+    ).not.toThrow();
+    expect(() =>
+      assertClassStartNotPast('2026-10-19T00:00:00.000Z', '2026-10-19'),
+    ).not.toThrow();
+    let error: unknown;
+    try {
+      assertClassStartNotPast('2026-10-18', '2026-10-19');
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect(error).toMatchObject(
+      pastField('startDate', 'Ngày bắt đầu không được ở quá khứ'),
+    );
   });
 });

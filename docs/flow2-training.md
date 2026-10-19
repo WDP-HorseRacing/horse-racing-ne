@@ -1,6 +1,6 @@
 # Flow 2 — Lập và thực hiện giáo án huấn luyện
 
-> Cập nhật: 18/10/2026
+> Cập nhật: 19/10/2026
 
 ## I. Đề bài liên quan
 
@@ -75,6 +75,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 6. Lớp tạo ra là Đang chạy (không có nháp, không có bước kích hoạt). Lớp chỉ đổi sang Hoàn thành hoặc Đã hủy (`PATCH /classes/:classId/status`, gửi trạng thái khác là 400).
 7. Đổi ngày bắt đầu của lớp thì ngày kết thúc tự tính lại theo giáo án của lớp; buổi nằm ngoài khoảng mới thì chặn.
 8. Lớp không đổi được giáo án hay Head Trainer sau khi tạo. Đổi Head Trainer chỉ qua bàn giao (mục 7).
+9. Không lên lịch lớp ở quá khứ: ngày bắt đầu phải từ hôm nay trở đi theo lịch CLB (bắt đầu đúng hôm nay vẫn được), không thì 400 ở ô `startDate` "Ngày bắt đầu không được ở quá khứ". Kiểm khi tạo lớp, và khi sửa lớp có gửi `startDate` khác ngày bắt đầu đang có; sửa tên, sức chứa... hoặc gửi lại đúng ngày cũ của lớp đã bắt đầu thì không kiểm. Kiểm sau cùng, sau mọi lỗi đã có (403, 409 mã lớp trùng, 400 giáo án; khi sửa: 409 sức chứa, 409 khoảng ngày không bao phủ buổi hoặc ghi danh). Dữ liệu cũ giữ nguyên.
 
 ### 4. Buổi tập và chạy thử
 
@@ -85,8 +86,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 5. Thêm nhiều buổi một lần (`POST /classes/:classId/sessions/bulk`, 1–100 buổi, dùng cho nút lặp lại trên lịch): lưu theo thứ tự giờ bắt đầu, mỗi buổi áp đúng luật của thêm từng buổi, kể cả trùng giờ với các buổi vừa thêm trước nó. Một buổi lỗi thì không lưu buổi nào; câu báo có tiền tố "Buổi {thứ tự trong body}: " và ô lỗi `sessions.{chỉ số}`.
 6. Xóa buổi trên lịch là hủy buổi (`POST /training-sessions/:sessionId/cancel`): buổi giữ lại ở trạng thái Đã hủy, lượt chưa tập bị hủy. Người dắt từng lượt vừa bị hủy nhận thông báo (mức HIGH), mỗi Groom một tin liệt kê các ngựa của mình; lượt chưa có người dắt thì báo Groom đang phụ trách ngựa. Hủy cả lớp không gửi thông báo này.
 7. Ghi danh ngựa vào lớp đang chạy: tạo lượt cho các buổi đã lên lịch trong tương lai.
-8. Trùng giờ: mỗi buổi tính từ giờ bắt đầu tới trước giờ kết thúc; buổi này kết thúc đúng lúc buổi kia bắt đầu thì không trùng.
    - Rời lớp (`PATCH /enrollments/:id/leave`) hoặc bị rút khỏi lớp (đổi khu, giải nghệ, chuyển nhượng, ngựa mất): lượt Chờ điểm danh, Có mặt, Sẵn sàng, Hủy do khóa, Không đủ điều kiện ở các buổi bắt đầu từ lúc rời trở đi chuyển Đã hủy (`CANCELLED`) kèm lý do rời lớp. Lượt Đang tập, lượt đã kết thúc và buổi trước lúc rời giữ nguyên. Lượt đã hủy không còn giữ chỗ (luật 8.3) và không được chấm lại (mục 5 luật 6).
+8. Trùng giờ: mỗi buổi tính từ giờ bắt đầu tới trước giờ kết thúc; buổi này kết thúc đúng lúc buổi kia bắt đầu thì không trùng.
    1. Thêm buổi hoặc đổi giờ buổi trùng với buổi chưa hủy khác của cùng lớp: chặn 409, câu báo kèm giờ và ngày của buổi trùng.
    2. Một ngựa học được nhiều lớp nhưng không có hai buổi trùng giờ. Lịch của ngựa ở một lớp: các buổi Đã lên lịch, Đang diễn ra có giờ bắt đầu sau hiện tại và nằm trong một khoảng ghi danh chưa hủy `[ghi danh, rời lớp)` của ngựa ở lớp đó. Ngựa đã rời lớp thì các buổi sau lúc rời không còn trong lịch.
    3. Lượt giữ chỗ: Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập, Hủy do khóa, Không đủ điều kiện (hai trạng thái sau còn có thể mở lại, mục 5 luật 6), ở buổi chưa hủy, chưa hoàn thành. Lượt giữ chỗ tính cả buổi đã tới giờ mà chưa đóng. Vì ngựa chỉ học lớp của Head Trainer phụ trách khu mình, trùng giờ xảy ra giữa các lớp của cùng một Head Trainer.
@@ -98,6 +99,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
       - Ghi danh: mỗi buổi trong lịch của ngựa ở lớp này phải đạt giới hạn so với lịch ở lớp khác của ngựa, không thì 409 cả thao tác. Danh sách ngựa ghi danh được (4a) tự bỏ ngựa vướng.
       - Lượt dừng sớm (mục 5 luật 13) được xét y như lượt hoàn thành.
    7. Head Trainer phụ trách lớp không có hai buổi trùng giờ ở hai lớp khác nhau của mình. Thêm buổi (kể cả thêm nhiều buổi một lần) hoặc đổi giờ buổi mà trùng với buổi chưa hủy ở lớp khác do cùng Head Trainer phụ trách thì chặn 409, không lưu gì: "Trùng giờ với lịch của Huấn luyện viên trưởng: lớp {mã lớp}, {giờ bắt đầu CLB của buổi trùng}" (buổi trùng bắt đầu sớm nhất). Kiểm sau luật 8.5 và 8.6. Sửa buổi không đổi giờ thì không kiểm. Lớp của Head Trainer khác hoặc lớp chưa có Head Trainer không tính.
+9. Không lên lịch buổi ở quá khứ: giờ bắt đầu phải sau thời điểm hiện tại (đúng bằng hiện tại cũng bị chặn), không thì 400 ở ô `scheduledStartAt` "Giờ bắt đầu buổi tập phải sau thời điểm hiện tại"; thêm nhiều buổi một lần thì ô lỗi là `sessions.{chỉ số}.scheduledStartAt`, câu báo có tiền tố "Buổi {thứ tự trong body}: ". Kiểm khi thêm buổi, thêm nhiều buổi, và khi sửa buổi có đổi giờ bắt đầu; sửa tên, ghi chú, địa điểm, cường độ hay chỉ giờ kết thúc thì không kiểm. Kiểm sau cùng, ngay trước khi lưu, nên mọi lỗi đã có (409 lớp đã kết thúc, 409 chưa tới giờ mở điểm danh khi sửa, 400 giờ ngoài thời gian lớp, môn, các luật trùng giờ 8.1–8.7) vẫn báo trước. Dữ liệu cũ giữ nguyên.
+   - Lý do: buổi tạo ra đã qua giờ thì việc tự đóng buổi (chạy mỗi phút) đánh Vắng mọi lượt Chờ điểm danh cho một buổi chưa từng diễn ra. Hệ thống không có nhập bù buổi đã qua và đề bài không yêu cầu.
 7. Video chạy thử: Head Trainer xin tải lên (`POST /media/upload-requests`, `purpose = TRIAL_VIDEO`; MP4, WebM hoặc QuickTime, tối đa 200 MB) rồi gửi `videoMediaId` khi ghi kết quả; video phải do chính người ghi tải lên và đã có trên storage. Kết quả chạy thử trả `videoUrl` (link xem có hạn, null nếu không có video) ở `GET /session-participants/:id/trial-results` và `GET /horses/:horseId/training/sessions`, nên chủ ngựa xem được.
    1. Sửa một lần chạy thử sau khi ghi (`PATCH /session-participants/:id/trial-results/:attemptNo`, body `{ videoMediaId?, elapsedMs?, notes?, reason? }`): chỉ Head Trainer phụ trách lớp, không kiểm khu của ngựa.
       - Hạn sửa (luật chung cho video, thời gian, ghi chú chạy thử và đánh giá ở luật 9): không giới hạn thời gian sau khi buổi kết thúc; buổi đã hủy 409 "Buổi tập đã hủy, không sửa kết quả được". Lượt hoàn thành và lượt dừng sớm sửa như nhau.

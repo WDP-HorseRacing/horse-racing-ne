@@ -286,17 +286,17 @@ describe('Training class queries over its sessions (Postgres)', () => {
       'UPDATE training_class_phases SET weeks = 4 WHERE class_id IN ($1, $2)',
       [a.classId, b.classId],
     );
-    await seedSession(b, 'SCHEDULED', '2026-03-10T01:00:00Z');
-    await seedSession(a, 'SCHEDULED', '2026-12-01T01:00:00Z');
+    await seedSession(b, 'SCHEDULED', '2099-03-10T01:00:00Z');
+    await seedSession(a, 'SCHEDULED', '2099-12-01T01:00:00Z');
 
     await expect(
-      classes.update(b.trainer, b.classId, { startDate: '2026-03-02' }),
+      classes.update(b.trainer, b.classId, { startDate: '2099-03-02' }),
     ).resolves.toMatchObject({
-      startDate: '2026-03-02',
-      endDate: '2026-03-29',
+      startDate: '2099-03-02',
+      endDate: '2099-03-29',
     });
     await expect(
-      classes.update(a.trainer, a.classId, { startDate: '2026-03-02' }),
+      classes.update(a.trainer, a.classId, { startDate: '2099-03-02' }),
     ).rejects.toThrow(
       new ConflictException(
         'Khoảng ngày mới không bao phủ các buổi tập hiện có',

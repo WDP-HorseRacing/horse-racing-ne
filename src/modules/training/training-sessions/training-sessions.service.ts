@@ -45,6 +45,7 @@ import {
   assertNoOverlappingClassSession,
   assertSessionCancellable,
   assertSessionEditable,
+  assertSessionStartInFuture,
   assertClassOpenForSessions,
   assertSessionWindowInClass,
   assertSubjectExercise,
@@ -168,6 +169,7 @@ export class TrainingSessionsService {
   /**
    * Thêm một buổi tập đã lên lịch vào lớp, kèm lượt tập cho các ngựa đang học lớp vào giờ bắt đầu
    *
+   * - Giờ bắt đầu phải sau thời điểm hiện tại
    * - Loại buổi lấy theo môn của buổi; gửi kèm loại buổi thì phải trùng loại buổi của môn
    * - Buổi chạy thử được tạo sẵn cấu hình chạy thử (cự ly theo cự ly dự kiến, thời gian mục tiêu) trong cùng transaction
    * - Lượt tập tạo theo điều kiện tập hiện tại của từng ngựa, như luật của syncParticipants
@@ -180,7 +182,7 @@ export class TrainingSessionsService {
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có lớp
    * @throws ConflictException Nếu lớp đã hoàn thành hoặc đã hủy, môn không có trong giai đoạn chứa ngày của buổi, buổi trùng giờ với buổi chưa hủy khác của lớp, trùng giờ với lịch ở lớp khác của ngựa đang học lớp vào giờ đó, hoặc trùng giờ với buổi chưa hủy ở lớp khác của Head Trainer phụ trách lớp
-   * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, môn học không tồn tại, loại buổi gửi lên khác loại buổi của môn, hoặc nội dung buổi sai theo loại môn
+   * @throws BadRequestException Nếu giờ buổi tập sai hoặc nằm ngoài thời gian của lớp, môn học không tồn tại, loại buổi gửi lên khác loại buổi của môn, hoặc nội dung buổi sai theo loại môn, hoặc giờ bắt đầu không sau thời điểm hiện tại (kiểm sau cùng, ngay trước khi lưu)
    */
   async createSession(
     actor: Actor,
@@ -213,7 +215,7 @@ export class TrainingSessionsService {
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có lớp
    * @throws ConflictException Nếu lớp đã kết thúc, có buổi trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp), hoặc môn không có trong giai đoạn chứa ngày của buổi
-   * @throws BadRequestException Nếu có buổi sai giờ, nằm ngoài thời gian của lớp, môn không tồn tại hoặc nội dung sai theo loại môn
+   * @throws BadRequestException Nếu có buổi sai giờ, nằm ngoài thời gian của lớp, môn không tồn tại, nội dung sai theo loại môn, hoặc giờ bắt đầu không sau thời điểm hiện tại
    */
   async createSessions(
     actor: Actor,
@@ -297,7 +299,7 @@ export class TrainingSessionsService {
    * @param body Nội dung buổi tập
    * @returns Promise trả về buổi vừa lưu
    * @throws ConflictException Nếu buổi trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp), hoặc môn không có trong giai đoạn chứa ngày của buổi
-   * @throws BadRequestException Nếu giờ sai hoặc ngoài thời gian của lớp, môn không tồn tại, loại buổi khác loại của môn, hoặc nội dung sai theo loại môn
+   * @throws BadRequestException Nếu giờ sai hoặc ngoài thời gian của lớp, môn không tồn tại, loại buổi khác loại của môn, nội dung sai theo loại môn, hoặc giờ bắt đầu không sau thời điểm hiện tại
    * @throws ForbiddenException Nếu có ngựa ngoài khu của Head Trainer
    */
   private async createLocked(
@@ -358,6 +360,7 @@ export class TrainingSessionsService {
       true,
     );
     await this.assertHeadTrainerFree(manager, trainingClass, window);
+    assertSessionStartInFuture(window.scheduledStartAt, new Date());
     const session = await manager.save(
       manager.create(TrainingSessionEntity, {
         classId,
@@ -413,6 +416,7 @@ export class TrainingSessionsService {
   /**
    * Sửa buổi tập đã lên lịch chưa tới giờ mở điểm danh (30 phút trước giờ bắt đầu), rồi đồng bộ lại lượt tập
    *
+   * - Đổi giờ bắt đầu: giờ mới phải sau thời điểm hiện tại
    * - Đổi giờ: kiểm trùng giờ trong lớp, trùng giờ của ngựa và trùng giờ của Head Trainer phụ trách lớp như khi thêm buổi
    * - Sau khi lưu, lượt tập được đồng bộ theo giờ bắt đầu và cường độ mới (syncParticipants)
    * - Ghi nhật ký các field nội dung đã đổi
@@ -424,7 +428,7 @@ export class TrainingSessionsService {
    * @throws ForbiddenException Nếu người gọi không quản lý lớp, hoặc có ngựa ngoài khu của Head Trainer
    * @throws NotFoundException Nếu không có buổi tập hoặc lớp
    * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, đổi về buổi thường khi đã có cấu hình chạy thử, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp)
-   * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp hoặc môn học không tồn tại
+   * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp, môn học không tồn tại, hoặc đổi giờ bắt đầu sang thời điểm không sau hiện tại (kiểm sau cùng, ngay trước khi lưu)
    */
   async updateSession(
     actor: Actor,
@@ -519,6 +523,9 @@ export class TrainingSessionsService {
         if (timeChanged) {
           await this.assertHeadTrainerFree(manager, trainingClass, next);
         }
+      }
+      if (start.getTime() !== session.scheduledStartAt.getTime()) {
+        assertSessionStartInFuture(start, new Date());
       }
       Object.assign(session, {
         subjectId: body.subjectId ?? session.subjectId,

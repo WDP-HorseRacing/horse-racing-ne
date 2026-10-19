@@ -361,13 +361,13 @@ describe('Training plans and classes built from them (Postgres)', () => {
       code: 'K1',
       name: 'K1',
       planId: plan.id,
-      startDate: '2026-10-05',
+      startDate: '2099-10-05',
     });
 
     expect(created).toMatchObject({
       planId: plan.id,
-      startDate: '2026-10-05',
-      endDate: '2026-11-15',
+      startDate: '2099-10-05',
+      endDate: '2099-11-15',
     });
   });
 
@@ -381,7 +381,7 @@ describe('Training plans and classes built from them (Postgres)', () => {
         name: 'K2',
         planId: plan.id,
         headTrainerId: otherId,
-        startDate: '2026-10-05',
+        startDate: '2099-10-05',
       }),
     ).rejects.toThrow(
       new BadRequestException(
@@ -396,7 +396,7 @@ describe('Training plans and classes built from them (Postgres)', () => {
       code: 'K1',
       name: 'K1',
       planId: plan.id,
-      startDate: '2026-10-05',
+      startDate: '2099-10-05',
     });
 
     await expect(plans.remove(trainer, plan.id)).rejects.toThrow(
@@ -418,7 +418,7 @@ describe('Training plans and classes built from them (Postgres)', () => {
       code: 'K1',
       name: 'K1',
       planId: plan.id,
-      startDate: '2026-10-05',
+      startDate: '2099-10-05',
     });
 
     await expect(
@@ -559,7 +559,7 @@ describe('Training plans and classes built from them (Postgres)', () => {
         code: 'K1',
         name: 'K1',
         planId: plan.id,
-        startDate: '2026-10-05',
+        startDate: '2099-10-05',
       });
       await classes.update(trainer, created.id, { maxHorses: 6 });
       await classes.update(trainer, created.id, { maxHorses: 6 });
@@ -586,8 +586,8 @@ describe('Training plans and classes built from them (Postgres)', () => {
             description: null,
             raceAptitude: null,
             maxHorses: 10,
-            startDate: '2026-10-05',
-            endDate: '2026-11-15',
+            startDate: '2099-10-05',
+            endDate: '2099-11-15',
             planId: plan.id,
             status: TrainingClassStatus.ACTIVE,
           },

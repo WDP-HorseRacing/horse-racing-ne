@@ -367,3 +367,100 @@ describe('TrainingSessionsService.createSession', () => {
     expect(access.headTrainerSessions).not.toHaveBeenCalled();
   });
 });
+
+const pastStart = {
+  status: 400,
+  response: {
+    errors: [
+      {
+        field: 'scheduledStartAt',
+        message: 'Giờ bắt đầu buổi tập phải sau thời điểm hiện tại',
+      },
+    ],
+  },
+};
+
+const pastClass = {
+  id: 'c1',
+  status: TrainingClassStatus.ACTIVE,
+  headTrainerId: 'ht',
+  startDate: '2000-01-01',
+  endDate: '2099-12-31',
+};
+
+const pastWindow = {
+  scheduledStartAt: '2000-01-10T01:00:00.000Z',
+  scheduledEndAt: '2000-01-10T02:00:00.000Z',
+};
+
+describe('TrainingSessionsService scheduling in the past', () => {
+  const regular = { id: 'sub1', sessionType: TrainingSessionType.REGULAR };
+
+  it('trả 400 gắn ô scheduledStartAt khi thêm buổi đã qua giờ bắt đầu, không lưu', async () => {
+    const { service, manager, access } = setupCreate(regular);
+    access.lockedTrainingClass.mockResolvedValue(pastClass);
+
+    await expect(
+      service.createSession(actor, 'c1', newSession(pastWindow)),
+    ).rejects.toMatchObject(pastStart);
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('vẫn trả 409 trùng lịch Head Trainer trước lỗi giờ quá khứ', async () => {
+    const { service, access } = setupCreate(regular);
+    access.lockedTrainingClass.mockResolvedValue(pastClass);
+    access.headTrainerSessions.mockResolvedValue([
+      {
+        ...busyOfHeadTrainer,
+        scheduledStartAt: new Date('2000-01-10T00:30:00.000Z'),
+        scheduledEndAt: new Date('2000-01-10T01:30:00.000Z'),
+      },
+    ]);
+
+    await expect(
+      service.createSession(actor, 'c1', newSession(pastWindow)),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('thêm nhiều buổi: buổi đã qua giờ báo lỗi ở sessions.{i}.scheduledStartAt, không lưu buổi nào', async () => {
+    const { service, manager, access } = setupCreate(regular);
+    access.lockedTrainingClass.mockResolvedValue(pastClass);
+    const message = 'Buổi 2: Giờ bắt đầu buổi tập phải sau thời điểm hiện tại';
+
+    await expect(
+      service.createSessions(actor, 'c1', {
+        sessions: [newSession(), newSession(pastWindow)],
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: {
+        message,
+        errors: [{ field: 'sessions.1.scheduledStartAt', message }],
+      },
+    });
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('trả 400 khi đổi giờ bắt đầu sang quá khứ, không lưu', async () => {
+    const { service, save, access } = setup();
+    access.lockedTrainingClass.mockResolvedValue(pastClass);
+
+    await expect(
+      service.updateSession(actor, 's1', pastWindow),
+    ).rejects.toMatchObject(pastStart);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('cho đổi giờ bắt đầu sang tương lai', async () => {
+    const { service } = setup();
+
+    const result = await service.updateSession(actor, 's1', {
+      scheduledStartAt: '2099-10-11T01:00:00.000Z',
+      scheduledEndAt: '2099-10-11T02:00:00.000Z',
+    });
+
+    expect(result.scheduledStartAt).toEqual(
+      new Date('2099-10-11T01:00:00.000Z'),
+    );
+  });
+});

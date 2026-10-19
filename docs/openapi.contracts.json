@@ -18856,7 +18856,7 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": "Ngày bắt đầu; ngày kết thúc tự tính theo tổng số tuần của giáo án"
+            "description": "Ngày bắt đầu, từ hôm nay trở đi theo lịch CLB (khi sửa lớp chỉ kiểm nếu khác ngày bắt đầu đang có), không thì 400 ở ô startDate; ngày kết thúc tự tính theo tổng số tuần của giáo án"
           }
         },
         "required": [
@@ -19138,7 +19138,7 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": "Ngày bắt đầu; ngày kết thúc tự tính theo tổng số tuần của giáo án"
+            "description": "Ngày bắt đầu, từ hôm nay trở đi theo lịch CLB (khi sửa lớp chỉ kiểm nếu khác ngày bắt đầu đang có), không thì 400 ở ô startDate; ngày kết thúc tự tính theo tổng số tuần của giáo án"
           }
         }
       },
@@ -19825,7 +19825,8 @@
           },
           "scheduledStartAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Giờ bắt đầu, phải sau thời điểm hiện tại (khi sửa buổi chỉ kiểm nếu đổi giờ bắt đầu), không thì 400 ở ô scheduledStartAt"
           },
           "scheduledEndAt": {
             "type": "string",
@@ -19911,7 +19912,8 @@
           },
           "scheduledStartAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Giờ bắt đầu, phải sau thời điểm hiện tại (khi sửa buổi chỉ kiểm nếu đổi giờ bắt đầu), không thì 400 ở ô scheduledStartAt"
           },
           "scheduledEndAt": {
             "type": "string",

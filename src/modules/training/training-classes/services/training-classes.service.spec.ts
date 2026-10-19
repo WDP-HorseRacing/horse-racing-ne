@@ -3,6 +3,7 @@ import { validate } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UserRole } from '../../../../common/enums/role.enum';
 import type { Actor } from '../../../../common/types/actor';
+import { clubToday, shiftDays } from '../../../../common/utils/club-date';
 import { UpdateTrainingClassStatusDto } from '../../dto/training-class.dto';
 import { TrainingClassEntity } from '../../entities/training-class.entity';
 import { TrainingClassStatus } from '../../enums/training-class-status.enum';
@@ -22,6 +23,18 @@ function setup(
       headTrainerId: 'ht',
       phases: [{ position: 1, weeks: 4, subjects: [] }],
     }),
+    findBy: jest.fn().mockResolvedValue([{ weeks: 4 }]),
+    countBy: jest.fn().mockResolvedValue(0),
+    getRepository: jest.fn(() => ({
+      createQueryBuilder: () => {
+        const qb = {
+          where: () => qb,
+          andWhere: () => qb,
+          getCount: () => Promise.resolve(0),
+        };
+        return qb;
+      },
+    })),
     create: jest.fn((_target: unknown, row: object) => row),
     save: jest.fn((row: unknown) => Promise.resolve(row)),
   };
@@ -78,6 +91,67 @@ describe('TrainingClassesService duplicate code', () => {
     await expect(
       service.update(actor, 'c1', { code: 'k2' }),
     ).rejects.toMatchObject(codeTaken('K2'));
+  });
+});
+
+describe('TrainingClassesService start date in the past', () => {
+  const pastStart = {
+    status: 400,
+    response: {
+      errors: [
+        { field: 'startDate', message: 'Ngày bắt đầu không được ở quá khứ' },
+      ],
+    },
+  };
+  const newClass = (startDate: string) => ({
+    code: 'k1',
+    name: 'K1',
+    planId: 'p1',
+    startDate,
+  });
+
+  it('trả 400 gắn ô startDate khi tạo lớp bắt đầu hôm qua, không lưu', async () => {
+    const { service, manager } = setup();
+
+    await expect(
+      service.create(actor, newClass(shiftDays(clubToday(), -1))),
+    ).rejects.toMatchObject(pastStart);
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('cho tạo lớp bắt đầu hôm nay', async () => {
+    const { service } = setup();
+
+    const created = await service.create(actor, newClass(clubToday()));
+
+    expect(created.startDate).toBe(clubToday());
+  });
+
+  it('trả 400 khi dời ngày bắt đầu sang quá khứ, không lưu', async () => {
+    const { service, manager } = setup({
+      startDate: '2099-10-01',
+      endDate: '2099-10-28',
+    });
+
+    await expect(
+      service.update(actor, 'c1', { startDate: '2000-01-01' }),
+    ).rejects.toMatchObject(pastStart);
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('cho sửa lớp đã bắt đầu từ trước khi gửi lại đúng ngày bắt đầu cũ', async () => {
+    const { service } = setup({
+      startDate: '2000-01-01',
+      endDate: '2000-01-28',
+    });
+
+    const updated = await service.update(actor, 'c1', {
+      startDate: '2000-01-01',
+      name: 'Tên mới',
+    });
+
+    expect(updated.name).toBe('Tên mới');
+    expect(updated.startDate).toBe('2000-01-01');
   });
 });
 

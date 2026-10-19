@@ -71,7 +71,7 @@ export class CreateTrainingClassDto {
   @ApiProperty({
     format: 'date',
     description:
-      'Ngày bắt đầu; ngày kết thúc tự tính theo tổng số tuần của giáo án',
+      'Ngày bắt đầu, từ hôm nay trở đi theo lịch CLB (khi sửa lớp chỉ kiểm nếu khác ngày bắt đầu đang có), không thì 400 ở ô startDate; ngày kết thúc tự tính theo tổng số tuần của giáo án',
   })
   @IsDateString()
   startDate!: string;
