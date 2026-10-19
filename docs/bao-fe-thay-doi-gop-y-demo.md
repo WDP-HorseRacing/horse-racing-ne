@@ -542,3 +542,7 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
 1. Lớp `ACTIVE` có `endDate` trước hôm nay (lịch CLB) và không còn buổi `SCHEDULED`/`IN_PROGRESS` thì hệ thống tự chuyển `COMPLETED` trong vòng một phút, không cần ai bấm. Ngựa đang học chuyển `LEFT`.
 2. Trạng thái lớp có thể đổi mà không có thao tác của người dùng: FE tải lại lớp thay vì giữ trạng thái cũ trong cache. Không có thông báo nào gửi đi.
 3. Nhật ký lớp có dòng người thao tác trống, lý do "Hệ thống tự hoàn thành lớp".
+
+## Khóa tài khoản Groom còn lượt dắt
+
+1. Khóa tài khoản (`PATCH /users/:id/status`) hoặc đổi vai trò (`PATCH /users/:id`) Groom còn lượt tập chưa diễn ra được giao dắt (kể cả dắt hộ): 409 `Người này còn N lượt tập được giao dắt chưa diễn ra, cần nhờ Huấn luyện viên trưởng giao lại trước khi khóa tài khoản` (đổi vai trò thì kết thúc bằng "trước khi đổi vai trò").

@@ -42,12 +42,13 @@ import type {
 /**
  * Trạng thái lượt tập còn mở, tính vào lịch dắt của Groom
  */
-const OPEN_GROOM_RUN_STATUSES: ReadonlyArray<SessionParticipantStatus> = [
-  SessionParticipantStatus.PLANNED,
-  SessionParticipantStatus.PRESENT,
-  SessionParticipantStatus.READY,
-  SessionParticipantStatus.ONGOING,
-];
+export const OPEN_GROOM_RUN_STATUSES: ReadonlyArray<SessionParticipantStatus> =
+  [
+    SessionParticipantStatus.PLANNED,
+    SessionParticipantStatus.PRESENT,
+    SessionParticipantStatus.READY,
+    SessionParticipantStatus.ONGOING,
+  ];
 
 /**
  * Trạng thái buổi tập được tính vào lịch của ngựa ở một lớp

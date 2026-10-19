@@ -30,6 +30,7 @@ import { BarnEntity } from '../../stable/entities/barn.entity';
 import { TrainingClassEntity } from '../../training/entities/training-class.entity';
 import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
 import { TrainingClassStatus } from '../../training/enums/training-class-status.enum';
+import { countPendingGroomRuns } from '../../training/shared/groom-pending-runs';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
   CreateUserDto,
@@ -352,6 +353,7 @@ export class UsersService {
    * - Groom: không còn phụ trách ngựa nào (groom assignment chưa kết thúc)
    * - Head Trainer: không còn phụ trách khu chuồng nào, không còn giáo án và lớp huấn luyện nháp hoặc đang chạy
    * - Mọi vai trò: không còn lịch chăm sóc Đã lên lịch được giao đích danh cho người này
+   * - Groom: không còn lượt tập chưa diễn ra được giao dắt, kể cả lượt dắt hộ ngựa không phụ trách
    *
    * @param manager EntityManager của transaction đang chạy, user đã được khóa bằng manager này
    * @param user User sắp đổi vai trò hoặc sắp bị khóa
@@ -406,6 +408,14 @@ export class UsersService {
       throw new ConflictException(
         `Người này còn ${openCareSchedules} lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi ${label}`,
       );
+    }
+    if (user.role === UserRole.GROOM) {
+      const pendingRuns = await countPendingGroomRuns(manager, user.id);
+      if (pendingRuns > 0) {
+        throw new ConflictException(
+          `Người này còn ${pendingRuns} lượt tập được giao dắt chưa diễn ra, cần nhờ Huấn luyện viên trưởng giao lại trước khi ${label}`,
+        );
+      }
     }
   }
 

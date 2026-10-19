@@ -12,9 +12,12 @@ import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.const
 import { CareScheduleStatus } from '../../medical/constants/care-schedule.enum';
 import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
 import { BarnEntity } from '../../stable/entities/barn.entity';
+import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 import { TrainingClassEntity } from '../../training/entities/training-class.entity';
 import { TrainingPlanEntity } from '../../training/entities/training-plan.entity';
 import { TrainingClassStatus } from '../../training/enums/training-class-status.enum';
+import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
+import { TrainingSessionStatus } from '../../training/enums/training-session-status.enum';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { UserEntity } from '../entities/user.entity';
 import { UserRole, UserStatus } from '../user.enums';
@@ -53,6 +56,7 @@ describe('UsersService', () => {
   let planRepository: { existsBy: jest.Mock };
   let classRepository: { existsBy: jest.Mock };
   let careScheduleRepository: { count: jest.Mock };
+  let participantRepository: { count: jest.Mock };
   let userRepository: {
     findOne: jest.Mock;
     find: jest.Mock;
@@ -85,6 +89,7 @@ describe('UsersService', () => {
     planRepository = { existsBy: exists('plan') };
     classRepository = { existsBy: exists('class') };
     careScheduleRepository = { count: jest.fn().mockResolvedValue(0) };
+    participantRepository = { count: jest.fn().mockResolvedValue(0) };
     userRepository = {
       findOne: jest.fn(() => {
         events.push('lock:user');
@@ -107,6 +112,7 @@ describe('UsersService', () => {
       if (entity === TrainingPlanEntity) return planRepository;
       if (entity === TrainingClassEntity) return classRepository;
       if (entity === CareScheduleEntity) return careScheduleRepository;
+      if (entity === SessionParticipantEntity) return participantRepository;
       if (entity === UserEntity) return userRepository;
       throw new Error('Unexpected repository');
     });
@@ -187,6 +193,20 @@ describe('UsersService', () => {
       await expect(
         service.update(actor, owner.id, { role: UserRole.HORSE_OWNER }),
       ).rejects.toThrow(ConflictException);
+      expect(userRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when changing the role of a groom still assigned to lead future runs', async () => {
+      target = { ...owner, role: UserRole.GROOM };
+      participantRepository.count.mockResolvedValue(1);
+
+      await expect(
+        service.update(actor, owner.id, { role: UserRole.HORSE_OWNER }),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Người này còn 1 lượt tập được giao dắt chưa diễn ra, cần nhờ Huấn luyện viên trưởng giao lại trước khi đổi vai trò',
+        ),
+      );
       expect(userRepository.update).not.toHaveBeenCalled();
     });
 
@@ -497,6 +517,57 @@ describe('UsersService', () => {
         where: { assignedTo: owner.id, status: CareScheduleStatus.SCHEDULED },
       });
       expect(userRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses to lock a groom still assigned to lead runs that have not happened yet', async () => {
+      target = { ...owner, role: UserRole.GROOM };
+      participantRepository.count.mockResolvedValue(3);
+
+      await expect(
+        service.setStatus(actor, owner.id, UserStatus.LOCKED),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Người này còn 3 lượt tập được giao dắt chưa diễn ra, cần nhờ Huấn luyện viên trưởng giao lại trước khi khóa tài khoản',
+        ),
+      );
+      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(keycloakUsers.setUserEnabled).not.toHaveBeenCalled();
+    });
+
+    it('counts only open runs of scheduled or in-progress sessions, ignoring ended or cancelled ones', async () => {
+      target = { ...owner, role: UserRole.GROOM };
+
+      await service.setStatus(actor, owner.id, UserStatus.LOCKED);
+
+      expect(participantRepository.count).toHaveBeenCalledWith({
+        where: {
+          assignedGroomId: owner.id,
+          status: In([
+            SessionParticipantStatus.PLANNED,
+            SessionParticipantStatus.PRESENT,
+            SessionParticipantStatus.READY,
+            SessionParticipantStatus.ONGOING,
+          ]),
+          session: {
+            status: In([
+              TrainingSessionStatus.SCHEDULED,
+              TrainingSessionStatus.IN_PROGRESS,
+            ]),
+          },
+        },
+      });
+      expect(keycloakUsers.setUserEnabled).toHaveBeenCalledWith(
+        owner.keycloakId,
+        false,
+      );
+    });
+
+    it('does not check led runs for roles other than groom', async () => {
+      target = { ...owner, role: UserRole.VETERINARIAN };
+
+      await service.setStatus(actor, owner.id, UserStatus.LOCKED);
+
+      expect(participantRepository.count).not.toHaveBeenCalled();
     });
 
     it('reactivates a locked user without checking responsibilities', async () => {
