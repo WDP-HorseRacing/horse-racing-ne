@@ -49,7 +49,6 @@ import {
   assertClassEditable,
   assertClassStartNotPast,
   classEndDate,
-  dateOnly,
   totalPlanWeeks,
 } from '../../policies/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
@@ -98,7 +97,7 @@ export class TrainingClassesService {
         body.planId,
         headTrainerId,
       );
-      const startDate = dateOnly(body.startDate);
+      const startDate = body.startDate;
       assertClassStartNotPast(startDate, clubToday());
       const saved = await manager.save(
         manager.create(TrainingClassEntity, {
@@ -400,9 +399,7 @@ export class TrainingClassesService {
         }
         row.code = nextCode;
       }
-      const startDate = body.startDate
-        ? dateOnly(body.startDate)
-        : row.startDate;
+      const startDate = body.startDate ?? row.startDate;
       const endDate = body.startDate
         ? classEndDate(
             startDate,

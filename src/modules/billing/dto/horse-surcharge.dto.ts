@@ -1,16 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import {
-  IsDateString,
   IsInt,
   IsString,
-  Matches,
   Max,
   MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
-import { DATE_ONLY_PATTERN } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 
 const MAX_DAILY_SURCHARGE_VND = 1_000_000_000;
 
@@ -39,8 +37,7 @@ export class CreateHorseSurchargeDto {
     format: 'date',
     description: 'Ngày bắt đầu tính (lịch câu lạc bộ), từ hôm nay trở đi',
   })
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Ngày bắt đầu phải có dạng YYYY-MM-DD',
   })
   startDate!: string;
@@ -50,8 +47,7 @@ export class CreateHorseSurchargeDto {
     description:
       'Ngày cuối tính phụ phí (lịch câu lạc bộ), không trước ngày bắt đầu',
   })
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Ngày kết thúc phải có dạng YYYY-MM-DD',
   })
   endDate!: string;

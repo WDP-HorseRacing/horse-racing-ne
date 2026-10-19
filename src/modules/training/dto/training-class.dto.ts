@@ -6,7 +6,6 @@ import {
 } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import {
-  IsDateString,
   IsEnum,
   IsIn,
   IsInt,
@@ -21,6 +20,7 @@ import {
 import { RaceAptitude } from '../../horses/enums/race-aptitude.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingPlanSubjectResponseDto } from './training-plan.dto';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 
 export class CreateTrainingClassDto {
   @ApiProperty({
@@ -73,7 +73,7 @@ export class CreateTrainingClassDto {
     description:
       'Ngày bắt đầu, từ hôm nay trở đi theo lịch CLB (khi sửa lớp chỉ kiểm nếu khác ngày bắt đầu đang có), không thì 400 ở ô startDate; ngày kết thúc tự tính theo tổng số tuần của giáo án',
   })
-  @IsDateString()
+  @IsDateOnly()
   startDate!: string;
 }
 

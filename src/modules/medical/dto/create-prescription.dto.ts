@@ -1,13 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import {
-  IsOptional,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
-import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsDateOnly, trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Một dòng đơn thuốc trong buổi khám: không trừ kho, không tính tiền.
@@ -35,7 +29,7 @@ export class CreatePrescriptionDto {
   frequency!: string;
 
   @ApiProperty({ format: 'date', description: 'YYYY-MM-DD' })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Ngày bắt đầu phải có dạng YYYY-MM-DD',
   })
   startDate!: string;
@@ -46,7 +40,7 @@ export class CreatePrescriptionDto {
       'YYYY-MM-DD, không sớm hơn startDate; bắt buộc khi buổi khám không mở bệnh án, bỏ trống là dùng tới khi đóng bệnh án',
   })
   @IsOptional()
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Ngày kết thúc phải có dạng YYYY-MM-DD',
   })
   endDate?: string;

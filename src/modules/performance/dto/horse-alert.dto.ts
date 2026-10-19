@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { IsDateString, IsIn, IsOptional } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 
 export class HorseAlertQueryDto extends PickType(PaginationQueryDto, [
   'page',
@@ -18,7 +19,7 @@ export class HorseAlertQueryDto extends PickType(PaginationQueryDto, [
 
   @ApiPropertyOptional({ format: 'date', description: 'Từ ngày (lịch CLB)' })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   from?: string;
 
   @ApiPropertyOptional({
@@ -26,7 +27,7 @@ export class HorseAlertQueryDto extends PickType(PaginationQueryDto, [
     description: 'Tới hết ngày (lịch CLB)',
   })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   to?: string;
 }
 

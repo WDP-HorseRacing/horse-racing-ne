@@ -7,7 +7,6 @@ import {
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -38,6 +37,7 @@ import {
   HorsePersonDto,
   HorseEligibilityDto,
 } from './horse.dto';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 
 const LETTERS_PATTERN = /^\p{L}+(?:[ '-]\p{L}+)*$/u;
 const MICROCHIP_PATTERN = /^\d{15}$/;
@@ -111,10 +111,9 @@ export class CreateHorseDto {
 
   @ApiPropertyOptional({ format: 'date', nullable: true, type: String })
   @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+  @IsDateOnly({
     message: 'Ngày sinh phải có dạng YYYY-MM-DD',
   })
-  @IsDateString({ strict: true })
   dateOfBirth?: string | null;
 
   @ApiPropertyOptional({ format: 'uuid', nullable: true, type: String })

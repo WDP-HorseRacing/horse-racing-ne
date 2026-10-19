@@ -63,8 +63,8 @@ export class PerformanceDetailsService {
       caller.id,
       horseId,
     );
-    const from = query.from?.slice(0, 10);
-    const to = query.to?.slice(0, 10);
+    const from = query.from;
+    const to = query.to;
     if (from && to && from > to) {
       throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
     }
@@ -115,8 +115,8 @@ export class PerformanceDetailsService {
     query: HorseWorkloadQueryDto,
   ): Promise<HorseWorkloadDto> {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
-    const to = query.to?.slice(0, 10) ?? clubToday();
-    const from = query.from?.slice(0, 10) ?? shiftDays(to, -6);
+    const to = query.to ?? clubToday();
+    const from = query.from ?? shiftDays(to, -6);
     if (from > to) {
       throw new BadRequestException('Từ ngày phải trước hoặc bằng đến ngày');
     }

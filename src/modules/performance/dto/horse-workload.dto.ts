@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional } from 'class-validator';
+import { IsOptional } from 'class-validator';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 
 export class HorseWorkloadQueryDto {
   @ApiPropertyOptional({
@@ -7,7 +8,7 @@ export class HorseWorkloadQueryDto {
     description: 'Từ ngày (lịch CLB); bỏ trống là 6 ngày trước `to`',
   })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   from?: string;
 
   @ApiPropertyOptional({
@@ -15,7 +16,7 @@ export class HorseWorkloadQueryDto {
     description: 'Tới ngày (lịch CLB); bỏ trống là hôm nay',
   })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   to?: string;
 }
 

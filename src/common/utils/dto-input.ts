@@ -3,7 +3,7 @@ import { isISO8601, ValidateBy, type ValidationOptions } from 'class-validator';
 /**
  * Chuỗi ngày theo lịch, không kèm giờ (YYYY-MM-DD).
  */
-export const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Cắt khoảng trắng hai đầu nếu giá trị là chuỗi, dùng cho @Transform của các ô văn bản
@@ -41,6 +41,30 @@ export function IsIsoInstant(options?: ValidationOptions): PropertyDecorator {
           isISO8601(value, { strict: true }),
         defaultMessage: () =>
           '$property phải là thời điểm ISO 8601 có múi giờ, vd 2026-10-23T00:30:00+07:00',
+      },
+    },
+    options,
+  );
+}
+
+/**
+ * Kiểm ô là ngày theo lịch, đúng dạng YYYY-MM-DD và là ngày có thật
+ *
+ * - Kèm giờ hoặc múi giờ (vd `2026-10-20T17:00:00Z`), sai dạng, hoặc ngày không tồn tại (vd 2026-02-30): lỗi `isDateOnly`
+ *
+ * @param options Tùy chọn của class-validator (vd `message`, `each`)
+ * @returns Decorator gắn lên ô của DTO
+ */
+export function IsDateOnly(options?: ValidationOptions): PropertyDecorator {
+  return ValidateBy(
+    {
+      name: 'isDateOnly',
+      validator: {
+        validate: (value: unknown) =>
+          typeof value === 'string' &&
+          DATE_ONLY_PATTERN.test(value) &&
+          isISO8601(value, { strict: true }),
+        defaultMessage: () => '$property phải là ngày dạng YYYY-MM-DD',
       },
     },
     options,

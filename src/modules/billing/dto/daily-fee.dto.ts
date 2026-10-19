@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { IsDateString, IsInt, Matches, Max, Min } from 'class-validator';
-import { DATE_ONLY_PATTERN } from '../../../common/utils/dto-input';
+import { IsInt, Max, Min } from 'class-validator';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 
 const MAX_DAILY_FEE_VND = 1_000_000_000;
 
@@ -10,8 +10,7 @@ export class CreateDailyFeeDto {
     format: 'date',
     description: 'Ngày bắt đầu áp dụng (lịch câu lạc bộ), từ hôm nay trở đi',
   })
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Ngày hiệu lực phải có dạng YYYY-MM-DD',
   })
   effectiveFrom!: string;

@@ -1,15 +1,9 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsUUID,
-  Matches,
-} from 'class-validator';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { UserRole } from '../../../common/enums/role.enum';
-import { DATE_ONLY_PATTERN } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 import { AuditAction } from '../constants/audit-action.enum';
 import { AuditEntityType } from '../constants/audit-entity-type.enum';
 
@@ -48,8 +42,7 @@ export class AuditLogListQueryDto extends PickType(PaginationQueryDto, [
     description: 'Từ ngày (lịch câu lạc bộ), YYYY-MM-DD',
   })
   @IsOptional()
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, { message: 'Từ ngày phải có dạng YYYY-MM-DD' })
+  @IsDateOnly({ message: 'Từ ngày phải có dạng YYYY-MM-DD' })
   from?: string;
 
   @ApiPropertyOptional({
@@ -57,8 +50,7 @@ export class AuditLogListQueryDto extends PickType(PaginationQueryDto, [
     description: 'Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD',
   })
   @IsOptional()
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, { message: 'Đến ngày phải có dạng YYYY-MM-DD' })
+  @IsDateOnly({ message: 'Đến ngày phải có dạng YYYY-MM-DD' })
   to?: string;
 }
 

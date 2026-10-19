@@ -2,16 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
+import { IsDateOnly, trimValue } from '../../../common/utils/dto-input';
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 
 export class CreateCareTaskTypeDto {
@@ -69,15 +67,13 @@ export class CreateHorseCareTaskDto {
   mode?: HorseCareTaskMode;
 
   @ApiProperty({ format: 'date', description: 'Ngày bắt đầu, từ hôm nay' })
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Ngày bắt đầu phải có dạng YYYY-MM-DD',
   })
   fromDate!: string;
 
   @ApiProperty({ format: 'date', description: 'Ngày kết thúc' })
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Ngày kết thúc phải có dạng YYYY-MM-DD',
   })
   toDate!: string;

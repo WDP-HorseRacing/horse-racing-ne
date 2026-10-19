@@ -6,7 +6,6 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -15,7 +14,7 @@ import {
   MedicalCaseStatus,
 } from '../constants/medical-case.enum';
 import {
-  DATE_ONLY_PATTERN,
+  IsDateOnly,
   IsIsoInstant,
   trimValue,
 } from '../../../common/utils/dto-input';
@@ -76,14 +75,14 @@ export class MedicalCostReportQueryDto {
     format: 'date',
     description: 'Từ ngày (lịch câu lạc bộ), YYYY-MM-DD',
   })
-  @Matches(DATE_ONLY_PATTERN, { message: 'Từ ngày phải có dạng YYYY-MM-DD' })
+  @IsDateOnly({ message: 'Từ ngày phải có dạng YYYY-MM-DD' })
   from!: string;
 
   @ApiProperty({
     format: 'date',
     description: 'Đến ngày (lịch câu lạc bộ), YYYY-MM-DD',
   })
-  @Matches(DATE_ONLY_PATTERN, { message: 'Đến ngày phải có dạng YYYY-MM-DD' })
+  @IsDateOnly({ message: 'Đến ngày phải có dạng YYYY-MM-DD' })
   to!: string;
 
   @ApiPropertyOptional({ format: 'uuid' })

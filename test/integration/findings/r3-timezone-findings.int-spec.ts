@@ -520,27 +520,24 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     );
   });
 
-  it('TZ3-15 class create: startDate sent as an instant (Z) is taken as the club date of that instant', async () => {
+  it('TZ3-15 class create: startDate sent as an instant (Z) is rejected, a YYYY-MM-DD date is stored as is', async () => {
     const { planId } = await seed.trainingClass(trainerId);
     const futureDay = '2099-10-15';
-    const startInstant = clubDateTimeToInstant(
-      futureDay,
-      '03:00',
-    ).toISOString();
     const body = {
       code: 'TZ315',
       name: 'Lớp sáng',
       planId,
-      startDate: startInstant,
+      startDate: clubDateTimeToInstant(futureDay, '03:00').toISOString(),
     } as CreateTrainingClassDto;
-    const errors = validateSync(plainToInstance(CreateTrainingClassDto, body));
-    const result = failedProperties(errors).includes('startDate')
-      ? futureDay
-      : await classes.create(trainer, body).then(
-          (row) => row.startDate,
-          (e: Error) => `${e.constructor.name}: ${e.message}`,
-        );
-    expect(result).toBe(futureDay);
+    const failed = () =>
+      failedProperties(
+        validateSync(plainToInstance(CreateTrainingClassDto, body)),
+      );
+    expect(failed()).toContain('startDate');
+    body.startDate = futureDay;
+    expect(failed()).toEqual([]);
+    const row = await classes.create(trainer, body);
+    expect(row.startDate).toBe(futureDay);
   });
 
   it('TZ3-16 enrollment enrolledAt without offset is rejected, with offset is stored as club time', async () => {

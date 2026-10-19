@@ -1,14 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import {
-  IsBoolean,
-  IsDateString,
-  IsOptional,
-  IsString,
-  Matches,
-  MaxLength,
-} from 'class-validator';
-import { DATE_ONLY_PATTERN } from '../../../common/utils/dto-input';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { CareTaskUserSummaryResponseDto } from './care-task.dto';
 
@@ -18,8 +11,7 @@ export class DailyChecklistQueryDto {
     description: 'Từ ngày, mặc định hôm nay',
   })
   @IsOptional()
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Từ ngày phải có dạng YYYY-MM-DD',
   })
   from?: string;
@@ -29,8 +21,7 @@ export class DailyChecklistQueryDto {
     description: 'Đến ngày, mặc định bằng from; tối đa 31 ngày',
   })
   @IsOptional()
-  @IsDateString({ strict: true })
-  @Matches(DATE_ONLY_PATTERN, {
+  @IsDateOnly({
     message: 'Đến ngày phải có dạng YYYY-MM-DD',
   })
   to?: string;
