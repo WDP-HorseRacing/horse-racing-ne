@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
@@ -9,7 +8,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
 import { CareAssigneeType } from '../constants/care-schedule.enum';
 
 /**
@@ -18,10 +17,11 @@ import { CareAssigneeType } from '../constants/care-schedule.enum';
 export class UpdateCareScheduleDto {
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description: 'Ngày đến hạn mới; dời ngày bắt buộc reason',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   dueAt?: string;
 
   @ApiPropertyOptional({
@@ -81,10 +81,11 @@ export class CancelCareScheduleDto {
 export class CompleteCareScheduleDto {
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description:
       'Ngày đến hạn lần tới; có thì tạo lịch mới cùng loại. Chỉ Veterinarian được nhập',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   nextDueAt?: string;
 }

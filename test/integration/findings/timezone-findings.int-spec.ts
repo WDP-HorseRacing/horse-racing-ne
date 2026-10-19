@@ -1,4 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../src/common/enums/role.enum';
@@ -11,6 +13,7 @@ import {
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { DailyFeesService } from '../../../src/modules/billing/daily-fees/daily-fees.service';
 import { DailyFeeEntity } from '../../../src/modules/billing/entities/daily-fee.entity';
+import { CreateHorseMeasurementDto } from '../../../src/modules/horses/dto/horse-measure.dto';
 import { HorseMeasurementEntity } from '../../../src/modules/horses/entities/horse-measurement.entity';
 import { HorseMeasurementType } from '../../../src/modules/horses/enums/horse-measurement-type.enum';
 import { HorseMeasurementsService } from '../../../src/modules/horses/horse-measurements/horse-measurements.service';
@@ -330,19 +333,25 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
         ).rejects.toBeInstanceOf(BadRequestException);
       });
 
-      it('TZ-7: measuredAt without offset sent at 23:30 club time is read as club time, not as server time', async () => {
+      it('TZ-7: measuredAt without offset sent at 23:30 club time is rejected, with offset is read as club time', async () => {
         fakeNow(D, '23:30');
-
-        const result = await measurements
-          .addMeasurements(vet, gio, {
-            values: [{ type: HorseMeasurementType.WEIGHT, value: 450 }],
-            measuredAt: `${D}T23:20:00`,
-            confirmAbnormal: true,
-          })
-          .then(
-            (rows) => new Date(rows[0].measuredAt).toISOString(),
-            (e: Error) => `${e.constructor.name}: ${e.message}`,
+        const body = {
+          values: [{ type: HorseMeasurementType.WEIGHT, value: 450 }],
+          measuredAt: `${D}T23:20:00`,
+          confirmAbnormal: true,
+        };
+        const failed = () =>
+          validateSync(plainToInstance(CreateHorseMeasurementDto, body)).map(
+            (e) => e.property,
           );
+        expect(failed()).toEqual(['measuredAt']);
+        body.measuredAt = `${D}T23:20:00+07:00`;
+        expect(failed()).toEqual([]);
+
+        const result = await measurements.addMeasurements(vet, gio, body).then(
+          (rows) => new Date(rows[0].measuredAt).toISOString(),
+          (e: Error) => `${e.constructor.name}: ${e.message}`,
+        );
 
         expect(result).toBe(clubDateTimeToInstant(D, '23:20').toISOString());
       });

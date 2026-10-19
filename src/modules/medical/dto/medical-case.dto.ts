@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
@@ -15,7 +14,11 @@ import {
   CaseLockDecision,
   MedicalCaseStatus,
 } from '../constants/medical-case.enum';
-import { DATE_ONLY_PATTERN, trimValue } from '../../../common/utils/dto-input';
+import {
+  DATE_ONLY_PATTERN,
+  IsIsoInstant,
+  trimValue,
+} from '../../../common/utils/dto-input';
 
 /**
  * Lọc danh sách bệnh án của một con ngựa.
@@ -49,10 +52,11 @@ export class CloseMedicalCaseDto {
 
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description: 'Ngày dự kiến gỡ khóa; bắt buộc khi lockDecision là KEEP',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   lockExpectedEnd?: string;
 
   @ApiPropertyOptional({

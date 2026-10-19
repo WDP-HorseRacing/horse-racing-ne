@@ -1,29 +1,30 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import {
-  IsDateString,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MinLength,
-} from 'class-validator';
+import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
+import { IsIsoInstant } from '../../../common/utils/dto-input';
 
 export class CreateHorseEnrollmentDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   horseId!: string;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+  })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   enrolledAt?: string;
 }
 
 export class LeaveHorseEnrollmentDto {
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+  })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   leftAt?: string;
 
   @ApiPropertyOptional()

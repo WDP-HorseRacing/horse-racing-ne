@@ -5,7 +5,6 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsInt,
   IsNumber,
@@ -24,6 +23,7 @@ import {
 import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
+import { IsIsoInstant } from '../../../common/utils/dto-input';
 
 export class HorseMeasurementValueDto {
   @ApiProperty({ enum: HorseMeasurementType })
@@ -53,11 +53,12 @@ export class CreateHorseMeasurementDto {
 
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description:
       'Mặc định là thời điểm hiện tại. Không ở tương lai, lùi tối đa 7 ngày',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   measuredAt?: string;
 
   @ApiPropertyOptional({
@@ -93,18 +94,20 @@ export class HorseMeasurementListQueryDto {
 
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description: 'Chỉ lấy bản ghi đo từ thời điểm này',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   from?: string;
 
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description: 'Chỉ lấy bản ghi đo tới thời điểm này',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   to?: string;
 
   @ApiPropertyOptional({

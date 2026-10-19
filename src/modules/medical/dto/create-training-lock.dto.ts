@@ -1,13 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import {
-  IsDateString,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Bác sĩ đặt khóa huấn luyện. Thời điểm bắt đầu là lúc đặt.
@@ -22,9 +16,10 @@ export class CreateTrainingLockDto {
 
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description: 'Ngày dự kiến gỡ, chỉ để tham khảo; không ở quá khứ',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   lockEnd?: string;
 }

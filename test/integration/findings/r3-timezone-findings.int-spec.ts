@@ -87,6 +87,8 @@ const PAST = `${shiftDays(D, -1)}T20:00:00`;
 const LATER = `${D}T20:00:00`;
 const LATER_END = `${D}T21:00:00`;
 const REJECTED = 'rejected by DTO validation';
+/** Offset của giờ CLB (Asia/Ho_Chi_Minh) */
+const CLUB_OFFSET = '+07:00';
 
 /** Thời điểm đúng nếu chuỗi không offset được hiểu là giờ CLB */
 const club = (local: string) =>
@@ -177,8 +179,22 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     return iso(await stored());
   };
 
-  const expectClubTime = (result: string, local: string) =>
-    expect(result === REJECTED ? club(local) : result).toBe(club(local));
+  /**
+   * Chuỗi không offset phải bị DTO chặn; cùng mốc đó kèm offset CLB phải được lưu đúng thời điểm
+   */
+  const expectOffsetRequired = async (
+    dto: new () => object,
+    body: object,
+    field: string,
+    run: () => Promise<unknown>,
+    stored: () => Promise<unknown>,
+  ): Promise<void> => {
+    const record = body as Record<string, string>;
+    const local = record[field];
+    expect(await interpret(dto, body, field, run, stored)).toBe(REJECTED);
+    record[field] = `${local}${CLUB_OFFSET}`;
+    expect(await interpret(dto, body, field, run, stored)).toBe(club(local));
+  };
 
   const subjectOf = async (planId: string) =>
     (await one(
@@ -308,10 +324,10 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     },
   );
 
-  it('TZ3-2 follow-up visit nextVisitAt without offset is club time', async () => {
+  it('TZ3-2 follow-up visit nextVisitAt without offset is rejected, with offset is stored as club time', async () => {
     const caseId = await seed.medicalCase(gio, vetId);
     const body = { nextVisitAt: LATER } as CreateFollowUpVisitDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       CreateFollowUpVisitDto,
       body,
       'nextVisitAt',
@@ -322,10 +338,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           [caseId],
         ),
     );
-    expectClubTime(result, LATER);
   });
 
-  it('TZ3-3 closing a case with KEEP: lockExpectedEnd without offset is club time', async () => {
+  it('TZ3-3 closing a case with KEEP: lockExpectedEnd without offset is rejected, with offset is stored as club time', async () => {
     const caseId = await seed.medicalCase(gio, vetId);
     const lockId = randomUUID();
     await dataSource.query(
@@ -338,7 +353,7 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       lockDecision: CaseLockDecision.KEEP,
       lockExpectedEnd: LATER,
     } as CloseMedicalCaseDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       CloseMedicalCaseDto,
       body,
       'lockExpectedEnd',
@@ -346,7 +361,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       () =>
         one('SELECT lock_end AS v FROM training_locks WHERE id = $1', [lockId]),
     );
-    expectClubTime(result, LATER);
   });
 
   it('TZ3-4 lifecycle DTO no longer takes a dateOfDeath (the server records the club date)', () => {
@@ -372,9 +386,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     expect(failedProperties(errors)).toContain('dateOfDeath');
   });
 
-  it('TZ3-6 training lock lockEnd without offset is club time', async () => {
+  it('TZ3-6 training lock lockEnd without offset is rejected, with offset is stored as club time', async () => {
     const body = { reason: 'Nghỉ', lockEnd: LATER } as CreateTrainingLockDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       CreateTrainingLockDto,
       body,
       'lockEnd',
@@ -384,15 +398,14 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           gio,
         ]),
     );
-    expectClubTime(result, LATER);
   });
 
-  it('TZ3-7 care schedule create dueAt without offset is club time', async () => {
+  it('TZ3-7 care schedule create dueAt without offset is rejected, with offset is stored as club time', async () => {
     const body = {
       type: CareScheduleType.FARRIER,
       dueAt: LATER,
     } as CreateCareScheduleDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       CreateCareScheduleDto,
       body,
       'dueAt',
@@ -402,33 +415,31 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           gio,
         ]),
     );
-    expectClubTime(result, LATER);
   });
 
-  it('TZ3-8 care schedule update dueAt without offset is club time', async () => {
+  it('TZ3-8 care schedule update dueAt without offset is rejected, with offset is stored as club time', async () => {
     const id = await seed.schedule(
       gio,
       clubDateTimeToInstant(shiftDays(D, 3), '08:00').toISOString(),
     );
     const body = { dueAt: LATER, reason: 'Dời' } as UpdateCareScheduleDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       UpdateCareScheduleDto,
       body,
       'dueAt',
       () => careSchedules.update(vet, id, body),
       () => one('SELECT due_at AS v FROM care_schedules WHERE id = $1', [id]),
     );
-    expectClubTime(result, LATER);
   });
 
-  it('TZ3-9 care schedule complete nextDueAt without offset is club time', async () => {
+  it('TZ3-9 care schedule complete nextDueAt without offset is rejected, with offset is stored as club time', async () => {
     const id = await seed.schedule(
       gio,
       clubDateTimeToInstant(D, '08:00').toISOString(),
       { assignedTo: vetId },
     );
     const body = { nextDueAt: LATER } as CompleteCareScheduleDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       CompleteCareScheduleDto,
       body,
       'nextDueAt',
@@ -439,12 +450,11 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           [gio],
         ),
     );
-    expectClubTime(result, LATER);
   });
 
-  it('TZ3-10 checkup appointment scheduledAt without offset is club time', async () => {
+  it('TZ3-10 checkup appointment scheduledAt without offset is rejected, with offset is stored as club time', async () => {
     const body = { scheduledAt: LATER } as SetCheckupAppointmentDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       SetCheckupAppointmentDto,
       body,
       'scheduledAt',
@@ -454,10 +464,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           gio,
         ]),
     );
-    expectClubTime(result, LATER);
   });
 
-  it('TZ3-12 training session create scheduledStartAt without offset is club time', async () => {
+  it('TZ3-12 training session create scheduledStartAt without offset is rejected, with offset is stored as club time', async () => {
     const { classId, planId } = await activeClass();
     const body = {
       name: 'Buổi tối',
@@ -465,9 +474,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       intensity: TrainingIntensity.LIGHT,
       plannedDistanceM: 3000,
       scheduledStartAt: LATER,
-      scheduledEndAt: LATER_END,
+      scheduledEndAt: `${LATER_END}${CLUB_OFFSET}`,
     } as CreateTrainingSessionDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       CreateTrainingSessionDto,
       body,
       'scheduledStartAt',
@@ -478,10 +487,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           [classId],
         ),
     );
-    expectClubTime(result, LATER);
   });
 
-  it('TZ3-13 training session update scheduledStartAt without offset is club time', async () => {
+  it('TZ3-13 training session update scheduledStartAt without offset is rejected, with offset is stored as club time', async () => {
     const { classId, planId } = await activeClass();
     const id = randomUUID();
     await dataSource.query(
@@ -497,9 +505,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     );
     const body = {
       scheduledStartAt: LATER,
-      scheduledEndAt: LATER_END,
+      scheduledEndAt: `${LATER_END}${CLUB_OFFSET}`,
     } as UpdateTrainingSessionDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       UpdateTrainingSessionDto,
       body,
       'scheduledStartAt',
@@ -510,7 +518,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           [id],
         ),
     );
-    expectClubTime(result, LATER);
   });
 
   it('TZ3-15 class create: startDate sent as an instant (Z) is taken as the club date of that instant', async () => {
@@ -536,10 +543,10 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     expect(result).toBe(futureDay);
   });
 
-  it('TZ3-16 enrollment enrolledAt without offset is club time', async () => {
+  it('TZ3-16 enrollment enrolledAt without offset is rejected, with offset is stored as club time', async () => {
     const { classId } = await activeClass();
     const body = { horseId: gio, enrolledAt: PAST } as CreateHorseEnrollmentDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       CreateHorseEnrollmentDto,
       body,
       'enrolledAt',
@@ -550,10 +557,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
           [classId],
         ),
     );
-    expectClubTime(result, PAST);
   });
 
-  it('TZ3-17 enrollment leftAt without offset is club time', async () => {
+  it('TZ3-17 enrollment leftAt without offset is rejected, with offset is stored as club time', async () => {
     const { classId } = await activeClass();
     const id = randomUUID();
     await dataSource.query(
@@ -562,7 +568,7 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       [id, classId, gio, clubDateTimeToInstant(shiftDays(D, -7), '08:00')],
     );
     const body = { leftAt: PAST } as LeaveHorseEnrollmentDto;
-    const result = await interpret(
+    await expectOffsetRequired(
       LeaveHorseEnrollmentDto,
       body,
       'leftAt',
@@ -570,10 +576,9 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       () =>
         one('SELECT left_at AS v FROM horse_enrollments WHERE id = $1', [id]),
     );
-    expectClubTime(result, PAST);
   });
 
-  it('TZ3-18 measurement list filter from without offset is club time', async () => {
+  it('TZ3-18 measurement list filter from without offset is rejected, with offset filters by club time', async () => {
     const at9 = clubDateTimeToInstant(D, '09:00').toISOString();
     await measurements.addMeasurements(vet, gio, {
       values: [{ type: HorseMeasurementType.WEIGHT, value: 450 }],
@@ -585,18 +590,24 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       page: 1,
       limit: 20,
     } as HorseMeasurementListQueryDto;
-    const errors = validateSync(
-      plainToInstance(HorseMeasurementListQueryDto, query),
-    );
-    const found = failedProperties(errors).includes('from')
-      ? [at9]
-      : (await measurements.listMeasurements(vet, gio, query)).items.map(
-          (row) => iso(row.measuredAt),
-        );
+    expect(
+      failedProperties(
+        validateSync(plainToInstance(HorseMeasurementListQueryDto, query)),
+      ),
+    ).toContain('from');
+    query.from = `${query.from}${CLUB_OFFSET}`;
+    expect(
+      failedProperties(
+        validateSync(plainToInstance(HorseMeasurementListQueryDto, query)),
+      ),
+    ).toEqual([]);
+    const found = (
+      await measurements.listMeasurements(vet, gio, query)
+    ).items.map((row) => iso(row.measuredAt));
     expect(found).toEqual([at9]);
   });
 
-  it('TZ3-19 ingested metric recordedAt without offset is club time (not dropped as future)', async () => {
+  it('TZ3-19 ingested metric recordedAt without offset is rejected, with offset is stored as club time (not dropped as future)', async () => {
     const { classId } = await activeClass();
     const sessionId = randomUUID();
     await dataSource.query(
@@ -633,16 +644,20 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       heartRateBpm: 120,
       speedMps: 10,
     };
-    const errors = validateSync(plainToInstance(IngestMetricDto, metric));
-    const result = failedProperties(errors).includes('recordedAt')
-      ? club(local)
-      : await metrics
-          .ingest(participantId, [metric])
-          .then((r) =>
-            r.accepted === 1
-              ? iso(inserted[0].recordedAt)
-              : `dropped: ${JSON.stringify(r)}`,
-          );
+    expect(
+      failedProperties(validateSync(plainToInstance(IngestMetricDto, metric))),
+    ).toContain('recordedAt');
+    metric.recordedAt = `${local}${CLUB_OFFSET}`;
+    expect(
+      failedProperties(validateSync(plainToInstance(IngestMetricDto, metric))),
+    ).toEqual([]);
+    const result = await metrics
+      .ingest(participantId, [metric])
+      .then((r) =>
+        r.accepted === 1
+          ? iso(inserted[0].recordedAt)
+          : `dropped: ${JSON.stringify(r)}`,
+      );
     expect(result).toBe(club(local));
   });
 

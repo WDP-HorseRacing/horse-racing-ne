@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsDateString,
   IsEnum,
   IsIn,
   IsOptional,
@@ -13,7 +12,7 @@ import {
   CareAssigneeType,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
-import { trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Các loại lịch chăm sóc tạo tay, không gồm ngày hẹn khám định kỳ.
@@ -39,9 +38,10 @@ export class CreateCareScheduleDto {
 
   @ApiProperty({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description: 'Ngày đến hạn, không ở quá khứ',
   })
-  @IsDateString()
+  @IsIsoInstant()
   dueAt!: string;
 
   @ApiPropertyOptional({

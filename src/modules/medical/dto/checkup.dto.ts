@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
@@ -11,7 +10,7 @@ import {
 } from 'class-validator';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
-import { trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
 
 /**
  * Lọc lịch khám định kỳ.
@@ -34,10 +33,11 @@ export class CheckupListQueryDto {
 export class SetCheckupAppointmentDto {
   @ApiProperty({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description:
       'Ngày giờ hẹn; không ở quá khứ, không muộn hơn hạn khám khi ngựa chưa quá hạn',
   })
-  @IsDateString()
+  @IsIsoInstant()
   scheduledAt!: string;
 
   @ApiPropertyOptional({

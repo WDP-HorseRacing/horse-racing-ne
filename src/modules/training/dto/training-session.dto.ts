@@ -9,7 +9,6 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
-  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -28,6 +27,7 @@ import {
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
+import { IsIsoInstant } from '../../../common/utils/dto-input';
 
 export class CreateTrainingSessionDto {
   @ApiProperty({ maxLength: 160 })
@@ -61,14 +61,18 @@ export class CreateTrainingSessionDto {
 
   @ApiProperty({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description:
       'Giờ bắt đầu, phải sau thời điểm hiện tại (khi sửa buổi chỉ kiểm nếu đổi giờ bắt đầu), không thì 400 ở ô scheduledStartAt',
   })
-  @IsDateString()
+  @IsIsoInstant()
   scheduledStartAt!: string;
 
-  @ApiProperty({ format: 'date-time' })
-  @IsDateString()
+  @ApiProperty({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+  })
+  @IsIsoInstant()
   scheduledEndAt!: string;
 
   @ApiPropertyOptional({ maxLength: 160 })

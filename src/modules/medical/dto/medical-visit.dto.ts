@@ -5,7 +5,6 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -17,7 +16,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
 import { HorseMeasurementValueDto } from '../../horses/dto';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import {
@@ -89,11 +88,12 @@ export class MedicalVisitBaseDto {
 
   @ApiPropertyOptional({
     format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
     description:
       'Ngày hẹn tái khám; chỉ dùng khi buổi khám thuộc bệnh án, không ở quá khứ',
   })
   @IsOptional()
-  @IsDateString()
+  @IsIsoInstant()
   nextVisitAt?: string;
 
   @ApiPropertyOptional({ type: [HorseMeasurementValueDto] })

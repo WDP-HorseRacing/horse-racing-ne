@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsDateString,
   IsInt,
   IsNumber,
   IsString,
@@ -8,6 +7,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { IsIsoInstant } from '../../../common/utils/dto-input';
 
 export class IngestMetricDto {
   @ApiProperty()
@@ -15,8 +15,11 @@ export class IngestMetricDto {
   @MinLength(1)
   sourceId!: string;
 
-  @ApiProperty({ format: 'date-time' })
-  @IsDateString()
+  @ApiProperty({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+  })
+  @IsIsoInstant()
   recordedAt!: string;
 
   @ApiProperty({ minimum: 0, maximum: 300 })
