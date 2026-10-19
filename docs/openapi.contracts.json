@@ -7258,7 +7258,8 @@
                 "PENDING",
                 "APPROVED",
                 "REJECTED",
-                "FULFILLED"
+                "FULFILLED",
+                "CANCELLED"
               ]
             }
           }
@@ -7441,7 +7442,7 @@
             "bearer": []
           }
         ],
-        "summary": "Duyệt, từ chối hoặc cấp đề xuất bổ sung vật tư",
+        "summary": "Duyệt, từ chối, cấp hoặc hủy đề xuất bổ sung vật tư",
         "tags": [
           "supplies"
         ]
@@ -18094,7 +18095,9 @@
             "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
           },
           "quantity": {
-            "type": "number"
+            "type": "number",
+            "nullable": true,
+            "description": "Số lượng thực nhận khi cấp; null khi đề xuất chưa FULFILLED"
           },
           "status": {
             "type": "string",
@@ -18102,7 +18105,8 @@
               "PENDING",
               "APPROVED",
               "REJECTED",
-              "FULFILLED"
+              "FULFILLED",
+              "CANCELLED"
             ]
           },
           "note": {
@@ -18151,6 +18155,29 @@
             "type": "object",
             "nullable": true
           },
+          "cancelledBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "canceller": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupplyUserSummaryResponseDto"
+              }
+            ]
+          },
+          "cancelledAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancellationReason": {
+            "type": "object",
+            "nullable": true
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -18166,7 +18193,6 @@
           "item",
           "requestedBy",
           "requester",
-          "quantity",
           "status",
           "createdAt",
           "updatedAt"
@@ -18197,30 +18223,18 @@
             "type": "string",
             "format": "uuid"
           },
-          "quantity": {
-            "type": "number",
-            "minimum": 0.01,
-            "maximum": 1000000000,
-            "description": "Số lượng xin thêm"
-          },
           "note": {
             "type": "string",
             "maxLength": 500
           }
         },
         "required": [
-          "itemId",
-          "quantity"
+          "itemId"
         ]
       },
       "EditSupplyRequestDto": {
         "type": "object",
         "properties": {
-          "quantity": {
-            "type": "number",
-            "minimum": 0.01,
-            "maximum": 1000000000
-          },
           "note": {
             "type": "string",
             "maxLength": 500
@@ -18235,18 +18249,26 @@
             "enum": [
               "APPROVED",
               "REJECTED",
-              "FULFILLED"
+              "FULFILLED",
+              "CANCELLED"
             ]
           },
           "reason": {
             "type": "string",
-            "description": "Required when status is REJECTED"
+            "maxLength": 500,
+            "description": "Lý do từ chối hoặc hủy; bắt buộc khi status là REJECTED hoặc CANCELLED"
           },
           "unitPrice": {
             "type": "number",
             "minimum": 0,
             "maximum": 1000000000,
             "description": "Đơn giá (VND) thực trả cho một đơn vị của lần cấp này; bắt buộc khi status là FULFILLED"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 1000000000,
+            "description": "Số lượng thực nhận của lần cấp này, cộng vào tồn; bắt buộc khi status là FULFILLED"
           }
         },
         "required": [

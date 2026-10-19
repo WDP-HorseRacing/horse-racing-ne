@@ -237,28 +237,30 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
   });
 
   describe('replenishment requests', () => {
-    it('adds the requested quantity to stock when fulfilled', async () => {
+    it('adds the quantity received to stock when fulfilled and keeps it on the request', async () => {
       const item = await oats(40);
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 100,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
+      expect(request.quantity).toBeNull();
 
-      await requests.updateStatus(manager, request.id, {
+      const approved = await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.APPROVED,
       });
+      expect(approved.quantity).toBeNull();
       const fulfilled = await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.FULFILLED,
+        quantity: 40.5,
         unitPrice: 20000,
       });
 
       expect(fulfilled.status).toBe(SupplyRequestStatus.FULFILLED);
-      expect(fulfilled.item.quantityOnHand).toBe(140);
+      expect(fulfilled.quantity).toBe(40.5);
+      expect(fulfilled.item.quantityOnHand).toBe(80.5);
       expect(fulfilled.fulfiller).not.toBeNull();
+      expect((await requests.get(groom, request.id)).quantity).toBe(40.5);
       const movements = await items.movementsOf(manager, item.id, page());
       expect(movements.items[0]).toMatchObject({
-        delta: 100,
-        balanceAfter: 140,
+        delta: 40.5,
+        balanceAfter: 80.5,
         type: SupplyStockMovementType.RESTOCK,
         requestId: request.id,
       });
@@ -266,14 +268,12 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
 
     it('rejects fulfilling a request that was not approved with 409', async () => {
       const item = await oats(40);
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 5,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
 
       await expect(
         requests.updateStatus(manager, request.id, {
           status: SupplyRequestStatus.FULFILLED,
+          quantity: 5,
           unitPrice: 20000,
         }),
       ).rejects.toBeInstanceOf(ConflictException);
@@ -282,10 +282,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
 
     it('requires a non-blank reason to reject', async () => {
       const item = await oats();
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 5,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
 
       await expect(
         requests.updateStatus(manager, request.id, {
@@ -302,32 +299,29 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
 
     it('lets only the requester edit, and only while pending', async () => {
       const item = await oats();
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 5,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
 
       await expect(
-        requests.edit(otherGroom, request.id, { quantity: 7 }),
+        requests.edit(otherGroom, request.id, { note: 'Cần gấp' }),
       ).rejects.toBeInstanceOf(ForbiddenException);
-      const edited = await requests.edit(groom, request.id, { quantity: 7 });
-      expect(edited.quantity).toBe(7);
+      const edited = await requests.edit(groom, request.id, {
+        note: 'Cần gấp',
+      });
+      expect(edited.note).toBe('Cần gấp');
+      expect(edited.quantity).toBeNull();
 
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.APPROVED,
       });
       await expect(
-        requests.edit(groom, request.id, { quantity: 9 }),
+        requests.edit(groom, request.id, { note: 'Thôi' }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('scopes the list and detail to the requester, except for the Club Manager', async () => {
       const item = await oats();
-      const mine = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 1,
-      });
-      await requests.create(trainer, { itemId: item.id, quantity: 2 });
+      const mine = await requests.create(groom, { itemId: item.id });
+      await requests.create(trainer, { itemId: item.id });
       const query = Object.assign(new SupplyRequestListQueryDto(), {
         page: 1,
         limit: 20,
@@ -344,10 +338,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
 
     it('blocks deleting an item that still has an open request', async () => {
       const item = await oats();
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 1,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.APPROVED,
       });
@@ -357,17 +348,66 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       );
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.FULFILLED,
+        quantity: 1,
         unitPrice: 20000,
       });
       await expect(items.remove(manager, item.id)).resolves.toBeUndefined();
     });
 
+    it('lets the club manager cancel an approved request with a reason, which frees the item for deletion', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+      const approved = await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.CANCELLED,
+          reason: '   ',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      const cancelled = await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.CANCELLED,
+        reason: 'Nhà cung cấp hết hàng',
+      });
+
+      expect(cancelled).toMatchObject({
+        status: SupplyRequestStatus.CANCELLED,
+        cancellationReason: 'Nhà cung cấp hết hàng',
+        rejectionReason: null,
+        quantity: null,
+        reviewedBy: approved.reviewedBy,
+        cancelledBy: approved.reviewedBy,
+        canceller: { id: approved.reviewedBy },
+      });
+      expect(cancelled.cancelledAt).not.toBeNull();
+      expect(cancelled.item.quantityOnHand).toBe(0);
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          quantity: 1,
+          unitPrice: 20000,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(items.remove(manager, item.id)).resolves.toBeUndefined();
+    });
+
+    it('refuses to cancel a request that is still pending with 409', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.CANCELLED,
+          reason: 'Không cần nữa',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
     it('refuses a request for a deleted item, but still shows old requests', async () => {
       const item = await oats();
-      const old = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 1,
-      });
+      const old = await requests.create(groom, { itemId: item.id });
       await requests.updateStatus(manager, old.id, {
         status: SupplyRequestStatus.REJECTED,
         reason: 'Ngừng dùng',
@@ -375,7 +415,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       await items.remove(manager, item.id);
 
       await expect(
-        requests.create(groom, { itemId: item.id, quantity: 1 }),
+        requests.create(groom, { itemId: item.id }),
       ).rejects.toBeInstanceOf(NotFoundException);
       const shown = await requests.get(groom, old.id);
       expect(shown.item.name).toBe('Yến mạch');
@@ -387,21 +427,19 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
     const item = await oats(10);
     const approved = await Promise.all(
       [1, 2, 3].map(async (quantity) => {
-        const request = await requests.create(groom, {
-          itemId: item.id,
-          quantity,
-        });
+        const request = await requests.create(groom, { itemId: item.id });
         await requests.updateStatus(manager, request.id, {
           status: SupplyRequestStatus.APPROVED,
         });
-        return request.id;
+        return { id: request.id, quantity };
       }),
     );
 
     await Promise.all([
-      ...approved.map((id) =>
+      ...approved.map(({ id, quantity }) =>
         requests.updateStatus(manager, id, {
           status: SupplyRequestStatus.FULFILLED,
+          quantity,
           unitPrice: 20000,
         }),
       ),
@@ -523,16 +561,16 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       const item = await oats(40);
       const request = await requests.create(groom, {
         itemId: item.id,
-        quantity: 5,
         note: 'Sắp hết',
       });
-      await requests.edit(groom, request.id, { quantity: 7 });
-      await requests.edit(groom, request.id, { quantity: 7 });
+      await requests.edit(groom, request.id, { note: 'Hết rồi' });
+      await requests.edit(groom, request.id, { note: 'Hết rồi' });
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.APPROVED,
       });
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.FULFILLED,
+        quantity: 7,
         unitPrice: 20000,
       });
 
@@ -551,12 +589,11 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
           null,
           {
             itemId: item.id,
-            quantity: 5,
             note: 'Sắp hết',
             status: SupplyRequestStatus.PENDING,
           },
         ],
-        [groomId, 'UPDATE', { quantity: 5 }, { quantity: 7 }],
+        [groomId, 'UPDATE', { note: 'Sắp hết' }, { note: 'Hết rồi' }],
         [
           managerId,
           'UPDATE',
@@ -585,10 +622,7 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
 
     it('keeps the rejection reason on the audit row', async () => {
       const item = await oats();
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 5,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
 
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.REJECTED,
@@ -602,21 +636,39 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         reason: 'Kho tổng còn đủ',
       });
     });
+
+    it('keeps the cancellation reason on the audit row', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.CANCELLED,
+        reason: 'Nhà cung cấp hết hàng',
+      });
+
+      const rows = await auditsOf(request.id);
+      expect(rows[2]).toMatchObject({
+        before_data: { status: SupplyRequestStatus.APPROVED },
+        after_data: { status: SupplyRequestStatus.CANCELLED },
+        reason: 'Nhà cung cấp hết hàng',
+      });
+    });
   });
 
   describe('unit price', () => {
     it('keeps the price paid on each lot', async () => {
       const item = await oats(10);
       const fulfil = async (quantity: number, unitPrice: number) => {
-        const request = await requests.create(groom, {
-          itemId: item.id,
-          quantity,
-        });
+        const request = await requests.create(groom, { itemId: item.id });
         await requests.updateStatus(manager, request.id, {
           status: SupplyRequestStatus.APPROVED,
         });
         await requests.updateStatus(manager, request.id, {
           status: SupplyRequestStatus.FULFILLED,
+          quantity,
           unitPrice,
         });
       };
@@ -644,12 +696,9 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       ]);
     });
 
-    it('refuses to fulfil a request without the price paid', async () => {
+    it('refuses to fulfil a request without the price paid or the quantity received', async () => {
       const item = await oats();
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 5,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.APPROVED,
       });
@@ -657,6 +706,13 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       await expect(
         requests.updateStatus(manager, request.id, {
           status: SupplyRequestStatus.FULFILLED,
+          quantity: 5,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          unitPrice: 20000,
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect((await items.get(manager, item.id)).quantityOnHand).toBe(0);
@@ -788,15 +844,13 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
 
     it('announces a new request and each decision on it', async () => {
       const item = await oats(10);
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 50,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.APPROVED,
       });
       await requests.updateStatus(manager, request.id, {
         status: SupplyRequestStatus.FULFILLED,
+        quantity: 40,
         unitPrice: 20000,
       });
 
@@ -806,8 +860,8 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
         requestId: request.id,
         itemName: 'Yến mạch',
         unit: 'kg',
-        quantity: 50,
       });
+      expect(created.payload).not.toHaveProperty('quantity');
       const changes = await outbox('supplies.request.status-changed');
       expect(changes.map((row) => row.payload.status)).toEqual([
         SupplyRequestStatus.APPROVED,
@@ -816,8 +870,32 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       expect(new Set(changes.map((row) => row.payload.eventId)).size).toBe(2);
       expect(changes[0].payload).toMatchObject({
         requestId: request.id,
-        quantity: 50,
+        quantity: null,
         reason: null,
+      });
+      expect(changes[1].payload).toMatchObject({ quantity: 40 });
+    });
+
+    it('announces a cancellation with its reason', async () => {
+      const item = await oats(10);
+      const request = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.CANCELLED,
+        reason: 'Nhà cung cấp hết hàng',
+      });
+
+      const changes = await outbox('supplies.request.status-changed');
+      expect(changes.map((row) => row.payload.status)).toEqual([
+        SupplyRequestStatus.APPROVED,
+        SupplyRequestStatus.CANCELLED,
+      ]);
+      expect(changes[1].payload).toMatchObject({
+        requestId: request.id,
+        quantity: null,
+        reason: 'Nhà cung cấp hết hàng',
       });
     });
 

@@ -7,6 +7,7 @@ import {
   UpdateSupplyItemDto,
 } from './supply-item.dto';
 import {
+  CreateSupplyRequestDto,
   EditSupplyRequestDto,
   UpdateSupplyRequestStatusDto,
 } from './supply-request.dto';
@@ -44,6 +45,30 @@ describe('supplies DTO text fields', () => {
       }),
     ).resolves.toEqual(['reason']);
   });
+
+  it('requires a non-blank reason to cancel', async () => {
+    await expect(
+      failedFields(UpdateSupplyRequestStatusDto, {
+        status: SupplyRequestStatus.CANCELLED,
+      }),
+    ).resolves.toEqual(['reason']);
+    await expect(
+      failedFields(UpdateSupplyRequestStatusDto, {
+        status: SupplyRequestStatus.CANCELLED,
+        reason: '   ',
+      }),
+    ).resolves.toEqual(['reason']);
+  });
+});
+
+describe('CreateSupplyRequestDto', () => {
+  it('needs only the item', async () => {
+    await expect(
+      failedFields(CreateSupplyRequestDto, {
+        itemId: '7b0f2c1e-3c7d-4a59-9d1e-2f6f3b8a4c11',
+      }),
+    ).resolves.toEqual([]);
+  });
 });
 
 describe('EditSupplyRequestDto', () => {
@@ -51,10 +76,10 @@ describe('EditSupplyRequestDto', () => {
     await expect(failedFields(EditSupplyRequestDto, {})).resolves.toEqual([]);
   });
 
-  it('rejects null quantity and note', async () => {
+  it('rejects a null note', async () => {
     await expect(
-      failedFields(EditSupplyRequestDto, { quantity: null, note: null }),
-    ).resolves.toEqual(['quantity', 'note']);
+      failedFields(EditSupplyRequestDto, { note: null }),
+    ).resolves.toEqual(['note']);
   });
 });
 
@@ -71,12 +96,33 @@ describe('supplies DTO unit price', () => {
     ).resolves.toEqual(['unitPrice']);
   });
 
-  it('requires the price only when fulfilling a request', async () => {
+  it('requires the price and the received quantity only when fulfilling a request', async () => {
     await expect(
       failedFields(UpdateSupplyRequestStatusDto, {
         status: SupplyRequestStatus.FULFILLED,
       }),
-    ).resolves.toEqual(['unitPrice']);
+    ).resolves.toEqual(['unitPrice', 'quantity']);
+    await expect(
+      failedFields(UpdateSupplyRequestStatusDto, {
+        status: SupplyRequestStatus.FULFILLED,
+        unitPrice: 20000,
+        quantity: 40,
+      }),
+    ).resolves.toEqual([]);
+    await expect(
+      failedFields(UpdateSupplyRequestStatusDto, {
+        status: SupplyRequestStatus.FULFILLED,
+        unitPrice: 20000,
+        quantity: 0,
+      }),
+    ).resolves.toEqual(['quantity']);
+    await expect(
+      failedFields(UpdateSupplyRequestStatusDto, {
+        status: SupplyRequestStatus.FULFILLED,
+        unitPrice: 20000,
+        quantity: 1.005,
+      }),
+    ).resolves.toEqual(['quantity']);
     await expect(
       failedFields(UpdateSupplyRequestStatusDto, {
         status: SupplyRequestStatus.APPROVED,

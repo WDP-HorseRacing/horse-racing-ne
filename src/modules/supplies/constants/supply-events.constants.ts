@@ -5,7 +5,7 @@
 export const SUPPLY_REQUEST_CREATED_EVENT = 'supplies.request.created';
 
 /**
- * Tên domain event phát khi Club Manager duyệt, từ chối hoặc cấp một đề xuất bổ sung.
+ * Tên domain event phát khi Club Manager duyệt, từ chối, cấp hoặc hủy một đề xuất bổ sung.
  * Payload là SupplyRequestStatusChangedEvent; module notifications nghe event này để báo người gửi.
  */
 export const SUPPLY_REQUEST_STATUS_CHANGED_EVENT =

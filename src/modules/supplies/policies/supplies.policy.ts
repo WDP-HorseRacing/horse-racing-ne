@@ -15,9 +15,20 @@ const NEXT_REQUEST_STATUSES: Readonly<
     SupplyRequestStatus.APPROVED,
     SupplyRequestStatus.REJECTED,
   ],
-  [SupplyRequestStatus.APPROVED]: [SupplyRequestStatus.FULFILLED],
+  [SupplyRequestStatus.APPROVED]: [
+    SupplyRequestStatus.FULFILLED,
+    SupplyRequestStatus.CANCELLED,
+  ],
   [SupplyRequestStatus.REJECTED]: [],
   [SupplyRequestStatus.FULFILLED]: [],
+  [SupplyRequestStatus.CANCELLED]: [],
+};
+
+const MISSING_REASON_MESSAGES: Readonly<
+  Partial<Record<SupplyRequestStatus, string>>
+> = {
+  [SupplyRequestStatus.REJECTED]: 'Từ chối phải có lý do',
+  [SupplyRequestStatus.CANCELLED]: 'Hủy phải có lý do',
 };
 
 /**
@@ -67,7 +78,7 @@ export function assertSupplyRequestEditable(
  * Bắt buộc đề xuất chuyển trạng thái đúng thứ tự
  *
  * - PENDING → APPROVED hoặc REJECTED
- * - APPROVED → FULFILLED
+ * - APPROVED → FULFILLED hoặc CANCELLED
  *
  * @param current Trạng thái hiện tại
  * @param next Trạng thái muốn chuyển sang
@@ -85,19 +96,26 @@ export function assertSupplyRequestTransition(
 }
 
 /**
- * Bắt buộc có lý do khi từ chối đề xuất
+ * Lấy lý do đi kèm trạng thái mới của đề xuất
+ *
+ * - REJECTED, CANCELLED: bắt buộc có lý do, trả về lý do
+ * - Trạng thái khác: bỏ qua lý do, trả về null
  *
  * @param next Trạng thái muốn chuyển sang
  * @param reason Lý do đã bỏ khoảng trắng, null nếu rỗng
- * @throws BadRequestException Nếu từ chối mà không có lý do
+ * @returns Lý do của lần từ chối hoặc hủy, null với trạng thái khác
+ * @throws BadRequestException Nếu từ chối hoặc hủy mà không có lý do
  */
-export function assertRejectionReason(
+export function supplyRequestStatusReason(
   next: SupplyRequestStatus,
   reason: string | null,
-): void {
-  if (next === SupplyRequestStatus.REJECTED && !reason) {
-    throw new BadRequestException('Từ chối phải có lý do');
+): string | null {
+  const missingMessage = MISSING_REASON_MESSAGES[next];
+  if (!missingMessage) return null;
+  if (!reason) {
+    throw new BadRequestException(missingMessage);
   }
+  return reason;
 }
 
 /**

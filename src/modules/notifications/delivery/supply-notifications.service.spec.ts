@@ -23,7 +23,6 @@ describe('SupplyNotificationsService', () => {
       requestId: 'r1',
       itemName: 'Yến mạch',
       unit: 'kg',
-      quantity: 50,
       requesterName: 'An',
     });
 
@@ -33,7 +32,7 @@ describe('SupplyNotificationsService', () => {
       category: NotificationCategory.SUPPLY,
       priority: NotificationPriority.NORMAL,
       title: 'Đề xuất bổ sung vật tư mới',
-      message: 'An đề xuất bổ sung 50 kg Yến mạch',
+      message: 'An đề xuất bổ sung Yến mạch',
       resource: null,
     });
   });
@@ -45,7 +44,7 @@ describe('SupplyNotificationsService', () => {
       requesterId: 'groom-1',
       itemName: 'Yến mạch',
       unit: 'kg',
-      quantity: 50,
+      quantity: null,
       status: SupplyRequestStatus.REJECTED,
       reason: 'Kho còn đủ',
     });
@@ -54,7 +53,48 @@ describe('SupplyNotificationsService', () => {
       expect.objectContaining({
         recipientIds: ['groom-1'],
         title: 'Đề xuất bổ sung bị từ chối',
-        message: '50 kg Yến mạch. Lý do: Kho còn đủ',
+        message: 'Yến mạch. Lý do: Kho còn đủ',
+      }),
+    );
+  });
+
+  it('tells the requester about a cancellation with its reason', async () => {
+    await service.notifyRequestStatusChanged({
+      eventId: 'e2',
+      requestId: 'r1',
+      requesterId: 'groom-1',
+      itemName: 'Yến mạch',
+      unit: 'kg',
+      quantity: null,
+      status: SupplyRequestStatus.CANCELLED,
+      reason: 'Nhà cung cấp hết hàng',
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['groom-1'],
+        title: 'Đề xuất bổ sung đã bị hủy',
+        message: 'Yến mạch. Lý do: Nhà cung cấp hết hàng',
+      }),
+    );
+  });
+
+  it('tells the requester the quantity received when fulfilled', async () => {
+    await service.notifyRequestStatusChanged({
+      eventId: 'e3',
+      requestId: 'r1',
+      requesterId: 'groom-1',
+      itemName: 'Yến mạch',
+      unit: 'kg',
+      quantity: 40,
+      status: SupplyRequestStatus.FULFILLED,
+      reason: null,
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Đề xuất bổ sung đã được cấp',
+        message: '40 kg Yến mạch',
       }),
     );
   });
@@ -67,7 +107,7 @@ describe('SupplyNotificationsService', () => {
         requesterId: 'groom-1',
         itemName: 'Yến mạch',
         unit: 'kg',
-        quantity: 50,
+        quantity: null,
         status: SupplyRequestStatus.PENDING,
         reason: null,
       }),

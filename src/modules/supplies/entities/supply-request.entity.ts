@@ -27,8 +27,8 @@ export class SupplyRequestEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'requested_by' })
   requester!: UserEntity;
 
-  @Column({ type: 'numeric', precision: 12, scale: 2 })
-  quantity!: string;
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  quantity!: string | null;
 
   @Column({
     type: 'varchar',
@@ -65,4 +65,17 @@ export class SupplyRequestEntity extends MutableRecordEntity {
 
   @Column({ name: 'rejection_reason', type: 'text', nullable: true })
   rejectionReason!: string | null;
+
+  @Column({ name: 'cancelled_by', type: 'uuid', nullable: true })
+  cancelledBy!: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'cancelled_by' })
+  canceller!: UserEntity | null;
+
+  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  cancelledAt!: Date | null;
+
+  @Column({ name: 'cancellation_reason', type: 'text', nullable: true })
+  cancellationReason!: string | null;
 }

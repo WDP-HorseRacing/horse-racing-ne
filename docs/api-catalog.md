@@ -236,7 +236,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | POST | `/api/v1/supplies/requests` | Gửi đề xuất bổ sung vật tư |
 | GET | `/api/v1/supplies/requests/{id}` | Xem một đề xuất bổ sung vật tư |
 | PATCH | `/api/v1/supplies/requests/{id}` | Sửa đề xuất đang chờ duyệt của mình |
-| PATCH | `/api/v1/supplies/requests/{id}/status` | Duyệt, từ chối hoặc cấp đề xuất bổ sung vật tư |
+| PATCH | `/api/v1/supplies/requests/{id}/status` | Duyệt, từ chối, cấp hoặc hủy đề xuất bổ sung vật tư |
 | POST | `/api/v1/supplies/usages/{usageId}/cancel` | Hủy một lần xuất ghi nhầm, cộng trả tồn; người xuất trong 24 giờ, Club Manager bất kỳ lúc nào |
 
 ## training

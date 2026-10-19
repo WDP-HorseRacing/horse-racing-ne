@@ -42,7 +42,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 | Vật tư | `supply_items` | Club Manager | Vừa là danh mục vừa giữ số tồn chung CLB. Loại: `FEED`, `SUPPLEMENT`, `MEDICINE`, `EQUIPMENT`. |
 | Lô vật tư | `supply_lots` | Hệ thống | Một lần hàng vào kho: số nhập, số còn, đơn giá. Xuất dùng trừ lô nhập sớm nhất trước. |
 | Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Mỗi dòng gắn một lô: tồn ban đầu (`OPENING`), nhập hàng (`RESTOCK`), xuất dùng (`USAGE`), hủy lần xuất (`USAGE_REVERSAL`). Các dòng của một lần xuất và dòng hủy nó dùng chung mã lần xuất (`usage_id`). Không sửa, không xóa. Dòng ghi trước khi có lô (`COUNT_ADJUST` và `RESTOCK` cũ) không gắn lô, không có tiền. |
-| Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`. |
+| Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`, hoặc `APPROVED` → `CANCELLED`. |
 | Khẩu phần | `feeding_plans`, `feeding_plan_items` | Head Trainer của khu | Mỗi ngựa tối đa một bản `ACTIVE`; bản cũ giữ lại làm lịch sử. |
 | Loại việc | `daily_task_types` | Club Manager | Migration tạo sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). Seed demo tách "Cho ăn" thành "Cho ăn sáng" và "Cho ăn tối". |
 | Việc riêng của ngựa | `horse_daily_tasks` | Head Trainer của khu; bác sĩ mọi ngựa | Cột `mode`: `EXTRA` gắn thêm loại việc không áp mọi ngựa, `EXEMPT` miễn loại việc đang áp mọi ngựa. Việc phát sinh một ngày thì từ ngày = đến ngày. |
@@ -61,24 +61,25 @@ SỰ CỐ                             Groom báo, HT khu đóng
 3. Chỉ Club Manager thêm, sửa (tên, loại, đơn vị, ngưỡng), xóa mềm vật tư. Sửa vật tư không đổi được số tồn.
 4. Kho quản lý theo lô, nhập trước xuất trước. Số tồn của vật tư luôn bằng tổng số còn của các lô. Số tồn chỉ đổi qua các đường sau, và mỗi lần đổi ghi dòng sổ (số chênh lệch, số tồn sau, lô, người làm, ghi chú) trong cùng transaction:
    1. Tồn ban đầu: thêm vật tư có số tồn khác 0 thì tạo lô đầu tiên, đơn giá do Club Manager nhập (bỏ trống là 0); ghi `OPENING`.
-   2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp kèm đơn giá thực trả; tạo một lô, ghi `RESTOCK` gắn mã đề xuất.
+   2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp kèm số lượng thực nhận và đơn giá thực trả; tạo một lô đúng số thực nhận, ghi `RESTOCK` gắn mã đề xuất.
    3. Nhập hàng trực tiếp: Club Manager nhập số lượng mua về và đơn giá, không cần đề xuất; tạo một lô, ghi `RESTOCK` không gắn đề xuất.
    4. Xuất dùng: Club Manager, Head Trainer, bác sĩ hoặc Groom lấy hàng ra dùng thì ghi số lượng và ghi chú (bắt buộc, chỉ có khoảng trắng coi như trống: 400); tồn trừ ngay, không cần duyệt. Vật tư loại `MEDICINE` chỉ bác sĩ và Club Manager xuất được (Head Trainer, Groom: 403), vì thuốc do bác sĩ cấp và cho dùng. Thứ tự lỗi: ghi chú trống (400) → không có vật tư (404) → không được xuất loại này (403) → vượt tồn (409). Hệ thống trừ các lô còn hàng nhập sớm nhất trước, mỗi lô bị trừ ghi một dòng `USAGE`, mọi dòng của lần xuất chung một mã lần xuất.
    5. Hủy lần xuất ghi nhầm: người xuất tự hủy trong 24 giờ kể từ lúc xuất, Club Manager hủy bất kỳ lúc nào (người khác hoặc quá hạn: 403); lý do bắt buộc. Hệ thống cộng trả đúng số đã trừ vào từng lô và vào số tồn, mỗi lô ghi một dòng `USAGE_REVERSAL` cùng mã lần xuất, ghi nhật ký. Hủy lại lần đã hủy: 409, kể cả khi hai người bấm cùng lúc. Tồn vượt lại ngưỡng báo thiếu thì không báo gì. Muốn sửa số lượng thì hủy rồi xuất lại số đúng. Lần xuất ghi trước khi có mã lần xuất không hủy được; sai thì chờ kiểm kê (chưa làm).
 5. Sắp hết: số tồn nhỏ hơn hoặc bằng ngưỡng báo thiếu. Xuất dùng làm số tồn xuống từ trên ngưỡng tới hoặc dưới ngưỡng thì báo mọi Club Manager một lần; các lần xuất tiếp theo khi đã dưới ngưỡng không báo lại.
 6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Chưa có kiểm kê và ghi hao hụt.
-7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối hoặc cấp xong trước.
+7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối, cấp hoặc hủy xong trước. Đề xuất `REJECTED`, `FULFILLED`, `CANCELLED` không chặn xóa.
 8. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
 9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE` của các lần xuất chưa bị hủy (lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau, nên báo cáo kỳ gốc tự đổi số); dòng `USAGE_REVERSAL` không tính vào mua vào hay đã dùng; giá trị tồn kho = tổng số còn × đơn giá của các lô. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
 
 ### 2. Đề xuất bổ sung
 
-1. Groom và Head Trainer gửi đề xuất: vật tư, số lượng (> 0), ghi chú.
-2. Người gửi sửa được số lượng, ghi chú khi đề xuất còn `PENDING`.
+1. Groom và Head Trainer gửi đề xuất: vật tư, ghi chú. Đề xuất không có số lượng; người gửi ghi nhu cầu (nếu muốn) vào ghi chú.
+2. Người gửi sửa được ghi chú khi đề xuất còn `PENDING`.
 3. Club Manager duyệt hoặc từ chối đề xuất `PENDING`; từ chối bắt buộc lý do.
-4. Club Manager đánh dấu đã cấp đề xuất `APPROVED` (luật 1.4.2).
-5. Chuyển trạng thái sai thứ tự: 409.
-6. Thông báo: đề xuất mới báo mọi Club Manager; duyệt, từ chối (kèm lý do) hoặc đã cấp báo người gửi.
+4. Club Manager đánh dấu đã cấp đề xuất `APPROVED` kèm số lượng thực nhận (> 0, tối đa 2 chữ số thập phân) và đơn giá (luật 1.4.2); thiếu một trong hai: 400 báo đúng ô. Số tồn cộng đúng số thực nhận. Cột `quantity` của đề xuất là số thực nhận, chỉ có giá trị khi `FULFILLED`, trạng thái khác là null.
+5. Club Manager hủy đề xuất `APPROVED` khi không cấp được (vd nhà cung cấp hết hàng), bắt buộc lý do. Đề xuất giữ người duyệt; người hủy, lúc hủy, lý do hủy lưu riêng (`cancelled_by`, `cancelled_at`, `cancellation_reason`). Người gửi không tự hủy được đề xuất.
+6. Chuyển trạng thái sai thứ tự: 409 (vd hủy đề xuất `PENDING`, cấp đề xuất đã hủy).
+7. Thông báo: đề xuất mới báo mọi Club Manager; duyệt, từ chối (kèm lý do), đã cấp (kèm số thực nhận) hoặc hủy (kèm lý do) báo người gửi.
 
 ### 3. Khẩu phần
 
@@ -230,9 +231,9 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư kèm lô, đơn giá, tiền của dòng; mới nhất trước `?page&limit` |
 | GET | `/supplies/requests` | CM (tất cả), HT, GROOM (của mình) | Danh sách đề xuất `?status&page&limit` |
 | GET | `/supplies/requests/:id` | như trên | Một đề xuất |
-| POST | `/supplies/requests` | HT, GROOM | Gửi `{ itemId, quantity, note? }` |
-| PATCH | `/supplies/requests/:id` | Người gửi | Sửa đề xuất `PENDING` |
-| PATCH | `/supplies/requests/:id/status` | CM | `{ status: APPROVED \| REJECTED \| FULFILLED, reason?, unitPrice? }`; `unitPrice` bắt buộc khi FULFILLED |
+| POST | `/supplies/requests` | HT, GROOM | Gửi `{ itemId, note? }` |
+| PATCH | `/supplies/requests/:id` | Người gửi | Sửa ghi chú đề xuất `PENDING` `{ note? }` |
+| PATCH | `/supplies/requests/:id/status` | CM | `{ status: APPROVED \| REJECTED \| FULFILLED \| CANCELLED, reason?, quantity?, unitPrice? }`; `reason` bắt buộc khi REJECTED, CANCELLED; `quantity` (số thực nhận) và `unitPrice` bắt buộc khi FULFILLED |
 | GET | `/horses/:horseId/feeding-plans` | CM, HT, VET, GROOM | Khẩu phần của ngựa `?status` (GROOM chỉ nhận bản `ACTIVE`) |
 | POST | `/feeding-plans` | HT | Lập nháp `{ horseIds, items? \| copyFromPlanId?, note? }` |
 | GET | `/feeding-plans/:id` | theo quyền xem | Một khẩu phần |

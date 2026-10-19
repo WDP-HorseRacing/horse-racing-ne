@@ -10,7 +10,6 @@ export interface SupplyRequestCreatedEvent {
   requestId: string;
   itemName: string;
   unit: string;
-  quantity: number;
   requesterName: string;
 }
 
@@ -18,7 +17,8 @@ export interface SupplyRequestCreatedEvent {
  * Payload của domain event SUPPLY_REQUEST_STATUS_CHANGED_EVENT
  *
  * - eventId: UUID suy ra cố định từ id đề xuất và trạng thái mới
- * - reason: lý do từ chối, null với trạng thái khác
+ * - quantity: số lượng thực nhận khi FULFILLED, null với trạng thái khác
+ * - reason: lý do từ chối hoặc hủy, null với trạng thái khác
  */
 export interface SupplyRequestStatusChangedEvent {
   eventId: string;
@@ -26,7 +26,7 @@ export interface SupplyRequestStatusChangedEvent {
   requesterId: string;
   itemName: string;
   unit: string;
-  quantity: number;
+  quantity: number | null;
   status: SupplyRequestStatus;
   reason: string | null;
 }

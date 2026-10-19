@@ -15,6 +15,7 @@ const STATUS_TITLES: Partial<Record<SupplyRequestStatus, string>> = {
   [SupplyRequestStatus.APPROVED]: 'Đề xuất bổ sung đã được duyệt',
   [SupplyRequestStatus.REJECTED]: 'Đề xuất bổ sung bị từ chối',
   [SupplyRequestStatus.FULFILLED]: 'Đề xuất bổ sung đã được cấp',
+  [SupplyRequestStatus.CANCELLED]: 'Đề xuất bổ sung đã bị hủy',
 };
 
 @Injectable()
@@ -43,15 +44,16 @@ export class SupplyNotificationsService {
       category: NotificationCategory.SUPPLY,
       priority: NotificationPriority.NORMAL,
       title: 'Đề xuất bổ sung vật tư mới',
-      message: `${event.requesterName} đề xuất bổ sung ${event.quantity} ${event.unit} ${event.itemName}`,
+      message: `${event.requesterName} đề xuất bổ sung ${event.itemName}`,
       resource: null,
     });
   }
 
   /**
-   * Báo người gửi khi đề xuất bổ sung được duyệt, bị từ chối hoặc được cấp
+   * Báo người gửi khi đề xuất bổ sung được duyệt, bị từ chối, được cấp hoặc bị hủy
    *
-   * - Từ chối: kèm lý do trong nội dung
+   * - Được cấp: nội dung kèm số lượng thực nhận và đơn vị
+   * - Từ chối, hủy: kèm lý do trong nội dung
    * - Idempotent theo event.eventId
    *
    * @param event Payload của SUPPLY_REQUEST_STATUS_CHANGED_EVENT
@@ -62,7 +64,10 @@ export class SupplyNotificationsService {
   ): Promise<string[]> {
     const title = STATUS_TITLES[event.status];
     if (!title) return [];
-    const subject = `${event.quantity} ${event.unit} ${event.itemName}`;
+    const subject =
+      event.quantity === null
+        ? event.itemName
+        : `${event.quantity} ${event.unit} ${event.itemName}`;
     return this.notifications.send({
       eventId: event.eventId,
       recipientIds: [event.requesterId],

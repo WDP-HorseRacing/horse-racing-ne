@@ -81,8 +81,8 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       reorderThreshold,
     });
 
-  const approvedRequest = async (itemId: string, quantity: number) => {
-    const request = await requests.create(groom, { itemId, quantity });
+  const approvedRequest = async (itemId: string) => {
+    const request = await requests.create(groom, { itemId });
     await requests.updateStatus(manager, request.id, {
       status: SupplyRequestStatus.APPROVED,
     });
@@ -200,11 +200,11 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
   describe('supply requests', () => {
     it('B6a: Club Manager can cancel an APPROVED request', async () => {
       const item = await oats(10);
-      const id = await approvedRequest(item.id, 50);
+      const id = await approvedRequest(item.id);
 
       await expect(
         requests.updateStatus(manager, id, {
-          status: 'CANCELLED' as SupplyRequestStatus,
+          status: SupplyRequestStatus.CANCELLED,
           reason: 'Nhà cung cấp hết hàng',
         }),
       ).resolves.toMatchObject({ status: 'CANCELLED' });
@@ -212,32 +212,15 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
 
     it('B6b: fulfilling restocks the quantity actually received, not the requested one', async () => {
       const item = await oats(10);
-      const id = await approvedRequest(item.id, 50);
+      const id = await approvedRequest(item.id);
 
       const fulfilled = await requests.updateStatus(manager, id, {
         status: SupplyRequestStatus.FULFILLED,
         unitPrice: 20000,
-        receivedQuantity: 40,
-      } as never);
+        quantity: 40,
+      });
 
       expect(fulfilled.item.quantityOnHand).toBe(50);
-    });
-
-    it('F4-13: approving a request edited after the manager viewed it is rejected as stale', async () => {
-      const item = await oats(10);
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 10,
-      });
-      const viewed = await requests.get(manager, request.id);
-      await requests.edit(groom, request.id, { quantity: 100 });
-
-      await expect(
-        requests.updateStatus(manager, request.id, {
-          status: SupplyRequestStatus.APPROVED,
-          quantity: viewed.quantity,
-        } as never),
-      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 

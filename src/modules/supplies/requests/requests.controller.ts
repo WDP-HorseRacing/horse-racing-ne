@@ -92,7 +92,7 @@ export class SupplyRequestsController {
   @Access([UserRole.CLUB_MANAGER])
   @Patch('requests/:id/status')
   @ApiOperation({
-    summary: 'Duyệt, từ chối hoặc cấp đề xuất bổ sung vật tư',
+    summary: 'Duyệt, từ chối, cấp hoặc hủy đề xuất bổ sung vật tư',
     operationId: 'SuppliesController_updateRequest',
   })
   @ApiOkResponse({ type: SupplyRequestResponseDto })

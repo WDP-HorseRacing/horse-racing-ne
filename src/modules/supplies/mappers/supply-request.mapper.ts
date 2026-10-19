@@ -10,7 +10,7 @@ export function toSupplyRequestResponse(
 ): SupplyRequestResponseDto {
   const source = {
     ...entity,
-    quantity: Number(entity.quantity),
+    quantity: entity.quantity === null ? null : Number(entity.quantity),
     item: toSupplyItemResponse(requiredRelation(entity.item, 'item')),
     requester: requiredRelation(entity.requester, 'requester'),
     reviewer: entity.reviewedBy
@@ -18,6 +18,9 @@ export function toSupplyRequestResponse(
       : null,
     fulfiller: entity.fulfilledBy
       ? requiredRelation(entity.fulfiller, 'fulfiller')
+      : null,
+    canceller: entity.cancelledBy
+      ? requiredRelation(entity.canceller, 'canceller')
       : null,
   };
 

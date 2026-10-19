@@ -12,9 +12,9 @@ import {
   assertUsageCancellable,
   assertUsageNote,
   assertUsageNotCancelled,
-  assertRejectionReason,
   assertSupplyRequestEditable,
   assertSupplyRequestTransition,
+  supplyRequestStatusReason,
 } from './supplies.policy';
 
 describe('supplies policy', () => {
@@ -63,6 +63,7 @@ describe('supplies policy', () => {
       [SupplyRequestStatus.PENDING, SupplyRequestStatus.APPROVED],
       [SupplyRequestStatus.PENDING, SupplyRequestStatus.REJECTED],
       [SupplyRequestStatus.APPROVED, SupplyRequestStatus.FULFILLED],
+      [SupplyRequestStatus.APPROVED, SupplyRequestStatus.CANCELLED],
     ])('allows %s to %s', (current, next) => {
       expect(() => assertSupplyRequestTransition(current, next)).not.toThrow();
     });
@@ -72,6 +73,11 @@ describe('supplies policy', () => {
       [SupplyRequestStatus.APPROVED, SupplyRequestStatus.REJECTED],
       [SupplyRequestStatus.REJECTED, SupplyRequestStatus.APPROVED],
       [SupplyRequestStatus.FULFILLED, SupplyRequestStatus.FULFILLED],
+      [SupplyRequestStatus.PENDING, SupplyRequestStatus.CANCELLED],
+      [SupplyRequestStatus.FULFILLED, SupplyRequestStatus.CANCELLED],
+      [SupplyRequestStatus.REJECTED, SupplyRequestStatus.CANCELLED],
+      [SupplyRequestStatus.CANCELLED, SupplyRequestStatus.APPROVED],
+      [SupplyRequestStatus.CANCELLED, SupplyRequestStatus.FULFILLED],
     ])('rejects %s to %s', (current, next) => {
       expect(() => assertSupplyRequestTransition(current, next)).toThrow(
         ConflictException,
@@ -79,24 +85,30 @@ describe('supplies policy', () => {
     });
   });
 
-  describe('assertRejectionReason', () => {
-    it('requires a reason to reject', () => {
-      expect(() =>
-        assertRejectionReason(SupplyRequestStatus.REJECTED, null),
-      ).toThrow(BadRequestException);
-    });
+  describe('supplyRequestStatusReason', () => {
+    it.each([SupplyRequestStatus.REJECTED, SupplyRequestStatus.CANCELLED])(
+      'requires a reason for %s',
+      (next) => {
+        expect(() => supplyRequestStatusReason(next, null)).toThrow(
+          BadRequestException,
+        );
+      },
+    );
 
-    it('accepts a rejection with a reason', () => {
-      expect(() =>
-        assertRejectionReason(SupplyRequestStatus.REJECTED, 'Còn đủ'),
-      ).not.toThrow();
-    });
+    it.each([SupplyRequestStatus.REJECTED, SupplyRequestStatus.CANCELLED])(
+      'returns the reason for %s',
+      (next) => {
+        expect(supplyRequestStatusReason(next, 'Còn đủ')).toBe('Còn đủ');
+      },
+    );
 
-    it('does not need a reason to approve', () => {
-      expect(() =>
-        assertRejectionReason(SupplyRequestStatus.APPROVED, null),
-      ).not.toThrow();
-    });
+    it.each([SupplyRequestStatus.APPROVED, SupplyRequestStatus.FULFILLED])(
+      'needs no reason and drops any reason sent for %s',
+      (next) => {
+        expect(supplyRequestStatusReason(next, null)).toBeNull();
+        expect(supplyRequestStatusReason(next, 'x')).toBeNull();
+      },
+    );
   });
 
   describe('assertUsageCancellable', () => {

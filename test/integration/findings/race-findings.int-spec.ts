@@ -559,16 +559,14 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
         quantityOnHand: 10,
         reorderThreshold: 0,
       });
-      const request = await requests.create(groom, {
-        itemId: item.id,
-        quantity: 50,
-      });
+      const request = await requests.create(groom, { itemId: item.id });
       await requests.updateStatus(cm, request.id, {
         status: SupplyRequestStatus.APPROVED,
       });
       const fulfill = () =>
         requests.updateStatus(cm, request.id, {
           status: SupplyRequestStatus.FULFILLED,
+          quantity: 50,
           unitPrice: 20000,
         });
       const outcomes = await contend(

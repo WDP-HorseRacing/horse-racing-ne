@@ -26,9 +26,9 @@ import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
 import { toSupplyRequestResponse } from '../mappers/supply-request.mapper';
 import {
   assertCanViewSupplyRequest,
-  assertRejectionReason,
   assertSupplyRequestEditable,
   assertSupplyRequestTransition,
+  supplyRequestStatusReason,
 } from '../policies/supplies.policy';
 import { SupplyStockService } from '../shared/supply-stock.service';
 import {
@@ -45,12 +45,13 @@ const REQUEST_RELATIONS = {
   requester: true,
   reviewer: true,
   fulfiller: true,
+  canceller: true,
 } as const;
 
 const SUPPLY_REQUEST_NOT_FOUND = 'Không tìm thấy đề xuất bổ sung vật tư';
 
 /**
- * Đề xuất bổ sung vật tư: Groom, Head Trainer gửi; Club Manager duyệt, từ chối, cấp
+ * Đề xuất bổ sung vật tư: Groom, Head Trainer gửi; Club Manager duyệt, từ chối, cấp, hủy
  */
 @Injectable()
 export class SupplyRequestsService {
@@ -103,11 +104,12 @@ export class SupplyRequestsService {
   /**
    * Gửi đề xuất bổ sung cho một vật tư chưa xóa
    *
-   * - Ghi nhật ký kèm vật tư, số lượng, ghi chú, trạng thái
+   * - Chưa có số lượng, Club Manager nhập số lượng thực nhận khi cấp
+   * - Ghi nhật ký kèm vật tư, ghi chú, trạng thái
    * - Ghi SUPPLY_REQUEST_CREATED_EVENT vào outbox để báo Club Manager
    *
    * @param actor Thông tin danh tính từ Access Token
-   * @param body Vật tư, số lượng, ghi chú
+   * @param body Vật tư, ghi chú
    * @returns Promise trả về đề xuất vừa gửi, trạng thái PENDING
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có vật tư hoặc vật tư đã xóa
@@ -123,7 +125,7 @@ export class SupplyRequestsService {
         manager.create(SupplyRequestEntity, {
           itemId: body.itemId,
           requestedBy: caller.id,
-          quantity: body.quantity.toString(),
+          quantity: null,
           status: SupplyRequestStatus.PENDING,
           note: body.note?.trim() || null,
         }),
@@ -136,7 +138,6 @@ export class SupplyRequestsService {
         before: null,
         after: {
           itemId: saved.itemId,
-          quantity: Number(saved.quantity),
           note: saved.note,
           status: saved.status,
         },
@@ -147,7 +148,6 @@ export class SupplyRequestsService {
         requestId: saved.id,
         itemName: item.name,
         unit: item.unit,
-        quantity: Number(saved.quantity),
         requesterName: caller.fullName,
       };
       await this.events.publish(manager, SUPPLY_REQUEST_CREATED_EVENT, event);
@@ -173,13 +173,13 @@ export class SupplyRequestsService {
   }
 
   /**
-   * Người gửi sửa số lượng, ghi chú của đề xuất còn chờ duyệt
+   * Người gửi sửa ghi chú của đề xuất còn chờ duyệt
    *
-   * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
+   * - Ghi chú đổi giá trị: ghi nhật ký giá trị trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của đề xuất
-   * @param body Các field cần sửa, field không gửi giữ giá trị cũ
+   * @param body Ghi chú mới, không gửi thì giữ ghi chú cũ
    * @returns Promise trả về đề xuất sau khi sửa
    * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc người gọi không phải người gửi
    * @throws NotFoundException Nếu không có đề xuất
@@ -198,21 +198,12 @@ export class SupplyRequestsService {
         request.requestedBy,
         request.status,
       );
-      const before = {
-        quantity: Number(request.quantity),
-        note: request.note,
-      };
-      if (body.quantity !== undefined) {
-        request.quantity = body.quantity.toString();
-      }
+      const before = { note: request.note };
       if (body.note !== undefined) {
         request.note = body.note.trim() || null;
       }
       await manager.save(request);
-      const diff = changedFieldsDiff(before, {
-        quantity: Number(request.quantity),
-        note: request.note,
-      });
+      const diff = changedFieldsDiff(before, { note: request.note });
       if (diff) {
         await this.auditService.record(manager, {
           actorId: caller.id,
@@ -229,21 +220,22 @@ export class SupplyRequestsService {
   }
 
   /**
-   * Club Manager duyệt, từ chối hoặc cấp đề xuất
+   * Club Manager duyệt, từ chối, cấp hoặc hủy đề xuất
    *
    * - REJECTED: bắt buộc lý do, lý do ghi kèm nhật ký
-   * - FULFILLED: cộng số lượng đề xuất vào tồn và ghi dòng sổ RESTOCK kèm đơn giá của lần cấp; nhật ký ghi kèm số lượng và đơn giá
+   * - CANCELLED: bắt buộc lý do; lưu người hủy, lúc hủy, lý do hủy; lý do ghi kèm nhật ký
+   * - FULFILLED: bắt buộc số lượng thực nhận và đơn giá; cộng số lượng đó vào tồn, lưu vào đề xuất và ghi dòng sổ RESTOCK kèm đơn giá; nhật ký ghi kèm số lượng và đơn giá
    * - Ghi nhật ký trạng thái trước và sau
    * - Ghi SUPPLY_REQUEST_STATUS_CHANGED_EVENT vào outbox để báo người gửi
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của đề xuất
-   * @param body Trạng thái mới, lý do từ chối, đơn giá khi cấp
+   * @param body Trạng thái mới, lý do từ chối hoặc hủy, số lượng thực nhận và đơn giá khi cấp
    * @returns Promise trả về đề xuất sau khi đổi trạng thái
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có đề xuất, hoặc vật tư đã xóa khi cấp
    * @throws ConflictException Nếu chuyển trạng thái sai thứ tự
-   * @throws BadRequestException Nếu từ chối mà lý do rỗng, hoặc cấp hàng mà thiếu đơn giá
+   * @throws BadRequestException Nếu từ chối hoặc hủy mà lý do rỗng, hoặc cấp hàng mà thiếu số lượng thực nhận hoặc đơn giá
    */
   async updateStatus(
     actor: Actor,
@@ -256,10 +248,21 @@ export class SupplyRequestsService {
       const previousStatus = request.status;
       assertSupplyRequestTransition(request.status, body.status);
       const now = new Date();
+      const reason = supplyRequestStatusReason(
+        body.status,
+        body.reason?.trim() || null,
+      );
       if (body.status === SupplyRequestStatus.FULFILLED) {
+        if (body.quantity === undefined) {
+          throw fieldBadRequest(
+            'quantity',
+            'Phải nhập số lượng thực nhận khi cấp hàng',
+          );
+        }
         if (body.unitPrice === undefined) {
           throw fieldBadRequest('unitPrice', 'Phải nhập đơn giá khi cấp hàng');
         }
+        request.quantity = body.quantity.toString();
         await this.stock.restock(manager, request.itemId, {
           quantity: request.quantity,
           unitPrice: String(body.unitPrice),
@@ -269,13 +272,14 @@ export class SupplyRequestsService {
         });
         request.fulfilledBy = caller.id;
         request.fulfilledAt = now;
+      } else if (body.status === SupplyRequestStatus.CANCELLED) {
+        request.cancelledBy = caller.id;
+        request.cancelledAt = now;
+        request.cancellationReason = reason;
       } else {
-        const reason = body.reason?.trim() || null;
-        assertRejectionReason(body.status, reason);
         request.reviewedBy = caller.id;
         request.reviewedAt = now;
-        request.rejectionReason =
-          body.status === SupplyRequestStatus.REJECTED ? reason : null;
+        request.rejectionReason = reason;
       }
       request.status = body.status;
       await manager.save(request);
@@ -293,7 +297,7 @@ export class SupplyRequestsService {
             unitPrice: body.unitPrice,
           }),
         },
-        reason: request.rejectionReason,
+        reason,
         feature: AuditFeature.SUPPLY_REQUEST,
       });
       const result = await this.findWithRelations(manager, request.id);
@@ -305,9 +309,9 @@ export class SupplyRequestsService {
         requesterId: request.requestedBy,
         itemName: result.item.name,
         unit: result.item.unit,
-        quantity: Number(request.quantity),
+        quantity: fulfilled ? Number(request.quantity) : null,
         status: request.status,
-        reason: request.rejectionReason,
+        reason,
       };
       await this.events.publish(
         manager,

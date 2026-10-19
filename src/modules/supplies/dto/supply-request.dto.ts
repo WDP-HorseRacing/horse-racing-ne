@@ -32,16 +32,6 @@ export class CreateSupplyRequestDto {
   @IsUUID()
   itemId!: string;
 
-  @ApiProperty({
-    minimum: 0.01,
-    maximum: MAX_QUANTITY,
-    description: 'Số lượng xin thêm',
-  })
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
-  @Max(MAX_QUANTITY)
-  quantity!: number;
-
   @ApiPropertyOptional({ maxLength: 500 })
   @IsOptional()
   @IsString()
@@ -50,13 +40,6 @@ export class CreateSupplyRequestDto {
 }
 
 export class EditSupplyRequestDto {
-  @ApiPropertyOptional({ minimum: 0.01, maximum: MAX_QUANTITY })
-  @ValidateIf((body: EditSupplyRequestDto) => body.quantity !== undefined)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
-  @Max(MAX_QUANTITY)
-  quantity?: number;
-
   @ApiPropertyOptional({ maxLength: 500 })
   @ValidateIf((body: EditSupplyRequestDto) => body.note !== undefined)
   @IsString()
@@ -70,6 +53,7 @@ export class UpdateSupplyRequestStatusDto {
       SupplyRequestStatus.APPROVED,
       SupplyRequestStatus.REJECTED,
       SupplyRequestStatus.FULFILLED,
+      SupplyRequestStatus.CANCELLED,
     ],
   })
   @IsEnum(SupplyRequestStatus)
@@ -77,13 +61,19 @@ export class UpdateSupplyRequestStatusDto {
     SupplyRequestStatus.APPROVED,
     SupplyRequestStatus.REJECTED,
     SupplyRequestStatus.FULFILLED,
+    SupplyRequestStatus.CANCELLED,
   ])
   status!: SupplyRequestStatus;
 
-  @ApiPropertyOptional({ description: 'Required when status is REJECTED' })
+  @ApiPropertyOptional({
+    maxLength: 500,
+    description:
+      'Lý do từ chối hoặc hủy; bắt buộc khi status là REJECTED hoặc CANCELLED',
+  })
   @ValidateIf(
     (request: { status?: SupplyRequestStatus }) =>
-      request.status === SupplyRequestStatus.REJECTED,
+      request.status === SupplyRequestStatus.REJECTED ||
+      request.status === SupplyRequestStatus.CANCELLED,
   )
   @Transform(trimValue)
   @IsString()
@@ -105,6 +95,21 @@ export class UpdateSupplyRequestStatusDto {
   @Min(0)
   @Max(MAX_UNIT_PRICE_VND)
   unitPrice?: number;
+
+  @ApiPropertyOptional({
+    minimum: 0.01,
+    maximum: MAX_QUANTITY,
+    description:
+      'Số lượng thực nhận của lần cấp này, cộng vào tồn; bắt buộc khi status là FULFILLED',
+  })
+  @ValidateIf(
+    (request: { status?: SupplyRequestStatus }) =>
+      request.status === SupplyRequestStatus.FULFILLED,
+  )
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  @Max(MAX_QUANTITY)
+  quantity?: number;
 }
 
 export class SupplyRequestListQueryDto extends PaginationQueryDto {
@@ -138,8 +143,12 @@ export class SupplyRequestResponseDto {
   requester!: SupplyUserSummaryResponseDto;
 
   @Expose()
-  @ApiProperty({ type: Number })
-  quantity!: number;
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: 'Số lượng thực nhận khi cấp; null khi đề xuất chưa FULFILLED',
+  })
+  quantity!: number | null;
 
   @Expose()
   @ApiProperty({ enum: SupplyRequestStatus })
@@ -184,6 +193,26 @@ export class SupplyRequestResponseDto {
   @Expose()
   @ApiPropertyOptional({ nullable: true })
   rejectionReason!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({ format: 'uuid', nullable: true, type: String })
+  cancelledBy!: string | null;
+
+  @Expose()
+  @Type(() => SupplyUserSummaryResponseDto)
+  @ApiPropertyOptional({
+    type: SupplyUserSummaryResponseDto,
+    nullable: true,
+  })
+  canceller!: SupplyUserSummaryResponseDto | null;
+
+  @Expose()
+  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  cancelledAt!: Date | null;
+
+  @Expose()
+  @ApiPropertyOptional({ nullable: true })
+  cancellationReason!: string | null;
 
   @Expose()
   @ApiProperty({ format: 'date-time' })
