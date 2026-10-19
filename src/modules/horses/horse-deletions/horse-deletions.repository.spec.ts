@@ -43,6 +43,11 @@ describe('HorseDeletionsRepository', () => {
     expect(HORSE_BUSINESS_TABLES.horse_enrollments).toBe('lớp học');
   });
 
+  it('blocks deleting a horse that has its own daily task or surcharge', () => {
+    expect(HORSE_BUSINESS_TABLES.horse_daily_tasks).toBe('việc chăm sóc riêng');
+    expect(HORSE_BUSINESS_TABLES.horse_surcharges).toBe('phụ phí chăm sóc');
+  });
+
   it('returns the labels of the tables that have rows for the horse', async () => {
     const tables = Object.keys(HORSE_BUSINESS_TABLES);
     const row = Object.fromEntries(

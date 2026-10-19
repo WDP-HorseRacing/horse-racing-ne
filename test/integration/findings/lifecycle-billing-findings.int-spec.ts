@@ -40,6 +40,9 @@ import {
 
 const FEE = 100000;
 
+const blockedMessage = (label: string) =>
+  `Ngựa đã phát sinh dữ liệu nghiệp vụ (${label}), hãy đổi trạng thái vòng đời thay vì xóa`;
+
 describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
   let db: TestPostgres;
   let dataSource: DataSource;
@@ -282,7 +285,30 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
 
     await expect(
       deletions.remove(cm, horse, { reason: 'Tạo nhầm' }),
-    ).rejects.toBeInstanceOf(ConflictException);
+    ).rejects.toThrow(
+      new ConflictException(blockedMessage('việc chăm sóc riêng')),
+    );
+    const preview = await deletions.previewRemove(cm, horse);
+    expect(preview.allowed).toBe(false);
+    expect(preview.businessData).toEqual(['việc chăm sóc riêng']);
+  });
+
+  it('B9 refuses to delete a horse that has a surcharge', async () => {
+    const horse = await seed.horse('Mây');
+    await dataSource.query(
+      `INSERT INTO horse_surcharges (version, horse_id, description, daily_amount, start_date, end_date, created_by)
+       VALUES (1, $1, 'Bổ sung khớp', 50000, $2, $2, $3)`,
+      [horse, today, cmId],
+    );
+
+    await expect(
+      deletions.remove(cm, horse, { reason: 'Tạo nhầm' }),
+    ).rejects.toThrow(
+      new ConflictException(blockedMessage('phụ phí chăm sóc')),
+    );
+    const preview = await deletions.previewRemove(cm, horse);
+    expect(preview.allowed).toBe(false);
+    expect(preview.businessData).toEqual(['phụ phí chăm sóc']);
   });
 
   it('F1-5 (gap: no effective date on transfer) does not bill the old owner after the contract date', async () => {

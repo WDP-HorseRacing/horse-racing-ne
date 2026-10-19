@@ -151,6 +151,7 @@ Hộp thông báo của OWNER giờ có thêm các loại sau. Không có route 
 1. Ngựa cần giáo án riêng: HT tạo một lớp riêng, chỉ ghi danh con ngựa đó.
 2. Việc trong checklist không có giờ phải làm, chỉ cần xong trong ngày.
 3. Ảnh khi báo sự cố là tùy chọn, tối đa một ảnh.
+4. Xóa hồ sơ ngựa: `GET /horses/:horseId/deletion-preview` (`businessData`) và câu 409 của `DELETE /horses/:horseId` có thêm hai nhãn "việc chăm sóc riêng", "phụ phí chăm sóc" khi ngựa đã có việc riêng hoặc phụ phí.
 
 ## Lịch chăm sóc y tế: giao theo vai trò
 
