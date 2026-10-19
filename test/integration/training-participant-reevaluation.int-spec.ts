@@ -211,6 +211,46 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       });
     });
 
+    it.each([
+      {
+        case: 'has not reached its start time',
+        offset: 0.2,
+        expected: 'PLANNED',
+      },
+      {
+        case: 'has already started',
+        offset: -0.2,
+        expected: 'CANCELLED_BY_LOCK',
+      },
+    ])(
+      'releasing the lock on an IN_PROGRESS session that $case leaves the participant $expected',
+      async ({ offset, expected }) => {
+        const winx = await horse();
+        const running = await session(offset);
+        await dataSource.query(
+          "UPDATE training_sessions SET status = 'IN_PROGRESS' WHERE id = $1",
+          [running],
+        );
+        const cancelled = await participant(
+          running,
+          winx,
+          'CANCELLED_BY_LOCK',
+          'ACTIVE_TRAINING_LOCK',
+        );
+        const lockId = await setLock(winx.horseId);
+        await releaseLock(lockId);
+
+        await listener.handle({
+          eventId: randomUUID(),
+          horseId: winx.horseId,
+          lockId,
+          conclusion: 'Khỏi',
+        });
+
+        expect((await participantRow(cancelled)).status).toBe(expected);
+      },
+    );
+
     it('marks participants INELIGIBLE when the lock is released but the horse is still injured', async () => {
       const winx = await horse(HorseHealthStatus.INJURED);
       const upcoming = await session(48);

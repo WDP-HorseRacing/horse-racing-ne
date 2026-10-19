@@ -79,6 +79,11 @@ const REEVALUATED_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.INELIGIBLE,
 ];
 
+const REEVALUATED_SESSION_STATUSES = [
+  TrainingSessionStatus.SCHEDULED,
+  TrainingSessionStatus.IN_PROGRESS,
+];
+
 const NON_TERMINAL_PARTICIPANT_STATUSES = [
   ...OPEN_PARTICIPANT_STATUSES,
   SessionParticipantStatus.ONGOING,
@@ -253,7 +258,7 @@ export class TrainingOperationsFacade {
   /**
    * Chấm lại điều kiện tập các lượt sắp tới của một con ngựa, chạy trong transaction của nơi gọi
    *
-   * - Chỉ xét lượt PLANNED, CANCELLED_BY_LOCK hoặc INELIGIBLE của buổi SCHEDULED chưa tới giờ bắt đầu
+   * - Chỉ xét lượt PLANNED, CANCELLED_BY_LOCK hoặc INELIGIBLE của buổi SCHEDULED hoặc IN_PROGRESS chưa tới giờ bắt đầu
    * - Ngựa đang bị khóa huấn luyện: CANCELLED_BY_LOCK
    * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi không phải LIGHT: INELIGIBLE kèm lý do
    * - Ngựa được tập: PLANNED, xóa lý do không đủ điều kiện
@@ -286,8 +291,8 @@ export class TrainingOperationsFacade {
       .andWhere('participant.status IN (:...statuses)', {
         statuses: REEVALUATED_PARTICIPANT_STATUSES,
       })
-      .andWhere('session.status = :sessionStatus', {
-        sessionStatus: TrainingSessionStatus.SCHEDULED,
+      .andWhere('session.status IN (:...sessionStatuses)', {
+        sessionStatuses: REEVALUATED_SESSION_STATUSES,
       })
       .andWhere('session.scheduled_start_at > :now', { now: new Date() })
       .orderBy('session.id', 'ASC')
