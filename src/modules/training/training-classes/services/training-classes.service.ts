@@ -49,13 +49,13 @@ import {
 } from '../../mappers/training-class.mapper';
 import {
   assertClassCancellable,
-  assertClassCompletable,
   assertClassEditable,
   assertClassStartNotPast,
   classEndDate,
   totalPlanWeeks,
 } from '../../policies/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
+import { completeTrainingClass } from '../../shared/training-class-completion';
 import { classAuditData } from '../../utils/training-audit';
 
 @Injectable()
@@ -264,35 +264,13 @@ export class TrainingClassesService {
       const caller = await this.access.currentUser(actor, manager);
       const row = await this.access.lockedTrainingClass(manager, classId);
       this.access.assertCanManageClass(actor, caller.id, row.headTrainerId);
-      assertClassCompletable(row.status);
-      const previousStatus = row.status;
-
-      const unfinishedSessions = await manager
-        .getRepository(TrainingSessionEntity)
-        .createQueryBuilder('session')
-        .where('session.class_id = :classId', { classId })
-        .andWhere('session.status IN (:...statuses)', {
-          statuses: [
-            TrainingSessionStatus.SCHEDULED,
-            TrainingSessionStatus.IN_PROGRESS,
-          ],
-        })
-        .getCount();
-      if (unfinishedSessions) {
-        throw new ConflictException('Lớp vẫn còn buổi tập chưa kết thúc');
-      }
-
-      const now = new Date();
-      await manager.update(
-        HorseEnrollmentEntity,
-        { classId, status: HorseEnrollmentStatus.ACTIVE },
-        { status: HorseEnrollmentStatus.LEFT, leftAt: now },
+      return completeTrainingClass(
+        manager,
+        this.auditService,
+        row,
+        caller.id,
+        null,
       );
-      row.status = TrainingClassStatus.COMPLETED;
-      row.completedAt = now;
-      const saved = await manager.save(row);
-      await this.recordStatusChange(manager, caller.id, saved, previousStatus);
-      return saved;
     });
     return toTrainingClassResponse(saved);
   }

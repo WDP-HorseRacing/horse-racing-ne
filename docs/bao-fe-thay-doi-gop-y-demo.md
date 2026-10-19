@@ -536,3 +536,9 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
    - Ghi chú chạy thử là `notes` của buổi; dữ liệu cũ đã được gộp vào đó.
 4. `POST /session-participants/:id/trial-results`: không còn 404 "Buổi tập chưa có cấu hình chạy thử". Buổi chạy thử nào cũng ghi được kết quả khi đã bắt đầu.
 5. Kết quả chạy thử (`GET/POST /session-participants/:id/trial-results`, `PATCH .../trial-results/:attemptNo`) bỏ field `timeTrialId`.
+
+## Lớp quá ngày kết thúc tự hoàn thành
+
+1. Lớp `ACTIVE` có `endDate` trước hôm nay (lịch CLB) và không còn buổi `SCHEDULED`/`IN_PROGRESS` thì hệ thống tự chuyển `COMPLETED` trong vòng một phút, không cần ai bấm. Ngựa đang học chuyển `LEFT`.
+2. Trạng thái lớp có thể đổi mà không có thao tác của người dùng: FE tải lại lớp thay vì giữ trạng thái cũ trong cache. Không có thông báo nào gửi đi.
+3. Nhật ký lớp có dòng người thao tác trống, lý do "Hệ thống tự hoàn thành lớp".

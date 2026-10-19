@@ -1,19 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, In } from 'typeorm';
+import { clubToday } from '../../../common/utils/club-date';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import {
+  AUTO_COMPLETED_CLASS_REASON,
   AUTO_COMPLETED_RUN_REASON,
   MISSED_CHECK_IN_REASON,
   STUCK_RUN_GRACE_MS,
 } from '../constants/participant-window.constants';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
+import { TrainingClassEntity } from '../entities/training-class.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import { completeTrainingClass } from '../shared/training-class-completion';
 import {
   NON_TERMINAL_PARTICIPANT_STATUSES,
   TrainingOperationsFacade,
@@ -38,7 +43,7 @@ export class SessionAutoCloseService {
   ) {}
 
   /**
-   * Job mỗi phút: tự hoàn thành lượt đang tập bị quên, chốt lượt của các buổi đã hết giờ, rồi đóng các buổi đã tới giờ bắt đầu mà không còn lượt mở
+   * Job mỗi phút: tự hoàn thành lượt đang tập bị quên, chốt lượt của các buổi đã hết giờ, đóng các buổi đã tới giờ bắt đầu mà không còn lượt mở, rồi tự hoàn thành các lớp đã qua ngày kết thúc
    *
    * - Lỗi của từng bước chỉ được log, không chặn bước còn lại và không làm dừng scheduler
    *
@@ -72,6 +77,16 @@ export class SessionAutoCloseService {
     } catch (error) {
       this.logger.error(
         'Đóng buổi tập quá giờ thất bại',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+    try {
+      const finished = await this.completeEndedClasses();
+      if (finished)
+        this.logger.log(`Đã tự hoàn thành ${finished} lớp quá ngày kết thúc`);
+    } catch (error) {
+      this.logger.error(
+        'Tự hoàn thành lớp quá ngày kết thúc thất bại',
         error instanceof Error ? error.stack : String(error),
       );
     }
@@ -273,6 +288,58 @@ export class SessionAutoCloseService {
         await this.operations.refreshSessionStatus(manager, session.id);
       }
       return sessions.length;
+    });
+  }
+
+  /**
+   * Tự hoàn thành một lô lớp đang chạy đã qua ngày kết thúc mà không còn buổi tập chưa kết thúc, trong một transaction
+   *
+   * - Chỉ xét lớp ACTIVE có ngày kết thúc trước ngày hôm nay theo lịch câu lạc bộ; lớp kết thúc hôm nay chưa bị đóng
+   * - Lớp còn buổi SCHEDULED hoặc IN_PROGRESS giữ nguyên, các bước đóng buổi chạy trước sẽ xử lý buổi đó
+   * - Ngựa đang học chuyển sang rời lớp; ghi nhật ký với người thao tác null, lý do AUTO_COMPLETED_CLASS_REASON
+   * - Mỗi lô tối đa CLOSE_BATCH_SIZE lớp, lớp kết thúc sớm nhất trước; bỏ qua lớp đang bị transaction khác khóa, lần chạy sau xử lý tiếp
+   *
+   * @param today Ngày hôm nay theo lịch câu lạc bộ (YYYY-MM-DD)
+   * @returns Promise trả về số lớp đã tự hoàn thành
+   */
+  async completeEndedClasses(today: string = clubToday()): Promise<number> {
+    return this.dataSource.transaction(async (manager) => {
+      const classes = await manager
+        .getRepository(TrainingClassEntity)
+        .createQueryBuilder('class')
+        .where('class.status = :status', {
+          status: TrainingClassStatus.ACTIVE,
+        })
+        .andWhere('class.end_date < :today', { today })
+        .andWhere(
+          (qb) =>
+            `NOT EXISTS ${qb
+              .subQuery()
+              .select('1')
+              .from(TrainingSessionEntity, 'session')
+              .where('session.class_id = class.id')
+              .andWhere('session.status IN (:...openSessionStatuses)')
+              .getQuery()}`,
+        )
+        .setParameter('openSessionStatuses', [
+          TrainingSessionStatus.SCHEDULED,
+          TrainingSessionStatus.IN_PROGRESS,
+        ])
+        .orderBy('class.end_date', 'ASC')
+        .limit(CLOSE_BATCH_SIZE)
+        .setLock('pessimistic_write')
+        .setOnLocked('skip_locked')
+        .getMany();
+      for (const row of classes) {
+        await completeTrainingClass(
+          manager,
+          this.auditService,
+          row,
+          null,
+          AUTO_COMPLETED_CLASS_REASON,
+        );
+      }
+      return classes.length;
     });
   }
 }
