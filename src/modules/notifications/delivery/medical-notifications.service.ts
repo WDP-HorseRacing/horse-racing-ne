@@ -370,65 +370,26 @@ export class MedicalNotificationsService {
    * @param event Payload của MEDICAL_VISIT_COST_ADJUSTED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
    */
-  async notifyVisitCostAdjusted(
+  notifyVisitCostAdjusted(
     event: MedicalVisitCostAdjustedEvent,
   ): Promise<string[]> {
-    const contact = await this.recipients.findHorseMedicalContact(
-      event.horseId,
-    );
-    if (!contact) {
-      this.logger.warn(
-        `Bỏ qua thông báo y tế ${event.eventId}: không tìm thấy ngựa ${event.horseId}`,
-      );
-      return [];
-    }
-    const draft = {
-      eventId: event.eventId,
-      category: NotificationCategory.MEDICAL_CASE,
-      priority: NotificationPriority.NORMAL,
-      title: `Điều chỉnh chi phí khám ngựa ${contact.horseName}`,
-      message: `Chi phí buổi khám ngày ${toDisplayDate(toClubDate(event.examDate))} của ngựa ${contact.horseName} được điều chỉnh từ ${formatVnd(event.fromCost)} thành ${formatVnd(event.toCost)}.`,
-    };
-    const ownerIsCurrent =
-      event.costOwnerId !== null && event.costOwnerId === contact.ownerId;
-    const sent = await this.notifications.send({
-      ...draft,
-      recipientIds: [
-        ...new Set([
-          ...(await this.recipients.findActiveUserIdsByRole(
-            UserRole.CLUB_MANAGER,
-          )),
-          ...(ownerIsCurrent && event.costOwnerId ? [event.costOwnerId] : []),
-        ]),
-      ],
-      resource: event.caseId
+    return this.sendForHorse(
+      { ...event, ownerId: event.costOwnerId },
+      event.caseId
         ? {
             type: NotificationResourceType.MEDICAL_CASE,
             id: event.caseId,
             horseId: event.horseId,
           }
-        : {
-            type: NotificationResourceType.HORSE,
-            id: event.horseId,
-            horseId: event.horseId,
-          },
-    });
-    if (
-      event.costOwnerId === null ||
-      ownerIsCurrent ||
-      !(await this.recipients.isActiveUserWithRole(
-        event.costOwnerId,
-        UserRole.HORSE_OWNER,
-      ))
-    ) {
-      return sent;
-    }
-    const toPastOwner = await this.notifications.send({
-      ...draft,
-      recipientIds: [event.costOwnerId],
-      resource: null,
-    });
-    return [...sent, ...toPastOwner];
+        : horseResource(event.horseId),
+      { clubManagers: true, owner: true },
+      NotificationCategory.MEDICAL_CASE,
+      NotificationPriority.NORMAL,
+      (horse) => ({
+        title: `Điều chỉnh chi phí khám ngựa ${horse}`,
+        message: `Chi phí buổi khám ngày ${toDisplayDate(toClubDate(event.examDate))} của ngựa ${horse} được điều chỉnh từ ${formatVnd(event.fromCost)} thành ${formatVnd(event.toCost)}.`,
+      }),
+    );
   }
 
   /**
