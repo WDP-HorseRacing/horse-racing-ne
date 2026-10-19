@@ -1450,7 +1450,7 @@
             "name": "sortBy",
             "required": false,
             "in": "query",
-            "description": "NAME: theo tên. HEALTH_PRIORITY: chấn thương/cách ly trước, rồi cần theo dõi, cuối cùng đủ điều kiện; cùng nhóm thì theo tên",
+            "description": "NAME: theo tên. HEALTH_PRIORITY: chấn thương/cách ly trước, rồi cần theo dõi, rồi đủ điều kiện, cuối cùng là ngựa đã chuyển đi/đã mất bất kể sức khỏe; cùng nhóm thì theo tên",
             "schema": {
               "default": "HEALTH_PRIORITY",
               "type": "string",

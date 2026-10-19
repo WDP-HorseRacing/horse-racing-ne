@@ -221,7 +221,7 @@ export class HorseProfilesRepository {
   /**
    * Thêm thứ tự sắp xếp của danh sách ngựa vào query builder
    *
-   * - HEALTH_PRIORITY: chấn thương/cách ly, rồi cần theo dõi, rồi còn lại; cùng nhóm theo tên tiếng Việt tăng dần
+   * - HEALTH_PRIORITY: chấn thương/cách ly, rồi cần theo dõi, rồi còn lại, cuối cùng là ngựa đã chuyển đi/đã mất (bất kể sức khỏe); cùng nhóm theo tên tiếng Việt tăng dần
    * - Mặc định: theo tên tiếng Việt
    *
    * @param qb Query builder của bảng ngựa với alias `horse`
@@ -287,6 +287,11 @@ END`;
 
 /**
  * Biểu thức SQL tính độ ưu tiên sức khỏe của một dòng ngựa, gắn với alias `horse` của query builder.
- * Chấn thương/cách ly là 0, cần theo dõi là 1, còn lại là 2.
+ * Ngựa đã chuyển đi/đã mất là 3 bất kể sức khỏe; ngựa khác: chấn thương/cách ly là 0, cần theo dõi là 1, còn lại là 2.
  */
-const HEALTH_PRIORITY_SQL = `CASE horse.health_status WHEN '${HorseHealthStatus.INJURED}' THEN 0 WHEN '${HorseHealthStatus.QUARANTINED}' THEN 0 WHEN '${HorseHealthStatus.UNDER_OBSERVATION}' THEN 1 ELSE 2 END`;
+const HEALTH_PRIORITY_SQL = `CASE
+  WHEN horse.lifecycle_status IN (${READ_ONLY_LIFECYCLE_STATUSES.map((status) => `'${status}'`).join(', ')}) THEN 3
+  WHEN horse.health_status IN ('${HorseHealthStatus.INJURED}', '${HorseHealthStatus.QUARANTINED}') THEN 0
+  WHEN horse.health_status = '${HorseHealthStatus.UNDER_OBSERVATION}' THEN 1
+  ELSE 2
+END`;

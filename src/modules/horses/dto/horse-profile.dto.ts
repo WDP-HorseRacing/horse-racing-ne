@@ -295,7 +295,7 @@ export class HorseListQueryDto extends PaginationQueryDto {
     enum: HorseListSortBy,
     default: HorseListSortBy.HEALTH_PRIORITY,
     description:
-      'NAME: theo tên. HEALTH_PRIORITY: chấn thương/cách ly trước, rồi cần theo dõi, cuối cùng đủ điều kiện; cùng nhóm thì theo tên',
+      'NAME: theo tên. HEALTH_PRIORITY: chấn thương/cách ly trước, rồi cần theo dõi, rồi đủ điều kiện, cuối cùng là ngựa đã chuyển đi/đã mất bất kể sức khỏe; cùng nhóm thì theo tên',
   })
   @IsOptional()
   @IsEnum(HorseListSortBy)

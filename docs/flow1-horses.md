@@ -240,7 +240,7 @@ Mọi vai trò xem cùng một lượng thông tin ở màn hình danh sách. Kh
 
 1. Danh sách mặc định không hiện hồ sơ đã xóa. Chỉ CLUB MANAGER bật được bộ lọc này và các hồ sơ đó hiện kèm dấu phân biệt.
 2. Tìm kiếm theo tên hoặc số chip định danh. Bộ lọc gồm: trạng thái sức khỏe, trạng thái vòng đời, khu chuồng, giới tính, sở trường cự ly.
-3. Thứ tự mặc định: ngựa đang chấn thương và đang cách ly xếp lên trên, sau đó tới cần theo dõi, cuối cùng là còn lại. Mục đích là để việc cần xử lý gấp đập vào mắt trước.
+3. Thứ tự mặc định: ngựa đang chấn thương và đang cách ly xếp lên trên, sau đó tới cần theo dõi, sau nữa là còn lại; ngựa đã chuyển nhượng hoặc đã mất luôn xếp cuối cùng, bất kể sức khỏe. Mục đích là để việc cần xử lý gấp đập vào mắt trước.
 4. Ngựa chưa được xếp khu hiện nhãn "Chờ xếp khu". Ngựa đã có khu nhưng chưa có ô hiện nhãn "Chờ xếp ô".
 5. Danh sách phân trang. Đổi từ khóa hoặc đổi bộ lọc thì quay về trang đầu.
 6. Ngựa đã chuyển nhượng vẫn hiện trong danh sách nhưng có nhãn riêng và không có nút thao tác.

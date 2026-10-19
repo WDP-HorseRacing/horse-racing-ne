@@ -213,6 +213,24 @@ describe('HorseProfilesRepository.list (Postgres)', () => {
     expect(total).toBe(4);
   });
 
+  it('puts transferred and deceased horses last in the health priority sort, whatever their health', async () => {
+    await seed.horse('An', {
+      lifecycle: HorseLifecycleStatus.DECEASED,
+      health: HorseHealthStatus.INJURED,
+    });
+    await seed.horse('Bình', { lifecycle: HorseLifecycleStatus.TRANSFERRED });
+    await seed.horse('Cường', { health: HorseHealthStatus.INJURED });
+    await seed.horse('Dũng', { health: HorseHealthStatus.ELIGIBLE });
+
+    await expect(names({})).resolves.toEqual(['Cường', 'Dũng', 'An', 'Bình']);
+    await expect(names({ sortOrder: SortOrder.DESC })).resolves.toEqual([
+      'An',
+      'Bình',
+      'Dũng',
+      'Cường',
+    ]);
+  });
+
   describe('locationsByHorseIds', () => {
     const stall = async (barnId: string, code: string): Promise<string> => {
       const id = randomUUID();
