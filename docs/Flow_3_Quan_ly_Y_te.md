@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 18/10/2026
+> Cập nhật: 19/10/2026
 
 ## I. Những main feature liên quan
 
@@ -79,7 +79,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
    - Bác sĩ có thể ghi ngay một buổi khám thay thế, buổi mới ghi rõ là thay cho buổi đã hủy.
    - Buổi tái khám hủy được kể cả khi bệnh án đã đóng; việc hủy không đổi kết luận cuối, chi phí của buổi đó không còn được tính (III.6.3).
    - Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi khám nào khác chưa hủy (trường hợp mở nhầm). Khi đó bệnh án chuyển trạng thái **Đã hủy**: mọi buổi khám đều đã hủy nên tổng chi phí là 0, lệnh khóa đang gắn được tách khỏi bệnh án (lệnh khóa giữ nguyên), hệ thống báo lại CLUB MANAGER và HORSE OWNER.
-5. Thời điểm khám không được ở tương lai và chỉ được nhập lùi tối đa 7 ngày (đồng bộ với F1.5). Buổi khám trong bệnh án phải có thời điểm không sớm hơn thời điểm mở bệnh án.
+5. Thời điểm khám là thời điểm lưu buổi khám; người dùng không nhập, không ghi lùi được. Bệnh án mở từ buổi khám thì có thời điểm mở bằng thời điểm khám; các chỉ số cơ thể đo trong buổi khám cũng lấy thời điểm này. Lý do: cho ghi lùi thì buổi khám ghi lùi vẫn ghi đè trạng thái sức khỏe hiện tại dù đã có buổi khám mới hơn, và chi phí bị dời sang kỳ báo cáo cũ hoặc sang chủ cũ; đề bài gốc chỉ yêu cầu ghi nhận buổi khám. Không ghi lùi thì buổi vừa lưu luôn là buổi mới nhất.
 6. "Buổi khám gần nhất" là buổi chưa bị hủy có **thời điểm khám** lớn nhất, không phải buổi được nhập sau cùng.
 
 ### 3. Chu kỳ khám định kỳ
@@ -313,7 +313,7 @@ Ghi lại một buổi khám cho con ngựa chưa có bệnh án đang mở: kh�
 | **Hậu điều kiện** | Buổi khám được lưu, chỉ số cơ thể được ghi vào F1.5, hạn khám định kỳ được đẩy sang chu kỳ tiếp theo, các yêu cầu được gắn chuyển Đã khám. Nếu kết luận Có vấn đề thì có thêm một bệnh án đang mở. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN chọn con ngựa từ lịch khám định kỳ hoặc từ hàng đợi yêu cầu khám.<br>2. Hệ thống hiển thị biểu mẫu buổi khám và danh sách yêu cầu khám đang chờ của con ngựa.<br>3. VETERINARIAN gắn yêu cầu (nếu có), nhập chỉ số cơ thể, nhận xét, kết luận và trạng thái sức khỏe.<br>4. VETERINARIAN lưu.<br>5. Hệ thống ghi chỉ số vào F1.5 kèm nguồn, lưu buổi khám, chuyển các yêu cầu sang Đã khám, đẩy hạn khám và ghi nhật ký. |
 | **Luồng thay thế** | A1. Kết luận Có vấn đề -> VETERINARIAN nhập chẩn đoán ban đầu, hệ thống mở bệnh án ngay trong thao tác lưu (UC-F3-05).<br>A2. Trạng thái sức khỏe thay đổi -> hệ thống thực hiện các hệ quả của UC-F3-07.<br>A3. Chỉ số ngoài khoảng bình thường -> hệ thống hỏi xác nhận theo F1.5; không sinh yêu cầu khám tự động. |
-| **Luồng ngoại lệ** | E1. Con ngựa đã có bệnh án đang mở -> trả về 409 và hướng sang UC-F3-06.<br>E2. Ngựa đã chuyển nhượng hoặc đã mất -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E3. Thời điểm khám ở tương lai hoặc lùi quá 7 ngày -> báo lỗi.<br>E4. Kết luận Có vấn đề mà không nhập chẩn đoán ban đầu -> báo lỗi.<br>E5. Yêu cầu được gắn không còn ở trạng thái Chờ xử lý (người khác vừa xử lý) -> trả về 409, không lưu gì. |
+| **Luồng ngoại lệ** | E1. Con ngựa đã có bệnh án đang mở -> trả về 409 và hướng sang UC-F3-06.<br>E2. Ngựa đã chuyển nhượng hoặc đã mất -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E3. Kết luận Có vấn đề mà không nhập chẩn đoán ban đầu -> báo lỗi.<br>E4. Yêu cầu được gắn không còn ở trạng thái Chờ xử lý (người khác vừa xử lý) -> trả về 409, không lưu gì. |
 
 ---
 
@@ -448,7 +448,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Diễn biến hồi phục của một vết là các lần ghi nhận thuộc buổi khám chưa hủy, xếp theo thời điểm khám tăng dần, mỗi lần kèm buổi khám, bệnh án, mức hồi phục, ghi chú.
 3. Hệ thống không trừ kho vật tư và không tính tiền thuốc.
 4. Chỉ ghi được buổi khám vào bệnh án đang ở trạng thái Đang điều trị.
-5. Thời điểm khám theo mục III.2.5 (không sớm hơn ngày mở bệnh án).
+5. Thời điểm khám theo mục III.2.5.
 6. Mỗi buổi khám (chưa bị hủy) đều đẩy hạn khám định kỳ của con ngựa sang chu kỳ tiếp theo.
 7. Ngày hẹn tái khám hiển thị trong bảng điều khiển y tế (F3.1) để bác sĩ không quên. Ngày hẹn tái khám không được ở quá khứ, so theo ngày lịch câu lạc bộ (hẹn "hôm nay" là hợp lệ).
 8. **Hủy buổi khám ghi sai** (áp dụng cho buổi khám của F3.3 và F3.6), theo mục III.2.4:
@@ -479,7 +479,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 | **Hậu điều kiện** | Buổi khám được thêm vào bệnh án, chỉ số cơ thể được ghi vào F1.5, các yêu cầu khám liên quan chuyển sang Đã khám. Hoặc buổi khám ghi sai được đánh dấu Đã hủy và số đo của nó bị gỡ khỏi F1.5. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở bệnh án đang điều trị.<br>2. VETERINARIAN chọn "Thêm buổi khám".<br>3. Hệ thống hiển thị biểu mẫu và danh sách yêu cầu khám đang chờ của con ngựa.<br>4. VETERINARIAN gắn yêu cầu, nhập chỉ số, chẩn đoán và hướng điều trị, đơn thuốc, chấn thương, trạng thái sức khỏe.<br>5. VETERINARIAN lưu.<br>6. Hệ thống ghi chỉ số vào F1.5, lưu buổi khám, đẩy hạn khám định kỳ và ghi nhật ký. |
 | **Luồng thay thế** | A1. Bác sĩ đặt ngày hẹn tái khám -> hệ thống hiển thị ngày hẹn trong bảng điều khiển.<br>A2. Trạng thái sức khỏe thay đổi -> hệ thống thực hiện hệ quả của UC-F3-07.<br>A3. Bác sĩ thấy đã khỏi -> chuyển sang UC-F3-09 để đóng bệnh án.<br>A4. Bác sĩ phát hiện một buổi khám ghi sai -> chọn "Hủy buổi khám", nhập lý do; hệ thống đánh dấu Đã hủy, gỡ số đo khỏi F1.5, ghi nhật ký; bác sĩ có thể ghi buổi thay thế.<br>A5. Bác sĩ mở nhầm bệnh án (chưa có buổi tái khám) -> hủy buổi mở bệnh án; bệnh án chuyển Đã hủy và báo lại CLUB MANAGER, HORSE OWNER.<br>A6. Bác sĩ phát hiện chi phí một buổi khám nhập sai -> chọn "Điều chỉnh chi phí", nhập số mới và lý do; hệ thống lưu, ghi nhật ký và thông báo lại. |
-| **Luồng ngoại lệ** | E1. Bệnh án đã đóng -> trả về 409, phải khám ngoài bệnh án (F3.3) và mở bệnh án mới nếu có vấn đề.<br>E2. Thời điểm khám ở tương lai, lùi quá 7 ngày hoặc sớm hơn ngày mở bệnh án -> báo lỗi.<br>E3. Ngày hẹn tái khám ở quá khứ -> báo lỗi.<br>E4. Hủy buổi đã hủy, buổi mở bệnh án khi bệnh án còn buổi khác hoặc đã đóng -> trả về 409.<br>E5. Hủy hoặc điều chỉnh chi phí không nhập lý do -> báo lỗi.<br>E6. Điều chỉnh chi phí của buổi khám đã hủy, hoặc của ngựa đã chuyển nhượng, đã mất -> trả về 409.<br>E7. Chi phí âm hoặc không phải số nguyên -> báo lỗi.<br>E8. Bác sĩ hủy buổi khám do bác sĩ khác ghi -> trả về 403. |
+| **Luồng ngoại lệ** | E1. Bệnh án đã đóng -> trả về 409, phải khám ngoài bệnh án (F3.3) và mở bệnh án mới nếu có vấn đề.<br>E2. Ngày hẹn tái khám ở quá khứ -> báo lỗi.<br>E3. Hủy buổi đã hủy, buổi mở bệnh án khi bệnh án còn buổi khác hoặc đã đóng -> trả về 409.<br>E4. Hủy hoặc điều chỉnh chi phí không nhập lý do -> báo lỗi.<br>E5. Điều chỉnh chi phí của buổi khám đã hủy, hoặc của ngựa đã chuyển nhượng, đã mất -> trả về 409.<br>E6. Chi phí âm hoặc không phải số nguyên -> báo lỗi.<br>E7. Bác sĩ hủy buổi khám do bác sĩ khác ghi -> trả về 403. |
 
 ---
 

@@ -64,7 +64,6 @@ import {
   resolveLockOnClose,
   assertNoLockChoiceOnDeath,
   assertHealthChangeReason,
-  assertVisitExamDate,
   checkupDueDate,
   daysBetween,
   dueStatusOf,
@@ -158,43 +157,6 @@ describe('medical.policy', () => {
 
     it('is false before the due date', () => {
       expect(isOverdueNotifiable('2026-10-01', '2026-09-27')).toBe(false);
-    });
-  });
-
-  describe('assertVisitExamDate', () => {
-    const now = new Date('2026-09-27T10:00:00Z');
-
-    it('accepts an exam up to 7 days ago', () => {
-      expect(() =>
-        assertVisitExamDate(new Date('2026-09-20T10:00:00Z'), now),
-      ).not.toThrow();
-    });
-
-    it('rejects an exam in the future', () => {
-      expect(() =>
-        assertVisitExamDate(new Date('2026-09-27T10:00:01Z'), now),
-      ).toThrow(BadRequestException);
-    });
-
-    it('rejects an exam backdated more than 7 days', () => {
-      expect(() =>
-        assertVisitExamDate(new Date('2026-09-20T09:59:59Z'), now),
-      ).toThrow(BadRequestException);
-    });
-
-    it('rejects a follow-up visit earlier than the case opening', () => {
-      expect(() =>
-        assertVisitExamDate(
-          new Date('2026-09-25T08:00:00Z'),
-          now,
-          new Date('2026-09-26T08:00:00Z'),
-        ),
-      ).toThrow(BadRequestException);
-    });
-
-    it('accepts a follow-up visit at the case opening time', () => {
-      const openedAt = new Date('2026-09-26T08:00:00Z');
-      expect(() => assertVisitExamDate(openedAt, now, openedAt)).not.toThrow();
     });
   });
 

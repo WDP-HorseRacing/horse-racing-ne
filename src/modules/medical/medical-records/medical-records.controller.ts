@@ -58,7 +58,7 @@ export class MedicalRecordsController {
   @ApiOperation({
     summary: 'Record a medical visit outside a case',
     description:
-      'Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). cost tùy chọn, bỏ trống là 0. Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.',
+      'Khám định kỳ (ROUTINE) hoặc theo yêu cầu (REQUEST). Thời điểm khám là thời điểm ghi. cost tùy chọn, bỏ trống là 0. Kết luận ISSUE bắt buộc initialDiagnosis và mở bệnh án ngay. Ngựa đang có bệnh án mở: 409. Số đo bất thường chưa xác nhận: 422.',
     operationId: 'MedicalController_createRecord',
   })
   @ApiCreatedResponse({ type: MedicalRecordResponseDto })

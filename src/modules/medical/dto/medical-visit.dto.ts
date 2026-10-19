@@ -37,15 +37,6 @@ export const MAX_VISIT_COST_VND = 10_000_000_000;
  */
 export class MedicalVisitBaseDto {
   @ApiPropertyOptional({
-    format: 'date-time',
-    description:
-      'Thời điểm khám; mặc định hiện tại. Không ở tương lai, lùi tối đa 7 ngày',
-  })
-  @IsOptional()
-  @IsDateString()
-  examDate?: string;
-
-  @ApiPropertyOptional({
     type: [String],
     format: 'uuid',
     description:

@@ -37,7 +37,6 @@ import {
   CHECKUP_OVERDUE_NOTIFY_DAYS,
   MEDICAL_CHECKUP_CYCLE_DAYS,
   NO_LOCK_CHOICE_ON_DEATH_MESSAGE,
-  VISIT_BACKDATE_MAX_DAYS,
   VISIT_VOID_AUTHOR_ONLY_MESSAGE,
 } from '../constants/medical.constants';
 
@@ -134,41 +133,6 @@ export function dueStatusOf(dueDate: string, today: string): CheckupDueStatus {
  */
 export function isOverdueNotifiable(dueDate: string, today: string): boolean {
   return daysBetween(dueDate, today) > CHECKUP_OVERDUE_NOTIFY_DAYS;
-}
-
-/**
- * Kiểm tra thời điểm khám hợp lệ
- *
- * - Không ở tương lai
- * - Không lùi quá VISIT_BACKDATE_MAX_DAYS ngày
- * - Buổi khám trong bệnh án không sớm hơn ngày mở bệnh án
- *
- * @param examDate Thời điểm khám người dùng nhập
- * @param now Thời điểm hiện tại
- * @param caseOpenedAt Ngày mở bệnh án, chỉ truyền với buổi khám trong bệnh án
- * @throws BadRequestException Nếu thời điểm khám vi phạm một trong các luật trên
- */
-export function assertVisitExamDate(
-  examDate: Date,
-  now: Date,
-  caseOpenedAt?: Date,
-): void {
-  if (examDate.getTime() > now.getTime()) {
-    throw new BadRequestException('Thời điểm khám không được ở tương lai');
-  }
-  if (
-    now.getTime() - examDate.getTime() >
-    VISIT_BACKDATE_MAX_DAYS * MS_PER_DAY
-  ) {
-    throw new BadRequestException(
-      `Chỉ được nhập lùi thời điểm khám tối đa ${VISIT_BACKDATE_MAX_DAYS} ngày`,
-    );
-  }
-  if (caseOpenedAt && examDate.getTime() < caseOpenedAt.getTime()) {
-    throw new BadRequestException(
-      'Thời điểm khám không được sớm hơn ngày mở bệnh án',
-    );
-  }
 }
 
 /**

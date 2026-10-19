@@ -76,7 +76,7 @@ export class MedicalCasesController {
   @ApiOperation({
     summary: 'Record a follow-up visit in an open case',
     description:
-      'cost tùy chọn, bỏ trống là 0. Bệnh án đã đóng: 409. Thời điểm khám không sớm hơn ngày mở bệnh án.',
+      'cost tùy chọn, bỏ trống là 0. Bệnh án đã đóng: 409. Thời điểm khám là thời điểm ghi.',
   })
   @ApiCreatedResponse({ type: MedicalRecordResponseDto })
   addVisit(

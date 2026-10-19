@@ -290,24 +290,23 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     fakeNow(D, '10:00');
   });
 
-  it('TZ3-1 medical visit examDate without offset is club time', async () => {
-    const body = {
-      kind: MedicalVisitKind.ROUTINE,
-      conclusion: MedicalVisitConclusion.NORMAL,
-      examDate: PAST,
-    } as CreateStandaloneVisitDto;
-    const result = await interpret(
-      CreateStandaloneVisitDto,
-      body,
-      'examDate',
-      () => visits.createStandaloneVisit(vet, gio, body),
-      () =>
-        one('SELECT exam_date AS v FROM medical_records WHERE horse_id = $1', [
-          gio,
-        ]),
-    );
-    expectClubTime(result, PAST);
-  });
+  it.each([
+    ['standalone', CreateStandaloneVisitDto],
+    ['follow-up', CreateFollowUpVisitDto],
+  ])(
+    'TZ3-1 %s visit DTO no longer takes an examDate (the server records the current time)',
+    (_label, dto) => {
+      const errors = validateSync(
+        plainToInstance(dto, {
+          kind: MedicalVisitKind.ROUTINE,
+          conclusion: MedicalVisitConclusion.NORMAL,
+          examDate: PAST,
+        }),
+        { whitelist: true, forbidNonWhitelisted: true },
+      );
+      expect(failedProperties(errors)).toContain('examDate');
+    },
+  );
 
   it('TZ3-2 follow-up visit nextVisitAt without offset is club time', async () => {
     const caseId = await seed.medicalCase(gio, vetId);

@@ -94,6 +94,27 @@ describe('MedicalVisitsService', () => {
       ([target]) => target === entity,
     );
 
+  const expectWrittenAtCurrentTime = (before: number, after: number) => {
+    const timestamps = [
+      ...(manager.create.mock.calls as Array<[unknown, Row]>)
+        .filter(([entity]) => entity === MedicalRecordEntity)
+        .map(([, row]) => row.examDate),
+      ...(manager.create.mock.calls as Array<[unknown, Row]>)
+        .filter(([entity]) => entity === MedicalCaseEntity)
+        .map(([, row]) => row.openedAt),
+      ...(
+        measurements.recordExamMeasurements.mock.calls as Array<[unknown, Row]>
+      ).map(([, input]) => input.measuredAt),
+    ];
+    expect(timestamps.length).toBeGreaterThan(0);
+    for (const value of timestamps) {
+      expect(value).toBeInstanceOf(Date);
+      const time = (value as Date).getTime();
+      expect(time).toBeGreaterThanOrEqual(before);
+      expect(time).toBeLessThanOrEqual(after);
+    }
+  };
+
   const expectNothingWritten = () => {
     expect(manager.save).not.toHaveBeenCalled();
     expect(manager.update).not.toHaveBeenCalled();
@@ -234,19 +255,6 @@ describe('MedicalVisitsService', () => {
       expectNothingWritten();
     });
 
-    it('rejects an exam in the future before any write', async () => {
-      await expect(
-        service.createStandaloneVisit(
-          vet,
-          HORSE_ID,
-          standalone({
-            examDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          }),
-        ),
-      ).rejects.toThrow(BadRequestException);
-      expectNothingWritten();
-    });
-
     it('requires an initial diagnosis when the conclusion is ISSUE', async () => {
       await expect(
         service.createStandaloneVisit(
@@ -350,6 +358,19 @@ describe('MedicalVisitsService', () => {
       });
       expect(horseHealth.applyHealthStatus).not.toHaveBeenCalled();
       expect(events.publish).not.toHaveBeenCalled();
+    });
+
+    it('records the visit, the opened case and exam measurements at the current time', async () => {
+      const before = Date.now();
+      await service.createStandaloneVisit(
+        vet,
+        HORSE_ID,
+        standalone({
+          conclusion: MedicalVisitConclusion.ISSUE,
+          initialDiagnosis: 'Viêm gân chân trước trái',
+        }),
+      );
+      expectWrittenAtCurrentTime(before, Date.now());
     });
 
     it('opens a case in the same transaction for an ISSUE, attaches the active lock and publishes in the transaction', async () => {
@@ -587,15 +608,6 @@ describe('MedicalVisitsService', () => {
       expectNothingWritten();
     });
 
-    it('rejects an exam in the future', async () => {
-      await expect(
-        service.createFollowUpVisit(vet, 'case-1', {
-          examDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        }),
-      ).rejects.toThrow(BadRequestException);
-      expectNothingWritten();
-    });
-
     it('rejects a next visit on a past day', async () => {
       await expect(
         service.createFollowUpVisit(vet, 'case-1', {
@@ -616,15 +628,12 @@ describe('MedicalVisitsService', () => {
       expectNothingWritten();
     });
 
-    it('rejects an exam earlier than the case opening', async () => {
-      await expect(
-        service.createFollowUpVisit(vet, 'case-1', {
-          examDate: new Date(
-            Date.now() - 3 * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        }),
-      ).rejects.toThrow(BadRequestException);
-      expectNothingWritten();
+    it('records a follow-up visit and its measurements at the current time', async () => {
+      const before = Date.now();
+      await service.createFollowUpVisit(vet, 'case-1', {
+        diagnosis: 'Giảm sưng',
+      });
+      expectWrittenAtCurrentTime(before, Date.now());
     });
 
     it('records a follow-up visit in the open case', async () => {

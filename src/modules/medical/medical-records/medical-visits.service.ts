@@ -70,7 +70,6 @@ import {
   assertStandaloneVisitAllowed,
   assertStandaloneVisitInput,
   assertVisitCostAdjustable,
-  assertVisitExamDate,
   assertVisitVoidAuthor,
   resolveVisitVoid,
 } from '../policies/medical.policy';
@@ -140,6 +139,7 @@ export class MedicalVisitsService {
    * Ghi buổi khám ngoài bệnh án; kết luận Có vấn đề thì mở bệnh án ngay trong cùng transaction
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa trước khi kiểm tra
+   * - Thời điểm khám là thời điểm ghi
    * - Ngựa đang có bệnh án mở: 409, phải ghi vào bệnh án đó
    * - Gắn yêu cầu khám đang chờ của chính con ngựa, chuyển chúng sang EXAMINED
    * - Số đo ghi vào lịch sử số đo cơ thể với nguồn MEDICAL_EXAM; đổi trạng thái sức khỏe bắt buộc lý do
@@ -164,7 +164,6 @@ export class MedicalVisitsService {
     body: CreateStandaloneVisitDto,
   ): Promise<MedicalRecordResponseDto> {
     const now = new Date();
-    const examDate = body.examDate ? new Date(body.examDate) : now;
     const nextVisitAt = body.nextVisitAt ? new Date(body.nextVisitAt) : null;
     const result = await this.dataSource.transaction(async (manager) => {
       const { caller, horse } = await this.access.lockHorseForWrite(
@@ -174,7 +173,6 @@ export class MedicalVisitsService {
       );
       const openCase = await this.access.findOpenCase(horseId, manager);
       assertStandaloneVisitAllowed(openCase !== null);
-      assertVisitExamDate(examDate, now);
       assertStandaloneVisitInput({
         kind: body.kind,
         conclusion: body.conclusion,
@@ -207,7 +205,7 @@ export class MedicalVisitsService {
           ? await this.openCase(manager, {
               horseId,
               callerId: caller.id,
-              openedAt: examDate,
+              openedAt: now,
               initialDiagnosis: body.initialDiagnosis as string,
             })
           : null;
@@ -218,7 +216,7 @@ export class MedicalVisitsService {
         kind: body.kind,
         conclusion: body.conclusion,
         caseId: openedCase?.id ?? null,
-        examDate,
+        examDate: now,
         nextVisitAt,
         requests,
         nextStatus,
@@ -237,7 +235,7 @@ export class MedicalVisitsService {
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi khóa row bệnh án
    * - Bệnh án đã đóng: 409
-   * - Thời điểm khám không sớm hơn ngày mở bệnh án; các luật còn lại như buổi khám ngoài bệnh án
+   * - Thời điểm khám là thời điểm ghi; các luật còn lại như buổi khám ngoài bệnh án
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -255,7 +253,6 @@ export class MedicalVisitsService {
     body: CreateFollowUpVisitDto,
   ): Promise<MedicalRecordResponseDto> {
     const now = new Date();
-    const examDate = body.examDate ? new Date(body.examDate) : now;
     const nextVisitAt = body.nextVisitAt ? new Date(body.nextVisitAt) : null;
     const horseId = await this.caseHorseId(caseId);
     const result = await this.dataSource.transaction(async (manager) => {
@@ -269,7 +266,6 @@ export class MedicalVisitsService {
         lock: { mode: 'pessimistic_write' },
       });
       assertCaseOpen(medicalCase.status);
-      assertVisitExamDate(examDate, now, medicalCase.openedAt);
       if (nextVisitAt) assertNextVisitAt(nextVisitAt, now);
       await this.checkInjuryUpdates(manager, horseId, body);
       assertPrescriptionDates(body.prescriptions ?? []);
@@ -291,7 +287,7 @@ export class MedicalVisitsService {
         kind: MedicalVisitKind.FOLLOW_UP,
         conclusion: null,
         caseId,
-        examDate,
+        examDate: now,
         nextVisitAt,
         requests,
         nextStatus,

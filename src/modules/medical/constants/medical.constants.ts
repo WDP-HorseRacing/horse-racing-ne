@@ -1,6 +1,5 @@
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { UserRole } from '../../../common/enums/role.enum';
-import { MEASUREMENT_BACKDATE_MAX_DAYS } from '../../horses/constants/horse.constants';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import type { ReadOnlyLifecycleStatus } from '../../horses/types/horse.types';
 
@@ -18,11 +17,6 @@ export const CHECKUP_DUE_SOON_DAYS = 3;
  * Quá hạn khám trên số ngày này thì gửi thông báo HIGH.
  */
 export const CHECKUP_OVERDUE_NOTIFY_DAYS = 7;
-
-/**
- * Số ngày tối đa được nhập lùi thời điểm khám, bằng MEASUREMENT_BACKDATE_MAX_DAYS của số đo cơ thể.
- */
-export const VISIT_BACKDATE_MAX_DAYS = MEASUREMENT_BACKDATE_MAX_DAYS;
 
 /**
  * Lý do ghi vào yêu cầu khám và lịch chăm sóc bị hệ thống tự hủy khi ngựa chuyển nhượng.

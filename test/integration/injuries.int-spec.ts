@@ -67,8 +67,18 @@ describe('Injuries across visits (Postgres)', () => {
 
   beforeEach(() => truncateAllTables(dataSource));
 
-  const daysAgo = (days: number) =>
-    new Date(Date.now() - days * DAY_MS).toISOString();
+  /** Lùi thời điểm khám của buổi khám vừa ghi về số ngày cho trước, ghi thẳng vào DB */
+  const examinedDaysAgo = async <T extends { id: string; examDate: Date }>(
+    visit: T,
+    days: number,
+  ): Promise<T> => {
+    const examDate = new Date(Date.now() - days * DAY_MS);
+    await dataSource.query(
+      'UPDATE medical_records SET exam_date = $1 WHERE id = $2',
+      [examDate, visit.id],
+    );
+    return { ...visit, examDate };
+  };
 
   const vet = async (): Promise<Actor> => {
     const id = await seed.user(UserRole.VETERINARIAN);
@@ -92,13 +102,15 @@ describe('Injuries across visits (Postgres)', () => {
     horse: string,
     injuries = [sprain(0.1)],
   ) => {
-    const visit = await visits.createStandaloneVisit(actor, horse, {
-      kind: MedicalVisitKind.ROUTINE,
-      conclusion: MedicalVisitConclusion.ISSUE,
-      initialDiagnosis: 'Bong gân',
-      examDate: daysAgo(3),
-      newInjuries: injuries,
-    });
+    const visit = await examinedDaysAgo(
+      await visits.createStandaloneVisit(actor, horse, {
+        kind: MedicalVisitKind.ROUTINE,
+        conclusion: MedicalVisitConclusion.ISSUE,
+        initialDiagnosis: 'Bong gân',
+        newInjuries: injuries,
+      }),
+      3,
+    );
     return {
       visit,
       caseId: visit.caseId as string,
@@ -106,16 +118,16 @@ describe('Injuries across visits (Postgres)', () => {
     };
   };
 
-  const followUp = (
+  const followUp = async (
     actor: Actor,
     caseId: string,
     examDaysAgo: number,
     injuryUpdates: Array<{ injuryId: string; recoveryStatus: RecoveryStatus }>,
   ) =>
-    visits.createFollowUpVisit(actor, caseId, {
-      examDate: daysAgo(examDaysAgo),
-      injuryUpdates,
-    });
+    examinedDaysAgo(
+      await visits.createFollowUpVisit(actor, caseId, { injuryUpdates }),
+      examDaysAgo,
+    );
 
   it('shows the joined injury facts on each observation of the visit', async () => {
     const author = await vet();
@@ -199,10 +211,12 @@ describe('Injuries across visits (Postgres)', () => {
     const author = await vet();
     const horse = await seed.horse('Gió');
     const { caseId } = await discover(author, horse);
-    const found = await visits.createFollowUpVisit(author, caseId, {
-      examDate: daysAgo(2),
-      newInjuries: [sprain(0.3)],
-    });
+    const found = await examinedDaysAgo(
+      await visits.createFollowUpVisit(author, caseId, {
+        newInjuries: [sprain(0.3)],
+      }),
+      2,
+    );
     await visits.voidVisit(author, found.id, { reason: 'Nhầm ngựa' });
 
     await expect(
@@ -283,10 +297,12 @@ describe('Injuries across visits (Postgres)', () => {
       const horse = await seed.horse('Gió');
       const { caseId, injuryIds } = await discover(author, horse);
 
-      await visits.createFollowUpVisit(author, caseId, {
-        examDate: daysAgo(1),
-        diagnosis: 'Khám bụng, không xem chân',
-      });
+      await examinedDaysAgo(
+        await visits.createFollowUpVisit(author, caseId, {
+          diagnosis: 'Khám bụng, không xem chân',
+        }),
+        1,
+      );
 
       const [injury] = await list(author, horse);
       expect(injury).toMatchObject({
@@ -348,10 +364,12 @@ describe('Injuries across visits (Postgres)', () => {
       const author = await vet();
       const horse = await seed.horse('Gió');
       const { caseId, injuryIds } = await discover(author, horse);
-      const found = await visits.createFollowUpVisit(author, caseId, {
-        examDate: daysAgo(1),
-        newInjuries: [sprain(0.3)],
-      });
+      const found = await examinedDaysAgo(
+        await visits.createFollowUpVisit(author, caseId, {
+          newInjuries: [sprain(0.3)],
+        }),
+        1,
+      );
 
       await visits.voidVisit(author, found.id, { reason: 'Nhầm ngựa' });
 
@@ -367,10 +385,12 @@ describe('Injuries across visits (Postgres)', () => {
         sprain(0.1),
         sprain(0.2),
       ]);
-      const later = await visits.createFollowUpVisit(author, caseId, {
-        examDate: daysAgo(2),
-        newInjuries: [sprain(0.3)],
-      });
+      const later = await examinedDaysAgo(
+        await visits.createFollowUpVisit(author, caseId, {
+          newInjuries: [sprain(0.3)],
+        }),
+        2,
+      );
       const laterId = later.injuries[0].injuryId;
       await followUp(author, caseId, 1, [
         { injuryId: injuryIds[0], recoveryStatus: RecoveryStatus.HEALED },

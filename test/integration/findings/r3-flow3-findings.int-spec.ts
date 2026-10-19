@@ -451,31 +451,6 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     ).resolves.toBeDefined();
   });
 
-  it('F3-3: an exam date earlier than the horse profile creation is rejected with 400', async () => {
-    const vet = await person(UserRole.VETERINARIAN);
-    const horse = await seed.horse('Mới', { createdAt: isoIn(-1) });
-
-    await expect(
-      visits.createStandaloneVisit(vet.actor, horse, {
-        kind: MedicalVisitKind.ROUTINE,
-        conclusion: MedicalVisitConclusion.NORMAL,
-        examDate: isoIn(-3),
-      }),
-    ).rejects.toMatchObject({ status: 400 });
-  });
-
-  it('F3-6: an exam date 30 seconds in the future (client clock skew) is accepted', async () => {
-    const { vet, horse } = await scene();
-
-    await expect(
-      visits.createStandaloneVisit(vet.actor, horse, {
-        kind: MedicalVisitKind.ROUTINE,
-        conclusion: MedicalVisitConclusion.NORMAL,
-        examDate: new Date(Date.now() + 30_000).toISOString(),
-      }),
-    ).resolves.toBeDefined();
-  });
-
   it('F3-7: closing a second case asks what to do with the lock kept from the first case', async () => {
     const { vet, horse } = await scene();
     await issueVisit(vet.actor, horse);

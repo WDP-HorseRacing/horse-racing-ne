@@ -90,28 +90,32 @@ describe('Medical findings (Postgres)', () => {
 
   beforeEach(() => truncateAllTables(dataSource));
 
-  it('B5: a backdated visit older than the latest visit does not override the current health status', async () => {
+  it('B5: every visit is recorded at the current time, so the latest visit sets the current health status', async () => {
     const vetA = await newVet();
     const vetB = await newVet();
     const horse = await seed.horse('Winx');
 
-    await visits.createStandaloneVisit(vetA.actor, horse, {
+    const first = await visits.createStandaloneVisit(vetA.actor, horse, {
       kind: MedicalVisitKind.ROUTINE,
       conclusion: MedicalVisitConclusion.NORMAL,
       healthStatus: HorseHealthStatus.ELIGIBLE,
     });
-    await visits.createStandaloneVisit(vetB.actor, horse, {
+    const before = Date.now();
+    const second = await visits.createStandaloneVisit(vetB.actor, horse, {
       kind: MedicalVisitKind.ROUTINE,
       conclusion: MedicalVisitConclusion.NORMAL,
-      examDate: new Date(Date.now() - DAY_MS).toISOString(),
       healthStatus: HorseHealthStatus.INJURED,
-      healthReason: 'Phiếu giấy hôm qua',
+      healthReason: 'Sưng gân',
     });
 
-    expect(await horseHealth(horse)).toBe(HorseHealthStatus.ELIGIBLE);
+    expect(second.examDate.getTime()).toBeGreaterThanOrEqual(before);
+    expect(second.examDate.getTime()).toBeGreaterThanOrEqual(
+      first.examDate.getTime(),
+    );
+    expect(await horseHealth(horse)).toBe(HorseHealthStatus.INJURED);
   });
 
-  it('F3-1: cost of a visit in a case closed with a date of death can still be adjusted', async () => {
+  it('F3-1: cost of a visit in a case closed recording a death can still be adjusted', async () => {
     const vet = await newVet();
     const horse = await seed.horse('Winx');
     const caseId = await seed.medicalCase(horse, vet.id);
