@@ -546,3 +546,11 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
 ## Khóa tài khoản Groom còn lượt dắt
 
 1. Khóa tài khoản (`PATCH /users/:id/status`) hoặc đổi vai trò (`PATCH /users/:id`) Groom còn lượt tập chưa diễn ra được giao dắt (kể cả dắt hộ): 409 `Người này còn N lượt tập được giao dắt chưa diễn ra, cần nhờ Huấn luyện viên trưởng giao lại trước khi khóa tài khoản` (đổi vai trò thì kết thúc bằng "trước khi đổi vai trò").
+
+## Sửa vật tư đã có nhập xuất kho
+
+1. `PATCH /supplies/items/:id`: vật tư đã nhập hàng, xuất dùng hoặc hủy lần xuất thì đổi `unit` hoặc `category` là 409 `Vật tư đã có nhập xuất kho, không đổi được đơn vị. Hãy tạo vật tư mới` (đổi loại: `... không đổi được loại. Hãy tạo vật tư mới`), `errors[0].field` là `unit` hoặc `category`. Vật tư mới chỉ có tồn ban đầu vẫn đổi được. Gửi đúng giá trị đang có không lỗi.
+
+## Danh sách ngựa: ngựa đã chuyển đi, đã mất xếp cuối
+
+1. `GET /horses` với `sortBy=HEALTH_PRIORITY` (mặc định): ngựa `TRANSFERRED`/`DECEASED` luôn xếp sau mọi ngựa còn lại, bất kể `healthStatus` (`sortOrder=DESC` thì lên đầu). Request, response không đổi.

@@ -97,6 +97,8 @@ export class SupplyItemsController {
   @Patch('items/:id')
   @ApiOperation({
     summary: 'Sửa tên, loại, đơn vị, ngưỡng báo thiếu của vật tư',
+    description:
+      'Vật tư đã có dòng sổ khác OPENING thì không đổi được đơn vị hoặc loại (409, gắn với ô unit hoặc category); gửi đúng giá trị đang có không tính là đổi',
     operationId: 'SuppliesController_updateItem',
   })
   @ApiOkResponse({ type: SupplyItemResponseDto })

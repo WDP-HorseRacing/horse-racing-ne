@@ -14,6 +14,7 @@ import {
   assertUsageNotCancelled,
   assertSupplyRequestEditable,
   assertSupplyRequestTransition,
+  assertUnitCategoryEditable,
   supplyRequestStatusReason,
 } from './supplies.policy';
 
@@ -191,6 +192,66 @@ describe('supplies policy', () => {
 
     it('accepts a note', () => {
       expect(() => assertUsageNote('Bữa sáng')).not.toThrow();
+    });
+  });
+
+  describe('assertUnitCategoryEditable', () => {
+    const conflictOf = (fn: () => void) => {
+      try {
+        fn();
+      } catch (error) {
+        return error as ConflictException;
+      }
+      throw new Error('expected a ConflictException');
+    };
+
+    it('lets an item with no stock movement change its unit and category', () => {
+      expect(() =>
+        assertUnitCategoryEditable(false, ['unit', 'category']),
+      ).not.toThrow();
+    });
+
+    it('lets an item with stock movements keep its unit and category', () => {
+      expect(() => assertUnitCategoryEditable(true, [])).not.toThrow();
+    });
+
+    it('rejects a unit change on an item with stock movements, on the unit field', () => {
+      const error = conflictOf(() =>
+        assertUnitCategoryEditable(true, ['unit']),
+      );
+      expect(error).toBeInstanceOf(ConflictException);
+      expect(error.getResponse()).toEqual({
+        message:
+          'Vật tư đã có nhập xuất kho, không đổi được đơn vị. Hãy tạo vật tư mới',
+        errors: [
+          {
+            field: 'unit',
+            message:
+              'Vật tư đã có nhập xuất kho, không đổi được đơn vị. Hãy tạo vật tư mới',
+          },
+        ],
+      });
+    });
+
+    it('rejects a category change on an item with stock movements, on the category field', () => {
+      const error = conflictOf(() =>
+        assertUnitCategoryEditable(true, ['category']),
+      );
+      expect(error).toBeInstanceOf(ConflictException);
+      expect(error.getResponse()).toMatchObject({
+        message:
+          'Vật tư đã có nhập xuất kho, không đổi được loại. Hãy tạo vật tư mới',
+        errors: [{ field: 'category' }],
+      });
+    });
+
+    it('reports the unit first when both unit and category change', () => {
+      const error = conflictOf(() =>
+        assertUnitCategoryEditable(true, ['unit', 'category']),
+      );
+      expect(error.getResponse()).toMatchObject({
+        errors: [{ field: 'unit' }],
+      });
     });
   });
 });

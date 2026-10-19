@@ -59,6 +59,10 @@ SỰ CỐ                             Groom báo, HT khu đóng
 1. Kho chung cả CLB, không chia theo khu.
 2. Tên vật tư duy nhất trong CLB (không tính bản đã xóa). Số tồn và ngưỡng báo thiếu không âm.
 3. Chỉ Club Manager thêm, sửa (tên, loại, đơn vị, ngưỡng), xóa mềm vật tư. Sửa vật tư không đổi được số tồn.
+   - Vật tư đã có dòng sổ khác `OPENING` (nhập hàng, xuất dùng, hủy lần xuất...) thì không đổi đơn vị hoặc loại: 409 gắn với ô `unit` (hoặc `category`) "Vật tư đã có nhập xuất kho, không đổi được đơn vị. Hãy tạo vật tư mới" ("... không đổi được loại..."). Gửi cả hai thì báo ô `unit`. Gửi đúng giá trị đang có không tính là đổi. Tên, ngưỡng vẫn sửa được.
+   - Vật tư mới chỉ có dòng `OPENING` (tạo nhầm) vẫn đổi được đơn vị, loại.
+   - Lý do: đổi đơn vị sau khi đã nhập xuất làm sổ và số tồn cũ đọc theo đơn vị mới (500 kg thành 500 bao); đổi loại cho phép Groom lấy thuốc bằng cách đổi nhãn khỏi `MEDICINE`, lách luật chỉ bác sĩ và Club Manager xuất thuốc.
+   - Thứ tự lỗi khi sửa: không có vật tư (404) → đổi đơn vị, loại khi đã có nhập xuất (409) → trùng tên (409).
 4. Kho quản lý theo lô, nhập trước xuất trước. Số tồn của vật tư luôn bằng tổng số còn của các lô. Số tồn chỉ đổi qua các đường sau, và mỗi lần đổi ghi dòng sổ (số chênh lệch, số tồn sau, lô, người làm, ghi chú) trong cùng transaction:
    1. Tồn ban đầu: thêm vật tư có số tồn khác 0 thì tạo lô đầu tiên, đơn giá do Club Manager nhập (bỏ trống là 0); ghi `OPENING`.
    2. Cấp theo đề xuất: Club Manager đánh dấu đã cấp kèm số lượng thực nhận và đơn giá thực trả; tạo một lô đúng số thực nhận, ghi `RESTOCK` gắn mã đề xuất.
@@ -222,7 +226,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | GET | `/supplies/items/low-stock` | CM, HT, VET, GROOM | Vật tư sắp hết |
 | GET | `/supplies/items/:id` | CM, HT, VET, GROOM | Một vật tư |
 | POST | `/supplies/items` | CM | Thêm `{ name, category, unit, quantityOnHand?, openingUnitPrice?, reorderThreshold }` |
-| PATCH | `/supplies/items/:id` | CM | Sửa tên, loại, đơn vị, ngưỡng |
+| PATCH | `/supplies/items/:id` | CM | Sửa tên, loại, đơn vị, ngưỡng; đã có nhập xuất kho thì không đổi đơn vị, loại (409) |
 | DELETE | `/supplies/items/:id` | CM | Xóa mềm |
 | POST | `/supplies/items/:id/receipts` | CM | Nhập hàng trực tiếp `{ quantity, unitPrice, note? }` |
 | POST | `/supplies/items/:id/usages` | CM, HT, VET, GROOM | Xuất dùng `{ quantity, note }`; thuốc chỉ CM, VET |

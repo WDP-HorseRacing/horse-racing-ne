@@ -4,7 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, ILike, In, IsNull, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  ILike,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { randomUUID } from 'node:crypto';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
@@ -37,6 +45,7 @@ import { SupplyItemEntity } from '../entities/supply-item.entity';
 import { SupplyLotEntity } from '../entities/supply-lot.entity';
 import { SupplyRequestEntity } from '../entities/supply-request.entity';
 import { SupplyStockMovementEntity } from '../entities/supply-stock-movement.entity';
+import { SupplyCategory } from '../enums/supply-category.enum';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
 import { SupplyStockMovementType } from '../enums/supply-stock-movement-type.enum';
 import {
@@ -49,6 +58,7 @@ import {
   assertUsageCancellable,
   assertUsageNote,
   assertUsageNotCancelled,
+  assertUnitCategoryEditable,
 } from '../policies/supplies.policy';
 import {
   SUPPLY_ITEM_NOT_FOUND,
@@ -215,6 +225,8 @@ export class SupplyItemsService {
   /**
    * Sửa tên, loại, đơn vị, ngưỡng báo thiếu; không đổi số tồn
    *
+   * - Đổi đơn vị hoặc loại khi vật tư đã có dòng sổ khác OPENING: 409, kiểm sau khi khóa vật tư và trước khi lưu
+   * - Gửi đơn vị, loại trùng giá trị hiện tại không tính là đổi
    * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -223,7 +235,7 @@ export class SupplyItemsService {
    * @returns Promise trả về vật tư sau khi sửa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có vật tư hoặc vật tư đã xóa
-   * @throws ConflictException Nếu tên vật tư đã tồn tại
+   * @throws ConflictException Nếu vật tư đã có nhập xuất kho mà đổi đơn vị hoặc loại, hoặc tên vật tư đã tồn tại
    */
   async update(
     actor: Actor,
@@ -235,11 +247,14 @@ export class SupplyItemsService {
       () =>
         this.dataSource.transaction(async (manager) => {
           const item = await this.stock.lockItem(manager, id);
+          const unit = body.unit?.trim() ?? item.unit;
+          const category = body.category ?? item.category;
+          await this.assertLedgerFieldsEditable(manager, item, unit, category);
           const before = auditedItemFields(item);
           Object.assign(item, {
             name: body.name?.trim() ?? item.name,
-            category: body.category ?? item.category,
-            unit: body.unit?.trim() ?? item.unit,
+            category,
+            unit,
             reorderThreshold:
               body.reorderThreshold?.toString() ?? item.reorderThreshold,
           });
@@ -589,6 +604,35 @@ export class SupplyItemsService {
       order: { createdAt: 'ASC', id: 'ASC' },
     });
     return rows.map(toSupplyLotResponse);
+  }
+
+  /**
+   * Chặn đổi đơn vị hoặc loại của vật tư đã có dòng sổ khác OPENING
+   *
+   * - Không đổi đơn vị lẫn loại: không truy vấn sổ
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param item Vật tư đã khóa
+   * @param unit Đơn vị sau khi sửa
+   * @param category Loại sau khi sửa
+   * @returns Promise hoàn tất khi được phép đổi
+   * @throws ConflictException Nếu vật tư đã có nhập xuất kho mà đổi đơn vị hoặc loại
+   */
+  private async assertLedgerFieldsEditable(
+    manager: EntityManager,
+    item: SupplyItemEntity,
+    unit: string,
+    category: SupplyCategory,
+  ): Promise<void> {
+    const changedFields = [
+      ...(unit !== item.unit ? (['unit'] as const) : []),
+      ...(category !== item.category ? (['category'] as const) : []),
+    ];
+    if (!changedFields.length) return;
+    const hasMovements = await manager.exists(SupplyStockMovementEntity, {
+      where: { itemId: item.id, type: Not(SupplyStockMovementType.OPENING) },
+    });
+    assertUnitCategoryEditable(hasMovements, changedFields);
   }
 }
 

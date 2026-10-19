@@ -4,6 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
+import { fieldConflict } from '../../../common/utils/field-errors';
 import { USAGE_SELF_CANCEL_HOURS } from '../constants/supply-stock.constants';
 import { SupplyCategory } from '../enums/supply-category.enum';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
@@ -22,6 +23,14 @@ const NEXT_REQUEST_STATUSES: Readonly<
   [SupplyRequestStatus.REJECTED]: [],
   [SupplyRequestStatus.FULFILLED]: [],
   [SupplyRequestStatus.CANCELLED]: [],
+};
+
+const LEDGER_LOCKED_FIELD_MESSAGES: Readonly<
+  Record<'unit' | 'category', string>
+> = {
+  unit: 'Vật tư đã có nhập xuất kho, không đổi được đơn vị. Hãy tạo vật tư mới',
+  category:
+    'Vật tư đã có nhập xuất kho, không đổi được loại. Hãy tạo vật tư mới',
 };
 
 const MISSING_REASON_MESSAGES: Readonly<
@@ -198,5 +207,25 @@ export function assertCanTakeSupply(
     throw new ForbiddenException(
       'Chỉ Veterinarian hoặc Club Manager được xuất thuốc',
     );
+  }
+}
+
+/**
+ * Chặn đổi đơn vị hoặc loại của vật tư đã có nhập xuất kho
+ *
+ * - Chưa có dòng sổ nào ngoài OPENING: đổi được
+ * - Đã có dòng sổ khác OPENING và có đổi đơn vị hoặc loại: 409 gắn với field đổi đầu tiên (đơn vị trước, loại sau)
+ *
+ * @param hasMovements Vật tư đã có dòng sổ nhập xuất khác OPENING
+ * @param changedFields Các field đơn vị, loại mà request đổi khác giá trị hiện tại
+ * @throws ConflictException Nếu vật tư đã có nhập xuất kho mà request đổi đơn vị hoặc loại
+ */
+export function assertUnitCategoryEditable(
+  hasMovements: boolean,
+  changedFields: readonly ('unit' | 'category')[],
+): void {
+  const [field] = changedFields;
+  if (hasMovements && field) {
+    throw fieldConflict(field, LEDGER_LOCKED_FIELD_MESSAGES[field]);
   }
 }

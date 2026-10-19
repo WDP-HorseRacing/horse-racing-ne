@@ -6869,6 +6869,7 @@
         ]
       },
       "patch": {
+        "description": "Vật tư đã có dòng sổ khác OPENING thì không đổi được đơn vị hoặc loại (409, gắn với ô unit hoặc category); gửi đúng giá trị đang có không tính là đổi",
         "operationId": "SuppliesController_updateItem",
         "parameters": [
           {

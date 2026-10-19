@@ -225,8 +225,9 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
   });
 
   describe('supply items', () => {
-    it('B15a: changing the unit of an item that has stock is rejected with 409', async () => {
+    it('B15a: changing the unit of an item that has stock movements is rejected with 409', async () => {
       const item = await oats(500);
+      await items.receive(manager, item.id, { quantity: 50, unitPrice: 25000 });
 
       await expect(
         items.update(manager, item.id, { unit: 'bao' }),

@@ -220,6 +220,74 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       await expect(search('%')).resolves.toEqual(['Đạm 20%']);
     });
 
+    it('refuses to change the unit or category once the item has moved in or out of stock', async () => {
+      const restocked = await oats(500);
+      await items.receive(manager, restocked.id, {
+        quantity: 50,
+        unitPrice: 25000,
+      });
+      const used = await items.create(manager, {
+        name: 'Cám',
+        category: SupplyCategory.FEED,
+        unit: 'bao',
+        quantityOnHand: 10,
+        reorderThreshold: 0,
+      });
+      await items.use(groom, used.id, { quantity: 1, note: 'Bữa sáng' });
+
+      await expect(
+        items.update(manager, restocked.id, { unit: 'bao' }),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { errors: [{ field: 'unit' }] },
+      });
+      await expect(
+        items.update(manager, used.id, { category: SupplyCategory.MEDICINE }),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { errors: [{ field: 'category' }] },
+      });
+      await expect(items.get(manager, restocked.id)).resolves.toMatchObject({
+        unit: 'kg',
+      });
+      await expect(items.get(manager, used.id)).resolves.toMatchObject({
+        category: SupplyCategory.FEED,
+      });
+    });
+
+    it('still lets the item change its name, threshold, or the same unit and category after stock moved', async () => {
+      const item = await oats(500);
+      await items.use(groom, item.id, { quantity: 5, note: 'Bữa sáng' });
+
+      const updated = await items.update(manager, item.id, {
+        name: 'Yến mạch Úc',
+        reorderThreshold: 10,
+        unit: 'kg',
+        category: SupplyCategory.FEED,
+      });
+
+      expect(updated).toMatchObject({
+        name: 'Yến mạch Úc',
+        reorderThreshold: 10,
+        unit: 'kg',
+      });
+    });
+
+    it('lets an item with only its opening stock change its unit and category', async () => {
+      const item = await oats(500);
+
+      const updated = await items.update(manager, item.id, {
+        unit: 'bao',
+        category: SupplyCategory.SUPPLEMENT,
+      });
+
+      expect(updated).toMatchObject({
+        unit: 'bao',
+        category: SupplyCategory.SUPPLEMENT,
+        quantityOnHand: 500,
+      });
+    });
+
     it('hides a deleted item but keeps its ledger readable', async () => {
       const item = await oats(40);
       await items.remove(manager, item.id);
