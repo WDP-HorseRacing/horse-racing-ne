@@ -40,7 +40,6 @@ import {
 import { CreateTrainingSubjectDto } from '../../../src/modules/training/dto/training-subject.dto';
 import { HorseEnrollmentEntity } from '../../../src/modules/training/entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../../src/modules/training/entities/session-participant.entity';
-import { TrainingClassEntity } from '../../../src/modules/training/entities/training-class.entity';
 import { TrainingSessionEntity } from '../../../src/modules/training/entities/training-session.entity';
 import { TrainingSubjectEntity } from '../../../src/modules/training/entities/training-subject.entity';
 import { HorseTrainingSessionWhen } from '../../../src/modules/training/enums/horse-training-session-when.enum';
@@ -53,14 +52,12 @@ import { TrainingAccessService } from '../../../src/modules/training/shared/trai
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
 import { TrialResultsService } from '../../../src/modules/training/time-trials/trial-results.service';
 import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
 import { SessionParticipantsService } from '../../../src/modules/training/training-sessions/session-participants.service';
 import { TrainingSessionsService } from '../../../src/modules/training/training-sessions/training-sessions.service';
 import { TrainingSubjectsService } from '../../../src/modules/training/training-subjects/training-subjects.service';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,
-  stopTestPostgres,
   truncateAllTables,
   type TestPostgres,
 } from '../postgres';
@@ -93,7 +90,6 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
   let sessionsService: TrainingSessionsService;
   let participantsService: SessionParticipantsService;
   let enrollments: TrainingClassEnrollmentsService;
-  let classes: TrainingClassesService;
   let subjects: TrainingSubjectsService;
   let evaluations: PerformanceEvaluationsService;
   let horseTraining: HorseTrainingService;
@@ -144,12 +140,6 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
       facade,
       dataSource,
       media,
-      audit,
-    );
-    classes = new TrainingClassesService(
-      dataSource.getRepository(TrainingClassEntity),
-      access,
-      dataSource,
       audit,
     );
     subjects = new TrainingSubjectsService(
@@ -208,7 +198,7 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
 
   afterAll(async () => {
     await moduleRef?.close();
-    await stopTestPostgres(db);
+    await db?.container.stop();
   });
 
   const actorOf = async (id: string, role: UserRole): Promise<Actor> => {
@@ -549,9 +539,9 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     });
   });
 
-  it('F2-6: a CRITICAL metric event creates an urgent exam request', async () => {
+  it('F2-6: measurement alerts and CRITICAL metrics notify only, they create no exam request', async () => {
     const emitter = moduleRef.get(EventEmitter2);
-    expect(emitter.listeners(HORSE_MEASUREMENT_ALERT_EVENT).length).toBe(1);
+    expect(emitter.listeners(HORSE_MEASUREMENT_ALERT_EVENT).length).toBe(0);
     const winx = await enrolledHorse();
     const live = await session(new Date(Date.now() - 0.5 * HOUR), {
       status: 'IN_PROGRESS',
@@ -564,10 +554,10 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     );
 
     const [{ count }] = await dataSource.query<Array<{ count: number }>>(
-      'SELECT COUNT(*)::int AS count FROM medical_exam_requests WHERE horse_id = $1 AND urgent',
+      'SELECT COUNT(*)::int AS count FROM medical_exam_requests WHERE horse_id = $1',
       [winx.horseId],
     );
-    expect(count).toBe(1);
+    expect(count).toBe(0);
   });
 
   it('F2-7: leaving a class with a future leave date is rejected', async () => {

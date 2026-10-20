@@ -15,7 +15,6 @@ import {
   ExamRequestSource,
   ExamRequestStatus,
 } from '../constants/exam-request.enum';
-import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import {
   CaseLockDecision,
   MedicalCaseStatus,
@@ -43,7 +42,6 @@ import {
   assertCanRequestExam,
   assertRequestPending,
   examRequestSourceFor,
-  isUrgentAlert,
   assertCaseOpen,
   assertInjuriesHealedBeforeClose,
   assertInjuryUpdates,
@@ -493,11 +491,6 @@ describe('medical.policy', () => {
       expect(examRequestSourceFor([UserRole.CLUB_MANAGER])).toBe(
         ExamRequestSource.STAFF,
       );
-    });
-
-    it('treats only a fever as urgent', () => {
-      expect(isUrgentAlert(HorseMeasurementAlert.FEVER)).toBe(true);
-      expect(isUrgentAlert(HorseMeasurementAlert.WEIGHT_DROP)).toBe(false);
     });
 
     it('only handles pending requests', () => {

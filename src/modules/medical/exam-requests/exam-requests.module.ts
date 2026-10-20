@@ -6,10 +6,9 @@ import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entit
 import { MedicalSharedModule } from '../shared/medical-shared.module';
 import { ExamRequestsController } from './exam-requests.controller';
 import { ExamRequestsService } from './exam-requests.service';
-import { MeasurementAlertExamRequestListener } from './measurement-alert.listener';
 
 /**
- * Quản lý hàng đợi yêu cầu khám, gồm cả yêu cầu tự sinh từ cảnh báo chỉ số cơ thể.
+ * Quản lý hàng đợi yêu cầu khám.
  */
 @Module({
   imports: [
@@ -19,7 +18,7 @@ import { MeasurementAlertExamRequestListener } from './measurement-alert.listene
     AuditModule,
   ],
   controllers: [ExamRequestsController],
-  providers: [ExamRequestsService, MeasurementAlertExamRequestListener],
+  providers: [ExamRequestsService],
   exports: [ExamRequestsService],
 })
 export class ExamRequestsModule {}

@@ -3,18 +3,8 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
-import {
-  HorseMeasurementAlert,
-  HorseMeasurementAlertSeverity,
-} from '../../src/modules/horses/enums/horse-measurement-alert.enum';
-import { HorseMeasurementSource } from '../../src/modules/horses/enums/horse-measurement-source.enum';
-import { HorseMeasurementType } from '../../src/modules/horses/enums/horse-measurement-type.enum';
-import {
-  HorseHealthStatus,
-  HorseLifecycleStatus,
-} from '../../src/modules/horses/enums/horse-status.enum';
+import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import type { HorseMeasurementAlertEvent } from '../../src/modules/horses/types/horse.types';
 import { ExamRequestStatus } from '../../src/modules/medical/constants/exam-request.enum';
 import { ExamRequestListQueryDto } from '../../src/modules/medical/dto';
 import { MedicalExamRequestEntity } from '../../src/modules/medical/entities/medical-exam-request.entity';
@@ -236,87 +226,6 @@ describe('Health history and exam request queries (Postgres)', () => {
         await expect(listIds(groom)).resolves.toEqual([kept]);
         await dataSource.query('UPDATE groom_assignments SET end_at = now()');
         await expect(listIds(groom)).resolves.toEqual([]);
-      });
-    });
-
-    describe('createFromAlert', () => {
-      const fever = (horseId: string): HorseMeasurementAlertEvent => ({
-        alert: HorseMeasurementAlert.FEVER,
-        severity: HorseMeasurementAlertSeverity.URGENT,
-        measurementId: randomUUID(),
-        horseId,
-        measuredBy: randomUUID(),
-        type: HorseMeasurementType.TEMPERATURE,
-        value: 39.5,
-        unit: '°C',
-        measuredAt: new Date().toISOString(),
-        source: HorseMeasurementSource.MANUAL,
-      });
-
-      const pending = (horseId: string) =>
-        dataSource.getRepository(MedicalExamRequestEntity).find({
-          where: { horseId, status: ExamRequestStatus.PENDING },
-        });
-
-      it('creates one urgent pending request per horse and alert type', async () => {
-        const winx = await seed.horse('Winx');
-
-        await expect(service.createFromAlert(fever(winx))).resolves.toBe(true);
-        await expect(service.createFromAlert(fever(winx))).resolves.toBe(false);
-
-        const rows = await pending(winx);
-        expect(rows).toHaveLength(1);
-        expect(rows[0]).toMatchObject({
-          urgent: true,
-          requestedBy: null,
-          alertType: HorseMeasurementAlert.FEVER,
-        });
-        expect(audit.record).toHaveBeenCalledTimes(1);
-      });
-
-      it('creates a new request once the previous one is handled', async () => {
-        const winx = await seed.horse('Winx');
-        await service.createFromAlert(fever(winx));
-        await dataSource
-          .getRepository(MedicalExamRequestEntity)
-          .update({ horseId: winx }, { status: ExamRequestStatus.EXAMINED });
-
-        await expect(service.createFromAlert(fever(winx))).resolves.toBe(true);
-        await expect(pending(winx)).resolves.toHaveLength(1);
-      });
-
-      it('ignores the same alert delivered again after its request was handled', async () => {
-        const winx = await seed.horse('Winx');
-        const alert = fever(winx);
-        await service.createFromAlert(alert);
-        await dataSource
-          .getRepository(MedicalExamRequestEntity)
-          .update({ horseId: winx }, { status: ExamRequestStatus.EXAMINED });
-
-        await expect(service.createFromAlert(alert)).resolves.toBe(false);
-        await expect(
-          dataSource
-            .getRepository(MedicalExamRequestEntity)
-            .countBy({ horseId: winx }),
-        ).resolves.toBe(1);
-        expect(audit.record).toHaveBeenCalledTimes(1);
-      });
-
-      it('skips deleted and transferred horses', async () => {
-        const deleted = await seed.horse('Deleted', { deleted: true });
-        const transferred = await seed.horse('Transferred', {
-          lifecycle: HorseLifecycleStatus.TRANSFERRED,
-        });
-
-        await expect(service.createFromAlert(fever(deleted))).resolves.toBe(
-          false,
-        );
-        await expect(service.createFromAlert(fever(transferred))).resolves.toBe(
-          false,
-        );
-        await expect(
-          dataSource.getRepository(MedicalExamRequestEntity).count(),
-        ).resolves.toBe(0);
       });
     });
   });

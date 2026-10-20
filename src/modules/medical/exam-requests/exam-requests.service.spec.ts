@@ -6,17 +6,8 @@ import {
 import { DataSource, IsNull, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import {
-  HorseMeasurementAlert,
-  HorseMeasurementAlertSeverity,
-} from '../../horses/enums/horse-measurement-alert.enum';
-import { HORSE_MEASUREMENT_SPECS } from '../../horses/constants/horse.constants';
-import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
-import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
   ExamRequestSource,
@@ -29,7 +20,6 @@ import {
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { ExamRequestsService } from './exam-requests.service';
-import { MeasurementAlertExamRequestListener } from './measurement-alert.listener';
 
 type Row = Record<string, unknown>;
 
@@ -41,9 +31,6 @@ const HORSE = { id: 'h1', name: 'Winx' };
 
 describe('ExamRequestsService', () => {
   let requestRow: Row | null;
-  let horseRow: Row | null;
-  let insertResult: { raw: Array<{ id: string }> };
-  let insertBuilder: Record<string, jest.Mock>;
   let manager: {
     find: jest.Mock;
     findOne: jest.Mock;
@@ -51,7 +38,6 @@ describe('ExamRequestsService', () => {
     create: jest.Mock;
     save: jest.Mock;
     update: jest.Mock;
-    createQueryBuilder: jest.Mock;
   };
   let requests: { findOne: jest.Mock; find: jest.Mock };
   let access: { lockHorseForWrite: jest.Mock };
@@ -61,28 +47,10 @@ describe('ExamRequestsService', () => {
     isHorseInTrainerBarn: jest.Mock;
     lockWritableHorseInScope: jest.Mock;
     isGroomAssigned: jest.Mock;
-    lockHorseWithDeleted: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
   let service: ExamRequestsService;
-
-  const alertEvent = (
-    overrides: Partial<HorseMeasurementAlertEvent> = {},
-  ): HorseMeasurementAlertEvent =>
-    ({
-      alert: HorseMeasurementAlert.FEVER,
-      severity: HorseMeasurementAlertSeverity.URGENT,
-      measurementId: 'm1',
-      horseId: 'h1',
-      measuredBy: 'groom-1',
-      type: HorseMeasurementType.TEMPERATURE,
-      value: 39.2,
-      unit: HORSE_MEASUREMENT_SPECS[HorseMeasurementType.TEMPERATURE].unit,
-      measuredAt: new Date(),
-      source: HorseMeasurementSource.MANUAL,
-      ...overrides,
-    }) as HorseMeasurementAlertEvent;
 
   beforeEach(() => {
     requestRow = {
@@ -93,25 +61,13 @@ describe('ExamRequestsService', () => {
       source: ExamRequestSource.STAFF,
       description: 'Đi khập khiễng',
     };
-    horseRow = {
-      id: 'h1',
-      deletedAt: null,
-      lifecycleStatus: HorseLifecycleStatus.ACTIVE,
-    };
-    insertResult = { raw: [{ id: 'req-auto' }] };
-    insertBuilder = {};
-    for (const step of ['insert', 'into', 'values', 'orIgnore', 'returning']) {
-      insertBuilder[step] = jest.fn(() => insertBuilder);
-    }
-    insertBuilder.execute = jest.fn(() => Promise.resolve(insertResult));
     manager = {
       find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn(() => Promise.resolve(horseRow)),
+      findOne: jest.fn().mockResolvedValue(null),
       findOneOrFail: jest.fn(() => Promise.resolve({ ...requestRow })),
       create: jest.fn((_entity: unknown, row: Row) => ({ ...row })),
       save: jest.fn((row: Row) => Promise.resolve({ id: 'req-new', ...row })),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
-      createQueryBuilder: jest.fn(() => insertBuilder),
     };
     const dataSource = {
       manager,
@@ -138,14 +94,6 @@ describe('ExamRequestsService', () => {
         horse: HORSE,
       }),
       isGroomAssigned: jest.fn().mockResolvedValue(false),
-      lockHorseWithDeleted: jest.fn(
-        (m: typeof manager, horseId: string) =>
-          m.findOne(HorseEntity, {
-            where: { id: horseId },
-            withDeleted: true,
-            lock: { mode: 'pessimistic_write' },
-          }) as Promise<unknown>,
-      ),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn().mockResolvedValue(undefined) };
@@ -454,85 +402,6 @@ describe('ExamRequestsService', () => {
         MEDICAL_EXAM_REQUEST_URGENT_EVENT,
         expect.objectContaining({ requestId: 'req-1' }),
       );
-    });
-  });
-
-  describe('createFromAlert', () => {
-    it('creates an urgent system request for a fever and audits it without an actor', async () => {
-      await expect(service.createFromAlert(alertEvent())).resolves.toBe(true);
-      expect(insertBuilder.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          requestedBy: null,
-          source: ExamRequestSource.MEASUREMENT_ALERT,
-          urgent: true,
-          alertType: HorseMeasurementAlert.FEVER,
-          description: 'Cảnh báo tự động: sốt, thân nhiệt 39.2 °C',
-        }),
-      );
-      expect(insertBuilder.orIgnore).toHaveBeenCalled();
-      expect(manager.findOne).toHaveBeenCalledWith(
-        HorseEntity,
-        expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
-      );
-      expect(audit.record).toHaveBeenCalledWith(
-        manager,
-        expect.objectContaining({ actorId: null, entityId: 'req-auto' }),
-      );
-      expect(events.publish).not.toHaveBeenCalled();
-    });
-
-    it('creates a normal request for a weight drop', async () => {
-      await service.createFromAlert(
-        alertEvent({
-          alert: HorseMeasurementAlert.WEIGHT_DROP,
-          severity: HorseMeasurementAlertSeverity.WARNING,
-          baselineValue: 500,
-          dropPercent: 6,
-          type: HorseMeasurementType.WEIGHT,
-          value: 470,
-          unit: HORSE_MEASUREMENT_SPECS[HorseMeasurementType.WEIGHT].unit,
-        }),
-      );
-      expect(insertBuilder.values).toHaveBeenCalledWith(
-        expect.objectContaining({
-          urgent: false,
-          description: 'Cảnh báo tự động: giảm 6% cân nặng (còn 470 kg)',
-        }),
-      );
-    });
-
-    it('skips a duplicate while an automatic request of the same alert is pending', async () => {
-      insertResult = { raw: [] };
-      await expect(service.createFromAlert(alertEvent())).resolves.toBe(false);
-      expect(audit.record).not.toHaveBeenCalled();
-    });
-
-    it.each([
-      ['transferred', { lifecycleStatus: HorseLifecycleStatus.TRANSFERRED }],
-      ['deleted', { deletedAt: new Date() }],
-    ])('skips a %s horse', async (_label, overrides) => {
-      horseRow = { ...horseRow, ...overrides };
-      await expect(service.createFromAlert(alertEvent())).resolves.toBe(false);
-      expect(insertBuilder.execute).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('MeasurementAlertExamRequestListener', () => {
-    it('ignores alerts from measurements taken during an exam', async () => {
-      const spy = jest.spyOn(service, 'createFromAlert');
-      await new MeasurementAlertExamRequestListener(service).handle(
-        alertEvent({ source: HorseMeasurementSource.MEDICAL_EXAM }),
-      );
-      expect(spy).not.toHaveBeenCalled();
-    });
-
-    it('rethrows a failure so the outbox relay delivers the event again', async () => {
-      jest
-        .spyOn(service, 'createFromAlert')
-        .mockRejectedValue(new Error('db down'));
-      await expect(
-        new MeasurementAlertExamRequestListener(service).handle(alertEvent()),
-      ).rejects.toThrow('db down');
     });
   });
 });

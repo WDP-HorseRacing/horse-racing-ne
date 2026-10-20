@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 19/10/2026
+> Cập nhật: 20/10/2026
 
 ## I. Những main feature liên quan
 
@@ -104,12 +104,9 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 
 1. Số đo lấy trong buổi khám được ghi vào **ĐÚNG** bảng chỉ số cơ thể của F1.5, kèm nguồn "từ buổi khám X". Flow 3 không tạo bảng số đo riêng. Khoảng bình thường, xác nhận giá trị bất thường của F1.5 vẫn áp dụng.
 2. Bản ghi có nguồn từ buổi khám không xóa được ở F1.5; muốn đính chính thì hủy buổi khám ở F3.6.
-3. Cảnh báo tự động của F1.5 sinh yêu cầu khám (F3.4):
-   - Sốt (thân nhiệt trên 38.6 độ C): yêu cầu mức **Khẩn**.
-   - Sụt cân (giảm quá 5% trong 14 ngày): yêu cầu mức **Bình thường**.
-4. Số đo lấy ngay trong buổi khám **không** sinh yêu cầu khám và **không** gửi cảnh báo của F1.5, vì bác sĩ đang khám chính con ngựa đó. Quyết định của bác sĩ (đổi sức khỏe, đặt khóa huấn luyện, mở bệnh án) đã có thông báo riêng theo mục III.7. *(BA chốt)*
-5. Mỗi con ngựa chỉ có tối đa một yêu cầu tự động đang chờ cho mỗi loại cảnh báo. Cảnh báo lặp lại khi yêu cầu cũ còn chờ thì không sinh thêm yêu cầu.
-6. Yêu cầu tự động không gửi thêm thông báo, vì cảnh báo của F1.5 đã báo cho VETERINARIAN và HEAD TRAINER.
+3. Cảnh báo của F1.5 (sốt trên 38.6 độ C, sụt cân quá 5% trong 14 ngày) **chỉ gửi thông báo** cho VETERINARIAN, HEAD TRAINER phụ trách khu và HORSE OWNER; **không** tự tạo yêu cầu khám. Cần khám hay không do người có chuyên môn quyết: HEAD TRAINER, CLUB MANAGER hoặc VETERINARIAN tự gửi yêu cầu (F3.4); ca sốt GROOM phát hiện đi qua báo cáo sự cố (Flow 4). Đề bài không yêu cầu tự sinh yêu cầu khám, và cảnh báo từ một điểm đo có thể sai (gõ nhầm, cảm biến lệch).
+4. Số đo lấy ngay trong buổi khám **không** gửi cảnh báo của F1.5, vì bác sĩ đang khám chính con ngựa đó. Quyết định của bác sĩ (đổi sức khỏe, đặt khóa huấn luyện, mở bệnh án) đã có thông báo riêng theo mục III.7. *(BA chốt)*
+5. Yêu cầu khám nguồn `MEASUREMENT_ALERT` (người gửi Hệ thống) đã có trong dữ liệu vẫn hiện trong hàng đợi và được khám, bỏ qua, đổi mức độ như yêu cầu khác. Không sinh thêm yêu cầu mới thuộc nguồn này.
 
 ### 6. Chi phí y tế
 
@@ -130,7 +127,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 
 | Sự kiện | Mức | Người nhận |
 |---|---|---|
-| Yêu cầu khám mức Khẩn được tạo bởi người dùng, hoặc bác sĩ nâng một yêu cầu (kể cả yêu cầu tự động) lên Khẩn | URGENT | Mọi VETERINARIAN đang hoạt động |
+| Yêu cầu khám mức Khẩn được tạo bởi người dùng hoặc từ sự cố của GROOM, hoặc bác sĩ nâng một yêu cầu bất kỳ lên Khẩn | URGENT | Mọi VETERINARIAN đang hoạt động |
 | Đặt khóa huấn luyện | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
 | Trạng thái sức khỏe chuyển sang Chấn thương hoặc Cách ly | HIGH | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa. Cách ly: thông báo của HEAD TRAINER, CLUB MANAGER, GROOM kèm danh sách ngựa có thể đã tiếp xúc (F3.7 mục 3); HORSE OWNER không kèm |
 | Trạng thái sức khỏe chuyển sang Cần theo dõi (ngựa bị cấm đua) | NORMAL | HEAD TRAINER phụ trách khu, HORSE OWNER, GROOM phụ trách ngựa |
@@ -139,7 +136,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | Quá hạn khám định kỳ trên 7 ngày | HIGH | Mọi VETERINARIAN đang hoạt động, CLUB MANAGER |
 | Mở bệnh án | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Gỡ khóa huấn luyện do bác sĩ | NORMAL | HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER, GROOM phụ trách ngựa |
-| Bác sĩ khám xong (gắn yêu cầu vào buổi khám) hoặc bỏ qua một yêu cầu khám (kèm lý do) | NORMAL | Người gửi yêu cầu (GROOM qua sự cố, HEAD TRAINER, CLUB MANAGER); không báo khi yêu cầu do hệ thống tự sinh hoặc người gửi chính là bác sĩ xử lý |
+| Bác sĩ khám xong (gắn yêu cầu vào buổi khám) hoặc bỏ qua một yêu cầu khám (kèm lý do) | NORMAL | Người gửi yêu cầu (GROOM qua sự cố, HEAD TRAINER, CLUB MANAGER); không báo khi yêu cầu không có người gửi (nguồn `MEASUREMENT_ALERT` có sẵn trong dữ liệu) hoặc người gửi chính là bác sĩ xử lý |
 | Đóng bệnh án | NORMAL | CLUB MANAGER (kèm tổng chi phí của cả bệnh án), HORSE OWNER (kèm phần chi phí thuộc giai đoạn mình sở hữu); số tiền chụp lúc đóng |
 | Hủy bệnh án mở nhầm | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Điều chỉnh chi phí một buổi khám | NORMAL | HORSE OWNER của giai đoạn chứa ngày khám (III.6.6), CLUB MANAGER |
@@ -335,19 +332,19 @@ Hàng đợi các yêu cầu khám phát sinh ngoài lịch định kỳ. Đây 
 
 ### Nghiệp vụ
 
-1. Một yêu cầu khám gồm: con ngựa, người gửi, thời điểm gửi, mô tả dấu hiệu, mức độ (Bình thường hoặc Khẩn) và nguồn gốc. Bốn nguồn gốc:
+1. Một yêu cầu khám gồm: con ngựa, người gửi, thời điểm gửi, mô tả dấu hiệu, mức độ (Bình thường hoặc Khẩn) và nguồn gốc. Yêu cầu mới có ba nguồn gốc:
    - Báo cáo sự cố của GROOM (Flow 4): sự cố khẩn, hoặc HEAD TRAINER chuyển bác sĩ.
-   - Cảnh báo tự động từ chỉ số cơ thể (F1.5), theo mục III.5. Người gửi ghi là Hệ thống.
    - HEAD TRAINER hoặc CLUB MANAGER gửi tay.
    - VETERINARIAN tự tạo.
+   Cảnh báo chỉ số cơ thể (F1.5) chỉ gửi thông báo, không tạo yêu cầu (mục III.5). Yêu cầu nguồn `MEASUREMENT_ALERT` có sẵn trong dữ liệu vẫn đọc và xử lý bình thường.
 2. Yêu cầu có ba trạng thái: Chờ xử lý, Đã khám, Đã bỏ qua. Đã khám và Đã bỏ qua là trạng thái cuối, không mở lại.
 3. Chỉ VETERINARIAN chuyển trạng thái. Người gửi không tự hủy được yêu cầu; gửi nhầm thì báo bác sĩ bỏ qua.
 4. Bỏ qua bắt buộc nhập lý do. Khám xong hoặc bỏ qua thì người gửi yêu cầu nhận thông báo (mục III.7).
 5. VETERINARIAN được đổi mức độ của yêu cầu đang chờ, bắt buộc nhập lý do.
-6. Yêu cầu mức Khẩn do người dùng tạo sinh thông báo URGENT cho mọi VETERINARIAN ngay khi được tạo. Yêu cầu tự động không gửi thêm thông báo lúc tạo (mục III.5.6). Khi bác sĩ nâng một yêu cầu bất kỳ (kể cả yêu cầu tự động) lên Khẩn, hệ thống cũng gửi URGENT cho mọi VETERINARIAN.
+6. Yêu cầu mức Khẩn sinh thông báo URGENT cho mọi VETERINARIAN ngay khi được tạo. Khi bác sĩ nâng một yêu cầu bất kỳ lên Khẩn, hệ thống cũng gửi URGENT cho mọi VETERINARIAN.
 7. Một con ngựa có thể có nhiều yêu cầu đang chờ. Khi khám, bác sĩ gắn một hoặc nhiều yêu cầu vào cùng một buổi khám và tất cả cùng chuyển sang Đã khám.
 8. Khi ngựa chuyển nhượng, mọi yêu cầu đang chờ tự chuyển Đã bỏ qua với lý do "Do chuyển nhượng"; khi ghi nhận ngựa mất thì lý do là "Do ngựa mất".
-9. Không tạo yêu cầu (kể cả yêu cầu tự động từ cảnh báo chỉ số) cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
+9. Không tạo yêu cầu cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 10. Ghi nhật ký khi tạo, khi đổi mức độ, khi bỏ qua và khi gắn yêu cầu vào buổi khám.
 
 ### Bảng use case
@@ -357,11 +354,11 @@ Hàng đợi các yêu cầu khám phát sinh ngoài lịch định kỳ. Đây 
 | **Mã use case** | UC-F3-04 |
 | **Tên use case** | Tiếp nhận yêu cầu khám khi ngựa có vấn đề |
 | **Actor chính** | VETERINARIAN |
-| **Actor phụ** | HEAD TRAINER, CLUB MANAGER (gửi yêu cầu), Hệ thống (sinh yêu cầu từ cảnh báo và từ sự cố của GROOM) |
+| **Actor phụ** | HEAD TRAINER, CLUB MANAGER (gửi yêu cầu), Hệ thống (sinh yêu cầu từ sự cố của GROOM) |
 | **Tiền điều kiện** | Người gửi đã đăng nhập và con ngựa nằm trong phạm vi của họ. |
 | **Hậu điều kiện** | Yêu cầu khám được lưu ở trạng thái Chờ xử lý, hoặc được chuyển sang Đã khám / Đã bỏ qua. |
 | **Luồng sự kiện chính** | 1. Người gửi mô tả dấu hiệu bất thường và chọn mức độ.<br>2. Hệ thống lưu yêu cầu ở trạng thái Chờ xử lý và gửi thông báo nếu là mức Khẩn.<br>3. VETERINARIAN mở hàng đợi yêu cầu.<br>4. VETERINARIAN chọn một yêu cầu và bắt đầu buổi khám: UC-F3-03 nếu ngựa chưa có bệnh án mở, UC-F3-06 nếu đã có.<br>5. Hệ thống chuyển yêu cầu sang Đã khám và ghi nhật ký. |
-| **Luồng thay thế** | A1. Chỉ số cơ thể vượt ngưỡng -> hệ thống tự tạo yêu cầu, không cần người gửi.<br>A2. VETERINARIAN thấy yêu cầu không cần khám -> bỏ qua kèm lý do.<br>A3. Nhiều yêu cầu của cùng một con ngựa -> gắn tất cả vào một buổi khám.<br>A4. VETERINARIAN đổi mức độ -> nhập lý do, hệ thống lưu và ghi nhật ký. |
+| **Luồng thay thế** | A1. Chỉ số cơ thể vượt ngưỡng -> hệ thống chỉ gửi cảnh báo (F1.5); người nhận tự gửi yêu cầu nếu cần khám.<br>A2. VETERINARIAN thấy yêu cầu không cần khám -> bỏ qua kèm lý do.<br>A3. Nhiều yêu cầu của cùng một con ngựa -> gắn tất cả vào một buổi khám.<br>A4. VETERINARIAN đổi mức độ -> nhập lý do, hệ thống lưu và ghi nhật ký. |
 | **Luồng ngoại lệ** | E1. Không nhập mô tả -> báo lỗi.<br>E2. GROOM gọi gửi yêu cầu, HEAD TRAINER gửi cho ngựa ngoài khu -> trả về 403.<br>E3. Ngựa đã chuyển nhượng hoặc đã mất -> không cho tạo yêu cầu (409). Riêng HEAD TRAINER và GROOM: ngựa đã chuyển nhượng hoặc đã mất không còn thuộc khu hay phân công của họ nên nhận 403, không lộ tình trạng con ngựa. *(BA chốt)* Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E4. Bỏ qua hoặc đổi mức độ một yêu cầu không còn Chờ xử lý -> trả về 409. |
 
 ---
@@ -750,7 +747,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 | Ngày hẹn phải sớm hơn hoặc bằng hạn | Ngày hẹn từ hôm nay; chỉ giới hạn theo hạn khi chưa quá hạn | Ngựa đã quá hạn không đặt được ngày hẹn nào. |
 | Không nói gì về ngựa chuyển nhượng khi còn bệnh án | Chặn chuyển nhượng ra ngoài; yêu cầu khám, lịch hẹn, lịch chăm sóc tự hủy. Chuyển chủ nội bộ không chặn | Bệnh án kẹt Đang điều trị vĩnh viễn vì hồ sơ đã chuyển nhượng chỉ được xem. Chuyển chủ nội bộ thì bệnh án vẫn tiếp tục, chi phí chia theo ngày khám. |
 | Chi phí nhập một lần cho cả bệnh án lúc đóng | Chi phí theo từng buổi khám, tính cho chủ vào ngày khám; được điều chỉnh, bắt buộc lý do, có nhật ký, thông báo lại | Ngựa điều trị dài ngày mà đổi chủ thì không chia được tiền; gõ nhầm số tiền thì chủ ngựa thấy số sai vĩnh viễn. |
-| Ba mức cảnh báo URGENT/HIGH/NORMAL "định nghĩa ở F1.5" | Ghi thẳng: sốt sinh yêu cầu Khẩn, sụt cân sinh yêu cầu Bình thường; không sinh từ số đo trong buổi khám | F1.5 chỉ có hai cảnh báo; tránh tự sinh yêu cầu cho chính con ngựa đang được khám và tránh thông báo trùng. |
+| Ba mức cảnh báo URGENT/HIGH/NORMAL "định nghĩa ở F1.5" | Ghi thẳng: sốt và sụt cân chỉ gửi thông báo, không sinh yêu cầu khám; số đo trong buổi khám không gửi cảnh báo | F1.5 chỉ có hai cảnh báo; đề bài không yêu cầu tự sinh yêu cầu khám, cần khám hay không do người có chuyên môn quyết. |
 | Vai trò không được phép vào dashboard trả 404 | Trả 403 | Đúng quy ước 404/403 của Flow 1. |
 | Gỡ khóa chỉ báo HEAD TRAINER (mục III.7) nhưng F3.8 báo cả CLUB MANAGER | Thống nhất: HEAD TRAINER và CLUB MANAGER | Hai chỗ trong bản nháp nói khác nhau. |
 | Không có đơn thuốc, chấn thương 3D, lịch tiêm phòng | Thêm vào buổi khám và thêm F3.11 | Đề bài của giảng viên có ba yêu cầu này. |

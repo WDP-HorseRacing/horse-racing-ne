@@ -12492,11 +12492,11 @@
             "type": "object",
             "format": "uuid",
             "nullable": true,
-            "description": "null khi hệ thống tự sinh từ cảnh báo chỉ số"
+            "description": "null khi yêu cầu có nguồn MEASUREMENT_ALERT"
           },
           "requestedBySystem": {
             "type": "boolean",
-            "description": "True khi hệ thống tự sinh yêu cầu"
+            "description": "True khi yêu cầu không có người gửi (nguồn MEASUREMENT_ALERT)"
           },
           "source": {
             "type": "string",

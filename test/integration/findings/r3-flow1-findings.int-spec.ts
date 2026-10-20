@@ -7,6 +7,7 @@ import { UserRole } from '../../../src/common/enums/role.enum';
 import { UserStatus } from '../../../src/common/enums/user-status.enum';
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
+import { OutboxRelayService } from '../../../src/common/infrastructure/events/outbox-relay.service';
 import type { KeycloakUserService } from '../../../src/common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../src/common/types/actor';
 import { AuditFeature } from '../../../src/modules/audit/constants/audit-feature.enum';
@@ -36,6 +37,7 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
 import { HorsePedigreeRepository } from '../../../src/modules/horses/shared/horse-pedigree.repository';
 import { HorsePedigreeService } from '../../../src/modules/horses/shared/horse-pedigree.service';
+import { ExamRequestsModule } from '../../../src/modules/medical/exam-requests/exam-requests.module';
 import { MedicalDashboardRepository } from '../../../src/modules/medical/medical-dashboard/medical-dashboard.repository';
 import { MedicalDashboardService } from '../../../src/modules/medical/medical-dashboard/medical-dashboard.service';
 import { MedicalCheckupsService } from '../../../src/modules/medical/shared/medical-checkups.service';
@@ -160,8 +162,10 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
         }),
         DomainEventsModule,
         HorseStatusesModule,
+        ExamRequestsModule,
       ],
     }).compile();
+    await moduleRef.init();
     statuses = moduleRef.get(HorseStatusesService);
     access = new HorseAccessService(dataSource);
     const audit = new AuditService();
@@ -450,24 +454,25 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
       );
     });
 
-    it('F1-8b dismisses the PENDING exam request generated from a measurement that is deleted', async () => {
+    it('F1-8b a fever measurement that is later deleted leaves no exam request behind', async () => {
       const { vet, horse, created } = await feverSixDaysAgo();
-      const requestId = randomUUID();
-      await dataSource.query(
-        `INSERT INTO medical_exam_requests (id, version, horse_id, source, urgent, description, status, alert_type, source_ref_id)
-         VALUES ($1, 1, $2, 'MEASUREMENT_ALERT', true, 'Sốt', 'PENDING', 'FEVER', $3)`,
-        [requestId, horse, created.id],
-      );
 
       await measurements.deleteMeasurement(vet, horse, created.id, {
         reason: 'Gõ sai',
       });
-
-      const [request] = await dataSource.query<{ status: string }[]>(
-        'SELECT status FROM medical_exam_requests WHERE id = $1',
-        [requestId],
+      await dataSource.query(
+        'UPDATE outbox_events SET next_attempt_at = now()',
       );
-      expect(request.status).not.toBe('PENDING');
+      const relay = moduleRef.get(OutboxRelayService);
+      while ((await relay.relayBatch()) > 0) {
+        /* tiếp tục tới khi hết */
+      }
+
+      const [{ count }] = await dataSource.query<{ count: number }[]>(
+        'SELECT COUNT(*)::int AS count FROM medical_exam_requests WHERE horse_id = $1',
+        [horse],
+      );
+      expect(count).toBe(0);
     });
   });
 

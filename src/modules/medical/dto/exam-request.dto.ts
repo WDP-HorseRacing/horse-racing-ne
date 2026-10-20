@@ -98,11 +98,14 @@ export class ExamRequestResponseDto {
   @ApiProperty({
     format: 'uuid',
     nullable: true,
-    description: 'null khi hệ thống tự sinh từ cảnh báo chỉ số',
+    description: 'null khi yêu cầu có nguồn MEASUREMENT_ALERT',
   })
   requestedBy!: string | null;
 
-  @ApiProperty({ description: 'True khi hệ thống tự sinh yêu cầu' })
+  @ApiProperty({
+    description:
+      'True khi yêu cầu không có người gửi (nguồn MEASUREMENT_ALERT)',
+  })
   requestedBySystem!: boolean;
 
   @ApiProperty({ enum: ExamRequestSource })

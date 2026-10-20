@@ -465,6 +465,7 @@ Ghi lại các phép đo định kỳ của con ngựa: cân nặng, chiều cao
 6. Cảnh báo tự động:
    - Thân nhiệt trên 38.6 độ C: thông báo khẩn cho VETERINARIAN, HEAD TRAINER phụ trách khu và HORSE OWNER.
    - Cân nặng giảm quá 5% trong 14 ngày: thông báo cho VETERINARIAN, HEAD TRAINER phụ trách khu và HORSE OWNER.
+   - Cảnh báo chỉ gửi thông báo và trả trong kết quả ghi chỉ số, không tự tạo yêu cầu khám. Yêu cầu khám do HEAD TRAINER, CLUB MANAGER, VETERINARIAN tự gửi, hoặc sinh từ báo cáo sự cố của GROOM khi sự cố khẩn hay HEAD TRAINER chuyển bác sĩ (Flow 3 mục III.5).
 7. Không ghi chỉ số cho ngựa đã chuyển nhượng hoặc hồ sơ đã xóa. Riêng VETERINARIAN vẫn xóa được bản ghi đo sai của ngựa đã chuyển nhượng hoặc đã mất (bắt buộc lý do, ghi nhật ký). *(BA chốt)*
 8. Ghi nhật ký cho thao tác thêm và xóa.
 

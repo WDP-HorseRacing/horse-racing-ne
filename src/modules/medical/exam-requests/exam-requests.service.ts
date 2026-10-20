@@ -13,14 +13,8 @@ import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { formatMeasurement } from '../../horses/utils/measurement-format';
-import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
-import {
-  assertLifecycleWritable,
-  isReadOnlyLifecycle,
-} from '../../horses/policies/horse.policy';
+import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import {
   ExamRequestSource,
@@ -45,7 +39,6 @@ import {
   assertRequestPending,
   examRequestSourceFor,
   isGroomOnlyForExamRequests,
-  isUrgentAlert,
 } from '../policies/medical.policy';
 import { examRequestHandledEvent } from '../shared/exam-request-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
@@ -348,74 +341,10 @@ export class ExamRequestsService {
   }
 
   /**
-   * Tự sinh yêu cầu khám từ cảnh báo chỉ số cơ thể
+   * Báo mọi Veterinarian khi có yêu cầu khám Khẩn vừa tạo
    *
-   * - Khóa row ngựa trước khi kiểm
-   * - Bỏ qua ngựa đã chuyển nhượng hoặc đã mất hoặc hồ sơ đã xóa
-   * - Sốt là Khẩn, sụt cân là Bình thường; người gửi là Hệ thống (requestedBy null)
-   * - Mỗi ngựa chỉ một yêu cầu tự động PENDING cho mỗi loại cảnh báo: trùng thì bỏ qua (ON CONFLICT DO NOTHING)
-   * - Mỗi lần đo chỉ sinh một yêu cầu cho mỗi loại cảnh báo: nhận lại cùng cảnh báo (kể cả khi yêu cầu cũ đã xử lý) thì bỏ qua
-   * - Không gửi thêm thông báo
-   *
-   * @param event Payload của HORSE_MEASUREMENT_ALERT_EVENT
-   * @returns Promise trả về true nếu đã tạo yêu cầu mới
-   */
-  async createFromAlert(event: HorseMeasurementAlertEvent): Promise<boolean> {
-    return this.dataSource.transaction(async (manager) => {
-      const horse = await this.horseAccess.lockHorseWithDeleted(
-        manager,
-        event.horseId,
-      );
-      if (
-        !horse ||
-        horse.deletedAt ||
-        isReadOnlyLifecycle(horse.lifecycleStatus)
-      ) {
-        return false;
-      }
-      const result = await manager
-        .createQueryBuilder()
-        .insert()
-        .into(MedicalExamRequestEntity)
-        .values({
-          horseId: event.horseId,
-          requestedBy: null,
-          source: ExamRequestSource.MEASUREMENT_ALERT,
-          urgent: isUrgentAlert(event.alert),
-          description: describeAlert(event),
-          status: ExamRequestStatus.PENDING,
-          alertType: event.alert,
-          sourceRefId: event.measurementId,
-          version: 1,
-        })
-        .orIgnore()
-        .returning(['id'])
-        .execute();
-      const created = result.raw as Array<{ id: string }>;
-      if (created.length === 0) return false;
-      await this.audit.record(manager, {
-        actorId: null,
-        action: AuditAction.CREATE,
-        entityType: AuditEntityType.MEDICAL_EXAM_REQUEST,
-        entityId: created[0].id,
-        before: null,
-        after: {
-          horseId: event.horseId,
-          source: ExamRequestSource.MEASUREMENT_ALERT,
-          alertType: event.alert,
-          measurementId: event.measurementId,
-        },
-        feature: MEDICAL_AUDIT_FEATURE.EXAM_REQUEST,
-      });
-      return true;
-    });
-  }
-
-  /**
-   * Báo mọi Veterinarian khi có yêu cầu khám Khẩn do người dùng tạo
-   *
-   * - Yêu cầu không Khẩn hoặc tự sinh từ cảnh báo chỉ số: không ghi gì
-   * - Còn lại: ghi MEDICAL_EXAM_REQUEST_URGENT_EVENT vào outbox trong cùng transaction
+   * - Yêu cầu không Khẩn: không ghi gì
+   * - Yêu cầu Khẩn: ghi MEDICAL_EXAM_REQUEST_URGENT_EVENT vào outbox trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param request Yêu cầu khám vừa tạo
@@ -425,12 +354,7 @@ export class ExamRequestsService {
     manager: EntityManager,
     request: MedicalExamRequestEntity,
   ): Promise<void> {
-    if (
-      !request.urgent ||
-      request.source === ExamRequestSource.MEASUREMENT_ALERT
-    ) {
-      return;
-    }
+    if (!request.urgent) return;
     await this.publishUrgent(manager, request);
   }
 
@@ -551,16 +475,4 @@ export class ExamRequestsService {
     });
     return rows.map((row) => row.horseId);
   }
-}
-
-/**
- * Soạn mô tả tiếng Việt cho yêu cầu khám tự sinh từ cảnh báo chỉ số
- *
- * @param event Payload của cảnh báo chỉ số
- * @returns Mô tả dấu hiệu
- */
-function describeAlert(event: HorseMeasurementAlertEvent): string {
-  return event.alert === HorseMeasurementAlert.FEVER
-    ? `Cảnh báo tự động: sốt, thân nhiệt ${formatMeasurement(event.value, event.unit)}`
-    : `Cảnh báo tự động: giảm ${event.dropPercent}% cân nặng (còn ${formatMeasurement(event.value, event.unit)})`;
 }

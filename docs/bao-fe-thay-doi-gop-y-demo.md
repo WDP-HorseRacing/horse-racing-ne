@@ -35,6 +35,21 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Groom hoặc HT bấm nhầm báo vắng thì trước đây không sửa được, ngựa mất buổi tập dù đang có mặt.
 
+### F2-6: Cảnh báo sốt, sụt cân chỉ gửi thông báo, không tự tạo yêu cầu khám
+
+**Luật / hành vi API mới**
+1. `POST /horses/:horseId/measurements` vẫn trả `alerts` (`FEVER`, `WEIGHT_DROP`) và vẫn gửi thông báo `MEASUREMENT_ALERT` cho VET, HT khu và OWNER như cũ.
+2. Không còn tạo yêu cầu khám nguồn `MEASUREMENT_ALERT` (người gửi Hệ thống, `requestedBySystem: true`). Yêu cầu khám chỉ đến từ HT, CM, VET gửi tay (`POST /horses/:horseId/exam-requests`) hoặc từ báo cáo sự cố của GROOM (sự cố khẩn, HT chuyển bác sĩ).
+3. Yêu cầu `MEASUREMENT_ALERT` đã có trong dữ liệu vẫn trả trong hàng đợi với `requestedBy: null`, `requestedBySystem: true`, `alertType`; khám, bỏ qua, đổi mức độ như thường. Enum `source` giữ nguyên.
+
+**FE cần sửa**
+- Sau khi ghi chỉ số sốt, không chờ hay tải lại hàng đợi để thấy yêu cầu "Hệ thống"; sẽ không có yêu cầu mới.
+- Bỏ chữ hứa hẹn kiểu "đã tự tạo yêu cầu khám" ở màn ghi chỉ số, màn cảnh báo.
+- Vẫn giữ cách hiện người gửi "Hệ thống" khi `requestedBySystem: true` cho dữ liệu cũ.
+
+**Lý do**
+- Đề bài không yêu cầu tự sinh yêu cầu khám; ca sốt đi qua báo cáo sự cố của Groom. Cần khám hay không do người có chuyên môn quyết.
+
 ## Ngày 19/10/2026
 
 ### Chuẩn thời gian: thời điểm bắt buộc có múi giờ, ngày lịch đúng YYYY-MM-DD

@@ -6,7 +6,6 @@ import {
 import { UserRole } from '../../../common/enums/role.enum';
 import { toClubDate } from '../../../common/utils/club-date';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
-import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { OwnershipPeriod } from '../../horses/types/horse.types';
@@ -598,16 +597,6 @@ export function examRequestSourceFor(roles: UserRole[]): ExamRequestSource {
   return roles.includes(UserRole.VETERINARIAN)
     ? ExamRequestSource.VET
     : ExamRequestSource.STAFF;
-}
-
-/**
- * Mức độ của yêu cầu khám tự sinh từ cảnh báo chỉ số: sốt là Khẩn, sụt cân là Bình thường
- *
- * @param alert Loại cảnh báo
- * @returns True nếu yêu cầu là Khẩn
- */
-export function isUrgentAlert(alert: HorseMeasurementAlert): boolean {
-  return alert === HorseMeasurementAlert.FEVER;
 }
 
 /**
