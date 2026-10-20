@@ -67,6 +67,28 @@ Các câu hội đồng có thể hỏi về những quyết định nghiệp v�
 
 **Rủi ro đã biết:** ai có mã lượt đang tập là gửi được số đo giả.
 
+### 8. Sao chủ ngựa không được báo khi HT ghi nhận xét hay kết quả chạy thử mới? (F2-5)
+
+**Trả lời:** Đề bài yêu cầu chủ "xem" nhật ký nhận xét, không yêu cầu nhận thông báo. Chủ mở tab huấn luyện là thấy ngay.
+
+**Lý do:**
+- Thông báo dành cho việc chủ cần biết ngay: khóa tập, cảnh báo CRITICAL, đổi sức khỏe, đổi vòng đời.
+- Báo sau mỗi buổi tập thì chủ nhận nhiều thông báo mỗi tuần, dễ bỏ qua luôn các thông báo quan trọng.
+
+### 9. Sao Groom đang dắt ngựa không nhận cảnh báo nhịp tim vượt ngưỡng? (F2-5)
+
+**Trả lời:** Cảnh báo CRITICAL gửi bác sĩ, HT và chủ ngựa. Lúc chạy HT đứng ở sân và bảo Groom dừng ngựa ngay.
+
+**Lý do:** Groom đang dắt ngựa ngoài sân không cầm điện thoại để đọc thông báo; người ra lệnh dừng là HT.
+
+### 10. Ngựa vượt ngưỡng nhịp tim hay sốt, sao hệ thống không tự gửi yêu cầu khám cho bác sĩ? (F2-6)
+
+**Trả lời:** Đề bài chỉ yêu cầu HT xem cảnh báo vượt ngưỡng, và đưa ca sốt vào báo cáo sự cố của Groom. Hệ thống gửi cảnh báo ngay cho bác sĩ, HT và chủ; có cần khám hay không do người có chuyên môn quyết.
+
+**Lý do:**
+- HT, CM và bác sĩ tự gửi yêu cầu khám được; Groom báo sự cố, HT chuyển bác sĩ.
+- Cảnh báo dựa trên một điểm đo có thể sai (cảm biến lệch, gõ nhầm); tự sinh yêu cầu sẽ làm hàng đợi khám đầy yêu cầu giả.
+
 ### 11. Sao HT khu khác cũng xem được dữ liệu tập của ngựa không thuộc mình? (F2-3)
 
 **Trả lời:** Đề bài ghi HT "xem bảng tiến độ và biểu đồ thể lực tổng quan của toàn bộ chiến mã trong câu lạc bộ". Hệ thống cho mọi HT xem dữ liệu từng lượt tập của mọi ngựa (kết quả chạy thử, nhịp tim, tốc độ, đánh giá), nhưng chỉ HT phụ trách lớp mới được ghi, sửa kết quả của lượt đó.
@@ -75,3 +97,67 @@ Các câu hội đồng có thể hỏi về những quyết định nghiệp v�
 - HT cần so ngựa giữa các khu để chọn ngựa đi giải, và HT nhận ngựa từ khu khác cần lịch sử tập để lên giáo án tiếp.
 - Tiền lệ: Hong Kong Jockey Club (một CLB, nhiều trainer cạnh tranh nhau) công khai lịch sử tập luyện, kết quả chạy thử và hồ sơ thú y của từng ngựa.
 - Thứ cần bảo vệ là quyền ghi: chấm điểm, sửa kết quả, điều khiển lượt tập. Lớp, buổi, giáo án vẫn chỉ HT phụ trách lớp xem.
+
+## Bệnh án: mỗi ngựa một đợt điều trị đang mở
+
+Mỗi con ngựa có tối đa một bệnh án đang mở. Bệnh án là một đợt điều trị của con ngựa, không phải hồ sơ của từng bệnh. Vấn đề mới phát sinh trong lúc đang điều trị thì bác sĩ ghi thêm một buổi tái khám vào bệnh án đang mở.
+
+### 12. Sao không cho mở mỗi bệnh một bệnh án như phần mềm thú y thật?
+
+**Trả lời:** Nhóm chọn mô hình đợt điều trị: một bệnh án gom mọi vấn đề của con ngựa trong thời gian đang chữa. Mỗi buổi khám vẫn có chẩn đoán, đơn thuốc và chi phí riêng, nên vẫn truy được từng vấn đề.
+
+**Lý do:**
+- Đề bài chỉ yêu cầu ghi nhận hồ sơ khám, chẩn đoán và phác đồ, không yêu cầu tách hồ sơ theo bệnh.
+- Khóa huấn luyện và trạng thái sức khỏe là của con ngựa, không phải của từng bệnh. Nhiều bệnh án cùng mở thì phải trả lời "đóng bệnh án nào thì gỡ khóa, đổi sức khỏe", dễ sinh mâu thuẫn.
+- Ngựa đua thường chỉ có một vấn đề chính; vấn đề phụ (ho, xước) phát sinh trong lúc chữa thì ghi chung là tự nhiên.
+- Hướng mở rộng đã rõ nếu làm sản phẩm thật: bỏ ràng buộc một bệnh án mở, vết chấn thương xét theo bệnh án của buổi phát hiện, khóa huấn luyện chỉ gỡ khi đóng bệnh án cuối cùng. Chi phí đã tính theo từng buổi khám nên không phải đổi.
+
+### 13. Ngựa đang chữa gân chân thì bị ho, bác sĩ ghi thế nào? Yêu cầu khám gửi lúc đó đi đâu?
+
+**Trả lời:** Yêu cầu khám vẫn gửi được như thường. Bác sĩ ghi một buổi tái khám vào bệnh án gân chân, chẩn đoán thêm phần ho và gắn yêu cầu đó vào buổi khám; yêu cầu chuyển Đã khám và người gửi được báo. Không cần khám thì bác sĩ bỏ qua yêu cầu kèm lý do.
+
+**Lý do:** Ngựa đang có bệnh án mở thì không ghi được buổi khám lẻ ngoài bệnh án, nên mọi lần khám đều nằm trong đợt điều trị đang mở và không bị rơi ra ngoài.
+
+### 14. Vấn đề nhỏ khỏi rồi mà vẫn phải chờ vấn đề lớn khỏi mới đóng được bệnh án?
+
+**Trả lời:** Đúng, vì đóng bệnh án là kết thúc cả đợt điều trị của con ngựa. Vấn đề nhỏ khỏi thì bác sĩ ghi ở buổi tái khám đó (kết luận, vết chấn thương đã lành); kết luận cuối lúc đóng tóm tắt mọi vấn đề.
+
+**Đánh đổi đã biết:** không có mốc "đóng riêng" cho từng vấn đề; muốn biết vấn đề ho khỏi khi nào thì xem buổi tái khám ghi khỏi.
+
+### 15. Bệnh án chỉ có một chẩn đoán ban đầu, danh sách và báo cáo sức khỏe hiện "gân chân" thì vấn đề ho nằm ở đâu?
+
+**Trả lời:** Chẩn đoán ban đầu là lý do mở đợt điều trị. Vấn đề phát sinh sau nằm trong chẩn đoán của từng buổi tái khám, xem ở diễn biến của bệnh án; kết luận cuối lúc đóng ghi đủ các vấn đề.
+
+**Đánh đổi đã biết:** danh sách bệnh án và báo cáo sức khỏe chỉ hiện chẩn đoán ban đầu và kết luận cuối, không thống kê được số ca theo từng bệnh. Đề bài không yêu cầu thống kê theo bệnh.
+
+### 16. Vết chấn thương chưa lành chặn đóng bệnh án; ngựa chữa viêm phổi mà còn một vết xước nhỏ thì không đóng được?
+
+**Trả lời:** Đúng, có chủ đích: bệnh án chỉ đóng khi mọi vết chấn thương đã ghi đều được bác sĩ xác nhận lành, để không có vết nào bị bỏ quên khi kết thúc điều trị. Vết đã lành thì bác sĩ cập nhật ở buổi tái khám rồi đóng. Ngựa mất thì đóng được dù còn vết.
+
+### 17. Bệnh án kéo dài vì vấn đề phụ thì có chặn bán ngựa lâu không?
+
+**Trả lời:** Bán ra ngoài bị chặn khi còn bệnh án mở, vì ngựa đang điều trị thì CLB phải chữa xong hoặc chốt đợt điều trị trước khi giao. Chuyển chủ nội bộ không bị chặn: bệnh án tiếp tục, chi phí từng buổi khám tính cho người là chủ vào ngày khám.
+
+### 18. Hai bác sĩ cùng chữa hai vấn đề trong một bệnh án thì ai đóng, tiền tách sao?
+
+**Trả lời:** Bác sĩ nào cũng đóng được bệnh án; kết luận cuối do người đóng ghi, nên hai bác sĩ thống nhất trước khi đóng. Chi phí nằm ở từng buổi khám kèm bác sĩ ghi buổi đó, nên vẫn biết khoản nào thuộc lần khám nào.
+
+**Đánh đổi đã biết:** hệ thống không phân công bệnh án cho riêng một bác sĩ.
+
+### 19. Mở nhầm bệnh án thì sao?
+
+**Trả lời:** Hủy buổi khám đã mở bệnh án thì bệnh án đó chuyển Đã hủy (mở nhầm), bác sĩ mở lại bằng buổi khám đúng. Bệnh án đã đóng thì không mở lại; vấn đề tái phát sau khi đóng thì bác sĩ khám và mở đợt điều trị mới.
+
+## Chăm sóc chuồng
+
+### 20. Ngựa phải nhịn ăn trước mổ thì sao không ngưng được khẩu phần? (F4-3)
+
+**Trả lời:** Khẩu phần là chuẩn "cho ăn gì, bao nhiêu", không phải lệnh từng ngày. Ngày nhịn ăn thì Groom không tick việc Cho ăn trên checklist và ghi chú lý do, HT vẫn thấy ngựa không ăn ngày đó. Đổi hẳn chế độ ăn thì HT tạo bản mới (chép từ bản cũ rồi chỉnh) và duyệt; bản cũ tự lưu trữ, nên vẫn tra được ngựa ăn theo bản nào từng ngày.
+
+**Đánh đổi đã biết:** trong lúc nhịn ăn, Groom vẫn thấy khẩu phần trên app; lệnh nhịn ăn do bác sĩ hoặc HT dặn trực tiếp.
+
+### 21. Groom làm việc rồi nhưng quên tick, qua nửa đêm sao không cho tick bù? (F4-7)
+
+**Trả lời:** Checklist là việc trong ngày. Groom có cả ngày để xác nhận; quá ngày thì checklist khóa và ghi nhận là chưa xong, đúng với việc không được xác nhận kịp. Trạng thái này không ảnh hưởng phí, báo cáo hay đánh giá nào.
+
+**Đánh đổi đã biết:** bệnh viện cho y tá ghi bù sổ cho thuốc (ghi giờ thật, đánh dấu ghi trễ) vì luật bắt hồ sơ thuốc phải đầy đủ; checklist chuồng không có ràng buộc đó nên không làm ghi bù.
