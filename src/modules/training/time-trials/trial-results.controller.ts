@@ -53,7 +53,7 @@ export class TrialResultsController {
   @ApiOperation({
     summary: 'Sửa video, thời gian hoặc ghi chú của một lần chạy thử',
     description:
-      'Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.',
+      'Chỉ Head Trainer đang phụ trách lớp. Lượt đã tập xong: ngựa đã sang khu khác vẫn sửa được, ngựa đã chuyển nhượng hoặc đã mất trả 409; lượt đang tập: ngựa phải thuộc khu mình. Buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.',
   })
   @ApiOkResponse({ type: TrialResultResponseDto })
   update(

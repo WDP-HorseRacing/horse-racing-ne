@@ -78,7 +78,8 @@ export class TrialResultsService {
   /**
    * Ghi một lần chạy thử cho lượt tập, có thể kèm video đã tải lên
    *
-   * - Chỉ Head Trainer phụ trách lớp, buổi TIME_TRIAL đang IN_PROGRESS hoặc đã COMPLETED (không giới hạn thời gian sau khi buổi kết thúc), lượt tập ONGOING hoặc COMPLETED
+   * - Quyền theo TrainingAccessService.assertCanRecordRunResult: lượt đã tập xong thì Head Trainer phụ trách lớp, ngựa sang khu khác vẫn được, ngựa đã chuyển nhượng hoặc đã mất thì 409; lượt đang tập thì thêm điều kiện ngựa thuộc khu mình
+   * - Buổi TIME_TRIAL đang IN_PROGRESS hoặc đã COMPLETED (không giới hạn thời gian sau khi buổi kết thúc), lượt tập ONGOING hoặc COMPLETED
    * - Buổi SCHEDULED hoặc CANCELLED: 409
    * - Video (videoMediaId) phải do chính người ghi tải lên với mục đích TRIAL_VIDEO và đã có trên storage đúng như khai báo; kiểm trước khi mở transaction
    * - Mỗi lần chạy (attemptNo) của một lượt tập chỉ ghi một lần
@@ -89,9 +90,9 @@ export class TrialResultsService {
    * @param body Số lần chạy, thời gian, ghi chú và video (nếu có)
    * @returns Promise trả về lần chạy vừa ghi kèm videoUrl
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không được thao tác lượt tập này
-   * @throws NotFoundException Nếu không có lượt tập, hoặc video không tồn tại hay không do người gọi tải lên
+   * @throws NotFoundException Nếu không có lượt tập, hồ sơ ngựa của lượt đã tập xong đã xóa, hoặc video không tồn tại hay không do người gọi tải lên
    * @throws BadRequestException Nếu video không phải TRIAL_VIDEO, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
-   * @throws ConflictException Nếu buổi hoặc lượt tập sai trạng thái, video chưa có trên storage hoặc lần chạy đã tồn tại
+   * @throws ConflictException Nếu ngựa của lượt đã tập xong đã chuyển nhượng hoặc đã mất, buổi hoặc lượt tập sai trạng thái, video chưa có trên storage hoặc lần chạy đã tồn tại
    */
   async create(
     actor: Actor,
@@ -108,7 +109,7 @@ export class TrialResultsService {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const context = await this.access.findParticipant(manager, participantId);
-      await this.access.assertCanOperateParticipant(
+      await this.access.assertCanRecordRunResult(
         manager,
         actor,
         caller.id,
@@ -126,7 +127,7 @@ export class TrialResultsService {
         manager,
         participantId,
       );
-      await this.access.assertCanOperateParticipant(
+      await this.access.assertCanRecordRunResult(
         manager,
         actor,
         caller.id,
@@ -193,7 +194,7 @@ export class TrialResultsService {
   /**
    * Sửa video, thời gian hoặc ghi chú của một lần chạy thử, kể cả sau khi buổi tập kết thúc
    *
-   * - Chỉ Head Trainer đang phụ trách lớp của lượt tập; không kiểm khu chuồng của ngựa
+   * - Quyền theo TrainingAccessService.assertCanRecordRunResult, như khi ghi lần chạy
    * - Field bỏ trống giữ nguyên; không sửa số lần chạy và người ghi
    * - Video khác null phải do chính người sửa tải lên với mục đích TRIAL_VIDEO và đã có trên storage; kiểm trước khi mở transaction
    * - videoMediaId null: gỡ video khỏi lần chạy, tệp cũ vẫn nằm trên storage
@@ -205,10 +206,10 @@ export class TrialResultsService {
    * @param attemptNo Số lần chạy cần sửa
    * @param body Video, thời gian, ghi chú mới và lý do sửa
    * @returns Promise trả về lần chạy sau khi sửa kèm videoUrl
-   * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không phải Head Trainer phụ trách lớp
-   * @throws NotFoundException Nếu không có lượt tập, không có lần chạy, hoặc video không tồn tại hay không do người gọi tải lên
+   * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không được thao tác lượt tập này
+   * @throws NotFoundException Nếu không có lượt tập, không có lần chạy, hồ sơ ngựa của lượt đã tập xong đã xóa, hoặc video không tồn tại hay không do người gọi tải lên
    * @throws BadRequestException Nếu video không phải TRIAL_VIDEO, sai định dạng, vượt dung lượng hoặc không khớp số liệu khai báo
-   * @throws ConflictException Nếu buổi đã hủy hoặc video chưa có trên storage
+   * @throws ConflictException Nếu ngựa của lượt đã tập xong đã chuyển nhượng hoặc đã mất, buổi đã hủy hoặc video chưa có trên storage
    */
   async update(
     actor: Actor,
@@ -226,10 +227,11 @@ export class TrialResultsService {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
       const context = await this.access.findParticipant(manager, participantId);
-      this.access.assertCanManageClass(
+      await this.access.assertCanRecordRunResult(
+        manager,
         actor,
         caller.id,
-        context.session.trainingClass.headTrainerId,
+        context,
       );
       const session = await this.access.lockedSession(
         manager,

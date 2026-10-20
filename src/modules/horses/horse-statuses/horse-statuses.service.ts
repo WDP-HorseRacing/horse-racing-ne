@@ -89,20 +89,20 @@ interface LifecycleFieldChanges {
   after: { barnId?: null; healthStatus?: HorseHealthStatus };
 }
 
-/** Câu báo khi giải nghệ hoặc chuyển nhượng lúc ngựa đang tập */
-const ONGOING_RUN_LIFECYCLE_MESSAGE =
-  'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng';
+/** Câu báo khi giải nghệ hoặc chuyển nhượng lúc ngựa đang ở buổi tập */
+const ON_SITE_RUN_LIFECYCLE_MESSAGE =
+  'Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới giải nghệ hoặc chuyển nhượng';
 
-/** Lý do hủy lượt đang tập khi ghi nhận ngựa mất */
+/** Lý do hủy lượt chưa kết thúc khi ghi nhận ngựa mất */
 const DECEASED_RUN_CANCEL_REASON = 'Ngựa đã mất';
 
 /**
- * Kiểm vòng đời đích có bị chặn khi ngựa đang tập không
+ * Kiểm vòng đời đích có bị chặn khi ngựa đang ở buổi tập không
  *
  * @param to Trạng thái vòng đời muốn chuyển sang
  * @returns true nếu là giải nghệ hoặc chuyển nhượng
  */
-function blocksOngoingRun(to: HorseLifecycleStatus): boolean {
+function blocksOnSiteRun(to: HorseLifecycleStatus): boolean {
   return (
     to === HorseLifecycleStatus.RETIRED ||
     to === HorseLifecycleStatus.TRANSFERRED
@@ -140,8 +140,8 @@ export class HorseStatusesService {
    * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe và chủ; từ chuyển nhượng thì bắt buộc chọn chủ mới (HORSE_OWNER đang hoạt động, khóa chia sẻ row tài khoản khi kiểm) và mở giai đoạn sở hữu mới, sức khỏe về QUARANTINED tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu"
    * - Gửi ownerId ở trường hợp không phải kích hoạt lại ngựa đã chuyển nhượng: 400
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
-   * - Giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt tập ONGOING: 409
-   * - Ghi nhận đã mất khi ngựa đang có lượt tập ONGOING: lượt đó bị hủy với lý do "Ngựa đã mất" (ongoingRunsCancelled trong nhật ký); đang đua vẫn đổi được
+   * - Giải nghệ hoặc chuyển nhượng khi ngựa đang ở buổi tập (lượt PRESENT, READY, ONGOING): 409
+   * - Ghi nhận đã mất: mọi lượt chưa kết thúc (PLANNED, PRESENT, READY, ONGOING) ở mọi buổi, kể cả buổi đã bắt đầu, bị hủy với lý do "Ngựa đã mất" (unfinishedRunsCancelled trong nhật ký); đang đua vẫn đổi được
    * - Bắt buộc lý do; ghi nhật ký kèm lý do
    * - Gửi đúng trạng thái hiện tại (mọi trạng thái, kể cả ngựa đã mất): 409 "Ngựa <tên> đã ở trạng thái <nhãn trạng thái>", không ghi gì
    * - Nhật ký ghi thêm hệ quả thực sự xảy ra: số lớp bị rút (classesWithdrawn), ô đã trả (stallCode), groom đã kết thúc (groomId), trainingLockReleased, examRequestsDismissed, careSchedulesCancelled, incidentsClosed, raceRegistrationsWithdrawn, chủ trước và sau (ownerId); chăm sóc chuồng chỉ ghi key có xảy ra: feedingPlansArchived, draftFeedingPlansDeleted, careTasksEnded, careTasksDeleted, checklistCancelled; hệ quả không chạy thì không có key
@@ -154,7 +154,7 @@ export class HorseStatusesService {
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa
    * @throws BadRequestException Nếu thiếu, thừa hoặc sai vai trò chủ sở hữu
-   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), gửi đúng trạng thái hiện tại, không được chuyển giữa hai trạng thái, ngựa đã mất, chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở, giải nghệ hay chuyển nhượng khi ngựa đang tập, hoặc chủ sở hữu được chọn không ở trạng thái hoạt động
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa (phải khôi phục trước), gửi đúng trạng thái hiện tại, không được chuyển giữa hai trạng thái, ngựa đã mất, chuyển nhượng hay ghi nhận mất khi ngựa còn bệnh án đang mở, giải nghệ hay chuyển nhượng khi ngựa đang ở buổi tập, hoặc chủ sở hữu được chọn không ở trạng thái hoạt động
    */
   async updateLifecycle(
     actor: Actor,
@@ -344,14 +344,14 @@ export class HorseStatusesService {
         ? { dateOfDeath: today }
         : {};
     if (
-      blocksOngoingRun(body.lifecycleStatus) &&
-      (await this.training.hasOngoingParticipant(manager, id))
+      blocksOnSiteRun(body.lifecycleStatus) &&
+      (await this.training.hasOnSiteParticipant(manager, id))
     ) {
-      throw new ConflictException(ONGOING_RUN_LIFECYCLE_MESSAGE);
+      throw new ConflictException(ON_SITE_RUN_LIFECYCLE_MESSAGE);
     }
-    const ongoingRunsCancelled =
+    const unfinishedRunsCancelled =
       body.lifecycleStatus === HorseLifecycleStatus.DECEASED
-        ? await this.training.cancelOngoingParticipants(
+        ? await this.training.cancelUnfinishedParticipants(
             manager,
             id,
             DECEASED_RUN_CANCEL_REASON,
@@ -403,7 +403,7 @@ export class HorseStatusesService {
         ...dateOfDeath,
         ...fields.after,
         ...applied.after,
-        ...(ongoingRunsCancelled > 0 && { ongoingRunsCancelled }),
+        ...(unfinishedRunsCancelled > 0 && { unfinishedRunsCancelled }),
       },
       reason: body.reason,
       feature: HORSE_AUDIT_FEATURE.LIFECYCLE_AND_DELETION,
@@ -617,10 +617,10 @@ export class HorseStatusesService {
     const transitionError = lifecycleTransitionError(from, to);
     if (transitionError !== null) return transitionError;
     if (
-      blocksOngoingRun(to) &&
-      (await this.training.hasOngoingParticipant(manager, id))
+      blocksOnSiteRun(to) &&
+      (await this.training.hasOnSiteParticipant(manager, id))
     ) {
-      return ONGOING_RUN_LIFECYCLE_MESSAGE;
+      return ON_SITE_RUN_LIFECYCLE_MESSAGE;
     }
     // Nếu không phải chuyển nhượng
     if (!effects.settleMedicalWork || !isReadOnlyLifecycle(to)) return null;

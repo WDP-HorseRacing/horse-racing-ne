@@ -66,3 +66,12 @@ Các câu hội đồng có thể hỏi về những quyết định nghiệp v�
 **Trả lời:** Cố ý để public cho demo bằng script giả lập, vì không có thiết bị đo thật. Khi đưa vào dùng thật thì khóa bằng API key của thiết bị.
 
 **Rủi ro đã biết:** ai có mã lượt đang tập là gửi được số đo giả.
+
+### 11. Sao HT khu khác cũng xem được dữ liệu tập của ngựa không thuộc mình? (F2-3)
+
+**Trả lời:** Đề bài ghi HT "xem bảng tiến độ và biểu đồ thể lực tổng quan của toàn bộ chiến mã trong câu lạc bộ". Hệ thống cho mọi HT xem dữ liệu từng lượt tập của mọi ngựa (kết quả chạy thử, nhịp tim, tốc độ, đánh giá), nhưng chỉ HT phụ trách lớp mới được ghi, sửa kết quả của lượt đó.
+
+**Lý do:**
+- HT cần so ngựa giữa các khu để chọn ngựa đi giải, và HT nhận ngựa từ khu khác cần lịch sử tập để lên giáo án tiếp.
+- Tiền lệ: Hong Kong Jockey Club (một CLB, nhiều trainer cạnh tranh nhau) công khai lịch sử tập luyện, kết quả chạy thử và hồ sơ thú y của từng ngựa.
+- Thứ cần bảo vệ là quyền ghi: chấm điểm, sửa kết quả, điều khiển lượt tập. Lớp, buổi, giáo án vẫn chỉ HT phụ trách lớp xem.

@@ -59,7 +59,7 @@ export class PerformanceEvaluationsController {
   @ApiOperation({
     summary: 'Sửa điểm hoặc nhận xét của đánh giá lượt tập',
     description:
-      'Chỉ Head Trainer phụ trách lớp, ngựa thuộc khu mình; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Bắt buộc reason; field bỏ trống giữ nguyên, comment null để xóa nhận xét.',
+      'Chỉ Head Trainer phụ trách lớp, kể cả khi ngựa đã sang khu khác; ngựa đã chuyển nhượng hoặc đã mất trả 409; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Bắt buộc reason; field bỏ trống giữ nguyên, comment null để xóa nhận xét.',
   })
   @ApiOkResponse({ type: PerformanceEvaluationResponseDto })
   update(

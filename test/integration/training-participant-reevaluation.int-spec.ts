@@ -416,26 +416,35 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       ]);
     });
 
-    it('cancels the ongoing run of a horse that dies and lets its session close', async () => {
-      const winx = await horse();
-      const running = await session(-0.5);
-      const run = await participant(running, winx, 'ONGOING');
+    it.each(['PLANNED', 'PRESENT', 'READY', 'ONGOING'])(
+      'cancels the %s run of a horse that dies and lets its session close',
+      async (status) => {
+        const winx = await horse();
+        const running = await session(-0.5);
+        const run = await participant(running, winx, status);
 
-      const cancelled = await dataSource.transaction((manager) =>
-        facade.cancelOngoingParticipants(manager, winx.horseId, 'Ngựa đã mất'),
-      );
+        const cancelled = await dataSource.transaction((manager) =>
+          facade.cancelUnfinishedParticipants(
+            manager,
+            winx.horseId,
+            'Ngựa đã mất',
+          ),
+        );
 
-      expect(cancelled).toBe(1);
-      await expect(
-        dataSource.query(
-          'SELECT status, cancel_reason FROM session_participants WHERE id = $1',
-          [run],
-        ),
-      ).resolves.toEqual([
-        { status: 'CANCELLED', cancel_reason: 'Ngựa đã mất' },
-      ]);
-      expect(await sessionRow(running)).toMatchObject({ status: 'CANCELLED' });
-    });
+        expect(cancelled).toBe(1);
+        await expect(
+          dataSource.query(
+            'SELECT status, cancel_reason FROM session_participants WHERE id = $1',
+            [run],
+          ),
+        ).resolves.toEqual([
+          { status: 'CANCELLED', cancel_reason: 'Ngựa đã mất' },
+        ]);
+        expect(await sessionRow(running)).toMatchObject({
+          status: 'CANCELLED',
+        });
+      },
+    );
   });
 
   describe('auto-close job', () => {

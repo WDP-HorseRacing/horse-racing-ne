@@ -24,7 +24,7 @@ describe('PerformanceEvaluationsService.create', () => {
     {
       currentUser: jest.fn().mockResolvedValue({ id: 'ht-1' }),
       findParticipant: jest.fn().mockResolvedValue({ id: 'p1' }),
-      assertCanOperateParticipant: jest.fn(),
+      assertCanRecordRunResult: jest.fn(),
     } as unknown as TrainingAccessService,
     {
       assertParticipantFinished: jest.fn(),
@@ -63,7 +63,7 @@ describe('PerformanceEvaluationsService.update', () => {
   let access: {
     currentUser: jest.Mock;
     findParticipant: jest.Mock;
-    assertCanOperateParticipant: jest.Mock;
+    assertCanRecordRunResult: jest.Mock;
     lockedSession: jest.Mock;
   };
   let audit: { record: jest.Mock };
@@ -85,7 +85,7 @@ describe('PerformanceEvaluationsService.update', () => {
       findParticipant: jest
         .fn()
         .mockResolvedValue({ id: 'p1', sessionId: 's1' }),
-      assertCanOperateParticipant: jest.fn().mockResolvedValue(undefined),
+      assertCanRecordRunResult: jest.fn().mockResolvedValue(undefined),
       lockedSession: jest.fn().mockResolvedValue(endedSession()),
     };
     audit = { record: jest.fn() };
@@ -133,7 +133,7 @@ describe('PerformanceEvaluationsService.update', () => {
   });
 
   it('rejects a caller who may not operate the participant (403)', async () => {
-    access.assertCanOperateParticipant.mockRejectedValue(
+    access.assertCanRecordRunResult.mockRejectedValue(
       new ForbiddenException(
         'Lượt tập thuộc lớp của Huấn luyện viên trưởng khác',
       ),

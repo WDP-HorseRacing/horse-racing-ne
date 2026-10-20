@@ -48,8 +48,8 @@ describe('HorsePlacementsService', () => {
   let grooms: { assignInTransaction: jest.Mock };
   let training: {
     withdrawHorseFromClasses: jest.Mock;
-    assertNoOngoingParticipantInClassesToWithdraw: jest.Mock;
-    hasOngoingParticipantInClassesToWithdraw: jest.Mock;
+    assertNoOnSiteParticipantInClassesToWithdraw: jest.Mock;
+    hasOnSiteParticipantInClassesToWithdraw: jest.Mock;
   };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
@@ -166,10 +166,10 @@ describe('HorsePlacementsService', () => {
       }),
     };
     training = {
-      hasOngoingParticipantInClassesToWithdraw: jest.fn(() =>
+      hasOnSiteParticipantInClassesToWithdraw: jest.fn(() =>
         Promise.resolve(false),
       ),
-      assertNoOngoingParticipantInClassesToWithdraw: jest.fn(
+      assertNoOnSiteParticipantInClassesToWithdraw: jest.fn(
         track('assertNoOngoing'),
       ),
       withdrawHorseFromClasses: jest.fn(
@@ -332,14 +332,14 @@ describe('HorsePlacementsService', () => {
   });
 
   it('rejects with 409 before any write when the horse is training in a class to withdraw', async () => {
-    training.assertNoOngoingParticipantInClassesToWithdraw.mockRejectedValue(
+    training.assertNoOnSiteParticipantInClassesToWithdraw.mockRejectedValue(
       new ConflictException('Ngựa đang tập'),
     );
     await expect(assign('b2')).rejects.toThrow(
       new ConflictException('Ngựa đang tập'),
     );
     expect(
-      training.assertNoOngoingParticipantInClassesToWithdraw,
+      training.assertNoOnSiteParticipantInClassesToWithdraw,
     ).toHaveBeenCalledWith(manager, HORSE_ID, 'ht-2');
     expectNoWrite();
   });
@@ -494,16 +494,16 @@ describe('HorsePlacementsService', () => {
     });
 
     it('returns allowed = false with the 409 sentence when the horse is training in a class to withdraw', async () => {
-      training.hasOngoingParticipantInClassesToWithdraw.mockResolvedValue(true);
+      training.hasOnSiteParticipantInClassesToWithdraw.mockResolvedValue(true);
 
       const result = await preview();
 
       expect(
-        training.hasOngoingParticipantInClassesToWithdraw,
+        training.hasOnSiteParticipantInClassesToWithdraw,
       ).toHaveBeenCalledWith(manager, HORSE_ID, 'ht-2');
       expect(result).toMatchObject({
         allowed: false,
-        blockedReason: 'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu',
+        blockedReason: 'Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới đổi khu',
         stallReleased: null,
         classesWithdrawn: 0,
         summary: null,
@@ -512,7 +512,7 @@ describe('HorsePlacementsService', () => {
     });
 
     it('keeps the earlier reason when the horse is already in that barn', async () => {
-      training.hasOngoingParticipantInClassesToWithdraw.mockResolvedValue(true);
+      training.hasOnSiteParticipantInClassesToWithdraw.mockResolvedValue(true);
       barnQuery.getOne.mockResolvedValue({
         id: 'b1',
         name: 'Khu A',

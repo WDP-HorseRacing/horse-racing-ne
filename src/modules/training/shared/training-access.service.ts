@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { DataSource, EntityManager, In, Not } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { HORSE_NOT_FOUND_MESSAGE } from '../../horses/constants/horse.constants';
 import { HorseEntity } from '../../horses/entities/horse.entity';
+import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import { UserRole, UserStatus } from '../../users/user.enums';
@@ -27,6 +29,7 @@ import {
   HORSE_SCHEDULE_SESSION_STATUSES,
 } from '../policies/training.policy';
 import { toGroomRun } from '../utils/groom-run';
+import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
 import type {
   GroomRun,
   HeadTrainerSession,
@@ -620,6 +623,20 @@ export class TrainingAccessService {
     return participant;
   }
 
+  /**
+   * Kiểm người gọi có được xem một lượt tập không
+   *
+   * - Club Manager, Veterinarian: xem mọi lượt
+   * - Groom: lượt được giao cho mình
+   * - Head Trainer: mọi lượt, không xét lớp hay khu
+   * - Horse Owner: lượt của ngựa mình đang là chủ
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param participant Lượt tập đã tải kèm buổi và lớp
+   * @param manager EntityManager dùng để query
+   * @returns Promise trả về true nếu được xem
+   */
   async canReadParticipant(
     actor: Actor,
     callerId: string,
@@ -635,18 +652,7 @@ export class TrainingAccessService {
     if (actor.roles.includes(UserRole.GROOM)) {
       if (participant.assignedGroomId === callerId) return true;
     }
-    if (actor.roles.includes(UserRole.HEAD_TRAINER)) {
-      if (
-        participant.session.trainingClass.headTrainerId === callerId &&
-        (await this.horseAccess.isHorseInTrainerBarn(
-          manager,
-          participant.horseId,
-          callerId,
-        ))
-      ) {
-        return true;
-      }
-    }
+    if (actor.roles.includes(UserRole.HEAD_TRAINER)) return true;
     if (actor.roles.includes(UserRole.HORSE_OWNER)) {
       return manager.existsBy(HorseEntity, {
         id: participant.horseId,
@@ -771,6 +777,39 @@ export class TrainingAccessService {
     throw new ForbiddenException('Bạn không được thao tác trên lượt tập này');
   }
 
+  /**
+   * Chặn ghi kết quả (đánh giá, kết quả chạy thử) trên một lượt tập
+   *
+   * - Lượt đã tập xong (COMPLETED, STOPPED): theo assertCanEditFinishedRun, không kiểm khu hiện tại của ngựa
+   * - Lượt khác: theo assertCanOperateParticipant
+   *
+   * @param manager EntityManager dùng để query
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param participant Lượt tập đã tải kèm buổi, lớp và ngựa (findParticipant)
+   * @returns Promise hoàn tất khi kiểm tra xong
+   * @throws ForbiddenException Nếu người gọi không được thao tác lượt tập này
+   * @throws NotFoundException Nếu lượt đã tập xong mà hồ sơ ngựa đã xóa
+   * @throws ConflictException Nếu lượt đã tập xong mà ngựa đã chuyển nhượng hoặc đã mất
+   */
+  async assertCanRecordRunResult(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    participant: SessionParticipantEntity,
+  ): Promise<void> {
+    if (TRAINED_PARTICIPANT_STATUSES.includes(participant.status)) {
+      this.assertCanEditFinishedRun(actor, callerId, participant);
+      return;
+    }
+    await this.assertCanOperateParticipant(
+      manager,
+      actor,
+      callerId,
+      participant,
+    );
+  }
+
   async assertCanOperateSession(
     manager: EntityManager,
     actor: Actor,
@@ -841,5 +880,38 @@ export class TrainingAccessService {
       .orderBy('class.code', 'ASC')
       .getRawMany<{ code: string }>();
     return rows.map((row) => row.code);
+  }
+
+  /**
+   * Chặn sửa dữ liệu của lượt đã tập xong
+   *
+   * - Chỉ Head Trainer phụ trách lớp của lượt; ngựa đã sang khu khác vẫn được
+   * - Hồ sơ ngựa đã xóa: 404
+   * - Ngựa đã chuyển nhượng hoặc đã mất: 409, hồ sơ chỉ được xem
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param participant Lượt tập đã tải kèm buổi, lớp và ngựa (findParticipant)
+   * @throws ForbiddenException Nếu người gọi không phải Head Trainer phụ trách lớp của lượt
+   * @throws NotFoundException Nếu hồ sơ ngựa đã xóa
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
+   */
+  private assertCanEditFinishedRun(
+    actor: Actor,
+    callerId: string,
+    participant: SessionParticipantEntity,
+  ): void {
+    if (
+      !actor.roles.includes(UserRole.HEAD_TRAINER) ||
+      participant.session.trainingClass.headTrainerId !== callerId
+    ) {
+      throw new ForbiddenException(
+        'Lượt tập thuộc lớp của Huấn luyện viên trưởng khác',
+      );
+    }
+    if (!participant.horse || participant.horse.deletedAt) {
+      throw new NotFoundException(HORSE_NOT_FOUND_MESSAGE);
+    }
+    assertLifecycleWritable(participant.horse);
   }
 }

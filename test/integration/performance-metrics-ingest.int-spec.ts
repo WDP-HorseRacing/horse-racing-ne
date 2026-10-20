@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { type Model, Types } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
@@ -319,15 +319,15 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
       expect(summary.avgHeartRateBpm).toBeNull();
     });
 
-    it('hides the participant from a head trainer of another class', async () => {
+    it('lets a head trainer of another class read the participant metrics', async () => {
       const { participantId } = await seedParticipant();
       const other = await actorFor(
         await seed.user(UserRole.HEAD_TRAINER),
         UserRole.HEAD_TRAINER,
       );
 
-      await expect(service.list(other, participantId)).rejects.toThrow(
-        NotFoundException,
+      await expect(service.list(other, participantId)).resolves.toEqual(
+        expect.any(Array),
       );
     });
   });

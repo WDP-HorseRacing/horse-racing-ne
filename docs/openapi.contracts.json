@@ -1279,7 +1279,7 @@
     },
     "/api/v1/horses/{horseId}/barn-preview": {
       "get": {
-        "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt. allowed = false kèm blockedReason khi không đổi được, kể cả khi ngựa đang tập ở lớp sẽ bị rút.",
+        "description": "Không ghi gì. Trả về ô sẽ được trả, số lớp sẽ bị rút, Groom giữ nguyên, Head Trainer khu mới và câu tóm tắt. allowed = false kèm blockedReason khi không đổi được, kể cả khi ngựa đang ở buổi tập (đã điểm danh, sẵn sàng hoặc đang tập) của lớp sẽ bị rút.",
         "operationId": "HorsePlacementsController_previewBarnChange",
         "parameters": [
           {
@@ -1326,7 +1326,7 @@
     },
     "/api/v1/horses/{horseId}/barn": {
       "put": {
-        "description": "Chỉ Club Manager. Bắt buộc lý do khi đổi khu (ngựa đã có khu); xếp khu lần đầu thì bỏ trống được. Khu phải đang hoạt động, có Head Trainer và còn ô trống. Đổi khu thì ô cũ được trả về trống, ngựa vào \"Chờ xếp ô\" của khu mới, Groom giữ nguyên. Ngựa đã chuyển nhượng trả 409.",
+        "description": "Chỉ Club Manager. Bắt buộc lý do khi đổi khu (ngựa đã có khu); xếp khu lần đầu thì bỏ trống được. Khu phải đang hoạt động, có Head Trainer và còn ô trống. Đổi khu thì ô cũ được trả về trống, ngựa vào \"Chờ xếp ô\" của khu mới, Groom giữ nguyên. Ngựa đã chuyển nhượng trả 409. Ngựa đang ở buổi tập (lượt PRESENT, READY hoặc ONGOING) của lớp sẽ bị rút trả 409.",
         "operationId": "HorsePlacementsController_assignBarn",
         "parameters": [
           {
@@ -1921,7 +1921,7 @@
     },
     "/api/v1/horses/{horseId}/lifecycle-status": {
       "patch": {
-        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt chăm sóc chuồng (khẩu phần ACTIVE thành ARCHIVED, xóa bản nháp, việc riêng đang chạy kết thúc ở hôm nay, xóa việc riêng chưa bắt đầu, checklist hôm nay chưa xong thành CANCELLED), kết thúc giai đoạn sở hữu và bỏ trống chủ. Ghi nhận đã mất (DECEASED, từ ACTIVE hoặc RETIRED): ngày mất ghi là hôm nay theo lịch câu lạc bộ, dọn như chuyển nhượng, giữ chủ sở hữu, không đặt lại sức khỏe; ngựa đã mất không đổi được vòng đời (409). Chuyển nhượng hoặc ghi nhận mất khi còn bệnh án đang mở trả 409. Kích hoạt lại từ chuyển nhượng: sức khỏe về QUARANTINED; từ giải nghệ giữ nguyên sức khỏe.",
+        "description": "Bắt buộc lý do. Giải nghệ: rút khỏi các lớp đang học, rút đăng ký thi đấu chưa diễn ra. Chuyển nhượng: thêm trả ô, kết thúc groom, bỏ khu, tự gỡ khóa huấn luyện, chốt chăm sóc chuồng (khẩu phần ACTIVE thành ARCHIVED, xóa bản nháp, việc riêng đang chạy kết thúc ở hôm nay, xóa việc riêng chưa bắt đầu, checklist hôm nay chưa xong thành CANCELLED), kết thúc giai đoạn sở hữu và bỏ trống chủ. Ghi nhận đã mất (DECEASED, từ ACTIVE hoặc RETIRED): ngày mất ghi là hôm nay theo lịch câu lạc bộ, dọn như chuyển nhượng, giữ chủ sở hữu, không đặt lại sức khỏe; ngựa đã mất không đổi được vòng đời (409). Chuyển nhượng hoặc ghi nhận mất khi còn bệnh án đang mở trả 409. Giải nghệ hoặc chuyển nhượng khi ngựa đang ở buổi tập (lượt PRESENT, READY hoặc ONGOING) trả 409. Kích hoạt lại từ chuyển nhượng: sức khỏe về QUARANTINED; từ giải nghệ giữ nguyên sức khỏe.",
         "operationId": "HorseStatusesController_updateLifecycle",
         "parameters": [
           {
@@ -3971,7 +3971,7 @@
         ]
       },
       "patch": {
-        "description": "Chỉ Head Trainer phụ trách lớp, ngựa thuộc khu mình; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Bắt buộc reason; field bỏ trống giữ nguyên, comment null để xóa nhận xét.",
+        "description": "Chỉ Head Trainer phụ trách lớp, kể cả khi ngựa đã sang khu khác; ngựa đã chuyển nhượng hoặc đã mất trả 409; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Bắt buộc reason; field bỏ trống giữ nguyên, comment null để xóa nhận xét.",
         "operationId": "PerformanceEvaluationsController_update",
         "parameters": [
           {
@@ -7658,7 +7658,7 @@
     },
     "/api/v1/session-participants/{id}/trial-results/{attemptNo}": {
       "patch": {
-        "description": "Chỉ Head Trainer đang phụ trách lớp; buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.",
+        "description": "Chỉ Head Trainer đang phụ trách lớp. Lượt đã tập xong: ngựa đã sang khu khác vẫn sửa được, ngựa đã chuyển nhượng hoặc đã mất trả 409; lượt đang tập: ngựa phải thuộc khu mình. Buổi chưa hủy, không giới hạn thời gian sau khi buổi kết thúc. Field bỏ trống giữ nguyên; gửi videoMediaId null để gỡ video, notes null để xóa ghi chú. Gửi elapsedMs hoặc notes thì phải kèm reason. Không sửa số lần chạy.",
         "operationId": "TrialResultsController_update",
         "parameters": [
           {

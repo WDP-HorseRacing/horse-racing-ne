@@ -22,7 +22,10 @@ import {
 import type { ParticipantEligibilityChange } from '../types/training-session.types';
 import { toGroomRun } from '../utils/groom-run';
 import { TrainingAccessService } from './training-access.service';
-import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
+import {
+  ON_SITE_PARTICIPANT_STATUSES,
+  TRAINED_PARTICIPANT_STATUSES,
+} from '../constants/participant-window.constants';
 
 /**
  * Tham số khi hệ thống tự rút một con ngựa khỏi lớp.
@@ -66,10 +69,10 @@ const HAPPENED_PARTICIPANT_STATUSES = [
 ];
 
 /**
- * Câu báo khi ngựa đang tập ở lớp sẽ bị rút nên không đổi khu được
+ * Câu báo khi ngựa đang ở buổi tập của lớp sẽ bị rút nên không đổi khu được
  */
-export const ONGOING_PARTICIPANT_BARN_CHANGE_REASON =
-  'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu';
+export const ON_SITE_PARTICIPANT_BARN_CHANGE_REASON =
+  'Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới đổi khu';
 
 const NO_PARTICIPANT_LEFT_REASON = 'Không còn ngựa tham gia';
 
@@ -176,17 +179,34 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Kiểm ngựa có đang tập ở lớp sẽ bị rút khi đổi khu không
+   * Kiểm ngựa có đang ở buổi tập không, tức có lượt PRESENT, READY hoặc ONGOING ở bất kỳ lớp nào
    *
-   * - Chỉ xét lượt ONGOING thuộc ghi danh ACTIVE của lớp mà withdrawHorseFromClasses sẽ rút
+   * @param manager EntityManager dùng để đọc
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về true nếu ngựa có lượt tập đã điểm danh mà chưa kết thúc
+   */
+  hasOnSiteParticipant(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<boolean> {
+    return manager.existsBy(SessionParticipantEntity, {
+      horseId,
+      status: In(ON_SITE_PARTICIPANT_STATUSES),
+    });
+  }
+
+  /**
+   * Kiểm ngựa có đang ở buổi tập của lớp sẽ bị rút khi đổi khu không
+   *
+   * - Chỉ xét lượt PRESENT, READY, ONGOING thuộc ghi danh ACTIVE của lớp mà withdrawHorseFromClasses sẽ rút
    * - Có `exceptHeadTrainerId` thì lớp do Head Trainer đó phụ trách không tính (lớp được giữ lại)
    *
    * @param manager EntityManager dùng để đọc
    * @param horseId UUID của ngựa
    * @param exceptHeadTrainerId UUID Head Trainer khu mới, bỏ trống nếu khu mới chưa có
-   * @returns Promise trả về true nếu ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút
+   * @returns Promise trả về true nếu ngựa có lượt tập đã điểm danh mà chưa kết thúc ở lớp sẽ bị rút
    */
-  async hasOngoingParticipantInClassesToWithdraw(
+  async hasOnSiteParticipantInClassesToWithdraw(
     manager: EntityManager,
     horseId: string,
     exceptHeadTrainerId?: string,
@@ -197,8 +217,8 @@ export class TrainingOperationsFacade {
       .innerJoin('participant.horseEnrollment', 'enrollment')
       .innerJoin('enrollment.trainingClass', 'class')
       .where('participant.horse_id = :horseId', { horseId })
-      .andWhere('participant.status = :status', {
-        status: SessionParticipantStatus.ONGOING,
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: ON_SITE_PARTICIPANT_STATUSES,
       })
       .andWhere('enrollment.status = :enrollmentStatus', {
         enrollmentStatus: HorseEnrollmentStatus.ACTIVE,
@@ -213,30 +233,30 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Chặn đổi khu khi ngựa đang tập ở lớp sẽ bị rút, chạy trong transaction của nơi gọi
+   * Chặn đổi khu khi ngựa đang ở buổi tập của lớp sẽ bị rút, chạy trong transaction của nơi gọi
    *
-   * - Điều kiện chặn như hasOngoingParticipantInClassesToWithdraw
+   * - Điều kiện chặn như hasOnSiteParticipantInClassesToWithdraw
    * - Nơi gọi giữ lock pessimistic_write trên row ngựa
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param exceptHeadTrainerId UUID Head Trainer khu mới, bỏ trống nếu khu mới chưa có
    * @returns Promise trả về khi kiểm tra xong
-   * @throws ConflictException Nếu ngựa đang có lượt tập ONGOING ở lớp sẽ bị rút
+   * @throws ConflictException Nếu ngựa có lượt PRESENT, READY hoặc ONGOING ở lớp sẽ bị rút
    */
-  async assertNoOngoingParticipantInClassesToWithdraw(
+  async assertNoOnSiteParticipantInClassesToWithdraw(
     manager: EntityManager,
     horseId: string,
     exceptHeadTrainerId?: string,
   ): Promise<void> {
     if (
-      await this.hasOngoingParticipantInClassesToWithdraw(
+      await this.hasOnSiteParticipantInClassesToWithdraw(
         manager,
         horseId,
         exceptHeadTrainerId,
       )
     ) {
-      throw new ConflictException(ONGOING_PARTICIPANT_BARN_CHANGE_REASON);
+      throw new ConflictException(ON_SITE_PARTICIPANT_BARN_CHANGE_REASON);
     }
   }
 
@@ -456,22 +476,22 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Hủy các lượt đang tập của một con ngựa rồi cập nhật trạng thái các buổi liên quan, chạy trong transaction của nơi gọi
+   * Hủy mọi lượt chưa kết thúc của một con ngựa rồi cập nhật trạng thái các buổi liên quan, chạy trong transaction của nơi gọi
    *
-   * - Chỉ xét lượt ONGOING; khóa từng lượt theo thứ tự UUID
+   * - Xét lượt PLANNED, PRESENT, READY, ONGOING ở mọi buổi, kể cả buổi đã bắt đầu; khóa từng lượt theo thứ tự UUID
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param reason Lý do hủy ghi vào từng lượt
    * @returns Promise trả về số lượt đã hủy
    */
-  async cancelOngoingParticipants(
+  async cancelUnfinishedParticipants(
     manager: EntityManager,
     horseId: string,
     reason: string,
   ): Promise<number> {
     const participants = await manager.find(SessionParticipantEntity, {
-      where: { horseId, status: SessionParticipantStatus.ONGOING },
+      where: { horseId, status: In(NON_TERMINAL_PARTICIPANT_STATUSES) },
       order: { id: 'ASC' },
       lock: { mode: 'pessimistic_write' },
     });

@@ -21,6 +21,32 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Ngựa mua lại từ ngoài chưa rõ tình trạng. Trước đây ngựa về Cần theo dõi nên vẫn tập buổi Nhẹ được trước khi bác sĩ khám.
 
+### F2-3: Ngựa đã điểm danh thì chưa đổi khu, giải nghệ, chuyển nhượng; HT xem mọi lượt, HT của lớp giữ quyền ghi lượt đã tập xong
+
+**Luật / hành vi API mới**
+1. Ngựa có lượt `PRESENT`, `READY` hoặc `ONGOING` (đã điểm danh, chưa kết thúc lượt) là "đang ở buổi tập". Trước chỉ `ONGOING` mới chặn.
+   - Đổi khu (`PUT /horses/:horseId/barn`, lượt thuộc lớp sẽ bị rút): 409 "Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới đổi khu". `GET /horses/:horseId/barn-preview` trả `allowed: false`, `blockedReason` đúng câu này.
+   - Giải nghệ, chuyển nhượng (`PATCH /horses/:horseId/lifecycle-status`): 409 "Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới giải nghệ hoặc chuyển nhượng". Preview lifecycle trả `allowed: false` với câu này.
+   - Lượt `PLANNED` và lượt đã kết thúc không chặn.
+   - Ghi nhận ngựa mất không bị chặn. Mọi lượt `PLANNED`, `PRESENT`, `READY`, `ONGOING` của ngựa ở mọi buổi (kể cả buổi đã bắt đầu) chuyển `CANCELLED`, `cancelReason` "Ngựa đã mất". Trước: chỉ hủy `ONGOING`; lượt của buổi đã bắt đầu thì `PLANNED` cuối buổi thành `ABSENT` ("Hết giờ, chưa điểm danh"), `PRESENT`/`READY` thành `SKIPPED`; lượt buổi chưa tới giờ có `cancelReason` "Ngựa mất: <lý do>". Nhật ký vòng đời ghi `unfinishedRunsCancelled` (thay `ongoingRunsCancelled`).
+2. Xem từng lượt: mọi HT xem được mọi lượt, không xét lớp hay khu (trước: HT của lớp và ngựa đang ở khu mình). Groom chỉ lượt mình dắt, chủ ngựa chỉ ngựa mình.
+   - Áp dụng: `GET /session-participants/:id/trial-results`, `GET /session-participants/:id/metrics`, `GET /session-participants/:id/performance-summary`, `GET /session-participants/:id/evaluation`.
+   - `GET /session-participants/:id/evaluation` trước xét theo khu và cho Groom xem mọi ngựa; nay theo luật trên: Groom không dắt lượt đó nhận 404 "Không tìm thấy lượt tập".
+   - `GET /training-sessions/:sessionId/participants` vẫn chỉ HT của lớp mở được buổi; HT của lớp thấy mọi lượt trong buổi, kể cả ngựa đã sang khu khác.
+3. Ghi, sửa lượt đã tập xong (`COMPLETED`, `STOPPED`): chỉ HT phụ trách lớp, kể cả khi ngựa đã sang khu của HT khác. HT khác 403 "Lượt tập thuộc lớp của Huấn luyện viên trưởng khác".
+   - Áp dụng: `POST`/`PATCH /session-participants/:id/evaluation`, `POST /session-participants/:id/trial-results`, `PATCH /session-participants/:id/trial-results/:attemptNo`.
+   - Ngựa đã chuyển nhượng hoặc đã mất: vẫn xem, ghi/sửa trả 409 "Ngựa đã chuyển nhượng, hồ sơ chỉ được xem" / "Ngựa đã mất, hồ sơ chỉ được xem".
+4. `PATCH /session-participants/:id/trial-results/:attemptNo` sai HT trả 403 câu "Lượt tập thuộc lớp của Huấn luyện viên trưởng khác" (trước là "Lớp thuộc Huấn luyện viên trưởng khác"). Lượt còn `ONGOING` thì ngựa phải thuộc khu người gọi như các thao tác khác trên lượt đang tập.
+
+**FE cần sửa**
+- Hiện `blockedReason` của preview đổi khu, preview vòng đời như cũ; không tự suy "đang tập" từ `ONGOING`.
+- Từ tab Huấn luyện của ngựa, mọi HT mở được chi tiết lượt, kết quả chạy thử, nhịp tim, đánh giá; chỉ hiện nút ghi/sửa khi người xem là HT của lớp.
+- Màn lượt tập của lớp: không ẩn nút đánh giá, sửa kết quả chạy thử chỉ vì ngựa đã sang khu khác. Ngựa đã chuyển nhượng, đã mất thì ẩn nút ghi/sửa hoặc hiện câu 409.
+
+**Lý do**
+- Ngựa đã điểm danh đang ở sân tập, đổi khu hay bán lúc đó làm lượt tập mồ côi. Lượt đã tập là việc của lớp nên HT của lớp phải hoàn tất được đánh giá, kết quả.
+- Requirement cho HT xem tổng quan toàn bộ ngựa trong CLB; tab Huấn luyện của ngựa vốn đã cho mọi HT xem, nên API theo lượt mở cùng luật. Quyền ghi vẫn chỉ HT của lớp.
+
 ### F2-4: Điểm danh lại lượt đã báo vắng nhầm
 
 **Luật / hành vi API mới**

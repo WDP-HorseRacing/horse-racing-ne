@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 19/10/2026
+> Cập nhật: 20/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -512,7 +512,8 @@ CLUB MANAGER quyết định con ngựa thuộc khu chuồng nào. Khu chuồng 
    - Phân công GROOM giữ nguyên, vì GROOM gắn với con ngựa chứ không gắn với khu.
    - Ngựa bị rút khỏi mọi lớp đang học không do HEAD TRAINER khu mới phụ trách (lớp của HEAD TRAINER khu cũ, của HEAD TRAINER khác hoặc lớp chưa có HEAD TRAINER). Khu mới cùng HEAD TRAINER với khu cũ thì giữ nguyên lớp. *(BA chốt)* Các buổi chưa diễn ra biến mất khỏi lịch của con ngựa, các buổi đã học giữ nguyên lịch sử.
    - HEAD TRAINER khu mới nhận thông báo và đăng ký lớp lại nếu cần.
-   - Ngựa đang có lượt tập đang diễn ra (ONGOING) ở lớp sẽ bị rút thì không đổi khu được (409), phải chờ hoàn thành lượt tập. Khu mới cùng HEAD TRAINER với lớp thì lớp được giữ nên không bị chặn.
+   - Ngựa đang ở buổi tập (lượt đã điểm danh Có mặt, Sẵn sàng hoặc Đang tập) của lớp sẽ bị rút thì không đổi khu được (409 "Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới đổi khu"), phải chờ lượt kết thúc (hoàn thành, dừng sớm, bỏ lượt...). Lượt Chờ điểm danh không chặn. Khu mới cùng HEAD TRAINER với lớp thì lớp được giữ nên không bị chặn.
+   - Lượt đã tập xong trước khi đổi khu vẫn thuộc lớp cũ: HEAD TRAINER của lớp vẫn ghi và sửa đánh giá, kết quả chạy thử của lượt đó; HEAD TRAINER khu mới (như mọi HEAD TRAINER) xem được nhưng không sửa (Flow 2 mục 8 Phân quyền).
    - Bảng xem trước hệ quả đổi khu (`GET /horses/:id/barn-preview`) báo trường hợp này bằng `allowed = false` và `blockedReason` là đúng câu 409 của đổi khu thật.
 5. Chỉ xếp khu và đổi khu cho ngựa ở trạng thái Đang hoạt động hoặc Đã giải nghệ. Ngựa đã chuyển nhượng hoặc hồ sơ đã xóa thì không thao tác được.
 6. Bắt buộc nhập lý do khi đổi khu (ngựa đã có khu). Xếp khu lần đầu (ngựa đang Chờ xếp khu) không bắt lý do. Ghi nhật ký thao tác. *(BA chốt)*
@@ -640,7 +641,7 @@ Chuyển ngựa sang Đã giải nghệ, Đã chuyển nhượng hoặc Đã m�
 5. Mọi thao tác trong chức năng này bắt buộc nhập lý do, phải hiện bảng liệt kê hệ quả để xác nhận trước khi thực hiện, và phải thành công hoặc thất bại cùng nhau (Atomic). Thời điểm hiệu lực là lúc lưu, hệ thống không nhận ngày hiệu lực lùi về trước; phí ngày tính theo thời điểm này, nên ghi nhận trễ thì những ngày trễ vẫn tính theo trạng thái cũ. Ghi nhận kịp thời là trách nhiệm của CLUB MANAGER.
 6. Ghi nhật ký thao tác kèm lý do.
 7. Giải nghệ, kích hoạt lại: báo HORSE OWNER hiện tại (đang hoạt động) vòng đời mới kèm lý do; kích hoạt lại từ chuyển nhượng báo chủ mới. Chuyển nhượng ra ngoài: báo chủ vừa kết thúc sở hữu (nếu còn hoạt động) một lần cuối, thông báo không gắn link tới ngựa vì chủ cũ không mở được hồ sơ nữa. Ghi nhận đã mất báo như trước (chủ, HEAD TRAINER khu cũ, Groom cũ, CLUB MANAGER).
-8. Buổi tập đang diễn ra lúc đổi vòng đời: giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt Đang tập bị chặn 409 ("Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng"), xem trước cũng báo lý do này; ghi nhận đã mất thì lượt Đang tập bị hủy với lý do "Ngựa đã mất" (nhật ký ghi `ongoingRunsCancelled`). Các buổi chưa diễn ra bị hủy như trước.
+8. Buổi tập đang diễn ra lúc đổi vòng đời: giải nghệ hoặc chuyển nhượng khi ngựa đang ở buổi tập (lượt Có mặt, Sẵn sàng hoặc Đang tập) bị chặn 409 ("Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới giải nghệ hoặc chuyển nhượng"), xem trước cũng báo lý do này; ghi nhận đã mất thì mọi lượt chưa kết thúc (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) ở mọi buổi, kể cả buổi đã bắt đầu, bị hủy với lý do "Ngựa đã mất" (nhật ký ghi `unfinishedRunsCancelled`, trước là `ongoingRunsCancelled` chỉ đếm lượt Đang tập). Lượt Hủy do khóa, Không đủ điều kiện ở các buổi chưa diễn ra bị hủy khi rút lớp như trước.
 9. Gửi đúng trạng thái vòng đời hiện tại (mọi trạng thái, kể cả Đã mất) bị chặn 409 ("Ngựa <tên> đã ở trạng thái <trạng thái>"), không ghi gì; xem trước cũng báo lý do này.
 
 ### Bảng use case

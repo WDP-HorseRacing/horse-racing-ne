@@ -22,11 +22,10 @@ describe('TrialResultsService', () => {
   let access: {
     currentUser: jest.Mock;
     findParticipant: jest.Mock;
-    assertCanOperateParticipant: jest.Mock;
+    assertCanRecordRunResult: jest.Mock;
     assertCanReadParticipant: jest.Mock;
     lockedSession: jest.Mock;
     lockedParticipant: jest.Mock;
-    assertCanManageClass: jest.Mock;
   };
   let media: {
     assertAttachableTrialVideo: jest.Mock;
@@ -48,7 +47,7 @@ describe('TrialResultsService', () => {
     access = {
       currentUser: jest.fn().mockResolvedValue({ id: 'ht-1' }),
       findParticipant: jest.fn().mockResolvedValue({ sessionId: 's1' }),
-      assertCanOperateParticipant: jest.fn().mockResolvedValue(undefined),
+      assertCanRecordRunResult: jest.fn().mockResolvedValue(undefined),
       assertCanReadParticipant: jest.fn().mockResolvedValue(undefined),
       lockedSession: jest.fn().mockResolvedValue({
         id: 's1',
@@ -58,7 +57,6 @@ describe('TrialResultsService', () => {
       lockedParticipant: jest
         .fn()
         .mockResolvedValue({ status: SessionParticipantStatus.ONGOING }),
-      assertCanManageClass: jest.fn(),
     };
     media = {
       assertAttachableTrialVideo: jest.fn().mockResolvedValue({}),
@@ -361,20 +359,15 @@ describe('TrialResultsService', () => {
       expect(transaction).not.toHaveBeenCalled();
     });
 
-    it('rejects a caller who is not the head trainer of the class (403)', async () => {
-      access.assertCanManageClass.mockImplementation(() => {
-        throw new ForbiddenException('Lớp thuộc HLV trưởng khác');
-      });
+    it('rejects a caller who may not record results on the participant (403)', async () => {
+      access.assertCanRecordRunResult.mockRejectedValue(
+        new ForbiddenException('Lượt tập thuộc lớp của HLV trưởng khác'),
+      );
 
       await expect(
         service.update(actor, 'p1', 2, { videoMediaId: null }),
       ).rejects.toThrow(ForbiddenException);
-      expect(access.assertCanManageClass).toHaveBeenCalledWith(
-        actor,
-        'ht-1',
-        'ht-1',
-      );
-      expect(access.assertCanOperateParticipant).not.toHaveBeenCalled();
+      expect(access.assertCanRecordRunResult).toHaveBeenCalledTimes(1);
       expect(manager.save).not.toHaveBeenCalled();
     });
 

@@ -24,6 +24,9 @@ import {
   type TestPostgres,
 } from './postgres';
 
+const BLOCKED =
+  'Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới đổi khu';
+
 describe('Đổi khu của ngựa đang có lượt tập (Postgres)', () => {
   let db: TestPostgres;
   let dataSource: DataSource;
@@ -143,12 +146,35 @@ describe('Đổi khu của ngựa đang có lượt tập (Postgres)', () => {
   const change = (barnId: string) =>
     service.assignBarn(actor, horseId, { barnId, reason: 'Cân bằng khu' });
 
+  it.each(['PRESENT', 'READY', 'ONGOING'])(
+    '409 and changes nothing when the horse is %s in a class that would be withdrawn',
+    async (status) => {
+      await participant(status);
+
+      await expect(change(barnOtherTrainer)).rejects.toThrow(BLOCKED);
+
+      expect(await state()).toEqual({ barnId: barnA, enrollment: 'ACTIVE' });
+    },
+  );
+
+  it.each(['COMPLETED', 'STOPPED'])(
+    'changes barn once the run has ended (%s)',
+    async (status) => {
+      await participant(status);
+
+      await change(barnOtherTrainer);
+
+      expect(await state()).toEqual({
+        barnId: barnOtherTrainer,
+        enrollment: 'LEFT',
+      });
+    },
+  );
+
   it('409 and changes nothing when the horse is training in a class that would be withdrawn', async () => {
     await participant('ONGOING');
 
-    await expect(change(barnOtherTrainer)).rejects.toThrow(
-      'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu',
-    );
+    await expect(change(barnOtherTrainer)).rejects.toThrow(BLOCKED);
 
     expect(await state()).toEqual({ barnId: barnA, enrollment: 'ACTIVE' });
   });
@@ -179,12 +205,24 @@ describe('Đổi khu của ngựa đang có lượt tập (Postgres)', () => {
     const preview = (barnId: string) =>
       service.previewBarnChange(actor, horseId, { barnId });
 
+    it.each(['PRESENT', 'READY', 'ONGOING'])(
+      'blocks with the same sentence as the real change when the horse is %s in a class to withdraw',
+      async (status) => {
+        await participant(status);
+
+        expect(await preview(barnOtherTrainer)).toMatchObject({
+          allowed: false,
+          blockedReason: BLOCKED,
+        });
+      },
+    );
+
     it('blocks with the same sentence as the real change when the horse is training in a class to withdraw', async () => {
       await participant('ONGOING');
 
       expect(await preview(barnOtherTrainer)).toMatchObject({
         allowed: false,
-        blockedReason: 'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới đổi khu',
+        blockedReason: BLOCKED,
         classesWithdrawn: 0,
         summary: null,
       });

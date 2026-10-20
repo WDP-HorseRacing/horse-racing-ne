@@ -25,3 +25,11 @@ export const ELIGIBILITY_REEVALUATED_REASON =
 /** Trạng thái lượt đã tập xong: hoàn thành hoặc dừng sớm */
 export const TRAINED_PARTICIPANT_STATUSES: readonly SessionParticipantStatus[] =
   [SessionParticipantStatus.COMPLETED, SessionParticipantStatus.STOPPED];
+
+/** Trạng thái lượt có ngựa đang ở buổi tập: đã điểm danh, sẵn sàng hoặc đang tập */
+export const ON_SITE_PARTICIPANT_STATUSES: readonly SessionParticipantStatus[] =
+  [
+    SessionParticipantStatus.PRESENT,
+    SessionParticipantStatus.READY,
+    SessionParticipantStatus.ONGOING,
+  ];

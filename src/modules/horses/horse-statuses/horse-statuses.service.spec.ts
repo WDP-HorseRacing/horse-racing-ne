@@ -58,8 +58,8 @@ describe('HorseStatusesService', () => {
   };
   let training: {
     withdrawHorseFromClasses: jest.Mock;
-    hasOngoingParticipant: jest.Mock;
-    cancelOngoingParticipants: jest.Mock;
+    hasOnSiteParticipant: jest.Mock;
+    cancelUnfinishedParticipants: jest.Mock;
   };
   let access: {
     currentUser: jest.Mock;
@@ -156,8 +156,8 @@ describe('HorseStatusesService', () => {
         classIds: ['c1', 'c2'],
         participantsCancelled: 5,
       }),
-      hasOngoingParticipant: jest.fn().mockResolvedValue(false),
-      cancelOngoingParticipants: jest.fn().mockResolvedValue(0),
+      hasOnSiteParticipant: jest.fn().mockResolvedValue(false),
+      cancelUnfinishedParticipants: jest.fn().mockResolvedValue(0),
     };
     access = {
       currentUser: jest.fn().mockResolvedValue({ id: CALLER_ID }),
@@ -829,28 +829,28 @@ describe('HorseStatusesService', () => {
     });
 
     it.each([HorseLifecycleStatus.RETIRED, HorseLifecycleStatus.TRANSFERRED])(
-      'refuses %s with 409 while the horse has an ongoing run, and writes nothing',
+      'refuses %s with 409 while the horse is on site for a run, and writes nothing',
       async (to) => {
-        training.hasOngoingParticipant.mockResolvedValue(true);
+        training.hasOnSiteParticipant.mockResolvedValue(true);
 
         await expect(change(to)).rejects.toThrow(
           new ConflictException(
-            'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng',
+            'Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới giải nghệ hoặc chuyển nhượng',
           ),
         );
         expectNoWrite();
       },
     );
 
-    it('cancels the ongoing run when recording a death and logs how many', async () => {
-      training.cancelOngoingParticipants.mockResolvedValue(1);
+    it('cancels the unfinished runs when recording a death and logs how many', async () => {
+      training.cancelUnfinishedParticipants.mockResolvedValue(1);
 
       await service.updateLifecycle(actor, HORSE_ID, {
         lifecycleStatus: HorseLifecycleStatus.DECEASED,
         reason: 'Đột quỵ',
       });
 
-      expect(training.cancelOngoingParticipants).toHaveBeenCalledWith(
+      expect(training.cancelUnfinishedParticipants).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
         'Ngựa đã mất',
@@ -859,7 +859,7 @@ describe('HorseStatusesService', () => {
         audit.record.mock.calls as Array<[unknown, { after: unknown }]>
       ).map(([, entry]) => entry.after);
       expect(afters).toContainEqual(
-        expect.objectContaining({ ongoingRunsCancelled: 1 }),
+        expect.objectContaining({ unfinishedRunsCancelled: 1 }),
       );
     });
 
@@ -1040,13 +1040,13 @@ describe('HorseStatusesService', () => {
     });
 
     it('blocks retiring in the preview while the horse has an ongoing run', async () => {
-      training.hasOngoingParticipant.mockResolvedValue(true);
+      training.hasOnSiteParticipant.mockResolvedValue(true);
 
       await expect(preview(HorseLifecycleStatus.RETIRED)).resolves.toEqual(
         expect.objectContaining({
           allowed: false,
           blockedReason:
-            'Ngựa đang tập, chờ hoàn thành lượt tập rồi mới giải nghệ hoặc chuyển nhượng',
+            'Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới giải nghệ hoặc chuyển nhượng',
         }),
       );
     });

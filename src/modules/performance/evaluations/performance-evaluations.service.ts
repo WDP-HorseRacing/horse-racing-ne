@@ -44,7 +44,7 @@ export class PerformanceEvaluationsService {
         manager,
         participantId,
       );
-      await this.access.assertCanOperateParticipant(
+      await this.access.assertCanRecordRunResult(
         manager,
         actor,
         caller.id,
@@ -81,21 +81,25 @@ export class PerformanceEvaluationsService {
     return toPerformanceEvaluationResponse(row);
   }
 
+  /**
+   * Xem đánh giá của một lượt tập
+   *
+   * - Quyền xem theo TrainingAccessService.assertCanReadParticipant
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param participantId UUID của lượt tham gia buổi tập
+   * @returns Promise trả về đánh giá của lượt
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có lượt tập, người gọi không được xem lượt này hoặc lượt chưa có đánh giá
+   */
   async get(
     actor: Actor,
     participantId: string,
   ): Promise<PerformanceEvaluationResponseDto> {
-    const caller = await this.access.currentUser(actor);
-    const participant = await this.access.findParticipant(
-      this.dataSource.manager,
-      participantId,
-    );
-    await this.access.readableHorseForActor(actor, participant.horseId);
-    await this.access.assertTrainerBarn(
-      this.dataSource.manager,
+    await this.access.assertCanReadParticipant(
       actor,
-      caller.id,
-      participant.horseId,
+      participantId,
+      this.dataSource.manager,
     );
     const row = await this.evaluations.findOneBy({
       sessionParticipantId: participantId,
@@ -107,7 +111,7 @@ export class PerformanceEvaluationsService {
   /**
    * Sửa điểm hoặc nhận xét của đánh giá một lượt tập
    *
-   * - Quyền như khi tạo đánh giá: Head Trainer phụ trách lớp, ngựa thuộc khu mình
+   * - Quyền theo TrainingAccessService.assertCanRecordRunResult: Head Trainer phụ trách lớp; ngựa đã sang khu khác vẫn sửa được, ngựa đã chuyển nhượng hoặc đã mất thì 409
    * - Field bỏ trống giữ nguyên; comment null là xóa nhận xét; không đổi người đánh giá
    * - Buổi đã hủy: 409; không giới hạn thời gian sau khi buổi kết thúc
    * - Có field đổi khác: ghi một dòng nhật ký gồm giá trị trước, sau của các field đổi và lý do; không đổi gì thì không ghi
@@ -117,8 +121,8 @@ export class PerformanceEvaluationsService {
    * @param body Điểm, nhận xét mới và lý do sửa
    * @returns Promise trả về đánh giá sau khi sửa
    * @throws ForbiddenException Nếu tài khoản không hoạt động hoặc người gọi không được thao tác lượt tập này
-   * @throws NotFoundException Nếu không có lượt tập hoặc lượt tập chưa có đánh giá
-   * @throws ConflictException Nếu buổi đã hủy
+   * @throws NotFoundException Nếu không có lượt tập, hồ sơ ngựa đã xóa hoặc lượt tập chưa có đánh giá
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất, hoặc buổi đã hủy
    */
   async update(
     actor: Actor,
@@ -131,7 +135,7 @@ export class PerformanceEvaluationsService {
         manager,
         participantId,
       );
-      await this.access.assertCanOperateParticipant(
+      await this.access.assertCanRecordRunResult(
         manager,
         actor,
         caller.id,
