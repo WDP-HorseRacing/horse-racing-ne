@@ -89,6 +89,19 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Chi phí nhập sai của buổi khám cũ vẫn phải sửa được cho đúng với chủ của giai đoạn đó, kể cả sau khi ngựa rời câu lạc bộ hoặc mất.
 
+### F3-15: Chỉ bác sĩ ghi buổi khám mới điều chỉnh được chi phí
+
+**Luật / hành vi API mới**
+1. `PATCH /medical-records/:id/cost`: chỉ VET ghi buổi khám (`vetId` của buổi) được điều chỉnh. VET khác nhận 403 "Chỉ bác sĩ ghi phiếu khám mới được điều chỉnh chi phí phiếu này", không ghi gì.
+2. Thứ tự lỗi giống hủy buổi khám: 403 sai bác sĩ trả trước 409 buổi đã hủy.
+3. Các luật khác giữ nguyên: bắt buộc lý do, ngựa đã chuyển nhượng hoặc đã mất vẫn điều chỉnh được, số trùng số cũ thì không ghi, thông báo CM và chủ của giai đoạn chứa ngày khám.
+
+**FE cần sửa**
+- Chỉ hiện nút "Điều chỉnh chi phí" khi `vetId` của buổi khám là người đang đăng nhập. Gặp 403 thì hiện câu lỗi trả về.
+
+**Lý do**
+- Chi phí là số bác sĩ ghi buổi khám nhập; bác sĩ khác sửa thì người ghi không biết. Đi cùng luật hủy buổi khám. Hệ quả đã chấp nhận: bác sĩ đã nghỉ việc thì chi phí các buổi của họ không còn ai sửa được.
+
 ## Ngày 19/10/2026
 
 ### Chuẩn thời gian: thời điểm bắt buộc có múi giờ, ngày lịch đúng YYYY-MM-DD

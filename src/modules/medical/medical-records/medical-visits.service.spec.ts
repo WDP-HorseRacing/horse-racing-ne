@@ -830,6 +830,7 @@ describe('MedicalVisitsService', () => {
     const visit = (overrides: Row = {}) => ({
       id: 'r1',
       horseId: HORSE_ID,
+      vetId: 'vet-1',
       caseId: 'case-1',
       kind: MedicalVisitKind.FOLLOW_UP,
       examDate: new Date('2026-05-20T03:00:00Z'),
@@ -862,6 +863,19 @@ describe('MedicalVisitsService', () => {
     it('answers conflict for a voided visit', async () => {
       rows.set(MedicalRecordEntity, visit({ voidedAt: new Date() }));
       await expect(adjust()).rejects.toThrow(ConflictException);
+      expectNothingWritten();
+    });
+
+    it('forbids a vet other than the author before the voided visit rule', async () => {
+      rows.set(
+        MedicalRecordEntity,
+        visit({ vetId: 'vet-2', voidedAt: new Date() }),
+      );
+      await expect(adjust()).rejects.toThrow(
+        new ForbiddenException(
+          'Chỉ bác sĩ ghi phiếu khám mới được điều chỉnh chi phí phiếu này',
+        ),
+      );
       expectNothingWritten();
     });
 

@@ -36,7 +36,6 @@ import {
   CHECKUP_OVERDUE_NOTIFY_DAYS,
   MEDICAL_CHECKUP_CYCLE_DAYS,
   NO_LOCK_CHOICE_ON_DEATH_MESSAGE,
-  VISIT_VOID_AUTHOR_ONLY_MESSAGE,
 } from '../constants/medical.constants';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -304,18 +303,20 @@ export function assertCaseOpen(status: MedicalCaseStatus): void {
 }
 
 /**
- * Chỉ bác sĩ ghi buổi khám mới được hủy buổi khám đó
+ * Chỉ bác sĩ ghi buổi khám mới được thao tác ghi trên buổi khám đó (hủy, điều chỉnh chi phí)
  *
  * @param visitVetId UUID của bác sĩ ghi buổi khám
  * @param callerId UUID của người gọi
+ * @param message Câu báo lỗi 403 của thao tác đang làm
  * @throws ForbiddenException Nếu người gọi không phải bác sĩ ghi buổi khám
  */
-export function assertVisitVoidAuthor(
+export function assertVisitAuthor(
   visitVetId: string,
   callerId: string,
+  message: string,
 ): void {
   if (visitVetId !== callerId) {
-    throw new ForbiddenException(VISIT_VOID_AUTHOR_ONLY_MESSAGE);
+    throw new ForbiddenException(message);
   }
 }
 

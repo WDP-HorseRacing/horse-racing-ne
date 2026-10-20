@@ -121,7 +121,7 @@ export class MedicalRecordsController {
   @ApiOperation({
     summary: 'Adjust the cost of a medical visit with a reason',
     description:
-      'Bắt buộc lý do, không giới hạn thời gian, bệnh án đang mở hay đã đóng đều được. Số mới trùng số cũ thì không ghi nhật ký và không gửi thông báo. Báo Club Manager và chủ của giai đoạn sở hữu chứa ngày khám. Ngựa đã chuyển nhượng hay đã mất vẫn sửa được. Buổi khám đã hủy: 409.',
+      'Bắt buộc lý do, không giới hạn thời gian, bệnh án đang mở hay đã đóng đều được. Chỉ bác sĩ ghi buổi khám mới được điều chỉnh, bác sĩ khác: 403 (kiểm trước luật buổi đã hủy). Số mới trùng số cũ thì không ghi nhật ký và không gửi thông báo. Báo Club Manager và chủ của giai đoạn sở hữu chứa ngày khám. Ngựa đã chuyển nhượng hay đã mất vẫn sửa được. Buổi khám đã hủy: 409.',
   })
   @ApiOkResponse({ type: MedicalRecordResponseDto })
   adjustCost(

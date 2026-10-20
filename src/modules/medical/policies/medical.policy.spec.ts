@@ -51,7 +51,7 @@ import {
   assertStandaloneVisitAllowed,
   assertStandaloneVisitInput,
   resolveVisitVoid,
-  assertVisitVoidAuthor,
+  assertVisitAuthor,
   canSeeDosage,
   isGroomOnly,
   isGroomOnlyForExamRequests,
@@ -298,10 +298,12 @@ describe('medical.policy', () => {
       expect(() => assertCaseOpen(MedicalCaseStatus.OPEN)).not.toThrow();
     });
 
-    it('lets only the author vet void a visit', () => {
-      expect(() => assertVisitVoidAuthor('vet-1', 'vet-1')).not.toThrow();
-      expect(() => assertVisitVoidAuthor('vet-1', 'vet-2')).toThrow(
-        ForbiddenException,
+    it('lets only the author vet write on a visit, with the message of the action', () => {
+      expect(() =>
+        assertVisitAuthor('vet-1', 'vet-1', 'Chỉ tác giả'),
+      ).not.toThrow();
+      expect(() => assertVisitAuthor('vet-1', 'vet-2', 'Chỉ tác giả')).toThrow(
+        new ForbiddenException('Chỉ tác giả'),
       );
     });
 

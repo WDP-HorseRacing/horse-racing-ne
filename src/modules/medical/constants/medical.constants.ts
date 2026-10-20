@@ -53,6 +53,12 @@ export const VISIT_VOID_AUTHOR_ONLY_MESSAGE =
   'Chỉ bác sĩ ghi phiếu khám mới được hủy phiếu này';
 
 /**
+ * Thông báo 403 khi bác sĩ điều chỉnh chi phí buổi khám do bác sĩ khác ghi.
+ */
+export const VISIT_COST_AUTHOR_ONLY_MESSAGE =
+  'Chỉ bác sĩ ghi phiếu khám mới được điều chỉnh chi phí phiếu này';
+
+/**
  * Câu chặn khi còn bệnh án đang mở, theo trạng thái làm hồ sơ chỉ được xem
  */
 export const OPEN_CASE_BLOCKS_READ_ONLY_MESSAGES: Record<

@@ -70,7 +70,7 @@ import {
   assertStandaloneVisitAllowed,
   assertStandaloneVisitInput,
   assertVisitCostAdjustable,
-  assertVisitVoidAuthor,
+  assertVisitAuthor,
   resolveVisitVoid,
 } from '../policies/medical.policy';
 import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
@@ -86,7 +86,11 @@ import type {
   MedicalCaseOpenedEvent,
   MedicalVisitCostAdjustedEvent,
 } from '../types/medical-events.types';
-import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
+import {
+  MEDICAL_AUDIT_FEATURE,
+  VISIT_COST_AUTHOR_ONLY_MESSAGE,
+  VISIT_VOID_AUTHOR_ONLY_MESSAGE,
+} from '../constants/medical.constants';
 
 /**
  * Bối cảnh ghi một buổi khám, đã qua mọi kiểm tra.
@@ -338,7 +342,7 @@ export class MedicalVisitsService {
         where: { id: recordId },
         lock: { mode: 'pessimistic_write' },
       });
-      assertVisitVoidAuthor(visit.vetId, caller.id);
+      assertVisitAuthor(visit.vetId, caller.id, VISIT_VOID_AUTHOR_ONLY_MESSAGE);
       const medicalCase = visit.caseId
         ? await manager.findOneOrFail(MedicalCaseEntity, {
             where: { id: visit.caseId },
@@ -423,6 +427,7 @@ export class MedicalVisitsService {
    * Điều chỉnh chi phí của một buổi khám, bắt buộc lý do
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row buổi khám; không giới hạn thời gian, bệnh án đóng hay mở đều được
+   * - Chỉ bác sĩ ghi buổi khám mới được điều chỉnh; bác sĩ khác: 403, kiểm trước luật buổi đã hủy
    * - Ngựa đã chuyển nhượng hoặc đã mất vẫn sửa được chi phí
    * - Số mới trùng số cũ thì không ghi gì và không báo
    * - Ghi nhật ký giá trị trước, sau và lý do; event báo lại Club Manager và chủ của giai đoạn sở hữu chứa ngày khám, ghi vào outbox trong cùng transaction
@@ -431,7 +436,7 @@ export class MedicalVisitsService {
    * @param recordId UUID của buổi khám
    * @param body Chi phí mới và lý do
    * @returns Promise trả về buổi khám sau khi điều chỉnh
-   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc người gọi không phải bác sĩ ghi buổi khám
    * @throws NotFoundException Nếu không có buổi khám, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu buổi khám đã hủy, hoặc Club Manager thao tác hồ sơ ngựa đã xóa
    */
@@ -454,6 +459,7 @@ export class MedicalVisitsService {
         where: { id: recordId },
         lock: { mode: 'pessimistic_write' },
       });
+      assertVisitAuthor(visit.vetId, caller.id, VISIT_COST_AUTHOR_ONLY_MESSAGE);
       assertVisitCostAdjustable(visit.voidedAt);
       const previous = costOfVisit(visit);
       const cost = String(body.cost);

@@ -566,21 +566,22 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     expect(sentTo(vet.id)).not.toHaveLength(0);
   });
 
-  it('F3-15: the vet who recorded a visit is notified when another vet adjusts its cost', async () => {
-    const { vet, cm, horse } = await scene();
+  it('F3-15: another vet cannot change the cost of a visit behind the back of the vet who recorded it', async () => {
+    const { vet, horse } = await scene();
     const other = await person(UserRole.VETERINARIAN);
     const visit = await issueVisit(vet.actor, horse, { cost: 1_000_000 });
-    await deliverAll();
-    sent.length = 0;
 
-    await visits.adjustVisitCost(other.actor, visit.id, {
-      cost: 2_000_000,
-      reason: 'Thiếu hóa đơn',
-    });
-    await deliverAll();
-
-    expect(sentTo(cm.id)).not.toHaveLength(0);
-    expect(sentTo(vet.id)).not.toHaveLength(0);
+    await expect(
+      visits.adjustVisitCost(other.actor, visit.id, {
+        cost: 2_000_000,
+        reason: 'Thiếu hóa đơn',
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    const [row] = await dataSource.query<{ cost: string }[]>(
+      'SELECT cost FROM medical_records WHERE id = $1',
+      [visit.id],
+    );
+    expect(row.cost).toBe('1000000');
   });
 
   it('F3-17: a prescription start date years before the exam date is rejected with 400', async () => {

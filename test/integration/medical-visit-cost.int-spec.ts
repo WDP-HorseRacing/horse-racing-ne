@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -166,6 +170,35 @@ describe('MedicalVisitsService.adjustVisitCost (Postgres)', () => {
 
   it('adjusts the cost on a transferred horse and tells the owner at the exam date', async () => {
     const { a, recordId, vet } = await setup(HorseLifecycleStatus.TRANSFERRED);
+
+    await expect(
+      service.adjustVisitCost(vet, recordId, { cost: 1_500_000, reason: 'x' }),
+    ).resolves.toMatchObject({ cost: 1_500_000 });
+    expect(await costOf(recordId)).toBe('1500000');
+    expect((await outbox()).map((row) => row.payload)).toEqual([
+      expect.objectContaining({ recordId, costOwnerId: a }),
+    ]);
+  });
+
+  it('forbids a vet other than the author and changes nothing', async () => {
+    const { recordId } = await setup();
+    const otherId = await seed.user(UserRole.VETERINARIAN);
+    const other = await actorOf(otherId, UserRole.VETERINARIAN);
+
+    await expect(
+      service.adjustVisitCost(other, recordId, { cost: 1, reason: 'x' }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Chỉ bác sĩ ghi phiếu khám mới được điều chỉnh chi phí phiếu này',
+      ),
+    );
+    expect(await costOf(recordId)).toBe('15000000');
+    expect(await audits()).toEqual([]);
+    expect(await outbox()).toEqual([]);
+  });
+
+  it('lets the author adjust the cost on a deceased horse', async () => {
+    const { a, recordId, vet } = await setup(HorseLifecycleStatus.DECEASED);
 
     await expect(
       service.adjustVisitCost(vet, recordId, { cost: 1_500_000, reason: 'x' }),
