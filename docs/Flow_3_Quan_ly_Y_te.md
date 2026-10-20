@@ -86,14 +86,14 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 
 1. Chu kỳ khám định kỳ cố định **30 ngày** cho toàn câu lạc bộ, là quy định của hệ thống. Không vai trò nào sửa được trên giao diện.
 2. Mốc tính hạn = ngày muộn hơn giữa ngày của buổi khám gần nhất (cả ngoài lẫn trong bệnh án) và ngày tạo hồ sơ. Mục đích: ngựa mới tạo không bị báo quá hạn ngay lập tức.
-   - Ngoại lệ kích hoạt lại (F1.8): ngựa **đã chuyển nhượng** được kích hoạt lại mà chưa có buổi khám nào từ ngày đó thì hạn khám **chính là ngày kích hoạt lại** (hiện ngay ở mục Đến hạn), vì ngựa đang ở trạng thái Cần theo dõi cho tới khi bác sĩ khám lại. Ngày kích hoạt lại lấy lần gần nhất, kể cả khi sau đó ngựa đã giải nghệ. Ngựa kích hoạt lại từ Đã giải nghệ giữ hạn khám cũ (buổi khám gần nhất + 30 ngày), vì vẫn được khám định kỳ trong thời gian giải nghệ. *(BA chốt)*
+   - Ngoại lệ kích hoạt lại (F1.8): ngựa **đã chuyển nhượng** được kích hoạt lại mà chưa có buổi khám nào từ ngày đó thì hạn khám **chính là ngày kích hoạt lại** (hiện ngay ở mục Đến hạn), vì ngựa đang ở trạng thái Cách ly cho tới khi bác sĩ khám lại. Ngày kích hoạt lại lấy lần gần nhất, kể cả khi sau đó ngựa đã giải nghệ. Ngựa kích hoạt lại từ Đã giải nghệ giữ hạn khám cũ (buổi khám gần nhất + 30 ngày), vì vẫn được khám định kỳ trong thời gian giải nghệ. *(BA chốt)*
 3. Hạn khám kế tiếp = mốc tính hạn + 30 ngày. Mọi ngày tính theo lịch Việt Nam (Asia/Ho_Chi_Minh), không tính theo giờ.
 4. Con ngựa đang điều trị thường không bị quá hạn nếu bác sĩ tái khám đều, vì mỗi buổi tái khám đã đẩy hạn đi. Nếu bệnh án bị bỏ quên quá 30 ngày không có buổi khám nào thì ngựa vẫn bị báo quá hạn như bình thường, đây là tín hiệu đúng.
 5. Ngựa ở trạng thái Đang hoạt động và Đã giải nghệ đều có lịch khám định kỳ. Ngựa Đã chuyển nhượng, Đã mất và hồ sơ đã xóa thì không.
 
 ### 4. Trạng thái sức khỏe và khóa huấn luyện
 
-1. Bốn trạng thái sức khỏe và ý nghĩa của chúng được định nghĩa ở Flow 1, mục III.2. Chỉ VETERINARIAN đổi được giá trị này, qua Flow 3. Ngoại lệ do hệ thống tự đặt: giá trị khởi tạo khi tạo hồ sơ (F1.2) và giá trị "Cần theo dõi" khi kích hoạt lại (F1.8).
+1. Bốn trạng thái sức khỏe và ý nghĩa của chúng được định nghĩa ở Flow 1, mục III.2. Chỉ VETERINARIAN đổi được giá trị này, qua Flow 3. Ngoại lệ do hệ thống tự đặt: giá trị khởi tạo khi tạo hồ sơ (F1.2) và giá trị "Cách ly" khi kích hoạt lại từ Đã chuyển nhượng (F1.8).
 2. Mọi lần đổi trạng thái sức khỏe đều bắt buộc nhập lý do và ghi nhật ký kèm giá trị trước, sau.
 3. Khóa huấn luyện là một lệnh riêng của bác sĩ, độc lập với trạng thái sức khỏe. Một con ngựa ở trạng thái Cần theo dõi vẫn có thể bị khóa, và ngược lại một con Đủ điều kiện cũng có thể đang bị khóa trong thời gian hồi phục. Hệ thống **cho phép** đặt Đủ điều kiện khi ngựa đang bị khóa.
 4. Quy tắc tính "được tập" và "được đua" nằm ở Flow 1, mục III.4. Flow 3 chỉ cung cấp dữ liệu đầu vào, không tự tính lại.
@@ -756,7 +756,7 @@ Phần này để chiếu nhanh, không phải nội dung đặc tả. Các đi�
 | Không có đơn thuốc, chấn thương 3D, lịch tiêm phòng | Thêm vào buổi khám và thêm F3.11 | Đề bài của giảng viên có ba yêu cầu này. |
 | Không có ghi chú chăm sóc dù Flow 4 cần | Thêm trường "Ghi chú chăm sóc" cho buổi khám | Mục phụ thuộc Flow 4 đã hứa cung cấp. |
 | Không hủy được buổi mở bệnh án và buổi của bệnh án đã đóng | Buổi tái khám hủy được cả khi bệnh án đã đóng; mở nhầm thì hủy buổi mở, bệnh án chuyển Đã hủy | Phản biện vòng 2: mở nhầm ngựa hoặc số đo sai sau khi đóng thì không còn cách sửa. |
-| Kích hoạt lại thì hạn khám cộng 30 ngày | Hạn khám bằng ngày kích hoạt lại cho tới khi khám | Ngựa đang Cần theo dõi mà 30 ngày không có gì nhắc bác sĩ. |
+| Kích hoạt lại thì hạn khám cộng 30 ngày | Hạn khám bằng ngày kích hoạt lại cho tới khi khám | Ngựa đang Cách ly mà 30 ngày không có gì nhắc bác sĩ. |
 | Ngựa mất khi còn bệnh án thì phải chờ bác sĩ đóng bệnh án rồi CLUB MANAGER mới ghi nhận mất | Bác sĩ đóng bệnh án kèm đánh dấu ngựa mất, hệ thống ghi nhận mất cùng lúc | Ngựa thường mất trong lúc điều trị; chờ hai bước thì ngựa vẫn hiện Đang hoạt động. Chi phí điều trị vẫn được tính theo từng buổi khám. |
 | Lịch chăm sóc không tự lặp | Khi hoàn tất, bác sĩ nhập ngày lần tới để tạo luôn lịch mới | Quên tạo lịch lần sau là ngựa không bao giờ được nhắc. |
 | Giao lịch cho GROOM bất kỳ | Chỉ GROOM đang phụ trách con ngựa | Đổi GROOM thì GROOM cũ vẫn thao tác được, lọt quyền. |

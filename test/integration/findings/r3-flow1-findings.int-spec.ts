@@ -36,6 +36,9 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
 import { HorsePedigreeRepository } from '../../../src/modules/horses/shared/horse-pedigree.repository';
 import { HorsePedigreeService } from '../../../src/modules/horses/shared/horse-pedigree.service';
+import { MedicalDashboardRepository } from '../../../src/modules/medical/medical-dashboard/medical-dashboard.repository';
+import { MedicalDashboardService } from '../../../src/modules/medical/medical-dashboard/medical-dashboard.service';
+import { MedicalCheckupsService } from '../../../src/modules/medical/shared/medical-checkups.service';
 import { BarnsService } from '../../../src/modules/stable/barns/barns.service';
 import { BarnEntity } from '../../../src/modules/stable/entities/barn.entity';
 import { StallAssignmentEntity } from '../../../src/modules/stable/entities/stall-assignment.entity';
@@ -68,6 +71,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
   let users: UsersService;
   let auditLogs: AuditLogsService;
   let listener: ParticipantEligibilityListener;
+  let medicalDashboard: MedicalDashboardService;
   let access: HorseAccessService;
   let cmId: string;
   let cm: Actor;
@@ -206,6 +210,13 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
       stableAccess,
       audit,
       new TrainingAccessService(dataSource, access),
+    );
+    medicalDashboard = new MedicalDashboardService(
+      access,
+      new MedicalCheckupsService(dataSource),
+      new MedicalDashboardRepository(dataSource),
+      dataSource,
+      stableAccess,
     );
     const keycloak = {
       setUserEnabled: jest.fn(),
@@ -380,7 +391,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
     expect(page.items.map((row) => row.name)).toEqual(['Bình', 'An']);
   });
 
-  it('F1-4 opens an exam request when a bought-back horse is reactivated', async () => {
+  it('F1-4 quarantines a bought-back horse until the vet examines it', async () => {
     const { horse } = await ownedHorse('Về nhà');
     await statuses.updateLifecycle(cm, horse, {
       lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
@@ -389,13 +400,20 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
     await statuses.updateLifecycle(cm, horse, {
       lifecycleStatus: HorseLifecycleStatus.ACTIVE,
       reason: 'Mua lại',
+      ownerId: await seed.user(UserRole.HORSE_OWNER),
     });
 
-    const requests = await dataSource.query<{ id: string }[]>(
-      `SELECT id FROM medical_exam_requests WHERE horse_id = $1 AND status = 'PENDING'`,
-      [horse],
+    const eligibility = await profiles.getEligibility(cm, horse);
+    expect(eligibility.healthStatus).toBe(HorseHealthStatus.QUARANTINED);
+    expect(eligibility.trainingEligible).toBe(false);
+    const dashboard = await medicalDashboard.get(cm, {});
+    expect(dashboard.horsesWithoutCase).toContainEqual(
+      expect.objectContaining({
+        horseId: horse,
+        healthStatus: HorseHealthStatus.QUARANTINED,
+        since: expect.any(Date) as unknown,
+      }),
     );
-    expect(requests.length).toBe(1);
   });
 
   it('F1-7 lets the club manager fix the microchip on a read-only (dead) profile', async () => {

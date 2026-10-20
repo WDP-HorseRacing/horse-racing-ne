@@ -558,3 +558,7 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
 ## Danh sách ngựa: thêm tình trạng "Chờ giao Groom"
 
 1. `placementStatus` (response `location.placementStatus` của `GET /horses`, `GET /horses/:id` và bộ lọc `GET /horses?placementStatus=`) có thêm giá trị `PENDING_GROOM`: đã có khu và ô nhưng chưa có Groom phụ trách. Ngựa trước đây hiện `PLACED` mà chưa có Groom nay hiện `PENDING_GROOM`; `PLACED` giờ là đủ khu, ô và Groom.
+
+## Kích hoạt lại ngựa đã chuyển nhượng: sức khỏe về Cách ly
+
+1. `PATCH` đổi vòng đời `TRANSFERRED` → `ACTIVE`: `healthStatus` của ngựa thành `QUARANTINED` (trước là `UNDER_OBSERVATION`); preview có `healthResetTo: "QUARANTINED"` và `summary` ghi "đặt sức khỏe về Cách ly tới khi bác sĩ khám lại". Ngựa không được tập cho tới khi bác sĩ đổi sức khỏe. Kích hoạt lại từ `RETIRED` không đổi.

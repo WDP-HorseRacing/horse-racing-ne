@@ -1027,7 +1027,7 @@ describe('horse.policy', () => {
           ),
           impact,
         ),
-      ).toContain('đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại');
+      ).toContain('đặt sức khỏe về Cách ly tới khi bác sĩ khám lại');
     });
   });
 

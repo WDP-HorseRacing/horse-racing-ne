@@ -24,7 +24,7 @@ export class HealthStatusesRepository {
    * Lịch sử trạng thái sức khỏe của con ngựa, dựng từ nhật ký HORSE có trường healthStatus, mới nhất lên trên
    *
    * - Gồm đổi trực tiếp, đổi trong buổi khám và hệ thống đặt lại khi kích hoạt lại
-   * - Bỏ các dòng trạng thái trước và sau trùng nhau (ví dụ kích hoạt lại khi ngựa đã đang Cần theo dõi)
+   * - Bỏ các dòng trạng thái trước và sau trùng nhau (ví dụ kích hoạt lại khi ngựa đã đang Cách ly)
    * - Chỉ đọc bảng audit_logs, dùng index audit_logs_entity_idx
    *
    * @param horseId UUID của ngựa

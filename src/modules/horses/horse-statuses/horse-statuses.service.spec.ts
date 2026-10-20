@@ -669,7 +669,7 @@ describe('HorseStatusesService', () => {
     });
 
     it.each([HorseLifecycleStatus.TRANSFERRED])(
-      'puts health under observation when reactivating from %s',
+      'quarantines the horse when reactivating from %s',
       async (from) => {
         horse.lifecycleStatus = from;
         await change(HorseLifecycleStatus.ACTIVE, 'Quay lại thi đấu', {
@@ -679,7 +679,7 @@ describe('HorseStatusesService', () => {
           { id: HORSE_ID },
           expect.objectContaining({
             lifecycleStatus: HorseLifecycleStatus.ACTIVE,
-            healthStatus: HorseHealthStatus.UNDER_OBSERVATION,
+            healthStatus: HorseHealthStatus.QUARANTINED,
           }),
         );
         expect(audit.record).toHaveBeenCalledWith(
@@ -689,7 +689,7 @@ describe('HorseStatusesService', () => {
               healthStatus: HorseHealthStatus.ELIGIBLE,
             }) as unknown,
             after: expect.objectContaining({
-              healthStatus: HorseHealthStatus.UNDER_OBSERVATION,
+              healthStatus: HorseHealthStatus.QUARANTINED,
             }) as unknown,
             reason: 'Quay lại thi đấu',
             feature: 'HORSE_LIFECYCLE',
@@ -1087,12 +1087,12 @@ describe('HorseStatusesService', () => {
         careTasksEnded: 0,
         careTasksDeleted: 0,
         checklistCancelled: false,
-        healthResetTo: HorseHealthStatus.UNDER_OBSERVATION,
+        healthResetTo: HorseHealthStatus.QUARANTINED,
         pendingBarnAfter: true,
         ownerCleared: null,
         ownerRequired: true,
         summary:
-          'Nếu kích hoạt lại sẽ đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom), gán chủ sở hữu mới được chọn, đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại.',
+          'Nếu kích hoạt lại sẽ đưa ngựa vào danh sách Chờ xếp khu (cần xếp lại khu, ô chuồng và Groom), gán chủ sở hữu mới được chọn, đặt sức khỏe về Cách ly tới khi bác sĩ khám lại.',
       });
       expectNothingWritten();
     });

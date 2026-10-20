@@ -137,7 +137,7 @@ export class HorseStatusesService {
    * - Ghi nhận đã mất (từ ACTIVE hoặc RETIRED): ngày mất là hôm nay theo lịch câu lạc bộ; làm như chuyển nhượng từ trạng thái đó, gỡ khóa huấn luyện với lý do "Gỡ do ngựa mất", lý do hủy y tế "Do ngựa mất", đóng sự cố với kết quả "Ngựa đã mất", chốt chăm sóc chuồng như chuyển nhượng; giữ chủ sở hữu; ghi HORSE_DECEASED_EVENT vào outbox (kèm khu và Groom trước khi dọn) thay cho HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT
    * - Giải nghệ, chuyển nhượng, kích hoạt lại: ghi HORSE_LIFECYCLE_CHANGED_EVENT vào outbox để báo chủ ngựa
    * - Ngựa đã mất: mọi lần đổi vòng đời bị chặn 409
-   * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe và chủ; từ chuyển nhượng thì bắt buộc chọn chủ mới (HORSE_OWNER đang hoạt động, khóa chia sẻ row tài khoản khi kiểm) và mở giai đoạn sở hữu mới, sức khỏe về UNDER_OBSERVATION tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu"
+   * - Kích hoạt lại: từ giải nghệ thì giữ nguyên sức khỏe và chủ; từ chuyển nhượng thì bắt buộc chọn chủ mới (HORSE_OWNER đang hoạt động, khóa chia sẻ row tài khoản khi kiểm) và mở giai đoạn sở hữu mới, sức khỏe về QUARANTINED tới khi bác sĩ khám lại, ngựa vào danh sách "Chờ xếp khu"
    * - Gửi ownerId ở trường hợp không phải kích hoạt lại ngựa đã chuyển nhượng: 400
    * - Phần ghi bảng của module khác gọi qua hàm export của module đó, dùng chung manager của transaction
    * - Giải nghệ hoặc chuyển nhượng khi ngựa đang có lượt tập ONGOING: 409
@@ -568,7 +568,7 @@ export class HorseStatusesService {
    * Tính giá trị trước và sau của khu và sức khỏe khi đổi vòng đời
    *
    * - clearBarn: khu về null
-   * - resetHealth: sức khỏe về UNDER_OBSERVATION
+   * - resetHealth: sức khỏe về QUARANTINED
    * - Cột nào không đổi thì không có key
    *
    * @param horse Hồ sơ ngựa trước khi đổi
@@ -587,7 +587,7 @@ export class HorseStatusesService {
       after: {
         ...(effects.clearBarn ? { barnId: null } : {}),
         ...(effects.resetHealth
-          ? { healthStatus: HorseHealthStatus.UNDER_OBSERVATION }
+          ? { healthStatus: HorseHealthStatus.QUARANTINED }
           : {}),
       },
     };

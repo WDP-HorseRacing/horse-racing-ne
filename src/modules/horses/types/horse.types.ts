@@ -386,7 +386,7 @@ export interface HorseDetailParts {
  * - settleMedicalWork: chốt phần y tế khi chuyển nhượng: chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
  * - closeIncidents: đóng các sự cố tại chuồng đang mở, không ghi người đóng.
  * - settleStableCare: chốt chăm sóc chuồng: lưu trữ khẩu phần đang áp dụng, xóa bản nháp, kết thúc việc riêng ở hôm nay, xóa việc riêng chưa bắt đầu, hủy checklist hôm nay chưa xong.
- * - resetHealth: đặt sức khỏe về UNDER_OBSERVATION cho tới khi bác sĩ khám lại (chỉ khi kích hoạt lại từ chuyển nhượng).
+ * - resetHealth: đặt sức khỏe về QUARANTINED cho tới khi bác sĩ khám lại (chỉ khi kích hoạt lại từ chuyển nhượng).
  * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
  * - Chủ sở hữu không bị đổi ở đây: chuyển nhượng vẫn giữ chủ.
  */

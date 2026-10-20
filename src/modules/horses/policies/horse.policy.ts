@@ -569,7 +569,7 @@ export function assertLifecycleChanged(
  * 5. Kích hoạt lại (RETIRED/TRANSFERRED -> ACTIVE):
  *    - Lớp học và giải đua cũ không tự khôi phục.
  *    - Từ RETIRED: giữ nguyên trạng thái sức khỏe hiện tại.
- *    - Từ TRANSFERRED: tự động đặt sức khỏe về UNDER_OBSERVATION, đưa ngựa vào trạng thái "Chờ xếp khu", bắt buộc chọn chủ mới.
+ *    - Từ TRANSFERRED: tự động đặt sức khỏe về QUARANTINED, đưa ngựa vào trạng thái "Chờ xếp khu", bắt buộc chọn chủ mới.
  *
  * Chú ý: Thao tác chuyển nhượng kết thúc giai đoạn sở hữu và bỏ trống "Chủ sở hữu"; lịch sử vẫn giữ trong horse_ownerships.
  *
@@ -692,7 +692,7 @@ export function lifecycleImpactSummary(
     actions.push('kết thúc sở hữu của chủ hiện tại');
   }
   if (effects.resetHealth) {
-    actions.push('đặt sức khỏe về Cần theo dõi tới khi bác sĩ khám lại');
+    actions.push('đặt sức khỏe về Cách ly tới khi bác sĩ khám lại');
   }
   const verb = LIFECYCLE_VERBS[to];
   const consequence =

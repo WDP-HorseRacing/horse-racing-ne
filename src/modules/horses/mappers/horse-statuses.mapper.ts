@@ -74,9 +74,7 @@ export function toLifecyclePreviewResponse({
     careTasksEnded: effects.settleStableCare ? impact.careTasksToEnd : 0,
     careTasksDeleted: effects.settleStableCare ? impact.careTasksToDelete : 0,
     checklistCancelled: effects.settleStableCare && impact.checklistToCancel,
-    healthResetTo: effects.resetHealth
-      ? HorseHealthStatus.UNDER_OBSERVATION
-      : null,
+    healthResetTo: effects.resetHealth ? HorseHealthStatus.QUARANTINED : null,
     pendingBarnAfter: effects.reactivateFromTransfer,
     ownerCleared: effects.endOwnership ? impact.ownerName : null,
     ownerRequired: effects.reactivateFromTransfer,
