@@ -1,6 +1,6 @@
 # Flow 4 — Chăm sóc chuồng trại và dinh dưỡng hằng ngày
 
-> Cập nhật: 19/10/2026
+> Cập nhật: 20/10/2026
 
 ## I. Đề bài liên quan
 
@@ -177,6 +177,7 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa r�
 ### 8. Phụ phí chăm sóc riêng
 
 1. Chi phí nuôi dưỡng của chủ = phí ngày chung của CLB + phụ phí chăm sóc riêng của từng ngựa + chi phí y tế. Không có gói.
+   - Phí ngày chung: Club Manager đặt mức phí áp dụng từ một ngày (từ hôm nay trở đi); mỗi ngày tính theo mức có ngày hiệu lực lớn nhất không sau ngày đó. Xóa chỉ mức chưa hiệu lực. Sửa số tiền (`PATCH /daily-fees/:id`, bắt buộc lý do) được với mức chưa hiệu lực và mức đang áp dụng; mức đã được thay bằng mức mới thì 409 "Mức phí đã được thay bằng mức mới, không sửa được". Không sửa ngày hiệu lực (gửi `effectiveFrom` là 400); sai ngày thì xóa (chưa hiệu lực) hoặc đặt mức mới. Gửi đúng số tiền đang có thì không ghi gì. Sửa ghi nhật ký (`DAILY_FEE`) kèm số tiền trước/sau và lý do, không báo chủ. Báo cáo phí tính lại theo số tiền mới cho mọi ngày mức đó áp dụng, kể cả ngày đã qua.
    - Chi phí y tế là chi phí từng buổi khám chưa hủy (Flow 3, III.6): rơi vào kỳ chứa ngày khám (lịch CLB) và tính cho người làm chủ vào lúc khám. Cột `visitCount` là số buổi khám chưa hủy trong kỳ.
    - Ngày ngựa ở CLB mà lúc hết ngày không có chủ (chỉ xảy ra sau kích hoạt lại hoặc khôi phục hồ sơ khi chủ cũ không còn hoạt động) vẫn tính phí ngày và phụ phí, tính từ lúc tạo hồ sơ. Báo cáo tài chính CLB gom phần này, cùng chi phí các buổi khám lúc ngựa không có chủ, vào mục `unowned` (Chưa có chủ) kèm số ngày tính phí; tổng `ownerCharges` = tổng các chủ + `unowned`. Báo cáo chi phí của chủ không đổi.
 2. Chủ muốn ngựa được chăm khác (thức ăn tốt hơn, ngâm đá mỗi ngày...) thì thỏa thuận với CLB; Club Manager ghi phụ phí cho ngựa: nội dung (chữ tự do, tối đa 500 ký tự), phí một ngày (> 0), từ ngày, đến ngày. Từ ngày không ở quá khứ, đến ngày không trước từ ngày (400). Ngựa phải còn ở CLB (đang hoạt động hoặc giải nghệ), không thì 409.

@@ -11,7 +11,7 @@ function rolesOf(method: keyof DailyFeesController): UserRole[] {
 }
 
 describe('DailyFeesController access', () => {
-  it.each(['list', 'create', 'remove'] as const)(
+  it.each(['list', 'create', 'update', 'remove'] as const)(
     '%s is limited to the club manager',
     (method) => {
       expect(rolesOf(method)).toEqual([UserRole.CLUB_MANAGER]);

@@ -1,7 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
-import { IsInt, Max, Min } from 'class-validator';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { Expose, Transform } from 'class-transformer';
+import {
+  IsInt,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
+import { IsDateOnly, trimValue } from '../../../common/utils/dto-input';
 
 const MAX_DAILY_FEE_VND = 1_000_000_000;
 
@@ -24,6 +31,29 @@ export class CreateDailyFeeDto {
   @Min(0)
   @Max(MAX_DAILY_FEE_VND)
   dailyFee!: number;
+}
+
+export class UpdateDailyFeeDto {
+  @ApiProperty({
+    minimum: 0,
+    maximum: MAX_DAILY_FEE_VND,
+    description: 'Phí nuôi một con ngựa trong một ngày (VND) sau khi sửa',
+  })
+  @IsInt()
+  @Min(0)
+  @Max(MAX_DAILY_FEE_VND)
+  dailyFee!: number;
+
+  @ApiProperty({
+    minLength: 1,
+    maxLength: 500,
+    description: 'Lý do sửa mức phí, bắt buộc',
+  })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason!: string;
 }
 
 export class DailyFeeResponseDto {

@@ -144,4 +144,103 @@ describe('DailyFeesService (Postgres)', () => {
       before_data: { effectiveFrom: shiftDays(today, 3), dailyFee: 400000 },
     });
   });
+
+  describe('correcting the amount', () => {
+    const audits = (id: string) =>
+      dataSource.query<
+        Array<{
+          action: string;
+          before_data: unknown;
+          after_data: unknown;
+          reason: string;
+          feature: string;
+        }>
+      >(
+        "SELECT action, before_data, after_data, reason, feature FROM audit_logs WHERE entity_id = $1 AND action = 'UPDATE'",
+        [id],
+      );
+
+    it('corrects the fee in effect today and logs the old and new amount with the reason', async () => {
+      const today = clubToday();
+      const current = await insertPast(shiftDays(today, -5), 3000000);
+
+      const updated = await service.update(manager, current, {
+        dailyFee: 300000,
+        reason: 'Nhập thừa số 0',
+      });
+
+      expect(updated).toMatchObject({
+        id: current,
+        effectiveFrom: shiftDays(today, -5),
+        dailyFee: 300000,
+      });
+      expect(await audits(current)).toEqual([
+        {
+          action: 'UPDATE',
+          before_data: {
+            effectiveFrom: shiftDays(today, -5),
+            dailyFee: 3000000,
+          },
+          after_data: { effectiveFrom: shiftDays(today, -5), dailyFee: 300000 },
+          reason: 'Nhập thừa số 0',
+          feature: 'DAILY_FEE',
+        },
+      ]);
+    });
+
+    it('corrects a fee that starts today and a future fee', async () => {
+      const today = clubToday();
+      await insertPast(shiftDays(today, -30), 250000);
+      const startsToday = await service.create(manager, {
+        effectiveFrom: today,
+        dailyFee: 300000,
+      });
+      const future = await service.create(manager, {
+        effectiveFrom: shiftDays(today, 5),
+        dailyFee: 400000,
+      });
+
+      await service.update(manager, startsToday.id, {
+        dailyFee: 310000,
+        reason: 'Sửa',
+      });
+      await service.update(manager, future.id, {
+        dailyFee: 410000,
+        reason: 'Sửa',
+      });
+
+      expect((await service.list(manager)).map((fee) => fee.dailyFee)).toEqual([
+        410000, 310000, 250000,
+      ]);
+    });
+
+    it('rejects a superseded fee with 409 and an unknown fee with 404', async () => {
+      const today = clubToday();
+      const superseded = await insertPast(shiftDays(today, -30), 250000);
+      await insertPast(shiftDays(today, -2), 300000);
+
+      await expect(
+        service.update(manager, superseded, { dailyFee: 1, reason: 'Sửa' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(
+        service.update(manager, randomUUID(), { dailyFee: 1, reason: 'Sửa' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(await audits(superseded)).toEqual([]);
+    });
+
+    it('writes nothing when the amount is unchanged', async () => {
+      const current = await service.create(manager, {
+        effectiveFrom: clubToday(),
+        dailyFee: 300000,
+      });
+
+      await expect(
+        service.update(manager, current.id, {
+          dailyFee: 300000,
+          reason: 'Sửa',
+        }),
+      ).resolves.toMatchObject({ id: current.id, dailyFee: 300000 });
+      expect(await audits(current.id)).toEqual([]);
+    });
+  });
 });

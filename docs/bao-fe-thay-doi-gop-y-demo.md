@@ -8,6 +8,21 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 ## Ngày 20/10/2026
 
+### F4-2: Sửa số tiền mức phí ngày
+
+**Luật / hành vi API mới**
+1. API mới `PATCH /daily-fees/:id` (CM), body `{ dailyFee, reason }`, cả hai bắt buộc. `dailyFee` kiểm như khi tạo; `reason` cắt khoảng trắng, không rỗng, tối đa 500 ký tự. Trả về mức phí sau khi sửa (cùng shape với `GET /daily-fees`).
+2. Sửa được mức chưa hiệu lực (`effectiveFrom` sau hôm nay) và mức đang áp dụng (`effectiveFrom` lớn nhất từ hôm nay trở về trước). Mức cũ đã được thay: 409 "Mức phí đã được thay bằng mức mới, không sửa được". Không có: 404.
+3. Không sửa ngày hiệu lực: gửi `effectiveFrom` là 400. Gửi đúng số tiền đang có thì không ghi gì, trả về mức hiện có.
+4. Báo cáo phí (`/reports/owner/costs`, `/reports/club/finance`) tính lại theo số tiền mới cho mọi ngày mức đó áp dụng. Không gửi thông báo cho chủ.
+
+**FE cần sửa**
+- Danh sách mức phí: nút "Sửa" ở mức chưa hiệu lực và mức đang áp dụng (mức đầu tiên có `effectiveFrom` ≤ hôm nay theo lịch CLB khi xếp mới nhất trước); ẩn ở các mức cũ hơn.
+- Form sửa: chỉ ô số tiền và ô lý do (bắt buộc); ngày hiệu lực chỉ hiển thị.
+
+**Lý do**
+- Mức phí nhập sai số tiền mà đã tới ngày hiệu lực thì trước đây không xóa, không sửa được, báo cáo phí tính sai.
+
 ### F1-4: Kích hoạt lại ngựa đã chuyển nhượng, sức khỏe về Cách ly
 
 **Luật / hành vi API mới**

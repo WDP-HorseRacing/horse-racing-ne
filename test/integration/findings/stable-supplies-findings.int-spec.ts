@@ -10,6 +10,8 @@ import { DailyFeeEntity } from '../../../src/modules/billing/entities/daily-fee.
 import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import type { MediaService } from '../../../src/modules/media/services/media.service';
+import { FinanceReportsRepository } from '../../../src/modules/reports/finance-reports/finance-reports.repository';
+import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
 import { MedicalExamRequestEntity } from '../../../src/modules/medical/entities/medical-exam-request.entity';
 import { ExamRequestsService } from '../../../src/modules/medical/exam-requests/exam-requests.service';
 import type { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
@@ -57,6 +59,7 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
   let generation: ChecklistGenerationService;
   let careTasks: CareTasksService;
   let fees: DailyFeesService;
+  let finance: FinanceReportsService;
   let manager: Actor;
   let trainer: Actor;
   let groom: Actor;
@@ -168,6 +171,10 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       dataSource.getRepository(DailyFeeEntity),
       dataSource,
       new AuditService(),
+    );
+    finance = new FinanceReportsService(
+      new FinanceReportsRepository(dataSource),
+      dataSource,
     );
   });
 
@@ -332,13 +339,20 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
   });
 
   describe('daily fees', () => {
-    it('F4-2: a fee that takes effect today can still be deleted the same day', async () => {
+    it('F4-2: a fee that takes effect today with a wrong amount can be corrected, and the report uses it', async () => {
       const current = await fees.create(manager, {
         effectiveFrom: clubToday(),
-        dailyFee: 2500000,
+        dailyFee: 25000000,
       });
 
-      await expect(fees.remove(manager, current.id)).resolves.toBeUndefined();
+      await fees.update(manager, current.id, {
+        dailyFee: 250000,
+        reason: 'Nhập thừa số 0',
+      });
+
+      const { unowned } = await finance.clubFinance(manager, {});
+      expect(unowned.billedDays).toBeGreaterThan(0);
+      expect(unowned.dailyFee).toBe(unowned.billedDays * 250000);
     });
   });
 

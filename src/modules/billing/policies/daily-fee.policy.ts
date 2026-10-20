@@ -35,3 +35,26 @@ export function assertDailyFeeDeletable(
     throw new ConflictException('Mức phí đã có hiệu lực, không xóa được');
   }
 }
+
+/**
+ * Chặn sửa mức phí đã bị mức mới hơn thay thế
+ *
+ * - Mức chưa hiệu lực (ngày hiệu lực sau hôm nay): sửa được
+ * - Mức đang áp dụng (ngày hiệu lực lớn nhất từ hôm nay trở về trước): sửa được
+ * - Mức đã hiệu lực nhưng không phải mức đang áp dụng: 409
+ *
+ * @param effectiveFrom Ngày hiệu lực của mức phí cần sửa (YYYY-MM-DD)
+ * @param today Hôm nay theo lịch CLB (YYYY-MM-DD)
+ * @param currentEffectiveFrom Ngày hiệu lực của mức đang áp dụng hôm nay (YYYY-MM-DD), null nếu chưa có mức nào
+ * @throws ConflictException Nếu mức phí đã được thay bằng mức mới
+ */
+export function assertDailyFeeEditable(
+  effectiveFrom: string,
+  today: string,
+  currentEffectiveFrom: string | null,
+): void {
+  if (effectiveFrom > today || effectiveFrom === currentEffectiveFrom) return;
+  throw new ConflictException(
+    'Mức phí đã được thay bằng mức mới, không sửa được',
+  );
+}
