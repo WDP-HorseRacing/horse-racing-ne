@@ -659,20 +659,41 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     expect(JSON.stringify(page)).toContain('CANCELLED_BY_LOCK');
   });
 
-  it('F2-15: an UNDER_OBSERVATION horse is ineligible for a session whose subject is HEAVY even if the session says LIGHT', async () => {
+  it('F2-15: the head trainer decides the session intensity; eligibility follows it and the change is audited', async () => {
     const winx = await enrolledHorse({ health: 'UNDER_OBSERVATION' });
     const draft = await session(new Date(Date.now() + 48 * HOUR), {
       subjectId: await subject(TrainingIntensity.HEAVY),
       intensity: TrainingIntensity.LIGHT,
     });
+    const statusOf = async () => {
+      const [row] = await dataSource.query<Array<{ status: string }>>(
+        'SELECT status FROM session_participants WHERE session_id = $1 AND horse_id = $2',
+        [draft, winx.horseId],
+      );
+      return row.status;
+    };
 
     await sessionsService.updateSession(trainer, draft, { name: 'Đổi tên' });
+    expect(await statusOf()).toBe('PLANNED');
 
-    const [row] = await dataSource.query<Array<{ status: string }>>(
-      'SELECT status FROM session_participants WHERE session_id = $1 AND horse_id = $2',
-      [draft, winx.horseId],
+    await sessionsService.updateSession(trainer, draft, {
+      intensity: TrainingIntensity.HEAVY,
+    });
+    expect(await statusOf()).toBe('INELIGIBLE');
+
+    const audits = await dataSource.query<
+      Array<{ before: { intensity?: string }; after: { intensity?: string } }>
+    >(
+      `SELECT before_data AS before, after_data AS after FROM audit_logs
+        WHERE entity_id = $1 AND after_data ? 'intensity'`,
+      [draft],
     );
-    expect(row.status).toBe('INELIGIBLE');
+    expect(audits).toContainEqual(
+      expect.objectContaining({
+        before: expect.objectContaining({ intensity: 'LIGHT' }) as unknown,
+        after: expect.objectContaining({ intensity: 'HEAVY' }) as unknown,
+      }),
+    );
   });
 
   it('F2-17: leaving with an unknown enrollment id returns 404', async () => {
