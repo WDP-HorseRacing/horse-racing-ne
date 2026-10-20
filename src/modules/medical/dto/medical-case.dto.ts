@@ -85,7 +85,10 @@ export class MedicalCostReportQueryDto {
   @IsDateOnly({ message: 'Đến ngày phải có dạng YYYY-MM-DD' })
   to!: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Khu của ngựa lúc khám',
+  })
   @IsOptional()
   @IsUUID('4')
   barnId?: string;

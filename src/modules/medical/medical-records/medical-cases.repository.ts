@@ -21,10 +21,10 @@ export class MedicalCasesRepository {
    *
    * - Ngày khám tính theo lịch câu lạc bộ, lấy cả hai đầu khoảng
    * - Gồm buổi khám trong và ngoài bệnh án
-   * - Lọc khu theo hồ sơ ngựa hiện tại; tính cả hồ sơ đã xóa
+   * - Lọc khu theo khu của ngựa lúc khám (r.barn_id), không theo khu hiện tại; tính cả hồ sơ đã xóa
    * - Lọc chủ theo giai đoạn sở hữu: buổi khám thuộc chủ đang sở hữu ngựa lúc khám (started_at <= exam_date < ended_at)
    *
-   * @param filter Khoảng ngày (YYYY-MM-DD), khu và chủ ngựa (tùy chọn)
+   * @param filter Khoảng ngày (YYYY-MM-DD), khu lúc khám và chủ ngựa (tùy chọn)
    * @returns Promise trả về mỗi con ngựa một dòng, chi phí cao nhất lên trên
    */
   costByHorse(filter: {
@@ -37,7 +37,7 @@ export class MedicalCasesRepository {
     const conditions: string[] = [];
     if (filter.barnId) {
       params.push(filter.barnId);
-      conditions.push(`AND h.barn_id = $${params.length}`);
+      conditions.push(`AND r.barn_id = $${params.length}`);
     }
     if (filter.ownerId) {
       params.push(filter.ownerId);

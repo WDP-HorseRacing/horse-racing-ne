@@ -172,7 +172,7 @@ export function fixtures(dataSource: DataSource) {
    * @param horseId Id ngựa
    * @param vetId Id bác sĩ khám
    * @param examDate Thời điểm khám (ISO)
-   * @param options Đã hủy, bệnh án chứa buổi khám, ngày hẹn tái khám, chi phí
+   * @param options Đã hủy, bệnh án chứa buổi khám, ngày hẹn tái khám, chi phí, khu lúc khám
    * @returns A promise resolving to id buổi khám
    */
   const visit = async (
@@ -184,12 +184,13 @@ export function fixtures(dataSource: DataSource) {
       caseId?: string;
       nextVisitAt?: string;
       cost?: number;
+      barnId?: string;
     } = {},
   ): Promise<string> => {
     const id = randomUUID();
     await dataSource.query(
-      `INSERT INTO medical_records (id, horse_id, vet_id, exam_date, resulting_status, kind, voided_at, case_id, next_visit_at, cost)
-       VALUES ($1, $2, $3, $4, 'ELIGIBLE', 'ROUTINE', $5, $6, $7, $8)`,
+      `INSERT INTO medical_records (id, horse_id, vet_id, exam_date, resulting_status, kind, voided_at, case_id, next_visit_at, cost, barn_id)
+       VALUES ($1, $2, $3, $4, 'ELIGIBLE', 'ROUTINE', $5, $6, $7, $8, $9)`,
       [
         id,
         horseId,
@@ -199,6 +200,7 @@ export function fixtures(dataSource: DataSource) {
         options.caseId ?? null,
         options.nextVisitAt ?? null,
         options.cost ?? 0,
+        options.barnId ?? null,
       ],
     );
     return id;

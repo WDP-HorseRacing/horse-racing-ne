@@ -121,7 +121,7 @@ export class MedicalCasesController {
   @ApiOperation({
     summary: 'Medical cost report by exam date',
     description:
-      'Cộng chi phí các buổi khám chưa hủy (trong và ngoài bệnh án) có ngày khám trong khoảng, theo lịch câu lạc bộ. Lọc theo khu hiện tại của ngựa, hoặc theo chủ của giai đoạn sở hữu chứa ngày khám.',
+      'Cộng chi phí các buổi khám chưa hủy (trong và ngoài bệnh án) có ngày khám trong khoảng, theo lịch câu lạc bộ. Lọc theo khu của ngựa lúc khám, hoặc theo chủ của giai đoạn sở hữu chứa ngày khám.',
   })
   @ApiOkResponse({ type: MedicalCostReportResponseDto })
   costReport(

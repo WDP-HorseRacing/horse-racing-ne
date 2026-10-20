@@ -641,6 +641,7 @@ export class MedicalVisitsService {
     const visit = await manager.save(
       manager.create(MedicalRecordEntity, {
         horseId: horse.id,
+        barnId: horse.barnId,
         vetId: input.callerId,
         examDate: input.examDate,
         diagnosis: body.diagnosis || null,

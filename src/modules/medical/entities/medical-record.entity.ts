@@ -2,6 +2,7 @@ import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import { BarnEntity } from '../../stable/entities/barn.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { MedicalSeverity } from '../constants/medical-record.enum';
 import {
@@ -15,6 +16,7 @@ import { MedicalCaseEntity } from './medical-case.entity';
  * Buổi khám ngoài bệnh án có caseId null (trừ buổi mở bệnh án); buổi tái khám luôn thuộc một bệnh án.
  * Bác sĩ ghi buổi khám được sửa kèm lý do (chi phí sửa bằng API riêng); không xóa, ghi sai thì hủy bằng voidedAt và voidReason.
  * healthBefore là trạng thái sức khỏe của ngựa ngay trước buổi khám; null với buổi khám ghi trước khi có cột này.
+ * barnId là khu của ngựa lúc khám, không đổi khi ngựa chuyển khu; null nếu lúc khám ngựa không thuộc khu nào.
  */
 @Entity({ name: 'medical_records' })
 @Check('medical_records_cost_chk', '"cost" >= 0')
@@ -27,6 +29,16 @@ export class MedicalRecordEntity extends MutableRecordEntity {
   @ManyToOne(() => HorseEntity, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'horse_id' })
   horse!: HorseEntity;
+
+  @Column({ name: 'barn_id', type: 'uuid', nullable: true })
+  barnId!: string | null;
+
+  @ManyToOne(() => BarnEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'barn_id',
+    foreignKeyConstraintName: 'medical_records_barn_fk',
+  })
+  barn!: BarnEntity | null;
 
   @Column({ name: 'vet_id', type: 'uuid' })
   vetId!: string;

@@ -79,7 +79,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       horseId: string,
       examDate: string,
       cost: number,
-      options: { caseId?: string; voided?: boolean } = {},
+      options: { caseId?: string; voided?: boolean; barnId?: string } = {},
     ) => seed.visit(horseId, vet, examDate, { ...options, cost });
 
     it('sums the visits not voided per horse, in and out of cases, highest cost first', async () => {
@@ -135,17 +135,18 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       ]);
     });
 
-    it('filters by barn on the current profile and by owner period, keeping deleted profiles', async () => {
+    it('filters by the barn at exam time and by owner period, keeping deleted profiles', async () => {
       const barn = await seed.barn('Khu Đông');
       const owner = await seed.user(UserRole.HORSE_OWNER);
-      const inBarn = await seed.horse('In barn', { barnId: barn });
+      const inBarn = await seed.horse('In barn');
+      const nowInBarn = await seed.horse('Now in barn', { barnId: barn });
       const deletedOwned = await seed.horse('Deleted owned', {
         ownerId: owner,
         deleted: true,
       });
       await seed.ownership(deletedOwned, owner, '2026-01-01T03:00:00Z');
-      const other = await seed.horse('Other');
-      for (const horseId of [inBarn, deletedOwned, other]) {
+      await paid(inBarn, '2026-09-10T02:00:00Z', 100, { barnId: barn });
+      for (const horseId of [nowInBarn, deletedOwned]) {
         await paid(horseId, '2026-09-10T02:00:00Z', 100);
       }
       const range = { from: '2026-09-01', to: '2026-09-30' };

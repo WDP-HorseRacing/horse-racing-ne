@@ -102,6 +102,20 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Chi phí là số bác sĩ ghi buổi khám nhập; bác sĩ khác sửa thì người ghi không biết. Đi cùng luật hủy buổi khám. Hệ quả đã chấp nhận: bác sĩ đã nghỉ việc thì chi phí các buổi của họ không còn ai sửa được.
 
+### F3-11: Báo cáo chi phí y tế lọc khu theo khu của ngựa lúc khám
+
+**Luật / hành vi API mới**
+1. `GET /medical/cost-report?barnId=` (CM) tính các buổi khám mà lúc khám ngựa đang ở khu đó, không còn theo khu hiện tại của ngựa. Response giữ nguyên.
+2. Ngựa chuyển khu sau buổi khám: chi phí buổi đó vẫn ở khu cũ; buổi khám sau khi chuyển tính cho khu mới.
+3. Ngựa đã chuyển nhượng hoặc đã mất (không còn khu): chi phí các buổi trước đó vẫn hiện ở khu lúc khám.
+4. Buổi khám lúc ngựa chưa thuộc khu nào không vào khu nào (vẫn có khi không lọc khu).
+
+**FE cần sửa**
+- Đổi nhãn bộ lọc khu của báo cáo chi phí y tế thành "Khu của ngựa lúc khám".
+
+**Lý do**
+- Lọc theo khu hiện tại làm chi phí cũ chạy theo ngựa sang khu mới, ngựa đã rời câu lạc bộ thì mất khỏi mọi khu, và báo cáo kỳ cũ đổi số mỗi khi ngựa chuyển khu.
+
 ### F3-4: Hủy buổi khám trả yêu cầu khám về hàng đợi và đưa sức khỏe về như trước
 
 **Luật / hành vi API mới**

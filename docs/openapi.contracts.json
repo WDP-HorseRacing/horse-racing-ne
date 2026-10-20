@@ -3182,7 +3182,7 @@
     },
     "/api/v1/medical/cost-report": {
       "get": {
-        "description": "Cộng chi phí các buổi khám chưa hủy (trong và ngoài bệnh án) có ngày khám trong khoảng, theo lịch câu lạc bộ. Lọc theo khu hiện tại của ngựa, hoặc theo chủ của giai đoạn sở hữu chứa ngày khám.",
+        "description": "Cộng chi phí các buổi khám chưa hủy (trong và ngoài bệnh án) có ngày khám trong khoảng, theo lịch câu lạc bộ. Lọc theo khu của ngựa lúc khám, hoặc theo chủ của giai đoạn sở hữu chứa ngày khám.",
         "operationId": "MedicalCasesController_costReport",
         "parameters": [
           {
@@ -3209,6 +3209,7 @@
             "name": "barnId",
             "required": false,
             "in": "query",
+            "description": "Khu của ngựa lúc khám",
             "schema": {
               "format": "uuid",
               "type": "string"
