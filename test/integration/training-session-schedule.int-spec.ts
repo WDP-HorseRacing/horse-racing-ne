@@ -21,6 +21,9 @@ import {
 } from './postgres';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 
+/** Thời điểm hiện tại cố định của bộ test, trước mọi buổi tập trong các ca */
+const NOW = new Date('2026-10-15T00:00:00Z');
+
 describe('Saving training sessions schedules the horses (Postgres)', () => {
   let db: TestPostgres;
   let dataSource: DataSource;
@@ -46,6 +49,8 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
 
   afterAll(() => stopTestPostgres(db));
 
+  afterEach(() => jest.useRealTimers());
+
   const actorOf = async (id: string, role: UserRole): Promise<Actor> => {
     const [row] = await dataSource.query<Array<{ keycloak_id: string }>>(
       'SELECT keycloak_id FROM users WHERE id = $1',
@@ -55,6 +60,21 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
   };
 
   beforeEach(async () => {
+    jest.useFakeTimers({
+      now: NOW,
+      doNotFake: [
+        'nextTick',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+        'queueMicrotask',
+        'hrtime',
+        'performance',
+      ],
+    });
     await truncateAllTables(dataSource);
     const trainerId = await seed.user(UserRole.HEAD_TRAINER);
     trainer = await actorOf(trainerId, UserRole.HEAD_TRAINER);
@@ -237,8 +257,8 @@ describe('Saving training sessions schedules the horses (Postgres)', () => {
     await enroll('Winx');
     const created = await create('2026-11-10T01:00:00Z');
     await dataSource.query(
-      `UPDATE training_sessions SET scheduled_start_at = now() + interval '20 minutes', scheduled_end_at = now() + interval '80 minutes' WHERE id = $1`,
-      [created.id],
+      `UPDATE training_sessions SET scheduled_start_at = $2::timestamptz + interval '20 minutes', scheduled_end_at = $2::timestamptz + interval '80 minutes' WHERE id = $1`,
+      [created.id, NOW],
     );
 
     await expect(
