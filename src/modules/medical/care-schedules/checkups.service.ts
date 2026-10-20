@@ -1,17 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { DataSource, EntityManager } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
+import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { UserEntity } from '../../users/entities/user.entity';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
@@ -33,8 +27,6 @@ import { toClubDate } from '../../../common/utils/club-date';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
-import { MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT } from '../constants/medical-events.constants';
-import type { CheckupAppointmentChangedEvent } from '../types/medical-events.types';
 
 @Injectable()
 export class CheckupsService {
@@ -44,7 +36,6 @@ export class CheckupsService {
     private readonly horseAccess: HorseAccessService,
     private readonly herdCheckups: MedicalCheckupsService,
     private readonly audit: AuditService,
-    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
@@ -77,8 +68,6 @@ export class CheckupsService {
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa; ngựa đã chuyển nhượng: 409
    * - Ngày hẹn không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám
    * - Mỗi ngựa một ngày hẹn đang hiệu lực: đã có thì là dời lịch, bắt buộc lý do
-   * - Người đặt hoặc dời là bác sĩ phụ trách ngày hẹn (assignee VET)
-   * - Dời ngày hẹn đang giao bác sĩ khác: phát MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT báo bác sĩ đó (nếu còn hoạt động)
    * - Ghi nhật ký kèm lý do khi dời
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -117,33 +106,21 @@ export class CheckupsService {
       ).get(horseId);
       assertRescheduleReason(existing !== undefined, body.reason);
 
-      const assignment = {
-        dueAt: scheduledAt,
-        assigneeType: CareAssigneeType.VET,
-        assignedTo: caller.id,
-      };
       let appointment: CareScheduleEntity;
       if (existing) {
         await manager.update(
           CareScheduleEntity,
           { id: existing.id },
-          assignment,
+          { dueAt: scheduledAt },
         );
-        appointment = { ...existing, ...assignment, assignee: caller };
-        await this.notifyPreviousAssignee(
-          manager,
-          existing,
-          caller,
-          'RESCHEDULED',
-          scheduledAt,
-          body.reason ?? '',
-        );
+        appointment = { ...existing, dueAt: scheduledAt };
       } else {
         appointment = await manager.save(
           manager.create(CareScheduleEntity, {
             horseId,
             type: CareScheduleType.ROUTINE_CHECKUP,
-            ...assignment,
+            dueAt: scheduledAt,
+            assignedTo: null,
             status: CareScheduleStatus.SCHEDULED,
             completedAt: null,
             completedBy: null,
@@ -151,21 +128,17 @@ export class CheckupsService {
             notes: null,
           }),
         );
-        appointment.assignee = caller;
       }
       await this.audit.record(manager, {
         actorId: caller.id,
         action: existing ? AuditAction.UPDATE : AuditAction.CREATE,
         entityType: AuditEntityType.CARE_SCHEDULE,
         entityId: appointment.id,
-        before: existing
-          ? { dueAt: existing.dueAt, assignedTo: existing.assignedTo }
-          : null,
+        before: existing ? { dueAt: existing.dueAt } : null,
         after: {
           horseId,
           type: CareScheduleType.ROUTINE_CHECKUP,
           dueAt: scheduledAt,
-          assignedTo: caller.id,
         },
         reason: body.reason ?? null,
         feature: MEDICAL_AUDIT_FEATURE.CHECKUP_SCHEDULE,
@@ -180,7 +153,6 @@ export class CheckupsService {
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa; ngựa đã chuyển nhượng hoặc đã mất: 409
    * - Ngày hẹn chuyển Đã hủy kèm lý do, ghi nhật ký
-   * - Hủy ngày hẹn đang giao bác sĩ khác: phát MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT báo bác sĩ đó (nếu còn hoạt động)
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -224,66 +196,6 @@ export class CheckupsService {
         reason: body.reason,
         feature: MEDICAL_AUDIT_FEATURE.CHECKUP_SCHEDULE,
       });
-      await this.notifyPreviousAssignee(
-        manager,
-        existing,
-        caller,
-        'CANCELLED',
-        existing.dueAt,
-        body.reason,
-      );
     });
-  }
-
-  /**
-   * Báo bác sĩ đang phụ trách khi ngày hẹn của mình bị bác sĩ khác dời hoặc hủy
-   *
-   * - Ngày hẹn chưa giao ai, người đổi chính là người phụ trách, hoặc người phụ trách không còn là bác sĩ đang hoạt động: không phát gì
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param appointment Ngày hẹn trước khi đổi
-   * @param caller Bác sĩ đang dời hoặc hủy
-   * @param change Dời (RESCHEDULED) hay hủy (CANCELLED)
-   * @param scheduledAt Ngày hẹn mới khi dời, ngày đã hẹn khi hủy
-   * @param reason Lý do dời hoặc hủy
-   * @returns Promise hoàn tất khi đã ghi event vào outbox (hoặc không cần báo)
-   */
-  private async notifyPreviousAssignee(
-    manager: EntityManager,
-    appointment: CareScheduleEntity,
-    caller: UserEntity,
-    change: CheckupAppointmentChangedEvent['change'],
-    scheduledAt: Date,
-    reason: string,
-  ): Promise<void> {
-    const previousAssigneeId = appointment.assignedTo;
-    if (
-      previousAssigneeId === null ||
-      previousAssigneeId === caller.id ||
-      !(await manager.exists(UserEntity, {
-        where: {
-          id: previousAssigneeId,
-          status: UserStatus.ACTIVE,
-          role: UserRole.VETERINARIAN,
-        },
-      }))
-    ) {
-      return;
-    }
-    const event: CheckupAppointmentChangedEvent = {
-      eventId: randomUUID(),
-      horseId: appointment.horseId,
-      appointmentId: appointment.id,
-      change,
-      scheduledAt: scheduledAt.toISOString(),
-      previousAssigneeId,
-      changedByName: caller.fullName,
-      reason,
-    };
-    await this.events.publish(
-      manager,
-      MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT,
-      event,
-    );
   }
 }

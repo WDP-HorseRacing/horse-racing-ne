@@ -10,11 +10,9 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
-import { MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT } from '../constants/medical-events.constants';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { addDays } from '../policies/medical.policy';
@@ -35,7 +33,6 @@ describe('CheckupsService', () => {
     create: jest.Mock;
     save: jest.Mock;
     update: jest.Mock;
-    exists: jest.Mock;
   };
   let shared: {
     herdCheckupAnchors: jest.Mock;
@@ -43,7 +40,6 @@ describe('CheckupsService', () => {
   };
   let access: { lockHorseForWrite: jest.Mock };
   let audit: { record: jest.Mock };
-  let events: { publish: jest.Mock };
   let service: CheckupsService;
 
   const anchor = (horseId: string, lastVisitDaysAgo: number): Row => ({
@@ -63,7 +59,6 @@ describe('CheckupsService', () => {
       create: jest.fn((_entity: unknown, row: Row) => ({ ...row })),
       save: jest.fn((row: Row) => Promise.resolve({ id: 'appt-1', ...row })),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
-      exists: jest.fn().mockResolvedValue(true),
     };
     shared = {
       herdCheckupAnchors: jest.fn((filter: { horseIds?: string[] }) =>
@@ -79,12 +74,11 @@ describe('CheckupsService', () => {
     };
     access = {
       lockHorseForWrite: jest.fn().mockResolvedValue({
-        caller: { id: 'vet-1', fullName: 'BS Một' },
+        caller: { id: 'vet-1' },
         horse: { id: 'ok' },
       }),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    events = { publish: jest.fn().mockResolvedValue(undefined) };
     const herdCheckups = Object.assign(
       new MedicalCheckupsService({} as DataSource),
       shared,
@@ -101,7 +95,6 @@ describe('CheckupsService', () => {
       } as unknown as HorseAccessService,
       herdCheckups,
       audit,
-      events,
     );
   });
 
@@ -137,8 +130,7 @@ describe('CheckupsService', () => {
         expect.objectContaining({
           horseId: 'ok',
           type: CareScheduleType.ROUTINE_CHECKUP,
-          assigneeType: CareAssigneeType.VET,
-          assignedTo: 'vet-1',
+          assignedTo: null,
         }),
       );
       expect(audit.record).toHaveBeenCalledWith(
@@ -190,11 +182,7 @@ describe('CheckupsService', () => {
       expect(manager.update).toHaveBeenCalledWith(
         CareScheduleEntity,
         { id: 'appt-0' },
-        {
-          dueAt: expect.any(Date) as unknown,
-          assigneeType: CareAssigneeType.VET,
-          assignedTo: 'vet-1',
-        },
+        { dueAt: expect.any(Date) as unknown },
       );
       expect(audit.record).toHaveBeenCalledWith(
         manager,
@@ -204,63 +192,6 @@ describe('CheckupsService', () => {
         }),
       );
       expect(manager.save).not.toHaveBeenCalled();
-    });
-
-    it('hands a rescheduled appointment to the caller and notifies the previous vet', async () => {
-      appointments.set('ok', {
-        id: 'appt-0',
-        horseId: 'ok',
-        dueAt: new Date(inDays(3)),
-        assignedTo: 'vet-2',
-      });
-      const result = await service.setAppointment(vet, 'ok', {
-        scheduledAt: inDays(5),
-        reason: 'BS Hai nghỉ ốm',
-      });
-      expect(result).toMatchObject({
-        assignedTo: 'vet-1',
-        assignedToName: 'BS Một',
-      });
-      expect(events.publish).toHaveBeenCalledWith(
-        manager,
-        MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT,
-        expect.objectContaining({
-          appointmentId: 'appt-0',
-          change: 'RESCHEDULED',
-          previousAssigneeId: 'vet-2',
-          changedByName: 'BS Một',
-          reason: 'BS Hai nghỉ ốm',
-        }),
-      );
-    });
-
-    it('does not notify when the vet reschedules their own appointment', async () => {
-      appointments.set('ok', {
-        id: 'appt-0',
-        horseId: 'ok',
-        dueAt: new Date(inDays(3)),
-        assignedTo: 'vet-1',
-      });
-      await service.setAppointment(vet, 'ok', {
-        scheduledAt: inDays(5),
-        reason: 'Đổi giờ',
-      });
-      expect(events.publish).not.toHaveBeenCalled();
-    });
-
-    it('does not notify a previous vet who is no longer an active vet', async () => {
-      appointments.set('ok', {
-        id: 'appt-0',
-        horseId: 'ok',
-        dueAt: new Date(inDays(3)),
-        assignedTo: 'vet-2',
-      });
-      manager.exists.mockResolvedValue(false);
-      await service.setAppointment(vet, 'ok', {
-        scheduledAt: inDays(5),
-        reason: 'Đổi giờ',
-      });
-      expect(events.publish).not.toHaveBeenCalled();
     });
 
     it('propagates conflict for a transferred horse', async () => {
@@ -295,14 +226,12 @@ describe('CheckupsService', () => {
       expect(manager.update).not.toHaveBeenCalled();
     });
 
-    it('cancels with the reason, audits it and notifies the assigned vet', async () => {
-      const dueAt = new Date(Date.now() + 86400000);
+    it('cancels with the reason and audits it', async () => {
       appointments.set('ok', {
         id: 'appt-0',
         horseId: 'ok',
-        dueAt,
+        dueAt: new Date(Date.now() + 86400000),
         status: CareScheduleStatus.SCHEDULED,
-        assignedTo: 'vet-2',
       });
       await service.cancelAppointment(vet, 'ok', { reason: 'Đặt nhầm' });
       expect(manager.update).toHaveBeenCalledWith(
@@ -319,27 +248,6 @@ describe('CheckupsService', () => {
           feature: 'MED_CHECKUP',
         }),
       );
-      expect(events.publish).toHaveBeenCalledWith(
-        manager,
-        MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT,
-        expect.objectContaining({
-          change: 'CANCELLED',
-          scheduledAt: dueAt.toISOString(),
-          previousAssigneeId: 'vet-2',
-        }),
-      );
-    });
-
-    it('does not notify when the appointment had no assigned vet', async () => {
-      appointments.set('ok', {
-        id: 'appt-0',
-        horseId: 'ok',
-        dueAt: new Date(),
-        status: CareScheduleStatus.SCHEDULED,
-        assignedTo: null,
-      });
-      await service.cancelAppointment(vet, 'ok', { reason: 'Đặt nhầm' });
-      expect(events.publish).not.toHaveBeenCalled();
     });
   });
 });

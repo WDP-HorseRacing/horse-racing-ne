@@ -155,42 +155,6 @@ describe('MedicalDashboardService', () => {
     ]);
   });
 
-  it('keeps only due horses whose appointment the caller handles when asked', async () => {
-    checkups.checkupItemsFor.mockResolvedValue([
-      {
-        horseId: 'Cúc',
-        dueStatus: CheckupDueStatus.OVERDUE,
-        appointment: { assignedTo: 'u1' },
-      },
-      {
-        horseId: 'An',
-        dueStatus: CheckupDueStatus.DUE_SOON,
-        appointment: { assignedTo: 'u2' },
-      },
-      {
-        horseId: 'Dạ',
-        dueStatus: CheckupDueStatus.DUE_SOON,
-        appointment: null,
-      },
-      {
-        horseId: 'Bạch',
-        dueStatus: CheckupDueStatus.OK,
-        appointment: { assignedTo: 'u1' },
-      },
-    ]);
-    const vet = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
-
-    const mine = await service.get(vet, { careAssignee: 'me' });
-    const all = await service.get(vet, {});
-
-    expect(mine.checkups.map((item) => item.horseId)).toEqual(['Cúc']);
-    expect(all.checkups.map((item) => item.horseId)).toEqual([
-      'Cúc',
-      'An',
-      'Dạ',
-    ]);
-  });
-
   it('skips the request query when no horse matches', async () => {
     shared.herdCheckupAnchors.mockResolvedValue([]);
     const result = await service.get(

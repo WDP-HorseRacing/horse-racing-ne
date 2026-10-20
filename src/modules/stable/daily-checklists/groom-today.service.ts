@@ -140,7 +140,7 @@ export class GroomTodayService {
           status: CareScheduleStatus.SCHEDULED,
           dueAt: And(MoreThanOrEqual(dayStart), LessThan(dayEnd)),
         },
-        relations: { horse: true, assignee: true },
+        relations: { horse: true },
         withDeleted: true,
         order: { dueAt: 'ASC' },
       }),

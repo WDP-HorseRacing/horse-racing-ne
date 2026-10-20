@@ -30,7 +30,7 @@ export interface GroomTodayHorseSource {
  * @param horses Dữ liệu từng ngựa; mỗi lượt tập đã load session
  * @param otherSchedules Lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, đã load horse
  * @param assistedRuns Lượt Groom được giao dắt ở ngựa Groom không phụ trách, đã load session và horse
- * @param vetAppointments Lịch hẹn bác sĩ hôm nay ở ngựa Groom phụ trách, đã load horse và assignee
+ * @param vetAppointments Lịch hẹn bác sĩ hôm nay ở ngựa Groom phụ trách, đã load horse
  * @returns Response màn Hôm nay
  */
 export function toGroomTodayResponse(
@@ -81,8 +81,6 @@ export function toGroomTodayResponse(
         horseName: appointment.horse.name,
         type: appointment.type,
         scheduledAt: appointment.dueAt,
-        vetId: appointment.assignedTo,
-        vetName: appointment.assignee?.fullName ?? null,
       })),
     },
     MAPPER_OPTIONS,

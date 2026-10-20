@@ -1,8 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
-import { UserStatus } from '../../src/common/enums/user-status.enum';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../src/common/types/actor';
 import {
@@ -10,19 +8,17 @@ import {
   clubToday,
   shiftDays,
 } from '../../src/common/utils/club-date';
-import { CheckupAppointmentAssignee1789829100000 } from '../../src/migrations/1789829100000-CheckupAppointmentAssignee';
+import { CheckupAppointmentUnassign1789829600000 } from '../../src/migrations/1789829600000-CheckupAppointmentUnassign';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { CareSchedulesService } from '../../src/modules/medical/care-schedules/care-schedules.service';
 import { CheckupsService } from '../../src/modules/medical/care-schedules/checkups.service';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../src/modules/medical/constants/care-schedule.enum';
 import {
-  MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT,
   MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
 } from '../../src/modules/medical/constants/medical-events.constants';
@@ -132,51 +128,23 @@ describe('Routine checkup appointments (Postgres)', () => {
     });
   });
 
-  describe('assignee', () => {
-    it('assigns a new appointment to the vet who set it', async () => {
-      const result = await checkups.setAppointment(actorA, horse, {
-        scheduledAt: at(shiftDays(today, 1)),
-      });
-
-      expect(result).toMatchObject({ assignedTo: vetA });
-      expect(result.assignedToName).toEqual(expect.any(String));
-      await expect(appointmentRow(horse)).resolves.toMatchObject({
-        assignee_type: CareAssigneeType.VET,
-        assigned_to: vetA,
-      });
+  it('leaves set and rescheduled appointments unassigned so any vet can take them', async () => {
+    await checkups.setAppointment(actorA, horse, {
+      scheduledAt: at(shiftDays(today, 1)),
+    });
+    await checkups.setAppointment(actorB, horse, {
+      scheduledAt: at(shiftDays(today, 2)),
+      reason: 'Đổi ngày',
     });
 
-    it('hands a rescheduled appointment to the rescheduling vet and notifies the previous one once', async () => {
-      await checkups.setAppointment(actorA, horse, {
-        scheduledAt: at(shiftDays(today, 1)),
-      });
-      await checkups.setAppointment(actorB, horse, {
-        scheduledAt: at(shiftDays(today, 2)),
-        reason: 'BS A nghỉ ốm',
-      });
-      await checkups.setAppointment(actorB, horse, {
-        scheduledAt: at(shiftDays(today, 2), '10:00'),
-        reason: 'Đổi giờ',
-      });
-
-      await expect(appointmentRow(horse)).resolves.toMatchObject({
-        assigned_to: vetB,
-      });
-      await expect(
-        outbox(MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT),
-      ).resolves.toEqual([
-        expect.objectContaining({
-          horseId: horse,
-          change: 'RESCHEDULED',
-          previousAssigneeId: vetA,
-          reason: 'BS A nghỉ ốm',
-        }),
-      ]);
+    await expect(appointmentRow(horse)).resolves.toMatchObject({
+      assignee_type: null,
+      assigned_to: null,
     });
   });
 
   describe('cancelAppointment', () => {
-    it('cancels with the reason, audits it, notifies the assigned vet and lets the due reminder fire again', async () => {
+    it('cancels with the reason, audits it and lets the due reminder fire again', async () => {
       await checkups.setAppointment(actorA, horse, {
         scheduledAt: at(shiftDays(today, 1)),
       });
@@ -194,14 +162,6 @@ describe('Routine checkup appointments (Postgres)', () => {
         [row.id],
       );
       expect(audits.map((audit) => audit.reason)).toEqual([null, 'Đặt nhầm']);
-      await expect(
-        outbox(MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT),
-      ).resolves.toEqual([
-        expect.objectContaining({
-          change: 'CANCELLED',
-          previousAssigneeId: vetA,
-        }),
-      ]);
       await expect(reminders.notifyDueCheckups(today)).resolves.toBe(1);
       await expect(outbox(MEDICAL_CHECKUP_DUE_EVENT)).resolves.toEqual([
         expect.objectContaining({ horseId: horse }),
@@ -231,7 +191,6 @@ describe('Routine checkup appointments (Postgres)', () => {
       const groom = await seed.user(UserRole.GROOM);
       const appointment = await seed.schedule(horse, at(today), {
         type: CareScheduleType.ROUTINE_CHECKUP,
-        assignedTo: vetA,
       });
       await expect(
         careSchedules.complete(
@@ -244,19 +203,10 @@ describe('Routine checkup appointments (Postgres)', () => {
   });
 
   describe('appointment-day reminder', () => {
-    type DueEvent = {
-      eventId: string;
-      horseId: string;
-      assigneeId: string | null;
-    };
+    type DueEvent = { eventId: string; horseId: string };
 
-    it('reminds the active assigned vet, falls back to every vet, and skips future, closed and gone horses', async () => {
-      const lockedVet = await seed.user(
-        UserRole.VETERINARIAN,
-        UserStatus.LOCKED,
-      );
+    it('reminds appointments due today or already past, and skips future, closed and gone horses', async () => {
       const past = await seed.horse('Mây');
-      const locked = await seed.horse('Lửa');
       const future = await seed.horse('Sấm');
       const transferred = await seed.horse('Đi', {
         lifecycle: HorseLifecycleStatus.TRANSFERRED,
@@ -264,45 +214,36 @@ describe('Routine checkup appointments (Postgres)', () => {
       const deleted = await seed.horse('Xóa', { deleted: true });
       await seed.schedule(horse, at(today), {
         type: CareScheduleType.ROUTINE_CHECKUP,
-        assignedTo: vetA,
       });
       await seed.schedule(past, at(shiftDays(today, -2)), {
         type: CareScheduleType.ROUTINE_CHECKUP,
       });
-      await seed.schedule(locked, at(today), {
-        type: CareScheduleType.ROUTINE_CHECKUP,
-        assignedTo: lockedVet,
-      });
       await seed.schedule(future, at(shiftDays(today, 1)), {
         type: CareScheduleType.ROUTINE_CHECKUP,
-        assignedTo: vetA,
       });
       await seed.schedule(horse, at(today, '07:00'), {
         type: CareScheduleType.ROUTINE_CHECKUP,
         status: CareScheduleStatus.CANCELLED,
-        assignedTo: vetA,
       });
       for (const gone of [transferred, deleted]) {
         await seed.schedule(gone, at(today), {
           type: CareScheduleType.ROUTINE_CHECKUP,
-          assignedTo: vetA,
         });
       }
 
-      await expect(reminders.notifyDueAppointments(today)).resolves.toBe(3);
+      await expect(reminders.notifyDueAppointments(today)).resolves.toBe(2);
 
       const events = await outbox<DueEvent>(
         MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
       );
-      expect(
-        Object.fromEntries(events.map((e) => [e.horseId, e.assigneeId])),
-      ).toEqual({ [horse]: vetA, [past]: null, [locked]: null });
+      expect(events.map((event) => event.horseId).sort()).toEqual(
+        [horse, past].sort(),
+      );
     });
 
     it('keeps one event id per appointment and date across runs, and a new one after rescheduling', async () => {
       const id = await seed.schedule(horse, at(today), {
         type: CareScheduleType.ROUTINE_CHECKUP,
-        assignedTo: vetA,
       });
 
       await reminders.notifyDueAppointments(today);
@@ -322,68 +263,44 @@ describe('Routine checkup appointments (Postgres)', () => {
     });
   });
 
-  describe('migration CheckupAppointmentAssignee', () => {
-    const migration = new CheckupAppointmentAssignee1789829100000();
+  describe('migration CheckupAppointmentUnassign', () => {
+    const migration = new CheckupAppointmentUnassign1789829600000();
 
-    const audit = (entityId: string, actorId: string, createdAt: string) =>
-      dataSource.query(
-        `INSERT INTO audit_logs (action, entity_type, entity_id, actor_id, created_at)
-         VALUES ('UPDATE', 'CARE_SCHEDULE', $1, $2, $3)`,
-        [entityId, actorId, createdAt],
-      );
-
-    const insert = async (status = CareScheduleStatus.SCHEDULED) => {
-      const id = randomUUID();
+    it('clears the vet of every appointment and refills it from the latest vet audit row on down', async () => {
+      const appointment = await seed.schedule(horse, at(today), {
+        type: CareScheduleType.ROUTINE_CHECKUP,
+        assignedTo: vetA,
+      });
+      const farrier = await seed.schedule(horse, at(today), {
+        type: CareScheduleType.FARRIER,
+        assignedTo: vetA,
+      });
       await dataSource.query(
-        `INSERT INTO care_schedules (id, version, horse_id, type, due_at, status)
-         VALUES ($1, 1, $2, 'ROUTINE_CHECKUP', now(), $3)`,
-        [id, await seed.horse(id), status],
+        `INSERT INTO audit_logs (action, entity_type, entity_id, actor_id, created_at)
+         VALUES ('UPDATE', 'CARE_SCHEDULE', $1, $2, '2026-10-02T01:00:00Z')`,
+        [appointment, vetB],
       );
-      return id;
-    };
-
-    const assignees = (ids: string[]) =>
-      dataSource
-        .query<
-          {
-            id: string;
-            assignee_type: string | null;
-            assigned_to: string | null;
-          }[]
-        >(
-          'SELECT id, assignee_type, assigned_to FROM care_schedules WHERE id = ANY($1::uuid[])',
-          [ids],
-        )
-        .then((rows) =>
-          Object.fromEntries(
-            rows.map((row) => [row.id, [row.assignee_type, row.assigned_to]]),
-          ),
-        );
-
-    it('fills old appointments with the vet of the latest audit row and clears them on down', async () => {
-      const manager = await seed.user(UserRole.CLUB_MANAGER);
-      const rescheduled = await insert();
-      await audit(rescheduled, vetA, '2026-10-01T01:00:00Z');
-      await audit(rescheduled, vetB, '2026-10-02T01:00:00Z');
-      const cancelledByTransfer = await insert(CareScheduleStatus.CANCELLED);
-      await audit(cancelledByTransfer, vetA, '2026-10-01T01:00:00Z');
-      await audit(cancelledByTransfer, manager, '2026-10-03T01:00:00Z');
-      const noAudit = await insert();
-      const ids = [rescheduled, cancelledByTransfer, noAudit];
+      const assignees = () =>
+        dataSource
+          .query<{ id: string; assigned_to: string | null }[]>(
+            'SELECT id, assigned_to FROM care_schedules WHERE id = ANY($1::uuid[])',
+            [[appointment, farrier]],
+          )
+          .then((rows) =>
+            Object.fromEntries(rows.map((row) => [row.id, row.assigned_to])),
+          );
       const runner = dataSource.createQueryRunner();
       try {
         await migration.up(runner);
-        await expect(assignees(ids)).resolves.toEqual({
-          [rescheduled]: [CareAssigneeType.VET, vetB],
-          [cancelledByTransfer]: [CareAssigneeType.VET, vetA],
-          [noAudit]: [null, null],
+        await expect(assignees()).resolves.toEqual({
+          [appointment]: null,
+          [farrier]: vetA,
         });
 
         await migration.down(runner);
-        await expect(assignees(ids)).resolves.toEqual({
-          [rescheduled]: [null, null],
-          [cancelledByTransfer]: [null, null],
-          [noAudit]: [null, null],
+        await expect(assignees()).resolves.toEqual({
+          [appointment]: vetB,
+          [farrier]: vetA,
         });
       } finally {
         await runner.release();

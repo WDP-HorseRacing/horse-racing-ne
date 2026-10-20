@@ -10,7 +10,6 @@ import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
 import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
 import type {
   CareScheduleDueEvent,
-  CheckupAppointmentChangedEvent,
   CheckupAppointmentDueEvent,
   CheckupDueEvent,
   CheckupOverdueEvent,
@@ -459,7 +458,7 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo bác sĩ phụ trách khi tới ngày hẹn khám định kỳ; ngày hẹn không có bác sĩ phụ trách thì báo mọi Veterinarian
+   * Báo mọi Veterinarian khi tới ngày hẹn khám định kỳ
    *
    * @param event Payload của MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -470,43 +469,13 @@ export class MedicalNotificationsService {
     return this.sendForHorse(
       event,
       horseResource(event.horseId),
-      event.assigneeId
-        ? { extraUserIds: [event.assigneeId] }
-        : { veterinarians: true },
+      { veterinarians: true },
       NotificationCategory.CARE_REMINDER,
       NotificationPriority.NORMAL,
       (horse) => ({
         title: `Lịch hẹn khám định kỳ ngựa ${horse}`,
         message: `Ngựa ${horse} có lịch hẹn khám định kỳ lúc ${formatClubDateTime(event.scheduledAt)}.`,
       }),
-    );
-  }
-
-  /**
-   * Báo bác sĩ đang phụ trách khi ngày hẹn khám định kỳ của mình bị bác sĩ khác dời hoặc hủy
-   *
-   * @param event Payload của MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT
-   * @returns Promise trả về id những người nhận vừa được lưu mới
-   */
-  notifyCheckupAppointmentChanged(
-    event: CheckupAppointmentChangedEvent,
-  ): Promise<string[]> {
-    return this.sendForHorse(
-      event,
-      horseResource(event.horseId),
-      { extraUserIds: [event.previousAssigneeId] },
-      NotificationCategory.CARE_REMINDER,
-      NotificationPriority.NORMAL,
-      (horse) =>
-        event.change === 'RESCHEDULED'
-          ? {
-              title: `Lịch hẹn khám ngựa ${horse} đã được dời`,
-              message: `${event.changedByName} đã dời lịch hẹn khám định kỳ ngựa ${horse} sang ${formatClubDateTime(event.scheduledAt)} và nhận phụ trách lịch này. Lý do: ${event.reason}`,
-            }
-          : {
-              title: `Lịch hẹn khám ngựa ${horse} đã bị hủy`,
-              message: `${event.changedByName} đã hủy lịch hẹn khám định kỳ ngựa ${horse} lúc ${formatClubDateTime(event.scheduledAt)}. Lý do: ${event.reason}`,
-            },
     );
   }
 

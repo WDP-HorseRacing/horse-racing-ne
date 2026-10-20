@@ -17,5 +17,3 @@ export const MEDICAL_CHECKUP_OVERDUE_EVENT = 'medical.checkup.overdue';
 export const MEDICAL_CARE_SCHEDULE_DUE_EVENT = 'medical.care-schedule.due';
 export const MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT =
   'medical.checkup-appointment.due';
-export const MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT =
-  'medical.checkup-appointment.changed';

@@ -55,7 +55,7 @@ export class CheckupsController {
   @ApiOperation({
     summary: 'Set or reschedule the routine checkup appointment',
     description:
-      'Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Người đặt hoặc dời thành bác sĩ phụ trách; dời lịch của bác sĩ khác thì báo bác sĩ đó. Ngựa đã chuyển nhượng: 409.',
+      'Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Ngựa đã chuyển nhượng: 409.',
   })
   @ApiOkResponse({ type: CheckupAppointmentDto })
   setAppointment(
@@ -72,7 +72,7 @@ export class CheckupsController {
   @ApiOperation({
     summary: 'Cancel the active routine checkup appointment',
     description:
-      'Bắt buộc reason. Ngày hẹn chuyển Đã hủy. Hủy lịch của bác sĩ khác thì báo bác sĩ đó. Không có ngày hẹn đang hiệu lực: 404. Ngựa đã chuyển nhượng hoặc đã mất: 409.',
+      'Bắt buộc reason. Ngày hẹn chuyển Đã hủy. Không có ngày hẹn đang hiệu lực: 404. Ngựa đã chuyển nhượng hoặc đã mất: 409.',
   })
   @ApiNoContentResponse()
   cancelAppointment(

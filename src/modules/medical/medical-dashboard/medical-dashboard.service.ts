@@ -41,7 +41,7 @@ export class MedicalDashboardService {
    * - Thuốc cần cho hôm nay: đơn thuốc đang hiệu lực theo ngày lịch câu lạc bộ, kèm liều và tần suất
    * - Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa; bộ lọc khu áp cho mọi khối; bộ lọc trạng thái sức khỏe áp cho danh sách ngựa của sơ đồ đàn và các khối còn lại, không áp cho số đếm
    * - Mặc định cả CLB cho mọi vai trò được xem; barnId: chỉ một khu; mine = true: chỉ các khu người gọi phụ trách; đi cùng nhau thì lấy phần giao (khu không do người gọi phụ trách thì đàn rỗng)
-   * - careAssignee = me: khối lịch tiêm phòng, tẩy giun, kiểm tra móng chỉ giữ lịch có người làm hiện tại là người gọi; khối lịch khám chỉ giữ ngựa có ngày hẹn do người gọi phụ trách
+   * - careAssignee = me: khối lịch tiêm phòng, tẩy giun, kiểm tra móng chỉ giữ lịch có người làm hiện tại là người gọi
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param query Lọc theo khu, khu mình phụ trách, trạng thái sức khỏe và người làm lịch chăm sóc
@@ -101,10 +101,7 @@ export class MedicalDashboardService {
     return {
       herd: toHerdBlock(herd, query.healthStatus),
       checkups: checkups.filter(
-        (item) =>
-          item.dueStatus !== CheckupDueStatus.OK &&
-          (query.careAssignee !== 'me' ||
-            item.appointment?.assignedTo === caller.id),
+        (item) => item.dueStatus !== CheckupDueStatus.OK,
       ),
       careSchedules:
         query.careAssignee === 'me'

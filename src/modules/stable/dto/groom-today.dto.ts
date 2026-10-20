@@ -117,19 +117,6 @@ export class GroomTodayVetAppointmentResponseDto {
   @Expose()
   @ApiProperty({ format: 'date-time', description: 'Giờ hẹn' })
   scheduledAt!: Date;
-
-  @Expose()
-  @ApiPropertyOptional({
-    nullable: true,
-    type: String,
-    format: 'uuid',
-    description: 'Bác sĩ phụ trách; null nếu chưa giao ai',
-  })
-  vetId!: string | null;
-
-  @Expose()
-  @ApiPropertyOptional({ nullable: true, type: String })
-  vetName!: string | null;
 }
 
 export class GroomTodayHorseResponseDto {

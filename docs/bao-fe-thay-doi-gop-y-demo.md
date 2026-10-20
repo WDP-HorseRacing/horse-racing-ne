@@ -178,20 +178,17 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Trước đây buổi khám không sửa được, ghi sai một chữ cũng phải hủy rồi ghi lại, và buổi của bệnh án đã đóng thì không ghi lại được. Phần mềm thú y thực tế cho đính chính kèm quyền, lý do, nhật ký.
 
-### F3-9: Hủy ngày hẹn khám định kỳ, ngày hẹn có bác sĩ phụ trách, nhắc ngày hẹn, Groom xem lịch hẹn hôm nay
+### F3-9: Hủy ngày hẹn khám định kỳ, nhắc ngày hẹn, Groom xem lịch hẹn hôm nay
 
 **Luật / hành vi API mới**
 1. `DELETE /horses/:horseId/checkup-appointment` (VET): body `{ "reason": "..." }` bắt buộc. Thành công 204, ngày hẹn chuyển `CANCELLED`. Ngựa không có ngày hẹn đang hiệu lực: 404. Ngựa đã chuyển nhượng hoặc đã mất: 409.
-2. Ngày hẹn có bác sĩ phụ trách. Đặt (`PUT /horses/:horseId/checkup-appointment`) thì người đặt phụ trách; dời thì người dời thành người phụ trách mới (bác sĩ nào cũng dời được). Bác sĩ khác dời hoặc hủy ngày hẹn của mình thì bác sĩ phụ trách cũ nhận thông báo `CARE_REMINDER` (kèm người đổi, ngày mới và lý do).
-3. `CheckupAppointmentDto` (response của PUT, `appointment` trong `GET /medical/checkups` và khối `checkups` của `GET /medical/dashboard`) có thêm `assignedTo` (uuid, null nếu chưa giao) và `assignedToName`.
-4. `GET /medical/dashboard?careAssignee=me`: khối `checkups` chỉ còn ngựa có ngày hẹn do người gọi phụ trách. Không gửi `careAssignee` thì khối này như cũ.
-5. Mỗi sáng hệ thống gửi thông báo `CARE_REMINDER` cho bác sĩ phụ trách khi tới ngày hẹn (không có người phụ trách đang hoạt động thì gửi mọi bác sĩ). Ngày hẹn đã qua mà chưa khám được nhắc một lần.
-6. `GET /grooms/me/today` có thêm mảng `horseVetAppointments`: ngày hẹn hôm nay của ngựa Groom phụ trách (`id`, `horseId`, `horseName`, `type`, `scheduledAt`, `vetId`, `vetName`), theo giờ hẹn. Ngày hẹn không nằm trong `careSchedules`, không hoàn tất được.
+2. Ngày hẹn là việc chung của mọi bác sĩ, không giao bác sĩ nào. Response của ngày hẹn không đổi.
+3. Mỗi sáng hệ thống gửi thông báo `CARE_REMINDER` cho mọi bác sĩ khi tới ngày hẹn. Ngày hẹn đã qua mà chưa khám được nhắc một lần.
+4. `GET /grooms/me/today` có thêm mảng `horseVetAppointments`: ngày hẹn hôm nay của ngựa Groom phụ trách (`id`, `horseId`, `horseName`, `type`, `scheduledAt`), theo giờ hẹn. Ngày hẹn không nằm trong `careSchedules`, không hoàn tất được.
 
 **FE cần sửa**
 - Màn lịch khám định kỳ: thêm nút "Hủy lịch hẹn" (VET) mở ô nhập lý do, gọi DELETE ở mục 1.
-- Hiện tên bác sĩ phụ trách (`assignedToName`) cạnh ngày hẹn. Nút "Lịch của tôi" giờ lọc cả khối lịch khám.
-- Màn Hôm nay của Groom: thêm khối "Lịch hẹn bác sĩ hôm nay" chỉ để xem (tên ngựa, giờ, bác sĩ), không có nút hoàn tất.
+- Màn Hôm nay của Groom: thêm khối "Lịch hẹn bác sĩ hôm nay" chỉ để xem (tên ngựa, giờ), không có nút hoàn tất.
 
 **Lý do**
 - Trước đây ngày hẹn đặt nhầm không hủy được, không ai được nhắc khi tới ngày hẹn, và Groom không biết hôm nay ngựa có lịch khám để chuẩn bị.

@@ -4,8 +4,6 @@ import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
 import { CLUB_TIME_ZONE } from '../../../common/constants';
-import { UserRole } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
   MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
@@ -189,7 +187,6 @@ export class MedicalRemindersService {
   /**
    * Phát nhắc cho mọi ngày hẹn khám định kỳ tới ngày hẹn hôm nay hoặc đã qua mà chưa khám
    *
-   * - Người nhận là bác sĩ phụ trách nếu còn là bác sĩ đang hoạt động; không có thì mọi bác sĩ (assigneeId null)
    * - eventId cố định theo ngày hẹn và ngày hẹn theo lịch câu lạc bộ: mỗi ngày hẹn chỉ báo một lần; dời sang ngày khác thì được báo lại theo ngày mới
    *
    * @param today Hôm nay theo lịch câu lạc bộ
@@ -198,7 +195,6 @@ export class MedicalRemindersService {
   async notifyDueAppointments(today: string): Promise<number> {
     const appointments = await this.checkups.dueAppointments(today);
     for (const appointment of appointments) {
-      const assignee = appointment.assignee;
       const event: CheckupAppointmentDueEvent = {
         eventId: deterministicUuid(
           `checkup-appointment-due:${appointment.id}:${toClubDate(appointment.dueAt)}`,
@@ -206,11 +202,6 @@ export class MedicalRemindersService {
         horseId: appointment.horseId,
         appointmentId: appointment.id,
         scheduledAt: appointment.dueAt.toISOString(),
-        assigneeId:
-          assignee?.status === UserStatus.ACTIVE &&
-          assignee.role === UserRole.VETERINARIAN
-            ? assignee.id
-            : null,
       };
       await this.events.publish(
         this.dataSource.manager,

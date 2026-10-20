@@ -142,8 +142,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | Hủy bệnh án mở nhầm | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Điều chỉnh chi phí một buổi khám | NORMAL | HORSE OWNER của giai đoạn chứa ngày khám (III.6.6), CLUB MANAGER |
 | Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, người làm lịch (xem F3.11 mục 1) |
-| Tới ngày hẹn khám định kỳ mà chưa khám (F3.2) | NORMAL | VETERINARIAN phụ trách ngày hẹn; không có hoặc người đó không còn là VETERINARIAN đang hoạt động thì mọi VETERINARIAN đang hoạt động |
-| Bác sĩ khác dời hoặc hủy ngày hẹn khám định kỳ của mình (F3.2) | NORMAL | VETERINARIAN phụ trách ngày hẹn trước khi đổi, nếu còn hoạt động |
+| Tới ngày hẹn khám định kỳ mà chưa khám (F3.2) | NORMAL | Mọi VETERINARIAN đang hoạt động |
 
 1. Ngựa chưa được xếp khu thì không có HEAD TRAINER nhận thông báo, khi đó chỉ gửi cho các vai trò còn lại.
 2. HORSE OWNER là chủ của ngựa lúc xảy ra sự kiện, không phải chủ lúc thông báo được gửi. Ngựa đã chuyển nhượng trước khi gửi thì chủ cũ vẫn nhận nhưng thông báo không mở được hồ sơ ngựa, chủ mới không nhận. Lúc xảy ra sự kiện ngựa chưa có chủ, hoặc chủ đó không còn là tài khoản HORSE OWNER đang hoạt động, thì bỏ qua người nhận HORSE OWNER. Tương tự, ngựa chưa có GROOM phụ trách hoặc GROOM đó không còn hoạt động thì bỏ qua người nhận GROOM; GROOM lấy theo phân công lúc gửi thông báo.
@@ -182,13 +181,13 @@ Màn hình riêng cho công việc y tế, đúng yêu cầu của giảng viên
 
 1. Màn hình gồm sáu khối:
    - Sơ đồ đàn ngựa theo trạng thái sức khỏe trên chuồng trại: đếm số lượng theo từng mức, mỗi con kèm khu và ô chuồng đang xếp để vẽ theo khu và ô; ngựa chưa có ô gom vào nhóm "Chưa xếp ô".
-   - Lịch khám định kỳ: các con đến hạn trong 3 ngày tới và các con đã quá hạn, mỗi con kèm ngày hẹn đang hiệu lực và bác sĩ phụ trách ngày hẹn (nếu có). Kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong 3 ngày tới, mỗi dòng có người làm hiện tại (id và họ tên, trống nếu chưa có ai).
+   - Lịch khám định kỳ: các con đến hạn trong 3 ngày tới và các con đã quá hạn, mỗi con kèm ngày hẹn đang hiệu lực (nếu có). Kèm lịch tiêm phòng, tẩy giun, kiểm tra móng quá hạn hoặc đến hạn trong 3 ngày tới, mỗi dòng có người làm hiện tại (id và họ tên, trống nếu chưa có ai).
    - Bệnh án đang mở, kèm ngày khám gần nhất và ngày hẹn tái khám.
    - Ngựa Chấn thương hoặc Cách ly chưa có bệnh án (`horsesWithoutCase`): ngựa đang ở một trong hai trạng thái này mà không có bệnh án đang mở. Mỗi dòng gồm ngựa (id, tên), khu, ô, trạng thái sức khỏe và thời điểm chuyển sang trạng thái đó (lấy từ lần đổi gần nhất trong nhật ký sức khỏe; trống nếu nhật ký không có). Xếp Cách ly lên trước, cùng trạng thái thì con chuyển lâu nhất lên trước (không rõ thời điểm thì lên đầu). Đây là danh sách việc cần xử lý: con thật sự có vấn đề thì bác sĩ lập phiếu khám kết luận Có vấn đề để mở bệnh án (F3.3, F3.5); đặt nhầm hoặc đã ổn thì đổi lại trạng thái (F3.7).
    - Yêu cầu khám đang chờ xử lý, xếp yêu cầu Khẩn lên trước.
    - Thuốc cần cho hôm nay: các đơn thuốc đang hiệu lực, mỗi dòng gồm ngựa (id, tên), tên thuốc, liều lượng, tần suất, ngày bắt đầu, ngày kết thúc, buổi khám kê đơn và bệnh án chứa buổi đó (trống nếu buổi khám ngoài bệnh án); xếp theo tên ngựa rồi tên thuốc. Đơn đang hiệu lực khi đã tới ngày bắt đầu và chưa qua ngày kết thúc (tính cả ngày kết thúc), so theo ngày lịch câu lạc bộ. Đơn không có ngày kết thúc (chỉ có ở buổi khám thuộc bệnh án, theo F3.3) hiện tới khi đóng bệnh án. Bỏ đơn của buổi khám đã hủy. CLUB MANAGER và HEAD TRAINER cũng thấy liều lượng, tần suất (đúng bảng phân quyền thông tin của F3.10).
 2. Thứ tự ưu tiên trong sơ đồ đàn: Cách ly và Chấn thương lên đầu, rồi Cần theo dõi, cuối cùng là Đủ điều kiện.
-3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và các khối còn lại. Bộ lọc "Lịch của tôi" (`careAssignee=me`) chỉ giữ việc giao cho người đang xem: các lịch tiêm phòng, tẩy giun, kiểm tra móng có người làm hiện tại là người đang xem, và trong khối lịch khám định kỳ chỉ các con có ngày hẹn do người đang xem phụ trách (con chưa có ngày hẹn bị ẩn khi bật bộ lọc); không đổi các khối khác. Không có màn việc riêng cho bác sĩ, vì phần lớn việc của bác sĩ là việc chung (yêu cầu khám, khám định kỳ, bệnh án), chỉ lịch chăm sóc và ngày hẹn khám là giao đích danh.
+3. Bộ lọc theo khu chuồng và theo trạng thái sức khỏe. Số đếm bốn mức của sơ đồ đàn chỉ theo bộ lọc khu; lọc trạng thái sức khỏe chỉ thu hẹp danh sách ngựa và các khối còn lại. Bộ lọc "Lịch của tôi" (`careAssignee=me`) chỉ giữ các lịch tiêm phòng, tẩy giun, kiểm tra móng có người làm hiện tại là người đang xem; không đổi các khối khác. Không có màn việc riêng cho bác sĩ, vì phần lớn việc của bác sĩ là việc chung (yêu cầu khám, khám định kỳ, ngày hẹn khám, bệnh án), chỉ lịch chăm sóc là giao đích danh.
 4. Bấm vào một con ngựa mở hồ sơ chi tiết (F1.3) hoặc bệnh án (F3.10).
 5. Không hiển thị ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa.
 6. Số liệu tính trực tiếp khi mở màn hình, không lưu lại.
@@ -237,15 +236,15 @@ Theo dõi hạn khám định kỳ của từng con ngựa và đặt ngày hẹ
    - Ngày hẹn không được ở quá khứ.
    - Nếu ngựa chưa quá hạn thì ngày hẹn không được muộn hơn hạn khám. Nếu ngựa đã quá hạn thì chọn ngày bất kỳ từ hôm nay trở đi.
    - Mỗi con ngựa có tối đa một ngày hẹn đang hiệu lực.
-   - Người đặt là bác sĩ phụ trách ngày hẹn.
+   - Ngày hẹn là việc chung, không giao bác sĩ nào: tới ngày thì bác sĩ nào rảnh khám.
 4. Ngày hẹn chỉ là kế hoạch, hệ thống không tự tạo buổi khám khi đến ngày. Khi ghi một buổi khám bất kỳ cho con ngựa (F3.3 hoặc F3.6), ngày hẹn đang hiệu lực được đánh dấu Đã thực hiện.
-5. Dời ngày hẹn bắt buộc nhập lý do. Mọi VETERINARIAN dời được ngày hẹn của bác sĩ khác (ví dụ bác sĩ phụ trách nghỉ ốm); người dời thành bác sĩ phụ trách mới. Hủy ngày hẹn bắt buộc nhập lý do, ngày hẹn chuyển Đã hủy; không có ngày hẹn đang hiệu lực thì báo lỗi. Ngày hẹn bị bác sĩ khác dời hoặc hủy thì bác sĩ phụ trách cũ nhận thông báo theo mục III.7; tự dời, tự hủy ngày hẹn của mình thì không báo.
+5. Dời ngày hẹn bắt buộc nhập lý do. Hủy ngày hẹn bắt buộc nhập lý do, ngày hẹn chuyển Đã hủy; không có ngày hẹn đang hiệu lực thì báo lỗi. Mọi VETERINARIAN dời, hủy được mọi ngày hẹn.
 6. Ngựa vào trạng thái Đến hạn mà chưa có ngày hẹn khám đang hiệu lực: hệ thống gửi thông báo mức NORMAL cho mọi VETERINARIAN theo mục III.7, mỗi hạn khám chỉ báo một lần. Ngựa đã có ngày hẹn thì không báo; hủy ngày hẹn thì ngựa lại được báo Đến hạn nếu hạn khám này chưa từng được báo.
 7. Quá hạn trên 7 ngày: hệ thống gửi thông báo mức HIGH theo mục III.7.
 8. Ngựa đang có bệnh án mở vẫn hiện trong danh sách và vẫn có hạn khám.
 9. Không tính hạn khám cho ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa. Khi ngựa chuyển nhượng hoặc được ghi nhận mất, ngày hẹn đang hiệu lực tự hủy.
-10. Ghi nhật ký khi đặt, dời, hủy ngày hẹn khám (kèm bác sĩ phụ trách trước và sau khi dời).
-11. Tới ngày hẹn mà chưa khám: hệ thống báo bác sĩ phụ trách theo mục III.7 (III.7 mục 4). Màn Hôm nay của GROOM có khối riêng liệt kê ngày hẹn hôm nay của các ngựa mình phụ trách (tên ngựa, giờ hẹn, bác sĩ) để chuẩn bị ngựa; khối chỉ để xem, GROOM không hoàn tất được ngày hẹn và ngày hẹn không nằm trong lịch chăm sóc của GROOM.
+10. Ghi nhật ký khi đặt, dời, hủy ngày hẹn khám.
+11. Tới ngày hẹn mà chưa khám: hệ thống báo mọi VETERINARIAN theo mục III.7 (III.7 mục 4). Màn Hôm nay của GROOM có khối riêng liệt kê ngày hẹn hôm nay của các ngựa mình phụ trách (tên ngựa, giờ hẹn) để chuẩn bị ngựa; khối chỉ để xem, GROOM không hoàn tất được ngày hẹn và ngày hẹn không nằm trong lịch chăm sóc của GROOM.
 
 ### Bảng use case
 
@@ -258,7 +257,7 @@ Theo dõi hạn khám định kỳ của từng con ngựa và đặt ngày hẹ
 | **Tiền điều kiện** | VETERINARIAN đã đăng nhập. |
 | **Hậu điều kiện** | Danh sách hạn khám được hiển thị đúng. Ngày hẹn khám được lưu và ghi nhật ký. |
 | **Luồng sự kiện chính** | 1. VETERINARIAN mở mục "Lịch khám định kỳ".<br>2. Hệ thống tính hạn khám của từng con ngựa.<br>3. Hệ thống xếp các con quá hạn lên đầu, rồi tới các con đến hạn.<br>4. VETERINARIAN chọn một con và đặt ngày hẹn khám.<br>5. Hệ thống lưu và ghi nhật ký. |
-| **Luồng thay thế** | A1. VETERINARIAN dời ngày hẹn đã đặt -> hệ thống lưu ngày mới kèm lý do, người dời thành bác sĩ phụ trách; ngày hẹn của bác sĩ khác thì báo bác sĩ đó.<br>A2. Ngựa vừa được khám (trong hoặc ngoài bệnh án) -> hạn khám tự đẩy sang chu kỳ tiếp theo, ngày hẹn đang hiệu lực chuyển Đã thực hiện.<br>A3. VETERINARIAN hủy ngày hẹn kèm lý do -> ngày hẹn chuyển Đã hủy; ngày hẹn của bác sĩ khác thì báo bác sĩ đó.<br>A4. Tới ngày hẹn -> hệ thống báo bác sĩ phụ trách; GROOM thấy ngày hẹn ở màn Hôm nay. |
+| **Luồng thay thế** | A1. VETERINARIAN dời ngày hẹn đã đặt -> hệ thống lưu ngày mới kèm lý do.<br>A2. Ngựa vừa được khám (trong hoặc ngoài bệnh án) -> hạn khám tự đẩy sang chu kỳ tiếp theo, ngày hẹn đang hiệu lực chuyển Đã thực hiện.<br>A3. VETERINARIAN hủy ngày hẹn kèm lý do -> ngày hẹn chuyển Đã hủy.<br>A4. Tới ngày hẹn -> hệ thống báo mọi VETERINARIAN; GROOM thấy ngày hẹn ở màn Hôm nay. |
 | **Luồng ngoại lệ** | E1. Đặt ngày hẹn trong quá khứ, hoặc muộn hơn hạn khám khi ngựa chưa quá hạn -> báo lỗi.<br>E2. Đặt lịch cho ngựa đã chuyển nhượng hoặc đã mất -> không hiện nút thao tác; gọi trực tiếp API trả về 409. Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409) theo quy ước Flow 1.<br>E3. Dời hoặc hủy lịch không nhập lý do -> báo lỗi.<br>E4. Hủy khi ngựa không có ngày hẹn đang hiệu lực -> trả về 404. |
 
 ---

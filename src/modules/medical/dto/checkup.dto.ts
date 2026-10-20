@@ -64,17 +64,6 @@ export class CheckupAppointmentDto {
 
   @ApiProperty({ format: 'date-time' })
   scheduledAt!: Date;
-
-  @ApiProperty({
-    format: 'uuid',
-    nullable: true,
-    type: String,
-    description: 'Bác sĩ phụ trách ngày hẹn; null nếu chưa giao ai',
-  })
-  assignedTo!: string | null;
-
-  @ApiProperty({ nullable: true, type: String })
-  assignedToName!: string | null;
 }
 
 /**

@@ -2441,7 +2441,7 @@
     },
     "/api/v1/horses/{horseId}/checkup-appointment": {
       "put": {
-        "description": "Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Người đặt hoặc dời thành bác sĩ phụ trách; dời lịch của bác sĩ khác thì báo bác sĩ đó. Ngựa đã chuyển nhượng: 409.",
+        "description": "Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Ngựa đã chuyển nhượng: 409.",
         "operationId": "CheckupsController_setAppointment",
         "parameters": [
           {
@@ -2486,7 +2486,7 @@
         ]
       },
       "delete": {
-        "description": "Bắt buộc reason. Ngày hẹn chuyển Đã hủy. Hủy lịch của bác sĩ khác thì báo bác sĩ đó. Không có ngày hẹn đang hiệu lực: 404. Ngựa đã chuyển nhượng hoặc đã mất: 409.",
+        "description": "Bắt buộc reason. Ngày hẹn chuyển Đã hủy. Không có ngày hẹn đang hiệu lực: 404. Ngựa đã chuyển nhượng hoặc đã mất: 409.",
         "operationId": "CheckupsController_cancelAppointment",
         "parameters": [
           {
@@ -2968,7 +2968,7 @@
             "name": "careAssignee",
             "required": false,
             "in": "query",
-            "description": "me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; khối checkups chỉ giữ ngựa có ngày hẹn do người gọi phụ trách; không áp cho các khối khác",
+            "description": "me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; không áp cho các khối khác",
             "schema": {
               "type": "string",
               "enum": [
@@ -12511,24 +12511,12 @@
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
-          },
-          "assignedTo": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true,
-            "description": "Bác sĩ phụ trách ngày hẹn; null nếu chưa giao ai"
-          },
-          "assignedToName": {
-            "type": "string",
-            "nullable": true
           }
         },
         "required": [
           "id",
           "horseId",
-          "scheduledAt",
-          "assignedTo",
-          "assignedToName"
+          "scheduledAt"
         ]
       },
       "CheckupItemDto": {
@@ -17673,16 +17661,6 @@
             "format": "date-time",
             "type": "string",
             "description": "Giờ hẹn"
-          },
-          "vetId": {
-            "type": "string",
-            "nullable": true,
-            "format": "uuid",
-            "description": "Bác sĩ phụ trách; null nếu chưa giao ai"
-          },
-          "vetName": {
-            "type": "string",
-            "nullable": true
           }
         },
         "required": [
