@@ -31,9 +31,14 @@ import { SupplyRequestsService } from './requests.service';
 const REQUEST_READERS = [
   UserRole.CLUB_MANAGER,
   UserRole.HEAD_TRAINER,
+  UserRole.VETERINARIAN,
   UserRole.GROOM,
 ];
-const REQUESTERS = [UserRole.HEAD_TRAINER, UserRole.GROOM];
+const REQUESTERS = [
+  UserRole.HEAD_TRAINER,
+  UserRole.VETERINARIAN,
+  UserRole.GROOM,
+];
 
 @ApiTags('supplies')
 @ApiBearerAuth()

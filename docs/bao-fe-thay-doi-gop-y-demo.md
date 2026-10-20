@@ -12,6 +12,10 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 - `GET /reports/horses/:horseId/health`: `medicalCases` không còn bệnh án `CANCELLED` (mở nhầm) ở bất kỳ kỳ nào. Response shape giữ nguyên.
 
+### F4-15: Bác sĩ gửi đề xuất bổ sung vật tư
+
+- VET có nút gửi đề xuất bổ sung (mọi loại vật tư), xem và sửa đề xuất của mình như HT, GROOM (`GET/POST /supplies/requests`, `GET/PATCH /supplies/requests/:id`).
+
 ### F4-2: Sửa số tiền mức phí ngày
 
 **Luật / hành vi API mới**

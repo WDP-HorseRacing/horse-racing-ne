@@ -51,7 +51,7 @@ const REQUEST_RELATIONS = {
 const SUPPLY_REQUEST_NOT_FOUND = 'Không tìm thấy đề xuất bổ sung vật tư';
 
 /**
- * Đề xuất bổ sung vật tư: Groom, Head Trainer gửi; Club Manager duyệt, từ chối, cấp, hủy
+ * Đề xuất bổ sung vật tư: Groom, Head Trainer, Veterinarian gửi; Club Manager duyệt, từ chối, cấp, hủy
  */
 @Injectable()
 export class SupplyRequestsService {

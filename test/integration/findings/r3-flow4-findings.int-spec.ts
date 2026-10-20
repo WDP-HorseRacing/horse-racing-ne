@@ -551,15 +551,18 @@ describe('Findings R3: Flow 4 stable, supplies, fees, reports, media (Postgres)'
       expect(cronsOf(SuppliesModule)).not.toHaveLength(0);
     });
 
-    it('F4-15: a veterinarian can send a supply request', () => {
-      const create = Object.getOwnPropertyDescriptor(
-        SupplyRequestsController.prototype,
-        'create',
-      )?.value as object;
-      const roles = Reflect.getMetadata(ACCESS_KEY, create) as UserRole[];
+    it.each(['create', 'edit', 'list', 'get'] as const)(
+      'F4-15: a veterinarian can reach the supply request route %s',
+      (method) => {
+        const handler = Object.getOwnPropertyDescriptor(
+          SupplyRequestsController.prototype,
+          method,
+        )?.value as object;
+        const roles = Reflect.getMetadata(ACCESS_KEY, handler) as UserRole[];
 
-      expect(roles).toContain(UserRole.VETERINARIAN);
-    });
+        expect(roles).toContain(UserRole.VETERINARIAN);
+      },
+    );
 
     it.skip('N20: SKIP, BA must choose flat fee vs per-use billing first', () => {});
   });

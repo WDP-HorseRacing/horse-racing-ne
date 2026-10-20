@@ -23,7 +23,7 @@
 ```
 DANH MỤC VẬT TƯ (kho chung CLB)    món, loại, đơn vị, số tồn, ngưỡng báo thiếu
  ├─ SỔ NHẬP XUẤT                  mỗi lần đổi số tồn một dòng, chỉ thêm
- └─ ĐỀ XUẤT BỔ SUNG               Groom/HT xin, CM duyệt rồi cấp
+ └─ ĐỀ XUẤT BỔ SUNG               Groom/HT/VET xin, CM duyệt rồi cấp
 
 KHẨU PHẦN (theo từng ngựa)        DRAFT → ACTIVE → ARCHIVED
  └─ DÒNG KHẨU PHẦN                bữa + món (FEED/SUPPLEMENT) + lượng
@@ -42,7 +42,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 | Vật tư | `supply_items` | Club Manager | Vừa là danh mục vừa giữ số tồn chung CLB. Loại: `FEED`, `SUPPLEMENT`, `MEDICINE`, `EQUIPMENT`. |
 | Lô vật tư | `supply_lots` | Hệ thống | Một lần hàng vào kho: số nhập, số còn, đơn giá. Xuất dùng trừ lô nhập sớm nhất trước. |
 | Sổ nhập xuất | `supply_stock_movements` | Hệ thống | Mỗi dòng gắn một lô: tồn ban đầu (`OPENING`), nhập hàng (`RESTOCK`), xuất dùng (`USAGE`), hủy lần xuất (`USAGE_REVERSAL`). Các dòng của một lần xuất và dòng hủy nó dùng chung mã lần xuất (`usage_id`). Không sửa, không xóa. Dòng ghi trước khi có lô (`COUNT_ADJUST` và `RESTOCK` cũ) không gắn lô, không có tiền. |
-| Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`, hoặc `APPROVED` → `CANCELLED`. |
+| Đề xuất bổ sung | `supply_requests` | Groom, Head Trainer, Veterinarian gửi; Club Manager xử lý | `PENDING` → `APPROVED` → `FULFILLED`, hoặc `PENDING` → `REJECTED`, hoặc `APPROVED` → `CANCELLED`. |
 | Khẩu phần | `feeding_plans`, `feeding_plan_items` | Head Trainer của khu | Mỗi ngựa tối đa một bản `ACTIVE`; bản cũ giữ lại làm lịch sử. |
 | Loại việc | `daily_task_types` | Club Manager | Migration tạo sẵn: Cho ăn, Vệ sinh chuồng, Tắm rửa (áp mọi ngựa), Ngâm chân nước đá (không áp mọi ngựa). Seed demo tách "Cho ăn" thành "Cho ăn sáng" và "Cho ăn tối". |
 | Việc riêng của ngựa | `horse_daily_tasks` | Head Trainer của khu; bác sĩ mọi ngựa | Cột `mode`: `EXTRA` gắn thêm loại việc không áp mọi ngựa, `EXEMPT` miễn loại việc đang áp mọi ngựa. Việc phát sinh một ngày thì từ ngày = đến ngày. |
@@ -77,7 +77,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 ### 2. Đề xuất bổ sung
 
-1. Groom và Head Trainer gửi đề xuất: vật tư, ghi chú. Đề xuất không có số lượng; người gửi ghi nhu cầu (nếu muốn) vào ghi chú.
+1. Groom, Head Trainer và Veterinarian gửi đề xuất cho mọi loại vật tư: vật tư, ghi chú. Đề xuất không có số lượng; người gửi ghi nhu cầu (nếu muốn) vào ghi chú.
 2. Người gửi sửa được ghi chú khi đề xuất còn `PENDING`.
 3. Club Manager duyệt hoặc từ chối đề xuất `PENDING`; từ chối bắt buộc lý do.
 4. Club Manager đánh dấu đã cấp đề xuất `APPROVED` kèm số lượng thực nhận (> 0, tối đa 2 chữ số thập phân) và đơn giá (luật 1.4.2); thiếu một trong hai: 400 báo đúng ô. Số tồn cộng đúng số thực nhận. Cột `quantity` của đề xuất là số thực nhận, chỉ có giá trị khi `FULFILLED`, trạng thái khác là null.
@@ -170,7 +170,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 Lượt Groom được giao dắt ở ngựa Groom không phụ trách (dắt hộ) nằm riêng ở `assistedRuns`, cùng bộ lọc trên, kèm tên ngựa.
 
-Lịch hẹn khám định kỳ hôm nay của các ngựa Groom đang phụ trách nằm ở `horseVetAppointments` (Flow 3 F3.2): tên ngựa, giờ hẹn. Chỉ để Groom chuẩn bị ngựa: không có nút hoàn tất, không nằm trong lịch chăm sóc của ngựa. Lịch hẹn ngày khác, đã hủy hoặc đã khám thì không hiện.
+Lịch hẹn khám định kỳ (Flow 3 F3.2) và lịch tái khám (Flow 3 F3.6 mục 7) hôm nay của các ngựa Groom đang phụ trách nằm ở `horseVetAppointments`: tên ngựa, loại, giờ hẹn. Chỉ để Groom chuẩn bị ngựa: không có nút hoàn tất, không nằm trong lịch chăm sóc của ngựa. Lịch hẹn ngày khác, đã hủy hoặc đã khám thì không hiện.
 
 Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa rỗng, nhưng vẫn thấy lượt dắt hộ.
 
@@ -200,8 +200,8 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa r�
 | Xuất dùng (loại `MEDICINE`) | Có | Không | Có | Không | Không |
 | Xuất dùng (loại khác) | Có | Có | Có | Có | Không |
 | Hủy lần xuất | Mọi lần xuất | Lần mình xuất, trong 24 giờ | Lần mình xuất, trong 24 giờ | Lần mình xuất, trong 24 giờ | Không |
-| Gửi, sửa đề xuất | Không | Của mình | Không | Của mình | Không |
-| Xem đề xuất | Tất cả | Của mình | Không | Của mình | Không |
+| Gửi, sửa đề xuất | Không | Của mình | Của mình | Của mình | Không |
+| Xem đề xuất | Tất cả | Của mình | Của mình | Của mình | Không |
 | Duyệt, từ chối, cấp | Có | Không | Không | Không | Không |
 | Xem khẩu phần (cả lịch sử) | Tất cả | Ngựa thuộc khu mình | Tất cả | Chỉ bản `ACTIVE` của ngựa mình phụ trách | Không |
 | Lập, sửa, xóa nháp, duyệt khẩu phần | Không | Ngựa thuộc khu mình | Không | Không | Không |
@@ -236,9 +236,9 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | POST | `/supplies/usages/:usageId/cancel` | CM, HT, VET, GROOM | Hủy lần xuất `{ reason }` (luật 1.4.5) |
 | GET | `/supplies/items/:id/lots` | CM, HT, VET, GROOM | Các lô của vật tư (số nhập, số còn, đơn giá), lô nhập sớm nhất trước |
 | GET | `/supplies/items/:id/movements` | CM, HT, VET, GROOM | Sổ nhập xuất của vật tư kèm lô, đơn giá, tiền của dòng; mới nhất trước `?page&limit` |
-| GET | `/supplies/requests` | CM (tất cả), HT, GROOM (của mình) | Danh sách đề xuất `?status&page&limit` |
+| GET | `/supplies/requests` | CM (tất cả), HT, VET, GROOM (của mình) | Danh sách đề xuất `?status&page&limit` |
 | GET | `/supplies/requests/:id` | như trên | Một đề xuất |
-| POST | `/supplies/requests` | HT, GROOM | Gửi `{ itemId, note? }` |
+| POST | `/supplies/requests` | HT, VET, GROOM | Gửi `{ itemId, note? }` |
 | PATCH | `/supplies/requests/:id` | Người gửi | Sửa ghi chú đề xuất `PENDING` `{ note? }` |
 | PATCH | `/supplies/requests/:id/status` | CM | `{ status: APPROVED \| REJECTED \| FULFILLED \| CANCELLED, reason?, quantity?, unitPrice? }`; `reason` bắt buộc khi REJECTED, CANCELLED; `quantity` (số thực nhận) và `unitPrice` bắt buộc khi FULFILLED |
 | GET | `/horses/:horseId/feeding-plans` | CM, HT, VET, GROOM | Khẩu phần của ngựa `?status` (GROOM chỉ nhận bản `ACTIVE`) |

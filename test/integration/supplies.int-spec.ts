@@ -11,6 +11,7 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
+import { SUPPLY_REQUEST_STATUS_CHANGED_EVENT } from '../../src/modules/supplies/constants/supply-events.constants';
 import { SupplyItemListQueryDto } from '../../src/modules/supplies/dto/supply-item.dto';
 import { SupplyRequestListQueryDto } from '../../src/modules/supplies/dto/supply-request.dto';
 import { SupplyItemEntity } from '../../src/modules/supplies/entities/supply-item.entity';
@@ -402,6 +403,42 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       await expect(requests.get(otherGroom, mine.id)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+
+    it('applies the requester rules to a veterinarian: own view and edit, result sent back', async () => {
+      const vet = await actorOf(UserRole.VETERINARIAN);
+      const medicine = await items.create(manager, {
+        name: 'Kháng sinh',
+        category: SupplyCategory.MEDICINE,
+        unit: 'lọ',
+        reorderThreshold: 5,
+      });
+      const fromVet = await requests.create(vet, { itemId: medicine.id });
+      const fromGroom = await requests.create(groom, { itemId: medicine.id });
+
+      expect((await requests.get(vet, fromVet.id)).status).toBe(
+        SupplyRequestStatus.PENDING,
+      );
+      await expect(requests.get(vet, fromGroom.id)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await expect(requests.get(groom, fromVet.id)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await expect(
+        requests.edit(vet, fromGroom.id, { note: 'x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await requests.updateStatus(manager, fromVet.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      const [{ payload }] = await dataSource.query<
+        { payload: { requesterId: string } }[]
+      >(
+        `SELECT payload FROM outbox_events
+          WHERE event_name = $1 AND payload->>'requestId' = $2`,
+        [SUPPLY_REQUEST_STATUS_CHANGED_EVENT, fromVet.id],
+      );
+      expect(payload.requesterId).toBe(fromVet.requestedBy);
     });
 
     it('blocks deleting an item that still has an open request', async () => {

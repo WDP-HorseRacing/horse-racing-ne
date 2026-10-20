@@ -37,6 +37,12 @@ describe('supplies policy', () => {
         assertCanViewSupplyRequest('ht', UserRole.HEAD_TRAINER, 'groom'),
       ).toThrow(ForbiddenException);
     });
+
+    it('rejects a veterinarian viewing someone else request', () => {
+      expect(() =>
+        assertCanViewSupplyRequest('vet', UserRole.VETERINARIAN, 'groom'),
+      ).toThrow(ForbiddenException);
+    });
   });
 
   describe('assertSupplyRequestEditable', () => {
