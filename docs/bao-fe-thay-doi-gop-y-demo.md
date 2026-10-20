@@ -21,6 +21,20 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Ngựa mua lại từ ngoài chưa rõ tình trạng. Trước đây ngựa về Cần theo dõi nên vẫn tập buổi Nhẹ được trước khi bác sĩ khám.
 
+### F2-4: Điểm danh lại lượt đã báo vắng nhầm
+
+**Luật / hành vi API mới**
+1. `POST /session-participants/:id/check-in` nhận lượt `ABSENT` như lượt `PLANNED`, cùng khung giờ điểm danh (30 phút trước giờ bắt đầu tới giờ kết thúc buổi), cùng quyền (HT của lớp, ngựa thuộc khu mình; GROOM lượt được giao). Lượt thành `PRESENT`, `absenceReason` về `null`, nhật ký ghi `ABSENT` → `PRESENT`.
+2. Buổi đã tự chuyển `COMPLETED` vì lượt vắng là lượt mở cuối cùng: điểm danh lại mở buổi về `IN_PROGRESS`.
+3. Vẫn 409: buổi đã hủy, buổi đã hết giờ (kể cả lượt Vắng do hệ thống đánh lúc hết giờ), lượt ở trạng thái khác `PLANNED`/`ABSENT`. Câu 409 trạng thái lượt đổi thành "Chỉ lượt chờ điểm danh hoặc đã báo vắng mới được điểm danh".
+4. Ngựa không còn được tập lúc điểm danh lại: như điểm danh thường, lượt thành `INELIGIBLE` hoặc `CANCELLED_BY_LOCK` và trả 409; buổi chỉ có lượt đó thì đóng thành `CANCELLED`, `cancelReason` "Không còn ngựa tham gia".
+
+**FE cần sửa**
+- Lượt `ABSENT` hiện nút "Điểm danh lại" khi buổi còn trong khung giờ điểm danh, kể cả khi buổi đang hiện `COMPLETED` mà chưa tới giờ kết thúc. Gọi đúng API check-in, sau đó tải lại lượt và trạng thái buổi.
+
+**Lý do**
+- Groom hoặc HT bấm nhầm báo vắng thì trước đây không sửa được, ngựa mất buổi tập dù đang có mặt.
+
 ## Ngày 19/10/2026
 
 ### Chuẩn thời gian: thời điểm bắt buộc có múi giờ, ngày lịch đúng YYYY-MM-DD

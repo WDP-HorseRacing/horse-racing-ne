@@ -26,6 +26,9 @@ import {
   assertNoGroomRunClashes,
   assertParticipantAbsent,
   assertParticipantActionWindow,
+  assertParticipantCheckIn,
+  assertSessionOpenForCheckIn,
+  sessionReopensForCheckIn,
   assertParticipantComplete,
   assertParticipantStop,
   assertSessionOperational,
@@ -165,6 +168,89 @@ describe('training policy', () => {
         '2026-09-30',
       ),
     ).not.toThrow();
+  });
+});
+
+describe('check-in policy', () => {
+  it.each([SessionParticipantStatus.PLANNED, SessionParticipantStatus.ABSENT])(
+    'accepts check-in of a %s participant',
+    (status) => {
+      expect(() => assertParticipantCheckIn(status)).not.toThrow();
+    },
+  );
+
+  it.each([
+    SessionParticipantStatus.PRESENT,
+    SessionParticipantStatus.READY,
+    SessionParticipantStatus.ONGOING,
+    SessionParticipantStatus.COMPLETED,
+    SessionParticipantStatus.INELIGIBLE,
+  ])('rejects check-in of a %s participant with 409', (status) => {
+    expect(() => assertParticipantCheckIn(status)).toThrow(
+      new ConflictException(
+        'Chỉ lượt chờ điểm danh hoặc đã báo vắng mới được điểm danh',
+      ),
+    );
+  });
+
+  it('reopens only a completed session for an absent participant', () => {
+    expect(
+      sessionReopensForCheckIn(
+        TrainingSessionStatus.COMPLETED,
+        SessionParticipantStatus.ABSENT,
+      ),
+    ).toBe(true);
+    expect(
+      sessionReopensForCheckIn(
+        TrainingSessionStatus.COMPLETED,
+        SessionParticipantStatus.PLANNED,
+      ),
+    ).toBe(false);
+    expect(
+      sessionReopensForCheckIn(
+        TrainingSessionStatus.IN_PROGRESS,
+        SessionParticipantStatus.ABSENT,
+      ),
+    ).toBe(false);
+    expect(
+      sessionReopensForCheckIn(
+        TrainingSessionStatus.CANCELLED,
+        SessionParticipantStatus.ABSENT,
+      ),
+    ).toBe(false);
+  });
+
+  it('opens check-in on executable sessions and on a completed session for an absent run', () => {
+    for (const status of [
+      TrainingSessionStatus.SCHEDULED,
+      TrainingSessionStatus.IN_PROGRESS,
+    ]) {
+      expect(() =>
+        assertSessionOpenForCheckIn(status, SessionParticipantStatus.PLANNED),
+      ).not.toThrow();
+    }
+    expect(() =>
+      assertSessionOpenForCheckIn(
+        TrainingSessionStatus.COMPLETED,
+        SessionParticipantStatus.ABSENT,
+      ),
+    ).not.toThrow();
+  });
+
+  it('keeps 409 for a completed session with a non-absent run and for a cancelled session', () => {
+    const message = 'Buổi tập đã kết thúc hoặc đã hủy, không thao tác được';
+    expect(() =>
+      assertSessionOpenForCheckIn(
+        TrainingSessionStatus.COMPLETED,
+        SessionParticipantStatus.PLANNED,
+      ),
+    ).toThrow(new ConflictException(message));
+    expect(() =>
+      assertSessionOpenForCheckIn(
+        TrainingSessionStatus.CANCELLED,
+        SessionParticipantStatus.ABSENT,
+      ),
+    ).toThrow(new ConflictException(message));
   });
 });
 

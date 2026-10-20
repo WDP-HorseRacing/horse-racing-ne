@@ -39,8 +39,10 @@ import {
   assertParticipantActionWindow,
   assertParticipantStart,
   assertParticipantStop,
+  assertSessionOpenForCheckIn,
   assertSessionOperational,
   eligibilityForSession,
+  sessionReopensForCheckIn,
 } from '../policies/training.policy';
 import {
   CHECK_IN_OPENS_BEFORE_MS,
@@ -286,6 +288,7 @@ export class SessionParticipantsService {
    * - Ngựa đang bị khóa huấn luyện: lưu lượt thành CANCELLED_BY_LOCK rồi trả 409
    * - Ngựa không được tập vì lý do khác: lưu lượt thành INELIGIBLE rồi trả 409
    * - Ngựa được tập: lượt chuyển PRESENT
+   * - Lượt ABSENT được điểm danh lại, xóa lý do vắng; buổi đã tự chuyển COMPLETED thì mở lại thành IN_PROGRESS
    * - Chỉ trong khung giờ từ CHECK_IN_OPENS_BEFORE_MS trước giờ bắt đầu tới giờ kết thúc buổi tập
    * - Ghi nhật ký trạng thái lượt trước và sau, kể cả khi lượt bị đánh không được tập
    *
@@ -294,7 +297,7 @@ export class SessionParticipantsService {
    * @returns Promise trả về lượt tham gia sau khi điểm danh
    * @throws NotFoundException Nếu không có lượt tham gia, buổi tập hoặc ngựa
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
-   * @throws ConflictException Nếu buổi không ở trạng thái thực thi, ngoài khung giờ điểm danh, lượt không ở PLANNED hoặc ngựa không còn được tập
+   * @throws ConflictException Nếu buổi không ở trạng thái thực thi (trừ buổi COMPLETED khi lượt ABSENT), ngoài khung giờ điểm danh, lượt không ở PLANNED hoặc ABSENT, hoặc ngựa không còn được tập
    */
   async checkIn(
     actor: Actor,
@@ -315,7 +318,7 @@ export class SessionParticipantsService {
         manager,
         participantId,
       );
-      assertSessionOperational(session.status);
+      assertSessionOpenForCheckIn(session.status, participant.status);
       const context = await this.access.findParticipant(manager, participantId);
       await this.access.assertCanOperateParticipant(
         manager,
@@ -329,7 +332,12 @@ export class SessionParticipantsService {
         new Date(),
       );
       assertParticipantCheckIn(participant.status);
+      if (sessionReopensForCheckIn(session.status, participant.status)) {
+        session.status = TrainingSessionStatus.IN_PROGRESS;
+        await manager.save(session);
+      }
       const previousStatus = participant.status;
+      participant.absenceReason = null;
       if (await this.markIfIneligible(manager, horse, session, participant)) {
         await this.recordStatusChange(
           manager,

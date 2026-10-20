@@ -672,14 +672,65 @@ export function assertSessionOperational(status: TrainingSessionStatus): void {
   }
 }
 
+/**
+ * Kiểm lượt tham gia còn điểm danh được
+ *
+ * - Lượt chờ điểm danh: được điểm danh
+ * - Lượt đã báo vắng: được điểm danh lại
+ * - Trạng thái khác: 409
+ *
+ * @param status Trạng thái hiện tại của lượt tham gia
+ * @throws ConflictException Nếu lượt không ở PLANNED hoặc ABSENT
+ */
 export function assertParticipantCheckIn(
   status: SessionParticipantStatus,
 ): void {
-  if (status !== SessionParticipantStatus.PLANNED) {
+  if (
+    status !== SessionParticipantStatus.PLANNED &&
+    status !== SessionParticipantStatus.ABSENT
+  ) {
     throw new ConflictException(
-      'Chỉ lượt tập chờ điểm danh mới được điểm danh',
+      'Chỉ lượt chờ điểm danh hoặc đã báo vắng mới được điểm danh',
     );
   }
+}
+
+/**
+ * Cho biết lần điểm danh này có mở lại buổi tập đã tự đóng hay không
+ *
+ * - Buổi COMPLETED và lượt ABSENT: true, buổi phải quay về IN_PROGRESS
+ * - Trường hợp khác: false
+ *
+ * @param sessionStatus Trạng thái hiện tại của buổi tập
+ * @param participantStatus Trạng thái hiện tại của lượt tham gia
+ * @returns true nếu điểm danh lượt này phải mở lại buổi tập
+ */
+export function sessionReopensForCheckIn(
+  sessionStatus: TrainingSessionStatus,
+  participantStatus: SessionParticipantStatus,
+): boolean {
+  return (
+    sessionStatus === TrainingSessionStatus.COMPLETED &&
+    participantStatus === SessionParticipantStatus.ABSENT
+  );
+}
+
+/**
+ * Kiểm buổi tập còn nhận điểm danh cho lượt tham gia
+ *
+ * - Buổi COMPLETED và lượt ABSENT: được điểm danh lại (sessionReopensForCheckIn)
+ * - Trường hợp khác: buổi phải ở SCHEDULED hoặc IN_PROGRESS (assertSessionOperational)
+ *
+ * @param sessionStatus Trạng thái hiện tại của buổi tập
+ * @param participantStatus Trạng thái hiện tại của lượt tham gia
+ * @throws ConflictException Nếu buổi đã kết thúc hoặc đã hủy và không thuộc trường hợp mở lại
+ */
+export function assertSessionOpenForCheckIn(
+  sessionStatus: TrainingSessionStatus,
+  participantStatus: SessionParticipantStatus,
+): void {
+  if (sessionReopensForCheckIn(sessionStatus, participantStatus)) return;
+  assertSessionOperational(sessionStatus);
 }
 
 /**

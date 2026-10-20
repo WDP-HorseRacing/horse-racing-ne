@@ -504,12 +504,17 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     });
   });
 
-  it('F2-4: an ABSENT participant can be reopened by the HT', () => {
-    expect(
-      methodsOf(SessionParticipantsService.prototype).filter((name) =>
-        /reopen|undo|revert|restore/i.test(name),
-      ),
-    ).not.toEqual([]);
+  it('F2-4: an ABSENT participant can be checked in again by the HT', async () => {
+    const winx = await enrolledHorse();
+    const live = await session(new Date(Date.now() - 0.25 * HOUR), {
+      status: 'IN_PROGRESS',
+    });
+    const run = await participant(live, winx, 'ABSENT');
+
+    const outcome = await outcomeOf(participantsService.checkIn(trainer, run));
+
+    expect(outcome).toBe('ok');
+    expect(await statusOf('session_participants', run)).toBe('PRESENT');
   });
 
   describe('F2-5 groom notifications', () => {

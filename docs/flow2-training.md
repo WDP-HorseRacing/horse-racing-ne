@@ -137,6 +137,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 7. Buổi chưa tới giờ bắt đầu không bao giờ tự đóng, kể cả khi mọi lượt đều bị hủy hoặc không đủ điều kiện (còn chờ chấm lại).
 8. Buổi đã tới giờ: lượt mở cuối cùng xong, dừng sớm hoặc vắng thì buổi đóng ngay. Buổi đã tới giờ mà không còn lượt mở thì hệ thống tự đóng trong vòng một phút: có lượt đã diễn ra (hoàn thành, dừng sớm, vắng, bỏ qua) thì Hoàn thành, không thì Hủy với lý do "Không còn ngựa tham gia".
 9. Khung giờ thao tác (ví dụ buổi 15:00–16:00): điểm danh và báo vắng từ 30 phút trước giờ bắt đầu (14:30); báo sẵn sàng và bắt đầu từ 15 phút trước (14:45); tất cả đóng lúc hết giờ buổi (16:00). Ngoài khung giờ trả 409 kèm giờ mở hoặc giờ đóng. Hoàn thành hoặc dừng sớm lượt đang tập không giới hạn giờ.
+   - Điểm danh lại lượt Vắng (`POST /session-participants/:id/check-in`, cùng quyền với điểm danh): trong khung giờ điểm danh, lượt Vắng điểm danh được như lượt Chờ điểm danh; lượt thành Có mặt, xóa lý do vắng, nhật ký ghi Vắng → Có mặt. Buổi đã tự Hoàn thành vì lượt vắng đó là lượt mở cuối cùng (luật 8) thì mở lại thành Đang diễn ra. Buổi đã hủy tay hoặc đã hết giờ: 409. Lượt Vắng do hệ thống đánh lúc hết giờ (luật 10) không điểm danh lại được vì khung giờ đã đóng. Ngựa không còn được tập lúc điểm danh lại thì theo luật 4: lượt thành Không đủ điều kiện hoặc Hủy do khóa; buổi chỉ có lượt đó thì đóng lại thành Hủy, lý do "Không còn ngựa tham gia".
 10. Buổi đã hết giờ mà còn lượt chưa tập: trong vòng một phút hệ thống chuyển lượt Chờ điểm danh thành Vắng (lý do "Hết giờ, chưa điểm danh"), lượt Có mặt hoặc Sẵn sàng thành Bỏ qua (`SKIPPED`); lượt Đang tập giữ nguyên. Sau đó buổi đóng theo luật 8.
    - Việc tự chuyển Vắng hoặc Bỏ qua này không ghi nhật ký: luật cố định, nhìn trạng thái và lý do trên lượt là biết.
 11. Lượt Đang tập bị quên: buổi đã quá giờ kết thúc từ 30 phút trở lên thì trong vòng một phút hệ thống chuyển lượt Đang tập thành Hoàn thành, thời điểm hoàn thành = giờ kết thúc dự kiến của buổi, nhật ký ghi người thao tác trống, lý do "Hệ thống tự hoàn thành"; buổi đóng như thường.
@@ -229,7 +230,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | PATCH | `/session-participants/:id/trial-results/:attemptNo` | HT của lớp | Sửa video, thời gian, ghi chú của một lần chạy thử `{ videoMediaId?, elapsedMs?, notes?, reason? }` (mục 4 luật 7.1) |
 | GET/POST | `/session-participants/:id/evaluation` | Xem: theo quyền xem lượt; ghi: HT | Đánh giá lượt tập |
 | PATCH | `/session-participants/:id/evaluation` | HT | Sửa điểm, nhận xét `{ score?, comment?, reason }` (mục 4 luật 9.1) |
-| POST | `/session-participants/:id/check-in`, `/ready`, `/absent` | HT, GROOM | Điểm danh, báo sẵn sàng, báo vắng |
+| POST | `/session-participants/:id/check-in`, `/ready`, `/absent` | HT, GROOM | Điểm danh (cả điểm danh lại lượt Vắng), báo sẵn sàng, báo vắng |
 | POST | `/session-participants/:id/start`, `/complete` | HT | Bắt đầu, hoàn thành lượt tập |
 | POST | `/session-participants/:id/stop` | HT | Dừng sớm lượt đang tập `{ reason }` |
 | POST | `/session-participants/:id/metrics`, `/metrics/batch` | Không cần đăng nhập | Nhận điểm đo (giả lập) |
