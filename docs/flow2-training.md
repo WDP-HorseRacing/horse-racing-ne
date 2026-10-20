@@ -168,6 +168,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    - `plannedDistanceM`: tổng cự ly dự kiến của lượt hoàn thành, không cộng lượt dừng sớm.
    - `actualDurationSeconds` (bắt đầu tới kết thúc lượt) và `actualDistanceM` (tính từ tốc độ cảm biến, khoảng giữa hai điểm đo tính tối đa 5 giây): cộng cả lượt dừng sớm.
    - Báo cáo tiến độ ngựa và dashboard báo cáo cùng cách đếm: cột `stopped` riêng ở tổng và từng tuần của biểu đồ tuần, không tính vào `completed`; số phút tập cộng cả lượt dừng sớm, cự ly dự kiến thì không.
+   - Dashboard báo cáo (`GET /reports/dashboard`): khối `herd` chỉ đếm ngựa đang hoạt động. Khối `training`, `weekly` và bảng `horses` gồm thêm ngựa đã giải nghệ, đã chuyển nhượng hoặc đã mất có lượt tập ở buổi bắt đầu trong kỳ (bỏ hồ sơ đã xóa), nên tổng bảng `horses` khớp `training`. Lọc `barnId`/`mine` theo khu hiện tại của ngựa: ngựa đã chuyển nhượng hoặc đã mất bị bỏ khu nên chỉ hiện khi xem toàn CLB.
 
 ### 7. Bàn giao khi Head Trainer nghỉ
 

@@ -4985,7 +4985,7 @@
             "name": "barnId",
             "required": false,
             "in": "query",
-            "description": "Chỉ ngựa của một khu",
+            "description": "Chỉ ngựa đang thuộc một khu; ngựa đã chuyển nhượng hoặc đã mất không còn khu nên chỉ có khi xem toàn CLB",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -4995,7 +4995,7 @@
             "name": "mine",
             "required": false,
             "in": "query",
-            "description": "Chỉ ngựa thuộc các khu người gọi phụ trách",
+            "description": "Chỉ ngựa đang thuộc các khu người gọi phụ trách; ngựa đã chuyển nhượng hoặc đã mất không còn khu nên chỉ có khi xem toàn CLB",
             "schema": {
               "type": "boolean"
             }
@@ -15894,6 +15894,16 @@
           },
           "barnId": {
             "type": "string",
+          "lifecycleStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "RETIRED",
+              "TRANSFERRED",
+              "DECEASED"
+            ],
+            "description": "Vòng đời hiện tại của ngựa"
+          },
             "format": "uuid",
             "nullable": true
           },
@@ -15948,6 +15958,7 @@
           "horseName",
           "barnId",
           "barnName",
+          "lifecycleStatus",
           "healthStatus",
           "trainingLocked",
           "completed",

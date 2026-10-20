@@ -8,6 +8,10 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 ## Ngày 20/10/2026
 
+### Dashboard báo cáo đếm cả ngựa đã rời CLB
+
+- `GET /reports/dashboard`: `training`, `weekly`, `horses` gồm thêm ngựa đã giải nghệ/chuyển nhượng/đã mất có lượt tập trong kỳ (chỉ khi xem toàn CLB nếu ngựa đã bị bỏ khu); mỗi dòng `horses` thêm `lifecycleStatus` để hiện nhãn "Đã chuyển nhượng"/"Đã mất"; `herd` vẫn chỉ ngựa đang hoạt động.
+
 ### Báo cáo sức khỏe ngựa bỏ bệnh án đã hủy
 
 - `GET /reports/horses/:horseId/health`: `medicalCases` không còn bệnh án `CANCELLED` (mở nhầm) ở bất kỳ kỳ nào. Response shape giữ nguyên.

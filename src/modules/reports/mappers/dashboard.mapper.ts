@@ -1,4 +1,7 @@
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../../horses/enums/horse-status.enum';
 import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import { TrainingIntensity } from '../../training/enums/training-intensity.enum';
 import type {
@@ -33,6 +36,7 @@ const INELIGIBLE_STATUSES: SessionParticipantStatus[] = [
 /**
  * Dựng dashboard từ số liệu đã đọc
  *
+ * - Đàn ngựa chỉ tính ngựa đang hoạt động; bảng từng ngựa gồm mọi ngựa đã đọc
  * - Lượt không đủ điều kiện gồm cả lượt hủy do khóa huấn luyện
  * - Lượt dừng sớm đếm riêng, không tính vào lượt hoàn thành
  * - Biểu đồ tuần gồm mọi tuần có lượt hoàn thành, lượt dừng sớm hoặc có điểm đo, sắp theo tuần
@@ -50,8 +54,11 @@ export function toDashboard(source: DashboardSource): DashboardResponseDto {
   );
   const sumOf = (rows: DashboardParticipantCountRow[]) =>
     rows.reduce((sum, row) => sum + row.count, 0);
+  const herd = source.horses.filter(
+    (horse) => horse.lifecycleStatus === HorseLifecycleStatus.ACTIVE,
+  );
   const byHealth = (status: HorseHealthStatus) =>
-    source.horses.filter((horse) => horse.healthStatus === status).length;
+    herd.filter((horse) => horse.healthStatus === status).length;
   const byIntensity = (intensity: TrainingIntensity) =>
     sumOf(completed.filter((row) => row.intensity === intensity));
   const metricsOfHorse = new Map(
@@ -61,15 +68,14 @@ export function toDashboard(source: DashboardSource): DashboardResponseDto {
     from: source.period.from,
     to: source.period.to,
     herd: {
-      total: source.horses.length,
+      total: herd.length,
       byHealthStatus: {
         ELIGIBLE: byHealth(HorseHealthStatus.ELIGIBLE),
         UNDER_OBSERVATION: byHealth(HorseHealthStatus.UNDER_OBSERVATION),
         INJURED: byHealth(HorseHealthStatus.INJURED),
         QUARANTINED: byHealth(HorseHealthStatus.QUARANTINED),
       },
-      trainingLocked: source.horses.filter((horse) => horse.trainingLocked)
-        .length,
+      trainingLocked: herd.filter((horse) => horse.trainingLocked).length,
     },
     training: {
       sessions: source.sessions,
@@ -94,6 +100,7 @@ export function toDashboard(source: DashboardSource): DashboardResponseDto {
     horses: source.horses.map((horse): DashboardHorseDto => ({
       horseId: horse.horseId,
       horseName: horse.horseName,
+      lifecycleStatus: horse.lifecycleStatus,
       barnId: horse.barnId,
       barnName: horse.barnName,
       healthStatus: horse.healthStatus,

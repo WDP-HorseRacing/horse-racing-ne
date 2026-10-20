@@ -21,8 +21,10 @@ export class DashboardService {
   ) {}
 
   /**
-   * Dựng dashboard của một khoảng ngày cho ngựa đang hoạt động
+   * Dựng dashboard của một khoảng ngày
    *
+   * - Đàn ngựa: ngựa đang hoạt động trong phạm vi
+   * - Tập luyện, biểu đồ tuần, bảng từng ngựa: thêm ngựa không còn hoạt động có lượt tập trong kỳ
    * - Mặc định toàn CLB; barnId: chỉ một khu; mine: chỉ các khu người gọi phụ trách
    * - Khoảng ngày theo lịch CLB, mặc định 30 ngày tính tới hôm nay
    *
@@ -38,10 +40,13 @@ export class DashboardService {
   ): Promise<DashboardResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const period = resolveReportPeriod(query, clubToday());
-    const horses = await this.repository.horses({
-      barnId: query.barnId,
-      headTrainerId: query.mine ? caller.id : undefined,
-    });
+    const horses = await this.repository.horses(
+      {
+        barnId: query.barnId,
+        headTrainerId: query.mine ? caller.id : undefined,
+      },
+      period,
+    );
     const horseIds = horses.map((horse) => horse.horseId);
     const [participantCounts, sessions, metricsByHorse, metricsByWeek] =
       await Promise.all([

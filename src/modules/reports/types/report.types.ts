@@ -1,5 +1,8 @@
 import type { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
-import type { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import type {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../../horses/enums/horse-status.enum';
 import type {
   InjuryBodyRegion,
   InjuryType,
@@ -37,6 +40,7 @@ export interface DashboardHorseFilter {
 export interface DashboardHorseRow {
   horseId: string;
   horseName: string;
+  lifecycleStatus: HorseLifecycleStatus;
   barnId: string | null;
   barnName: string | null;
   healthStatus: HorseHealthStatus;

@@ -258,6 +258,7 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
     expect(dashboard.horses[0]).toEqual({
       horseId: gio,
       horseName: 'Gió',
+      lifecycleStatus: HorseLifecycleStatus.ACTIVE,
       barnId: barnA,
       barnName: 'Khu A',
       healthStatus: HorseHealthStatus.ELIGIBLE,
@@ -323,6 +324,64 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
       absent: 1,
     });
     expect(barn.weekly).toEqual([]);
+  });
+
+  it('counts runs in the period of horses that left the club, outside the herd and the barn filters', async () => {
+    const bao = await seed.horse('Bão', { barnId: barnA });
+    const deleted = await seed.horse('Xóa', { barnId: barnA });
+    const week1 = await session('2026-10-06T01:00:00Z', 'LIGHT');
+    await run(week1, bao, await enroll(bao), 'COMPLETED');
+    await run(week1, deleted, await enroll(deleted), 'COMPLETED');
+    await dataSource.query(
+      `UPDATE horses SET lifecycle_status = 'TRANSFERRED', barn_id = NULL WHERE id = $1`,
+      [bao],
+    );
+    await dataSource.query(
+      'UPDATE horses SET deleted_at = now() WHERE id = $1',
+      [deleted],
+    );
+
+    const club = await service.get(manager, period);
+    const barn = await service.get(manager, { ...period, barnId: barnA });
+    const mine = await service.get(trainer, { ...period, mine: true });
+    const outside = await service.get(manager, {
+      from: '2026-09-15',
+      to: '2026-09-30',
+    });
+
+    expect(club.herd.total).toBe(3);
+    expect(club.training).toMatchObject({
+      sessions: 3,
+      completed: 3,
+      completedByIntensity: { LIGHT: 2, HEAVY: 1 },
+    });
+    expect(club.weekly[0]).toMatchObject({
+      weekStart: '2026-10-05',
+      completed: 2,
+    });
+    expect(club.horses.map((horse) => horse.horseName)).toEqual([
+      'Bão',
+      'Gió',
+      'Mây',
+      'Sao',
+    ]);
+    expect(club.horses[0]).toMatchObject({
+      horseId: bao,
+      lifecycleStatus: HorseLifecycleStatus.TRANSFERRED,
+      barnId: null,
+      completed: 1,
+    });
+    expect(club.horses.reduce((sum, horse) => sum + horse.completed, 0)).toBe(
+      club.training.completed,
+    );
+    expect(barn.horses.map((horse) => horse.horseName)).toEqual(['Gió', 'Mây']);
+    expect(barn.training.completed).toBe(2);
+    expect(mine.horses.map((horse) => horse.horseName)).toEqual(['Gió', 'Mây']);
+    expect(outside.horses.map((horse) => horse.horseName)).toEqual([
+      'Gió',
+      'Mây',
+      'Sao',
+    ]);
   });
 
   it('rejects a start after the end', async () => {

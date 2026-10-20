@@ -2,18 +2,26 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
 import { toQueryBoolean } from '../../../common/utils/query-boolean';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
+import {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../../horses/enums/horse-status.enum';
 import { ReportPeriodDto } from './report-period.dto';
 import { ReportWeekDto } from './report-week.dto';
 
 export class DashboardQueryDto extends ReportPeriodDto {
-  @ApiPropertyOptional({ format: 'uuid', description: 'Chỉ ngựa của một khu' })
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Chỉ ngựa đang thuộc một khu; ngựa đã chuyển nhượng hoặc đã mất không còn khu nên chỉ có khi xem toàn CLB',
+  })
   @IsOptional()
   @IsUUID('4')
   barnId?: string;
 
   @ApiPropertyOptional({
-    description: 'Chỉ ngựa thuộc các khu người gọi phụ trách',
+    description:
+      'Chỉ ngựa đang thuộc các khu người gọi phụ trách; ngựa đã chuyển nhượng hoặc đã mất không còn khu nên chỉ có khi xem toàn CLB',
   })
   @IsOptional()
   @Transform(toQueryBoolean)
@@ -75,6 +83,12 @@ export class DashboardTrainingDto {
 export class DashboardHorseDto {
   @ApiProperty({ format: 'uuid' }) horseId!: string;
   @ApiProperty() horseName!: string;
+
+  @ApiProperty({
+    enum: HorseLifecycleStatus,
+    description: 'Vòng đời hiện tại của ngựa',
+  })
+  lifecycleStatus!: HorseLifecycleStatus;
 
   @ApiProperty({ format: 'uuid', nullable: true, type: String })
   barnId!: string | null;

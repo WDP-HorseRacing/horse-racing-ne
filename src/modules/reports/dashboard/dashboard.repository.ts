@@ -20,19 +20,27 @@ export class DashboardRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Lấy các ngựa đang hoạt động trong phạm vi, kèm khu, trạng thái sức khỏe, cờ khóa huấn luyện và cân nặng gần nhất
+   * Lấy các ngựa trong phạm vi, kèm vòng đời, khu, trạng thái sức khỏe, cờ khóa huấn luyện và cân nặng gần nhất
    *
+   * - Gồm ngựa đang hoạt động và ngựa ở vòng đời khác (giải nghệ, chuyển nhượng, đã mất) có ít nhất một lượt tập ở buổi bắt đầu trong kỳ
    * - Bỏ hồ sơ đã xóa và số đo đã xóa
+   * - Lọc khu theo khu hiện tại của ngựa; ngựa đã chuyển nhượng hoặc đã mất không còn khu nên chỉ có khi xem toàn CLB
    * - headTrainerId: chỉ ngựa thuộc khu chưa xóa do Head Trainer đó phụ trách
    *
    * @param filter Một khu, hoặc các khu của một Head Trainer; bỏ trống là toàn CLB
+   * @param period Khoảng ngày của báo cáo
    * @returns Promise trả về các ngựa, sắp theo tên
    */
-  horses(filter: DashboardHorseFilter): Promise<DashboardHorseRow[]> {
+  horses(
+    filter: DashboardHorseFilter,
+    period: ReportPeriod,
+  ): Promise<DashboardHorseRow[]> {
     const params: unknown[] = [
       HorseLifecycleStatus.ACTIVE,
       TrainingLockStatus.ACTIVE,
       HorseMeasurementType.WEIGHT,
+      period.start,
+      period.end,
     ];
     const conditions: string[] = [];
     if (filter.barnId) {
@@ -48,6 +56,7 @@ export class DashboardRepository {
     return this.dataSource.query(
       `SELECT h.id AS "horseId",
               h.name AS "horseName",
+              h.lifecycle_status AS "lifecycleStatus",
               h.barn_id AS "barnId",
               b.name AS "barnName",
               h.health_status AS "healthStatus",
@@ -62,7 +71,13 @@ export class DashboardRepository {
          FROM horses h
          LEFT JOIN barns b ON b.id = h.barn_id
         WHERE h.deleted_at IS NULL
-          AND h.lifecycle_status = $1
+          AND (h.lifecycle_status = $1 OR EXISTS (
+                SELECT 1 FROM session_participants p
+                  JOIN training_sessions s ON s.id = p.session_id
+                 WHERE p.horse_id = h.id
+                   AND s.scheduled_start_at >= $4
+                   AND s.scheduled_start_at < $5
+              ))
           ${conditions.join(' ')}
         ORDER BY h.name, h.id`,
       params,
