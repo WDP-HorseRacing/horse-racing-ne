@@ -59,6 +59,12 @@ export const VISIT_COST_AUTHOR_ONLY_MESSAGE =
   'Chỉ bác sĩ ghi phiếu khám mới được điều chỉnh chi phí phiếu này';
 
 /**
+ * Lý do bỏ qua yêu cầu khám tự sinh khi buổi khám bị hủy mà ngựa đã có yêu cầu đang chờ cùng loại cảnh báo.
+ */
+export const DUPLICATE_ALERT_REQUEST_REASON =
+  'Buổi khám bị hủy, ngựa đã có yêu cầu đang chờ cùng loại cảnh báo';
+
+/**
  * Câu chặn khi còn bệnh án đang mở, theo trạng thái làm hồ sơ chỉ được xem
  */
 export const OPEN_CASE_BLOCKS_READ_ONLY_MESSAGES: Record<

@@ -14,6 +14,7 @@ import { MedicalCaseEntity } from './medical-case.entity';
  * MedicalRecordEntity: một buổi khám của ngựa.
  * Buổi khám ngoài bệnh án có caseId null (trừ buổi mở bệnh án); buổi tái khám luôn thuộc một bệnh án.
  * Không sửa, không xóa, trừ chi phí được điều chỉnh kèm lý do; ghi sai thì hủy bằng voidedAt và voidReason.
+ * healthBefore là trạng thái sức khỏe của ngựa ngay trước buổi khám; null với buổi khám ghi trước khi có cột này.
  */
 @Entity({ name: 'medical_records' })
 @Check('medical_records_cost_chk', '"cost" >= 0')
@@ -42,6 +43,14 @@ export class MedicalRecordEntity extends BaseRecordEntity {
 
   @Column({ type: 'varchar', length: 32, nullable: true })
   severity!: MedicalSeverity | null;
+
+  @Column({
+    name: 'health_before',
+    type: 'varchar',
+    length: 32,
+    nullable: true,
+  })
+  healthBefore!: HorseHealthStatus | null;
 
   @Column({ name: 'resulting_status', type: 'varchar', length: 32 })
   resultingStatus!: HorseHealthStatus;

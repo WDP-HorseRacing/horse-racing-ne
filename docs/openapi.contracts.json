@@ -3370,7 +3370,7 @@
     },
     "/api/v1/medical-records/{id}/void": {
       "post": {
-        "description": "Bắt buộc lý do. Chỉ bác sĩ ghi buổi khám mới được hủy, bác sĩ khác: 403. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.",
+        "description": "Bắt buộc lý do. Chỉ bác sĩ ghi buổi khám mới được hủy, bác sĩ khác: 403. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409. Yêu cầu khám mà buổi khám đã đánh dấu EXAMINED về lại PENDING, bỏ gắn buổi khám. Buổi khám đã đổi sức khỏe mà chưa có lần đổi sức khỏe nào sau đó thì sức khỏe ngựa về trạng thái trước buổi khám; ngược lại giữ nguyên, xem healthOutcome và laterHealthChange.",
         "operationId": "MedicalDetailsController_voidRecord",
         "parameters": [
           {
@@ -3398,7 +3398,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MedicalRecordResponseDto"
+                  "$ref": "#/components/schemas/VoidMedicalRecordResponseDto"
                 }
               }
             }
@@ -14159,6 +14159,174 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "LaterHealthChangeResponseDto": {
+        "type": "object",
+        "properties": {
+          "changedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "changedBy": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Người đổi; null khi hệ thống đổi"
+          },
+          "to": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          }
+        },
+        "required": [
+          "changedAt",
+          "changedBy",
+          "to"
+        ]
+      },
+      "VoidMedicalRecordResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "REQUEST",
+              "FOLLOW_UP"
+            ]
+          },
+          "caseId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Bệnh án chứa buổi khám; null với buổi khám ngoài bệnh án kết luận NORMAL"
+          },
+          "conclusion": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "ISSUE"
+            ],
+            "nullable": true
+          },
+          "examDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagnosis": {
+            "type": "string",
+            "nullable": true
+          },
+          "resultingStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "careInstructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextVisitAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "vetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voidedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "voidReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "replacesRecordId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "cost": {
+            "type": "number",
+            "nullable": true,
+            "description": "Chi phí của buổi khám (VND); không có key với Head Trainer; null khi costHidden = true"
+          },
+          "costHidden": {
+            "type": "boolean",
+            "description": "true khi buổi khám thuộc giai đoạn sở hữu của chủ khác (chỉ xảy ra với Horse Owner), khi đó cost là null; không có key với Head Trainer"
+          },
+          "prescriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrescriptionResponseDto"
+            }
+          },
+          "injuries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InjuryMarkerResponseDto"
+            }
+          },
+          "healthOutcome": {
+            "type": "string",
+            "enum": [
+              "NOT_CHANGED_BY_VISIT",
+              "UNKNOWN_BEFORE",
+              "REVERTED",
+              "KEPT_LATER_CHANGE"
+            ],
+            "description": "REVERTED: sức khỏe ngựa về trạng thái ngay trước buổi khám. KEPT_LATER_CHANGE: đã có lần đổi sức khỏe sau buổi khám nên giữ nguyên. NOT_CHANGED_BY_VISIT: buổi khám không đổi sức khỏe. UNKNOWN_BEFORE: buổi khám cũ không lưu sức khỏe trước khám, giữ nguyên."
+          },
+          "laterHealthChange": {
+            "nullable": true,
+            "description": "Lần đổi sức khỏe mới nhất sau buổi khám; chỉ có khi healthOutcome là KEPT_LATER_CHANGE, có thể null nếu không đọc được từ nhật ký",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LaterHealthChangeResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "kind",
+          "caseId",
+          "conclusion",
+          "examDate",
+          "diagnosis",
+          "resultingStatus",
+          "careInstructions",
+          "nextVisitAt",
+          "vetId",
+          "voidReason",
+          "replacesRecordId",
+          "prescriptions",
+          "injuries",
+          "healthOutcome",
+          "laterHealthChange"
         ]
       },
       "AdjustVisitCostDto": {

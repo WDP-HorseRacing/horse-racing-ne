@@ -8,6 +8,7 @@ import { DataSource, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
 import { HorseMeasurementsService } from '../../horses/horse-measurements/horse-measurements.service';
@@ -45,6 +46,7 @@ import { MedicalVisitsService } from './medical-visits.service';
 import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
 import { ExamRequestWritesService } from '../shared/exam-request-writes.service';
 import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+import { MedicalVisitWritesService } from './medical-visit-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -69,6 +71,7 @@ describe('MedicalVisitsService', () => {
     lockHorseForCostAdjustment: jest.Mock;
     findOpenCase: jest.Mock;
     currentInjuryStatuses: jest.Mock;
+    latestHealthChangeAfterVisit: jest.Mock;
   };
   let shared: { findOpenCase: jest.Mock };
   let horseHealth: { applyHealthStatus: jest.Mock };
@@ -171,6 +174,7 @@ describe('MedicalVisitsService', () => {
         Promise.resolve({ caller: { id: 'vet-1' }, horse }),
       ),
       findOpenCase: shared.findOpenCase,
+      latestHealthChangeAfterVisit: jest.fn().mockResolvedValue(null),
       currentInjuryStatuses: jest.fn().mockResolvedValue(
         new Map([
           ['inj-open', RecoveryStatus.RECOVERING],
@@ -227,9 +231,14 @@ describe('MedicalVisitsService', () => {
           manager.findOne(MedicalCaseEntity, options) as unknown,
       } as unknown as Repository<MedicalCaseEntity>,
       access as unknown as MedicalAccessService,
-      new TrainingLockWritesService(),
       new CareScheduleWritesService(),
-      new ExamRequestWritesService(),
+      new MedicalVisitWritesService(
+        access as unknown as MedicalAccessService,
+        new TrainingLockWritesService(),
+        new ExamRequestWritesService(),
+        audit,
+        events,
+      ),
       horseHealth as unknown as HorseHealthService,
       measurements as unknown as HorseMeasurementsService,
       audit,
@@ -678,9 +687,12 @@ describe('MedicalVisitsService', () => {
       vetId: 'vet-1',
       caseId: null,
       conclusion: MedicalVisitConclusion.NORMAL,
+      healthBefore: HorseHealthStatus.ELIGIBLE,
+      resultingStatus: HorseHealthStatus.ELIGIBLE,
       voidedAt: null,
       ...overrides,
     });
+    const healthUpdates = () => updatesOn(HorseEntity);
 
     it('answers not found for a missing visit', async () => {
       await expect(
@@ -782,6 +794,115 @@ describe('MedicalVisitsService', () => {
         }),
       );
       expect(result.voidReason).toBe('Gõ nhầm cân nặng');
+      expect(result.healthOutcome).toBe('NOT_CHANGED_BY_VISIT');
+      expect(access.latestHealthChangeAfterVisit).not.toHaveBeenCalled();
+      expect(horseHealth.applyHealthStatus).not.toHaveBeenCalled();
+    });
+
+    it('returns the requests the visit examined to the queue and audits each one', async () => {
+      rows.set(MedicalRecordEntity, visit());
+      manager.find.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === MedicalExamRequestEntity
+            ? [
+                {
+                  id: 'req-1',
+                  horseId: HORSE_ID,
+                  status: ExamRequestStatus.EXAMINED,
+                  alertType: null,
+                },
+              ]
+            : [],
+        ),
+      );
+      await service.voidVisit(vet, 'r1', { reason: 'Sai ngựa' });
+      expect(updatesOn(MedicalExamRequestEntity)).toEqual([
+        [
+          MedicalExamRequestEntity,
+          { id: 'req-1' },
+          {
+            status: ExamRequestStatus.PENDING,
+            dismissReason: null,
+            handledBy: null,
+            handledAt: null,
+            medicalRecordId: null,
+          },
+        ],
+      ]);
+      expect(audit.record).toHaveBeenCalledWith(manager, {
+        actorId: 'vet-1',
+        action: 'UPDATE',
+        entityType: AuditEntityType.MEDICAL_EXAM_REQUEST,
+        entityId: 'req-1',
+        before: { status: ExamRequestStatus.EXAMINED, medicalRecordId: 'r1' },
+        after: { status: ExamRequestStatus.PENDING, medicalRecordId: null },
+        reason: 'Sai ngựa',
+        feature: 'MED_CASE_VISIT',
+      });
+      expect(events.publish).not.toHaveBeenCalled();
+    });
+
+    it('reverts the health the visit changed when nothing changed it since, and publishes the change in the transaction', async () => {
+      horse.healthStatus = HorseHealthStatus.INJURED;
+      rows.set(
+        MedicalRecordEntity,
+        visit({ resultingStatus: HorseHealthStatus.INJURED }),
+      );
+      const result = await service.voidVisit(vet, 'r1', { reason: 'Sai ngựa' });
+      expect(access.latestHealthChangeAfterVisit).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+        'r1',
+      );
+      expect(horseHealth.applyHealthStatus).toHaveBeenCalledWith(manager, {
+        horseId: HORSE_ID,
+        to: HorseHealthStatus.ELIGIBLE,
+        actorId: 'vet-1',
+        reason: 'Hủy buổi khám: Sai ngựa',
+        feature: 'MED_CASE_VISIT',
+      });
+      expect(steps).toEqual([MEDICAL_HEALTH_CHANGED_EVENT, 'commit']);
+      expect(result).toMatchObject({
+        healthOutcome: 'REVERTED',
+        laterHealthChange: null,
+      });
+    });
+
+    it('keeps the current health and tells who changed it when a later change exists', async () => {
+      horse.healthStatus = HorseHealthStatus.INJURED;
+      rows.set(
+        MedicalRecordEntity,
+        visit({ resultingStatus: HorseHealthStatus.INJURED }),
+      );
+      const later = {
+        changedAt: new Date('2026-05-21T03:00:00Z'),
+        changedBy: 'vet-2',
+        to: HorseHealthStatus.INJURED,
+      };
+      access.latestHealthChangeAfterVisit.mockResolvedValue(later);
+      const result = await service.voidVisit(vet, 'r1', { reason: 'Sai ngựa' });
+      expect(horseHealth.applyHealthStatus).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
+      expect(healthUpdates()).toEqual([]);
+      expect(result).toMatchObject({
+        healthOutcome: 'KEPT_LATER_CHANGE',
+        laterHealthChange: later,
+      });
+    });
+
+    it('keeps the current health of a visit recorded before the health before was stored', async () => {
+      horse.healthStatus = HorseHealthStatus.INJURED;
+      rows.set(
+        MedicalRecordEntity,
+        visit({
+          healthBefore: null,
+          resultingStatus: HorseHealthStatus.INJURED,
+        }),
+      );
+      const result = await service.voidVisit(vet, 'r1', { reason: 'Sai ngựa' });
+      expect(access.latestHealthChangeAfterVisit).not.toHaveBeenCalled();
+      expect(horseHealth.applyHealthStatus).not.toHaveBeenCalled();
+      expect(result.healthOutcome).toBe('UNKNOWN_BEFORE');
     });
 
     it('cancels a case opened by mistake when its only visit is voided', async () => {

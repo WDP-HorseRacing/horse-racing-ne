@@ -25,21 +25,16 @@ import {
 import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
-  MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
-  MEDICAL_HEALTH_CHANGED_EVENT,
   MEDICAL_VISIT_COST_ADJUSTED_EVENT,
 } from '../constants/medical-events.constants';
-import {
-  MedicalCaseStatus,
-  VisitVoidAction,
-} from '../constants/medical-case.enum';
+import { VisitVoidAction } from '../constants/medical-case.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
+  VisitVoidHealthOutcome,
 } from '../constants/medical-visit.enum';
 import {
   AdjustVisitCostDto,
@@ -48,6 +43,7 @@ import {
   MedicalRecordResponseDto,
   MedicalVisitBaseDto,
   VoidMedicalRecordDto,
+  VoidMedicalRecordResponseDto,
 } from '../dto';
 import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { InjuryEntity } from '../entities/injury.entity';
@@ -58,6 +54,7 @@ import { PrescriptionEntity } from '../entities/prescription.entity';
 import {
   costOfVisit,
   toMedicalRecordResponse,
+  toVoidMedicalRecordResponse,
 } from '../mappers/medical.mapper';
 import {
   assertCaseOpen,
@@ -72,16 +69,12 @@ import {
   assertVisitCostAdjustable,
   assertVisitAuthor,
   resolveVisitVoid,
+  resolveVoidHealth,
 } from '../policies/medical.policy';
 import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
-import {
-  ExamRequestWritesService,
-  examRequestHandledEvent,
-} from '../shared/exam-request-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+import { MedicalVisitWritesService } from './medical-visit-writes.service';
 import type {
-  HealthChangedEvent,
   MedicalCaseCancelledEvent,
   MedicalCaseOpenedEvent,
   MedicalVisitCostAdjustedEvent,
@@ -129,9 +122,8 @@ export class MedicalVisitsService {
     @InjectRepository(MedicalCaseEntity)
     private readonly medicalCases: Repository<MedicalCaseEntity>,
     private readonly access: MedicalAccessService,
-    private readonly lockWrites: TrainingLockWritesService,
     private readonly scheduleWrites: CareScheduleWritesService,
-    private readonly requestWrites: ExamRequestWritesService,
+    private readonly visitWrites: MedicalVisitWritesService,
     private readonly horseHealth: HorseHealthService,
     private readonly measurements: HorseMeasurementsService,
     private readonly audit: AuditService,
@@ -206,7 +198,7 @@ export class MedicalVisitsService {
 
       const openedCase =
         body.conclusion === MedicalVisitConclusion.ISSUE
-          ? await this.openCase(manager, {
+          ? await this.visitWrites.openCase(manager, {
               horseId,
               callerId: caller.id,
               openedAt: now,
@@ -312,13 +304,14 @@ export class MedicalVisitsService {
    * - Chỉ bác sĩ ghi buổi khám mới được hủy; bác sĩ khác: 403
    * - Buổi đã hủy: 409. Buổi tái khám hủy được kể cả khi bệnh án đã đóng (không đổi chi phí, kết luận)
    * - Buổi mở bệnh án chỉ hủy được khi bệnh án còn đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy, lệnh khóa tách khỏi bệnh án, event hủy bệnh án ghi vào outbox trong cùng transaction (báo Club Manager và chủ ngựa)
-   * - Số đo của buổi khám bị xóa mềm khỏi lịch sử số đo cơ thể; trạng thái sức khỏe không tự quay lại
-   * - Yêu cầu khám đã gắn giữ nguyên EXAMINED
+   * - Số đo của buổi khám bị xóa mềm khỏi lịch sử số đo cơ thể
+   * - Yêu cầu khám mà buổi khám đã đánh dấu EXAMINED về lại PENDING và bỏ gắn buổi khám, mỗi yêu cầu một dòng nhật ký; yêu cầu tự sinh trùng loại cảnh báo với yêu cầu đang chờ thì chuyển DISMISSED
+   * - Buổi khám đã đổi sức khỏe và chưa có lần đổi sức khỏe nào sau đó: sức khỏe ngựa về giá trị trước buổi khám (nhật ký lý do "Hủy buổi khám: <lý do>", event đổi sức khỏe ghi vào outbox); có lần đổi sau đó hoặc buổi khám cũ không lưu sức khỏe trước khám thì giữ nguyên
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param recordId UUID của buổi khám
    * @param body Lý do hủy
-   * @returns Promise trả về buổi khám sau khi hủy
+   * @returns Promise trả về buổi khám sau khi hủy kèm cách xử lý trạng thái sức khỏe
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động, hoặc người gọi không phải bác sĩ ghi buổi khám
    * @throws NotFoundException Nếu không có buổi khám, hoặc ngựa ngoài phạm vi
    * @throws ConflictException Nếu buổi khám không được hủy, hoặc ngựa đã chuyển nhượng
@@ -327,7 +320,7 @@ export class MedicalVisitsService {
     actor: Actor,
     recordId: string,
     body: VoidMedicalRecordDto,
-  ): Promise<MedicalRecordResponseDto> {
+  ): Promise<VoidMedicalRecordResponseDto> {
     const found = await this.medicalRecords.findOne({
       where: { id: recordId },
     });
@@ -379,19 +372,55 @@ export class MedicalVisitsService {
           feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
         },
       );
+      await this.visitWrites.reopenRequests(
+        manager,
+        recordId,
+        caller.id,
+        body.reason,
+      );
+      const laterChange =
+        visit.healthBefore !== null &&
+        visit.healthBefore !== visit.resultingStatus
+          ? await this.access.latestHealthChangeAfterVisit(
+              manager,
+              horse.id,
+              recordId,
+            )
+          : null;
+      const healthOutcome = resolveVoidHealth({
+        healthBefore: visit.healthBefore,
+        resultingStatus: visit.resultingStatus,
+        currentStatus: horse.healthStatus,
+        hasLaterChange: laterChange !== null,
+      });
+      const health =
+        healthOutcome === VisitVoidHealthOutcome.REVERTED
+          ? await this.horseHealth.applyHealthStatus(manager, {
+              horseId: horse.id,
+              to: visit.healthBefore as HorseHealthStatus,
+              actorId: caller.id,
+              reason: `Hủy buổi khám: ${body.reason}`,
+              feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
+            })
+          : null;
       await this.audit.record(manager, {
         actorId: caller.id,
         action: AuditAction.UPDATE,
         entityType: AuditEntityType.MEDICAL_RECORD,
         entityId: recordId,
         before: { voidedAt: null },
-        after: { voidedAt, measurementsVoided },
+        after: { voidedAt, measurementsVoided, healthOutcome },
         reason: body.reason,
         feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
       });
       const cancelledCase =
         action === VisitVoidAction.VOID_AND_CANCEL_CASE && medicalCase
-          ? await this.cancelCase(manager, medicalCase, caller.id, body.reason)
+          ? await this.visitWrites.cancelCase(
+              manager,
+              medicalCase,
+              caller.id,
+              body.reason,
+            )
           : null;
       if (cancelledCase) {
         const event: MedicalCaseCancelledEvent = {
@@ -403,6 +432,7 @@ export class MedicalVisitsService {
         };
         await this.events.publish(manager, MEDICAL_CASE_CANCELLED_EVENT, event);
       }
+      await this.visitWrites.publishHealthChanged(manager, horse, health);
       const [prescriptions, injuries] = await Promise.all([
         manager.find(PrescriptionEntity, {
           where: { medicalRecordId: recordId },
@@ -412,13 +442,17 @@ export class MedicalVisitsService {
           relations: { injury: true },
         }),
       ]);
-      return toMedicalRecordResponse(
-        { ...visit, voidedAt, voidReason: body.reason },
-        prescriptions,
-        injuries,
-        true,
-        true,
-        false,
+      return toVoidMedicalRecordResponse(
+        toMedicalRecordResponse(
+          { ...visit, voidedAt, voidReason: body.reason },
+          prescriptions,
+          injuries,
+          true,
+          true,
+          false,
+        ),
+        healthOutcome,
+        laterChange,
       );
     });
   }
@@ -519,49 +553,6 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Hủy bệnh án mở nhầm khi buổi mở bệnh án bị hủy
-   *
-   * - Bệnh án chuyển Đã hủy, không có chi phí
-   * - Lệnh khóa đang gắn được tách khỏi bệnh án, bản thân lệnh khóa giữ nguyên
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param medicalCase Bệnh án đã khóa
-   * @param callerId UUID bác sĩ hủy
-   * @param reason Lý do hủy buổi khám
-   * @returns Promise trả về bệnh án sau khi hủy
-   */
-  private async cancelCase(
-    manager: EntityManager,
-    medicalCase: MedicalCaseEntity,
-    callerId: string,
-    reason: string,
-  ): Promise<MedicalCaseEntity> {
-    await manager.update(
-      MedicalCaseEntity,
-      { id: medicalCase.id },
-      { status: MedicalCaseStatus.CANCELLED },
-    );
-    const detached = await this.lockWrites.detachLocksFromCase(
-      manager,
-      medicalCase.id,
-    );
-    await this.audit.record(manager, {
-      actorId: callerId,
-      action: AuditAction.UPDATE,
-      entityType: AuditEntityType.MEDICAL_CASE,
-      entityId: medicalCase.id,
-      before: { status: medicalCase.status },
-      after: {
-        status: MedicalCaseStatus.CANCELLED,
-        trainingLocksDetached: detached,
-      },
-      reason,
-      feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
-    });
-    return { ...medicalCase, status: MedicalCaseStatus.CANCELLED };
-  }
-
-  /**
    * Lấy ngựa của bệnh án trước khi mở transaction
    *
    * @param caseId UUID của bệnh án
@@ -631,56 +622,6 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Mở bệnh án mới, gắn lệnh khóa đang hiệu lực chưa thuộc bệnh án nào
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param input Ngựa, người mở, ngày mở và chẩn đoán ban đầu
-   * @returns Promise trả về bệnh án vừa mở
-   */
-  private async openCase(
-    manager: EntityManager,
-    input: {
-      horseId: string;
-      callerId: string;
-      openedAt: Date;
-      initialDiagnosis: string;
-    },
-  ): Promise<MedicalCaseEntity> {
-    const medicalCase = await manager.save(
-      manager.create(MedicalCaseEntity, {
-        horseId: input.horseId,
-        openedBy: input.callerId,
-        openedAt: input.openedAt,
-        initialDiagnosis: input.initialDiagnosis,
-        status: MedicalCaseStatus.OPEN,
-        closedAt: null,
-        closedBy: null,
-        finalConclusion: null,
-      }),
-    );
-    const attached = await this.lockWrites.attachActiveLockToCase(
-      manager,
-      input.horseId,
-      medicalCase.id,
-    );
-    await this.audit.record(manager, {
-      actorId: input.callerId,
-      action: AuditAction.CREATE,
-      entityType: AuditEntityType.MEDICAL_CASE,
-      entityId: medicalCase.id,
-      before: null,
-      after: {
-        horseId: input.horseId,
-        openedAt: input.openedAt,
-        initialDiagnosis: input.initialDiagnosis,
-        trainingLockAttached: attached > 0,
-      },
-      feature: MEDICAL_AUDIT_FEATURE.OPEN_CASE,
-    });
-    return medicalCase;
-  }
-
-  /**
    * Ghi buổi khám cùng mọi hệ quả trong transaction: đơn thuốc, chấn thương, số đo, yêu cầu khám, trạng thái sức khỏe, ngày hẹn khám định kỳ, nhật ký
    *
    * @param manager EntityManager của transaction đang chạy
@@ -702,6 +643,7 @@ export class MedicalVisitsService {
         examDate: input.examDate,
         diagnosis: body.diagnosis || null,
         severity: null,
+        healthBefore: horse.healthStatus,
         resultingStatus: nextStatus,
         caseId: input.caseId,
         kind: input.kind,
@@ -774,7 +716,7 @@ export class MedicalVisitsService {
       confirmAbnormal: body.confirmAbnormal === true,
       feature: input.feature,
     });
-    await this.markRequestsExamined(manager, input, visit.id);
+    await this.visitWrites.markRequestsExamined(manager, input, visit.id);
     const health = input.healthChanged
       ? await this.horseHealth.applyHealthStatus(manager, {
           horseId: horse.id,
@@ -829,54 +771,6 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Chuyển các yêu cầu khám đã gắn sang EXAMINED, mỗi yêu cầu một dòng nhật ký
-   *
-   * - Yêu cầu có người gửi khác người khám: ghi MEDICAL_EXAM_REQUEST_HANDLED_EVENT để báo người gửi
-   *
-   * @param manager EntityManager của transaction đang chạy
-   * @param input Bối cảnh buổi khám, gồm các yêu cầu đã khóa
-   * @param visitId UUID của buổi khám vừa ghi
-   * @returns Promise hoàn tất khi đã cập nhật xong
-   */
-  private async markRequestsExamined(
-    manager: EntityManager,
-    input: VisitWrite,
-    visitId: string,
-  ): Promise<void> {
-    if (input.requests.length === 0) return;
-    await this.requestWrites.markExamined(
-      manager,
-      input.requests.map((request) => request.id),
-      input.callerId,
-      visitId,
-    );
-    for (const request of input.requests) {
-      await this.audit.record(manager, {
-        actorId: input.callerId,
-        action: AuditAction.UPDATE,
-        entityType: AuditEntityType.MEDICAL_EXAM_REQUEST,
-        entityId: request.id,
-        before: { status: request.status },
-        after: { status: ExamRequestStatus.EXAMINED, medicalRecordId: visitId },
-        feature: input.feature,
-      });
-      const handled = examRequestHandledEvent(
-        request,
-        ExamRequestStatus.EXAMINED,
-        input.callerId,
-        null,
-      );
-      if (handled) {
-        await this.events.publish(
-          manager,
-          MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
-          handled,
-        );
-      }
-    }
-  }
-
-  /**
    * Ghi cảnh báo chỉ số và các event y tế của buổi khám vào outbox trong cùng transaction
    *
    * - Ghi các cảnh báo chỉ số của buổi khám
@@ -905,18 +799,6 @@ export class MedicalVisitsService {
       };
       await this.events.publish(manager, MEDICAL_CASE_OPENED_EVENT, event);
     }
-    if (result.health?.changed) {
-      const event: HealthChangedEvent = {
-        eventId: randomUUID(),
-        horseId,
-        from: result.health.from,
-        to: result.health.to,
-        ...(result.health.to === HorseHealthStatus.QUARANTINED && {
-          exposedHorses: await this.access.exposedHorses(manager, horseId),
-        }),
-        ownerId: horse.ownerId,
-      };
-      await this.events.publish(manager, MEDICAL_HEALTH_CHANGED_EVENT, event);
-    }
+    await this.visitWrites.publishHealthChanged(manager, horse, result.health);
   }
 }

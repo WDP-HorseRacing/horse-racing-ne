@@ -23,6 +23,7 @@ import {
   CreateStandaloneVisitDto,
   MedicalRecordResponseDto,
   VoidMedicalRecordDto,
+  VoidMedicalRecordResponseDto,
 } from '../dto';
 import { MedicalRecordsService } from './medical-records.service';
 import { MedicalVisitsService } from './medical-visits.service';
@@ -104,15 +105,15 @@ export class MedicalRecordsController {
   @ApiOperation({
     summary: 'Void a wrongly recorded medical visit',
     description:
-      'Bắt buộc lý do. Chỉ bác sĩ ghi buổi khám mới được hủy, bác sĩ khác: 403. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409.',
+      'Bắt buộc lý do. Chỉ bác sĩ ghi buổi khám mới được hủy, bác sĩ khác: 403. Số đo của buổi khám bị gỡ khỏi lịch sử số đo cơ thể. Buổi tái khám hủy được cả khi bệnh án đã đóng. Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy. Hủy buổi đã hủy, hoặc buổi mở bệnh án không thỏa điều kiện trên: 409. Yêu cầu khám mà buổi khám đã đánh dấu EXAMINED về lại PENDING, bỏ gắn buổi khám. Buổi khám đã đổi sức khỏe mà chưa có lần đổi sức khỏe nào sau đó thì sức khỏe ngựa về trạng thái trước buổi khám; ngược lại giữ nguyên, xem healthOutcome và laterHealthChange.',
     operationId: 'MedicalDetailsController_voidRecord',
   })
-  @ApiCreatedResponse({ type: MedicalRecordResponseDto })
+  @ApiCreatedResponse({ type: VoidMedicalRecordResponseDto })
   voidRecord(
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: VoidMedicalRecordDto,
-  ): Promise<MedicalRecordResponseDto> {
+  ): Promise<VoidMedicalRecordResponseDto> {
     return this.visits.voidVisit(actor, id, body);
   }
 

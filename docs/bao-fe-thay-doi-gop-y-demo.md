@@ -102,6 +102,25 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Chi phí là số bác sĩ ghi buổi khám nhập; bác sĩ khác sửa thì người ghi không biết. Đi cùng luật hủy buổi khám. Hệ quả đã chấp nhận: bác sĩ đã nghỉ việc thì chi phí các buổi của họ không còn ai sửa được.
 
+### F3-4: Hủy buổi khám trả yêu cầu khám về hàng đợi và đưa sức khỏe về như trước
+
+**Luật / hành vi API mới**
+1. `POST /medical-records/:id/void`: yêu cầu khám mà buổi khám đã chuyển `EXAMINED` quay về `PENDING`, `medicalRecordId`, `handledBy`, `handledAt` về `null`. Trước giữ `EXAMINED`. Không có thông báo mới.
+   - Ngoại lệ: yêu cầu cũ nguồn `MEASUREMENT_ALERT` mà ngựa đã có yêu cầu `PENDING` cùng `alertType` thì thành `DISMISSED`, `dismissReason` "Buổi khám bị hủy, ngựa đã có yêu cầu đang chờ cùng loại cảnh báo".
+2. Ghi lại buổi thay thế: `POST /horses/:horseId/medical-records` với `kind: REQUEST`, `requestIds` gồm lại các yêu cầu đó, `replacesRecordId` là buổi đã hủy. Trước trả 400/409 vì yêu cầu không còn chờ.
+3. Sức khỏe: buổi bị hủy đã đổi sức khỏe và chưa có lần đổi sức khỏe nào sau đó thì `healthStatus` của ngựa về giá trị trước buổi khám, có thông báo đổi sức khỏe như F3.7 và lượt tập sắp tới được chấm lại. Có lần đổi sau đó thì giữ nguyên.
+4. Response thêm hai field:
+   - `healthOutcome`: `REVERTED` (đã về giá trị trước khám), `KEPT_LATER_CHANGE` (giữ nguyên vì đã có lần đổi sau), `NOT_CHANGED_BY_VISIT` (buổi khám không đổi sức khỏe), `UNKNOWN_BEFORE` (buổi khám ghi trước bản này, giữ nguyên).
+   - `laterHealthChange`: `{ changedAt, changedBy, to }` của lần đổi sau buổi khám; chỉ có khi `KEPT_LATER_CHANGE`, còn lại `null`.
+
+**FE cần sửa**
+- Sau khi hủy, tải lại hàng đợi yêu cầu khám và hồ sơ ngựa (sức khỏe có thể đã đổi).
+- `KEPT_LATER_CHANGE`: hiện cho bác sĩ "Sức khỏe hiện tại do <người> đổi lúc <giờ>, không tự quay lại; đổi bằng Cập nhật sức khỏe nếu cần". `REVERTED`: hiện "Sức khỏe đã về <trạng thái>".
+- Nút "Ghi buổi thay thế" của buổi theo yêu cầu: điền sẵn `requestIds` là các yêu cầu của buổi đã hủy.
+
+**Lý do**
+- Buổi theo yêu cầu ghi nhầm thì trước đây không ghi lại được, vì yêu cầu đã ở Đã khám. Sức khỏe sai do buổi ghi nhầm vẫn chặn tập và đua cho tới khi bác sĩ nhớ đổi lại.
+
 ## Ngày 19/10/2026
 
 ### Chuẩn thời gian: thời điểm bắt buộc có múi giờ, ngày lịch đúng YYYY-MM-DD

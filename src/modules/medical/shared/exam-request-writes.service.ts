@@ -38,6 +38,69 @@ export class ExamRequestWritesService {
   }
 
   /**
+   * Trả các yêu cầu khám mà một buổi khám đã đánh dấu EXAMINED về lại hàng đợi khi buổi khám bị hủy
+   *
+   * - Khóa các yêu cầu EXAMINED gắn với buổi khám, xử lý theo thứ tự tạo
+   * - Yêu cầu về PENDING, bỏ gắn buổi khám, xóa người xử lý, thời điểm xử lý và lý do bỏ qua
+   * - Yêu cầu tự sinh từ cảnh báo chỉ số mà ngựa đã có yêu cầu PENDING cùng loại cảnh báo: chuyển DISMISSED với lý do truyền vào, bỏ gắn buổi khám
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param medicalRecordId UUID buổi khám bị hủy
+   * @param handledBy UUID bác sĩ hủy buổi khám
+   * @param duplicateReason Lý do bỏ qua yêu cầu trùng cảnh báo đang chờ
+   * @returns Promise trả về các yêu cầu đã về hàng đợi và các yêu cầu đã bỏ qua, mỗi phần tử là bản trước khi đổi
+   */
+  async reopenForVoidedVisit(
+    manager: EntityManager,
+    medicalRecordId: string,
+    handledBy: string,
+    duplicateReason: string,
+  ): Promise<{
+    reopened: MedicalExamRequestEntity[];
+    dismissed: MedicalExamRequestEntity[];
+  }> {
+    const linked = await manager.find(MedicalExamRequestEntity, {
+      where: { medicalRecordId, status: ExamRequestStatus.EXAMINED },
+      order: { createdAt: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    const reopened: MedicalExamRequestEntity[] = [];
+    const dismissed: MedicalExamRequestEntity[] = [];
+    for (const request of linked) {
+      const duplicate =
+        request.alertType !== null &&
+        (await manager.exists(MedicalExamRequestEntity, {
+          where: {
+            horseId: request.horseId,
+            alertType: request.alertType,
+            status: ExamRequestStatus.PENDING,
+          },
+        }));
+      await manager.update(
+        MedicalExamRequestEntity,
+        { id: request.id },
+        duplicate
+          ? {
+              status: ExamRequestStatus.DISMISSED,
+              dismissReason: duplicateReason,
+              handledBy,
+              handledAt: new Date(),
+              medicalRecordId: null,
+            }
+          : {
+              status: ExamRequestStatus.PENDING,
+              dismissReason: null,
+              handledBy: null,
+              handledAt: null,
+              medicalRecordId: null,
+            },
+      );
+      (duplicate ? dismissed : reopened).push(request);
+    }
+    return { reopened, dismissed };
+  }
+
+  /**
    * Bác mọi yêu cầu khám còn chờ của con ngựa khi hồ sơ ngựa chuyển sang chỉ được xem (chuyển nhượng hoặc đã mất)
    *
    * @param manager EntityManager của transaction đang chạy

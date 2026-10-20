@@ -201,7 +201,7 @@ describe('Medical findings (Postgres)', () => {
     expect(open).toHaveLength(1);
   });
 
-  it('F3-4: a replacement visit for a voided request-based visit can be recorded', async () => {
+  it('F3-4: a replacement visit for a voided request-based visit can be recorded against the same request', async () => {
     const vet = await newVet();
     const horse = await seed.horse('Winx');
     const request = await seed.examRequest(horse);
@@ -218,6 +218,7 @@ describe('Medical findings (Postgres)', () => {
       visits.createStandaloneVisit(vet.actor, horse, {
         kind: MedicalVisitKind.REQUEST,
         conclusion: MedicalVisitConclusion.NORMAL,
+        requestIds: [request],
         replacesRecordId: first.id,
       }),
     ).resolves.toMatchObject({ replacesRecordId: first.id });

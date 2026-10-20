@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
@@ -10,6 +11,7 @@ import { RecoveryStatus } from '../constants/injury-marker.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import type { ExposedHorse } from '../types/medical-events.types';
+import type { LaterHealthChange } from '../types/medical-visit.types';
 
 @Injectable()
 export class MedicalAccessService {
@@ -66,6 +68,40 @@ export class MedicalAccessService {
     horseId: string,
   ): Promise<{ caller: CurrentActorUser; horse: HorseEntity }> {
     return this.horseAccess.lockWritableHorseInScope(manager, actor, horseId);
+  }
+
+  /**
+   * Tìm lần đổi trạng thái sức khỏe mới nhất của con ngựa xảy ra sau khi ghi một buổi khám
+   *
+   * - Đọc nhật ký HORSE có trường healthStatus mà giá trị trước, sau khác nhau, như lịch sử sức khỏe
+   * - Gồm đổi trực tiếp, đổi trong buổi khám, hoàn sức khỏe khi hủy buổi khám và hệ thống đặt lại khi kích hoạt lại
+   * - Chỉ lấy dòng có thời điểm ghi lớn hơn hẳn thời điểm tạo buổi khám, so trong DB với đủ độ chính xác; dòng đổi sức khỏe do chính buổi khám ghi (cùng transaction) không tính
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param recordId UUID của buổi khám làm mốc
+   * @returns Promise trả về thời điểm, người đổi và trạng thái mới của lần đổi mới nhất, null nếu không có
+   */
+  async latestHealthChangeAfterVisit(
+    manager: EntityManager,
+    horseId: string,
+    recordId: string,
+  ): Promise<LaterHealthChange | null> {
+    const rows = await manager.query<LaterHealthChange[]>(
+      `SELECT created_at AS "changedAt",
+              actor_id AS "changedBy",
+              after_data->>'healthStatus' AS "to"
+         FROM audit_logs
+        WHERE entity_type = $1
+          AND entity_id = $2
+          AND created_at > (SELECT created_at FROM medical_records WHERE id = $3)
+          AND after_data ? 'healthStatus'
+          AND before_data->>'healthStatus' IS DISTINCT FROM after_data->>'healthStatus'
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [AuditEntityType.HORSE, horseId, recordId],
+    );
+    return rows[0] ?? null;
   }
 
   /**

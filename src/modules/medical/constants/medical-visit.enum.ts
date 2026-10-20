@@ -18,3 +18,18 @@ export enum MedicalVisitConclusion {
   NORMAL = 'NORMAL',
   ISSUE = 'ISSUE',
 }
+
+/**
+ * Trạng thái sức khỏe của ngựa sau khi hủy một buổi khám.
+ *
+ * - NOT_CHANGED_BY_VISIT: buổi khám không đổi sức khỏe, không có gì để hoàn
+ * - UNKNOWN_BEFORE: buổi khám ghi trước khi lưu sức khỏe trước khám, giữ nguyên sức khỏe hiện tại
+ * - REVERTED: sức khỏe ngựa về giá trị ngay trước buổi khám
+ * - KEPT_LATER_CHANGE: sau buổi khám đã có lần đổi sức khỏe khác, giữ nguyên sức khỏe hiện tại
+ */
+export enum VisitVoidHealthOutcome {
+  NOT_CHANGED_BY_VISIT = 'NOT_CHANGED_BY_VISIT',
+  UNKNOWN_BEFORE = 'UNKNOWN_BEFORE',
+  REVERTED = 'REVERTED',
+  KEPT_LATER_CHANGE = 'KEPT_LATER_CHANGE',
+}

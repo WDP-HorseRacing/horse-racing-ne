@@ -30,6 +30,7 @@ import { TrainingLockStatus } from '../constants/training-lock.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
+  VisitVoidHealthOutcome,
 } from '../constants/medical-visit.enum';
 import {
   CHECKUP_DUE_SOON_DAYS,
@@ -355,6 +356,33 @@ export function resolveVisitVoid(
     );
   }
   return VisitVoidAction.VOID_AND_CANCEL_CASE;
+}
+
+/**
+ * Quyết định trạng thái sức khỏe của ngựa khi hủy một buổi khám
+ *
+ * - Buổi khám chưa lưu sức khỏe trước khám: UNKNOWN_BEFORE, giữ nguyên
+ * - Buổi khám không đổi sức khỏe: NOT_CHANGED_BY_VISIT
+ * - Sau buổi khám đã có lần đổi sức khỏe khác, hoặc sức khỏe hiện tại khác kết quả của buổi khám: KEPT_LATER_CHANGE, giữ nguyên
+ * - Còn lại: REVERTED, đưa sức khỏe về giá trị trước buổi khám
+ *
+ * @param input Sức khỏe trước khám, sau khám, hiện tại của ngựa và có lần đổi sức khỏe nào sau buổi khám không
+ * @returns Cách xử lý trạng thái sức khỏe
+ */
+export function resolveVoidHealth(input: {
+  healthBefore: HorseHealthStatus | null;
+  resultingStatus: HorseHealthStatus;
+  currentStatus: HorseHealthStatus;
+  hasLaterChange: boolean;
+}): VisitVoidHealthOutcome {
+  if (input.healthBefore === null) return VisitVoidHealthOutcome.UNKNOWN_BEFORE;
+  if (input.healthBefore === input.resultingStatus) {
+    return VisitVoidHealthOutcome.NOT_CHANGED_BY_VISIT;
+  }
+  if (input.hasLaterChange || input.currentStatus !== input.resultingStatus) {
+    return VisitVoidHealthOutcome.KEPT_LATER_CHANGE;
+  }
+  return VisitVoidHealthOutcome.REVERTED;
 }
 
 /**

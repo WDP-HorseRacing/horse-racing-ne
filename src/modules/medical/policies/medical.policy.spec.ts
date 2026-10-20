@@ -51,6 +51,7 @@ import {
   assertStandaloneVisitAllowed,
   assertStandaloneVisitInput,
   resolveVisitVoid,
+  resolveVoidHealth,
   assertVisitAuthor,
   canSeeDosage,
   isGroomOnly,
@@ -305,6 +306,26 @@ describe('medical.policy', () => {
       expect(() => assertVisitAuthor('vet-1', 'vet-2', 'Chỉ tác giả')).toThrow(
         new ForbiddenException('Chỉ tác giả'),
       );
+    });
+
+    it('decides the health of the horse when a visit is voided', () => {
+      const { ELIGIBLE, INJURED, QUARANTINED } = HorseHealthStatus;
+      const decide = (
+        healthBefore: HorseHealthStatus | null,
+        currentStatus: HorseHealthStatus,
+        hasLaterChange: boolean,
+      ) =>
+        resolveVoidHealth({
+          healthBefore,
+          resultingStatus: INJURED,
+          currentStatus,
+          hasLaterChange,
+        });
+      expect(decide(null, INJURED, false)).toBe('UNKNOWN_BEFORE');
+      expect(decide(INJURED, INJURED, true)).toBe('NOT_CHANGED_BY_VISIT');
+      expect(decide(ELIGIBLE, INJURED, false)).toBe('REVERTED');
+      expect(decide(ELIGIBLE, INJURED, true)).toBe('KEPT_LATER_CHANGE');
+      expect(decide(ELIGIBLE, QUARANTINED, false)).toBe('KEPT_LATER_CHANGE');
     });
 
     it('decides what voiding a visit does', () => {
