@@ -1,5 +1,6 @@
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -252,6 +253,80 @@ export class HorseMeasurementsService {
       });
     }
     return measurements.length;
+  }
+
+  /**
+   * Sửa giá trị số đo của một buổi khám theo loại chỉ số, trong transaction của nơi gọi
+   *
+   * - Mỗi buổi khám có tối đa một số đo cho mỗi loại; loại gửi lên phải có trong buổi khám (chưa xóa), mỗi loại một lần
+   * - Cùng luật khoảng hợp lệ và xác nhận giá trị bất thường như lúc ghi; thời điểm đo giữ nguyên
+   * - Giá trị trùng giá trị cũ thì bỏ qua; mỗi bản ghi đổi giá trị một dòng nhật ký kèm lý do
+   * - Không tính lại, không phát cảnh báo chỉ số
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param input Buổi khám, các cặp loại/giá trị mới, cờ xác nhận, người sửa, lý do và mã chức năng ghi nhật ký
+   * @returns Promise trả về các số đo đã đổi, mỗi phần tử gồm loại, giá trị cũ và mới
+   * @throws BadRequestException Nếu trùng loại, loại không có trong buổi khám, hoặc giá trị ngoài khoảng hợp lệ
+   * @throws UnprocessableEntityException Nếu giá trị mới ngoài khoảng bình thường mà chưa xác nhận
+   */
+  async editExamMeasurements(
+    manager: EntityManager,
+    input: {
+      medicalRecordId: string;
+      values: Array<{ type: HorseMeasurementType; value: number }>;
+      confirmAbnormal: boolean;
+      actorId: string;
+      reason: string;
+      feature: AuditFeature;
+    },
+  ): Promise<Array<{ type: HorseMeasurementType; from: number; to: number }>> {
+    assertDistinctMeasurementTypes(input.values.map((item) => item.type));
+    const rows = await manager.find(HorseMeasurementEntity, {
+      where: { medicalRecordId: input.medicalRecordId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    const byType = new Map(rows.map((row) => [row.type, row]));
+    for (const item of input.values) {
+      if (!byType.has(item.type)) {
+        throw new BadRequestException(
+          'Buổi khám không có số đo loại này, chỉ sửa được số đo đã ghi',
+        );
+      }
+      assertMeasurementValue(item.type, item.value);
+    }
+    const changed = input.values.filter(
+      (item) => Number(byType.get(item.type)!.value) !== item.value,
+    );
+    assertAbnormalConfirmed(changed, input.confirmAbnormal);
+    for (const item of changed) {
+      const row = byType.get(item.type)!;
+      const value = item.value.toFixed(2);
+      const isAbnormal = isAbnormalMeasurement(item.type, item.value);
+      await manager.update(
+        HorseMeasurementEntity,
+        { id: row.id },
+        { value, isAbnormal },
+      );
+      await this.audit.record(manager, {
+        actorId: input.actorId,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.HORSE_MEASUREMENT,
+        entityId: row.id,
+        before: { value: row.value, isAbnormal: row.isAbnormal },
+        after: {
+          value,
+          isAbnormal,
+          abnormalConfirmed: input.confirmAbnormal,
+        },
+        reason: input.reason,
+        feature: input.feature,
+      });
+    }
+    return changed.map((item) => ({
+      type: item.type,
+      from: Number(byType.get(item.type)!.value),
+      to: item.value,
+    }));
   }
 
   /**

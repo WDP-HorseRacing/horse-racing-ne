@@ -65,6 +65,18 @@ export const DUPLICATE_ALERT_REQUEST_REASON =
   'Buổi khám bị hủy, ngựa đã có yêu cầu đang chờ cùng loại cảnh báo';
 
 /**
+ * Thông báo 403 khi bác sĩ sửa buổi khám do bác sĩ khác ghi.
+ */
+export const VISIT_EDIT_AUTHOR_ONLY_MESSAGE =
+  'Chỉ bác sĩ ghi phiếu khám mới được sửa phiếu này';
+
+/**
+ * Lý do bỏ qua yêu cầu khám tự sinh bị bỏ gắn khỏi buổi khám khi ngựa đã có yêu cầu đang chờ cùng loại cảnh báo.
+ */
+export const DETACHED_ALERT_REQUEST_REASON =
+  'Bỏ gắn khỏi buổi khám, ngựa đã có yêu cầu đang chờ cùng loại cảnh báo';
+
+/**
  * Câu chặn khi còn bệnh án đang mở, theo trạng thái làm hồ sơ chỉ được xem
  */
 export const OPEN_CASE_BLOCKS_READ_ONLY_MESSAGES: Record<

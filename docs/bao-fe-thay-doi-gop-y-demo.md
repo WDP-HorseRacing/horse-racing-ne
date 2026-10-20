@@ -121,6 +121,34 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Buổi theo yêu cầu ghi nhầm thì trước đây không ghi lại được, vì yêu cầu đã ở Đã khám. Sức khỏe sai do buổi ghi nhầm vẫn chặn tập và đua cho tới khi bác sĩ nhớ đổi lại.
 
+### Sửa buổi khám: `PATCH /medical-records/:id`
+
+**Luật / hành vi API mới**
+1. API mới, chỉ VET ghi buổi khám (`vetId`), VET khác 403 "Chỉ bác sĩ ghi phiếu khám mới được sửa phiếu này". Buổi đã hủy 409, ngựa đã chuyển nhượng hoặc đã mất 409.
+2. Body: `reason` bắt buộc và ít nhất một ô khác (400 "Không có nội dung nào để sửa"). Ô không gửi giữ nguyên.
+   - `diagnosis`, `careInstructions`, `nextVisitAt`: gửi `null` là xóa.
+   - `healthStatus`: trạng thái sau khám; lý do đổi sức khỏe là `reason`.
+   - `measurements: [{ type, value }]`: sửa theo **loại** chỉ số đã đo trong buổi (loại chưa đo: 400); giá trị bất thường cần `confirmAbnormal: true` (422).
+   - `prescriptions`: thay toàn bộ, `[]` là bỏ hết.
+   - `injuries: [{ injuryId, recoveryStatus?, notes?, bodyRegion?, injuryType?, position? }]`: sửa vết có trong buổi; vùng, loại, vị trí chỉ với vết phát hiện ở buổi này. `removedInjuryIds`: xóa vết phát hiện ở buổi này, 409 nếu buổi khác đã ghi nhận.
+   - `requestIds`: thay toàn bộ; yêu cầu bị bỏ về `PENDING`, yêu cầu thêm phải đang chờ của chính ngựa (409) và người gửi được báo.
+   - Chỉ buổi ngoài bệnh án và buổi mở bệnh án: `kind`, `conclusion`, `initialDiagnosis`. Buổi tái khám gửi ba ô này: 400.
+3. `conclusion` `NORMAL` → `ISSUE`: bắt buộc `initialDiagnosis`, mở bệnh án (ngày mở là `examDate`). 409 nếu ngựa đang có bệnh án mở hoặc đã có buổi khám chưa hủy sau buổi này. `ISSUE` → `NORMAL`: bệnh án chuyển `CANCELLED`, 409 nếu bệnh án đã đóng hoặc còn buổi khác; phải gửi kèm `removedInjuryIds`, `nextVisitAt: null` nếu buổi có các thứ đó.
+4. Bệnh án đã đóng: sửa được, trừ `nextVisitAt` khác null (400), thêm yêu cầu khám (409), chấn thương sửa thành chưa lành (409).
+5. Không sửa ngựa, bác sĩ, `examDate`, `cost` (vẫn dùng `PATCH /medical-records/:id/cost`).
+6. Response là buổi khám như `GET /medical-records/:id` kèm:
+   - `healthOutcome`: `UNCHANGED`, `UPDATED` (sức khỏe ngựa đổi theo), `KEPT_LATER_CHANGE` (chỉ đổi `resultingStatus` của buổi, sức khỏe ngựa giữ nguyên vì đã có lần đổi sau).
+   - `laterHealthChange`: `{ changedAt, changedBy, to }`, chỉ có khi `KEPT_LATER_CHANGE`.
+7. Hủy buổi khám sau khi đã sửa sức khỏe của nó vẫn đưa sức khỏe về giá trị trước buổi khám.
+
+**FE cần sửa**
+- Thêm nút "Sửa buổi khám" chỉ khi `vetId` là người đang đăng nhập và buổi chưa hủy. Form điền sẵn giá trị hiện tại, chỉ gửi ô đã đổi, bắt buộc ô lý do.
+- Số đo trong form gửi theo `type`; không có ô thêm loại chỉ số mới.
+- `KEPT_LATER_CHANGE`: hiện "Sức khỏe hiện tại do <người> đổi lúc <giờ>, không đổi theo; đổi bằng Cập nhật sức khỏe nếu cần". Sau khi sửa, tải lại hồ sơ ngựa, hàng đợi yêu cầu khám, bệnh án.
+
+**Lý do**
+- Trước đây buổi khám không sửa được, ghi sai một chữ cũng phải hủy rồi ghi lại, và buổi của bệnh án đã đóng thì không ghi lại được. Phần mềm thú y thực tế cho đính chính kèm quyền, lý do, nhật ký.
+
 ### F3-9: Hủy ngày hẹn khám định kỳ, ngày hẹn có bác sĩ phụ trách, nhắc ngày hẹn, Groom xem lịch hẹn hôm nay
 
 **Luật / hành vi API mới**

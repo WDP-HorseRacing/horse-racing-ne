@@ -1,5 +1,5 @@
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
-import { BaseRecordEntity } from '../../../common/database/base-record.entity';
+import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -13,14 +13,14 @@ import { MedicalCaseEntity } from './medical-case.entity';
 /**
  * MedicalRecordEntity: một buổi khám của ngựa.
  * Buổi khám ngoài bệnh án có caseId null (trừ buổi mở bệnh án); buổi tái khám luôn thuộc một bệnh án.
- * Không sửa, không xóa, trừ chi phí được điều chỉnh kèm lý do; ghi sai thì hủy bằng voidedAt và voidReason.
+ * Bác sĩ ghi buổi khám được sửa kèm lý do (chi phí sửa bằng API riêng); không xóa, ghi sai thì hủy bằng voidedAt và voidReason.
  * healthBefore là trạng thái sức khỏe của ngựa ngay trước buổi khám; null với buổi khám ghi trước khi có cột này.
  */
 @Entity({ name: 'medical_records' })
 @Check('medical_records_cost_chk', '"cost" >= 0')
 @Index('medical_records_horse_exam_idx', ['horseId', 'examDate'])
 @Index('medical_records_case_idx', ['caseId'])
-export class MedicalRecordEntity extends BaseRecordEntity {
+export class MedicalRecordEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
 

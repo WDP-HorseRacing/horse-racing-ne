@@ -2396,7 +2396,7 @@
     },
     "/api/v1/horses/{horseId}/checkup-appointment": {
       "put": {
-        "description": "Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Ngựa đã chuyển nhượng: 409.",
+        "description": "Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Người đặt hoặc dời thành bác sĩ phụ trách; dời lịch của bác sĩ khác thì báo bác sĩ đó. Ngựa đã chuyển nhượng: 409.",
         "operationId": "CheckupsController_setAppointment",
         "parameters": [
           {
@@ -2436,6 +2436,44 @@
           }
         ],
         "summary": "Set or reschedule the routine checkup appointment",
+        "tags": [
+          "medical"
+        ]
+      },
+      "delete": {
+        "description": "Bắt buộc reason. Ngày hẹn chuyển Đã hủy. Hủy lịch của bác sĩ khác thì báo bác sĩ đó. Không có ngày hẹn đang hiệu lực: 404. Ngựa đã chuyển nhượng hoặc đã mất: 409.",
+        "operationId": "CheckupsController_cancelAppointment",
+        "parameters": [
+          {
+            "name": "horseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelCareScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel the active routine checkup appointment",
         "tags": [
           "medical"
         ]
@@ -2885,7 +2923,7 @@
             "name": "careAssignee",
             "required": false,
             "in": "query",
-            "description": "me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; không áp cho các khối khác",
+            "description": "me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; khối checkups chỉ giữ ngựa có ngày hẹn do người gọi phụ trách; không áp cho các khối khác",
             "schema": {
               "type": "string",
               "enum": [
@@ -3363,6 +3401,51 @@
           }
         ],
         "summary": "Get a medical visit",
+        "tags": [
+          "medical"
+        ]
+      },
+      "patch": {
+        "description": "Bắt buộc reason và ít nhất một ô khác (400). Chỉ bác sĩ ghi buổi khám (403), buổi đã hủy: 409, ngựa đã chuyển nhượng hoặc đã mất: 409. Ô không gửi giữ nguyên; null xóa diagnosis, careInstructions, nextVisitAt; danh sách gửi lên thay toàn bộ (prescriptions, requestIds); measurements sửa theo loại; injuries sửa theo injuryId. Không sửa ngựa, bác sĩ, thời điểm khám, chi phí. Sau khi gộp kiểm lại luật như lúc ghi. Bệnh án đã đóng: không đặt nextVisitAt (400), không gắn thêm yêu cầu (409), chấn thương bị sửa phải đã lành (409). NORMAL sang ISSUE mở bệnh án (409 nếu đang có bệnh án mở hoặc đã có buổi khám sau buổi này); ISSUE sang NORMAL hủy bệnh án (409 nếu bệnh án đã đóng hoặc còn buổi khác). Đổi healthStatus: chưa có lần đổi sức khỏe nào sau buổi khám thì đổi cả sức khỏe ngựa, ngược lại chỉ đổi resultingStatus, xem healthOutcome và laterHealthChange.",
+        "operationId": "MedicalRecordsController_editRecord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMedicalVisitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditMedicalRecordResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a medical visit with a reason",
         "tags": [
           "medical"
         ]
@@ -12361,12 +12444,24 @@
           "scheduledAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "assignedTo": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Bác sĩ phụ trách ngày hẹn; null nếu chưa giao ai"
+          },
+          "assignedToName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
           "id",
           "horseId",
-          "scheduledAt"
+          "scheduledAt",
+          "assignedTo",
+          "assignedToName"
         ]
       },
       "CheckupItemDto": {
@@ -14148,13 +14243,171 @@
           "horseId"
         ]
       },
-      "VoidMedicalRecordDto": {
+      "EditVisitInjuryDto": {
+        "type": "object",
+        "properties": {
+          "injuryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chấn thương có ghi nhận trong buổi khám này"
+          },
+          "recoveryStatus": {
+            "type": "string",
+            "enum": [
+              "ACUTE",
+              "RECOVERING",
+              "HEALED"
+            ],
+            "description": "Mức hồi phục tại buổi khám này"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ghi chú; null là xóa ghi chú"
+          },
+          "bodyRegion": {
+            "type": "string",
+            "enum": [
+              "HEAD",
+              "NECK",
+              "BACK",
+              "CHEST",
+              "ABDOMEN",
+              "PELVIS",
+              "LEFT_FRONT_LEG",
+              "RIGHT_FRONT_LEG",
+              "LEFT_HIND_LEG",
+              "RIGHT_HIND_LEG",
+              "OTHER"
+            ],
+            "description": "Chỉ sửa được khi chấn thương được phát hiện ở buổi khám này"
+          },
+          "injuryType": {
+            "type": "string",
+            "enum": [
+              "FRACTURE",
+              "SPRAIN",
+              "STRAIN",
+              "WOUND",
+              "LACERATION",
+              "INFLAMMATION",
+              "CONTUSION",
+              "INFECTION",
+              "OTHER"
+            ],
+            "description": "Chỉ sửa được khi chấn thương được phát hiện ở buổi khám này"
+          },
+          "position": {
+            "description": "Chỉ sửa được khi chấn thương được phát hiện ở buổi khám này",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InjuryPositionDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "injuryId"
+        ]
+      },
+      "UpdateMedicalVisitDto": {
         "type": "object",
         "properties": {
           "reason": {
             "type": "string",
             "minLength": 1,
             "maxLength": 500
+          },
+          "diagnosis": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 4000,
+            "description": "Chẩn đoán, nhận xét; null là xóa"
+          },
+          "careInstructions": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "description": "Ghi chú chăm sóc; null là xóa"
+          },
+          "nextVisitAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-10-23T00:30:00+07:00",
+            "description": "Ngày hẹn tái khám, không ở quá khứ; chỉ dùng khi buổi khám thuộc bệnh án đang điều trị. null là bỏ hẹn"
+          },
+          "healthStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ],
+            "description": "Trạng thái sức khỏe sau khám; lý do đổi sức khỏe là reason của lần sửa"
+          },
+          "measurements": {
+            "description": "Giá trị mới của các số đo đã ghi trong buổi khám, theo loại chỉ số; loại không gửi giữ nguyên",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorseMeasurementValueDto"
+            }
+          },
+          "confirmAbnormal": {
+            "type": "boolean",
+            "description": "Xác nhận lưu số đo ngoài khoảng bình thường"
+          },
+          "prescriptions": {
+            "description": "Thay toàn bộ đơn thuốc của buổi khám; [] là bỏ hết",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatePrescriptionDto"
+            }
+          },
+          "injuries": {
+            "description": "Sửa các chấn thương có trong buổi khám, theo id chấn thương; chấn thương không gửi giữ nguyên",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EditVisitInjuryDto"
+            }
+          },
+          "removedInjuryIds": {
+            "description": "Xóa chấn thương được phát hiện ở buổi khám này; chỉ khi chưa buổi khám nào khác ghi nhận chấn thương đó",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "REQUEST"
+            ],
+            "description": "Chỉ với buổi khám ngoài bệnh án hoặc buổi mở bệnh án"
+          },
+          "requestIds": {
+            "description": "Thay toàn bộ yêu cầu khám gắn với buổi khám: yêu cầu bị bỏ về Chờ xử lý, yêu cầu mới phải đang chờ của chính con ngựa",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "conclusion": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "ISSUE"
+            ],
+            "description": "Chỉ với buổi khám ngoài bệnh án hoặc buổi mở bệnh án. NORMAL -> ISSUE mở bệnh án; ISSUE -> NORMAL hủy bệnh án buổi này đã mở"
+          },
+          "initialDiagnosis": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Chẩn đoán ban đầu của bệnh án do buổi khám này mở; bắt buộc khi đổi sang ISSUE"
           }
         },
         "required": [
@@ -14188,6 +14441,157 @@
           "changedAt",
           "changedBy",
           "to"
+        ]
+      },
+      "EditMedicalRecordResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "REQUEST",
+              "FOLLOW_UP"
+            ]
+          },
+          "caseId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Bệnh án chứa buổi khám; null với buổi khám ngoài bệnh án kết luận NORMAL"
+          },
+          "conclusion": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "ISSUE"
+            ],
+            "nullable": true
+          },
+          "examDate": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diagnosis": {
+            "type": "string",
+            "nullable": true
+          },
+          "resultingStatus": {
+            "type": "string",
+            "enum": [
+              "ELIGIBLE",
+              "UNDER_OBSERVATION",
+              "INJURED",
+              "QUARANTINED"
+            ]
+          },
+          "careInstructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextVisitAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "vetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voidedAt": {
+            "type": "object",
+            "format": "date-time",
+            "nullable": true
+          },
+          "voidReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "replacesRecordId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "cost": {
+            "type": "number",
+            "nullable": true,
+            "description": "Chi phí của buổi khám (VND); không có key với Head Trainer; null khi costHidden = true"
+          },
+          "costHidden": {
+            "type": "boolean",
+            "description": "true khi buổi khám thuộc giai đoạn sở hữu của chủ khác (chỉ xảy ra với Horse Owner), khi đó cost là null; không có key với Head Trainer"
+          },
+          "prescriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrescriptionResponseDto"
+            }
+          },
+          "injuries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InjuryMarkerResponseDto"
+            }
+          },
+          "healthOutcome": {
+            "type": "string",
+            "enum": [
+              "UNCHANGED",
+              "UPDATED",
+              "KEPT_LATER_CHANGE"
+            ],
+            "description": "UNCHANGED: lần sửa không đổi sức khỏe sau khám. UPDATED: buổi khám và sức khỏe hiện tại của ngựa cùng đổi. KEPT_LATER_CHANGE: đã có lần đổi sức khỏe sau buổi khám nên chỉ đổi resultingStatus của buổi khám, sức khỏe hiện tại giữ nguyên."
+          },
+          "laterHealthChange": {
+            "nullable": true,
+            "description": "Lần đổi sức khỏe mới nhất sau buổi khám; chỉ có khi healthOutcome là KEPT_LATER_CHANGE, có thể null nếu không đọc được từ nhật ký",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LaterHealthChangeResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "kind",
+          "caseId",
+          "conclusion",
+          "examDate",
+          "diagnosis",
+          "resultingStatus",
+          "careInstructions",
+          "nextVisitAt",
+          "vetId",
+          "voidReason",
+          "replacesRecordId",
+          "prescriptions",
+          "injuries",
+          "healthOutcome",
+          "laterHealthChange"
+        ]
+      },
+      "VoidMedicalRecordDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
         ]
       },
       "VoidMedicalRecordResponseDto": {
@@ -17174,6 +17578,54 @@
           "horseName"
         ]
       },
+      "GroomTodayVetAppointmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Ngày hẹn khám"
+          },
+          "horseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "horseName": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "VACCINATION",
+              "DEWORMING",
+              "FARRIER",
+              "ROUTINE_CHECKUP"
+            ]
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Giờ hẹn"
+          },
+          "vetId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Bác sĩ phụ trách; null nếu chưa giao ai"
+          },
+          "vetName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "horseId",
+          "horseName",
+          "type",
+          "scheduledAt"
+        ]
+      },
       "GroomTodayResponseDto": {
         "type": "object",
         "properties": {
@@ -17202,13 +17654,21 @@
             "items": {
               "$ref": "#/components/schemas/GroomTodayAssistedRunResponseDto"
             }
+          },
+          "horseVetAppointments": {
+            "description": "Lịch hẹn bác sĩ hôm nay ở ngựa Groom đang phụ trách, chỉ để xem (Groom không hoàn tất), theo giờ hẹn",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroomTodayVetAppointmentResponseDto"
+            }
           }
         },
         "required": [
           "date",
           "horses",
           "otherCareSchedules",
-          "assistedRuns"
+          "assistedRuns",
+          "horseVetAppointments"
         ]
       },
       "TickChecklistItemDto": {

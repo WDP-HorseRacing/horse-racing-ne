@@ -21,11 +21,14 @@ import {
   AdjustVisitCostDto,
   CareInstructionsResponseDto,
   CreateStandaloneVisitDto,
+  EditMedicalRecordResponseDto,
   MedicalRecordResponseDto,
+  UpdateMedicalVisitDto,
   VoidMedicalRecordDto,
   VoidMedicalRecordResponseDto,
 } from '../dto';
 import { MedicalRecordsService } from './medical-records.service';
+import { MedicalVisitEditsService } from './medical-visit-edits.service';
 import { MedicalVisitsService } from './medical-visits.service';
 import { MEDICAL_READER_ROLES } from '../constants/medical.constants';
 
@@ -36,6 +39,7 @@ export class MedicalRecordsController {
   constructor(
     private readonly medicalRecords: MedicalRecordsService,
     private readonly visits: MedicalVisitsService,
+    private readonly visitEdits: MedicalVisitEditsService,
   ) {}
 
   @Access(MEDICAL_READER_ROLES)
@@ -98,6 +102,22 @@ export class MedicalRecordsController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<MedicalRecordResponseDto> {
     return this.medicalRecords.getRecord(actor, id);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Patch('medical-records/:id')
+  @ApiOperation({
+    summary: 'Edit a medical visit with a reason',
+    description:
+      'Bắt buộc reason và ít nhất một ô khác (400). Chỉ bác sĩ ghi buổi khám (403), buổi đã hủy: 409, ngựa đã chuyển nhượng hoặc đã mất: 409. Ô không gửi giữ nguyên; null xóa diagnosis, careInstructions, nextVisitAt; danh sách gửi lên thay toàn bộ (prescriptions, requestIds); measurements sửa theo loại; injuries sửa theo injuryId. Không sửa ngựa, bác sĩ, thời điểm khám, chi phí. Sau khi gộp kiểm lại luật như lúc ghi. Bệnh án đã đóng: không đặt nextVisitAt (400), không gắn thêm yêu cầu (409), chấn thương bị sửa phải đã lành (409). NORMAL sang ISSUE mở bệnh án (409 nếu đang có bệnh án mở hoặc đã có buổi khám sau buổi này); ISSUE sang NORMAL hủy bệnh án (409 nếu bệnh án đã đóng hoặc còn buổi khác). Đổi healthStatus: chưa có lần đổi sức khỏe nào sau buổi khám thì đổi cả sức khỏe ngựa, ngược lại chỉ đổi resultingStatus, xem healthOutcome và laterHealthChange.',
+  })
+  @ApiOkResponse({ type: EditMedicalRecordResponseDto })
+  editRecord(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateMedicalVisitDto,
+  ): Promise<EditMedicalRecordResponseDto> {
+    return this.visitEdits.editVisit(actor, id, body);
   }
 
   @Access([UserRole.VETERINARIAN])

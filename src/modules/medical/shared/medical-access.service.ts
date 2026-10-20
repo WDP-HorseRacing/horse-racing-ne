@@ -76,6 +76,7 @@ export class MedicalAccessService {
    * - Đọc nhật ký HORSE có trường healthStatus mà giá trị trước, sau khác nhau, như lịch sử sức khỏe
    * - Gồm đổi trực tiếp, đổi trong buổi khám, hoàn sức khỏe khi hủy buổi khám và hệ thống đặt lại khi kích hoạt lại
    * - Chỉ lấy dòng có thời điểm ghi lớn hơn hẳn thời điểm tạo buổi khám, so trong DB với đủ độ chính xác; dòng đổi sức khỏe do chính buổi khám ghi (cùng transaction) không tính
+   * - Không tính dòng có thời điểm ghi trùng một dòng nhật ký MEDICAL_RECORD của buổi khám (các lần sửa chính buổi khám đó)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -95,11 +96,19 @@ export class MedicalAccessService {
         WHERE entity_type = $1
           AND entity_id = $2
           AND created_at > (SELECT created_at FROM medical_records WHERE id = $3)
+          AND created_at NOT IN (
+                SELECT created_at FROM audit_logs
+                 WHERE entity_type = $4 AND entity_id = $3)
           AND after_data ? 'healthStatus'
           AND before_data->>'healthStatus' IS DISTINCT FROM after_data->>'healthStatus'
         ORDER BY created_at DESC
         LIMIT 1`,
-      [AuditEntityType.HORSE, horseId, recordId],
+      [
+        AuditEntityType.HORSE,
+        horseId,
+        recordId,
+        AuditEntityType.MEDICAL_RECORD,
+      ],
     );
     return rows[0] ?? null;
   }

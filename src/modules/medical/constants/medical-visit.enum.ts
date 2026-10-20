@@ -33,3 +33,16 @@ export enum VisitVoidHealthOutcome {
   REVERTED = 'REVERTED',
   KEPT_LATER_CHANGE = 'KEPT_LATER_CHANGE',
 }
+
+/**
+ * Trạng thái sức khỏe của ngựa sau khi sửa một buổi khám.
+ *
+ * - UNCHANGED: lần sửa không đổi trạng thái sức khỏe sau khám của buổi khám
+ * - UPDATED: buổi khám và sức khỏe hiện tại của ngựa cùng đổi theo giá trị mới
+ * - KEPT_LATER_CHANGE: sau buổi khám đã có lần đổi sức khỏe khác, chỉ đổi kết quả ghi trên buổi khám, giữ nguyên sức khỏe hiện tại
+ */
+export enum VisitEditHealthOutcome {
+  UNCHANGED = 'UNCHANGED',
+  UPDATED = 'UPDATED',
+  KEPT_LATER_CHANGE = 'KEPT_LATER_CHANGE',
+}

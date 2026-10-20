@@ -48,6 +48,7 @@ describe('medical records and cases controllers access', () => {
   it.each([
     ['record a visit', MedicalRecordsController, 'createRecord'],
     ['void a visit', MedicalRecordsController, 'voidRecord'],
+    ['edit a visit', MedicalRecordsController, 'editRecord'],
     ['record a follow-up', MedicalCasesController, 'addVisit'],
     ['preview closing', MedicalCasesController, 'closePreview'],
     ['close a case', MedicalCasesController, 'close'],

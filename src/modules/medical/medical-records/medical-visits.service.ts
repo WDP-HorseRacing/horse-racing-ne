@@ -80,6 +80,7 @@ import type {
   MedicalVisitCostAdjustedEvent,
 } from '../types/medical-events.types';
 import {
+  DUPLICATE_ALERT_REQUEST_REASON,
   MEDICAL_AUDIT_FEATURE,
   VISIT_COST_AUTHOR_ONLY_MESSAGE,
   VISIT_VOID_AUTHOR_ONLY_MESSAGE,
@@ -372,12 +373,13 @@ export class MedicalVisitsService {
           feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
         },
       );
-      await this.visitWrites.reopenRequests(
-        manager,
+      await this.visitWrites.reopenRequests(manager, {
         recordId,
-        caller.id,
-        body.reason,
-      );
+        callerId: caller.id,
+        reason: body.reason,
+        duplicateReason: DUPLICATE_ALERT_REQUEST_REASON,
+        feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
+      });
       const laterChange =
         visit.healthBefore !== null &&
         visit.healthBefore !== visit.resultingStatus

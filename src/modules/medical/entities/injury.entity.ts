@@ -7,7 +7,7 @@ import { MedicalRecordEntity } from './medical-record.entity';
 
 /**
  * InjuryEntity: một chấn thương của ngựa, chỉ giữ thông tin cố định lúc phát hiện.
- * Mức hồi phục theo từng buổi khám nằm ở InjuryMarkerEntity; không sửa, không xóa.
+ * Mức hồi phục theo từng buổi khám nằm ở InjuryMarkerEntity. Vùng, loại, vị trí chỉ sửa hoặc xóa được khi bác sĩ sửa chính buổi khám phát hiện và chưa buổi khám nào khác ghi nhận chấn thương.
  */
 @Entity({ name: 'injuries' })
 @Index('injuries_horse_idx', ['horseId'])

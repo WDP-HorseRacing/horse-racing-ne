@@ -15,10 +15,7 @@ import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
 } from '../constants/medical-events.constants';
-import {
-  DUPLICATE_ALERT_REQUEST_REASON,
-  MEDICAL_AUDIT_FEATURE,
-} from '../constants/medical.constants';
+import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 import { MedicalCaseEntity } from '../entities/medical-case.entity';
 import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
 import {
@@ -145,27 +142,33 @@ export class MedicalVisitWritesService {
   }
 
   /**
-   * Trả các yêu cầu khám của buổi khám bị hủy về hàng đợi, mỗi yêu cầu một dòng nhật ký
+   * Trả các yêu cầu khám mà buổi khám đã chuyển EXAMINED về hàng đợi, mỗi yêu cầu một dòng nhật ký
+   *
+   * - Dùng khi hủy buổi khám (mọi yêu cầu) và khi sửa buổi khám bỏ gắn một số yêu cầu
+   * - Yêu cầu tự sinh trùng loại cảnh báo với yêu cầu đang chờ thì chuyển DISMISSED với duplicateReason
    *
    * @param manager EntityManager của transaction đang chạy
-   * @param recordId UUID buổi khám bị hủy
-   * @param callerId UUID bác sĩ hủy
-   * @param reason Lý do hủy buổi khám
+   * @param input Buổi khám, người thao tác, lý do ghi nhật ký, lý do bỏ qua yêu cầu trùng cảnh báo, mã chức năng và các yêu cầu cần trả (bỏ trống là mọi yêu cầu)
    * @returns Promise hoàn tất khi đã cập nhật và ghi nhật ký
    */
   async reopenRequests(
     manager: EntityManager,
-    recordId: string,
-    callerId: string,
-    reason: string,
+    input: {
+      recordId: string;
+      callerId: string;
+      reason: string;
+      duplicateReason: string;
+      feature: AuditFeature;
+      requestIds?: string[];
+    },
   ): Promise<void> {
-    const { reopened, dismissed } =
-      await this.requestWrites.reopenForVoidedVisit(
-        manager,
-        recordId,
-        callerId,
-        DUPLICATE_ALERT_REQUEST_REASON,
-      );
+    const { reopened, dismissed } = await this.requestWrites.reopenExamined(
+      manager,
+      input.recordId,
+      input.callerId,
+      input.duplicateReason,
+      input.requestIds,
+    );
     const rows = [
       ...reopened.map((request) => ({
         request,
@@ -175,21 +178,21 @@ export class MedicalVisitWritesService {
         request,
         after: {
           status: ExamRequestStatus.DISMISSED,
-          dismissReason: DUPLICATE_ALERT_REQUEST_REASON,
+          dismissReason: input.duplicateReason,
           medicalRecordId: null,
         },
       })),
     ];
     for (const { request, after } of rows) {
       await this.audit.record(manager, {
-        actorId: callerId,
+        actorId: input.callerId,
         action: AuditAction.UPDATE,
         entityType: AuditEntityType.MEDICAL_EXAM_REQUEST,
         entityId: request.id,
-        before: { status: request.status, medicalRecordId: recordId },
+        before: { status: request.status, medicalRecordId: input.recordId },
         after,
-        reason,
-        feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
+        reason: input.reason,
+        feature: input.feature,
       });
     }
   }

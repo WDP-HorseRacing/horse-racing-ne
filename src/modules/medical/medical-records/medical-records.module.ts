@@ -15,6 +15,7 @@ import { MedicalCasesRepository } from './medical-cases.repository';
 import { MedicalCasesService } from './medical-cases.service';
 import { MedicalRecordsController } from './medical-records.controller';
 import { MedicalRecordsService } from './medical-records.service';
+import { MedicalVisitEditsService } from './medical-visit-edits.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
 import { MedicalVisitsService } from './medical-visits.service';
 
@@ -40,6 +41,7 @@ import { MedicalVisitsService } from './medical-visits.service';
     MedicalRecordsService,
     MedicalVisitsService,
     MedicalVisitWritesService,
+    MedicalVisitEditsService,
     MedicalCasesService,
     MedicalCasesRepository,
   ],

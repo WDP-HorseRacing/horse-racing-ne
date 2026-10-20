@@ -38,29 +38,35 @@ export class ExamRequestWritesService {
   }
 
   /**
-   * Trả các yêu cầu khám mà một buổi khám đã đánh dấu EXAMINED về lại hàng đợi khi buổi khám bị hủy
+   * Trả các yêu cầu khám mà một buổi khám đã đánh dấu EXAMINED về lại hàng đợi khi buổi khám bị hủy hoặc bỏ gắn yêu cầu
    *
-   * - Khóa các yêu cầu EXAMINED gắn với buổi khám, xử lý theo thứ tự tạo
+   * - Khóa các yêu cầu EXAMINED gắn với buổi khám (chỉ các id truyền vào nếu có), xử lý theo thứ tự tạo
    * - Yêu cầu về PENDING, bỏ gắn buổi khám, xóa người xử lý, thời điểm xử lý và lý do bỏ qua
    * - Yêu cầu tự sinh từ cảnh báo chỉ số mà ngựa đã có yêu cầu PENDING cùng loại cảnh báo: chuyển DISMISSED với lý do truyền vào, bỏ gắn buổi khám
    *
    * @param manager EntityManager của transaction đang chạy
-   * @param medicalRecordId UUID buổi khám bị hủy
-   * @param handledBy UUID bác sĩ hủy buổi khám
+   * @param medicalRecordId UUID buổi khám
+   * @param handledBy UUID bác sĩ hủy hoặc sửa buổi khám
    * @param duplicateReason Lý do bỏ qua yêu cầu trùng cảnh báo đang chờ
+   * @param requestIds UUID các yêu cầu cần trả; bỏ trống là mọi yêu cầu của buổi khám
    * @returns Promise trả về các yêu cầu đã về hàng đợi và các yêu cầu đã bỏ qua, mỗi phần tử là bản trước khi đổi
    */
-  async reopenForVoidedVisit(
+  async reopenExamined(
     manager: EntityManager,
     medicalRecordId: string,
     handledBy: string,
     duplicateReason: string,
+    requestIds?: string[],
   ): Promise<{
     reopened: MedicalExamRequestEntity[];
     dismissed: MedicalExamRequestEntity[];
   }> {
     const linked = await manager.find(MedicalExamRequestEntity, {
-      where: { medicalRecordId, status: ExamRequestStatus.EXAMINED },
+      where: {
+        medicalRecordId,
+        status: ExamRequestStatus.EXAMINED,
+        ...(requestIds ? { id: In(requestIds) } : {}),
+      },
       order: { createdAt: 'ASC' },
       lock: { mode: 'pessimistic_write' },
     });

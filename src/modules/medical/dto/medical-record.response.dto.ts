@@ -3,6 +3,7 @@ import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
+  VisitEditHealthOutcome,
   VisitVoidHealthOutcome,
 } from '../constants/medical-visit.enum';
 import { InjuryMarkerResponseDto } from './injury-marker.response.dto';
@@ -110,6 +111,26 @@ export class VoidMedicalRecordResponseDto extends MedicalRecordResponseDto {
       'REVERTED: sức khỏe ngựa về trạng thái ngay trước buổi khám. KEPT_LATER_CHANGE: đã có lần đổi sức khỏe sau buổi khám nên giữ nguyên. NOT_CHANGED_BY_VISIT: buổi khám không đổi sức khỏe. UNKNOWN_BEFORE: buổi khám cũ không lưu sức khỏe trước khám, giữ nguyên.',
   })
   healthOutcome!: VisitVoidHealthOutcome;
+
+  @ApiProperty({
+    type: LaterHealthChangeResponseDto,
+    nullable: true,
+    description:
+      'Lần đổi sức khỏe mới nhất sau buổi khám; chỉ có khi healthOutcome là KEPT_LATER_CHANGE, có thể null nếu không đọc được từ nhật ký',
+  })
+  laterHealthChange!: LaterHealthChangeResponseDto | null;
+}
+
+/**
+ * Buổi khám sau khi sửa, kèm cách trạng thái sức khỏe của ngựa được xử lý.
+ */
+export class EditMedicalRecordResponseDto extends MedicalRecordResponseDto {
+  @ApiProperty({
+    enum: VisitEditHealthOutcome,
+    description:
+      'UNCHANGED: lần sửa không đổi sức khỏe sau khám. UPDATED: buổi khám và sức khỏe hiện tại của ngựa cùng đổi. KEPT_LATER_CHANGE: đã có lần đổi sức khỏe sau buổi khám nên chỉ đổi resultingStatus của buổi khám, sức khỏe hiện tại giữ nguyên.',
+  })
+  healthOutcome!: VisitEditHealthOutcome;
 
   @ApiProperty({
     type: LaterHealthChangeResponseDto,
