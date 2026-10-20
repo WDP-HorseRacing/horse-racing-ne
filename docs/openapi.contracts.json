@@ -3417,7 +3417,7 @@
     },
     "/api/v1/medical-records/{id}/cost": {
       "patch": {
-        "description": "Bắt buộc lý do, không giới hạn thời gian, bệnh án đang mở hay đã đóng đều được. Số mới trùng số cũ thì không ghi nhật ký và không gửi thông báo. Báo Club Manager và chủ của giai đoạn sở hữu chứa ngày khám. Buổi khám đã hủy, hoặc ngựa đã chuyển nhượng hay đã mất: 409.",
+        "description": "Bắt buộc lý do, không giới hạn thời gian, bệnh án đang mở hay đã đóng đều được. Số mới trùng số cũ thì không ghi nhật ký và không gửi thông báo. Báo Club Manager và chủ của giai đoạn sở hữu chứa ngày khám. Ngựa đã chuyển nhượng hay đã mất vẫn sửa được. Buổi khám đã hủy: 409.",
         "operationId": "MedicalRecordsController_adjustCost",
         "parameters": [
           {

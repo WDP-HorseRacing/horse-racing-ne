@@ -8,6 +8,7 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
+import { readOnlyLifecycleMessage } from '../../src/modules/horses/policies/horse.policy';
 import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
 import { MEDICAL_VISIT_COST_ADJUSTED_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
 import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
@@ -149,7 +150,7 @@ describe('MedicalVisitsService.adjustVisitCost (Postgres)', () => {
     expect(await outbox()).toEqual([]);
   });
 
-  it('answers conflict for a voided visit, a read-only horse, and not found for a missing visit', async () => {
+  it('answers conflict for a voided visit and not found for a missing visit', async () => {
     const { recordId, vet } = await setup();
     await dataSource.query(
       `UPDATE medical_records SET voided_at = now(), void_reason = 'Sai' WHERE id = $1`,
@@ -161,16 +162,40 @@ describe('MedicalVisitsService.adjustVisitCost (Postgres)', () => {
     await expect(
       service.adjustVisitCost(vet, randomUUID(), { cost: 1, reason: 'x' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
 
-    await truncateAllTables(dataSource);
-    const deceased = await setup(HorseLifecycleStatus.DECEASED);
+  it('adjusts the cost on a transferred horse and tells the owner at the exam date', async () => {
+    const { a, recordId, vet } = await setup(HorseLifecycleStatus.TRANSFERRED);
+
     await expect(
-      service.adjustVisitCost(deceased.vet, deceased.recordId, {
-        cost: 1,
-        reason: 'x',
-      }),
-    ).rejects.toBeInstanceOf(ConflictException);
-    expect(await costOf(deceased.recordId)).toBe('15000000');
+      service.adjustVisitCost(vet, recordId, { cost: 1_500_000, reason: 'x' }),
+    ).resolves.toMatchObject({ cost: 1_500_000 });
+    expect(await costOf(recordId)).toBe('1500000');
+    expect((await outbox()).map((row) => row.payload)).toEqual([
+      expect.objectContaining({ recordId, costOwnerId: a }),
+    ]);
+  });
+
+  it('still answers not found for a soft-deleted horse', async () => {
+    const { recordId, vet } = await setup(HorseLifecycleStatus.DECEASED);
+    await dataSource.query('UPDATE horses SET deleted_at = now()');
+
+    await expect(
+      service.adjustVisitCost(vet, recordId, { cost: 1, reason: 'x' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(await costOf(recordId)).toBe('15000000');
     expect(await outbox()).toEqual([]);
+  });
+
+  it('still refuses to void a visit of a deceased horse', async () => {
+    const { recordId, vet } = await setup(HorseLifecycleStatus.DECEASED);
+
+    await expect(
+      service.voidVisit(vet, recordId, { reason: 'x' }),
+    ).rejects.toThrow(
+      new ConflictException(
+        readOnlyLifecycleMessage(HorseLifecycleStatus.DECEASED)!,
+      ),
+    );
   });
 });

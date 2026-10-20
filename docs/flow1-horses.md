@@ -357,7 +357,7 @@ GROOM không xem hai tab Bệnh án và Huấn luyện ở màn hình này; dữ
    - Hiển thị tối đa 3 đời: con ngựa đang xem, cha mẹ, ông bà.
    - Chỉ vẽ từ những con có hồ sơ tại câu lạc bộ. Ô nào không khai báo được thì để trống.
    - Bấm vào một tổ tiên sẽ mở hồ sơ của con đó theo đúng phạm vi quyền của người xem. Với HORSE OWNER, nếu tổ tiên không thuộc sở hữu của mình thì chỉ hiện tên và vị trí trong cây (cha/mẹ của ai, đời mấy), không mở được và không nhận giới tính, giống, màu lông, ngày sinh, sở trường của con đó. *(BA chốt)* Hệ thống vẫn gửi mã định danh của tổ tiên đó để giao diện nối các ô trong cây; mở hồ sơ tổ tiên đó vẫn bị chặn. *(BA chốt)*
-4. Hồ sơ đã chuyển nhượng, đã mất và hồ sơ đã xóa hiển thị ở chế độ chỉ đọc, không hiện nút thao tác nào, trừ nút "Kích hoạt lại" (ngựa đã chuyển nhượng) và "Khôi phục" (hồ sơ đã xóa) của CLUB MANAGER theo F1.8. Ngựa đã mất không có nút nào, trừ nút xóa bản ghi đo sai của VETERINARIAN (F1.5 mục 7). *(BA chốt)*
+4. Hồ sơ đã chuyển nhượng, đã mất và hồ sơ đã xóa hiển thị ở chế độ chỉ đọc, không hiện nút thao tác nào, trừ nút "Kích hoạt lại" (ngựa đã chuyển nhượng) và "Khôi phục" (hồ sơ đã xóa) của CLUB MANAGER theo F1.8. Ngựa đã mất không có nút nào, trừ nút xóa bản ghi đo sai của VETERINARIAN (F1.5 mục 7). Ngựa đã chuyển nhượng và đã mất vẫn có nút điều chỉnh chi phí buổi khám của VETERINARIAN (Flow 3, F3.6 mục 9). *(BA chốt)*
 5. Con ngựa ngoài phạm vi xem trả về 404, không trả 403. Áp dụng cho HORSE OWNER xem ngựa không sở hữu và cho các vai trò khác CLUB MANAGER xem hồ sơ đã xóa.
 6. Hồ sơ có chủ hiện ngày bắt đầu sở hữu của chủ hiện tại (ví dụ "Chủ sở hữu từ 01/06/2026").
 

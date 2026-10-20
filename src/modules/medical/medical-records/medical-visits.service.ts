@@ -423,6 +423,7 @@ export class MedicalVisitsService {
    * Điều chỉnh chi phí của một buổi khám, bắt buộc lý do
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row buổi khám; không giới hạn thời gian, bệnh án đóng hay mở đều được
+   * - Ngựa đã chuyển nhượng hoặc đã mất vẫn sửa được chi phí
    * - Số mới trùng số cũ thì không ghi gì và không báo
    * - Ghi nhật ký giá trị trước, sau và lý do; event báo lại Club Manager và chủ của giai đoạn sở hữu chứa ngày khám, ghi vào outbox trong cùng transaction
    *
@@ -432,7 +433,7 @@ export class MedicalVisitsService {
    * @returns Promise trả về buổi khám sau khi điều chỉnh
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có buổi khám, hoặc ngựa ngoài phạm vi
-   * @throws ConflictException Nếu buổi khám đã hủy, hoặc ngựa đã chuyển nhượng hay đã mất
+   * @throws ConflictException Nếu buổi khám đã hủy, hoặc Club Manager thao tác hồ sơ ngựa đã xóa
    */
   async adjustVisitCost(
     actor: Actor,
@@ -444,7 +445,7 @@ export class MedicalVisitsService {
     });
     if (!found) throw new NotFoundException('Không tìm thấy buổi khám');
     return this.dataSource.transaction(async (manager) => {
-      const { caller } = await this.access.lockHorseForWrite(
+      const { caller } = await this.access.lockHorseForCostAdjustment(
         manager,
         actor,
         found.horseId,

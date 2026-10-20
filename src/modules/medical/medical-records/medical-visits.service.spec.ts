@@ -66,6 +66,7 @@ describe('MedicalVisitsService', () => {
   };
   let access: {
     lockHorseForWrite: jest.Mock;
+    lockHorseForCostAdjustment: jest.Mock;
     findOpenCase: jest.Mock;
     currentInjuryStatuses: jest.Mock;
   };
@@ -164,6 +165,9 @@ describe('MedicalVisitsService', () => {
     shared = { findOpenCase: jest.fn().mockResolvedValue(null) };
     access = {
       lockHorseForWrite: jest.fn(() =>
+        Promise.resolve({ caller: { id: 'vet-1' }, horse }),
+      ),
+      lockHorseForCostAdjustment: jest.fn(() =>
         Promise.resolve({ caller: { id: 'vet-1' }, horse }),
       ),
       findOpenCase: shared.findOpenCase,
@@ -844,10 +848,13 @@ describe('MedicalVisitsService', () => {
     it.each([
       ['not found for a horse outside the caller scope', NotFoundException],
       ['forbidden for an inactive account', ForbiddenException],
-      ['conflict for a transferred or deceased horse', ConflictException],
+      [
+        'conflict for a deleted profile seen by a Club Manager',
+        ConflictException,
+      ],
     ])('propagates %s', async (_label, error) => {
       rows.set(MedicalRecordEntity, visit());
-      access.lockHorseForWrite.mockRejectedValue(new error());
+      access.lockHorseForCostAdjustment.mockRejectedValue(new error());
       await expect(adjust()).rejects.toThrow(error);
       expectNothingWritten();
     });
@@ -871,11 +878,12 @@ describe('MedicalVisitsService', () => {
 
       const result = await adjust();
 
-      expect(access.lockHorseForWrite).toHaveBeenCalledWith(
+      expect(access.lockHorseForCostAdjustment).toHaveBeenCalledWith(
         manager,
         vet,
         HORSE_ID,
       );
+      expect(access.lockHorseForWrite).not.toHaveBeenCalled();
       expect(manager.findOneOrFail).toHaveBeenCalledWith(MedicalRecordEntity, {
         where: { id: 'r1' },
         lock: { mode: 'pessimistic_write' },

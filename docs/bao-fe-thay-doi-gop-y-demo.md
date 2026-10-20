@@ -76,6 +76,19 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Đề bài không yêu cầu tự sinh yêu cầu khám; ca sốt đi qua báo cáo sự cố của Groom. Cần khám hay không do người có chuyên môn quyết.
 
+### F3-1: VET điều chỉnh chi phí buổi khám của ngựa đã chuyển nhượng, đã mất
+
+**Luật / hành vi API mới**
+1. `PATCH /medical-records/:id/cost` (VET) nhận cả buổi khám của ngựa `TRANSFERRED` hoặc `DECEASED`, kể cả bệnh án đã đóng kèm ghi nhận ngựa mất. Trước trả 409.
+2. Thông báo điều chỉnh vẫn gửi CM và chủ của giai đoạn chứa ngày khám (ngựa đã chuyển nhượng: chủ cũ nhận).
+3. Còn 409: buổi khám đã hủy. Hồ sơ đã xóa vẫn 404 (CM: 409). Hủy buổi khám (`POST /medical-records/:id/void`) và mọi thao tác ghi y tế khác trên ngựa đã chuyển nhượng, đã mất vẫn 409.
+
+**FE cần sửa**
+- Hồ sơ ngựa đã chuyển nhượng, đã mất: vẫn hiện nút "Điều chỉnh chi phí" trên từng buổi khám chưa hủy cho VET. Các nút khác giữ ẩn như cũ.
+
+**Lý do**
+- Chi phí nhập sai của buổi khám cũ vẫn phải sửa được cho đúng với chủ của giai đoạn đó, kể cả sau khi ngựa rời câu lạc bộ hoặc mất.
+
 ## Ngày 19/10/2026
 
 ### Chuẩn thời gian: thời điểm bắt buộc có múi giờ, ngày lịch đúng YYYY-MM-DD

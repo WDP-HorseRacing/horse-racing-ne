@@ -64,6 +64,52 @@ describe('MedicalAccessService.lockHorseForWrite', () => {
   });
 });
 
+describe('MedicalAccessService.lockHorseForCostAdjustment', () => {
+  let horseAccess: { lockWritableHorseInScope: jest.Mock };
+  let service: MedicalAccessService;
+
+  beforeEach(() => {
+    horseAccess = { lockWritableHorseInScope: jest.fn() };
+    service = new MedicalAccessService(
+      horseAccess as unknown as HorseAccessService,
+      {} as DataSource,
+    );
+  });
+
+  it.each([HorseLifecycleStatus.TRANSFERRED, HorseLifecycleStatus.DECEASED])(
+    'locks a %s horse in scope without the read-only block',
+    async (lifecycleStatus) => {
+      horseAccess.lockWritableHorseInScope.mockResolvedValue({
+        caller: { id: 'vet-1' },
+        horse: { id: 'h1', lifecycleStatus },
+      });
+
+      const result = await service.lockHorseForCostAdjustment(
+        manager,
+        vet,
+        'h1',
+      );
+
+      expect(horseAccess.lockWritableHorseInScope).toHaveBeenCalledWith(
+        manager,
+        vet,
+        'h1',
+      );
+      expect(result.horse.lifecycleStatus).toBe(lifecycleStatus);
+    },
+  );
+
+  it('propagates not found for a deleted or out-of-scope horse', async () => {
+    horseAccess.lockWritableHorseInScope.mockRejectedValue(
+      new NotFoundException(),
+    );
+
+    await expect(
+      service.lockHorseForCostAdjustment(manager, vet, 'h1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+});
+
 describe('MedicalAccessService.lockHorseForWrite on a deleted profile', () => {
   let lockHorseWithDeleted: jest.Mock;
   let service: MedicalAccessService;

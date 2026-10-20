@@ -47,6 +47,28 @@ export class MedicalAccessService {
   }
 
   /**
+   * Khóa row con ngựa trước khi điều chỉnh chi phí buổi khám trong transaction
+   *
+   * - Kiểm tài khoản đang ACTIVE, ngựa tồn tại, chưa xóa và nằm trong phạm vi xem
+   * - Không chặn ngựa đã chuyển nhượng hoặc đã mất, chi phí buổi khám cũ vẫn sửa được
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về user hiện tại và con ngựa đã khóa
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa ngoài phạm vi
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa
+   */
+  lockHorseForCostAdjustment(
+    manager: EntityManager,
+    actor: Actor,
+    horseId: string,
+  ): Promise<{ caller: CurrentActorUser; horse: HorseEntity }> {
+    return this.horseAccess.lockWritableHorseInScope(manager, actor, horseId);
+  }
+
+  /**
    * Tìm bệnh án đang mở của con ngựa, mỗi ngựa tối đa một
    *
    * @param horseId UUID của ngựa
