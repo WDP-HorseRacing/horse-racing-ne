@@ -8,6 +8,7 @@ import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
 import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { PrescriptionEntity } from '../entities/prescription.entity';
 import { MedicalRecordsService } from './medical-records.service';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 
 function actorWith(role: UserRole): Actor {
   return { sub: `kc-${role}`, roles: [role] };
@@ -84,6 +85,9 @@ describe('MedicalRecordsService.listRecords', () => {
       prescriptions as unknown as Repository<PrescriptionEntity>,
       injuries as unknown as Repository<InjuryMarkerEntity>,
       ownerships as unknown as HorseOwnershipService,
+      {
+        followUpDates: jest.fn().mockResolvedValue(new Map()),
+      } as unknown as MedicalCheckupsService,
     );
   });
 
@@ -287,6 +291,7 @@ describe('MedicalRecordsService.getCareInstructions', () => {
       {} as Repository<PrescriptionEntity>,
       {} as Repository<InjuryMarkerEntity>,
       {} as HorseOwnershipService,
+      {} as MedicalCheckupsService,
     );
   });
 

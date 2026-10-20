@@ -185,7 +185,7 @@ export class MedicalRemindersService {
   }
 
   /**
-   * Phát nhắc cho mọi ngày hẹn khám định kỳ tới ngày hẹn hôm nay hoặc đã qua mà chưa khám
+   * Phát nhắc cho mọi ngày hẹn khám định kỳ và lịch tái khám tới ngày hẹn hôm nay hoặc đã qua mà chưa khám
    *
    * - eventId cố định theo ngày hẹn và ngày hẹn theo lịch câu lạc bộ: mỗi ngày hẹn chỉ báo một lần; dời sang ngày khác thì được báo lại theo ngày mới
    *
@@ -201,6 +201,7 @@ export class MedicalRemindersService {
         ),
         horseId: appointment.horseId,
         appointmentId: appointment.id,
+        type: appointment.type,
         scheduledAt: appointment.dueAt.toISOString(),
       };
       await this.events.publish(

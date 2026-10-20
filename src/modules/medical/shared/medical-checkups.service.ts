@@ -10,6 +10,7 @@ import {
   CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
+  VET_APPOINTMENT_TYPES,
 } from '../constants/care-schedule.enum';
 import { CheckupItemDto } from '../dto/checkup.dto';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
@@ -174,7 +175,30 @@ export class MedicalCheckupsService {
   }
 
   /**
-   * Lấy ngày hẹn khám định kỳ còn hiệu lực có ngày hẹn tới hết một ngày, kể cả ngày hẹn đã qua mà chưa khám
+   * Lấy ngày hẹn tái khám của các buổi khám (mọi trạng thái lịch)
+   *
+   * @param recordIds UUID các buổi khám
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Promise trả về Map từ UUID buổi khám sang ngày hẹn tái khám; buổi không hẹn thì không có trong Map
+   */
+  async followUpDates(
+    recordIds: string[],
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<Map<string, Date>> {
+    if (recordIds.length === 0) return new Map();
+    const schedules = await manager.find(CareScheduleEntity, {
+      where: { recordId: In(recordIds), type: CareScheduleType.FOLLOW_UP },
+    });
+    return new Map(
+      schedules.map((schedule) => [
+        schedule.recordId as string,
+        schedule.dueAt,
+      ]),
+    );
+  }
+
+  /**
+   * Lấy ngày hẹn khám định kỳ và lịch tái khám còn hiệu lực có ngày hẹn tới hết một ngày, kể cả ngày hẹn đã qua mà chưa khám
    *
    * - Bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
    *
@@ -184,7 +208,7 @@ export class MedicalCheckupsService {
   dueAppointments(untilDate: string): Promise<CareScheduleEntity[]> {
     return this.dataSource.manager.find(CareScheduleEntity, {
       where: {
-        type: CareScheduleType.ROUTINE_CHECKUP,
+        type: In([...VET_APPOINTMENT_TYPES]),
         status: CareScheduleStatus.SCHEDULED,
         dueAt: LessThan(
           clubDateTimeToInstant(shiftDays(untilDate, 1), '00:00'),
@@ -199,7 +223,7 @@ export class MedicalCheckupsService {
   /**
    * Lấy lịch tiêm phòng, tẩy giun, kiểm tra móng còn Đã lên lịch và đến hạn tới một ngày
    *
-   * - Không gồm ngày hẹn khám định kỳ; bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
+   * - Không gồm ngày hẹn khám định kỳ và lịch tái khám; bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
    * - Ngày đến hạn tính theo lịch câu lạc bộ
    * - assignedTo là người làm hiện tại: người cụ thể được giao nếu còn hoạt động và đúng vai trò của kiểu giao; giao Groom phụ trách thì là Groom đang phụ trách ngựa (còn hoạt động); không có ai thì null
    * - assignedToName là họ tên người làm hiện tại, null khi assignedTo là null
@@ -216,7 +240,7 @@ export class MedicalCheckupsService {
       CLUB_TIME_ZONE,
       untilDate,
       CareScheduleStatus.SCHEDULED,
-      CareScheduleType.ROUTINE_CHECKUP,
+      VET_APPOINTMENT_TYPES,
       READ_ONLY_LIFECYCLE_STATUSES,
       UserStatus.ACTIVE,
       UserRole.VETERINARIAN,
@@ -258,7 +282,7 @@ export class MedicalCheckupsService {
          ) a ON true
          LEFT JOIN users au ON au.id = a.id
         WHERE s.status = $3
-          AND s.type <> $4
+          AND s.type <> ALL($4::varchar[])
           AND h.deleted_at IS NULL
           AND h.lifecycle_status <> ALL($5::varchar[])
           AND (s.due_at AT TIME ZONE $1)::date <= $2::date

@@ -160,11 +160,13 @@ export interface CareScheduleDueEvent extends MedicalEventBase {
 }
 
 /**
- * Ngày hẹn khám định kỳ tới ngày hẹn mà chưa khám.
+ * Ngày hẹn khám định kỳ hoặc lịch tái khám tới ngày hẹn mà chưa khám.
  *
+ * - type: ROUTINE_CHECKUP hoặc FOLLOW_UP; payload cũ không có trường này là ROUTINE_CHECKUP
  * - scheduledAt: ngày giờ hẹn, chuỗi ISO
  */
 export interface CheckupAppointmentDueEvent extends MedicalEventBase {
   appointmentId: string;
+  type?: CareScheduleType;
   scheduledAt: string;
 }

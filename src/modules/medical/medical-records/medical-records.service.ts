@@ -23,6 +23,7 @@ import {
   isGroomOnly,
   isVisitCostHidden,
 } from '../policies/medical.policy';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import type { MedicalCostViewer } from '../types/medical-cost.types';
 
 @Injectable()
@@ -36,6 +37,7 @@ export class MedicalRecordsService {
     @InjectRepository(InjuryMarkerEntity)
     private readonly injuries: Repository<InjuryMarkerEntity>,
     private readonly ownerships: HorseOwnershipService,
+    private readonly checkups: MedicalCheckupsService,
   ) {}
 
   /**
@@ -156,7 +158,7 @@ export class MedicalRecordsService {
   }
 
   /**
-   * Gom đơn thuốc, chấn thương của các buổi khám rồi chuyển sang DTO, giữ nguyên thứ tự đầu vào.
+   * Gom đơn thuốc, chấn thương, ngày hẹn tái khám của các buổi khám rồi chuyển sang DTO, giữ nguyên thứ tự đầu vào.
    *
    * @param records Các buổi khám
    * @param seesDosage Người gọi có được xem liều lượng, tần suất đơn thuốc không
@@ -169,7 +171,7 @@ export class MedicalRecordsService {
     viewer: MedicalCostViewer,
   ): Promise<MedicalRecordResponseDto[]> {
     const recordIds = records.map((record) => record.id);
-    const [prescriptions, injuries] = recordIds.length
+    const [prescriptions, injuries, followUps] = recordIds.length
       ? await Promise.all([
           this.prescriptions.find({
             where: { medicalRecordId: In(recordIds) },
@@ -180,8 +182,9 @@ export class MedicalRecordsService {
             relations: { injury: true },
             order: { createdAt: 'ASC' },
           }),
+          this.checkups.followUpDates(recordIds),
         ])
-      : [[], []];
+      : [[], [], new Map<string, Date>()];
     return records.map((record) =>
       toMedicalRecordResponse(
         record,
@@ -190,6 +193,7 @@ export class MedicalRecordsService {
         seesDosage,
         viewer.seesCost,
         isVisitCostHidden(viewer, record.examDate),
+        followUps.get(record.id) ?? null,
       ),
     );
   }

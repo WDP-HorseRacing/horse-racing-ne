@@ -12312,7 +12312,8 @@
               "VACCINATION",
               "DEWORMING",
               "FARRIER",
-              "ROUTINE_CHECKUP"
+              "ROUTINE_CHECKUP",
+              "FOLLOW_UP"
             ]
           },
           "dueAt": {
@@ -13177,7 +13178,8 @@
               "VACCINATION",
               "DEWORMING",
               "FARRIER",
-              "ROUTINE_CHECKUP"
+              "ROUTINE_CHECKUP",
+              "FOLLOW_UP"
             ]
           },
           "dueDate": {
@@ -15892,8 +15894,6 @@
           "horseName": {
             "type": "string"
           },
-          "barnId": {
-            "type": "string",
           "lifecycleStatus": {
             "type": "string",
             "enum": [
@@ -15904,6 +15904,8 @@
             ],
             "description": "Vòng đời hiện tại của ngựa"
           },
+          "barnId": {
+            "type": "string",
             "format": "uuid",
             "nullable": true
           },
@@ -15956,9 +15958,9 @@
         "required": [
           "horseId",
           "horseName",
+          "lifecycleStatus",
           "barnId",
           "barnName",
-          "lifecycleStatus",
           "healthStatus",
           "trainingLocked",
           "completed",
@@ -17440,7 +17442,8 @@
               "VACCINATION",
               "DEWORMING",
               "FARRIER",
-              "ROUTINE_CHECKUP"
+              "ROUTINE_CHECKUP",
+              "FOLLOW_UP"
             ]
           },
           "dueAt": {
@@ -17538,7 +17541,8 @@
               "VACCINATION",
               "DEWORMING",
               "FARRIER",
-              "ROUTINE_CHECKUP"
+              "ROUTINE_CHECKUP",
+              "FOLLOW_UP"
             ]
           },
           "dueAt": {
@@ -17665,7 +17669,8 @@
               "VACCINATION",
               "DEWORMING",
               "FARRIER",
-              "ROUTINE_CHECKUP"
+              "ROUTINE_CHECKUP",
+              "FOLLOW_UP"
             ]
           },
           "scheduledAt": {
@@ -17712,7 +17717,7 @@
             }
           },
           "horseVetAppointments": {
-            "description": "Lịch hẹn bác sĩ hôm nay ở ngựa Groom đang phụ trách, chỉ để xem (Groom không hoàn tất), theo giờ hẹn",
+            "description": "Lịch hẹn bác sĩ hôm nay (khám định kỳ ROUTINE_CHECKUP, tái khám FOLLOW_UP) ở ngựa Groom đang phụ trách, chỉ để xem (Groom không hoàn tất), theo giờ hẹn",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GroomTodayVetAppointmentResponseDto"

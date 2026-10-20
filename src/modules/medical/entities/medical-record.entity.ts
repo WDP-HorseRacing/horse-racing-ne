@@ -16,6 +16,7 @@ import { MedicalCaseEntity } from './medical-case.entity';
  * Buổi khám ngoài bệnh án có caseId null (trừ buổi mở bệnh án); buổi tái khám luôn thuộc một bệnh án.
  * Bác sĩ ghi buổi khám được sửa kèm lý do (chi phí sửa bằng API riêng); không xóa, ghi sai thì hủy bằng voidedAt và voidReason.
  * healthBefore là trạng thái sức khỏe của ngựa ngay trước buổi khám; null với buổi khám ghi trước khi có cột này.
+ * Ngày hẹn tái khám của buổi khám nằm ở care_schedules (loại FOLLOW_UP, recordId là buổi khám này).
  * barnId là khu của ngựa lúc khám, không đổi khi ngựa chuyển khu; null nếu lúc khám ngựa không thuộc khu nào.
  */
 @Entity({ name: 'medical_records' })
@@ -79,9 +80,6 @@ export class MedicalRecordEntity extends MutableRecordEntity {
 
   @Column({ type: 'varchar', length: 16, nullable: true })
   conclusion!: MedicalVisitConclusion | null;
-
-  @Column({ name: 'next_visit_at', type: 'timestamptz', nullable: true })
-  nextVisitAt!: Date | null;
 
   @Column({ name: 'care_instructions', type: 'text', nullable: true })
   careInstructions!: string | null;

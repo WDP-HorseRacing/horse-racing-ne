@@ -172,7 +172,7 @@ export function fixtures(dataSource: DataSource) {
    * @param horseId Id ngựa
    * @param vetId Id bác sĩ khám
    * @param examDate Thời điểm khám (ISO)
-   * @param options Đã hủy, bệnh án chứa buổi khám, ngày hẹn tái khám, chi phí, khu lúc khám
+   * @param options Đã hủy, bệnh án chứa buổi khám, ngày hẹn tái khám (tạo lịch FOLLOW_UP Đã lên lịch, hoặc Đã hủy nếu buổi đã hủy; cần caseId), chi phí, khu lúc khám
    * @returns A promise resolving to id buổi khám
    */
   const visit = async (
@@ -189,8 +189,8 @@ export function fixtures(dataSource: DataSource) {
   ): Promise<string> => {
     const id = randomUUID();
     await dataSource.query(
-      `INSERT INTO medical_records (id, horse_id, vet_id, exam_date, resulting_status, kind, voided_at, case_id, next_visit_at, cost, barn_id)
-       VALUES ($1, $2, $3, $4, 'ELIGIBLE', 'ROUTINE', $5, $6, $7, $8, $9)`,
+      `INSERT INTO medical_records (id, horse_id, vet_id, exam_date, resulting_status, kind, voided_at, case_id, cost, barn_id)
+       VALUES ($1, $2, $3, $4, 'ELIGIBLE', 'ROUTINE', $5, $6, $7, $8)`,
       [
         id,
         horseId,
@@ -198,11 +198,23 @@ export function fixtures(dataSource: DataSource) {
         examDate,
         options.voided ? new Date() : null,
         options.caseId ?? null,
-        options.nextVisitAt ?? null,
         options.cost ?? 0,
         options.barnId ?? null,
       ],
     );
+    if (options.nextVisitAt) {
+      await dataSource.query(
+        `INSERT INTO care_schedules (version, horse_id, type, due_at, status, case_id, record_id)
+         VALUES (1, $1, 'FOLLOW_UP', $2, $3, $4, $5)`,
+        [
+          horseId,
+          options.nextVisitAt,
+          options.voided ? 'CANCELLED' : 'SCHEDULED',
+          options.caseId,
+          id,
+        ],
+      );
+    }
     return id;
   };
 

@@ -66,6 +66,7 @@ const CARE_SCHEDULE_LABELS: Record<CareScheduleType, string> = {
   [CareScheduleType.DEWORMING]: 'tẩy giun',
   [CareScheduleType.FARRIER]: 'kiểm tra móng',
   [CareScheduleType.ROUTINE_CHECKUP]: 'khám định kỳ',
+  [CareScheduleType.FOLLOW_UP]: 'tái khám',
 };
 
 /**
@@ -458,7 +459,7 @@ export class MedicalNotificationsService {
   }
 
   /**
-   * Báo mọi Veterinarian khi tới ngày hẹn khám định kỳ
+   * Báo mọi Veterinarian khi tới ngày hẹn khám định kỳ hoặc tái khám
    *
    * @param event Payload của MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -472,10 +473,14 @@ export class MedicalNotificationsService {
       { veterinarians: true },
       NotificationCategory.CARE_REMINDER,
       NotificationPriority.NORMAL,
-      (horse) => ({
-        title: `Lịch hẹn khám định kỳ ngựa ${horse}`,
-        message: `Ngựa ${horse} có lịch hẹn khám định kỳ lúc ${formatClubDateTime(event.scheduledAt)}.`,
-      }),
+      (horse) => {
+        const label =
+          CARE_SCHEDULE_LABELS[event.type ?? CareScheduleType.ROUTINE_CHECKUP];
+        return {
+          title: `Lịch hẹn ${label} ngựa ${horse}`,
+          message: `Ngựa ${horse} có lịch hẹn ${label} lúc ${formatClubDateTime(event.scheduledAt)}.`,
+        };
+      },
     );
   }
 

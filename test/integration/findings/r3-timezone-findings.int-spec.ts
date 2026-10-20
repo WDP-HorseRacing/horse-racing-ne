@@ -334,7 +334,7 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       () => visits.createFollowUpVisit(vet, caseId, body),
       () =>
         one(
-          'SELECT next_visit_at AS v FROM medical_records WHERE case_id = $1',
+          `SELECT due_at AS v FROM care_schedules WHERE case_id = $1 AND type = 'FOLLOW_UP'`,
           [caseId],
         ),
     );

@@ -17,7 +17,7 @@ import {
 import {
   CareAssigneeType,
   CareScheduleStatus,
-  CareScheduleType,
+  VET_APPOINTMENT_TYPES,
 } from '../../medical/constants/care-schedule.enum';
 import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
 import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
@@ -75,7 +75,7 @@ export class GroomTodayService {
    * - Lịch chăm sóc Groom là người làm (giao Groom phụ trách ở ngựa mình phụ trách, hoặc giao đích danh cho mình), đến hạn tới hết hôm nay mà chưa làm
    * - Lịch giao đích danh ở ngựa Groom không phụ trách: tách ra otherCareSchedules
    * - Lượt tập Groom được giao dắt ở ngựa Groom không phụ trách: tách ra assistedRuns
-   * - Lịch hẹn khám định kỳ hôm nay của ngựa Groom phụ trách: horseVetAppointments, chỉ để xem
+   * - Lịch hẹn khám định kỳ và tái khám hôm nay của ngựa Groom phụ trách: horseVetAppointments, chỉ để xem
    *
    * @param actor Thông tin danh tính từ Access Token
    * @returns Promise trả về ngày hôm nay và việc của từng ngựa
@@ -136,7 +136,7 @@ export class GroomTodayService {
       manager.find(CareScheduleEntity, {
         where: {
           horseId: In(horseIds),
-          type: CareScheduleType.ROUTINE_CHECKUP,
+          type: In([...VET_APPOINTMENT_TYPES]),
           status: CareScheduleStatus.SCHEDULED,
           dueAt: And(MoreThanOrEqual(dayStart), LessThan(dayEnd)),
         },

@@ -53,6 +53,7 @@ import {
   resolveLockOnClose,
   visibleVisitCost,
 } from '../policies/medical.policy';
+import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 import type { MedicalCostViewer } from '../types/medical-cost.types';
@@ -91,6 +92,7 @@ export class MedicalCasesService {
     private readonly events: DomainEventPublisher,
     private readonly ownerships: HorseOwnershipService,
     private readonly horseStatuses: HorseStatusesService,
+    private readonly scheduleWrites: CareScheduleWritesService,
   ) {}
 
   /**
@@ -238,6 +240,7 @@ export class MedicalCasesService {
    * - Lệnh khóa gắn bệnh án còn hiệu lực: bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
    * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
    * - Còn chấn thương chưa lành: 409, trừ khi đóng kèm ghi nhận ngựa mất
+   * - Lịch tái khám đang chờ của bệnh án chuyển Đã hủy
    * - Ghi event vào outbox trong cùng transaction: báo chủ ngựa và Club Manager kèm tổng chi phí các buổi khám chưa hủy lúc đóng và phần của chủ hiện tại; gỡ khóa thì báo Head Trainer và Club Manager
    * - Kèm ghi nhận ngựa mất (deceased = true): không nhận lựa chọn gỡ hay giữ khóa; sau khi đóng thì ghi nhận ngựa mất trong cùng transaction (HorseStatusesService.recordDeathInTransaction), lấy kết luận cuối làm nguyên nhân mất, ngày mất là hôm nay theo lịch câu lạc bộ; một bước lỗi thì hủy toàn bộ
    *
@@ -300,6 +303,7 @@ export class MedicalCasesService {
         finalConclusion: body.finalConclusion,
       };
       await manager.update(MedicalCaseEntity, { id: caseId }, changes);
+      await this.scheduleWrites.syncCaseFollowUps(manager, caseId);
       if (activeLock && decision === CaseLockDecision.RELEASE) {
         await this.lockWrites.releaseLock(manager, activeLock.id, {
           releasedBy: caller.id,

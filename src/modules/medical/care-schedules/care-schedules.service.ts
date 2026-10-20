@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -16,7 +16,7 @@ import { UserEntity } from '../../users/entities/user.entity';
 import {
   CareAssigneeType,
   CareScheduleStatus,
-  CareScheduleType,
+  VET_APPOINTMENT_TYPES,
 } from '../constants/care-schedule.enum';
 import {
   CancelCareScheduleDto,
@@ -81,7 +81,7 @@ export class CareSchedulesService {
   /**
    * Lịch tiêm phòng, tẩy giun, kiểm tra móng của con ngựa, ngày đến hạn gần nhất lên trên
    *
-   * - Không gồm ngày hẹn khám định kỳ
+   * - Không gồm ngày hẹn khám định kỳ và lịch tái khám
    * - Người chỉ có vai trò Groom chỉ thấy lịch mình là người làm: giao đích danh cho mình, hoặc giao Groom phụ trách khi mình đang phụ trách con ngựa
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -97,7 +97,7 @@ export class CareSchedulesService {
     await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const caller = await this.horseAccess.currentUser(actor);
     const schedules = await this.schedules.find({
-      where: { horseId, type: Not(CareScheduleType.ROUTINE_CHECKUP) },
+      where: { horseId, type: Not(In([...VET_APPOINTMENT_TYPES])) },
       order: { dueAt: 'ASC' },
     });
     if (!isGroomOnly(actor.roles)) {
@@ -484,7 +484,7 @@ export class CareSchedulesService {
   }
 
   /**
-   * Tìm lịch chăm sóc (không gồm ngày hẹn khám định kỳ) theo id
+   * Tìm lịch chăm sóc (không gồm ngày hẹn khám định kỳ và lịch tái khám) theo id
    *
    * @param scheduleId UUID của lịch chăm sóc
    * @returns Promise trả về lịch chăm sóc
@@ -492,7 +492,7 @@ export class CareSchedulesService {
    */
   private async findSchedule(scheduleId: string): Promise<CareScheduleEntity> {
     const schedule = await this.schedules.findOne({
-      where: { id: scheduleId, type: Not(CareScheduleType.ROUTINE_CHECKUP) },
+      where: { id: scheduleId, type: Not(In([...VET_APPOINTMENT_TYPES])) },
     });
     if (!schedule) throw new NotFoundException('Không tìm thấy lịch chăm sóc');
     return schedule;

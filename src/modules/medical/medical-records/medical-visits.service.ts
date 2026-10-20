@@ -73,6 +73,7 @@ import {
 } from '../policies/medical.policy';
 import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
 import type {
   MedicalCaseCancelledEvent,
@@ -130,6 +131,7 @@ export class MedicalVisitsService {
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
     private readonly ownerships: HorseOwnershipService,
+    private readonly checkups: MedicalCheckupsService,
   ) {}
 
   /**
@@ -142,6 +144,7 @@ export class MedicalVisitsService {
    * - Số đo ghi vào lịch sử số đo cơ thể với nguồn MEDICAL_EXAM; đổi trạng thái sức khỏe bắt buộc lý do
    * - Chấn thương: ghi mới, hoặc cập nhật mức hồi phục của chấn thương chưa lành của chính con ngựa (trùng hay không thuộc ngựa: 400, đã lành: 409); chấn thương không có trong buổi khám giữ nguyên mức cũ
    * - Ngày hẹn khám định kỳ đang hiệu lực chuyển COMPLETED
+   * - Mở bệnh án kèm ngày hẹn tái khám: tạo lịch tái khám (FOLLOW_UP) của bệnh án
    * - Mở bệnh án thì lệnh khóa đang hiệu lực chưa gắn bệnh án được gắn vào bệnh án mới
    * - Cảnh báo chỉ số, event mở bệnh án và đổi trạng thái sức khỏe ghi vào outbox trong cùng transaction
    *
@@ -233,6 +236,7 @@ export class MedicalVisitsService {
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi khóa row bệnh án
    * - Bệnh án đã đóng: 409
    * - Thời điểm khám là thời điểm ghi; các luật còn lại như buổi khám ngoài bệnh án
+   * - Lịch tái khám đang chờ của bệnh án chuyển Hoàn tất; có ngày hẹn tái khám thì tạo lịch tái khám mới
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -306,6 +310,7 @@ export class MedicalVisitsService {
    * - Buổi đã hủy: 409. Buổi tái khám hủy được kể cả khi bệnh án đã đóng (không đổi chi phí, kết luận)
    * - Buổi mở bệnh án chỉ hủy được khi bệnh án còn đang điều trị và không còn buổi nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy, lệnh khóa tách khỏi bệnh án, event hủy bệnh án ghi vào outbox trong cùng transaction (báo Club Manager và chủ ngựa)
    * - Số đo của buổi khám bị xóa mềm khỏi lịch sử số đo cơ thể
+   * - Lịch tái khám của bệnh án đồng bộ lại: lịch do buổi này đặt chuyển Đã hủy, lịch của buổi chưa hủy mới nhất trước đó trở lại Đã lên lịch (bệnh án còn điều trị)
    * - Yêu cầu khám mà buổi khám đã đánh dấu EXAMINED về lại PENDING và bỏ gắn buổi khám, mỗi yêu cầu một dòng nhật ký; yêu cầu tự sinh trùng loại cảnh báo với yêu cầu đang chờ thì chuyển DISMISSED
    * - Buổi khám đã đổi sức khỏe và chưa có lần đổi sức khỏe nào sau đó: sức khỏe ngựa về giá trị trước buổi khám (nhật ký lý do "Hủy buổi khám: <lý do>", event đổi sức khỏe ghi vào outbox); có lần đổi sau đó hoặc buổi khám cũ không lưu sức khỏe trước khám thì giữ nguyên
    *
@@ -435,7 +440,10 @@ export class MedicalVisitsService {
         await this.events.publish(manager, MEDICAL_CASE_CANCELLED_EVENT, event);
       }
       await this.visitWrites.publishHealthChanged(manager, horse, health);
-      const [prescriptions, injuries] = await Promise.all([
+      if (visit.caseId) {
+        await this.scheduleWrites.syncCaseFollowUps(manager, visit.caseId);
+      }
+      const [prescriptions, injuries, followUps] = await Promise.all([
         manager.find(PrescriptionEntity, {
           where: { medicalRecordId: recordId },
         }),
@@ -443,6 +451,7 @@ export class MedicalVisitsService {
           where: { medicalRecordId: recordId },
           relations: { injury: true },
         }),
+        this.checkups.followUpDates([recordId], manager),
       ]);
       return toVoidMedicalRecordResponse(
         toMedicalRecordResponse(
@@ -452,6 +461,7 @@ export class MedicalVisitsService {
           true,
           true,
           false,
+          followUps.get(recordId) ?? null,
         ),
         healthOutcome,
         laterChange,
@@ -534,7 +544,7 @@ export class MedicalVisitsService {
           event,
         );
       }
-      const [prescriptions, injuries] = await Promise.all([
+      const [prescriptions, injuries, followUps] = await Promise.all([
         manager.find(PrescriptionEntity, {
           where: { medicalRecordId: recordId },
         }),
@@ -542,6 +552,7 @@ export class MedicalVisitsService {
           where: { medicalRecordId: recordId },
           relations: { injury: true },
         }),
+        this.checkups.followUpDates([recordId], manager),
       ]);
       return toMedicalRecordResponse(
         { ...visit, cost },
@@ -550,6 +561,7 @@ export class MedicalVisitsService {
         true,
         true,
         false,
+        followUps.get(recordId) ?? null,
       );
     });
   }
@@ -624,7 +636,7 @@ export class MedicalVisitsService {
   }
 
   /**
-   * Ghi buổi khám cùng mọi hệ quả trong transaction: đơn thuốc, chấn thương, số đo, yêu cầu khám, trạng thái sức khỏe, ngày hẹn khám định kỳ, nhật ký
+   * Ghi buổi khám cùng mọi hệ quả trong transaction: đơn thuốc, chấn thương, số đo, yêu cầu khám, trạng thái sức khỏe, ngày hẹn khám định kỳ, lịch tái khám của bệnh án, nhật ký
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Bối cảnh buổi khám đã qua kiểm tra
@@ -651,7 +663,6 @@ export class MedicalVisitsService {
         caseId: input.caseId,
         kind: input.kind,
         conclusion: input.conclusion,
-        nextVisitAt: input.nextVisitAt,
         careInstructions: body.careInstructions || null,
         voidedAt: null,
         voidReason: null,
@@ -735,6 +746,15 @@ export class MedicalVisitsService {
         horse.id,
         input.callerId,
       );
+    if (input.caseId) {
+      await this.scheduleWrites.setVisitFollowUp(
+        manager,
+        visit,
+        input.caseId,
+        input.nextVisitAt,
+      );
+      await this.scheduleWrites.syncCaseFollowUps(manager, input.caseId);
+    }
     await this.audit.record(manager, {
       actorId: input.callerId,
       action: AuditAction.CREATE,
@@ -750,6 +770,7 @@ export class MedicalVisitsService {
         resultingStatus: nextStatus,
         cost: body.cost ?? 0,
         requestIds: input.requests.map((request) => request.id),
+        nextVisitAt: input.nextVisitAt,
         prescriptionCount: prescriptions.length,
         injuryCount: injuries.length,
         appointmentCompleted: appointmentsCompleted > 0,
@@ -767,6 +788,7 @@ export class MedicalVisitsService {
         true,
         true,
         false,
+        input.nextVisitAt,
       ),
       alerts,
       health,

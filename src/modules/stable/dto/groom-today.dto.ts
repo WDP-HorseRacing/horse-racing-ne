@@ -212,7 +212,7 @@ export class GroomTodayResponseDto {
   @ApiProperty({
     type: [GroomTodayVetAppointmentResponseDto],
     description:
-      'Lịch hẹn bác sĩ hôm nay ở ngựa Groom đang phụ trách, chỉ để xem (Groom không hoàn tất), theo giờ hẹn',
+      'Lịch hẹn bác sĩ hôm nay (khám định kỳ ROUTINE_CHECKUP, tái khám FOLLOW_UP) ở ngựa Groom đang phụ trách, chỉ để xem (Groom không hoàn tất), theo giờ hẹn',
   })
   horseVetAppointments!: GroomTodayVetAppointmentResponseDto[];
 }

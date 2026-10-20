@@ -72,6 +72,8 @@ import type {
   MedicalCaseOpenedEvent,
 } from '../types/medical-events.types';
 import type { LaterHealthChange } from '../types/medical-visit.types';
+import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
 
 /**
@@ -82,6 +84,7 @@ interface EditPlan {
   kind: MedicalVisitKind;
   conclusion: MedicalVisitConclusion | null;
   conclusionChange: ConclusionChange;
+  nextVisitBefore: Date | null;
   nextVisitAt: Date | null;
   currentRequestIds: string[];
   addedRequests: MedicalExamRequestEntity[];
@@ -119,6 +122,8 @@ export class MedicalVisitEditsService {
     private readonly measurements: HorseMeasurementsService,
     private readonly audit: AuditService,
     private readonly events: DomainEventPublisher,
+    private readonly scheduleWrites: CareScheduleWritesService,
+    private readonly checkups: MedicalCheckupsService,
   ) {}
 
   /**
@@ -132,6 +137,7 @@ export class MedicalVisitEditsService {
    * - Đổi kết luận NORMAL sang ISSUE mở bệnh án (409 nếu ngựa đang có bệnh án mở hoặc đã có buổi khám sau buổi này); ISSUE sang NORMAL hủy bệnh án buổi này đã mở (409 nếu bệnh án đã đóng hoặc còn buổi khác)
    * - Đổi trạng thái sau khám: chưa có lần đổi sức khỏe nào sau buổi khám thì đổi cả sức khỏe ngựa (lý do là lý do sửa, event đổi sức khỏe); ngược lại chỉ đổi kết quả trên buổi khám
    * - Yêu cầu bị bỏ gắn về PENDING; yêu cầu gắn thêm chuyển EXAMINED và báo người gửi như lúc ghi
+   * - Ngày hẹn tái khám lưu ở lịch tái khám (FOLLOW_UP) của bệnh án: đổi ngày thì dời lịch, xóa ngày thì xóa lịch, rồi đồng bộ trạng thái các lịch tái khám của bệnh án
    * - Một dòng nhật ký MEDICAL_RECORD ghi trước, sau các phần đổi và lý do; không có gì đổi thì không ghi nhật ký, không phát event
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -211,6 +217,7 @@ export class MedicalVisitEditsService {
             })
           : null;
       await this.visitWrites.publishHealthChanged(manager, horse, health);
+      await this.editFollowUp(ctx, plan, caseId ?? medicalCase?.id ?? null);
       const columns = this.changedColumns(ctx, {
         diagnosis:
           body.diagnosis === undefined
@@ -220,7 +227,6 @@ export class MedicalVisitEditsService {
           body.careInstructions === undefined
             ? visit.careInstructions
             : body.careInstructions || null,
-        nextVisitAt: plan.nextVisitAt,
         resultingStatus: plan.nextStatus,
         kind: plan.kind,
         conclusion: plan.conclusion,
@@ -280,9 +286,12 @@ export class MedicalVisitEditsService {
       conclusion,
     );
     if (body.nextVisitAt) assertNextVisitAt(new Date(body.nextVisitAt), now);
+    const nextVisitBefore =
+      (await this.checkups.followUpDates([visit.id], manager)).get(visit.id) ??
+      null;
     const nextVisitAt =
       body.nextVisitAt === undefined
-        ? visit.nextVisitAt
+        ? nextVisitBefore
         : body.nextVisitAt
           ? new Date(body.nextVisitAt)
           : null;
@@ -392,6 +401,7 @@ export class MedicalVisitEditsService {
       kind,
       conclusion,
       conclusionChange,
+      nextVisitBefore,
       nextVisitAt,
       currentRequestIds,
       addedRequests,
@@ -769,6 +779,36 @@ export class MedicalVisitEditsService {
   }
 
   /**
+   * Ghi ngày hẹn tái khám sau khi sửa vào lịch tái khám của bệnh án rồi đồng bộ trạng thái các lịch
+   *
+   * - Ngày hẹn đổi: ghi giá trị trước, sau vào nhật ký sửa
+   * - Buổi khám không thuộc bệnh án nào (kể cả trước khi sửa): không có lịch tái khám
+   *
+   * @param ctx Bối cảnh ghi của lần sửa
+   * @param plan Bối cảnh của lần sửa
+   * @param caseId UUID bệnh án chứa buổi khám trước hoặc sau khi sửa, null nếu không có
+   * @returns Promise hoàn tất khi đã ghi
+   */
+  private async editFollowUp(
+    ctx: EditContext,
+    plan: EditPlan,
+    caseId: string | null,
+  ): Promise<void> {
+    if (plan.nextVisitAt?.getTime() !== plan.nextVisitBefore?.getTime()) {
+      ctx.before.nextVisitAt = plan.nextVisitBefore;
+      ctx.after.nextVisitAt = plan.nextVisitAt;
+    }
+    if (!caseId) return;
+    await this.scheduleWrites.setVisitFollowUp(
+      ctx.manager,
+      ctx.visit,
+      caseId,
+      plan.nextVisitAt,
+    );
+    await this.scheduleWrites.syncCaseFollowUps(ctx.manager, caseId);
+  }
+
+  /**
    * Gom các cột của buổi khám có giá trị mới khác giá trị cũ, ghi phần đổi vào nhật ký sửa
    *
    * @param ctx Bối cảnh ghi của lần sửa
@@ -781,7 +821,6 @@ export class MedicalVisitEditsService {
       MedicalRecordEntity,
       | 'diagnosis'
       | 'careInstructions'
-      | 'nextVisitAt'
       | 'resultingStatus'
       | 'kind'
       | 'conclusion'
@@ -793,7 +832,6 @@ export class MedicalVisitEditsService {
       {
         diagnosis: visit.diagnosis,
         careInstructions: visit.careInstructions,
-        nextVisitAt: visit.nextVisitAt,
         resultingStatus: visit.resultingStatus,
         kind: visit.kind,
         conclusion: visit.conclusion,
@@ -839,6 +877,7 @@ export class MedicalVisitEditsService {
         true,
         true,
         false,
+        plan.nextVisitAt,
       ),
       plan.healthOutcome,
       plan.laterChange,

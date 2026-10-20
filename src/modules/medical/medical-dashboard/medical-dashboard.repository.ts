@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import {
+  CareScheduleStatus,
+  CareScheduleType,
+} from '../constants/care-schedule.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import type { DashboardOpenCaseDto, DashboardPrescriptionDto } from '../dto';
 
@@ -9,7 +13,7 @@ export class MedicalDashboardRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Bệnh án đang mở của các con ngựa, kèm buổi khám gần nhất chưa hủy và ngày hẹn tái khám của buổi đó
+   * Bệnh án đang mở của các con ngựa, kèm buổi khám gần nhất chưa hủy và lịch tái khám đang chờ của bệnh án
    *
    * @param horseIds Các con ngựa đang hiển thị trên bảng điều khiển
    * @returns Promise trả về bệnh án đang mở, ngày hẹn tái khám gần nhất lên trên
@@ -23,20 +27,27 @@ export class MedicalDashboardRepository {
               c.initial_diagnosis AS "initialDiagnosis",
               c.opened_at AS "openedAt",
               last.exam_date AS "lastVisitAt",
-              last.next_visit_at AS "nextVisitAt"
+              fu.due_at AS "nextVisitAt"
          FROM medical_cases c
          JOIN horses h ON h.id = c.horse_id
          LEFT JOIN LATERAL (
-              SELECT r.exam_date, r.next_visit_at
+              SELECT r.exam_date
                 FROM medical_records r
                WHERE r.case_id = c.id AND r.voided_at IS NULL
                ORDER BY r.exam_date DESC
                LIMIT 1
          ) last ON true
+         LEFT JOIN care_schedules fu
+           ON fu.case_id = c.id AND fu.type = $3 AND fu.status = $4
         WHERE c.status = $1
           AND c.horse_id = ANY($2::uuid[])
-        ORDER BY last.next_visit_at ASC NULLS LAST, c.opened_at ASC`,
-      [MedicalCaseStatus.OPEN, horseIds],
+        ORDER BY fu.due_at ASC NULLS LAST, c.opened_at ASC`,
+      [
+        MedicalCaseStatus.OPEN,
+        horseIds,
+        CareScheduleType.FOLLOW_UP,
+        CareScheduleStatus.SCHEDULED,
+      ],
     );
   }
 

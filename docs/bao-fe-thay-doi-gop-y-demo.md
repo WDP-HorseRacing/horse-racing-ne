@@ -205,6 +205,23 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 **Lý do**
 - Trước đây ngày hẹn đặt nhầm không hủy được, không ai được nhắc khi tới ngày hẹn, và Groom không biết hôm nay ngựa có lịch khám để chuẩn bị.
 
+### F3-9: Ngày hẹn tái khám thành lịch tái khám
+
+**Luật / hành vi API mới**
+1. Ngày hẹn tái khám (`nextVisitAt` khi ghi hoặc sửa buổi khám) giờ là một lịch tái khám của bệnh án, loại `FOLLOW_UP`, không giao bác sĩ nào. Request và response của buổi khám không đổi: vẫn gửi và nhận `nextVisitAt`.
+2. Ghi buổi tái khám tiếp theo thì lịch cũ Hoàn tất. Sửa `nextVisitAt` thì dời lịch, gửi `null` thì bỏ lịch. Hủy buổi khám thì lịch của buổi đó bị hủy, lịch của buổi trước trở lại đang chờ. Đóng hoặc hủy bệnh án thì lịch đang chờ bị hủy.
+3. `nextVisitAt` trong khối `openCases` của `GET /medical/dashboard` là lịch tái khám đang chờ của bệnh án. Bệnh án đã đóng không còn ngày hẹn hiển thị ở đây.
+4. Tới ngày hẹn tái khám mà chưa khám: mọi bác sĩ nhận thông báo `CARE_REMINDER` "Lịch hẹn tái khám ngựa …". Ngày hẹn đã qua được nhắc một lần.
+5. `horseVetAppointments` của `GET /grooms/me/today` có cả lịch tái khám: `type` là `ROUTINE_CHECKUP` (khám định kỳ) hoặc `FOLLOW_UP` (tái khám).
+6. Enum `CareScheduleType` có thêm `FOLLOW_UP`. Lịch tái khám không có trong `GET /horses/:horseId/care-schedules` và không dời, hủy, hoàn tất được qua route lịch chăm sóc.
+
+**FE cần sửa**
+- Màn Hôm nay của Groom: hiện nhãn theo `type` trong khối "Lịch hẹn bác sĩ hôm nay" (Khám định kỳ / Tái khám).
+- Thêm nhãn cho `FOLLOW_UP` ở chỗ map `CareScheduleType` (nếu có).
+
+**Lý do**
+- Ngày hẹn tái khám trước đây chỉ là một ô trên phiếu khám: không ai được nhắc, Groom không biết để chuẩn bị ngựa, không có trạng thái đã tái khám hay đã hủy.
+
 ## Ngày 19/10/2026
 
 ### Chuẩn thời gian: thời điểm bắt buộc có múi giờ, ngày lịch đúng YYYY-MM-DD

@@ -47,6 +47,7 @@ import { CareScheduleWritesService } from '../shared/care-schedule-writes.servic
 import { ExamRequestWritesService } from '../shared/exam-request-writes.service';
 import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 
 type Row = Record<string, unknown>;
 
@@ -83,6 +84,7 @@ describe('MedicalVisitsService', () => {
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
   let ownerships: { periodsOfHorse: jest.Mock };
+  let followUps: { setVisitFollowUp: jest.Mock; syncCaseFollowUps: jest.Mock };
   let service: MedicalVisitsService;
 
   const standalone = (
@@ -220,6 +222,10 @@ describe('MedicalVisitsService', () => {
         return Promise.resolve();
       }),
     };
+    followUps = {
+      setVisitFollowUp: jest.fn().mockResolvedValue(undefined),
+      syncCaseFollowUps: jest.fn().mockResolvedValue(undefined),
+    };
     service = new MedicalVisitsService(
       dataSource as unknown as DataSource,
       {
@@ -231,7 +237,7 @@ describe('MedicalVisitsService', () => {
           manager.findOne(MedicalCaseEntity, options) as unknown,
       } as unknown as Repository<MedicalCaseEntity>,
       access as unknown as MedicalAccessService,
-      new CareScheduleWritesService(),
+      Object.assign(new CareScheduleWritesService(), followUps),
       new MedicalVisitWritesService(
         access as unknown as MedicalAccessService,
         new TrainingLockWritesService(),
@@ -244,6 +250,9 @@ describe('MedicalVisitsService', () => {
       audit,
       events,
       ownerships as unknown as HorseOwnershipService,
+      {
+        followUpDates: jest.fn().mockResolvedValue(new Map()),
+      } as unknown as MedicalCheckupsService,
     );
   });
 
@@ -663,16 +672,28 @@ describe('MedicalVisitsService', () => {
       expectWrittenAtCurrentTime(before, Date.now());
     });
 
-    it('records a follow-up visit in the open case', async () => {
+    it('records a follow-up visit in the open case and books its follow-up appointment', async () => {
+      const nextVisitAt = new Date(Date.now() + 86400000).toISOString();
       const result = await service.createFollowUpVisit(vet, 'case-1', {
         diagnosis: 'Giảm sưng',
-        nextVisitAt: new Date(Date.now() + 86400000).toISOString(),
+        nextVisitAt,
       });
       expect(result).toMatchObject({
         caseId: 'case-1',
         kind: MedicalVisitKind.FOLLOW_UP,
         conclusion: null,
+        nextVisitAt: new Date(nextVisitAt),
       });
+      expect(followUps.setVisitFollowUp).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({ horseId: HORSE_ID }),
+        'case-1',
+        new Date(nextVisitAt),
+      );
+      expect(followUps.syncCaseFollowUps).toHaveBeenCalledWith(
+        manager,
+        'case-1',
+      );
       expect(measurements.recordExamMeasurements).toHaveBeenCalledWith(
         manager,
         expect.objectContaining({ feature: 'MED_CASE_VISIT' }),

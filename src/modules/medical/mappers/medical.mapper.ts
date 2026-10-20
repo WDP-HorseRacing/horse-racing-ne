@@ -76,6 +76,7 @@ export function toPrescriptionResponse(
  * @param includeDosage Người gọi có được xem liều lượng, tần suất của đơn thuốc không
  * @param seesCost Người gọi có được xem chi phí không (Head Trainer thì không)
  * @param costHidden Buổi khám thuộc giai đoạn sở hữu của chủ khác, phải ẩn chi phí với người gọi
+ * @param nextVisitAt Ngày hẹn tái khám của buổi khám (lịch FOLLOW_UP), null nếu không hẹn
  * @returns MedicalRecordResponseDto - không có key cost, costHidden khi seesCost là false; cost null khi costHidden là true
  */
 export function toMedicalRecordResponse(
@@ -85,6 +86,7 @@ export function toMedicalRecordResponse(
   includeDosage: boolean,
   seesCost: boolean,
   costHidden: boolean,
+  nextVisitAt: Date | null,
 ): MedicalRecordResponseDto {
   return {
     id: record.id,
@@ -96,7 +98,7 @@ export function toMedicalRecordResponse(
     diagnosis: record.diagnosis,
     resultingStatus: record.resultingStatus,
     careInstructions: record.careInstructions,
-    nextVisitAt: record.nextVisitAt,
+    nextVisitAt,
     vetId: record.vetId,
     voidedAt: record.voidedAt,
     voidReason: record.voidReason,

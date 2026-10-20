@@ -18,6 +18,8 @@ import { MedicalRecordEntity } from '../entities/medical-record.entity';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MedicalVisitEditsService } from './medical-visit-edits.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -94,6 +96,13 @@ describe('MedicalVisitEditsService', () => {
       {} as HorseMeasurementsService,
       audit,
       events,
+      {
+        setVisitFollowUp: jest.fn().mockResolvedValue(undefined),
+        syncCaseFollowUps: jest.fn().mockResolvedValue(undefined),
+      } as unknown as CareScheduleWritesService,
+      {
+        followUpDates: jest.fn().mockResolvedValue(new Map()),
+      } as unknown as MedicalCheckupsService,
     );
   });
 

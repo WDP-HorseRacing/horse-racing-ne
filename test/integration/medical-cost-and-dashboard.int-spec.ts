@@ -12,6 +12,8 @@ import { PrescriptionEntity } from '../../src/modules/medical/entities/prescript
 import { MedicalRecordsService } from '../../src/modules/medical/medical-records/medical-records.service';
 import { MedicalCasesRepository } from '../../src/modules/medical/medical-records/medical-cases.repository';
 import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
+import { CareScheduleWritesService } from '../../src/modules/medical/shared/care-schedule-writes.service';
+import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -55,6 +57,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
         dataSource.getRepository(PrescriptionEntity),
         dataSource.getRepository(InjuryMarkerEntity),
         ownerships,
+        new MedicalCheckupsService(dataSource),
       ),
       cases,
       dataSource.getRepository(MedicalCaseEntity),
@@ -63,6 +66,7 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
       unused,
       ownerships,
       unused,
+      new CareScheduleWritesService(),
     );
     dashboard = new MedicalDashboardRepository(dataSource);
   });
@@ -305,6 +309,10 @@ describe('Medical cost report and dashboard queries (Postgres)', () => {
         closedAt: '2026-07-01T02:00:00Z',
       });
       await seed.medicalCase(hidden, vet);
+      await new CareScheduleWritesService().syncCaseFollowUps(
+        dataSource.manager,
+        winxCase,
+      );
 
       const rows = await dashboard.openCases([winx, bolt]);
 

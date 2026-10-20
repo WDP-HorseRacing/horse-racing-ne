@@ -102,7 +102,6 @@ describe('Routine checkup appointments (Postgres)', () => {
       access,
       herdCheckups,
       new AuditService(),
-      events,
     );
     careSchedules = new CareSchedulesService(
       dataSource,

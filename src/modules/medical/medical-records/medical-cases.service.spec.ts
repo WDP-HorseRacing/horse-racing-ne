@@ -31,6 +31,8 @@ import { MedicalCasesRepository } from './medical-cases.repository';
 import { MedicalCasesService } from './medical-cases.service';
 import { MedicalRecordsService } from './medical-records.service';
 import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -188,6 +190,9 @@ describe('MedicalCasesService', () => {
         none as unknown as Repository<PrescriptionEntity>,
         none as unknown as Repository<InjuryMarkerEntity>,
         ownerships as unknown as HorseOwnershipService,
+        {
+          followUpDates: jest.fn().mockResolvedValue(new Map()),
+        } as unknown as MedicalCheckupsService,
       ),
       casesRepository as unknown as MedicalCasesRepository,
       cases as unknown as Repository<MedicalCaseEntity>,
@@ -198,6 +203,9 @@ describe('MedicalCasesService', () => {
       {
         previewDeath: jest.fn().mockResolvedValue({ summary: 'Ngựa mất' }),
       } as unknown as HorseStatusesService,
+      {
+        syncCaseFollowUps: jest.fn().mockResolvedValue(undefined),
+      } as unknown as CareScheduleWritesService,
     );
   });
 
