@@ -692,7 +692,7 @@ Ví dụ bulk: `{ "message": "Buổi 2: Giờ bắt đầu buổi tập phải s
    - `totalCost` = tổng `cost` các buổi khám chưa hủy, có cả khi bệnh án đang điều trị (không còn `null`). OWNER chỉ được cộng phần của mình.
    - **Bỏ** `costHidden` ở cấp bệnh án; dùng `costHidden` của từng buổi.
    - `totalCost` của `GET /horses/:horseId/medical-cases` = tổng mọi buổi khám chưa hủy của ngựa, trong và ngoài bệnh án.
-4. **Bỏ** `PATCH /medical-cases/:caseId/cost`. **Thay bằng** `PATCH /medical-records/:id/cost` (chỉ VET):
+4. **Bỏ** `PATCH /medical-cases/:caseId/cost`. **Thay bằng** `PATCH /medical-records/:id/cost` (~~chỉ VET~~ đã thay ở 20/10, xem F3-15: chỉ bác sĩ ghi buổi khám; F3-1: được cả với ngựa đã chuyển nhượng, đã mất):
 
    ```json
    { "cost": 1500000, "reason": "Gõ thừa số 0" }
@@ -704,7 +704,7 @@ Ví dụ bulk: `{ "message": "Buổi 2: Giờ bắt đầu buổi tập phải s
    - Thông báo `category = MEDICAL_CASE`, mức `NORMAL`, tiêu đề "Điều chỉnh chi phí khám ngựa X", vd: "Chi phí buổi khám ngày 20/05/2026 của ngựa Gió được điều chỉnh từ 15.000.000 đ thành 1.500.000 đ.". Gửi CM và chủ của giai đoạn chứa ngày khám. `resource` là bệnh án; buổi khám ngoài bệnh án thì `resource.type = HORSE`. Chủ đó không còn là chủ hiện tại thì nhận với `resource = null` (chỉ khi tài khoản chủ còn hoạt động).
 5. Thông báo đóng bệnh án: CM nhận "Tổng chi phí điều trị: …" (cả bệnh án), chủ nhận "Chi phí điều trị của bạn: …" (phần thuộc giai đoạn mình sở hữu).
 6. Báo cáo:
-   - `GET /medical/cost-report` lọc theo **ngày khám** (không còn theo ngày đóng), gồm cả buổi khám ngoài bệnh án. Đổi `caseCount` thành `visitCount` ở tổng và từng dòng. `ownerId` lọc theo chủ của giai đoạn chứa ngày khám; `barnId` vẫn theo khu hiện tại.
+   - `GET /medical/cost-report` lọc theo **ngày khám** (không còn theo ngày đóng), gồm cả buổi khám ngoài bệnh án. Đổi `caseCount` thành `visitCount` ở tổng và từng dòng. `ownerId` lọc theo chủ của giai đoạn chứa ngày khám; ~~`barnId` vẫn theo khu hiện tại~~ (đã thay ở 20/10, xem F3-11: theo khu của ngựa lúc khám).
    - `GET /reports/owner/costs`, `GET /reports/club/finance`: `medicalCost` tính theo ngày khám; từng ngựa đổi `caseCount` thành `visitCount`.
 7. Chuyển chủ nội bộ `POST /horses/:horseId/ownership-transfers` không còn 409 khi ngựa đang có bệnh án mở. Bán ra ngoài và ghi nhận mất khi còn bệnh án mở vẫn 409 như cũ.
 
@@ -719,7 +719,7 @@ Ví dụ bulk: `{ "message": "Buổi 2: Giờ bắt đầu buổi tập phải s
 ### Hủy buổi khám: chỉ bác sĩ ghi phiếu
 
 **Luật / hành vi API mới**
-1. `POST /medical-records/:id/void`: bác sĩ hủy buổi khám do bác sĩ khác ghi: 403 "Chỉ bác sĩ ghi phiếu khám mới được hủy phiếu này". `PATCH /medical-records/:id/cost` không đổi.
+1. `POST /medical-records/:id/void`: bác sĩ hủy buổi khám do bác sĩ khác ghi: 403 "Chỉ bác sĩ ghi phiếu khám mới được hủy phiếu này". ~~`PATCH /medical-records/:id/cost` không đổi~~ (đã thay ở 20/10, xem F3-15: điều chỉnh chi phí cũng chỉ bác sĩ ghi buổi khám).
 
 **FE cần sửa**
 - Ẩn nút hủy phiếu khám với bác sĩ không phải người ghi.
