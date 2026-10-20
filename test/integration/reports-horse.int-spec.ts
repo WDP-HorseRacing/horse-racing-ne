@@ -366,6 +366,10 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
     const open = await seed.medicalCase(gio, staffId, {
       openedAt: '2026-10-03T00:00:00Z',
     });
+    const cancelled = await seed.medicalCase(gio, staffId, {
+      status: MedicalCaseStatus.CANCELLED,
+      openedAt: '2026-10-02T12:00:00Z',
+    });
     const injure = async (examDate: string, voided: boolean, type: string) => {
       const recordId = await seed.visit(gio, staffId, examDate, { voided });
       await dataSource.query(
@@ -430,6 +434,9 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
     ]);
     expect(report.medicalCases).not.toContainEqual(
       expect.objectContaining({ caseId: closedBefore }),
+    );
+    expect(report.medicalCases).not.toContainEqual(
+      expect.objectContaining({ caseId: cancelled }),
     );
     expect(report.trainingLocks.map((row) => row.lockId).sort()).toEqual(
       [released.id, active.id].sort(),

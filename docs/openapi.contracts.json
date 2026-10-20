@@ -16716,7 +16716,7 @@
             }
           },
           "medicalCases": {
-            "description": "Bệnh án mở trong kỳ hoặc còn mở trong một phần của kỳ",
+            "description": "Bệnh án mở trong kỳ hoặc còn mở trong một phần của kỳ, không gồm bệnh án đã hủy",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HorseMedicalCaseItemDto"

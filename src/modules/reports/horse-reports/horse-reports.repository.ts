@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { MedicalCaseStatus } from '../../medical/constants/medical-case.enum';
 import type {
   HorseHealthRows,
   HorseProgressRow,
@@ -62,6 +63,7 @@ export class HorseReportsRepository {
    * - Đổi trạng thái sức khỏe: dòng audit của ngựa có trạng thái trước khác sau, ghi trong kỳ
    * - Số đo: đo trong kỳ, bỏ số đo đã xóa
    * - Ca bệnh, khóa huấn luyện: có thời gian giao với kỳ (ca chưa đóng, khóa chưa gỡ được coi là còn kéo dài)
+   * - Bỏ ca bệnh đã hủy vì mở nhầm
    * - Chấn thương: đánh dấu của phiếu khám chưa hủy có ngày khám trong kỳ
    * - Mỗi danh sách sắp theo thời gian tăng dần
    *
@@ -108,8 +110,9 @@ export class HorseReportsRepository {
             WHERE horse_id = $1
               AND opened_at < $3
               AND (closed_at IS NULL OR closed_at >= $2)
+              AND status <> $4
             ORDER BY opened_at, id`,
-          range,
+          [...range, MedicalCaseStatus.CANCELLED],
         ),
         this.dataSource.query<HorseHealthRows['injuries']>(
           `SELECT r.exam_date AS "examDate", j.body_region AS "bodyRegion",

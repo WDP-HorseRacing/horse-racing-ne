@@ -149,7 +149,8 @@ export class HorseHealthResponseDto {
 
   @ApiProperty({
     type: [HorseMedicalCaseItemDto],
-    description: 'Bệnh án mở trong kỳ hoặc còn mở trong một phần của kỳ',
+    description:
+      'Bệnh án mở trong kỳ hoặc còn mở trong một phần của kỳ, không gồm bệnh án đã hủy',
   })
   medicalCases!: HorseMedicalCaseItemDto[];
 

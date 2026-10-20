@@ -8,6 +8,10 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 ## Ngày 20/10/2026
 
+### Báo cáo sức khỏe ngựa bỏ bệnh án đã hủy
+
+- `GET /reports/horses/:horseId/health`: `medicalCases` không còn bệnh án `CANCELLED` (mở nhầm) ở bất kỳ kỳ nào. Response shape giữ nguyên.
+
 ### F4-2: Sửa số tiền mức phí ngày
 
 **Luật / hành vi API mới**
