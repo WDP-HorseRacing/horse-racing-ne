@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, In } from 'typeorm';
+import { DataSource, EntityManager, In, LessThan, Not } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
@@ -15,7 +15,11 @@ import { CheckupItemDto } from '../dto/checkup.dto';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
 import { toCheckupAppointment } from '../mappers/medical.mapper';
 import { checkupStateOf } from '../policies/medical.policy';
-import { toClubDate } from '../../../common/utils/club-date';
+import {
+  clubDateTimeToInstant,
+  shiftDays,
+  toClubDate,
+} from '../../../common/utils/club-date';
 import type {
   DueCareScheduleRow,
   HerdFilter,
@@ -148,6 +152,8 @@ export class MedicalCheckupsService {
   /**
    * Lấy ngày hẹn khám định kỳ đang hiệu lực của các con ngựa, mỗi ngựa tối đa một
    *
+   * - Kèm bác sĩ phụ trách (relation assignee; tài khoản đã xóa thì null)
+   *
    * @param horseIds UUID các con ngựa cần lấy
    * @param manager EntityManager dùng để query, mặc định là manager của DataSource
    * @returns Promise trả về Map từ UUID ngựa sang lịch hẹn
@@ -163,10 +169,35 @@ export class MedicalCheckupsService {
         type: CareScheduleType.ROUTINE_CHECKUP,
         status: CareScheduleStatus.SCHEDULED,
       },
+      relations: { assignee: true },
     });
     return new Map(
       appointments.map((appointment) => [appointment.horseId, appointment]),
     );
+  }
+
+  /**
+   * Lấy ngày hẹn khám định kỳ còn hiệu lực có ngày hẹn tới hết một ngày, kể cả ngày hẹn đã qua mà chưa khám
+   *
+   * - Bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
+   * - Kèm bác sĩ phụ trách (relation assignee; tài khoản đã xóa thì null)
+   *
+   * @param untilDate Lấy ngày hẹn không muộn hơn ngày này theo lịch câu lạc bộ (YYYY-MM-DD)
+   * @returns Promise trả về các ngày hẹn, ngày hẹn sớm nhất lên trên
+   */
+  dueAppointments(untilDate: string): Promise<CareScheduleEntity[]> {
+    return this.dataSource.manager.find(CareScheduleEntity, {
+      where: {
+        type: CareScheduleType.ROUTINE_CHECKUP,
+        status: CareScheduleStatus.SCHEDULED,
+        dueAt: LessThan(
+          clubDateTimeToInstant(shiftDays(untilDate, 1), '00:00'),
+        ),
+        horse: { lifecycleStatus: Not(In([...READ_ONLY_LIFECYCLE_STATUSES])) },
+      },
+      relations: { horse: true, assignee: true },
+      order: { dueAt: 'ASC' },
+    });
   }
 
   /**

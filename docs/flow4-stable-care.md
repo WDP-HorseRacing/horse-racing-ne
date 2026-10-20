@@ -170,6 +170,8 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 Lượt Groom được giao dắt ở ngựa Groom không phụ trách (dắt hộ) nằm riêng ở `assistedRuns`, cùng bộ lọc trên, kèm tên ngựa.
 
+Lịch hẹn khám định kỳ hôm nay của các ngựa Groom đang phụ trách nằm ở `horseVetAppointments` (Flow 3 F3.2): tên ngựa, giờ hẹn, bác sĩ phụ trách. Chỉ để Groom chuẩn bị ngựa: không có nút hoàn tất, không nằm trong lịch chăm sóc của ngựa. Lịch hẹn ngày khác, đã hủy hoặc đã khám thì không hiện.
+
 Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa rỗng, nhưng vẫn thấy lượt dắt hộ.
 
 ### 8. Phụ phí chăm sóc riêng

@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Put,
@@ -9,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -17,6 +21,7 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
+  CancelCareScheduleDto,
   CheckupAppointmentDto,
   CheckupItemDto,
   CheckupListQueryDto,
@@ -50,7 +55,7 @@ export class CheckupsController {
   @ApiOperation({
     summary: 'Set or reschedule the routine checkup appointment',
     description:
-      'Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Ngựa đã chuyển nhượng: 409.',
+      'Không ở quá khứ; ngựa chưa quá hạn thì không muộn hơn hạn khám (400). Dời lịch đã đặt bắt buộc reason. Người đặt hoặc dời thành bác sĩ phụ trách; dời lịch của bác sĩ khác thì báo bác sĩ đó. Ngựa đã chuyển nhượng: 409.',
   })
   @ApiOkResponse({ type: CheckupAppointmentDto })
   setAppointment(
@@ -59,5 +64,22 @@ export class CheckupsController {
     @Body() body: SetCheckupAppointmentDto,
   ): Promise<CheckupAppointmentDto> {
     return this.checkups.setAppointment(actor, horseId, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Delete('horses/:horseId/checkup-appointment')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Cancel the active routine checkup appointment',
+    description:
+      'Bắt buộc reason. Ngày hẹn chuyển Đã hủy. Hủy lịch của bác sĩ khác thì báo bác sĩ đó. Không có ngày hẹn đang hiệu lực: 404. Ngựa đã chuyển nhượng hoặc đã mất: 409.',
+  })
+  @ApiNoContentResponse()
+  cancelAppointment(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Body() body: CancelCareScheduleDto,
+  ): Promise<void> {
+    return this.checkups.cancelAppointment(actor, horseId, body);
   }
 }

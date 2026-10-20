@@ -4,8 +4,11 @@ import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
 import { CLUB_TIME_ZONE } from '../../../common/constants';
+import { UserRole } from '../../../common/enums/role.enum';
+import { UserStatus } from '../../../common/enums/user-status.enum';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
+  MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
 } from '../constants/medical-events.constants';
@@ -19,6 +22,7 @@ import { toClubDate } from '../../../common/utils/club-date';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import type {
   CareScheduleDueEvent,
+  CheckupAppointmentDueEvent,
   CheckupDueEvent,
   CheckupOverdueEvent,
 } from '../types/medical-events.types';
@@ -56,8 +60,11 @@ export class MedicalRemindersService {
     const due = await this.runSafely('nhắc lịch chăm sóc đến hạn', () =>
       this.notifyDueCareSchedules(today),
     );
+    const appointments = await this.runSafely('nhắc ngày hẹn khám', () =>
+      this.notifyDueAppointments(today),
+    );
     this.logger.log(
-      `Nhắc đến hạn khám định kỳ: ${dueCheckups ?? 'lỗi'}; nhắc quá hạn khám định kỳ: ${overdue ?? 'lỗi'}; nhắc lịch chăm sóc đến hạn: ${due ?? 'lỗi'}`,
+      `Nhắc đến hạn khám định kỳ: ${dueCheckups ?? 'lỗi'}; nhắc quá hạn khám định kỳ: ${overdue ?? 'lỗi'}; nhắc lịch chăm sóc đến hạn: ${due ?? 'lỗi'}; nhắc ngày hẹn khám: ${appointments ?? 'lỗi'}`,
     );
   }
 
@@ -177,5 +184,40 @@ export class MedicalRemindersService {
       );
     }
     return rows.length;
+  }
+
+  /**
+   * Phát nhắc cho mọi ngày hẹn khám định kỳ tới ngày hẹn hôm nay hoặc đã qua mà chưa khám
+   *
+   * - Người nhận là bác sĩ phụ trách nếu còn là bác sĩ đang hoạt động; không có thì mọi bác sĩ (assigneeId null)
+   * - eventId cố định theo ngày hẹn và ngày hẹn theo lịch câu lạc bộ: mỗi ngày hẹn chỉ báo một lần; dời sang ngày khác thì được báo lại theo ngày mới
+   *
+   * @param today Hôm nay theo lịch câu lạc bộ
+   * @returns Promise trả về số ngày hẹn đã phát nhắc
+   */
+  async notifyDueAppointments(today: string): Promise<number> {
+    const appointments = await this.checkups.dueAppointments(today);
+    for (const appointment of appointments) {
+      const assignee = appointment.assignee;
+      const event: CheckupAppointmentDueEvent = {
+        eventId: deterministicUuid(
+          `checkup-appointment-due:${appointment.id}:${toClubDate(appointment.dueAt)}`,
+        ),
+        horseId: appointment.horseId,
+        appointmentId: appointment.id,
+        scheduledAt: appointment.dueAt.toISOString(),
+        assigneeId:
+          assignee?.status === UserStatus.ACTIVE &&
+          assignee.role === UserRole.VETERINARIAN
+            ? assignee.id
+            : null,
+      };
+      await this.events.publish(
+        this.dataSource.manager,
+        MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
+        event,
+      );
+    }
+    return appointments.length;
   }
 }

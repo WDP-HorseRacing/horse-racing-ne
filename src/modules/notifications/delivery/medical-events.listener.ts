@@ -6,6 +6,8 @@ import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_CLOSED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
+  MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT,
+  MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
@@ -17,6 +19,8 @@ import {
 } from '../../medical/constants/medical-events.constants';
 import type {
   CareScheduleDueEvent,
+  CheckupAppointmentChangedEvent,
+  CheckupAppointmentDueEvent,
   CheckupDueEvent,
   CheckupOverdueEvent,
   ExamRequestHandledEvent,
@@ -167,5 +171,31 @@ export class MedicalEventsListener {
   @OnEvent(MEDICAL_CARE_SCHEDULE_DUE_EVENT, OUTBOX_LISTENER_OPTIONS)
   async onCareScheduleDue(event: CareScheduleDueEvent): Promise<void> {
     await this.medical.notifyCareScheduleDue(event);
+  }
+
+  /**
+   * Nghe MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT và báo bác sĩ phụ trách ngày hẹn (không có thì mọi Veterinarian)
+   *
+   * @param event Payload của event
+   * @returns Promise hoàn tất khi đã gửi xong
+   */
+  @OnEvent(MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT, OUTBOX_LISTENER_OPTIONS)
+  async onCheckupAppointmentDue(
+    event: CheckupAppointmentDueEvent,
+  ): Promise<void> {
+    await this.medical.notifyCheckupAppointmentDue(event);
+  }
+
+  /**
+   * Nghe MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT và báo bác sĩ phụ trách trước khi đổi
+   *
+   * @param event Payload của event
+   * @returns Promise hoàn tất khi đã gửi xong
+   */
+  @OnEvent(MEDICAL_CHECKUP_APPOINTMENT_CHANGED_EVENT, OUTBOX_LISTENER_OPTIONS)
+  async onCheckupAppointmentChanged(
+    event: CheckupAppointmentChangedEvent,
+  ): Promise<void> {
+    await this.medical.notifyCheckupAppointmentChanged(event);
   }
 }

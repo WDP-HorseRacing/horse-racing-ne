@@ -10,7 +10,10 @@ import {
   clubToday,
   shiftDays,
 } from '../../src/common/utils/club-date';
-import { CareScheduleStatus } from '../../src/modules/medical/constants/care-schedule.enum';
+import {
+  CareScheduleStatus,
+  CareScheduleType,
+} from '../../src/modules/medical/constants/care-schedule.enum';
 import { DailyChecklistStatus } from '../../src/modules/stable/constants/daily-checklist-status.enum';
 import { FeedingMeal } from '../../src/modules/stable/constants/feeding-meal.enum';
 import { GroomTodayService } from '../../src/modules/stable/daily-checklists/groom-today.service';
@@ -137,6 +140,7 @@ describe('Groom today view (Postgres)', () => {
       horses: [],
       otherCareSchedules: [],
       assistedRuns: [],
+      horseVetAppointments: [],
     });
   });
 
@@ -397,5 +401,49 @@ describe('Groom today view (Postgres)', () => {
       true,
       false,
     ]);
+  });
+
+  it('shows today vet appointments of the groom horses as a read-only block, not as care schedules', async () => {
+    const vetId = await seed.user(UserRole.VETERINARIAN);
+    const lua = await seed.horse('Lửa');
+    await assign(lua, groomId);
+    const at = (date: string, time = '09:00') =>
+      clubDateTimeToInstant(date, time).toISOString();
+    const appointment = await seed.schedule(gio, at(today), {
+      type: CareScheduleType.ROUTINE_CHECKUP,
+      assignedTo: vetId,
+    });
+    await seed.schedule(gio, at(today, '08:00'), {
+      type: CareScheduleType.ROUTINE_CHECKUP,
+      status: CareScheduleStatus.CANCELLED,
+      assignedTo: vetId,
+    });
+    await seed.schedule(may, at(shiftDays(today, -1)), {
+      type: CareScheduleType.ROUTINE_CHECKUP,
+      assignedTo: vetId,
+    });
+    await seed.schedule(lua, at(shiftDays(today, 1)), {
+      type: CareScheduleType.ROUTINE_CHECKUP,
+      assignedTo: vetId,
+    });
+    await seed.schedule(sam, at(today), {
+      type: CareScheduleType.ROUTINE_CHECKUP,
+      assignedTo: vetId,
+    });
+
+    const result = await service.today(groom);
+
+    expect(result.horseVetAppointments).toEqual([
+      expect.objectContaining({
+        id: appointment,
+        horseId: gio,
+        horseName: 'Gió',
+        type: CareScheduleType.ROUTINE_CHECKUP,
+        scheduledAt: new Date(at(today)),
+        vetId,
+        vetName: UserRole.VETERINARIAN,
+      }),
+    ]);
+    expect(result.horses.flatMap((horse) => horse.careSchedules)).toEqual([]);
   });
 });

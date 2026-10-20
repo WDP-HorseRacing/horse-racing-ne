@@ -320,6 +320,8 @@ export function toInjuryResponses(
 /**
  * Chuyển ngày hẹn khám định kỳ (lịch ROUTINE_CHECKUP) sang DTO.
  *
+ * - Kèm bác sĩ phụ trách; tên lấy từ relation assignee, chưa load thì null
+ *
  * @param appointment Thực thể lịch hẹn khám định kỳ
  * @returns CheckupAppointmentDto - Ngày hẹn đang hiệu lực
  */
@@ -330,6 +332,8 @@ export function toCheckupAppointment(
     id: appointment.id,
     horseId: appointment.horseId,
     scheduledAt: appointment.dueAt,
+    assignedTo: appointment.assignedTo,
+    assignedToName: appointment.assignee?.fullName ?? null,
   };
 }
 

@@ -33,9 +33,12 @@ describe('dashboard and checkups controllers access', () => {
     expect(roles).not.toContain(UserRole.HORSE_OWNER);
   });
 
-  it('lets only VETERINARIAN set an appointment', () => {
-    expect(rolesOf(CheckupsController, 'setAppointment')).toEqual([
-      UserRole.VETERINARIAN,
-    ]);
-  });
+  it.each(['setAppointment', 'cancelAppointment'])(
+    'lets only VETERINARIAN %s',
+    (method) => {
+      expect(rolesOf(CheckupsController, method)).toEqual([
+        UserRole.VETERINARIAN,
+      ]);
+    },
+  );
 });

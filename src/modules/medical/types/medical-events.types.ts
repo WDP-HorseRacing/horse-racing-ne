@@ -158,3 +158,30 @@ export interface CareScheduleDueEvent extends MedicalEventBase {
   dueDate: string;
   assigneeId: string | null;
 }
+
+/**
+ * Ngày hẹn khám định kỳ tới ngày hẹn mà chưa khám.
+ *
+ * - scheduledAt: ngày giờ hẹn, chuỗi ISO
+ * - assigneeId: bác sĩ phụ trách còn hoạt động, null nếu không có ai (báo mọi bác sĩ)
+ */
+export interface CheckupAppointmentDueEvent extends MedicalEventBase {
+  appointmentId: string;
+  scheduledAt: string;
+  assigneeId: string | null;
+}
+
+/**
+ * Bác sĩ khác dời hoặc hủy ngày hẹn khám định kỳ đang giao cho một bác sĩ.
+ *
+ * - change: RESCHEDULED (dời, scheduledAt là ngày mới) hoặc CANCELLED (hủy, scheduledAt là ngày đã hẹn)
+ * - previousAssigneeId: bác sĩ phụ trách trước khi đổi, người nhận thông báo
+ */
+export interface CheckupAppointmentChangedEvent extends MedicalEventBase {
+  appointmentId: string;
+  change: 'RESCHEDULED' | 'CANCELLED';
+  scheduledAt: string;
+  previousAssigneeId: string;
+  changedByName: string;
+  reason: string;
+}

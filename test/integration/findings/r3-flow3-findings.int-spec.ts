@@ -18,6 +18,7 @@ import { HorseProfilesService } from '../../../src/modules/horses/horse-profiles
 import { HorseStatusesService } from '../../../src/modules/horses/horse-statuses/horse-statuses.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
+import { CheckupsService } from '../../../src/modules/medical/care-schedules/checkups.service';
 import {
   CareAssigneeType,
   CareScheduleStatus,
@@ -71,6 +72,7 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
   let visits: MedicalVisitsService;
   let cases: MedicalCasesService;
   let careSchedules: CareSchedulesService;
+  let checkups: CheckupsService;
   let locks: TrainingLockService;
   let health: HealthStatusesService;
   let requests: ExamRequestsService;
@@ -188,6 +190,7 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     visits = get(MedicalVisitsService);
     cases = get(MedicalCasesService);
     careSchedules = get(CareSchedulesService);
+    checkups = get(CheckupsService);
     locks = get(TrainingLockService);
     health = get(HealthStatusesService);
     requests = get(ExamRequestsService);
@@ -490,9 +493,13 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
       type: CareScheduleType.ROUTINE_CHECKUP,
     });
 
-    await expect(
-      careSchedules.cancel(vet.actor, appointment, { reason: 'Đặt nhầm' }),
-    ).resolves.toMatchObject({ status: CareScheduleStatus.CANCELLED });
+    await checkups.cancelAppointment(vet.actor, horse, { reason: 'Đặt nhầm' });
+
+    const [row] = await dataSource.query<{ status: string }[]>(
+      'SELECT status FROM care_schedules WHERE id = $1',
+      [appointment],
+    );
+    expect(row.status).toBe(CareScheduleStatus.CANCELLED);
   });
 
   it('F3-10: completing a care schedule records the actual performed date', async () => {

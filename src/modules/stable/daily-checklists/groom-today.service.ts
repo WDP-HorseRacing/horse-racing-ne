@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager, In, IsNull, LessThan } from 'typeorm';
+import {
+  And,
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  LessThan,
+  MoreThanOrEqual,
+} from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import {
   clubDateTimeToInstant,
@@ -9,6 +17,7 @@ import {
 import {
   CareAssigneeType,
   CareScheduleStatus,
+  CareScheduleType,
 } from '../../medical/constants/care-schedule.enum';
 import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
 import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
@@ -66,6 +75,7 @@ export class GroomTodayService {
    * - Lịch chăm sóc Groom là người làm (giao Groom phụ trách ở ngựa mình phụ trách, hoặc giao đích danh cho mình), đến hạn tới hết hôm nay mà chưa làm
    * - Lịch giao đích danh ở ngựa Groom không phụ trách: tách ra otherCareSchedules
    * - Lượt tập Groom được giao dắt ở ngựa Groom không phụ trách: tách ra assistedRuns
+   * - Lịch hẹn khám định kỳ hôm nay của ngựa Groom phụ trách: horseVetAppointments, chỉ để xem
    *
    * @param actor Thông tin danh tính từ Access Token
    * @returns Promise trả về ngày hôm nay và việc của từng ngựa
@@ -104,9 +114,10 @@ export class GroomTodayService {
         [],
         otherSchedules,
         assistedRuns,
+        [],
       );
     }
-    const [stalls, checklists, plans] = await Promise.all([
+    const [stalls, checklists, plans, vetAppointments] = await Promise.all([
       manager.find(StallAssignmentEntity, {
         where: { horseId: In(horseIds), endAt: IsNull() },
         relations: { stall: true },
@@ -121,6 +132,17 @@ export class GroomTodayService {
         where: { horseId: In(horseIds), status: FeedingPlanStatus.ACTIVE },
         relations: PLAN_RELATIONS,
         withDeleted: true,
+      }),
+      manager.find(CareScheduleEntity, {
+        where: {
+          horseId: In(horseIds),
+          type: CareScheduleType.ROUTINE_CHECKUP,
+          status: CareScheduleStatus.SCHEDULED,
+          dueAt: And(MoreThanOrEqual(dayStart), LessThan(dayEnd)),
+        },
+        relations: { horse: true, assignee: true },
+        withDeleted: true,
+        order: { dueAt: 'ASC' },
       }),
     ]);
     const stallByHorse = new Map(
@@ -147,6 +169,7 @@ export class GroomTodayService {
       })),
       otherSchedules,
       assistedRuns,
+      vetAppointments,
     );
   }
 

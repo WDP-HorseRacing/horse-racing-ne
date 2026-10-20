@@ -97,6 +97,41 @@ export class GroomTodayOtherCareScheduleResponseDto extends GroomTodayCareSchedu
   horseName!: string;
 }
 
+export class GroomTodayVetAppointmentResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid', description: 'Ngày hẹn khám' })
+  id!: string;
+
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @Expose()
+  @ApiProperty()
+  horseName!: string;
+
+  @Expose()
+  @ApiProperty({ enum: CareScheduleType })
+  type!: CareScheduleType;
+
+  @Expose()
+  @ApiProperty({ format: 'date-time', description: 'Giờ hẹn' })
+  scheduledAt!: Date;
+
+  @Expose()
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    format: 'uuid',
+    description: 'Bác sĩ phụ trách; null nếu chưa giao ai',
+  })
+  vetId!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({ nullable: true, type: String })
+  vetName!: string | null;
+}
+
 export class GroomTodayHorseResponseDto {
   @Expose()
   @ApiProperty({ format: 'uuid' })
@@ -184,4 +219,13 @@ export class GroomTodayResponseDto {
       'Lượt tập hôm nay Groom được giao dắt ở ngựa Groom không phụ trách, theo giờ bắt đầu',
   })
   assistedRuns!: GroomTodayAssistedRunResponseDto[];
+
+  @Expose()
+  @Type(() => GroomTodayVetAppointmentResponseDto)
+  @ApiProperty({
+    type: [GroomTodayVetAppointmentResponseDto],
+    description:
+      'Lịch hẹn bác sĩ hôm nay ở ngựa Groom đang phụ trách, chỉ để xem (Groom không hoàn tất), theo giờ hẹn',
+  })
+  horseVetAppointments!: GroomTodayVetAppointmentResponseDto[];
 }

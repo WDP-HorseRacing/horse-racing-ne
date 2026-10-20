@@ -24,7 +24,7 @@ export class MedicalDashboardQueryDto {
   @ApiPropertyOptional({
     enum: ['me'],
     description:
-      'me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; không áp cho các khối khác',
+      'me: khối careSchedules chỉ giữ lịch có người làm hiện tại là người gọi; khối checkups chỉ giữ ngựa có ngày hẹn do người gọi phụ trách; không áp cho các khối khác',
   })
   @IsOptional()
   @IsIn(['me'])

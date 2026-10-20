@@ -1,6 +1,9 @@
 import type { DataSource } from 'typeorm';
+import { UserRole } from '../../../common/enums/role.enum';
+import { UserStatus } from '../../../common/enums/user-status.enum';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
+  MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
 } from '../constants/medical-events.constants';
@@ -164,6 +167,7 @@ describe('MedicalRemindersService.runDaily', () => {
     herdCheckupAnchors: jest.Mock;
     activeAppointments: jest.Mock;
     dueCareSchedules: jest.Mock;
+    dueAppointments: jest.Mock;
   };
   let events: { publish: jest.Mock };
   let service: MedicalRemindersService;
@@ -179,6 +183,7 @@ describe('MedicalRemindersService.runDaily', () => {
         ]),
       activeAppointments: jest.fn().mockResolvedValue(new Map()),
       dueCareSchedules: jest.fn().mockResolvedValue([]),
+      dueAppointments: jest.fn().mockResolvedValue([]),
     };
     events = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new MedicalRemindersService(
@@ -241,5 +246,89 @@ describe('MedicalRemindersService.runDaily', () => {
       MEDICAL_CHECKUP_OVERDUE_EVENT,
       expect.objectContaining({ horseId: 'h-8' }),
     );
+  });
+
+  it('still sends appointment reminders when the other runs fail', async () => {
+    shared.herdCheckupAnchors.mockRejectedValue(new Error('db down'));
+    shared.dueCareSchedules.mockRejectedValue(new Error('db down'));
+    shared.dueAppointments.mockResolvedValue([
+      {
+        id: 'a1',
+        horseId: 'h1',
+        dueAt: new Date('2026-09-27T02:00:00Z'),
+        assignedTo: null,
+        assignee: null,
+      },
+    ]);
+    await service.runDaily();
+    expect(shared.dueAppointments).toHaveBeenCalledWith('2026-09-27');
+    expect(events.publish).toHaveBeenCalledWith(
+      manager,
+      MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
+      expect.objectContaining({ appointmentId: 'a1' }),
+    );
+  });
+});
+
+describe('MedicalRemindersService.notifyDueAppointments', () => {
+  const vet = (status: UserStatus, role = UserRole.VETERINARIAN) => ({
+    id: 'vet-1',
+    status,
+    role,
+  });
+  let dueAppointments: jest.Mock;
+  let events: { publish: jest.Mock };
+  let service: MedicalRemindersService;
+
+  beforeEach(() => {
+    dueAppointments = jest.fn();
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
+    service = new MedicalRemindersService(
+      dataSource,
+      { dueAppointments } as unknown as MedicalCheckupsService,
+      events,
+    );
+  });
+
+  const appointment = (assignee: unknown, dueAt = '2026-09-27T02:00:00Z') => ({
+    id: 'a1',
+    horseId: 'h1',
+    dueAt: new Date(dueAt),
+    assignedTo: 'vet-1',
+    assignee,
+  });
+
+  const published = () =>
+    (
+      events.publish.mock.calls as Array<
+        [unknown, string, { eventId: string; assigneeId: string | null }]
+      >
+    ).map(([, , event]) => event);
+
+  it('sends to the assigned vet while active, else to every vet', async () => {
+    dueAppointments.mockResolvedValue([appointment(vet(UserStatus.ACTIVE))]);
+    await service.notifyDueAppointments('2026-09-27');
+    dueAppointments.mockResolvedValue([appointment(vet(UserStatus.LOCKED))]);
+    await service.notifyDueAppointments('2026-09-27');
+    dueAppointments.mockResolvedValue([appointment(null)]);
+    await service.notifyDueAppointments('2026-09-27');
+    expect(published().map((event) => event.assigneeId)).toEqual([
+      'vet-1',
+      null,
+      null,
+    ]);
+  });
+
+  it('keeps the event id across days and changes it when the appointment moves', async () => {
+    dueAppointments.mockResolvedValue([appointment(null)]);
+    await service.notifyDueAppointments('2026-09-27');
+    await service.notifyDueAppointments('2026-09-28');
+    dueAppointments.mockResolvedValue([
+      appointment(null, '2026-09-29T02:00:00Z'),
+    ]);
+    await service.notifyDueAppointments('2026-09-29');
+    const [first, second, moved] = published().map((event) => event.eventId);
+    expect(first).toBe(second);
+    expect(moved).not.toBe(first);
   });
 });

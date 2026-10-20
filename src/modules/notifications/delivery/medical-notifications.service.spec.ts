@@ -307,6 +307,41 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft().title).toContain('kiểm tra móng');
   });
 
+  it('sends an appointment-day reminder to the assigned vet only, or to every vet without one', async () => {
+    const due = {
+      eventId: 'e11',
+      horseId: 'h1',
+      appointmentId: 'a1',
+      scheduledAt: '2026-09-27T02:00:00.000Z',
+    };
+    await service.notifyCheckupAppointmentDue({ ...due, assigneeId: 'vet-9' });
+    await service.notifyCheckupAppointmentDue({ ...due, assigneeId: null });
+    const drafts = (
+      notifications.send.mock.calls as Array<[NotificationDraft]>
+    ).map(([draft]) => draft);
+    expect(drafts.map((draft) => draft.recipientIds)).toEqual([
+      ['vet-9'],
+      ['vet-1', 'vet-2'],
+    ]);
+    expect(drafts[0].message).toContain('09:00 ngày 27/09/2026');
+  });
+
+  it('tells the previous vet who moved or cancelled their appointment', async () => {
+    await service.notifyCheckupAppointmentChanged({
+      eventId: 'e12',
+      horseId: 'h1',
+      appointmentId: 'a1',
+      change: 'CANCELLED',
+      scheduledAt: '2026-09-27T02:00:00.000Z',
+      previousAssigneeId: 'vet-9',
+      changedByName: 'BS Hai',
+      reason: 'Đặt nhầm',
+    });
+    expect(sentDraft().recipientIds).toEqual(['vet-9']);
+    expect(sentDraft().message).toContain('BS Hai đã hủy');
+    expect(sentDraft().message).toContain('Đặt nhầm');
+  });
+
   it('skips the notification when the horse is missing', async () => {
     recipients.findHorseMedicalContact.mockResolvedValue(null);
     await expect(
