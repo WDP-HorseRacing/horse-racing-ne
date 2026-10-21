@@ -2,6 +2,7 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
 import { HttpException } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
@@ -14,6 +15,11 @@ import type { KeycloakUserService } from '../../../src/common/infrastructure/key
 import type { Actor } from '../../../src/common/types/actor';
 import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
+import { HorseMeasurementType } from '../../../src/modules/horses/enums/horse-measurement-type.enum';
+import { HorseMeasurementsModule } from '../../../src/modules/horses/horse-measurements/horse-measurements.module';
+import { HorseMeasurementsService } from '../../../src/modules/horses/horse-measurements/horse-measurements.service';
+import { HorseOwnershipsModule } from '../../../src/modules/horses/horse-ownerships/horse-ownerships.module';
+import { HorseOwnershipsService } from '../../../src/modules/horses/horse-ownerships/horse-ownerships.service';
 import { HorsePlacementsModule } from '../../../src/modules/horses/horse-placements/horse-placements.module';
 import { HorsePlacementsService } from '../../../src/modules/horses/horse-placements/horse-placements.service';
 import { MediaService } from '../../../src/modules/media/services/media.service';
@@ -23,6 +29,8 @@ import { BarnsModule } from '../../../src/modules/stable/barns/barns.module';
 import { BarnsService } from '../../../src/modules/stable/barns/barns.service';
 import { CareTasksModule } from '../../../src/modules/stable/care-tasks/care-tasks.module';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { DailyChecklistsModule } from '../../../src/modules/stable/daily-checklists/daily-checklists.module';
 import { GroomAssignmentsModule } from '../../../src/modules/stable/groom-assignments/groom-assignments.module';
 import { GroomAssignmentsService } from '../../../src/modules/stable/groom-assignments/groom-assignments.service';
 import { IncidentsModule } from '../../../src/modules/stable/incidents/incidents.module';
@@ -99,6 +107,9 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
   let users: UsersService;
   let handover: HeadTrainerHandoverService;
   let items: SupplyItemsService;
+  let checklists: ChecklistsService;
+  let measurements: HorseMeasurementsService;
+  let ownerships: HorseOwnershipsService;
   let cm: Actor;
   let cmId: string;
   let trainer: Actor;
@@ -231,6 +242,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     moduleRef = await Test.createTestingModule({
       imports: [
         EventEmitterModule.forRoot(),
+        ScheduleModule.forRoot(),
         TypeOrmModule.forRootAsync({
           useFactory: () => ({ type: 'postgres' }),
           dataSourceFactory: () => Promise.resolve(dataSource),
@@ -245,10 +257,13 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
         TrainingSessionsModule,
         IncidentsModule,
         MedicalRecordsModule,
+        DailyChecklistsModule,
+        HorseMeasurementsModule,
+        HorseOwnershipsModule,
       ],
     })
       .overrideProvider(MediaService)
-      .useValue({})
+      .useValue({ signDownloadUrls: () => Promise.resolve(new Map()) })
       .compile();
     placements = moduleRef.get(HorsePlacementsService);
     grooms = moduleRef.get(GroomAssignmentsService);
@@ -261,6 +276,9 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     participants = moduleRef.get(SessionParticipantsService);
     incidents = moduleRef.get(IncidentsService);
     cases = moduleRef.get(MedicalCasesService);
+    checklists = moduleRef.get(ChecklistsService);
+    measurements = moduleRef.get(HorseMeasurementsService);
+    ownerships = moduleRef.get(HorseOwnershipsService);
 
     const audit = new AuditService();
     users = new UsersService(
@@ -559,6 +577,133 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
                 deceased: true,
               }),
             () => incidents.refer(trainer, incidentId, { urgent: false }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  /** Ngựa trong khu A có Groom cũ đang phụ trách, kèm một Groom mới để HT đổi sang */
+  const groomedHorse = async (name: string) => {
+    const horseId = await barnHorse(name);
+    const oldGroomId = await seed.user(UserRole.GROOM);
+    await dataSource.query(
+      `INSERT INTO groom_assignments (version, horse_id, groom_id, start_at)
+       VALUES (1, $1, $2, now() - interval '1 day')`,
+      [horseId, oldGroomId],
+    );
+    return {
+      horseId,
+      oldGroom: await actorOf(oldGroomId, UserRole.GROOM),
+      newGroomId: await seed.user(UserRole.GROOM),
+    };
+  };
+
+  it('R3-DL-a1 the groom reports an incident (horse) while the HT changes the groom of that horse: no deadlock 40P01', async () => {
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { horseId, oldGroom, newGroomId } = await groomedHorse(`Báo ${i}`);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM horses WHERE id = $1 FOR UPDATE',
+          [horseId],
+          [
+            () =>
+              incidents.report(oldGroom, {
+                horseId,
+                description: 'Đi khập khiễng',
+              }),
+            () => grooms.assign(trainer, horseId, { groomId: newGroomId }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-a2 the groom ticks today checklist (checklist) while the HT changes the groom of that horse: no deadlock 40P01', async () => {
+    const [type] = await dataSource.query<{ id: string }[]>(
+      `INSERT INTO daily_task_types (version, name, applies_to_all, active) VALUES (1, 'Cho ăn', true, true) RETURNING id`,
+    );
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { horseId, oldGroom, newGroomId } = await groomedHorse(`Tick ${i}`);
+      const [checklist] = await dataSource.query<{ id: string }[]>(
+        `INSERT INTO daily_checklists (version, horse_id, groom_id, checklist_date, status)
+         SELECT 1, $1, groom_id, $2, 'PENDING' FROM groom_assignments WHERE horse_id = $1 RETURNING id`,
+        [horseId, today],
+      );
+      const [item] = await dataSource.query<{ id: string }[]>(
+        `INSERT INTO daily_checklist_items (checklist_id, task_type_id, position)
+         VALUES ($1, $2, 1) RETURNING id`,
+        [checklist.id, type.id],
+      );
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM daily_checklists WHERE id = $1 FOR UPDATE',
+          [checklist.id],
+          [
+            () => checklists.tick(oldGroom, item.id, { done: true }),
+            () => grooms.assign(trainer, horseId, { groomId: newGroomId }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-a3 the groom records a measurement (horse) while the HT changes the groom of that horse: no deadlock 40P01', async () => {
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { horseId, oldGroom, newGroomId } = await groomedHorse(`Đo ${i}`);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM horses WHERE id = $1 FOR UPDATE',
+          [horseId],
+          [
+            () =>
+              measurements.addMeasurements(oldGroom, horseId, {
+                values: [{ type: HorseMeasurementType.WEIGHT, value: 500 }],
+                confirmAbnormal: true,
+              }),
+            () => grooms.assign(trainer, horseId, { groomId: newGroomId }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-b CM deactivates user X (managers → X) while another CM transfers a horse to X (horse → X → manager): no deadlock 40P01', async () => {
+    const otherCm = await actorOf(
+      await seed.user(UserRole.CLUB_MANAGER),
+      UserRole.CLUB_MANAGER,
+    );
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const horseId = await barnHorse(`Chủ ${i}`);
+      const newOwnerId = await seed.user(UserRole.HORSE_OWNER);
+      const [horse] = await dataSource.query<{ version: number }[]>(
+        'SELECT version FROM horses WHERE id = $1',
+        [horseId],
+      );
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM users WHERE id = $1 FOR UPDATE',
+          [newOwnerId],
+          [
+            () =>
+              ownerships.transfer(cm, horseId, {
+                newOwnerId,
+                reason: 'Bán ngựa',
+                version: horse.version,
+              }),
+            () => users.setStatus(otherCm, newOwnerId, UserStatus.INACTIVE),
           ],
         ),
       );
