@@ -9,6 +9,10 @@ import type { Actor } from '../../src/common/types/actor';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
+import {
+  CareScheduleStatus,
+  CareScheduleType,
+} from '../../src/modules/medical/constants/care-schedule.enum';
 import { MEDICAL_HEALTH_CHANGED_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
 import {
   MedicalVisitConclusion,
@@ -329,5 +333,108 @@ describe('MedicalVisitsService.voidVisit effects on requests and health (Postgre
 
     expect(result.healthOutcome).toBe('UNKNOWN_BEFORE');
     expect(await healthOf(horse)).toBe(HorseHealthStatus.INJURED);
+  });
+
+  const checkupRow = (id: string) =>
+    dataSource
+      .query<Record<string, unknown>[]>(
+        `SELECT status, completed_at, completed_by, completed_record_id
+           FROM care_schedules WHERE id = $1`,
+        [id],
+      )
+      .then((rows) => rows[0]);
+
+  const voidAudit = (visitId: string) =>
+    dataSource
+      .query<{ after_data: Record<string, unknown> }[]>(
+        `SELECT after_data FROM audit_logs
+          WHERE entity_type = 'MEDICAL_RECORD' AND entity_id = $1 AND action = 'UPDATE'`,
+        [visitId],
+      )
+      .then((rows) => rows[0].after_data);
+
+  it('reopens the overdue routine checkup appointment a voided request visit completed', async () => {
+    const vet = await newVet();
+    const horse = await seed.horse('Winx');
+    const appointment = await seed.schedule(
+      horse,
+      new Date(Date.now() - 24 * HOUR).toISOString(),
+      { type: CareScheduleType.ROUTINE_CHECKUP },
+    );
+    const visit = await service.createStandaloneVisit(vet.actor, horse, {
+      kind: MedicalVisitKind.REQUEST,
+      conclusion: MedicalVisitConclusion.NORMAL,
+      requestIds: [await seed.examRequest(horse)],
+    });
+    expect(await checkupRow(appointment)).toMatchObject({
+      status: CareScheduleStatus.COMPLETED,
+      completed_by: vet.id,
+      completed_record_id: visit.id,
+    });
+
+    await service.voidVisit(vet.actor, visit.id, { reason: 'Nhầm ngựa' });
+
+    expect(await checkupRow(appointment)).toEqual({
+      status: CareScheduleStatus.SCHEDULED,
+      completed_at: null,
+      completed_by: null,
+      completed_record_id: null,
+    });
+    expect(await voidAudit(visit.id)).toMatchObject({
+      checkupAppointmentReopened: true,
+    });
+  });
+
+  it('keeps the completed appointment when a new routine checkup appointment was scheduled after the visit', async () => {
+    const vet = await newVet();
+    const horse = await seed.horse('Winx');
+    const appointment = await seed.schedule(
+      horse,
+      new Date(Date.now() + 24 * HOUR).toISOString(),
+      { type: CareScheduleType.ROUTINE_CHECKUP },
+    );
+    const visit = await routine(vet.actor, horse);
+    const next = await seed.schedule(
+      horse,
+      new Date(Date.now() + 30 * 24 * HOUR).toISOString(),
+      { type: CareScheduleType.ROUTINE_CHECKUP },
+    );
+
+    await service.voidVisit(vet.actor, visit.id, { reason: 'Nhầm ngựa' });
+
+    expect(await checkupRow(appointment)).toMatchObject({
+      status: CareScheduleStatus.COMPLETED,
+      completed_record_id: visit.id,
+    });
+    expect(await checkupRow(next)).toMatchObject({
+      status: CareScheduleStatus.SCHEDULED,
+    });
+    expect(await voidAudit(visit.id)).toMatchObject({
+      checkupAppointmentReopened: false,
+    });
+  });
+
+  it('leaves every appointment untouched when the voided visit completed none', async () => {
+    const vet = await newVet();
+    const horse = await seed.horse('Winx');
+    const earlier = await seed.schedule(
+      horse,
+      new Date(Date.now() + 24 * HOUR).toISOString(),
+      { type: CareScheduleType.ROUTINE_CHECKUP },
+    );
+    const completer = await routine(vet.actor, horse);
+    const visit = await routine(vet.actor, horse);
+    const before = await checkupRow(earlier);
+
+    await service.voidVisit(vet.actor, visit.id, { reason: 'Nhầm ngựa' });
+
+    expect(await checkupRow(earlier)).toEqual(before);
+    expect(before).toMatchObject({
+      status: CareScheduleStatus.COMPLETED,
+      completed_record_id: completer.id,
+    });
+    expect(await voidAudit(visit.id)).toMatchObject({
+      checkupAppointmentReopened: false,
+    });
   });
 });

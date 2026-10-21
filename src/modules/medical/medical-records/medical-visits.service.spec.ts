@@ -61,6 +61,7 @@ describe('MedicalVisitsService', () => {
   let manager: {
     findOne: jest.Mock;
     count: jest.Mock;
+    exists: jest.Mock;
     findOneOrFail: jest.Mock;
     find: jest.Mock;
     create: jest.Mock;
@@ -149,6 +150,7 @@ describe('MedicalVisitsService', () => {
       }),
       find: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
+      exists: jest.fn().mockResolvedValue(false),
       create: jest.fn((_entity: unknown, row: Row) => ({ ...row })),
       save: jest.fn((input: Row | Row[]) =>
         Promise.resolve(

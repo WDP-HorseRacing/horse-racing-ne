@@ -20,12 +20,14 @@ export class CareScheduleWritesService {
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param completedBy UUID người khám
+   * @param recordId UUID buổi khám hoàn tất ngày hẹn
    * @returns Promise trả về số ngày hẹn đã hoàn tất
    */
   async completeRoutineCheckup(
     manager: EntityManager,
     horseId: string,
     completedBy: string,
+    recordId: string,
   ): Promise<number> {
     const result = await manager.update(
       CareScheduleEntity,
@@ -38,9 +40,53 @@ export class CareScheduleWritesService {
         status: CareScheduleStatus.COMPLETED,
         completedAt: new Date(),
         completedBy,
+        completedRecordId: recordId,
       },
     );
     return result.affected ?? 0;
+  }
+
+  /**
+   * Mở lại ngày hẹn khám định kỳ mà một buổi khám đã hoàn tất, khi buổi khám đó bị hủy
+   *
+   * - Ngày hẹn về Đã lên lịch, bỏ thời điểm, người và buổi khám hoàn tất; ngày hẹn đã quá hạn vẫn mở lại
+   * - Ngựa đã có ngày hẹn khám định kỳ khác đang Đã lên lịch: giữ nguyên Hoàn tất
+   * - Buổi khám không hoàn tất ngày hẹn nào: không đổi gì
+   *
+   * @param manager EntityManager của transaction đang chạy, đã khóa ngựa
+   * @param horseId UUID của ngựa
+   * @param recordId UUID buổi khám bị hủy
+   * @returns Promise trả về true nếu đã mở lại một ngày hẹn
+   */
+  async reopenRoutineCheckup(
+    manager: EntityManager,
+    horseId: string,
+    recordId: string,
+  ): Promise<boolean> {
+    const hasOpen = await manager.exists(CareScheduleEntity, {
+      where: {
+        horseId,
+        type: CareScheduleType.ROUTINE_CHECKUP,
+        status: CareScheduleStatus.SCHEDULED,
+      },
+    });
+    if (hasOpen) return false;
+    const result = await manager.update(
+      CareScheduleEntity,
+      {
+        horseId,
+        type: CareScheduleType.ROUTINE_CHECKUP,
+        status: CareScheduleStatus.COMPLETED,
+        completedRecordId: recordId,
+      },
+      {
+        status: CareScheduleStatus.SCHEDULED,
+        completedAt: null,
+        completedBy: null,
+        completedRecordId: null,
+      },
+    );
+    return (result.affected ?? 0) > 0;
   }
 
   /**

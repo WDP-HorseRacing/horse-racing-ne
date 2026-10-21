@@ -313,6 +313,7 @@ export class MedicalVisitsService {
    * - Lịch tái khám của bệnh án đồng bộ lại: lịch do buổi này đặt chuyển Đã hủy, lịch của buổi chưa hủy mới nhất trước đó trở lại Đã lên lịch (bệnh án còn điều trị)
    * - Yêu cầu khám mà buổi khám đã đánh dấu EXAMINED về lại PENDING và bỏ gắn buổi khám, mỗi yêu cầu một dòng nhật ký; yêu cầu tự sinh trùng loại cảnh báo với yêu cầu đang chờ thì chuyển DISMISSED
    * - Buổi khám đã đổi sức khỏe và chưa có lần đổi sức khỏe nào sau đó: sức khỏe ngựa về giá trị trước buổi khám (nhật ký lý do "Hủy buổi khám: <lý do>", event đổi sức khỏe ghi vào outbox); có lần đổi sau đó hoặc buổi khám cũ không lưu sức khỏe trước khám thì giữ nguyên
+   * - Ngày hẹn khám định kỳ mà buổi khám đã hoàn tất trở lại Đã lên lịch (kể cả đã quá hạn), trừ khi ngựa đã có ngày hẹn khám định kỳ khác đang Đã lên lịch; kết quả ghi vào nhật ký hủy
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param recordId UUID của buổi khám
@@ -410,13 +411,24 @@ export class MedicalVisitsService {
               feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
             })
           : null;
+      const checkupAppointmentReopened =
+        await this.scheduleWrites.reopenRoutineCheckup(
+          manager,
+          horse.id,
+          recordId,
+        );
       await this.audit.record(manager, {
         actorId: caller.id,
         action: AuditAction.UPDATE,
         entityType: AuditEntityType.MEDICAL_RECORD,
         entityId: recordId,
         before: { voidedAt: null },
-        after: { voidedAt, measurementsVoided, healthOutcome },
+        after: {
+          voidedAt,
+          measurementsVoided,
+          healthOutcome,
+          checkupAppointmentReopened,
+        },
         reason: body.reason,
         feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
       });
@@ -746,6 +758,7 @@ export class MedicalVisitsService {
         manager,
         horse.id,
         input.callerId,
+        visit.id,
       );
     if (input.caseId) {
       await this.scheduleWrites.setVisitFollowUp(

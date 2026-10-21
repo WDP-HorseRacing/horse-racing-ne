@@ -79,6 +79,19 @@ export class CareScheduleEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'completed_by' })
   completer!: UserEntity | null;
 
+  @Column({ name: 'completed_record_id', type: 'uuid', nullable: true })
+  completedRecordId!: string | null;
+
+  @ManyToOne(() => MedicalRecordEntity, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({
+    name: 'completed_record_id',
+    foreignKeyConstraintName: 'care_schedules_completed_record_fk',
+  })
+  completedRecord!: MedicalRecordEntity | null;
+
   @Column({ name: 'cancel_reason', type: 'text', nullable: true })
   cancelReason!: string | null;
 

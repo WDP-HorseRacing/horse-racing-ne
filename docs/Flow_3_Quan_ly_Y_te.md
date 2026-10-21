@@ -237,7 +237,7 @@ Theo dõi hạn khám định kỳ của từng con ngựa và đặt ngày hẹ
    - Nếu ngựa chưa quá hạn thì ngày hẹn không được muộn hơn hạn khám. Nếu ngựa đã quá hạn thì chọn ngày bất kỳ từ hôm nay trở đi.
    - Mỗi con ngựa có tối đa một ngày hẹn đang hiệu lực.
    - Ngày hẹn là việc chung, không giao bác sĩ nào: tới ngày thì bác sĩ nào rảnh khám.
-4. Ngày hẹn chỉ là kế hoạch, hệ thống không tự tạo buổi khám khi đến ngày. Khi ghi một buổi khám bất kỳ cho con ngựa (F3.3 hoặc F3.6), ngày hẹn đang hiệu lực được đánh dấu Đã thực hiện.
+4. Ngày hẹn chỉ là kế hoạch, hệ thống không tự tạo buổi khám khi đến ngày. Khi ghi một buổi khám bất kỳ cho con ngựa (F3.3 hoặc F3.6), ngày hẹn đang hiệu lực được đánh dấu Đã thực hiện. Hủy buổi khám đó (F3.6 mục 8) thì ngày hẹn trở lại đang hiệu lực.
 5. Dời ngày hẹn bắt buộc nhập lý do. Hủy ngày hẹn bắt buộc nhập lý do, ngày hẹn chuyển Đã hủy; không có ngày hẹn đang hiệu lực thì báo lỗi. Mọi VETERINARIAN dời, hủy được mọi ngày hẹn.
 6. Ngựa vào trạng thái Đến hạn mà chưa có ngày hẹn khám đang hiệu lực: hệ thống gửi thông báo mức NORMAL cho mọi VETERINARIAN theo mục III.7, mỗi hạn khám chỉ báo một lần. Ngựa đã có ngày hẹn thì không báo; hủy ngày hẹn thì ngựa lại được báo Đến hạn nếu hạn khám này chưa từng được báo.
 7. Quá hạn trên 7 ngày: hệ thống gửi thông báo mức HIGH theo mục III.7.
@@ -465,6 +465,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
    - Buổi mở bệnh án chỉ hủy được khi bệnh án còn Đang điều trị và không còn buổi khám nào khác chưa hủy; khi đó bệnh án chuyển Đã hủy (III.2.4).
    - Các yêu cầu khám mà buổi bị hủy đã chuyển Đã khám quay về Chờ xử lý, bỏ gắn khỏi buổi đó, mỗi yêu cầu một dòng nhật ký (III.2.4).
    - Trạng thái sức khỏe quay về giá trị trước buổi khám nếu chưa có lần đổi nào khác sau buổi đó; ngược lại giữ nguyên và báo bác sĩ (III.2.4).
+   - Ngày hẹn khám định kỳ (F3.2) mà buổi bị hủy đã đánh dấu Đã thực hiện trở lại đang hiệu lực, kể cả khi đã quá ngày hẹn. Ngựa đã có ngày hẹn khác đang hiệu lực (đặt sau buổi khám) thì giữ ngày hẹn mới, ngày hẹn cũ vẫn Đã thực hiện. Nhật ký hủy ghi có mở lại ngày hẹn hay không. Ngày hẹn hoàn tất trước khi hệ thống lưu buổi khám hoàn tất thì không mở lại được.
    - Chấn thương: mức hồi phục của các vết mà buổi bị hủy đã cập nhật quay về lần ghi nhận trước đó. Vết không còn lần ghi nhận nào thuộc buổi khám chưa hủy (vd vết do chính buổi này phát hiện) bị ẩn ở mọi nơi.
    - Bác sĩ có thể ghi ngay buổi khám thay thế; buổi thay thế theo đúng quy tắc của F3.3 hoặc F3.6.
 9. **Điều chỉnh chi phí một buổi khám** (áp dụng cho buổi khám của F3.3 và F3.6), theo mục III.6.8:
