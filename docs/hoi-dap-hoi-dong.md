@@ -193,3 +193,19 @@ Mỗi con ngựa có tối đa một bệnh án đang mở. Bệnh án là một
 **Trả lời:** Thông báo sắp hết hàng gửi cho CLUB MANAGER, và chỉ CLUB MANAGER sửa được ngưỡng; người nâng ngưỡng là người nhận thông báo nên đã biết. Thông báo chỉ phát khi lần xuất dùng làm tồn đi xuống tới ngưỡng, tức là lúc có thay đổi mà CLUB MANAGER không trực tiếp làm. Danh sách "Sắp hết" luôn tính theo ngưỡng hiện tại nên vẫn hiện vật tư đó.
 
 **Đánh đổi đã biết:** câu lạc bộ có nhiều CLUB MANAGER thì những người còn lại không nhận thông báo khi một người nâng ngưỡng; họ thấy vật tư trong danh sách "Sắp hết".
+
+## Hồ sơ ngựa
+
+### 25. Thiến là không đảo ngược được, sao vẫn cho đổi giới tính từ Ngựa thiến về Ngựa đực? Và sao "thiến" lại nằm chung ô giới tính? (B21)
+
+**Trả lời:** Cho đổi để sửa được lúc tạo hồ sơ chọn nhầm; chặn chiều này thì hồ sơ nhập nhầm không còn đường sửa. Mọi lần đổi đều ghi nhật ký người đổi, thời điểm, giá trị trước và sau. Luật cần thiết là giữ đúng phả hệ: ngựa đang là cha không đổi thành ngựa cái, ngựa đang là mẹ phải giữ ngựa cái; chọn cha chỉ nhận ngựa đực hoặc ngựa thiến (ngựa có thể đã sinh con trước khi thiến), chọn mẹ chỉ nhận ngựa cái.
+
+Hồ sơ ngựa đua thường ghi giới tính thành một nhóm duy nhất có cả ngựa thiến (gelding), vì điều kiện và hạng mục thi đấu xét theo các nhóm này; hệ thống làm theo cách ghi đó thay vì tách giới tính và tình trạng thiến.
+
+**Đánh đổi đã biết:** không lưu ngày thiến; đề bài không yêu cầu.
+
+### 26. Ngựa đã chuyển nhượng hoặc đã mất gõ sai số chip, tên, ngày sinh thì sửa sao? (F1-7)
+
+**Trả lời:** Thông tin định danh phải đúng trong suốt thời gian ngựa ở câu lạc bộ, lúc ngựa còn tập, khám, tính phí; hồ sơ đang hoạt động sửa được bình thường. Khi ngựa đã rời câu lạc bộ, hồ sơ chỉ được xem. Ngựa đã chuyển nhượng mà câu lạc bộ mua lại thì kích hoạt lại, hồ sơ sửa được như cũ. Ngựa đã mất là trạng thái cuối, không sửa (cùng nguyên tắc câu ghi nhận mất).
+
+**Đánh đổi đã biết:** ngựa đã mất giữ số chip; nếu số chip đó bị gõ nhầm trùng với số chip thật của ngựa mới thì không tạo được hồ sơ mới, xử lý thủ công theo nhật ký.
