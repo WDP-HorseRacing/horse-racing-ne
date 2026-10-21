@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
@@ -36,6 +36,7 @@ export class HeadTrainerHandoverService {
   /**
    * Chuyển mọi khu chuồng, mọi giáo án và các lớp nháp/đang chạy của một Head Trainer sang Head Trainer khác trong một transaction
    *
+   * - Khóa khu, giáo án và lớp ACTIVE của người bàn giao, rồi khóa hai tài khoản theo thứ tự UUID, trước khi kiểm
    * - Lớp đã hoàn thành hoặc đã hủy giữ Head Trainer cũ
    * - Mỗi khu chuồng được chuyển ghi một dòng nhật ký
    * - Ghi thêm một dòng nhật ký tổng trên Head Trainer bàn giao: người nhận và số khu, giáo án, lớp đã chuyển
@@ -61,11 +62,17 @@ export class HeadTrainerHandoverService {
       );
     }
     return this.dataSource.transaction(async (manager) => {
-      const from = await this.lockedUser(manager, fromHeadTrainerId);
+      await this.barns.lockHeadTrainerBarns(manager, fromHeadTrainerId);
+      await this.training.lockHeadTrainerWork(manager, fromHeadTrainerId);
+      const users = await this.lockedUsers(manager, [
+        fromHeadTrainerId,
+        body.toHeadTrainerId,
+      ]);
+      const from = users.get(fromHeadTrainerId);
       if (!from || from.role !== UserRole.HEAD_TRAINER) {
         throw new NotFoundException('Không tìm thấy Huấn luyện viên trưởng');
       }
-      const to = await this.lockedUser(manager, body.toHeadTrainerId);
+      const to = users.get(body.toHeadTrainerId);
       if (!to || to.role !== UserRole.HEAD_TRAINER) {
         throw new BadRequestException(
           'Huấn luyện viên trưởng nhận không hợp lệ',
@@ -102,19 +109,21 @@ export class HeadTrainerHandoverService {
   }
 
   /**
-   * Khóa row tài khoản để bàn giao không chạy song song với khóa tài khoản hay đổi vai trò
+   * Khóa row các tài khoản theo thứ tự UUID để bàn giao không chạy song song với khóa tài khoản hay đổi vai trò
    *
    * @param manager EntityManager của transaction đang chạy
-   * @param userId UUID của tài khoản
-   * @returns Promise trả về tài khoản đã khóa, hoặc null nếu không có
+   * @param userIds UUID các tài khoản cần khóa
+   * @returns Promise trả về Map từ UUID sang tài khoản đã khóa; tài khoản không có thì không có trong Map
    */
-  private lockedUser(
+  private async lockedUsers(
     manager: EntityManager,
-    userId: string,
-  ): Promise<UserEntity | null> {
-    return manager.findOne(UserEntity, {
-      where: { id: userId },
-      lock: { mode: 'pessimistic_write' },
+    userIds: string[],
+  ): Promise<Map<string, UserEntity>> {
+    const users = await manager.find(UserEntity, {
+      where: { id: In(userIds) },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
     });
+    return new Map(users.map((user) => [user.id, user]));
   }
 }

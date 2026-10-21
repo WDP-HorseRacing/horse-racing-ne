@@ -984,7 +984,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     expect(rawErrors(rounds)).toEqual([]);
   });
 
-  it('R3-4b CM deactivates a head trainer while he creates a training plan: one 409, never a plan of an inactive HT', async () => {
+  it('R3-4b CM deactivates a head trainer while he creates a training plan: one refused (403 inactive caller or 409 plan exists), never a plan of an inactive HT', async () => {
     const [subject] = await dataSource.query<{ id: string }[]>(
       `INSERT INTO training_subjects (version, name, session_type, intensity, planned_distance_m)
        VALUES (1, 'Phi nước kiệu', 'REGULAR', 'LIGHT', 1200) RETURNING id`,
@@ -1014,11 +1014,16 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
           WHERE u.id = $1 AND u.status <> 'ACTIVE'`,
         [ht.id],
       );
-      rounds.push({ outcomes: sorted(outcomes), inactiveOwner: row.n });
+      rounds.push({
+        outcomes: sorted(
+          outcomes.map((o) => (o === 403 || o === 409 ? 'refused' : o)),
+        ),
+        inactiveOwner: row.n,
+      });
     }
 
     expect(rounds).toEqual(
-      Array(ROUNDS).fill({ outcomes: ['409', 'ok'], inactiveOwner: 0 }),
+      Array(ROUNDS).fill({ outcomes: ['ok', 'refused'], inactiveOwner: 0 }),
     );
   });
 

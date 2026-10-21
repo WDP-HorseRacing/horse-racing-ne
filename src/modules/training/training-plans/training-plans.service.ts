@@ -91,6 +91,7 @@ export class TrainingPlansService {
   /**
    * Tạo giáo án cho chính Head Trainer gọi
    *
+   * - Khóa chia sẻ tài khoản người gọi trong transaction và kiểm lại còn hoạt động
    * - Ghi nhật ký kèm tên, mô tả và các giai đoạn
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -105,6 +106,7 @@ export class TrainingPlansService {
   ): Promise<TrainingPlanResponseDto> {
     const caller = await this.access.currentUser(actor);
     const planId = await this.dataSource.transaction(async (manager) => {
+      await this.access.lockActiveUser(manager, caller.id);
       await this.assertSubjectsExist(manager, body);
       assertPlanPhases(body.phases);
       const plan = await manager.save(

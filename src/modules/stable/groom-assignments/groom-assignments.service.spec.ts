@@ -207,7 +207,7 @@ describe('GroomAssignmentsService', () => {
       await assign();
       expect(manager.findOne).toHaveBeenCalledWith(UserEntity, {
         where: { id: 'g-new' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(transaction.mock.invocationCallOrder[0]).toBeLessThan(
         manager.findOne.mock.invocationCallOrder[1],

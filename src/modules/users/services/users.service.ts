@@ -327,7 +327,7 @@ export class UsersService {
   }
 
   /**
-   * Khóa row user (SELECT ... FOR UPDATE) trong transaction đang chạy
+   * Khóa row user (SELECT ... FOR NO KEY UPDATE) trong transaction đang chạy
    *
    * @param manager EntityManager của transaction đang chạy
    * @param id UUID của user cần khóa
@@ -340,7 +340,7 @@ export class UsersService {
   ): Promise<UserEntity> {
     const user = await manager.getRepository(UserEntity).findOne({
       where: { id },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
     return user;
@@ -695,7 +695,8 @@ export class UsersService {
     await manager.getRepository(UserEntity).find({
       select: { id: true },
       where: { role: UserRole.CLUB_MANAGER, status: UserStatus.ACTIVE },
-      lock: { mode: 'pessimistic_write' },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 

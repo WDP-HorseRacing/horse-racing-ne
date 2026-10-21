@@ -161,7 +161,7 @@ export class GroomAssignmentsService {
       await this.access.lockActiveBarn(manager, horse.barnId);
       const groom = await manager.findOne(UserEntity, {
         where: { id: groomId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       // Kiểm tra groom có hợp lệ không (active và đúng role)
       assertAssignableGroom(groom);

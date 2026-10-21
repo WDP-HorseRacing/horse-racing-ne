@@ -742,12 +742,16 @@ describe('HorseProfilesService', () => {
 
   describe('create', () => {
     let calls: string[];
-    let barns: { lockAssignableBarn: jest.Mock };
+    let barns: { lockBarnRow: jest.Mock; lockAssignableBarn: jest.Mock };
     let createManager: typeof manager & { save: jest.Mock };
 
     beforeEach(() => {
       calls = [];
       barns = {
+        lockBarnRow: jest.fn(() => {
+          calls.push('lockBarnRow');
+          return Promise.resolve();
+        }),
         lockAssignableBarn: jest.fn(() => {
           calls.push('lockAssignableBarn');
           return Promise.resolve({ id: 'b2' });
@@ -861,6 +865,7 @@ describe('HorseProfilesService', () => {
       );
       expect(calls).toEqual([
         'transaction:start',
+        'lockBarnRow',
         'lockAssignableBarn',
         'publish',
         'transaction:commit',

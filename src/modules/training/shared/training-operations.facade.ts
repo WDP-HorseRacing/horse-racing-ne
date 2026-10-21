@@ -499,6 +499,33 @@ export class TrainingOperationsFacade {
   }
 
   /**
+   * Khóa mọi giáo án và các lớp ACTIVE của một Head Trainer theo thứ tự UUID, giáo án trước lớp sau, chạy trong transaction của nơi gọi
+   *
+   * - Khóa đúng các row mà handOverHeadTrainerWork sẽ chuyển
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param headTrainerId UUID Head Trainer bàn giao
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHeadTrainerWork(
+    manager: EntityManager,
+    headTrainerId: string,
+  ): Promise<void> {
+    await manager.find(TrainingPlanEntity, {
+      select: { id: true },
+      where: { headTrainerId },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+    await manager.find(TrainingClassEntity, {
+      select: { id: true },
+      where: { headTrainerId, status: TrainingClassStatus.ACTIVE },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+  }
+
+  /**
    * Hủy các lượt tham gia đã đọc sẵn rồi cập nhật lại trạng thái các buổi liên quan
    *
    * - Chuyển từng lượt sang CANCELLED kèm lý do, lưu một lần nếu có lượt nào

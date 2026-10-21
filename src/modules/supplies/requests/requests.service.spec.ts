@@ -40,6 +40,7 @@ describe('SupplyRequestsService.updateStatus', () => {
         },
       ),
     ),
+    find: jest.fn().mockResolvedValue([]),
     save: jest.fn((row: Partial<SupplyRequestEntity>) => {
       stored = { ...row };
       return Promise.resolve(row);

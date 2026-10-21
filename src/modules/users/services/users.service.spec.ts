@@ -242,7 +242,7 @@ describe('UsersService', () => {
       ]);
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { id: owner.id },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
     });
 

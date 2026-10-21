@@ -252,9 +252,14 @@ export class HorseProfilesService {
     const horse = await mapUniqueViolation(
       () =>
         this.dataSource.transaction(async (manager) => {
-          await this.assertActiveOwner(manager, ownerId);
+          if (body.barnId) {
+            await this.barns.lockBarnRow(manager, body.barnId);
+          }
           if (sireId || damId) {
             await this.pedigree.lockPedigree(manager);
+          }
+          await this.assertActiveOwner(manager, ownerId);
+          if (sireId || damId) {
             await this.pedigree.validateParents(
               manager,
               { dateOfBirth: body.dateOfBirth },
@@ -367,12 +372,18 @@ export class HorseProfilesService {
     await mapUniqueViolation(
       () =>
         this.dataSource.transaction(async (manager) => {
+          const pedigreeChanged = PEDIGREE_FIELDS.some(
+            (field) => field in changes,
+          );
+          if (pedigreeChanged) {
+            await this.pedigree.lockPedigree(manager);
+          }
+          await this.access.lockHorseWithDeleted(manager, id);
           // Nếu có đổi chủ sở hữu thì kiểm tra coi còn active và đùng role không và khoá row
           if (changes.ownerId !== undefined) {
             await this.assertActiveOwner(manager, changes.ownerId);
           }
-          if (PEDIGREE_FIELDS.some((field) => field in changes)) {
-            await this.pedigree.lockPedigree(manager);
+          if (pedigreeChanged) {
             await this.pedigree.assertPedigreeChange(manager, horse, changes);
           }
           const result = await manager

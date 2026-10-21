@@ -205,8 +205,9 @@ export class FeedingPlansService {
   ): Promise<FeedingPlanResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
-      const plan = await this.lockDraftForTrainer(manager, caller.id, id);
       const lines = toRationLines(body.items);
+      await this.lockSupplies(manager, lines);
+      const plan = await this.lockDraftForTrainer(manager, caller.id, id);
       await this.assertFeedableLines(manager, lines);
       const oldLines = await manager.find(FeedingPlanItemEntity, {
         where: { planId: plan.id },
@@ -354,6 +355,27 @@ export class FeedingPlansService {
         quantity,
         note,
       }));
+  }
+
+  /**
+   * Khóa chia sẻ (FOR SHARE) các vật tư của các dòng theo thứ tự UUID tới hết transaction, không kiểm gì
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param lines Các dòng khẩu phần
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  private async lockSupplies(
+    manager: EntityManager,
+    lines: readonly RationLine[],
+  ): Promise<void> {
+    const ids = [...new Set(lines.map((line) => line.supplyItemId))];
+    if (ids.length === 0) return;
+    await manager.find(SupplyItemEntity, {
+      select: { id: true },
+      where: { id: In(ids) },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_read' },
+    });
   }
 
   /**

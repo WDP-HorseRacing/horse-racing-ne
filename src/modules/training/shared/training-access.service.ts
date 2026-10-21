@@ -224,6 +224,24 @@ export class TrainingAccessService {
   }
 
   /**
+   * Khóa chia sẻ row user (FOR SHARE) tới hết transaction rồi kiểm user còn hoạt động
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param userId UUID của user
+   * @returns Promise hoàn tất khi user còn hoạt động
+   * @throws ForbiddenException Nếu không có user hoặc user không ở trạng thái hoạt động
+   */
+  async lockActiveUser(manager: EntityManager, userId: string): Promise<void> {
+    const user = await manager.findOne(UserEntity, {
+      where: { id: userId },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new ForbiddenException('Tài khoản không hoạt động.');
+    }
+  }
+
+  /**
    * Khóa row user của nhiều người theo thứ tự UUID
    *
    * - Bỏ id trùng; id không có user thì bỏ qua
@@ -239,7 +257,7 @@ export class TrainingAccessService {
       select: { id: true },
       where: { id: In(ids) },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 

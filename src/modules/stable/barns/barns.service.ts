@@ -166,7 +166,7 @@ export class BarnsService {
   /**
    * Sửa thông tin khu chuồng: tên, mô tả, sức chứa, trạng thái, Head Trainer phụ trách
    *
-   * - Chạy trong transaction, lock khu (pessimistic_write) trước khi kiểm luật
+   * - Chạy trong transaction, lock khu (pessimistic_write) trước khi kiểm luật; Head Trainer mới được khóa chia sẻ tới hết transaction
    * - Head Trainer mới phải là user HEAD_TRAINER đang ACTIVE; gửi null để gỡ người phụ trách
    * - Khu còn ngựa (horses.barn_id, hồ sơ chưa xóa) thì chặn: chuyển sang CLOSED hoặc MAINTENANCE, gỡ Head Trainer
    * - Mọi khu, dù còn ngựa hay không: chặn hạ sức chứa xuống dưới số ô hiện có
@@ -196,6 +196,7 @@ export class BarnsService {
           assertAssignableHeadTrainer(
             await manager.findOne(UserEntity, {
               where: { id: body.headTrainerId },
+              lock: { mode: 'pessimistic_read' },
             }),
           );
         }
@@ -297,6 +298,28 @@ export class BarnsService {
   }
 
   /**
+   * Khóa mọi khu đang do một Head Trainer phụ trách theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Khu đã xóa mềm không tính
+   * - Khóa đúng các khu mà reassignHeadTrainerBarns sẽ chuyển
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param headTrainerId UUID Head Trainer bàn giao
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHeadTrainerBarns(
+    manager: EntityManager,
+    headTrainerId: string,
+  ): Promise<void> {
+    await manager.find(BarnEntity, {
+      select: { id: true },
+      where: { headTrainerId },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+  }
+
+  /**
    * Chuyển mọi khu chuồng đang do một Head Trainer phụ trách sang Head Trainer khác, chạy trong transaction của nơi gọi
    *
    * - Khóa từng khu trước khi đổi; khu đã xóa mềm không tính
@@ -334,6 +357,23 @@ export class BarnsService {
       });
     }
     return barns.length;
+  }
+
+  /**
+   * Khóa row khu chuồng (pessimistic_write) tới hết transaction, không kiểm điều kiện. Dùng cho module horses.
+   *
+   * - Khu không có hoặc đã xóa thì bỏ qua, không ném lỗi; nơi gọi kiểm sau bằng lockAssignableBarn
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param barnId UUID của khu chuồng
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  async lockBarnRow(manager: EntityManager, barnId: string): Promise<void> {
+    await manager.find(BarnEntity, {
+      select: { id: true },
+      where: { id: barnId },
+      lock: { mode: 'pessimistic_write' },
+    });
   }
 
   /**

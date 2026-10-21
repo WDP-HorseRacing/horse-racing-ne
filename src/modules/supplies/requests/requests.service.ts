@@ -21,6 +21,7 @@ import {
   SupplyRequestResponseDto,
   UpdateSupplyRequestStatusDto,
 } from '../dto/supply-request.dto';
+import { SupplyItemEntity } from '../entities/supply-item.entity';
 import { SupplyRequestEntity } from '../entities/supply-request.entity';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';
 import { toSupplyRequestResponse } from '../mappers/supply-request.mapper';
@@ -244,6 +245,9 @@ export class SupplyRequestsService {
   ): Promise<SupplyRequestResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const updated = await this.dataSource.transaction(async (manager) => {
+      if (body.status === SupplyRequestStatus.FULFILLED) {
+        await this.lockRequestItem(manager, id);
+      }
       const request = await this.findLocked(manager, id);
       const previousStatus = request.status;
       assertSupplyRequestTransition(request.status, body.status);
@@ -342,6 +346,32 @@ export class SupplyRequestsService {
     });
     if (!request) throw new NotFoundException(SUPPLY_REQUEST_NOT_FOUND);
     return request;
+  }
+
+  /**
+   * Khóa row vật tư của một đề xuất (pessimistic_write, kể cả vật tư đã xóa) trước khi khóa đề xuất
+   *
+   * - Không ném lỗi: không có đề xuất thì bỏ qua; nơi gọi tự kiểm đề xuất và vật tư sau đó
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param id UUID của đề xuất
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  private async lockRequestItem(
+    manager: EntityManager,
+    id: string,
+  ): Promise<void> {
+    const request = await manager.findOne(SupplyRequestEntity, {
+      select: { id: true, itemId: true },
+      where: { id },
+    });
+    if (!request) return;
+    await manager.find(SupplyItemEntity, {
+      select: { id: true },
+      where: { id: request.itemId },
+      withDeleted: true,
+      lock: { mode: 'pessimistic_write' },
+    });
   }
 
   /**

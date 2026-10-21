@@ -103,7 +103,7 @@ export class DailyFeesService {
   /**
    * Sửa số tiền của mức phí chưa hiệu lực hoặc đang áp dụng, không đổi ngày hiệu lực
    *
-   * - Khóa row mức phí, rồi khóa bảng ở chế độ SHARE ROW EXCLUSIVE tới hết transaction: chờ và chặn đặt mức mới chen vào làm đổi mức đang áp dụng
+   * - Khóa bảng ở chế độ SHARE ROW EXCLUSIVE tới hết transaction rồi khóa row mức phí: chờ và chặn đặt mức mới chen vào làm đổi mức đang áp dụng
    * - Số tiền không đổi: không ghi, không ghi nhật ký, trả về mức phí hiện có
    * - Số tiền đổi: cập nhật và ghi nhật ký kèm số tiền trước/sau và lý do
    *
@@ -122,12 +122,12 @@ export class DailyFeesService {
   ): Promise<DailyFeeResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const fee = await this.dataSource.transaction(async (manager) => {
+      await manager.query('LOCK TABLE daily_fees IN SHARE ROW EXCLUSIVE MODE');
       const locked = await manager.findOne(DailyFeeEntity, {
         where: { id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!locked) throw new NotFoundException('Không tìm thấy mức phí');
-      await manager.query('LOCK TABLE daily_fees IN SHARE ROW EXCLUSIVE MODE');
       const today = clubToday();
       const current = await manager.findOne(DailyFeeEntity, {
         where: { effectiveFrom: LessThanOrEqual(today) },
