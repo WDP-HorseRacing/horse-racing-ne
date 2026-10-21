@@ -177,3 +177,19 @@ Mỗi con ngựa có tối đa một bệnh án đang mở. Bệnh án là một
 - Dữ liệu nạp thẳng vào DB mà thiếu dòng tạo hồ sơ thì báo cáo phí tính sai; seed đã ghi đủ.
 - Báo cáo phí kỳ dài chậm vì phải tra nhật ký cho từng ngày.
 - Hướng làm khi hệ thống lớn: tách bảng lịch sử vòng đời và lịch sử sức khỏe riêng như bảng giai đoạn sở hữu, ghi trong cùng giao dịch, rồi chuyển các chỗ đọc sang bảng mới.
+
+## Lịch chăm sóc y tế
+
+### 23. Sao không chặn tạo hai lịch tiêm phòng, tẩy giun hay làm móng cùng loại cho một ngựa? (B17)
+
+**Trả lời:** Nhiều lịch cùng loại là cách dùng hợp lệ: bác sĩ lên trước nhiều đợt (tẩy giun tháng 3, 7, 11; làm móng mỗi 6 tuần), hoặc cùng loại nhưng khác việc (hai mũi vắc-xin khác nhau, cắt sửa móng và đóng móng), phân biệt bằng ghi chú của lịch. Chỉ khám định kỳ mới giới hạn một lịch chờ cho mỗi ngựa, tái khám một lịch cho mỗi buổi khám.
+
+**Đánh đổi đã biết:** lỡ tạo trùng thì hệ thống không chặn; bác sĩ thấy hai lịch giống nhau trên dashboard y tế và hủy một lịch.
+
+## Kho vật tư
+
+### 24. Nâng ngưỡng tồn thấp làm vật tư rơi vào diện sắp hết mà sao không ai được báo? (B19)
+
+**Trả lời:** Thông báo sắp hết hàng gửi cho CLUB MANAGER, và chỉ CLUB MANAGER sửa được ngưỡng; người nâng ngưỡng là người nhận thông báo nên đã biết. Thông báo chỉ phát khi lần xuất dùng làm tồn đi xuống tới ngưỡng, tức là lúc có thay đổi mà CLUB MANAGER không trực tiếp làm. Danh sách "Sắp hết" luôn tính theo ngưỡng hiện tại nên vẫn hiện vật tư đó.
+
+**Đánh đổi đã biết:** câu lạc bộ có nhiều CLUB MANAGER thì những người còn lại không nhận thông báo khi một người nâng ngưỡng; họ thấy vật tư trong danh sách "Sắp hết".
