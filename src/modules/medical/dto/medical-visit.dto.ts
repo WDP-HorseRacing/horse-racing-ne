@@ -17,7 +17,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/validation/dto-input';
 import { HorseMeasurementValueDto } from '../../horses/dto';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import {

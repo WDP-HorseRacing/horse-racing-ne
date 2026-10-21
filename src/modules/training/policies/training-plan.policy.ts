@@ -1,4 +1,4 @@
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
 import { totalPlanWeeks } from './training.policy';
 
 interface PlanPhaseInput {

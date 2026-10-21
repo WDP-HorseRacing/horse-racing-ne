@@ -8,7 +8,7 @@ import { KeycloakTokenService } from '../../../common/infrastructure/keycloak/to
 import type { KeycloakIdentityProvider } from '../../../common/infrastructure/keycloak/types/oidc';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';

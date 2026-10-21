@@ -8,7 +8,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 
 const MAX_DAILY_SURCHARGE_VND = 1_000_000_000;
 

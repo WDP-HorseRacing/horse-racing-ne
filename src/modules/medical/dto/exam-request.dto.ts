@@ -9,14 +9,14 @@ import {
   MinLength,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
-import { toQueryBoolean } from '../../../common/utils/query-boolean';
+import { toQueryBoolean } from '../../../common/utils/query/query-boolean';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-alert.enum';
 import {
   ExamRequestSource,
   ExamRequestStatus,
 } from '../constants/exam-request.enum';
-import { trimValue } from '../../../common/utils/dto-input';
+import { trimValue } from '../../../common/utils/validation/dto-input';
 
 /**
  * Gửi yêu cầu khám khi ngựa có vấn đề.

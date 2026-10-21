@@ -4,7 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
-import { fieldConflict } from '../../../common/utils/field-errors';
+import { fieldConflict } from '../../../common/utils/validation/field-errors';
 import { USAGE_SELF_CANCEL_HOURS } from '../constants/supply-stock.constants';
 import { SupplyCategory } from '../enums/supply-category.enum';
 import { SupplyRequestStatus } from '../enums/supply-request-status.enum';

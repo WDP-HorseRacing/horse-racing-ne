@@ -5,9 +5,9 @@ import { PaginationResponseDto } from '../../../common/dto/pagination-response.d
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
-import { changedFieldsDiff } from '../../../common/utils/record-diff';
+import { deterministicUuid } from '../../../common/utils/data/deterministic-uuid';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/data/record-diff';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';

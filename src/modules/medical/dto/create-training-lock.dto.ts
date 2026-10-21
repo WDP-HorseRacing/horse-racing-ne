@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/validation/dto-input';
 
 /**
  * Bác sĩ đặt khóa huấn luyện. Thời điểm bắt đầu là lúc đặt.

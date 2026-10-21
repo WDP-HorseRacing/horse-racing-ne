@@ -10,7 +10,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
+import { trimValue } from '../../../common/utils/validation/dto-input';
 import {
   MAX_TRIAL_TIME_MESSAGE,
   MAX_TRIAL_TIME_MS,

@@ -19,12 +19,12 @@ import type { Actor } from '../../../common/types/actor';
 import {
   fieldConflict,
   type FieldError,
-} from '../../../common/utils/field-errors';
-import { changedFieldsDiff } from '../../../common/utils/record-diff';
+} from '../../../common/utils/validation/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/data/record-diff';
 import {
   mapAnyUniqueViolation,
   mapUniqueViolation,
-} from '../../../common/utils/unique-violation';
+} from '../../../common/utils/database/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';

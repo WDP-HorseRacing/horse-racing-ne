@@ -12,8 +12,8 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
-import { toQueryBoolean } from '../../../common/utils/query-boolean';
+import { trimValue } from '../../../common/utils/validation/dto-input';
+import { toQueryBoolean } from '../../../common/utils/query/query-boolean';
 import { BarnStatus } from '../constants/barn-status.enum';
 
 export class CreateBarnDto {

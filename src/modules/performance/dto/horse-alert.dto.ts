@@ -3,7 +3,7 @@ import { IsIn, IsOptional } from 'class-validator';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 
 export class HorseAlertQueryDto extends PickType(PaginationQueryDto, [
   'page',

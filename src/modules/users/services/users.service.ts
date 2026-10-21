@@ -14,10 +14,10 @@ import {
   Repository,
 } from 'typeorm';
 import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
-import { containsPattern } from '../../../common/utils/like-pattern';
+import { containsPattern } from '../../../common/utils/query/like-pattern';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
-import { fieldConflict } from '../../../common/utils/field-errors';
+import { fieldConflict } from '../../../common/utils/validation/field-errors';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';

@@ -3,7 +3,7 @@ import { EntityManager, IsNull, Not } from 'typeorm';
 import {
   fieldBadRequest,
   fieldConflict,
-} from '../../../common/utils/field-errors';
+} from '../../../common/utils/validation/field-errors';
 import { HorseEntity } from '../entities/horse.entity';
 import {
   assertBornBeforeChildren,

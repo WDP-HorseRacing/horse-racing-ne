@@ -7,7 +7,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { IsIsoInstant } from '../../../common/utils/dto-input';
+import { IsIsoInstant } from '../../../common/utils/validation/dto-input';
 
 export class IngestMetricDto {
   @ApiProperty()

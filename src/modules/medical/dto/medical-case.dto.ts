@@ -17,7 +17,7 @@ import {
   IsDateOnly,
   IsIsoInstant,
   trimValue,
-} from '../../../common/utils/dto-input';
+} from '../../../common/utils/validation/dto-input';
 
 /**
  * Lọc danh sách bệnh án của một con ngựa.

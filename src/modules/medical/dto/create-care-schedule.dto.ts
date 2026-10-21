@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { CareScheduleType } from '../constants/care-schedule.enum';
-import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/validation/dto-input';
 
 /**
  * Các loại lịch chăm sóc tạo tay, không gồm ngày hẹn khám định kỳ.

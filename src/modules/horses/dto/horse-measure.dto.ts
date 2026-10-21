@@ -23,7 +23,7 @@ import {
 import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
-import { IsIsoInstant } from '../../../common/utils/dto-input';
+import { IsIsoInstant } from '../../../common/utils/validation/dto-input';
 
 export class HorseMeasurementValueDto {
   @ApiProperty({ enum: HorseMeasurementType })

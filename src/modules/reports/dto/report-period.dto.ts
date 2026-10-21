@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional } from 'class-validator';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 
 export class ReportPeriodDto {
   @ApiPropertyOptional({

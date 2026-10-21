@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
-import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/validation/dto-input';
 
 /**
  * Lọc lịch khám định kỳ.

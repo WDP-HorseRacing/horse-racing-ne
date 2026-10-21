@@ -1,6 +1,6 @@
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { UserRole } from '../../../common/enums/role.enum';
-import type { FieldError } from '../../../common/utils/field-errors';
+import type { FieldError } from '../../../common/utils/validation/field-errors';
 import type {
   ReadOnlyLifecycleStatus,
   HorseMeasurementSpec,

@@ -8,7 +8,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { IsDateOnly, trimValue } from '../../../common/utils/dto-input';
+import { IsDateOnly, trimValue } from '../../../common/utils/validation/dto-input';
 
 const MAX_DAILY_FEE_VND = 1_000_000_000;
 

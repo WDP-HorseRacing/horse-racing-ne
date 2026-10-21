@@ -21,7 +21,7 @@ import {
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { SortOrder } from '../../../common/enums/sort-order.enum';
-import { toQueryBoolean } from '../../../common/utils/query-boolean';
+import { toQueryBoolean } from '../../../common/utils/query/query-boolean';
 import { HorseGender } from '../enums/horse-gender.enum';
 import { HorseListSortBy } from '../enums/horse-list-sort.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
@@ -37,7 +37,7 @@ import {
   HorsePersonDto,
   HorseEligibilityDto,
 } from './horse.dto';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 
 const LETTERS_PATTERN = /^\p{L}+(?:[ '-]\p{L}+)*$/u;
 const MICROCHIP_PATTERN = /^\d{15}$/;

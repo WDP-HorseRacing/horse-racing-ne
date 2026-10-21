@@ -21,7 +21,7 @@ import {
 import { RaceAptitude } from '../../horses/enums/race-aptitude.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingPlanSubjectResponseDto } from './training-plan.dto';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 import { INT_COLUMN_MAX } from '../constants/column-limits.constants';
 
 export class CreateTrainingClassDto {
