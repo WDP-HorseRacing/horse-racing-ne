@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -61,7 +69,10 @@ export class TrainingSessionsController {
 
   @Get('training-sessions/:sessionId')
   @ApiOkResponse({ type: TrainingSessionResponseDto })
-  get(@CurrentUser() actor: Actor, @Param('sessionId', ParseUUIDPipe) sessionId: string) {
+  get(
+    @CurrentUser() actor: Actor,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ) {
     return this.sessions.getSessionById(actor, sessionId);
   }
 

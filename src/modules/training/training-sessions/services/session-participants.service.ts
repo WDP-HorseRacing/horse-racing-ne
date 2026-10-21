@@ -180,6 +180,7 @@ export class SessionParticipantsService {
    * @throws ConflictException Nếu buổi không ở trạng thái thực thi, lượt đã kết thúc, hoặc Groom đang dắt lượt khác trùng giờ
    * @throws BadRequestException Nếu groomId không phải Groom đang hoạt động
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async assignGroom(
     actor: Actor,
     participantId: string,
@@ -300,6 +301,7 @@ export class SessionParticipantsService {
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
    * @throws ConflictException Nếu buổi không ở trạng thái thực thi (trừ buổi COMPLETED khi lượt ABSENT), ngoài khung giờ điểm danh, lượt không ở PLANNED hoặc ABSENT, hoặc ngựa không còn được tập
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async checkIn(
     actor: Actor,
     participantId: string,
@@ -365,6 +367,7 @@ export class SessionParticipantsService {
     return toSessionParticipantResponse(outcome.participant);
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async absent(
     actor: Actor,
     participantId: string,
@@ -386,6 +389,7 @@ export class SessionParticipantsService {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async ready(
     actor: Actor,
     participantId: string,
@@ -422,6 +426,7 @@ export class SessionParticipantsService {
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
    * @throws ConflictException Nếu lượt không ở READY, lớp chưa ACTIVE, buổi không ở trạng thái thực thi, ngoài khung giờ bắt đầu, ngựa không còn được tập hoặc ngựa đang có lượt ONGOING khác
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async start(
     actor: Actor,
     participantId: string,
@@ -510,6 +515,7 @@ export class SessionParticipantsService {
     return toSessionParticipantResponse(outcome.participant);
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async complete(
     actor: Actor,
     participantId: string,
@@ -539,6 +545,7 @@ export class SessionParticipantsService {
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
    * @throws ConflictException Nếu lượt không ở ONGOING hoặc buổi không ở IN_PROGRESS
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async stop(
     actor: Actor,
     participantId: string,

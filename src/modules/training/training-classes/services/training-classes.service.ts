@@ -182,9 +182,9 @@ export class TrainingClassesService {
           : null,
       ),
     );
-    return visible.filter((row): row is TrainingClassEntity => !!row).map(
-      toTrainingClassResponse,
-    );
+    return visible
+      .filter((row): row is TrainingClassEntity => !!row)
+      .map(toTrainingClassResponse);
   }
 
   async get(actor: Actor, classId: string): Promise<TrainingClassResponseDto> {
@@ -448,6 +448,7 @@ export class TrainingClassesService {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async update(
     actor: Actor,
     classId: string,

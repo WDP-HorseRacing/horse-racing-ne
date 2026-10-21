@@ -429,6 +429,7 @@ export class TrainingSessionsService {
    * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp)
    * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp, môn học không tồn tại, nội dung sai theo loại môn, hoặc đổi giờ bắt đầu sang thời điểm không sau hiện tại (kiểm sau cùng, ngay trước khi lưu)
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async updateSession(
     actor: Actor,
     sessionId: string,
@@ -582,6 +583,7 @@ export class TrainingSessionsService {
    * @throws NotFoundException Nếu không có buổi tập hoặc lớp
    * @throws ConflictException Nếu buổi không còn hủy được, hoặc còn lượt Đang tập
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async cancelSession(
     actor: Actor,
     sessionId: string,
