@@ -10,7 +10,7 @@ import {
   compareDecimal,
   roundDecimal,
   subtractDecimal,
-} from '../../../common/utils/decimal';
+} from '../../../common/utils/number/decimal';
 import { SupplyItemEntity } from '../entities/supply-item.entity';
 import { SupplyLotEntity } from '../entities/supply-lot.entity';
 import { SupplyStockMovementEntity } from '../entities/supply-stock-movement.entity';

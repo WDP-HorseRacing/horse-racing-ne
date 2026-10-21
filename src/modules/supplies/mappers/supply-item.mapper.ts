@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { compareDecimal, multiplyDecimal } from '../../../common/utils/decimal';
+import { compareDecimal, multiplyDecimal } from '../../../common/utils/number/decimal';
 import {
   SupplyItemResponseDto,
   SupplyLotResponseDto,
