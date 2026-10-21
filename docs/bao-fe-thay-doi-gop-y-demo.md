@@ -8,6 +8,11 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 ## Ngày 21/10/2026
 
+### Tab Sắp tới của ngựa có lượt hủy do khóa tập
+
+- `GET /horses/:horseId/training/sessions?when=upcoming`: thêm lượt `participantStatus = CANCELLED_BY_LOCK` của buổi chưa tới giờ, lý do ở `cancelReason` (giống lượt `INELIGIBLE`). FE hiện nhãn "Hủy do khóa tập" kèm lý do. Response shape không đổi.
+- Cùng route thêm query `status` (không bắt buộc) lọc theo trạng thái lượt; nhiều giá trị thì lặp tham số `status=CANCELLED&status=CANCELLED_BY_LOCK`, giá trị sai 400; lọc cùng lúc với `when`, `classId`. Vd bỏ trống `when` + `status=CANCELLED` là mọi lượt đã hủy.
+
 ### Thời điểm đo do hệ thống ghi, không nhập lùi
 
 - `POST /horses/:horseId/measurements`: bỏ `measuredAt` trong body. Thời điểm đo là lúc lưu; gửi `measuredAt` nhận 400 "Không nhận ô measuredAt", không ghi gì. Các câu 400 "Thời điểm đo không được ở tương lai", "Chỉ được nhập lùi tối đa 7 ngày" không còn.

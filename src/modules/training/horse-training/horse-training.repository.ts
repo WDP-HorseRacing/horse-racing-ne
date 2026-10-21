@@ -24,6 +24,11 @@ const NOT_RUN_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.INELIGIBLE,
 ];
 
+const UPCOMING_NOT_RUN_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
+];
+
 /**
  * Các câu đọc lớp và lịch buổi tập theo con ngựa. Chỉ đọc.
  */
@@ -63,12 +68,13 @@ export class HorseTrainingRepository {
   /**
    * Đọc một trang lượt tập của ngựa kèm tổng số lượt khớp bộ lọc
    *
-   * - upcoming: lượt còn mở (PLANNED, PRESENT, READY, ONGOING) bất kể giờ, cùng lượt INELIGIBLE của buổi chưa tới giờ; gần nhất trước
+   * - upcoming: lượt còn mở (PLANNED, PRESENT, READY, ONGOING) bất kể giờ, cùng lượt CANCELLED_BY_LOCK, INELIGIBLE của buổi chưa tới giờ; gần nhất trước
    * - history: lượt đã kết thúc, kể cả lượt chạy xong trước giờ lịch; bỏ lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ; mới nhất trước
    * - Bỏ trống `when`: mọi buổi, mới nhất trước
+   * - Có `status`: chỉ giữ lượt có trạng thái thuộc danh sách, áp cùng lúc với `when` và lớp
    *
    * @param horseId UUID của ngựa
-   * @param filter Lớp, khoảng thời gian và trang cần lấy
+   * @param filter Lớp, trạng thái lượt, khoảng thời gian và trang cần lấy
    * @returns Promise trả về các lượt tập trong trang và tổng số lượt
    */
   async listSessions(
@@ -113,11 +119,12 @@ export class HorseTrainingRepository {
    * Dựng câu đọc lượt tập của một con ngựa theo bộ lọc, chưa chọn cột và chưa sắp xếp
    *
    * - Nối lượt tập với buổi, giáo án và lớp; đọc cả tài khoản đã xóa mềm
-   * - upcoming: lượt còn mở (PLANNED, PRESENT, READY, ONGOING) bất kể giờ, cùng lượt INELIGIBLE của buổi bắt đầu từ `now` trở đi
+   * - Có `status`: chỉ giữ lượt có trạng thái thuộc danh sách
+   * - upcoming: lượt còn mở (PLANNED, PRESENT, READY, ONGOING) bất kể giờ, cùng lượt CANCELLED_BY_LOCK, INELIGIBLE của buổi bắt đầu từ `now` trở đi
    * - history: lượt không còn mở, trừ lượt CANCELLED, CANCELLED_BY_LOCK, INELIGIBLE của buổi bắt đầu từ `now` trở đi
    *
    * @param horseId UUID của ngựa
-   * @param filter Lớp và khoảng thời gian cần lọc
+   * @param filter Lớp, trạng thái lượt và khoảng thời gian cần lọc
    * @returns Query builder của các lượt tập khớp bộ lọc
    */
   private sessionsOfHorse(
@@ -136,11 +143,16 @@ export class HorseTrainingRepository {
     if (filter.classId) {
       query.andWhere('class.id = :classId', { classId: filter.classId });
     }
+    if (filter.status?.length) {
+      query.andWhere('participant.status IN (:...statuses)', {
+        statuses: filter.status,
+      });
+    }
     query.setParameters({
       now: filter.now,
       open: OPEN_PARTICIPANT_STATUSES,
       notRun: NOT_RUN_PARTICIPANT_STATUSES,
-      ineligible: SessionParticipantStatus.INELIGIBLE,
+      upcomingNotRun: UPCOMING_NOT_RUN_PARTICIPANT_STATUSES,
     });
     if (filter.when === HorseTrainingSessionWhen.UPCOMING) {
       query.andWhere(
@@ -148,7 +160,7 @@ export class HorseTrainingRepository {
           qb
             .where('participant.status IN (:...open)')
             .orWhere(
-              'participant.status = :ineligible AND session.scheduledStartAt >= :now',
+              'participant.status IN (:...upcomingNotRun) AND session.scheduledStartAt >= :now',
             ),
         ),
       );

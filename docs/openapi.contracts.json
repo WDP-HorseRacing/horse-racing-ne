@@ -7671,13 +7671,38 @@
             "name": "when",
             "required": false,
             "in": "query",
-            "description": "upcoming: buổi chưa bắt đầu, gần nhất trước, không gồm lượt đã hủy; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả (kể cả lượt đã hủy), mới nhất trước",
+            "description": "upcoming: lượt còn mở, cùng lượt hủy do khóa tập hoặc không đủ điều kiện của buổi chưa bắt đầu, gần nhất trước; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả (kể cả lượt đã hủy), mới nhất trước",
             "schema": {
               "type": "string",
               "enum": [
                 "upcoming",
                 "history"
               ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Chỉ lấy lượt có trạng thái thuộc danh sách; nhiều giá trị thì lặp tham số (`status=CANCELLED&status=CANCELLED_BY_LOCK`); kết hợp với `when` và `classId`",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "PLANNED",
+                  "PRESENT",
+                  "READY",
+                  "ONGOING",
+                  "COMPLETED",
+                  "STOPPED",
+                  "ABSENT",
+                  "SKIPPED",
+                  "INELIGIBLE",
+                  "CANCELLED_BY_LOCK",
+                  "CANCELLED"
+                ]
+              }
             }
           }
         ],

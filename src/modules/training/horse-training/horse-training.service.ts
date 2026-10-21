@@ -100,12 +100,12 @@ export class HorseTrainingService {
    * Đọc một trang lịch buổi tập của con ngựa, mỗi buổi kèm kết quả time trial và đánh giá
    *
    * - Quyền và phạm vi xem như listClasses
-   * - Lọc theo lớp và theo buổi sắp tới / đã diễn ra (xem HorseTrainingRepository.listSessions)
+   * - Lọc theo lớp, theo trạng thái lượt và theo buổi sắp tới / đã diễn ra (xem HorseTrainingRepository.listSessions)
    * - Mỗi lần chạy có video thì kèm videoUrl (link có hạn); chỉ ký sau khi đã kiểm quyền xem ngựa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @param query Trang, lớp và khoảng thời gian cần lấy
+   * @param query Trang, lớp, trạng thái lượt và khoảng thời gian cần lấy
    * @returns Promise trả về một trang buổi tập của con ngựa
    * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
@@ -119,6 +119,7 @@ export class HorseTrainingService {
     const { rows, total } = await this.repository.listSessions(horseId, {
       classId: query.classId,
       when: query.when,
+      status: query.status,
       now: new Date(),
       skip: (query.page - 1) * query.limit,
       limit: query.limit,

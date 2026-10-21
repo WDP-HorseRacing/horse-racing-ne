@@ -6,6 +6,7 @@ import { HorsePlacementsService } from '../../src/modules/horses/horse-placement
 import { HorseProfilesService } from '../../src/modules/horses/horse-profiles/horse-profiles.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { HorseTrainingSessionWhen } from '../../src/modules/training/enums/horse-training-session-when.enum';
+import { SessionParticipantStatus } from '../../src/modules/training/enums/session-participant-status.enum';
 import { HorseTrainingRepository } from '../../src/modules/training/horse-training/horse-training.repository';
 import { HorseTrainingService } from '../../src/modules/training/horse-training/horse-training.service';
 import { fixtures } from './fixtures';
@@ -418,14 +419,26 @@ describe('Flow 1 read queries (Postgres)', () => {
         ]);
       });
 
-      it('lists upcoming sessions from now, nearest first, without cancelled ones', async () => {
+      it('lists upcoming sessions from now, nearest first, with lock cancellations but without other cancelled ones', async () => {
+        await dataSource.query(
+          `UPDATE session_participants SET cancel_reason = 'Ngựa đang bị khóa tập' WHERE id = $1`,
+          [ids.atNow],
+        );
+
         const { rows, total } = await list({
           when: HorseTrainingSessionWhen.UPCOMING,
         });
 
-        expect(total).toBe(1);
-        expect(rows.map((row) => row.participantId)).toEqual([ids.soon]);
+        expect(total).toBe(2);
+        expect(rows.map((row) => row.participantId)).toEqual([
+          ids.atNow,
+          ids.soon,
+        ]);
         expect(rows[0]).toMatchObject({
+          participantStatus: 'CANCELLED_BY_LOCK',
+          cancelReason: 'Ngựa đang bị khóa tập',
+        });
+        expect(rows[1]).toMatchObject({
           className: 'Lớp A',
           planName: 'Giáo án',
           subjectName: null,
@@ -478,6 +491,7 @@ describe('Flow 1 read queries (Postgres)', () => {
         });
         expect(upcoming.rows.map((row) => row.participantId)).toEqual([
           stillRunning,
+          ids.atNow,
           ids.soon,
         ]);
 
@@ -518,6 +532,53 @@ describe('Flow 1 read queries (Postgres)', () => {
           participantStatus: 'STOPPED',
           stoppedReason: 'Ngựa đau chân',
         });
+      });
+
+      it('filters by one participant status', async () => {
+        const { rows, total } = await list({
+          status: [SessionParticipantStatus.CANCELLED],
+        });
+
+        expect(total).toBe(1);
+        expect(rows.map((row) => row.participantId)).toEqual([ids.cancelled]);
+      });
+
+      it('filters by several participant statuses, newest first', async () => {
+        const { rows, total } = await list({
+          status: [
+            SessionParticipantStatus.CANCELLED,
+            SessionParticipantStatus.CANCELLED_BY_LOCK,
+          ],
+        });
+
+        expect(total).toBe(2);
+        expect(rows.map((row) => row.participantId)).toEqual([
+          ids.cancelled,
+          ids.atNow,
+        ]);
+      });
+
+      it('applies the status filter together with when and class', async () => {
+        const lockUpcoming = await list({
+          when: HorseTrainingSessionWhen.UPCOMING,
+          status: [SessionParticipantStatus.CANCELLED_BY_LOCK],
+        });
+        expect(lockUpcoming.total).toBe(1);
+        expect(lockUpcoming.rows.map((row) => row.participantId)).toEqual([
+          ids.atNow,
+        ]);
+
+        const cancelledUpcoming = await list({
+          when: HorseTrainingSessionWhen.UPCOMING,
+          status: [SessionParticipantStatus.CANCELLED],
+        });
+        expect(cancelledUpcoming.total).toBe(0);
+
+        const otherClass = await list({
+          classId: classA,
+          status: [SessionParticipantStatus.CANCELLED_BY_LOCK],
+        });
+        expect(otherClass.total).toBe(0);
       });
 
       it('pages with skip and limit while total counts every match', async () => {

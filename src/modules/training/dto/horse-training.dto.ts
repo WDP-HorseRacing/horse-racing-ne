@@ -1,7 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
+import { toQueryArray } from '../../../common/utils/query-array';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { HorseTrainingSessionWhen } from '../enums/horse-training-session-when.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
@@ -222,11 +231,23 @@ export class HorseTrainingSessionQueryDto {
   @ApiPropertyOptional({
     enum: HorseTrainingSessionWhen,
     description:
-      'upcoming: buổi chưa bắt đầu, gần nhất trước, không gồm lượt đã hủy; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả (kể cả lượt đã hủy), mới nhất trước',
+      'upcoming: lượt còn mở, cùng lượt hủy do khóa tập hoặc không đủ điều kiện của buổi chưa bắt đầu, gần nhất trước; history: buổi đã bắt đầu, mới nhất trước; bỏ trống: tất cả (kể cả lượt đã hủy), mới nhất trước',
   })
   @IsOptional()
   @IsEnum(HorseTrainingSessionWhen)
   when?: HorseTrainingSessionWhen;
+
+  @ApiPropertyOptional({
+    enum: SessionParticipantStatus,
+    isArray: true,
+    description:
+      'Chỉ lấy lượt có trạng thái thuộc danh sách; nhiều giá trị thì lặp tham số (`status=CANCELLED&status=CANCELLED_BY_LOCK`); kết hợp với `when` và `classId`',
+  })
+  @IsOptional()
+  @Transform(toQueryArray)
+  @ArrayMinSize(1)
+  @IsEnum(SessionParticipantStatus, { each: true })
+  status?: SessionParticipantStatus[];
 }
 
 export class HorseTrainingSessionPageDto {

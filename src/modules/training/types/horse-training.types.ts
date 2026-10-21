@@ -76,6 +76,8 @@ export interface HorseTrainingSessionFilter {
   classId?: string;
   /** Buổi chưa bắt đầu hoặc đã bắt đầu so với `now`; bỏ trống là tất cả */
   when?: HorseTrainingSessionWhen;
+  /** Chỉ lấy lượt có trạng thái thuộc danh sách; bỏ trống là mọi trạng thái */
+  status?: SessionParticipantStatus[];
   /** Mốc thời gian để chia upcoming/history */
   now: Date;
   /** Số dòng bỏ qua */
