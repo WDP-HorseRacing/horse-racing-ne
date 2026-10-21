@@ -1,6 +1,6 @@
 import { ACCESS_KEY } from '../../../../common/constants/auth.constants';
 import { UserRole } from '../../../../common/enums/role.enum';
-import { TrialResultsController } from '../../time-trials/trial-results.controller';
+import { TrialResultsController } from '../../time-trial/trial-results.controller';
 import { SessionParticipantsController } from './session-participants.controller';
 
 function rolesOf(
