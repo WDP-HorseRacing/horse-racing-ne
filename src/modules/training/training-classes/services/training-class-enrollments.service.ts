@@ -327,7 +327,7 @@ export class TrainingClassEnrollmentsService {
       await this.operations.lockEnrollmentSessions(manager, [enrollmentId]);
       const row = await manager.findOne(HorseEnrollmentEntity, {
         where: { id: enrollmentId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       if (!row) throw new NotFoundException('Không tìm thấy ghi danh của ngựa');
       const trainingClass = await this.access.findTrainingClass(

@@ -54,7 +54,9 @@ describe('StallsService', () => {
   let rows: Map<unknown, Row>;
   let stallRows: Record<string, Row>;
   let manager: {
+    find: jest.Mock;
     findOne: jest.Mock;
+    findOneBy: jest.Mock;
     findOneOrFail: jest.Mock;
     exists: jest.Mock;
     existsBy: jest.Mock;
@@ -121,6 +123,10 @@ describe('StallsService', () => {
       },
     };
     manager = {
+      find: jest.fn().mockResolvedValue([]),
+      findOneBy: jest.fn((entity: unknown) =>
+        Promise.resolve(rows.get(entity) ?? null),
+      ),
       findOne: jest.fn((entity: unknown, options: { where: { id?: string } }) =>
         Promise.resolve(
           entity === StallEntity
@@ -250,7 +256,7 @@ describe('StallsService', () => {
       );
       expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
         where: { id: 'b1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.save).not.toHaveBeenCalled();
     });
@@ -297,11 +303,11 @@ describe('StallsService', () => {
       await move();
       expect(manager.findOne).toHaveBeenCalledWith(HorseEntity, {
         where: { id: 'h1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.findOne).toHaveBeenCalledWith(StallEntity, {
         where: { id: 's1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
     });
 
@@ -425,11 +431,11 @@ describe('StallsService', () => {
       const result = await release();
       expect(manager.findOne).toHaveBeenCalledWith(HorseEntity, {
         where: { id: 'h1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.findOne).toHaveBeenCalledWith(StallAssignmentEntity, {
         where: { horseId: 'h1', endAt: anything },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.update).toHaveBeenCalledWith(
         StallAssignmentEntity,
@@ -494,7 +500,7 @@ describe('StallsService', () => {
       await end();
       expect(manager.findOne).toHaveBeenCalledWith(StallAssignmentEntity, {
         where: { id: 'sa-1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(stallAssignmentRepository.findOne).not.toHaveBeenCalled();
     });
@@ -526,7 +532,7 @@ describe('StallsService', () => {
         StallEntity,
         expect.objectContaining({
           where: { id: 's0' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         }),
       );
       expect(manager.update).toHaveBeenCalledWith(
@@ -607,7 +613,7 @@ describe('StallsService', () => {
       ).resolves.toEqual({ stallId: 's0', stallCode: 'A-00' });
       expect(manager.findOne).toHaveBeenCalledWith(StallAssignmentEntity, {
         where: { horseId: 'h1', endAt: anything },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.update).toHaveBeenCalledWith(
         StallAssignmentEntity,
@@ -656,7 +662,7 @@ describe('StallsService', () => {
         await create();
         expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
           where: { id: 'b1' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
         expect(manager.findOne.mock.invocationCallOrder[1]).toBeLessThan(
           manager.count.mock.invocationCallOrder[0],
@@ -744,7 +750,7 @@ describe('StallsService', () => {
         await service.update(actor(), 's1', { code: 'A-11' });
         expect(manager.findOne).toHaveBeenCalledWith(StallEntity, {
           where: { id: 's1' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
       });
 
@@ -771,7 +777,7 @@ describe('StallsService', () => {
         );
         expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
           where: { id: 'b2' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
         expect(manager.save).not.toHaveBeenCalled();
       });
@@ -1096,7 +1102,7 @@ describe('StallsService', () => {
         await service.remove(actor(), 's1');
         expect(manager.findOne).toHaveBeenCalledWith(StallEntity, {
           where: { id: 's1' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
         expect(manager.exists).toHaveBeenCalledWith(StallAssignmentEntity, {
           where: { stallId: 's1', endAt: expect.anything() as unknown },

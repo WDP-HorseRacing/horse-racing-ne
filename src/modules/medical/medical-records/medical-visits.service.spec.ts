@@ -1042,7 +1042,7 @@ describe('MedicalVisitsService', () => {
       expect(access.lockHorseForWrite).not.toHaveBeenCalled();
       expect(manager.findOneOrFail).toHaveBeenCalledWith(MedicalRecordEntity, {
         where: { id: 'r1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(updatesOn(MedicalRecordEntity)).toEqual([
         [MedicalRecordEntity, { id: 'r1' }, { cost: '1500000' }],

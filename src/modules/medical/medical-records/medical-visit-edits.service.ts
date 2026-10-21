@@ -169,14 +169,14 @@ export class MedicalVisitEditsService {
       );
       const visit = await manager.findOneOrFail(MedicalRecordEntity, {
         where: { id: recordId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       assertVisitAuthor(visit.vetId, caller.id, VISIT_EDIT_AUTHOR_ONLY_MESSAGE);
       assertVisitEditable(visit.voidedAt);
       const medicalCase = visit.caseId
         ? await manager.findOneOrFail(MedicalCaseEntity, {
             where: { id: visit.caseId },
-            lock: { mode: 'pessimistic_write' },
+            lock: { mode: 'for_no_key_update' },
           })
         : null;
       const plan = await this.planEdit(
@@ -383,7 +383,8 @@ export class MedicalVisitEditsService {
     const addedRequests = addedIds.length
       ? await manager.find(MedicalExamRequestEntity, {
           where: { id: In(addedIds) },
-          lock: { mode: 'pessimistic_write' },
+          order: { id: 'ASC' },
+          lock: { mode: 'for_no_key_update' },
         })
       : [];
     assertRequestsAttachable(addedIds, addedRequests, horse.id);

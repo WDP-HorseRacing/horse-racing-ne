@@ -155,7 +155,7 @@ export class TrainingAccessService {
   ): Promise<HorseEntity> {
     const horse = await manager.findOne(HorseEntity, {
       where: { id: horseId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
     return horse;
@@ -177,7 +177,7 @@ export class TrainingAccessService {
       .select('horse.id')
       .where('horse.id IN (:...horseIds)', { horseIds })
       .orderBy('horse.id', 'ASC')
-      .setLock('pessimistic_write')
+      .setLock('for_no_key_update')
       .getMany();
   }
 
@@ -260,7 +260,7 @@ export class TrainingAccessService {
       select: { id: true },
       where: { id: In(ids) },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 
@@ -283,7 +283,7 @@ export class TrainingAccessService {
       select: { id: true },
       where: { id: In(ids) },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 
@@ -561,7 +561,7 @@ export class TrainingAccessService {
   ): Promise<TrainingClassEntity> {
     const row = await manager.findOne(TrainingClassEntity, {
       where: { id },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!row) throw new NotFoundException('Không tìm thấy lớp huấn luyện');
     return row;
@@ -585,7 +585,7 @@ export class TrainingAccessService {
   ): Promise<TrainingSessionEntity> {
     const session = await manager.findOne(TrainingSessionEntity, {
       where: { id: sessionId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!session) throw new NotFoundException('Không tìm thấy buổi tập');
     return session;
@@ -633,7 +633,7 @@ export class TrainingAccessService {
   ): Promise<SessionParticipantEntity> {
     const participant = await manager.findOne(SessionParticipantEntity, {
       where: { id: participantId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!participant) throw new NotFoundException('Không tìm thấy lượt tập');
     return participant;

@@ -99,7 +99,7 @@ export class OutboxRelayService {
   /**
    * Nhận tối đa BATCH_SIZE event đến hạn, cũ nhất trước, và giữ chỗ LEASE_SECONDS cho relay này
    *
-   * - Dùng FOR UPDATE SKIP LOCKED: event relay khác đang nhận thì bỏ qua
+   * - Dùng FOR NO KEY UPDATE SKIP LOCKED: event relay khác đang nhận thì bỏ qua
    * - Mỗi lần nhận tăng attempts thêm 1
    *
    * @returns Promise trả về các event đã nhận
@@ -115,7 +115,7 @@ export class OutboxRelayService {
              AND next_attempt_at <= now()
            ORDER BY next_attempt_at, created_at
            LIMIT $1
-           FOR UPDATE SKIP LOCKED)
+           FOR NO KEY UPDATE SKIP LOCKED)
       RETURNING id, event_name AS "eventName", payload, attempts`,
       [BATCH_SIZE, LEASE_SECONDS],
     );

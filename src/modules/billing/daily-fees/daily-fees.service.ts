@@ -125,7 +125,7 @@ export class DailyFeesService {
       await manager.query('LOCK TABLE daily_fees IN SHARE ROW EXCLUSIVE MODE');
       const locked = await manager.findOne(DailyFeeEntity, {
         where: { id },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       if (!locked) throw new NotFoundException('Không tìm thấy mức phí');
       const today = clubToday();

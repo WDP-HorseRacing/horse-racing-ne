@@ -120,7 +120,7 @@ export class ChecklistsService {
       if (!found) throw new NotFoundException(CHECKLIST_ITEM_NOT_FOUND);
       const checklist = await manager.findOneOrFail(DailyChecklistEntity, {
         where: { id: found.checklistId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       assertChecklistGroom(checklist.groomId, caller.id);
       assertChecklistToday(checklist.checklistDate, today);

@@ -46,6 +46,7 @@ describe('HorseDeletionsService', () => {
     exists: jest.Mock;
   };
   let manager: {
+    find: jest.Mock;
     findOne: jest.Mock;
     query: jest.Mock;
     getRepository: jest.Mock;
@@ -98,6 +99,7 @@ describe('HorseDeletionsService', () => {
       ),
     };
     manager = {
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn((entity: unknown) =>
         Promise.resolve(
           entity === UserEntity

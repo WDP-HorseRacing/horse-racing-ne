@@ -576,3 +576,77 @@ Quy tắc:
   `AT TIME ZONE $n` với `CLUB_TIME_ZONE` thì giữ.
 - Server và DB chạy ở múi giờ nào cũng được (mặc định khi deploy là UTC). Đổi múi
   giờ của CLB chỉ cần đổi `CLUB_TIME_ZONE`.
+
+## 17. Thứ tự khóa và mức khóa
+
+Mọi luồng ghi khóa row theo cùng một thứ tự. Hai luồng chạy cùng lúc mà khóa hai
+row theo chiều ngược nhau thì Postgres hủy một bên (`40P01`), người dùng nhận 500.
+
+### Luật chọn thứ tự
+
+1. **Cha trước con theo khóa ngoại sở hữu.** Khóa ngoại sở hữu là cột không đổi
+   sau khi tạo row: lượt thuộc buổi, ghi danh và ngựa; xếp ô thuộc ô và ngựa;
+   dòng checklist thuộc checklist; lô thuộc vật tư. Biết id con mà cần khóa cha
+   thì đọc con không khóa để lấy id cha, khóa cha, rồi mới khóa con.
+2. **Khóa ngoại tham chiếu không tạo quan hệ cha con.** Cột đổi được như
+   `horses.barn_id`, `horses.owner_id`, `stalls.barn_id`, `*.groom_id`,
+   `head_trainer_id`, `*_by` chỉ là con trỏ; vị trí của bảng được trỏ tới theo
+   luật 3. Đi theo con trỏ đổi được (vd khu của ngựa) thì đọc không khóa, khóa
+   row được trỏ, khóa row giữ con trỏ, rồi dùng giá trị sau khi khóa.
+3. **Bảng ngang hàng: tầng rộng trước tầng hẹp**, trong một tầng thì cha trước
+   con, còn lại theo tên bảng:
+   1. Danh mục toàn câu lạc bộ: `daily_fees` (khóa bảng trước khóa row),
+      `daily_task_types`, `training_subjects`, `races`, `supply_items` →
+      `supply_requests` → `supply_lots` → `supply_stock_movements`.
+   2. Hạ tầng: `barns` → `stalls`.
+   3. Khung đào tạo: `training_plans` → giai đoạn, môn của giáo án →
+      `training_classes` → giai đoạn, môn của lớp → `training_sessions`.
+   4. Ngựa: khóa phả hệ (`pg_advisory_xact_lock`) → `horses` → các bảng con của
+      ngựa: `stall_assignments`, `groom_assignments`, `horse_enrollments` →
+      `session_participants` → `trial_results`, `performance_evaluations`;
+      `incidents`, `medical_cases`, `medical_records` → đơn thuốc, vết thương,
+      `medical_exam_requests`, `training_locks`, `care_schedules`, số đo;
+      `daily_checklists` → dòng checklist; `feeding_plans` → dòng khẩu phần;
+      việc riêng, lịch sử sở hữu, phụ phí, đăng ký đua.
+   5. Người: `users` khóa sau cùng. Nhiều lần khóa user trong một luồng theo vai
+      trò CM → HT → Groom → chủ ngựa.
+4. **Cùng loại theo id.** Khóa nhiều row cùng bảng trong một câu
+   `ORDER BY id`; helper nhận danh sách id thì bỏ trùng và sắp trước khi khóa
+   (`lockUsers`, `lockHorses`, `lockSessions`, `lockParticipants`).
+5. **Cổng ngựa.** Luồng đã khóa ngựa thì các bảng con của ngựa đó chỉ cần khóa sau
+   ngựa và cha sở hữu trước con; giữa các bảng con ngang hàng không bắt buộc thứ
+   tự. Luồng không khóa ngựa vẫn theo thứ tự đầy đủ (vd hủy lớp: lớp → buổi → ghi
+   danh → lượt).
+6. **Luồng một khóa.** Luồng chỉ khóa một loại row và không chờ khóa nào khác
+   sau đó (tick checklist, đóng sự cố, áp phụ phí, cron cập nhật hàng loạt một
+   bảng) được bỏ qua cổng ngựa.
+
+Khóa sẵn trước khi kiểm thì dùng helper không ném lỗi (`lockSessions`,
+`lockBarnOfHorse`, `lockOpenStallOfHorse`, `lockHorseSessions`...), rồi gọi lại
+helper khóa có kiểm ở đúng chỗ cũ. Khóa lại row đã giữ không chờ, nên thứ tự lỗi
+trả về không đổi.
+
+### Mức khóa
+
+| Trường hợp | Mức |
+|---|---|
+| Sửa row, hoặc khóa làm cổng cho các bảng con (ngựa, lớp, buổi, khu, vật tư) | `for_no_key_update` |
+| Chỉ cần row không bị đổi hoặc xóa, cho nhiều bên đọc cùng lúc (user chủ, HT được giao, lớp khi bắt đầu lượt, vật tư trong khẩu phần) | `pessimistic_read` (FOR SHARE) |
+| Khóa cha → kiểm không còn con → xóa cha (xóa môn, giáo án, khu, ô, vật tư, hồ sơ ngựa, mức phí) | `pessimistic_write` (FOR UPDATE) |
+
+`FOR NO KEY UPDATE` không chặn khóa `FOR KEY SHARE` mà Postgres lấy trên row cha
+khi INSERT hoặc UPDATE cột khóa ngoại, nên ghi nhật ký (`audit_logs.actor_id`)
+hay thêm row con không phải chờ khóa sửa của row cha. `FOR UPDATE` chặn cả khóa
+đó, nên chỉ dùng khi cần chặn row con mới trong lúc kiểm rồi xóa cha.
+
+### Thứ tự lỗi
+
+Thứ tự kiểm theo mục 6. Ngoại lệ: `StableAccessService.lockOperableHorse` kiểm
+vòng đời ngựa (409) và ngựa chưa có khu (409) trước phạm vi Head Trainer (403).
+
+### Kiểm tự động
+
+`test/integration/lock-order.int-spec.ts` đọc khóa ngoại thật từ `pg_constraint`
+và so với danh sách thứ tự trong test: thêm bảng mới hoặc khóa ngoại mới làm
+sai thứ tự thì test đỏ. Cặp thao tác chạy đồng thời được canh bằng các test ở
+`test/integration/findings/r3-race-findings.int-spec.ts`.

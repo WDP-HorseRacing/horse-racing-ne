@@ -67,8 +67,8 @@ export class ExamRequestWritesService {
         status: ExamRequestStatus.EXAMINED,
         ...(requestIds ? { id: In(requestIds) } : {}),
       },
-      order: { createdAt: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      order: { createdAt: 'ASC', id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
     });
     const reopened: MedicalExamRequestEntity[] = [];
     const dismissed: MedicalExamRequestEntity[] = [];

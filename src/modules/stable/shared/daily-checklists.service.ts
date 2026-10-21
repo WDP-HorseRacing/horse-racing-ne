@@ -44,12 +44,33 @@ export class DailyChecklistsService {
   constructor(private readonly events: DomainEventPublisher) {}
 
   /**
+   * Khóa các checklist của một con ngựa từ một ngày trở đi theo thứ tự UUID, không kiểm gì
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param fromDate Ngày bắt đầu, dạng YYYY-MM-DD
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHorseChecklistsFrom(
+    manager: EntityManager,
+    horseId: string,
+    fromDate: string,
+  ): Promise<void> {
+    await manager.find(DailyChecklistEntity, {
+      select: { id: true },
+      where: { horseId, checklistDate: MoreThanOrEqual(fromDate) },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+  }
+
+  /**
    * Chuyển checklist từ một ngày trở đi của groom cũ sang groom mới, kể cả checklist đã hoàn thành
    *
    * - Chỉ chuyển checklist của đúng con ngựa, của groom cũ và có ngày từ fromDate trở đi
    * - Checklist của ngày trước fromDate giữ nguyên groom cũ
    * - Việc đã tick giữ nguyên người tick và thời điểm tick
-   * - Lock các checklist sẽ chuyển (pessimistic_write) trước khi kiểm trùng ngày
+   * - Lock các checklist sẽ chuyển (for_no_key_update) trước khi kiểm trùng ngày
    * - Groom mới đã có checklist cùng ngày cho ngựa này thì báo lỗi, không gộp và không bỏ qua
    *
    * @param manager EntityManager của transaction đang chạy
@@ -74,7 +95,8 @@ export class DailyChecklistsService {
         groomId: fromGroomId,
         checklistDate: MoreThanOrEqual(fromDate),
       },
-      lock: { mode: 'pessimistic_write' },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (movedChecklists.length === 0) return [];
 
@@ -190,7 +212,7 @@ export class DailyChecklistsService {
   ): Promise<boolean> {
     const checklist = await manager.findOne(DailyChecklistEntity, {
       where: { horseId, checklistDate: date },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!checklist) return false;
     const lastPosition = await manager.maximum(
@@ -244,7 +266,7 @@ export class DailyChecklistsService {
   ): Promise<boolean> {
     const checklist = await manager.findOne(DailyChecklistEntity, {
       where: { horseId, checklistDate: date },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!checklist) return false;
     const removed = await manager.delete(DailyChecklistItemEntity, {

@@ -28,6 +28,7 @@ import { BarnsService } from './barns.service';
 
 describe('BarnsService', () => {
   let manager: {
+    find: jest.Mock;
     findOne: jest.Mock;
     existsBy: jest.Mock;
     create: jest.Mock;
@@ -49,6 +50,7 @@ describe('BarnsService', () => {
 
   beforeEach(() => {
     manager = {
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
       existsBy: jest.fn().mockResolvedValue(false),
       create: jest.fn((_entity: unknown, row: object) => row),
@@ -108,7 +110,7 @@ describe('BarnsService', () => {
       await expect(lock()).resolves.toMatchObject({ id: 'b1' });
       expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
         where: { id: 'b1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.query).toHaveBeenCalledWith(expect.any(String), [
         ['b1'],
@@ -466,7 +468,7 @@ describe('BarnsService', () => {
         await service.update(actor, 'b1', { name: 'Khu A2' });
         expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
           where: { id: 'b1' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
       });
 
@@ -687,6 +689,11 @@ describe('BarnsService', () => {
       it('locks the barn, soft-deletes it and records a DELETE audit', async () => {
         await service.remove(actor, 'b1');
         expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
+          where: { id: 'b1' },
+          lock: { mode: 'for_no_key_update' },
+        });
+        expect(manager.find).toHaveBeenCalledWith(BarnEntity, {
+          select: { id: true },
           where: { id: 'b1' },
           lock: { mode: 'pessimistic_write' },
         });

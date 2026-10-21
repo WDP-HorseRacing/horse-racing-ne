@@ -125,7 +125,7 @@ export class HorseAccessService {
   }
 
   /**
-   * Khóa row con ngựa (pessimistic_write) để thực hiện thao tác ghi. Dùng chung cho mọi thao tác ghi trong transaction
+   * Khóa row con ngựa (for_no_key_update) để thực hiện thao tác ghi. Dùng chung cho mọi thao tác ghi trong transaction
    *
    * - Tải kèm hồ sơ đã xóa mềm, phân biệt "không có" với "đã xóa"
    * - Hồ sơ đã xóa + người gọi có vai trò Club Manager: 409, phải khôi phục trước khi thao tác
@@ -268,7 +268,7 @@ export class HorseAccessService {
   }
 
   /**
-   * Tìm con ngựa kể cả hồ sơ đã xóa và khóa row của nó (pessimistic_write) tới hết transaction
+   * Tìm con ngựa kể cả hồ sơ đã xóa và khóa row của nó (for_no_key_update) tới hết transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -281,7 +281,7 @@ export class HorseAccessService {
     return manager.findOne(HorseEntity, {
       where: { id: horseId },
       withDeleted: true,
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 

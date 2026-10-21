@@ -310,7 +310,7 @@ export class HorseSurchargesService {
   ): Promise<HorseSurchargeEntity> {
     const row = await manager.findOne(HorseSurchargeEntity, {
       where: { id },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!row) throw new NotFoundException(SURCHARGE_NOT_FOUND);
     return row;

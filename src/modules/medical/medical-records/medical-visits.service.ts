@@ -264,7 +264,7 @@ export class MedicalVisitsService {
       );
       const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
         where: { id: caseId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       assertCaseOpen(medicalCase.status);
       if (nextVisitAt) assertNextVisitAt(nextVisitAt, now);
@@ -339,13 +339,13 @@ export class MedicalVisitsService {
       );
       const visit = await manager.findOneOrFail(MedicalRecordEntity, {
         where: { id: recordId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       assertVisitAuthor(visit.vetId, caller.id, VISIT_VOID_AUTHOR_ONLY_MESSAGE);
       const medicalCase = visit.caseId
         ? await manager.findOneOrFail(MedicalCaseEntity, {
             where: { id: visit.caseId },
-            lock: { mode: 'pessimistic_write' },
+            lock: { mode: 'for_no_key_update' },
           })
         : null;
       const otherActiveVisits = visit.caseId
@@ -503,7 +503,7 @@ export class MedicalVisitsService {
       );
       const visit = await manager.findOneOrFail(MedicalRecordEntity, {
         where: { id: recordId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       assertVisitAuthor(visit.vetId, caller.id, VISIT_COST_AUTHOR_ONLY_MESSAGE);
       assertVisitCostAdjustable(visit.voidedAt);
@@ -629,7 +629,8 @@ export class MedicalVisitsService {
     if (requestIds.length === 0) return [];
     const requests = await manager.find(MedicalExamRequestEntity, {
       where: { id: In(requestIds) },
-      lock: { mode: 'pessimistic_write' },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
     });
     assertRequestsAttachable(requestIds, requests, horseId);
     return requests;

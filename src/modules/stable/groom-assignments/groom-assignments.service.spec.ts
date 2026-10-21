@@ -84,7 +84,10 @@ describe('GroomAssignmentsService', () => {
   let workloads: { getGroomWorkloads: jest.Mock };
   let audit: { record: jest.Mock };
   let events: { publish: jest.Mock };
-  let training: { moveFutureParticipantsToGroom: jest.Mock };
+  let training: {
+    moveFutureParticipantsToGroom: jest.Mock;
+    lockOpenFutureParticipantsOfHorse: jest.Mock;
+  };
   let transaction: jest.Mock;
   let service: GroomAssignmentsService;
 
@@ -118,8 +121,12 @@ describe('GroomAssignmentsService', () => {
             : (rows.get(entity) ?? null),
         ),
       ),
-      findOneBy: jest.fn((entity: unknown) =>
-        Promise.resolve(rows.get(entity) ?? null),
+      findOneBy: jest.fn((entity: unknown, where: { id?: string }) =>
+        Promise.resolve(
+          entity === UserEntity && where.id
+            ? groomRow
+            : (rows.get(entity) ?? null),
+        ),
       ),
       find: jest.fn(
         (_entity: unknown, options: { where: { groomId: string } }) =>
@@ -142,6 +149,7 @@ describe('GroomAssignmentsService', () => {
     events = { publish: jest.fn().mockResolvedValue(undefined) };
     training = {
       moveFutureParticipantsToGroom: jest.fn().mockResolvedValue(['p1', 'p2']),
+      lockOpenFutureParticipantsOfHorse: jest.fn().mockResolvedValue(undefined),
     };
     transaction = jest.fn((work: (m: typeof manager) => Promise<unknown>) =>
       work(manager),
@@ -209,8 +217,12 @@ describe('GroomAssignmentsService', () => {
         where: { id: 'g-new' },
         lock: { mode: 'for_no_key_update' },
       });
+      const groomLockCall = manager.findOne.mock.calls.findIndex(
+        ([entity, options]: [unknown, { lock?: unknown }]) =>
+          entity === UserEntity && options.lock !== undefined,
+      );
       expect(transaction.mock.invocationCallOrder[0]).toBeLessThan(
-        manager.findOne.mock.invocationCallOrder[1],
+        manager.findOne.mock.invocationCallOrder[groomLockCall],
       );
     });
 
@@ -223,7 +235,7 @@ describe('GroomAssignmentsService', () => {
         );
         expect(manager.findOne).toHaveBeenCalledWith(BarnEntity, {
           where: { id: 'b1' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
         expect(manager.save).not.toHaveBeenCalled();
         expect(events.publish).not.toHaveBeenCalled();
@@ -277,7 +289,7 @@ describe('GroomAssignmentsService', () => {
       await assign();
       expect(manager.findOne).toHaveBeenCalledWith(HorseEntity, {
         where: { id: 'h1' },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
     });
 
@@ -387,7 +399,7 @@ describe('GroomAssignmentsService', () => {
           DailyChecklistEntity,
           expect.objectContaining({
             where: openChecklistFilter,
-            lock: { mode: 'pessimistic_write' },
+            lock: { mode: 'for_no_key_update' },
           }),
         );
         expect(manager.update).toHaveBeenCalledWith(
@@ -504,7 +516,7 @@ describe('GroomAssignmentsService', () => {
       ).resolves.toBe('g-old');
       expect(manager.findOne).toHaveBeenCalledWith(GroomAssignmentEntity, {
         where: { horseId: 'h1', endAt: anything },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
     });
   });

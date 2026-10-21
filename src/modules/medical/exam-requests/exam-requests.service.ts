@@ -458,7 +458,7 @@ export class ExamRequestsService {
   ): Promise<MedicalExamRequestEntity> {
     return manager.findOneOrFail(MedicalExamRequestEntity, {
       where: { id: requestId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 

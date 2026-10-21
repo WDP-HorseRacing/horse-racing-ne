@@ -164,7 +164,7 @@ export class PerformanceEvaluationsService {
       );
       const evaluation = await manager.findOne(PerformanceEvaluationEntity, {
         where: { sessionParticipantId: participantId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       if (!evaluation) throw new NotFoundException('Lượt tập chưa có đánh giá');
       assertSessionRecordEditable(session.status);

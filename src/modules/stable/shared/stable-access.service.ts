@@ -67,7 +67,7 @@ export type HorseInBarn = HorseEntity & { barnId: string };
  *
  * - Phạm vi Head Trainer theo khu lấy từ HorseAccessService (horses.barn_id)
  * - Luật "ngựa thao tác được": chưa xóa, chưa chuyển nhượng, đã có khu, Head Trainer phụ trách khu
- * - Lock khu chuồng (pessimistic_write) trước khi kiểm luật của khu
+ * - Lock khu chuồng (for_no_key_update) trước khi kiểm luật của khu
  * - Đếm ô chuồng và sức chứa của một khu
  */
 @Injectable()
@@ -77,7 +77,7 @@ export class StableAccessService {
   /**
    * Lock con ngựa và kiểm tra Head Trainer được thao tác trên nó (xếp ô, giao hoặc đổi groom)
    *
-   * - Lock row ngựa (pessimistic_write) trước khi kiểm, hồ sơ đã xóa coi như không có
+   * - Lock row ngựa (for_no_key_update) trước khi kiểm, hồ sơ đã xóa coi như không có
    * - Thứ tự kiểm: có ngựa → chưa chuyển nhượng → đã xếp khu → người gọi phụ trách khu
    * - Chỉ tính Head Trainer phụ trách khu, kể cả khi người gọi có thêm vai trò khác
    * - Không kiểm trạng thái khu; nơi cần thì gọi thêm lockActiveBarn
@@ -99,7 +99,7 @@ export class StableAccessService {
   ): Promise<HorseInBarn> {
     const horse = await manager.findOne(HorseEntity, {
       where: { id: horseId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
     assertHorseLifecycleWritable(horse, operation);
@@ -111,7 +111,7 @@ export class StableAccessService {
   /**
    * Lock con ngựa và kiểm người gọi được gắn, miễn hoặc gỡ việc riêng của nó
    *
-   * - Lock row ngựa (pessimistic_write) trước khi kiểm, hồ sơ đã xóa coi như không có
+   * - Lock row ngựa (for_no_key_update) trước khi kiểm, hồ sơ đã xóa coi như không có
    * - Thứ tự kiểm: có ngựa → chưa chuyển nhượng hay mất → phạm vi người gọi (assertCareTaskWriter)
    * - Veterinarian: mọi ngựa; Head Trainer: ngựa đã có khu và thuộc khu mình
    *
@@ -132,7 +132,7 @@ export class StableAccessService {
   ): Promise<{ horse: HorseEntity; inTrainerBarn: boolean }> {
     const horse = await manager.findOne(HorseEntity, {
       where: { id: horseId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
     assertHorseLifecycleWritable(horse, 'CARE_TASK');
@@ -246,7 +246,33 @@ export class StableAccessService {
   }
 
   /**
-   * Lock một khu chuồng (pessimistic_write), dùng khi đổi khu, thêm ô hoặc xếp ngựa vào khu
+   * Khóa khu chuồng hiện tại của một con ngựa (for_no_key_update) tới hết transaction, không kiểm gì
+   *
+   * - Đọc ngựa không khóa để lấy khu; ngựa không có hoặc chưa có khu thì bỏ qua
+   * - Nơi gọi chạy trước khi khóa ngựa
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  async lockBarnOfHorse(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    const horse = await manager.findOne(HorseEntity, {
+      select: { id: true, barnId: true },
+      where: { id: horseId },
+    });
+    if (!horse?.barnId) return;
+    await manager.find(BarnEntity, {
+      select: { id: true },
+      where: { id: horse.barnId },
+      lock: { mode: 'for_no_key_update' },
+    });
+  }
+
+  /**
+   * Lock một khu chuồng (for_no_key_update), dùng khi đổi khu, thêm ô hoặc xếp ngựa vào khu
    *
    * @param manager EntityManager của transaction đang chạy
    * @param barnId UUID của khu chuồng
@@ -261,7 +287,7 @@ export class StableAccessService {
   ): Promise<BarnEntity> {
     const barn = await manager.findOne(BarnEntity, {
       where: { id: barnId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!barn) throw new NotFoundException(notFoundMessage);
     return barn;

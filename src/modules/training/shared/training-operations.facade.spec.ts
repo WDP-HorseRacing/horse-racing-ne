@@ -109,7 +109,7 @@ describe('TrainingOperationsFacade.withdrawHorseFromClasses', () => {
       { status: HorseEnrollmentStatus.ACTIVE },
     );
     expect(enrollmentQb.setLock).toHaveBeenCalledWith(
-      'pessimistic_write',
+      'for_no_key_update',
       undefined,
       ['enrollment'],
     );
@@ -242,7 +242,7 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
       { from: AT },
     );
     expect(participantQb.setLock).toHaveBeenCalledWith(
-      'pessimistic_write',
+      'for_no_key_update',
       undefined,
       ['participant'],
     );
@@ -315,7 +315,7 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
       { from: AT },
     );
     expect(participantQb.setLock).toHaveBeenCalledWith(
-      'pessimistic_write',
+      'for_no_key_update',
       undefined,
       ['participant'],
     );

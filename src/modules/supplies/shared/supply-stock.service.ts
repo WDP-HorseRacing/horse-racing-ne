@@ -48,7 +48,7 @@ export class SupplyStockService {
   ): Promise<SupplyItemEntity> {
     const item = await manager.findOne(SupplyItemEntity, {
       where: { id: itemId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!item) throw new NotFoundException(SUPPLY_ITEM_NOT_FOUND);
     return item;
@@ -184,7 +184,7 @@ export class SupplyStockService {
     const lots = await manager.find(SupplyLotEntity, {
       where: { itemId: item.id, remaining: MoreThan('0') },
       order: { createdAt: 'ASC', id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     const takings: LotTaking[] = [];
     for (const lot of lots) {
@@ -246,7 +246,7 @@ export class SupplyStockService {
     const lots = await manager.find(SupplyLotEntity, {
       where: { id: In(usageRows.map((row) => row.lotId as string)) },
       order: { createdAt: 'ASC', id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     const takenByLot = new Map(usageRows.map((row) => [row.lotId, row.delta]));
     const usageId = usageRows[0].usageId;

@@ -236,7 +236,8 @@ export class HorseMeasurementsService {
   ): Promise<number> {
     const measurements = await manager.find(HorseMeasurementEntity, {
       where: { medicalRecordId: input.medicalRecordId },
-      lock: { mode: 'pessimistic_write' },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
     });
     for (const measurement of measurements) {
       await this.softDeleteMeasurement(manager, measurement, {
@@ -283,7 +284,8 @@ export class HorseMeasurementsService {
     assertDistinctMeasurementTypes(input.values.map((item) => item.type));
     const rows = await manager.find(HorseMeasurementEntity, {
       where: { medicalRecordId: input.medicalRecordId },
-      lock: { mode: 'pessimistic_write' },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
     });
     const byType = new Map(rows.map((row) => [row.type, row]));
     for (const item of input.values) {
@@ -381,7 +383,7 @@ export class HorseMeasurementsService {
 
       const measurement = await manager.findOne(HorseMeasurementEntity, {
         where: { id: measurementId, horseId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       if (!measurement) {
         throw new NotFoundException('Không tìm thấy bản ghi đo');

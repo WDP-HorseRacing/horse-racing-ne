@@ -149,7 +149,7 @@ export class TrainingSubjectsService {
         this.dataSource.transaction(async (manager) => {
           const row = await manager.findOne(TrainingSubjectEntity, {
             where: { id: subjectId },
-            lock: { mode: 'pessimistic_write' },
+            lock: { mode: 'for_no_key_update' },
           });
           if (!row) throw new NotFoundException(SUBJECT_NOT_FOUND);
           const before = subjectAuditData(row);

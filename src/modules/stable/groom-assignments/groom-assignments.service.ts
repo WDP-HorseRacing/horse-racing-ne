@@ -128,6 +128,7 @@ export class GroomAssignmentsService {
    * Giao hoặc đổi groom cho ngựa, chạy trong transaction của nơi gọi (luật như assign)
    *
    * - Ngựa chưa có checklist hôm nay thì sinh cho groom mới
+   * - Khóa khu của ngựa, ngựa, phân công đang mở, checklist từ hôm nay, các lượt mở sắp tới của ngựa, rồi mới khóa user Groom và kiểm lại Groom
    * - Không ghi event; nơi gọi ghi GROOM_ASSIGNMENT_CHANGED_EVENT với changedEvent trả về vào outbox trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
@@ -150,6 +151,7 @@ export class GroomAssignmentsService {
     changedEvent: GroomAssignmentChangedEvent | null;
   }> {
     return mapUniqueViolation(async () => {
+      await this.access.lockBarnOfHorse(manager, horseId);
       // Kiểm tra trạng thái của con ngựa (k tranfer) và quyền của người gọi
       const horse = await this.access.lockOperableHorse(
         manager,
@@ -159,16 +161,29 @@ export class GroomAssignmentsService {
       );
       // Kiểm tra trạng thái của khu chuồng
       await this.access.lockActiveBarn(manager, horse.barnId);
+      // Kiểm tra groom có hợp lệ không (active và đúng role)
+      assertAssignableGroom(
+        await manager.findOneBy(UserEntity, { id: groomId }),
+      );
+      const current = await manager.findOne(GroomAssignmentEntity, {
+        where: { horseId, endAt: IsNull() },
+        lock: { mode: 'for_no_key_update' },
+      });
+      await this.dailyChecklists.lockHorseChecklistsFrom(
+        manager,
+        horseId,
+        clubToday(),
+      );
+      await this.training.lockOpenFutureParticipantsOfHorse(
+        manager,
+        horseId,
+        new Date(),
+      );
       const groom = await manager.findOne(UserEntity, {
         where: { id: groomId },
         lock: { mode: 'for_no_key_update' },
       });
-      // Kiểm tra groom có hợp lệ không (active và đúng role)
       assertAssignableGroom(groom);
-      const current = await manager.findOne(GroomAssignmentEntity, {
-        where: { horseId, endAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
       // Nếu groom đã đc phân công cho ngựa này rồi thì thôi
       if (current?.groomId === groom.id) {
         return {
@@ -323,7 +338,7 @@ export class GroomAssignmentsService {
   ): Promise<string | null> {
     const current = await manager.findOne(GroomAssignmentEntity, {
       where: { horseId, endAt: IsNull() },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!current) return null;
     await manager.update(

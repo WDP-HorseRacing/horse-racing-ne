@@ -72,7 +72,10 @@ describe('HorseStatusesService', () => {
     lockOwnerAccount: jest.Mock;
   };
   let audit: { record: jest.Mock };
-  let stalls: { closeOpenStallAssignment: jest.Mock };
+  let stalls: {
+    lockOpenStallOfHorse: jest.Mock;
+    closeOpenStallAssignment: jest.Mock;
+  };
   let grooms: { endOpenGroomAssignment: jest.Mock };
   let trainingLocks: { releaseActiveLockByHorse: jest.Mock };
   let medicalLifecycle: {
@@ -176,6 +179,7 @@ describe('HorseStatusesService', () => {
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     stalls = {
+      lockOpenStallOfHorse: jest.fn().mockResolvedValue(undefined),
       closeOpenStallAssignment: jest
         .fn()
         .mockResolvedValue({ stallId: 's1', stallCode: 'A-01' }),

@@ -239,7 +239,7 @@ export class TrialResultsService {
       );
       const result = await manager.findOne(TrialResultEntity, {
         where: { sessionParticipantId: participantId, attemptNo },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       if (!result) {
         throw new NotFoundException('Không tìm thấy lần chạy thử');

@@ -273,6 +273,7 @@ export class IncidentsService {
   /**
    * Head Trainer của khu chuyển sự cố đang mở cho bác sĩ: tạo yêu cầu khám gắn sự cố
    *
+   * - Khóa ngựa của sự cố rồi mới khóa sự cố
    * - Khẩn: ghi event báo mọi bác sĩ vào outbox trong cùng transaction
    * - Ghi nhật ký kèm yêu cầu khám vừa tạo và mức khẩn
    *
@@ -291,13 +292,15 @@ export class IncidentsService {
   ): Promise<IncidentResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
-      const incident = await this.lockIncident(manager, id);
+      const snapshot = await manager.findOneBy(IncidentEntity, { id });
+      if (!snapshot) throw new NotFoundException(INCIDENT_NOT_FOUND);
       await this.access.lockOperableHorse(
         manager,
         caller.id,
-        incident.horseId,
+        snapshot.horseId,
         'INCIDENT',
       );
+      const incident = await this.lockIncident(manager, id);
       assertIncidentOpen(incident.status);
       assertIncidentNotReferred(
         await manager.exists(MedicalExamRequestEntity, {
@@ -481,7 +484,7 @@ export class IncidentsService {
   ): Promise<IncidentEntity> {
     const incident = await manager.findOne(IncidentEntity, {
       where: { id },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!incident) throw new NotFoundException(INCIDENT_NOT_FOUND);
     return incident;

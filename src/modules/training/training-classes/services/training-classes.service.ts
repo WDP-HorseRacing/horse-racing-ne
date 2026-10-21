@@ -393,7 +393,7 @@ export class TrainingClassesService {
       select: { id: true },
       where: { classId, status: HorseEnrollmentStatus.ACTIVE },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     const participants = await manager
       .getRepository(SessionParticipantEntity)

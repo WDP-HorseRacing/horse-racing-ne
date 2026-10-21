@@ -349,7 +349,7 @@ export class SupplyRequestsService {
   }
 
   /**
-   * Khóa row vật tư của một đề xuất (pessimistic_write, kể cả vật tư đã xóa) trước khi khóa đề xuất
+   * Khóa row vật tư của một đề xuất (for_no_key_update, kể cả vật tư đã xóa) trước khi khóa đề xuất
    *
    * - Không ném lỗi: không có đề xuất thì bỏ qua; nơi gọi tự kiểm đề xuất và vật tư sau đó
    *
@@ -370,7 +370,7 @@ export class SupplyRequestsService {
       select: { id: true },
       where: { id: request.itemId },
       withDeleted: true,
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 
@@ -388,7 +388,7 @@ export class SupplyRequestsService {
   ): Promise<SupplyRequestEntity> {
     const request = await manager.findOne(SupplyRequestEntity, {
       where: { id },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!request) throw new NotFoundException(SUPPLY_REQUEST_NOT_FOUND);
     return request;

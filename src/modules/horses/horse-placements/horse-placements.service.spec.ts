@@ -40,8 +40,9 @@ describe('HorsePlacementsService', () => {
     findById: jest.Mock;
     findByIdWithDeleted: jest.Mock;
   };
-  let barns: { lockAssignableBarn: jest.Mock };
+  let barns: { lockAssignableBarn: jest.Mock; lockBarnRow: jest.Mock };
   let stalls: {
+    lockOpenStallOfHorse: jest.Mock;
     closeOpenStallAssignment: jest.Mock;
     moveHorseToStallInTransaction: jest.Mock;
   };
@@ -140,6 +141,7 @@ describe('HorsePlacementsService', () => {
       findByIdWithDeleted: jest.fn(() => Promise.resolve(horse)),
     };
     barns = {
+      lockBarnRow: jest.fn().mockResolvedValue(undefined),
       lockAssignableBarn: jest.fn(
         track('lockAssignableBarn', { id: 'b2', headTrainerId: 'ht-2' }),
       ),
@@ -153,6 +155,7 @@ describe('HorsePlacementsService', () => {
       ),
     };
     stalls = {
+      lockOpenStallOfHorse: jest.fn().mockResolvedValue(undefined),
       moveHorseToStallInTransaction: jest.fn(
         track('moveHorseToStallInTransaction', { id: 'sa-1', stallId: 's1' }),
       ),

@@ -69,6 +69,11 @@ export class HorseDeletionsService {
       await this.pedigree.lockPedigree(manager);
       // Khoá con ngựa nếu con ngựa cho phép sửa (chưa xoá)
       const horse = await this.access.lockWritableHorse(manager, actor, id);
+      await manager.find(HorseEntity, {
+        select: { id: true },
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
       // Ngưa chưa chuyển nhượng
       assertLifecycleWritable(horse);
       // Ngưa chưa phát sinh dữ liệu nghiệp vụ

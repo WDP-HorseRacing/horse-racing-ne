@@ -263,7 +263,7 @@ export class MedicalCasesService {
     let totalCost = 0;
     const closed = await this.dataSource.transaction(async (manager) => {
       if (body.deceased === true) {
-        await this.horseStatuses.lockSessionsBeforeDeath(manager, horseId);
+        await this.horseStatuses.lockLifecycleRows(manager, horseId);
       }
       const { caller, horse } = await this.access.lockHorseForWrite(
         manager,
@@ -272,12 +272,12 @@ export class MedicalCasesService {
       );
       const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
         where: { id: caseId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       assertCaseOpen(medicalCase.status);
       const activeLock = await manager.findOne(TrainingLockEntity, {
         where: { caseId, status: TrainingLockStatus.ACTIVE },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       const lockExpectedEnd = body.lockExpectedEnd
         ? new Date(body.lockExpectedEnd)

@@ -9,6 +9,7 @@ import {
   DataSource,
   EntityManager,
   FindOptionsWhere,
+  In,
   IsNull,
   Repository,
 } from 'typeorm';
@@ -145,7 +146,7 @@ export class StallsService {
   /**
    * Tạo ô chuồng mới trong một khu. Ô mới luôn ở trạng thái AVAILABLE
    *
-   * - Chạy trong transaction, lock khu (pessimistic_write) rồi mới đếm số ô
+   * - Chạy trong transaction, lock khu (for_no_key_update) rồi mới đếm số ô
    * - Khu phải đang ACTIVE và còn chỗ theo sức chứa (khu không đặt sức chứa thì không giới hạn)
    * - Mã ô phải chưa tồn tại (ô đã xóa không tính)
    * - Ghi nhật ký CREATE, before null, after là các field vừa tạo
@@ -292,7 +293,7 @@ export class StallsService {
   /**
    * Xóa mềm một ô chuồng đang trống
    *
-   * - Chạy trong transaction, lock khu của ô rồi mới lock ô (pessimistic_write), cùng thứ tự khu → ô với moveHorseToStall
+   * - Chạy trong transaction, lock khu của ô rồi mới lock ô (for_no_key_update), cùng thứ tự khu → ô với moveHorseToStall
    * - Ô đang có dòng xếp ô mở thì không xóa
    * - Ô đang trống (AVAILABLE, không có dòng xếp mở): số ô trống còn lại của khu phải đủ cho ngựa đang chờ xếp ô
    * - Ghi nhật ký DELETE với thông tin ô trước khi xóa
@@ -309,6 +310,11 @@ export class StallsService {
 
     await this.dataSource.transaction(async (manager) => {
       const { stall } = await this.lockStallWithBarns(manager, id);
+      await manager.find(StallEntity, {
+        select: { id: true },
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
 
       const hasOpenAssignment = await this.hasOpenStallAssignment(manager, id);
       if (hasOpenAssignment) {
@@ -371,7 +377,7 @@ export class StallsService {
    *
    * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác.
    * - Ngựa phải đã được Club Manager xếp khu, chưa chuyển nhượng và chưa bị xóa. Ngựa đã giải nghệ vẫn xếp ô được.
-   * - Lock khu của ngựa (pessimistic_write), khu phải đang ACTIVE.
+   * - Lock khu của ngựa (for_no_key_update), khu phải đang ACTIVE.
    * - Ô đích phải thuộc đúng khu của ngựa, đang AVAILABLE và không có phân công đang mở.
    * - Đang ở ô khác thì đóng phân công cũ, trả ô cũ về AVAILABLE và mở phân công mới trong cùng transaction.
    * - Chọn lại đúng ô đang ở thì không thay đổi gì.
@@ -405,6 +411,8 @@ export class StallsService {
   /**
    * Xếp ngựa vào một ô chuồng hoặc chuyển ô, chạy trong transaction của nơi gọi (luật như moveHorseToStall)
    *
+   * - Khóa khu của ngựa, ô đích và ô đang ở (theo UUID) trước khi khóa ngựa
+   *
    * @param manager EntityManager của transaction đang chạy
    * @param callerId UUID của người gọi (users.id)
    * @param horseId UUID của ngựa
@@ -422,6 +430,15 @@ export class StallsService {
     stallId: string,
   ): Promise<StallAssignmentResponseDto> {
     return mapUniqueViolation(async () => {
+      await this.access.lockBarnOfHorse(manager, horseId);
+      const open = await manager.findOneBy(StallAssignmentEntity, {
+        horseId,
+        endAt: IsNull(),
+      });
+      await this.lockStallRows(manager, [
+        stallId,
+        ...(open ? [open.stallId] : []),
+      ]);
       // Kiểm tra trạng thái ngựa và người gọi có quyền thao tác trên ngựa
       const horse = await this.access.lockOperableHorse(
         manager,
@@ -516,10 +533,31 @@ export class StallsService {
   }
 
   /**
+   * Khóa ô chuồng của phân công ô đang mở của một con ngựa (for_no_key_update), không kiểm gì. Dùng cho module horses.
+   *
+   * - Đọc phân công không khóa; ngựa không có phân công mở thì bỏ qua
+   * - Nơi gọi chạy trước khi khóa ngựa
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  async lockOpenStallOfHorse(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    const open = await manager.findOneBy(StallAssignmentEntity, {
+      horseId,
+      endAt: IsNull(),
+    });
+    if (open) await this.lockStallRows(manager, [open.stallId]);
+  }
+
+  /**
    * Kết thúc một phân công ô đang mở và trả ô về trống.
    *
    * - Chỉ Head Trainer phụ trách khu của ngựa (horses.barn_id) được thao tác, kể cả khi người gọi có thêm vai trò khác.
-   * - Chạy trong một transaction: lock phân công (pessimistic_write) rồi mới kiểm tra đã kết thúc hay chưa.
+   * - Chạy trong một transaction: khóa ô và ngựa của phân công, rồi lock phân công (for_no_key_update) rồi mới kiểm tra đã kết thúc hay chưa.
    * - Lock ô chuồng trước khi đổi trạng thái; chỉ trả ô về AVAILABLE khi ô đang OCCUPIED và không còn phân công mở nào khác.
    * - Ghi nhật ký UPDATE cho phân công (endAt, mã ô).
    *
@@ -537,9 +575,21 @@ export class StallsService {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
 
     return this.dataSource.transaction(async (manager) => {
+      const snapshot = await manager.findOneBy(StallAssignmentEntity, {
+        id: assignmentId,
+      });
+      if (snapshot) {
+        await this.lockStallRows(manager, [snapshot.stallId]);
+        await manager.find(HorseEntity, {
+          select: { id: true },
+          where: { id: snapshot.horseId },
+          withDeleted: true,
+          lock: { mode: 'for_no_key_update' },
+        });
+      }
       const assignment = await manager.findOne(StallAssignmentEntity, {
         where: { id: assignmentId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       if (!assignment) {
         throw new NotFoundException('Không tìm thấy lượt phân công chuồng');
@@ -563,7 +613,7 @@ export class StallsService {
    * Gỡ ngựa khỏi ô chuồng đang ở, theo id ngựa thay vì id phân công
    *
    * - Chỉ Head Trainer phụ trách khu của ngựa được thao tác; ngựa đã chuyển nhượng hoặc chưa có khu trả 409
-   * - Chạy trong một transaction: lock ngựa, rồi lock phân công ô đang mở của ngựa
+   * - Chạy trong một transaction: khóa ô ngựa đang ở, lock ngựa, rồi lock phân công ô đang mở của ngựa
    * - Đóng phân công, trả ô về trống và ghi nhật ký giống endAssignment
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -580,6 +630,7 @@ export class StallsService {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
 
     return this.dataSource.transaction(async (manager) => {
+      await this.lockOpenStallOfHorse(manager, horseId);
       await this.access.lockOperableHorse(manager, caller.id, horseId, 'STALL');
       const assignment = await this.lockOpenAssignmentByHorse(manager, horseId);
       if (!assignment) {
@@ -592,7 +643,7 @@ export class StallsService {
   /**
    * Lock ô chuồng đích và kiểm ô thuộc đúng khu của ngựa, đang trống
    *
-   * - Lock ô (pessimistic_write) trước khi kiểm
+   * - Lock ô (for_no_key_update) trước khi kiểm
    * - Ô không còn trống: khu còn ô trống khác thì báo ô vừa bị chiếm, khu hết ô trống thì đề nghị Quản lý câu lạc bộ đổi khu
    *
    * @param manager EntityManager của transaction đang chạy
@@ -610,7 +661,7 @@ export class StallsService {
   ): Promise<StallEntity> {
     const stall = await manager.findOne(StallEntity, {
       where: { id: stallId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!stall) throw new NotFoundException('Không tìm thấy ô chuồng');
     if (stall.barnId !== barnId) {
@@ -706,7 +757,7 @@ export class StallsService {
   /**
    * Đóng một phân công ô đang mở và trả ô về AVAILABLE nếu ô đang OCCUPIED và không còn phân công mở nào khác.
    *
-   * - Lock ô chuồng (pessimistic_write) trước khi đổi trạng thái.
+   * - Lock ô chuồng (for_no_key_update) trước khi đổi trạng thái.
    *
    * @param manager EntityManager của transaction đang chạy
    * @param assignment Phân công ô đang mở (đã lock)
@@ -727,7 +778,7 @@ export class StallsService {
     const stall = await manager.findOneOrFail(StallEntity, {
       where: { id: assignment.stallId },
       withDeleted: true,
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     // Kiểm tra coi có phải là ô còn đang được phân công không
     const hasOtherOpenAssignment = await this.hasOpenStallAssignment(
@@ -748,7 +799,7 @@ export class StallsService {
   /**
    * Lock khu của ô (và khu đích nếu đổi khu) rồi mới lock ô, cùng thứ tự khu → ô với moveHorseToStall
    *
-   * - Đọc ô chưa lock để biết khu hiện tại, lock các khu theo UUID tăng dần (pessimistic_write), sau đó lock ô
+   * - Đọc ô chưa lock để biết khu hiện tại, lock các khu theo UUID tăng dần (for_no_key_update), sau đó lock ô
    * - Ô bị chuyển sang khu khác giữa lúc đọc và lúc lock thì báo 409
    * - Không kiểm trạng thái khu; nơi cần thì tự gọi assertBarnActive
    *
@@ -788,7 +839,7 @@ export class StallsService {
 
     const stall = await manager.findOne(StallEntity, {
       where: { id: stallId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!stall) throw new NotFoundException('Không tìm thấy ô chuồng');
     if (stall.barnId !== sourceBarnId) {
@@ -802,7 +853,7 @@ export class StallsService {
   /**
    * Chặn đưa một ô trống ra khỏi danh sách ô trống của khu khi khu không còn đủ ô cho ngựa đang chờ xếp ô
    *
-   * - Nơi gọi phải đã lock khu (pessimistic_write) và chỉ gọi khi ô đang trống
+   * - Nơi gọi phải đã lock khu (for_no_key_update) và chỉ gọi khi ô đang trống
    * - Đếm ô trống và ngựa chờ xếp ô như countStallCapacity / lockAssignableBarn
    *
    * @param manager EntityManager của transaction đang chạy
@@ -835,7 +886,29 @@ export class StallsService {
   }
 
   /**
-   * Lock phân công ô đang mở của một con ngựa (pessimistic_write)
+   * Khóa nhiều ô chuồng theo thứ tự UUID (for_no_key_update, kể cả ô đã xóa) tới hết transaction, không kiểm gì
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param stallIds UUID các ô cần khóa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  private async lockStallRows(
+    manager: EntityManager,
+    stallIds: string[],
+  ): Promise<void> {
+    const ids = [...new Set(stallIds)].sort();
+    if (ids.length === 0) return;
+    await manager.find(StallEntity, {
+      select: { id: true },
+      where: { id: In(ids) },
+      order: { id: 'ASC' },
+      withDeleted: true,
+      lock: { mode: 'for_no_key_update' },
+    });
+  }
+
+  /**
+   * Lock phân công ô đang mở của một con ngựa (for_no_key_update)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -847,7 +920,7 @@ export class StallsService {
   ): Promise<StallAssignmentEntity | null> {
     return manager.findOne(StallAssignmentEntity, {
       where: { horseId, endAt: IsNull() },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 }

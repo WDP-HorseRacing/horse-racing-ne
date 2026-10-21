@@ -511,7 +511,7 @@ export class CareSchedulesService {
   ): Promise<CareScheduleEntity> {
     return manager.findOneOrFail(CareScheduleEntity, {
       where: { id: scheduleId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 }

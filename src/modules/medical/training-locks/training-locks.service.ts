@@ -158,7 +158,7 @@ export class TrainingLockService {
       );
       const lock = await manager.findOneOrFail(TrainingLockEntity, {
         where: { id: lockId },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       assertLockActive(lock.status);
       const changes = await this.lockWrites.releaseLock(manager, lockId, {

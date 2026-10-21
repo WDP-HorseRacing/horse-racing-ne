@@ -291,6 +291,11 @@ export class SupplyItemsService {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
       const item = await this.stock.lockItem(manager, id);
+      await manager.find(SupplyItemEntity, {
+        select: { id: true },
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
       const hasOpenRequest = await manager.exists(SupplyRequestEntity, {
         where: {
           itemId: id,

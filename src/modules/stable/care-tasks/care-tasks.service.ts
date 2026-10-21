@@ -153,7 +153,7 @@ export class CareTasksService {
         this.dataSource.transaction(async (manager) => {
           const type = await manager.findOne(CareTaskTypeEntity, {
             where: { id },
-            lock: { mode: 'pessimistic_write' },
+            lock: { mode: 'for_no_key_update' },
           });
           if (!type) throw new NotFoundException(CARE_TASK_TYPE_NOT_FOUND);
           const changingAppliesToAll =

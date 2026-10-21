@@ -395,6 +395,7 @@ export class FeedingPlansService {
     const ids = [...new Set(lines.map((line) => line.supplyItemId))];
     const supplies = await manager.find(SupplyItemEntity, {
       where: { id: In(ids) },
+      order: { id: 'ASC' },
       lock: { mode: 'pessimistic_read' },
     });
     const byId = new Map(supplies.map((supply) => [supply.id, supply]));
@@ -450,7 +451,7 @@ export class FeedingPlansService {
     );
     const plan = await manager.findOne(FeedingPlanEntity, {
       where: { id },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!plan) throw new NotFoundException(FEEDING_PLAN_NOT_FOUND);
     assertFeedingPlanDraft(plan.status);

@@ -166,7 +166,7 @@ export class BarnsService {
   /**
    * Sửa thông tin khu chuồng: tên, mô tả, sức chứa, trạng thái, Head Trainer phụ trách
    *
-   * - Chạy trong transaction, lock khu (pessimistic_write) trước khi kiểm luật; Head Trainer mới được khóa chia sẻ tới hết transaction
+   * - Chạy trong transaction, lock khu (for_no_key_update) trước khi kiểm luật; Head Trainer mới được khóa chia sẻ tới hết transaction
    * - Head Trainer mới phải là user HEAD_TRAINER đang ACTIVE; gửi null để gỡ người phụ trách
    * - Khu còn ngựa (horses.barn_id, hồ sơ chưa xóa) thì chặn: chuyển sang CLOSED hoặc MAINTENANCE, gỡ Head Trainer
    * - Mọi khu, dù còn ngựa hay không: chặn hạ sức chứa xuống dưới số ô hiện có
@@ -260,7 +260,7 @@ export class BarnsService {
   /**
    * Xóa mềm một khu chuồng
    *
-   * - Chạy trong transaction, lock khu (pessimistic_write) trước khi kiểm luật
+   * - Chạy trong transaction, lock khu (for_no_key_update) trước khi kiểm luật
    * - Chặn khi khu còn ngựa (horses.barn_id, hồ sơ chưa xóa) hoặc còn ô chuồng chưa xóa
    * - Ghi nhật ký DELETE với thông tin khu trước khi xóa
    *
@@ -275,6 +275,11 @@ export class BarnsService {
 
     await this.dataSource.transaction(async (manager) => {
       const barn = await this.access.lockBarn(manager, barnId);
+      await manager.find(BarnEntity, {
+        select: { id: true },
+        where: { id: barnId },
+        lock: { mode: 'pessimistic_write' },
+      });
       assertBarnRemovable(
         await manager.exists(HorseEntity, { where: { barnId } }),
         await manager.exists(StallEntity, { where: { barnId } }),
@@ -315,7 +320,7 @@ export class BarnsService {
       select: { id: true },
       where: { headTrainerId },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 
@@ -341,7 +346,7 @@ export class BarnsService {
     const barns = await manager.find(BarnEntity, {
       where: { headTrainerId: fromHeadTrainerId },
       order: { name: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     for (const barn of barns) {
       barn.headTrainerId = toHeadTrainerId;
@@ -360,7 +365,7 @@ export class BarnsService {
   }
 
   /**
-   * Khóa row khu chuồng (pessimistic_write) tới hết transaction, không kiểm điều kiện. Dùng cho module horses.
+   * Khóa row khu chuồng (for_no_key_update) tới hết transaction, không kiểm điều kiện. Dùng cho module horses.
    *
    * - Khu không có hoặc đã xóa thì bỏ qua, không ném lỗi; nơi gọi kiểm sau bằng lockAssignableBarn
    *
@@ -372,7 +377,7 @@ export class BarnsService {
     await manager.find(BarnEntity, {
       select: { id: true },
       where: { id: barnId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 
@@ -387,7 +392,7 @@ export class BarnsService {
    *
    * @param manager EntityManager của transaction đang chạy
    * @param barnId UUID của khu chuồng
-   * @returns Promise chứa khu chuồng đã lock (pessimistic_write)
+   * @returns Promise chứa khu chuồng đã lock (for_no_key_update)
    * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
    * @throws ConflictException Nếu khu không hoạt động, chưa có Head Trainer phụ trách, Head Trainer không còn hoạt động hoặc đã hết chỗ nhận ngựa
    */

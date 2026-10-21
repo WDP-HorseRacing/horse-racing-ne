@@ -129,7 +129,7 @@ export class SessionAutoCloseService {
         .setParameter('ongoing', SessionParticipantStatus.ONGOING)
         .orderBy('session.scheduled_end_at', 'ASC')
         .limit(CLOSE_BATCH_SIZE)
-        .setLock('pessimistic_write')
+        .setLock('for_no_key_update')
         .setOnLocked('skip_locked')
         .getMany();
       let completed = 0;
@@ -143,7 +143,7 @@ export class SessionAutoCloseService {
           .andWhere('participant.status = :ongoing', {
             ongoing: SessionParticipantStatus.ONGOING,
           })
-          .setLock('pessimistic_write')
+          .setLock('for_no_key_update')
           .setOnLocked('skip_locked')
           .getMany();
         for (const run of runs) {
@@ -205,7 +205,7 @@ export class SessionAutoCloseService {
         .setParameter('unstarted', UNSTARTED_PARTICIPANT_STATUSES)
         .orderBy('session.scheduled_end_at', 'ASC')
         .limit(CLOSE_BATCH_SIZE)
-        .setLock('pessimistic_write')
+        .setLock('for_no_key_update')
         .setOnLocked('skip_locked')
         .getMany();
       for (const session of sessions) {
@@ -218,7 +218,7 @@ export class SessionAutoCloseService {
           .andWhere('participant.status IN (:...unstarted)', {
             unstarted: UNSTARTED_PARTICIPANT_STATUSES,
           })
-          .setLock('pessimistic_write')
+          .setLock('for_no_key_update')
           .setOnLocked('skip_locked')
           .getMany();
         const missedIds = participants
@@ -281,7 +281,7 @@ export class SessionAutoCloseService {
         .setParameter('openStatuses', NON_TERMINAL_PARTICIPANT_STATUSES)
         .orderBy('session.scheduled_start_at', 'ASC')
         .limit(CLOSE_BATCH_SIZE)
-        .setLock('pessimistic_write')
+        .setLock('for_no_key_update')
         .setOnLocked('skip_locked')
         .getMany();
       for (const session of sessions) {
@@ -327,7 +327,7 @@ export class SessionAutoCloseService {
         ])
         .orderBy('class.end_date', 'ASC')
         .limit(CLOSE_BATCH_SIZE)
-        .setLock('pessimistic_write')
+        .setLock('for_no_key_update')
         .setOnLocked('skip_locked')
         .getMany();
       for (const row of classes) {

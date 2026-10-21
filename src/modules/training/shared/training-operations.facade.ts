@@ -165,7 +165,7 @@ export class TrainingOperationsFacade {
   /**
    * Chặn tạo TrainingLock khi ngựa đang có lượt tập ONGOING, chạy trong transaction của nơi gọi
    *
-   * - Nơi gọi giữ lock pessimistic_write trên row ngựa, cùng lock dùng khi thêm TrainingLock ACTIVE
+   * - Nơi gọi giữ lock for_no_key_update trên row ngựa, cùng lock dùng khi thêm TrainingLock ACTIVE
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -241,7 +241,7 @@ export class TrainingOperationsFacade {
    * Chặn đổi khu khi ngựa đang ở buổi tập của lớp sẽ bị rút, chạy trong transaction của nơi gọi
    *
    * - Điều kiện chặn như hasOnSiteParticipantInClassesToWithdraw
-   * - Nơi gọi giữ lock pessimistic_write trên row ngựa
+   * - Nơi gọi giữ lock for_no_key_update trên row ngựa
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -302,7 +302,7 @@ export class TrainingOperationsFacade {
     const horse = await manager.findOne(HorseEntity, {
       where: { id: horseId },
       withDeleted: true,
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!horse) return [];
     const sessions = await manager
@@ -322,7 +322,7 @@ export class TrainingOperationsFacade {
       })
       .andWhere('session.scheduled_start_at > :now', { now: new Date() })
       .orderBy('session.id', 'ASC')
-      .setLock('pessimistic_write', undefined, ['session'])
+      .setLock('for_no_key_update', undefined, ['session'])
       .getMany();
     if (sessions.length === 0) return [];
     const participants = await manager.find(SessionParticipantEntity, {
@@ -332,7 +332,7 @@ export class TrainingOperationsFacade {
         status: In(REEVALUATED_PARTICIPANT_STATUSES),
       },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     const hasActiveTrainingLock = await manager.existsBy(TrainingLockEntity, {
       horseId,
@@ -413,7 +413,7 @@ export class TrainingOperationsFacade {
     }
     const enrollments = await query
       .orderBy('enrollment.id', 'ASC')
-      .setLock('pessimistic_write', undefined, ['enrollment'])
+      .setLock('for_no_key_update', undefined, ['enrollment'])
       .getMany();
     if (enrollments.length === 0) {
       return { classIds: [], participantsCancelled: 0 };
@@ -479,7 +479,7 @@ export class TrainingOperationsFacade {
       })
       .andWhere('session.scheduled_start_at >= :from', { from })
       .orderBy('participant.id', 'ASC')
-      .setLock('pessimistic_write', undefined, ['participant'])
+      .setLock('for_no_key_update', undefined, ['participant'])
       .getMany();
     return this.cancelLoadedParticipants(manager, participants, reason);
   }
@@ -503,7 +503,7 @@ export class TrainingOperationsFacade {
     const participants = await manager.find(SessionParticipantEntity, {
       where: { horseId, status: In(NON_TERMINAL_PARTICIPANT_STATUSES) },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     return this.cancelLoadedParticipants(manager, participants, reason);
   }
@@ -562,6 +562,42 @@ export class TrainingOperationsFacade {
   }
 
   /**
+   * Khóa các lượt PLANNED, PRESENT, READY của một con ngựa ở các buổi bắt đầu từ một thời điểm trở đi, theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param from Thời điểm bắt đầu xét
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockOpenFutureParticipantsOfHorse(
+    manager: EntityManager,
+    horseId: string,
+    from: Date,
+  ): Promise<void> {
+    const rows = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .select('participant.id', 'id')
+      .innerJoin(
+        TrainingSessionEntity,
+        'session',
+        'session.id = participant.session_id',
+      )
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: OPEN_PARTICIPANT_STATUSES,
+      })
+      .andWhere('session.scheduled_start_at >= :from', { from })
+      .getRawMany<{ id: string }>();
+    await this.access.lockParticipants(
+      manager,
+      rows.map((row) => row.id),
+    );
+  }
+
+  /**
    * Khóa các enrollment ACTIVE của một con ngựa theo thứ tự UUID, chạy trong transaction của nơi gọi
    *
    * - Không kiểm gì, không ném lỗi
@@ -578,7 +614,7 @@ export class TrainingOperationsFacade {
       select: { id: true },
       where: { horseId, status: HorseEnrollmentStatus.ACTIVE },
       order: { id: 'ASC' },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
   }
 
@@ -681,7 +717,7 @@ export class TrainingOperationsFacade {
       })
       .andWhere('session.scheduled_start_at >= :from', { from })
       .orderBy('participant.id', 'ASC')
-      .setLock('pessimistic_write', undefined, ['participant'])
+      .setLock('for_no_key_update', undefined, ['participant'])
       .getMany();
     if (participants.length) {
       const moving = participants.map(toGroomRun);
@@ -755,7 +791,7 @@ export class TrainingOperationsFacade {
   ): Promise<TrainingSessionEntity> {
     const session = await manager.findOne(TrainingSessionEntity, {
       where: { id: sessionId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!session) throw new NotFoundException('Không tìm thấy buổi tập');
     // Chỉ reset khi còn SCHEDULED hay IN_PROGRESS

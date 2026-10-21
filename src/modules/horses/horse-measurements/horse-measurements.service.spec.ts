@@ -478,7 +478,7 @@ describe('HorseMeasurementsService', () => {
       );
       expect(manager.findOne).toHaveBeenCalledWith(HorseMeasurementEntity, {
         where: { id: 'm1', horseId: HORSE_ID },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.update).toHaveBeenCalledWith(
         HorseMeasurementEntity,
@@ -625,7 +625,8 @@ describe('HorseMeasurementsService', () => {
       expect(count).toBe(2);
       expect(manager.find).toHaveBeenCalledWith(HorseMeasurementEntity, {
         where: { medicalRecordId: 'visit-1' },
-        lock: { mode: 'pessimistic_write' },
+        order: { id: 'ASC' },
+        lock: { mode: 'for_no_key_update' },
       });
       expect(manager.update).toHaveBeenCalledWith(
         HorseMeasurementEntity,
