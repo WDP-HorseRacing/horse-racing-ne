@@ -21,7 +21,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { mapUniqueViolation } from '../../../common/utils/unique-violation';
+import { mapUniqueViolation } from '../../../common/utils/database/unique-violation';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { MediaService } from '../../media/services/media.service';
 import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
