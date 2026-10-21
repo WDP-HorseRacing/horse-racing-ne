@@ -73,7 +73,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Chưa có kiểm kê và ghi hao hụt.
 7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối, cấp hoặc hủy xong trước. Đề xuất `REJECTED`, `FULFILLED`, `CANCELLED` không chặn xóa.
 8. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
-9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE` của các lần xuất chưa bị hủy (lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau, nên báo cáo kỳ gốc tự đổi số); dòng `USAGE_REVERSAL` không tính vào mua vào hay đã dùng; giá trị tồn kho = tổng số còn × đơn giá của các lô. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
+9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô, làm tròn nửa xa số 0 tới đồng theo từng dòng; mọi tổng tiền dưới đây cộng các dòng đã làm tròn, không làm tròn lại tổng. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE` của các lần xuất chưa bị hủy (lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau, nên báo cáo kỳ gốc tự đổi số); dòng `USAGE_REVERSAL` không tính vào mua vào hay đã dùng; giá trị tồn kho = tổng số còn × đơn giá của các lô. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
 
 ### 2. Đề xuất bổ sung
 

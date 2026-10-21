@@ -149,7 +149,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
     - Lượt dừng sớm đã kết thúc: không điểm danh, bắt đầu, giao Groom lại; không nhận thêm điểm đo. Vẫn ghi được kết quả chạy thử (khi buổi Đang diễn ra hoặc đã hoàn thành, không giới hạn thời gian; buổi Đã lên lịch 409 "Buổi tập chưa bắt đầu, chưa ghi kết quả được", buổi đã hủy 409 "Buổi tập đã hủy, không ghi kết quả được") và đánh giá như lượt hoàn thành.
     - Không gửi thông báo, không tự gửi yêu cầu khám, không đổi sức khỏe ngựa.
     - Lượt tạo trước khi có trạng thái này giữ nguyên Hoàn thành. Tự hoàn thành lượt bị quên (luật 11) không đổi.
-11. Tab buổi tập của ngựa (`GET /horses/:horseId/training/sessions`): `when=upcoming` là lượt còn mở (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) bất kể giờ, cùng lượt Không đủ điều kiện của buổi chưa tới giờ; `when=history` là lượt đã kết thúc (kể cả Dừng sớm, kèm `stoppedReason`), kể cả lượt chạy xong trước giờ lịch. Lượt hủy hoặc không đủ điều kiện của buổi chưa tới giờ không nằm ở tab nào.
+11. Tab buổi tập của ngựa (`GET /horses/:horseId/training/sessions`): `when=upcoming` là lượt còn mở (Chờ điểm danh, Có mặt, Sẵn sàng, Đang tập) bất kể giờ, cùng lượt Hủy do khóa tập và Không đủ điều kiện của buổi chưa tới giờ (kèm lý do ở `cancelReason`); `when=history` là lượt đã kết thúc (kể cả Dừng sớm, kèm `stoppedReason`), kể cả lượt chạy xong trước giờ lịch, trừ lượt Đã hủy, Hủy do khóa tập, Không đủ điều kiện của buổi chưa tới giờ. Lượt Đã hủy của buổi chưa tới giờ không nằm ở tab nào; bỏ trống `when` thì thấy mọi lượt. Tham số `status` lọc theo trạng thái lượt, nhiều giá trị thì lặp tham số (`status=CANCELLED&status=CANCELLED_BY_LOCK`), giá trị không có trong danh sách trạng thái trả 400; lọc cùng lúc với `when` và `classId`, phân trang và thứ tự giữ theo `when` (vd bỏ trống `when` với `status=CANCELLED` là mọi lượt Đã hủy; `when=upcoming&status=CANCELLED_BY_LOCK` là lượt Hủy do khóa tập sắp tới).
 
 ### 6. Nhịp tim và tốc độ (dữ liệu giả lập)
 
@@ -169,6 +169,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    - `actualDurationSeconds` (bắt đầu tới kết thúc lượt) và `actualDistanceM` (tính từ tốc độ cảm biến, khoảng giữa hai điểm đo tính tối đa 5 giây): cộng cả lượt dừng sớm.
    - Báo cáo tiến độ ngựa và dashboard báo cáo cùng cách đếm: cột `stopped` riêng ở tổng và từng tuần của biểu đồ tuần, không tính vào `completed`; số phút tập cộng cả lượt dừng sớm, cự ly dự kiến thì không.
    - Dashboard báo cáo (`GET /reports/dashboard`): khối `herd` chỉ đếm ngựa đang hoạt động. Khối `training`, `weekly` và bảng `horses` gồm thêm ngựa đã giải nghệ, đã chuyển nhượng hoặc đã mất có lượt tập ở buổi bắt đầu trong kỳ (bỏ hồ sơ đã xóa), nên tổng bảng `horses` khớp `training`. Lọc `barnId`/`mine` theo khu hiện tại của ngựa: ngựa đã chuyển nhượng hoặc đã mất bị bỏ khu nên chỉ hiện khi xem toàn CLB.
+9. Tổng quan hiệu suất của ngựa (`GET /horses/:id/performance`): Club Manager, bác sĩ và Head Trainer xem được hồ sơ ngựa thì xem, không có tham số lọc. Trả `recentMetrics` là 100 điểm đo gần nhất qua mọi buổi (mới nhất trước, tốc độ làm tròn 3 chữ số thập phân), `latestMetric` là điểm mới nhất, `sessionsTracked` là số lượt tập có trong 100 điểm đó, `latestEvaluation` là đánh giá buổi tập mới nhất (điểm, nhận xét).
+10. Chỉ số theo buổi của ngựa (`GET /horses/:id/performance/sessions`): Club Manager, bác sĩ, Head Trainer và chủ ngựa xem được hồ sơ ngựa thì xem, không có tham số lọc. Mỗi lượt tập có điểm đo một dòng: `sessionId`, `scheduledAt`, nhịp tim trung bình (làm tròn tới số nguyên) và cao nhất, tốc độ trung bình và cao nhất (làm tròn 3 chữ số thập phân), `alertCount` là số điểm `WARNING`/`CRITICAL`. Làm tròn nửa xa số 0. Buổi mới nhất trước, tối đa 100 dòng, không phân trang; lượt chưa có điểm đo không có dòng. Không kèm điểm đo thô; chủ ngựa xem chỉ số huấn luyện qua route này.
 
 ### 7. Bàn giao khi Head Trainer nghỉ
 
@@ -240,7 +242,9 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem dữ liệu của mọi ngựa t
 | GET | `/session-participants/:id/performance-summary` | CM, VET, HT, OWNER, và phải xem được lượt | Tổng kết nhịp tim, tốc độ, số cảnh báo |
 | GET | `/horses/:id/alerts` | CM, VET, HT của khu | Lịch sử cảnh báo `?level&from&to&page&limit` |
 | GET | `/horses/:id/workload` | Ai xem được hồ sơ ngựa | Khối lượng tập `?from&to` |
-| GET | `/horses/:horseId/training/classes`, `/horses/:horseId/training/sessions` | CM, HT, VET, OWNER | Lớp và buổi tập của ngựa (tab huấn luyện) |
+| GET | `/horses/:id/performance` | CM, VET, HT xem được hồ sơ ngựa | Tổng quan hiệu suất: 100 điểm đo gần nhất, đánh giá mới nhất (mục 6 luật 9) |
+| GET | `/horses/:id/performance/sessions` | CM, VET, HT, OWNER xem được hồ sơ ngựa | Chỉ số theo buổi, không kèm điểm đo thô (mục 6 luật 10) |
+| GET | `/horses/:horseId/training/classes`, `/horses/:horseId/training/sessions` | CM, HT, VET, OWNER | Lớp và buổi tập của ngựa (tab huấn luyện); buổi tập `?when&classId&status&page&limit` |
 | GET | `/horses/:id/thresholds` | HT, CM, VET | Ngưỡng chung CLB đang áp cho ngựa |
 | POST | `/users/:id/head-trainer-handover` | CM | Bàn giao Head Trainer `{ toHeadTrainerId }` |
 
