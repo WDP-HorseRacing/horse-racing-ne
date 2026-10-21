@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
-import { clubToday, toClubDate } from '../../../common/utils/club-date';
+import { clubToday, toClubDate } from '../../../common/utils/date/club-date';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { BarnEntity } from '../../stable/entities/barn.entity';

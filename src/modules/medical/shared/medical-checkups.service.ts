@@ -19,7 +19,7 @@ import {
   clubDateTimeToInstant,
   shiftDays,
   toClubDate,
-} from '../../../common/utils/club-date';
+} from '../../../common/utils/date/club-date';
 import type {
   DueCareScheduleRow,
   HerdFilter,

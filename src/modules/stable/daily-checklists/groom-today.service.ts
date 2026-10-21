@@ -13,7 +13,7 @@ import {
   clubDateTimeToInstant,
   clubToday,
   shiftDays,
-} from '../../../common/utils/club-date';
+} from '../../../common/utils/date/club-date';
 import {
   CareScheduleStatus,
   VET_APPOINTMENT_TYPES,

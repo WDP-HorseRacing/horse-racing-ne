@@ -4,11 +4,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
-import { shiftDays } from '../../../common/utils/club-date';
+import { shiftDays } from '../../../common/utils/date/club-date';
 import {
   fieldBadRequest,
   fieldConflict,
-} from '../../../common/utils/field-errors';
+} from '../../../common/utils/validation/field-errors';
 import type { HorseEntity } from '../../horses/entities/horse.entity';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';

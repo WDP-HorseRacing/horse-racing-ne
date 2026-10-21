@@ -14,7 +14,7 @@ import {
 } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';

@@ -1,4 +1,4 @@
-import { CLUB_TIME_ZONE } from '../constants/club.constants';
+import { CLUB_TIME_ZONE } from '../../constants/club.constants';
 
 /**
  * Đổi một thời điểm sang ngày theo lịch câu lạc bộ (CLUB_TIME_ZONE)

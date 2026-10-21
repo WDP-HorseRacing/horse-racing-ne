@@ -4,7 +4,7 @@ import {
   formatClubDateTime,
   toClubDate,
   toDisplayDate,
-} from '../../../../common/utils/club-date';
+} from '../../../../common/utils/date/club-date';
 import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
 import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
 import { ExamRequestStatus } from '../../../medical/constants/exam-request.enum';

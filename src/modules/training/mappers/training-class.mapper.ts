@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { shiftDays } from '../../../common/utils/club-date';
+import { shiftDays } from '../../../common/utils/date/club-date';
 import {
   TrainingClassPlanResponseDto,
   TrainingClassProgressResponseDto,

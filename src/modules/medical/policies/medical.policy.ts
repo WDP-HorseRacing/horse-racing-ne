@@ -4,8 +4,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
-import { toClubDate } from '../../../common/utils/club-date';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { toClubDate } from '../../../common/utils/date/club-date';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { OwnershipPeriod } from '../../horses/types/horse.types';

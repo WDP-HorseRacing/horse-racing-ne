@@ -1,4 +1,4 @@
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import {
   BadRequestException,
   ConflictException,

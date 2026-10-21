@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, In } from 'typeorm';
-import { clubToday } from '../../../../common/utils/club-date';
+import { clubToday } from '../../../../common/utils/date/club-date';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../../audit/constants/audit-feature.enum';

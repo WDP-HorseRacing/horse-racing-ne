@@ -4,7 +4,7 @@ import {
   formatClubDateTime,
   toClubDate,
   toDisplayDate,
-} from '../../../../common/utils/club-date';
+} from '../../../../common/utils/date/club-date';
 import { UserRole } from '../../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,

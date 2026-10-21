@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { AuditAction } from '../../audit/constants/audit-action.enum';

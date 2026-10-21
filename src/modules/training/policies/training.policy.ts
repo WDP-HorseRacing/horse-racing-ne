@@ -2,8 +2,8 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
   formatClubDateTime,
   toClubDate,
-} from '../../../common/utils/club-date';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+} from '../../../common/utils/date/club-date';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
 import { EligibilityReason } from '../../horses/enums/eligibility-reason.enum';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { isReadOnlyLifecycle } from '../../horses/policies/horse.policy';

@@ -2,12 +2,12 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, DataSource, EntityManager, In, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { changedFieldsDiff } from '../../../common/utils/record-diff';
+import { changedFieldsDiff } from '../../../common/utils/data/record-diff';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
   DailyChecklistStatus,

@@ -10,10 +10,10 @@ import {
 } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import { clubToday, shiftDays } from '../../../common/utils/club-date';
-import type { FieldError } from '../../../common/utils/field-errors';
-import { changedFieldsDiff } from '../../../common/utils/record-diff';
-import { mapAnyUniqueViolation } from '../../../common/utils/unique-violation';
+import { clubToday, shiftDays } from '../../../common/utils/date/club-date';
+import type { FieldError } from '../../../common/utils/validation/field-errors';
+import { changedFieldsDiff } from '../../../common/utils/data/record-diff';
+import { mapAnyUniqueViolation } from '../../../common/utils/database/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { DashboardQueryDto, DashboardResponseDto } from '../dto/dashboard.dto';
 import { toDashboard } from '../mappers/dashboard.mapper';

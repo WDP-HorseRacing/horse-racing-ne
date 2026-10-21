@@ -3,13 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import { mapUniqueViolation } from '../../../common/utils/unique-violation';
+import { mapUniqueViolation } from '../../../common/utils/database/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
