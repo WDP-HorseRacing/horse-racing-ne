@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { changedFieldsDiff } from '../../../common/utils/record-diff';
+import { mapUniqueViolation } from '../../../common/utils/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
@@ -21,6 +22,18 @@ import { toPerformanceEvaluationResponse } from '../mappers/performance-evaluati
 import { assertSessionRecordEditable } from '../../training/policies/training.policy';
 import { TrainingAccessService } from '../../training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
+
+/**
+ * Thông báo 409 khi lượt tập đã có đánh giá.
+ */
+const EVALUATION_EXISTS_MESSAGE = 'Lượt tập đã có đánh giá';
+
+/**
+ * Thông báo 409 cho unique index mà việc tạo đánh giá có thể vi phạm khi hai thao tác chạy cùng lúc.
+ */
+const EVALUATION_CONFLICT_MESSAGES: Record<string, string> = {
+  performance_evaluations_participant_uq: EVALUATION_EXISTS_MESSAGE,
+};
 
 @Injectable()
 export class PerformanceEvaluationsService {
@@ -54,14 +67,18 @@ export class PerformanceEvaluationsService {
       const existing = await manager.findOneBy(PerformanceEvaluationEntity, {
         sessionParticipantId: participantId,
       });
-      if (existing) throw new ConflictException('Lượt tập đã có đánh giá');
-      const evaluation = await manager.save(
-        manager.create(PerformanceEvaluationEntity, {
-          sessionParticipantId: participantId,
-          evaluatorId: caller.id,
-          score: body.score,
-          comment: body.comment ?? null,
-        }),
+      if (existing) throw new ConflictException(EVALUATION_EXISTS_MESSAGE);
+      const evaluation = await mapUniqueViolation(
+        () =>
+          manager.save(
+            manager.create(PerformanceEvaluationEntity, {
+              sessionParticipantId: participantId,
+              evaluatorId: caller.id,
+              score: body.score,
+              comment: body.comment ?? null,
+            }),
+          ),
+        EVALUATION_CONFLICT_MESSAGES,
       );
       await this.auditService.record(manager, {
         actorId: caller.id,

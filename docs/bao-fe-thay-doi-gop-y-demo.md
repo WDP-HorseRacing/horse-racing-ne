@@ -1,10 +1,16 @@
 # Thay đổi API cần FE cập nhật
 
-Cập nhật: 2026-10-20
+Cập nhật: 2026-10-21
 
 Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, HT = Head Trainer, VET = bác sĩ thú y, GROOM = người chăm ngựa, OWNER = chủ ngựa. Lỗi vẫn theo format chung. Schema chi tiết: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
 Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều ngày thì mục của ngày mới nhất là hành vi hiện tại; phần cũ đã bị thay có ghi "(đã thay ở ...)". API chặn field lạ: gửi field không có trong request là 400 "Không nhận ô `<tên ô>`", không ghi gì.
+
+## Ngày 21/10/2026
+
+### Gửi trùng đánh giá lượt tập trả 409
+
+- `POST /session-participants/:id/evaluation`: gửi hai lần cùng lúc cho một lượt (bấm Lưu hai lần, hai tab, tự gửi lại khi mạng chậm) thì lần sau nhận 409 "Lượt tập đã có đánh giá" thay vì 500. Cùng câu với khi lượt đã có đánh giá từ trước; request và response không đổi.
 
 ## Ngày 20/10/2026
 
