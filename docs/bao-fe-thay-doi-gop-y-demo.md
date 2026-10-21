@@ -8,6 +8,12 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 ## Ngày 21/10/2026
 
+### Thời điểm đo do hệ thống ghi, không nhập lùi
+
+- `POST /horses/:horseId/measurements`: bỏ `measuredAt` trong body. Thời điểm đo là lúc lưu; gửi `measuredAt` nhận 400 "Không nhận ô measuredAt", không ghi gì. Các câu 400 "Thời điểm đo không được ở tương lai", "Chỉ được nhập lùi tối đa 7 ngày" không còn.
+- Response vẫn có `measuredAt`. Bộ lọc `from`, `to` của `GET /horses/:horseId/measurements` giữ nguyên.
+- FE: form ghi số đo bỏ ô thời điểm đo. Nhập sai thì xóa bản ghi kèm lý do rồi nhập lại.
+
 ### Nhật ký chuyển chủ có mã chức năng riêng, tạo hồ sơ và gán chủ báo chủ mới
 
 - `GET /audit-logs`: dòng nhật ký của chuyển nhượng nội bộ (`POST /horses/:id/ownership-transfers`) nay có `feature = HORSE_OWNER` thay vì `HORSE_UPDATE`; dữ liệu cũ đã đổi theo. Lọc `feature=HORSE_OWNER` ra đúng các lần chuyển chủ. Gán chủ qua sửa hồ sơ (`PATCH /horses/:id` có `ownerId`) vẫn là `HORSE_UPDATE`. Danh sách mã chức năng có thêm `HORSE_OWNER`.
@@ -265,7 +271,7 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
    | `POST /classes/:classId/sessions/bulk` | `sessions[].scheduledStartAt`, `sessions[].scheduledEndAt` |
    | `POST /classes/:classId/enrollments` | `enrolledAt` |
    | `PATCH /enrollments/:id/leave` | `leftAt` |
-   | `POST /horses/:horseId/measurements` | `measuredAt` |
+   | `POST /horses/:horseId/measurements` | `measuredAt` (đã bỏ ở 21/10) |
    | `GET /horses/:horseId/measurements` | query `from`, `to` |
    | `POST /horses/:horseId/care-schedules`, `PATCH /care-schedules/:id` | `dueAt` |
    | `POST /care-schedules/:id/complete` | `nextDueAt` |
@@ -362,7 +368,7 @@ API chỉ có hai dạng thời gian. Gửi sai dạng là 400, không lưu gì.
 **Luật / hành vi API mới**
 1. `POST /horses/:horseId/medical-records` và `POST /medical-cases/:caseId/visits`: bỏ `examDate` trong body. Thời điểm khám là lúc lưu buổi khám.
 2. Gửi `examDate`: 400 "Không nhận ô examDate". Các câu 400 "Thời điểm khám không được ở tương lai", "Chỉ được nhập lùi thời điểm khám tối đa 7 ngày", "Thời điểm khám không được sớm hơn ngày mở bệnh án" không còn.
-3. Response buổi khám vẫn có `examDate`. Nhập số đo cơ thể ngoài buổi khám vẫn được lùi tối đa 7 ngày như cũ.
+3. Response buổi khám vẫn có `examDate`. ~~Nhập số đo cơ thể ngoài buổi khám vẫn được lùi tối đa 7 ngày như cũ.~~ (đã thay ở 21/10: số đo cũng lấy thời điểm lưu)
 
 **FE cần sửa**
 - Bỏ ô nhập thời điểm khám ở màn ghi buổi khám và màn tái khám.

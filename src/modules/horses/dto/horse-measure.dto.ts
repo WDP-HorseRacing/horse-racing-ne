@@ -52,16 +52,6 @@ export class CreateHorseMeasurementDto {
   values!: HorseMeasurementValueDto[];
 
   @ApiPropertyOptional({
-    format: 'date-time',
-    example: '2026-10-23T00:30:00+07:00',
-    description:
-      'Mặc định là thời điểm hiện tại. Không ở tương lai, lùi tối đa 7 ngày',
-  })
-  @IsOptional()
-  @IsIsoInstant()
-  measuredAt?: string;
-
-  @ApiPropertyOptional({
     default: false,
     description:
       'Bắt buộc true khi có giá trị ngoài khoảng bình thường; không gửi thì API trả 422',

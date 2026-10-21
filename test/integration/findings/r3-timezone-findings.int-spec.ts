@@ -576,14 +576,13 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
   });
 
   it('TZ3-18 measurement list filter from without offset is rejected, with offset filters by club time', async () => {
-    const at9 = clubDateTimeToInstant(D, '09:00').toISOString();
+    const at10 = clubDateTimeToInstant(D, '10:00').toISOString();
     await measurements.addMeasurements(vet, gio, {
       values: [{ type: HorseMeasurementType.WEIGHT, value: 450 }],
-      measuredAt: at9,
       confirmAbnormal: true,
     });
     const query = {
-      from: `${D}T08:00:00`,
+      from: `${D}T09:00:00`,
       page: 1,
       limit: 20,
     } as HorseMeasurementListQueryDto;
@@ -601,7 +600,7 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     const found = (
       await measurements.listMeasurements(vet, gio, query)
     ).items.map((row) => iso(row.measuredAt));
-    expect(found).toEqual([at9]);
+    expect(found).toEqual([at10]);
   });
 
   it('TZ3-19 ingested metric recordedAt without offset is rejected, with offset is stored as club time (not dropped as future)', async () => {

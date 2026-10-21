@@ -462,7 +462,7 @@ Ghi lại các phép đo định kỳ của con ngựa: cân nặng, chiều cao
    - Điểm thể trạng: 4 đến 6 trên thang 1 đến 9.
    - Thân nhiệt: 37.2 đến 38.3 độ C.
 2. Giá trị ngoài khoảng bình thường vẫn lưu được nhưng hệ thống hỏi xác nhận lại trước khi lưu và đánh dấu bản ghi là bất thường.
-3. Thời điểm đo không được ở tương lai. Cho phép nhập lùi tối đa 7 ngày.
+3. Thời điểm đo là thời điểm lưu bản ghi, người dùng không nhập. Đo trước rồi nhập sau thì bản ghi mang giờ nhập.
 4. Bản ghi đo không được sửa. Ghi sai thì VETERINARIAN xóa (bắt buộc nhập lý do) rồi đo lại. Mục đích là bảo vệ tính trung thực của dữ liệu.
 5. Mỗi bản ghi lưu kèm nguồn: nhập tay tại F1.5 hoặc ghi từ một buổi khám của Flow 3. Bản ghi có nguồn từ buổi khám không xóa được ở đây, phải xử lý bên Flow 3.
 6. Cảnh báo tự động:
@@ -482,9 +482,9 @@ Ghi lại các phép đo định kỳ của con ngựa: cân nặng, chiều cao
 | **Actor phụ** | Hệ thống (sinh cảnh báo, ghi nhật ký) |
 | **Tiền điều kiện** | Người dùng đã đăng nhập. Con ngựa nằm trong phạm vi thao tác của người dùng và đang ở trạng thái Đang hoạt động hoặc Đã giải nghệ. |
 | **Hậu điều kiện** | Bản ghi đo được lưu và hiện trên biểu đồ. Nếu chạm ngưỡng cảnh báo thì thông báo được gửi đi. |
-| **Luồng sự kiện chính** | 1. Người dùng mở hồ sơ ngựa và chọn phần chỉ số cơ thể.<br>2. Người dùng chọn "Ghi chỉ số".<br>3. Người dùng chọn loại chỉ số, nhập giá trị và thời điểm đo.<br>4. Người dùng gửi.<br>5. Hệ thống kiểm tra thời điểm đo và khoảng giá trị.<br>6. Hệ thống lưu bản ghi, đánh dấu bất thường nếu ngoài khoảng bình thường và vẽ lại biểu đồ.<br>7. Hệ thống sinh cảnh báo nếu chạm ngưỡng. |
+| **Luồng sự kiện chính** | 1. Người dùng mở hồ sơ ngựa và chọn phần chỉ số cơ thể.<br>2. Người dùng chọn "Ghi chỉ số".<br>3. Người dùng chọn loại chỉ số và nhập giá trị.<br>4. Người dùng gửi.<br>5. Hệ thống kiểm tra khoảng giá trị.<br>6. Hệ thống lưu bản ghi với thời điểm đo là lúc lưu, đánh dấu bất thường nếu ngoài khoảng bình thường và vẽ lại biểu đồ.<br>7. Hệ thống sinh cảnh báo nếu chạm ngưỡng. |
 | **Luồng thay thế** | A1. Người dùng ghi nhiều loại chỉ số trong cùng một lần đo.<br>A2. VETERINARIAN phát hiện bản ghi sai → xóa kèm lý do rồi đo lại.<br>A3. Số đo đến từ một buổi khám của Flow 3 → hệ thống tự ghi vào đây kèm nguồn, không gửi cảnh báo sốt / sụt cân vì bác sĩ đang khám (Flow 3 mục III.5.4, BA chốt). |
-| **Luồng ngoại lệ** | E1. Thời điểm đo ở tương lai hoặc lùi quá 7 ngày → báo lỗi.<br>E2. GROOM ghi chỉ số cho ngựa không được phân công → trả về 403.<br>E3. Giá trị ngoài khoảng bình thường → hệ thống hỏi xác nhận, người dùng hủy thì không lưu. |
+| **Luồng ngoại lệ** | E1. Gửi kèm thời điểm đo → trả về 400.<br>E2. GROOM ghi chỉ số cho ngựa không được phân công → trả về 403.<br>E3. Giá trị ngoài khoảng bình thường → hệ thống hỏi xác nhận, người dùng hủy thì không lưu. |
 
 ---
 

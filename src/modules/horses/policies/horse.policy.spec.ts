@@ -38,7 +38,6 @@ import {
   assertLifecycleTransition,
   assertLifecycleChanged,
   assertLifecycleOwner,
-  assertMeasuredAt,
   microchipTakenMessage,
   assertMeasurementDeletable,
   assertMeasurementValue,
@@ -64,8 +63,6 @@ import {
   placementStatusOf,
   nonRaceAptitudeFieldsIn,
 } from './horse.policy';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe('horse.policy', () => {
   describe('evaluateEligibility', () => {
@@ -1083,32 +1080,6 @@ describe('horse.policy', () => {
       expect(isHorseInScope({ ownerId: 'o1' }, scope)).toBe(true);
       expect(isHorseInScope({ ownerId: 'o2' }, scope)).toBe(false);
       expect(isHorseInScope({ ownerId: null }, scope)).toBe(false);
-    });
-  });
-
-  describe('assertMeasuredAt', () => {
-    const now = new Date('2026-09-23T10:00:00Z');
-
-    it('accepts now and a small clock skew', () => {
-      expect(() => assertMeasuredAt(now, now)).not.toThrow();
-      expect(() =>
-        assertMeasuredAt(new Date(now.getTime() + 30_000), now),
-      ).not.toThrow();
-    });
-
-    it('rejects a time beyond the clock skew in the future', () => {
-      expect(() =>
-        assertMeasuredAt(new Date(now.getTime() + 120_000), now),
-      ).toThrow(new BadRequestException('Thời điểm đo không được ở tương lai'));
-    });
-
-    it('accepts exactly 7 days back and rejects older', () => {
-      expect(() =>
-        assertMeasuredAt(new Date(now.getTime() - 7 * DAY_MS), now),
-      ).not.toThrow();
-      expect(() =>
-        assertMeasuredAt(new Date(now.getTime() - 7 * DAY_MS - 1), now),
-      ).toThrow(new BadRequestException('Chỉ được nhập lùi tối đa 7 ngày'));
     });
   });
 

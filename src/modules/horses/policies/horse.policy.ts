@@ -23,7 +23,6 @@ import {
 } from '../enums/horse-status.enum';
 import { HorsePlacementStatus } from '../enums/horse-placement-status.enum';
 import {
-  CLOCK_SKEW_MS,
   READ_ONLY_LIFECYCLE_STATUSES,
   DECEASED_HORSE_READ_ONLY_MESSAGE,
   FEVER_THRESHOLD_CELSIUS,
@@ -36,10 +35,8 @@ import {
   HORSE_NOT_DELETED_MESSAGE,
   HORSE_NOT_FOUND_MESSAGE,
   MAX_HORSE_AGE_YEARS,
-  MEASUREMENT_BACKDATE_MAX_DAYS,
   MIN_HORSE_AGE_YEARS,
   MIN_PARENT_AGE_GAP_YEARS,
-  MS_PER_DAY,
   RACE_APTITUDE_FIELD,
   TRANSFERRED_HORSE_READ_ONLY_MESSAGE,
   WEIGHT_DROP_PERCENT,
@@ -928,27 +925,6 @@ export function measurementAlerts(
     }
   }
   return [];
-}
-
-/**
- * Kiểm tra thời điểm đo: không ở tương lai, không lùi quá MEASUREMENT_BACKDATE_MAX_DAYS ngày
- *
- * - Cho lệch đồng hồ CLOCK_SKEW_MS giữa máy người dùng và server ở phía tương lai
- *
- * @param measuredAt Thời điểm đo người gọi gửi lên
- * @param now Thời điểm hiện tại của server
- * @throws BadRequestException Nếu thời điểm đo ở tương lai hoặc lùi quá số ngày cho phép
- */
-export function assertMeasuredAt(measuredAt: Date, now: Date): void {
-  if (measuredAt.getTime() > now.getTime() + CLOCK_SKEW_MS) {
-    throw new BadRequestException('Thời điểm đo không được ở tương lai');
-  }
-  const earliest = now.getTime() - MEASUREMENT_BACKDATE_MAX_DAYS * MS_PER_DAY;
-  if (measuredAt.getTime() < earliest) {
-    throw new BadRequestException(
-      `Chỉ được nhập lùi tối đa ${MEASUREMENT_BACKDATE_MAX_DAYS} ngày`,
-    );
-  }
 }
 
 /**

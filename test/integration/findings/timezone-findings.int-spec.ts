@@ -333,27 +333,28 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
         ).rejects.toBeInstanceOf(BadRequestException);
       });
 
-      it('TZ-7: measuredAt without offset sent at 23:30 club time is rejected, with offset is read as club time', async () => {
+      it('TZ-7: the measurement DTO no longer takes measuredAt; a measurement saved at 23:30 club time is stored at that instant', async () => {
         fakeNow(D, '23:30');
         const body = {
           values: [{ type: HorseMeasurementType.WEIGHT, value: 450 }],
-          measuredAt: `${D}T23:20:00`,
           confirmAbnormal: true,
         };
-        const failed = () =>
-          validateSync(plainToInstance(CreateHorseMeasurementDto, body)).map(
-            (e) => e.property,
-          );
-        expect(failed()).toEqual(['measuredAt']);
-        body.measuredAt = `${D}T23:20:00+07:00`;
-        expect(failed()).toEqual([]);
+        expect(
+          validateSync(
+            plainToInstance(CreateHorseMeasurementDto, {
+              ...body,
+              measuredAt: `${D}T23:20:00+07:00`,
+            }),
+            { whitelist: true, forbidNonWhitelisted: true },
+          ).map((e) => e.property),
+        ).toEqual(['measuredAt']);
 
         const result = await measurements.addMeasurements(vet, gio, body).then(
           (rows) => new Date(rows[0].measuredAt).toISOString(),
           (e: Error) => `${e.constructor.name}: ${e.message}`,
         );
 
-        expect(result).toBe(clubDateTimeToInstant(D, '23:20').toISOString());
+        expect(result).toBe(clubDateTimeToInstant(D, '23:30').toISOString());
       });
 
       it('TZ-8: reminders for club day D include a schedule due 23:30 on D and exclude one due 00:30 on D+1', async () => {

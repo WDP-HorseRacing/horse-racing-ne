@@ -6,7 +6,7 @@ Các câu hội đồng có thể hỏi về những quyết định nghiệp v�
 
 ## Nguyên tắc chung: thời điểm trên hệ thống là thời điểm ghi nhận
 
-Áp cho ngày mất, giờ khám, lịch tập và chuyển chủ. Hệ thống không cho nhập lùi ngày giờ.
+Áp cho ngày mất, giờ khám, lịch tập, chuyển chủ và số đo. Hệ thống không cho nhập lùi ngày giờ.
 
 ### 1. CM nhập chuyển chủ hay bán ngựa trễ thì phí ngày tính sai cho chủ cũ? (F1-5)
 
@@ -209,3 +209,13 @@ Hồ sơ ngựa đua thường ghi giới tính thành một nhóm duy nhất c�
 **Trả lời:** Thông tin định danh phải đúng trong suốt thời gian ngựa ở câu lạc bộ, lúc ngựa còn tập, khám, tính phí; hồ sơ đang hoạt động sửa được bình thường. Khi ngựa đã rời câu lạc bộ, hồ sơ chỉ được xem. Ngựa đã chuyển nhượng mà câu lạc bộ mua lại thì kích hoạt lại, hồ sơ sửa được như cũ. Ngựa đã mất là trạng thái cuối, không sửa (cùng nguyên tắc câu ghi nhận mất).
 
 **Đánh đổi đã biết:** ngựa đã mất giữ số chip; nếu số chip đó bị gõ nhầm trùng với số chip thật của ngựa mới thì không tạo được hồ sơ mới, xử lý thủ công theo nhật ký.
+
+### 27. Ngựa đo thân nhiệt lúc 6h mà 9h mới nhập thì sao? Nhập sai thì sửa thế nào? (F1-8)
+
+**Trả lời:** Bản ghi mang giờ nhập 9h, cùng nguyên tắc với giờ khám. Người đo nhập ngay khi đo; nhập sai thì xóa bản ghi kèm lý do (ghi nhật ký) rồi nhập lại.
+
+**Lý do:**
+- Cảnh báo sốt gửi thông báo khẩn ngay lúc lưu. Cho nhập lùi thì số đo của cơn sốt đã qua vẫn bắn "KHẨN ... Cần kiểm tra ngay" cho bác sĩ, HT, chủ ngựa.
+- Không có đường sửa số đo để giữ dữ liệu trung thực: mọi thay đổi đều là xóa có lý do và bản ghi mới.
+
+**Đánh đổi đã biết:** giờ trên biểu đồ lệch vài giờ so với lúc đo thật nếu nhập trễ. Thông báo khẩn đã gửi từ bản ghi nhập sai không thu hồi được; xóa bản ghi không xóa thông báo.

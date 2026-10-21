@@ -88,7 +88,7 @@ Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_i
 | `TEMPERATURE`    | celsius | 30–45         | 37.2–38.3          |
 
 - Quyền ghi theo loại (`MEASUREMENT_TYPES_BY_ROLE`): Head Trainer (ngựa trong khu mình) `WEIGHT`, `BODY_CONDITION`; Groom (ngựa được giao) `WEIGHT`, `TEMPERATURE`; Veterinarian cả bốn. Người nhiều role được hợp các loại. Xem: mọi role trong CLB, Horse Owner chỉ ngựa sở hữu.
-- `measured_at` không ở tương lai, lùi tối đa 7 ngày.
+- `measured_at` là thời điểm lưu bản ghi (nhập tay) hoặc thời điểm buổi khám (số đo từ buổi khám), không nhận từ request.
 - Cảnh báo tự động khi ghi, trả trong `alerts[]` và phát domain event `horse.measurement.alert` sau khi lưu (payload `HorseMeasurementAlertEvent`):
   - `FEVER` (URGENT): thân nhiệt > 38.6 °C.
   - `WEIGHT_DROP` (WARNING): cân nặng giảm > 5% so với cân nặng cao nhất trong 14 ngày trước `measured_at`.

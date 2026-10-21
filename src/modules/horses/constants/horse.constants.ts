@@ -29,11 +29,6 @@ export const HORSE_READER_ROLES = [
 export const PEDIGREE_DEPTH = 2;
 
 /**
- * Độ lệch đồng hồ cho phép khi thời điểm đo hơi lệch về tương lai
- */
-export const CLOCK_SKEW_MS = 60_000;
-
-/**
  * Biểu thức ORDER BY sắp tên ngựa theo bảng chữ cái tiếng Việt, gắn với alias `horse` của query
  */
 export const VIETNAMESE_NAME_ORDER = 'horse.name COLLATE "vi-x-icu"';
@@ -94,11 +89,6 @@ export const HORSE_LIFECYCLE_LABELS: Record<HorseLifecycleStatus, string> = {
   [HorseLifecycleStatus.TRANSFERRED]: 'Đã chuyển nhượng',
   [HorseLifecycleStatus.DECEASED]: 'Đã mất',
 };
-
-/**
- * Số ngày tối đa được nhập lùi thời điểm đo so với hiện tại.
- */
-export const MEASUREMENT_BACKDATE_MAX_DAYS = 7;
 
 /**
  * Tuổi nhỏ nhất (năm) của ngựa câu lạc bộ nhận quản lý

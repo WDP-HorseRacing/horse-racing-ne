@@ -10520,12 +10520,6 @@
               "$ref": "#/components/schemas/HorseMeasurementValueDto"
             }
           },
-          "measuredAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-10-23T00:30:00+07:00",
-            "description": "Mặc định là thời điểm hiện tại. Không ở tương lai, lùi tối đa 7 ngày"
-          },
           "confirmAbnormal": {
             "type": "boolean",
             "default": false,

@@ -1,3 +1,4 @@
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -15,7 +16,9 @@ import { AuditLogListQueryDto } from '../../../src/modules/audit/dto/audit-log.d
 import { AuditLogEntity } from '../../../src/modules/audit/entities/audit-log.entity';
 import { AuditLogsService } from '../../../src/modules/audit/services/audit-logs.service';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
+import { validationExceptionFactory } from '../../../src/common/utils/field-errors';
 import { HorseListQueryDto } from '../../../src/modules/horses/dto';
+import { CreateHorseMeasurementDto } from '../../../src/modules/horses/dto/horse-measure.dto';
 import { HorseMeasurementEntity } from '../../../src/modules/horses/entities/horse-measurement.entity';
 import { HorseOwnershipEntity } from '../../../src/modules/horses/entities/horse-ownership.entity';
 import { HorseEntity } from '../../../src/modules/horses/entities/horse.entity';
@@ -433,29 +436,54 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
     expect(outcome).toBe('fixed');
   });
 
-  describe('F1-8 backdated and deleted measurements', () => {
-    const feverSixDaysAgo = async () => {
+  describe('F1-8 measurement time and deleted measurements', () => {
+    const fever = async () => {
       const vetId = await seed.user(UserRole.VETERINARIAN);
       const vet = await actorOf(vetId, UserRole.VETERINARIAN);
-      const horse = await seed.horse('Sốt cũ');
+      const horse = await seed.horse('Sốt');
       const [created] = await measurements.addMeasurements(vet, horse, {
         values: [{ type: HorseMeasurementType.TEMPERATURE, value: 39.5 }],
-        measuredAt: new Date(Date.now() - 6 * 86_400_000).toISOString(),
         confirmAbnormal: true,
       });
       return { vet, horse, created };
     };
 
-    it('F1-8a does not raise an URGENT alert for a fever measured 6 days ago', async () => {
-      const { created } = await feverSixDaysAgo();
+    it('F1-8a rejects a backdated measuredAt with 400 and records the measurement at the time it is saved', async () => {
+      const pipe = new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
+      });
+      const rejected: unknown = await pipe
+        .transform(
+          {
+            values: [{ type: HorseMeasurementType.TEMPERATURE, value: 39.5 }],
+            measuredAt: new Date(Date.now() - 6 * 86_400_000).toISOString(),
+            confirmAbnormal: true,
+          },
+          { type: 'body', metatype: CreateHorseMeasurementDto },
+        )
+        .catch((error: unknown) => error);
+      expect(rejected).toBeInstanceOf(BadRequestException);
+      expect(
+        (rejected as BadRequestException).getResponse() as {
+          message: string[];
+        },
+      ).toMatchObject({ message: ['Không nhận ô measuredAt'] });
 
-      expect(created.alerts.map((alert) => alert.severity)).not.toContain(
+      const before = Date.now();
+      const { created } = await fever();
+      const measuredAt = new Date(created.measuredAt).getTime();
+      expect(measuredAt).toBeGreaterThanOrEqual(before);
+      expect(measuredAt).toBeLessThanOrEqual(Date.now());
+      expect(created.alerts.map((alert) => alert.severity)).toEqual([
         HorseMeasurementAlertSeverity.URGENT,
-      );
+      ]);
     });
 
     it('F1-8b a fever measurement that is later deleted leaves no exam request behind', async () => {
-      const { vet, horse, created } = await feverSixDaysAgo();
+      const { vet, horse, created } = await fever();
 
       await measurements.deleteMeasurement(vet, horse, created.id, {
         reason: 'Gõ sai',

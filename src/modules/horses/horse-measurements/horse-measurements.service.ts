@@ -43,7 +43,6 @@ import {
   assertAbnormalConfirmed,
   isAbnormalMeasurement,
   assertDistinctMeasurementTypes,
-  assertMeasuredAt,
   assertMeasurementValue,
   assertMeasurementDeletable,
   assertTimeRange,
@@ -124,18 +123,18 @@ export class HorseMeasurementsService {
    *
    * - Veterinarian ghi cho mọi ngựa; Head Trainer chỉ ngựa thuộc khu mình; Groom chỉ ngựa được phân công. Ai được ghi thì ghi được cả bốn loại
    * - Không ghi cho ngựa đã chuyển nhượng hoặc đã mất hoặc hồ sơ đã xóa
-   * - Giá trị phải trong khoảng hợp lệ; thời điểm đo không ở tương lai, lùi tối đa 7 ngày; mỗi loại chỉ một giá trị
+   * - Thời điểm đo là thời điểm lưu; giá trị phải trong khoảng hợp lệ; mỗi loại chỉ một giá trị
    * - Có giá trị ngoài khoảng bình thường mà chưa gửi confirmAbnormal = true thì trả 422, chưa lưu gì
    * - Bản ghi lưu với nguồn MANUAL; mỗi bản ghi một dòng nhật ký
    * - Tự sinh cảnh báo (sốt, giảm cân trong 14 ngày), trả trong response và ghi HORSE_MEASUREMENT_ALERT_EVENT vào outbox trong cùng transaction
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @param body Các cặp loại/giá trị, thời điểm đo (mặc định hiện tại) và cờ xác nhận giá trị bất thường
+   * @param body Các cặp loại/giá trị và cờ xác nhận giá trị bất thường
    * @returns Promise trả về các bản ghi vừa tạo, mỗi bản kèm cảnh báo của nó
    * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa hoặc ngựa nằm ngoài phạm vi của người gọi
    * @throws ForbiddenException Nếu người gọi không được ghi chỉ số cho con ngựa này
-   * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ, trùng loại hoặc thời điểm đo không hợp lệ
+   * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ hoặc trùng loại
    * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà chưa xác nhận
    * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất
    */
@@ -144,7 +143,7 @@ export class HorseMeasurementsService {
     horseId: string,
     body: CreateHorseMeasurementDto,
   ): Promise<CreatedHorseMeasurementResponseDto[]> {
-    const measuredAt = body.measuredAt ? new Date(body.measuredAt) : new Date();
+    const measuredAt = new Date();
 
     const created = await this.dataSource.transaction(async (manager) => {
       const { caller, horse } = await this.access.lockWritableHorseInScope(
@@ -154,7 +153,7 @@ export class HorseMeasurementsService {
       );
       await this.assertCanRecord(actor, caller.id, horseId, manager);
       assertLifecycleWritable(horse);
-      this.assertValidValues(body, measuredAt);
+      this.assertValidValues(body);
 
       const created = await this.saveMeasurements(manager, {
         horseId,
@@ -181,7 +180,7 @@ export class HorseMeasurementsService {
   /**
    * Ghi số đo lấy trong một buổi khám vào bảng chỉ số, trong transaction của nơi gọi
    *
-   * - Cùng luật giá trị, thời điểm đo và xác nhận giá trị bất thường như addMeasurements
+   * - Cùng luật giá trị và xác nhận giá trị bất thường như addMeasurements
    * - Bản ghi lưu với nguồn MEDICAL_EXAM và medicalRecordId của buổi khám; mỗi bản ghi một dòng nhật ký
    * - Không tự mở transaction, không publish event: trả về các cảnh báo; nơi gọi ghi vào outbox bằng publishAlerts trong cùng transaction
    * - Nơi gọi đã khóa row ngựa và kiểm quyền ghi y tế
@@ -189,7 +188,7 @@ export class HorseMeasurementsService {
    * @param manager EntityManager của transaction đang chạy
    * @param input Ngựa, buổi khám, người đo, thời điểm đo, các cặp loại/giá trị và cờ xác nhận
    * @returns Promise trả về các cảnh báo sinh ra, chưa phát
-   * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ, trùng loại hoặc thời điểm đo không hợp lệ
+   * @throws BadRequestException Nếu giá trị ngoài khoảng hợp lệ hoặc trùng loại
    * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà chưa xác nhận
    */
   async recordExamMeasurements(
@@ -197,7 +196,7 @@ export class HorseMeasurementsService {
     input: ExamMeasurementInput,
   ): Promise<HorseMeasurementAlertEvent[]> {
     if (input.values.length === 0) return [];
-    this.assertValidValues(input, input.measuredAt);
+    this.assertValidValues(input);
     const created = await this.saveMeasurements(manager, {
       horseId: input.horseId,
       values: input.values,
@@ -675,22 +674,17 @@ export class HorseMeasurementsService {
    * Kiểm tra dữ liệu một lần đo trước khi lưu.
    *
    * @param body Các cặp loại/giá trị và cờ xác nhận giá trị bất thường
-   * @param measuredAt Thời điểm đo đã quy đổi
-   * @throws BadRequestException Nếu trùng loại, giá trị ngoài khoảng hợp lệ hoặc thời điểm đo không hợp lệ
+   * @throws BadRequestException Nếu trùng loại hoặc giá trị ngoài khoảng hợp lệ
    * @throws UnprocessableEntityException Nếu có giá trị ngoài khoảng bình thường mà confirmAbnormal chưa bật
    */
-  private assertValidValues(
-    body: {
-      values: Array<{ type: HorseMeasurementType; value: number }>;
-      confirmAbnormal?: boolean;
-    },
-    measuredAt: Date,
-  ): void {
+  private assertValidValues(body: {
+    values: Array<{ type: HorseMeasurementType; value: number }>;
+    confirmAbnormal?: boolean;
+  }): void {
     assertDistinctMeasurementTypes(body.values.map((item) => item.type));
     for (const item of body.values) {
       assertMeasurementValue(item.type, item.value);
     }
-    assertMeasuredAt(measuredAt, new Date());
     assertAbnormalConfirmed(body.values, body.confirmAbnormal === true);
   }
 }
