@@ -15,6 +15,7 @@ const notification = (id: string, recipientId: string): NotificationRecord => ({
   resource: null,
   readAt: null,
   createdAt: new Date('2026-10-05T00:00:00Z'),
+  pushQueuedAt: null,
 });
 
 describe('RealtimeChannel.deliver', () => {

@@ -146,7 +146,7 @@ describe('Assigning grooms to training runs (Postgres)', () => {
     listener = new TrainingRunGroomAssignedListener(
       new HorseNotificationsService(
         new NotificationRecipientsRepository(dataSource),
-        new NotificationDeliveryService(model, []),
+        new NotificationDeliveryService(model, [], null),
         dataSource,
       ),
     );

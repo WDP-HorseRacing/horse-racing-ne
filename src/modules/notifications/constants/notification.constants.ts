@@ -29,6 +29,11 @@ export const NOTIFICATION_PUSH_JOB = 'push';
 export const NOTIFICATION_CHANNELS = Symbol('NOTIFICATION_CHANNELS');
 
 /**
+ * Token inject kênh push (NotificationChannel), null khi chưa cấu hình Firebase.
+ */
+export const NOTIFICATION_PUSH_CHANNEL = Symbol('NOTIFICATION_PUSH_CHANNEL');
+
+/**
  * Số giây kể từ lần cập nhật gần nhất mà thiết bị nhận push bị coi là cũ và tự xóa khỏi `user_devices` (60 ngày).
  */
 export const USER_DEVICE_STALE_AFTER_SECONDS = 60 * 24 * 60 * 60;

@@ -26,6 +26,7 @@ const notification = (
   resource: { type: NotificationResourceType.HORSE, id: 'h1', horseId: 'h1' },
   readAt: null,
   createdAt,
+  pushQueuedAt: null,
   ...overrides,
 });
 

@@ -6,6 +6,7 @@ import { FIREBASE_MESSAGING } from '../../../common/infrastructure/firebase/fire
 import { RealtimeModule } from '../../realtime/realtime.module';
 import {
   NOTIFICATION_CHANNELS,
+  NOTIFICATION_PUSH_CHANNEL,
   NOTIFICATION_PUSH_QUEUE,
 } from '../constants/notification.constants';
 import {
@@ -57,12 +58,18 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     NotificationPushProcessor,
     {
       provide: NOTIFICATION_CHANNELS,
-      inject: [RealtimeChannel, PushChannel, FIREBASE_MESSAGING],
+      inject: [RealtimeChannel],
+      useFactory: (realtime: RealtimeChannel): NotificationChannel[] => [
+        realtime,
+      ],
+    },
+    {
+      provide: NOTIFICATION_PUSH_CHANNEL,
+      inject: [PushChannel, FIREBASE_MESSAGING],
       useFactory: (
-        realtime: RealtimeChannel,
         push: PushChannel,
         messaging: Messaging | null,
-      ): NotificationChannel[] => (messaging ? [realtime, push] : [realtime]),
+      ): NotificationChannel | null => (messaging ? push : null),
     },
     NotificationDeliveryService,
     HorseNotificationsService,

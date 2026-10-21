@@ -24,6 +24,7 @@ export class NotificationResource {
  *
  * - Mỗi người nhận một document; `readAt` null là chưa đọc
  * - (eventId, recipientId) là duy nhất: gửi lại cùng sự kiện không sinh thông báo trùng
+ * - `pushQueuedAt` null là chưa đưa được vào hàng đợi push
  */
 @Schema({ collection: 'notifications', versionKey: false })
 export class NotificationRecord {
@@ -56,6 +57,9 @@ export class NotificationRecord {
 
   @Prop({ type: Date, required: true })
   createdAt!: Date;
+
+  @Prop({ type: Date, default: null })
+  pushQueuedAt!: Date | null;
 }
 
 export const NotificationSchema =

@@ -1,6 +1,6 @@
 # Nợ kỹ thuật: MongoDB, thông báo, outbox
 
-Cập nhật: 2026-10-12.
+Cập nhật: 2026-10-21.
 
 ## 1. Tự xóa thông báo cũ (TTL)
 
@@ -11,24 +11,23 @@ Hiện giữ vĩnh viễn. Khi cần tự xóa:
 - Thông báo chưa đọc (`readAt: null`) không bị TTL xóa; chỉ thông báo đã đọc quá N giây bị xóa.
 - Đổi N sau này: `db.runCommand({ collMod: 'notifications', index: { name: 'notifications_read_ttl', expireAfterSeconds: M } })`.
 
-## 2. Push FCM mất khi Redis sập
+## 2. Push FCM mất khi Redis sập (đã xử lý: gửi bù)
 
-`NotificationDeliveryService.send` lưu thông báo, đẩy socket, rồi `PushChannel` đưa job vào hàng đợi BullMQ.
 Kết nối BullMQ dùng `maxRetriesPerRequest: 5` (`bullConnectionOptions`): Redis rớt dưới khoảng 5 giây thì thêm job chờ rồi
-chạy tiếp, push chỉ trễ. Redis sập lâu hơn thì thêm job lỗi sau khoảng 5 giây, lỗi chỉ được log. Thông báo vẫn có trong inbox
-và đã đẩy socket, nhưng push của thông báo đó mất; outbox không giao lại vì listener không ném lỗi, và `send()` chỉ giao
-thông báo vừa lưu mới.
+chạy tiếp; lâu hơn thì thêm job lỗi sau khoảng 5 giây.
 
-Đánh đổi của số lần thử: mặc định của ioredis (20 lần) làm thêm job đứng chờ 238 giây, giữ cả hàng outbox phía sau
-(gồm việc tự tạo yêu cầu khám từ cảnh báo chỉ số); 1 lần thì Redis rớt 2 giây cũng mất push. 5 lần: chờ tối đa khoảng
-5 giây mỗi event.
+Cơ chế gửi bù trong `NotificationDeliveryService.send`:
+- Thông báo có `pushQueuedAt` (null là chưa vào hàng đợi push). Thông báo cũ không có field được coi như null.
+- Socket (`NOTIFICATION_CHANNELS`) và push (`NOTIFICATION_PUSH_CHANNEL`, null khi chưa cấu hình Firebase) tách riêng.
+  Socket chỉ đẩy thông báo vừa lưu mới, lỗi chỉ log.
+- Push: mọi thông báo của `eventId` cho các người nhận còn `pushQueuedAt = null` được đưa vào hàng đợi rồi đánh dấu.
+  Đưa lỗi thì `send` ném lỗi, listener ném theo, outbox giao lại event theo backoff; lần giao lại không tạo thông báo
+  trùng, không đẩy socket lại, chỉ đưa push còn thiếu (`jobId = notificationId` chống trùng job).
+- Test: `test/integration/notification-push-catchup.int-spec.ts`.
 
-Hướng gửi bù khi cần:
-- Thêm `pushQueuedAt` vào thông báo; đưa job được thì đánh dấu.
-- Push lỗi thì ném lỗi để outbox giao lại; lần giao lại chỉ đẩy push cho thông báo của `eventId` có `pushQueuedAt = null`
-  (socket không đẩy lại, `jobId = notificationId` chống trùng job).
-- Socket và push phải tách khỏi vòng lặp kênh chung vì xử lý lỗi khác nhau.
-- Redis sập quá khoảng 17 phút thì mọi event có thông báo trong lúc đó bị `dead_at`: phải làm cảnh báo ở mục 4 cùng lúc.
+Còn lại: Redis sập quá khoảng 17 phút thì mọi event có thông báo trong lúc đó bị `dead_at` (xem mục 4, chưa có cảnh báo).
+Đánh đổi của số lần thử: mặc định của ioredis (20 lần) làm thêm job đứng chờ 238 giây, giữ cả hàng outbox phía sau;
+5 lần: chờ tối đa khoảng 5 giây mỗi event.
 
 ## 3. Lỗi FCM `invalid-argument`
 

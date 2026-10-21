@@ -34,9 +34,11 @@ describe('NotificationDeliveryService.send (MongoDB)', () => {
   beforeEach(async () => {
     await clearAllMongoCollections(mongo.connection);
     emitToUser = jest.fn();
-    service = new NotificationDeliveryService(model, [
-      new RealtimeChannel({ emitToUser } as unknown as RealtimeGateway),
-    ]);
+    service = new NotificationDeliveryService(
+      model,
+      [new RealtimeChannel({ emitToUser } as unknown as RealtimeGateway)],
+      null,
+    );
   });
 
   const draft = (eventId: string, recipientIds: string[]) => ({
@@ -76,6 +78,7 @@ describe('NotificationDeliveryService.send (MongoDB)', () => {
           message: 'Ngựa sốt',
           resource: { type: 'HORSE', id: 'horse-1', horseId: 'horse-1' },
           readAt: null,
+          pushQueuedAt: null,
         },
       ]);
     }

@@ -56,7 +56,7 @@ export class PushChannel implements NotificationChannel {
           jobId: notification._id,
           // số lần thử lại (tính cả lần đầu)
           attempts: PUSH_ATTEMPTS,
-          // cách thức thử lại: delay tăng theo cấp số nhân 5s, 10s, 20s, 40s, 80s
+          // cách thức thử lại: delay tăng theo cấp số nhân 5s, 10s, 20s, 40s
           backoff: { type: 'exponential', delay: PUSH_BACKOFF_MS },
           // hoàn thành thì xoá khỏi luông, thất bại thì giữ lại 1000 việc để debug
           removeOnComplete: { age: COMPLETED_JOB_RETENTION_SECONDS },

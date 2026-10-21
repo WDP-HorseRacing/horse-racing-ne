@@ -159,9 +159,11 @@ describe('Outbox findings (Postgres + Mongo + Redis)', () => {
         {
           provide: NotificationDeliveryService,
           useFactory: () =>
-            new NotificationDeliveryService(flakyModel, [
+            new NotificationDeliveryService(
+              flakyModel,
+              [],
               new PushChannel(flakyQueue),
-            ]),
+            ),
         },
         MedicalNotificationsService,
         MedicalEventsListener,

@@ -122,7 +122,7 @@ describe('Veterinarians changing private care tasks of any horse (Postgres)', ()
     listener = new CareTaskChangedListener(
       new HorseNotificationsService(
         new NotificationRecipientsRepository(dataSource),
-        new NotificationDeliveryService(model, []),
+        new NotificationDeliveryService(model, [], null),
         dataSource,
       ),
     );
