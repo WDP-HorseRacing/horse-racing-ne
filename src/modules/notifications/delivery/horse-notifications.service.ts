@@ -22,6 +22,7 @@ import type {
   HorseGroomReleasedEvent,
   HorseLifecycleChangedEvent,
   HorseOwnershipTransferredEvent,
+  HorseOwnerAssignedEvent,
   HorseMeasurementAlertEvent,
 } from '../../horses/types/horse.types';
 import { HorseCareTaskMode } from '../../stable/constants/horse-care-task-mode.enum';
@@ -632,6 +633,35 @@ export class HorseNotificationsService {
       resource: null,
     });
     return [...toNewOwner, ...toOldOwner];
+  }
+
+  /**
+   * Báo chủ mới khi hồ sơ ngựa được tạo hoặc ngựa chưa có chủ được gán chủ qua sửa hồ sơ.
+   *
+   * - Thông báo trỏ tới hồ sơ ngựa
+   * - Ghi bằng connection riêng, không nhận EntityManager; idempotent theo event.eventId
+   * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
+   *
+   * @param event Payload của HORSE_OWNER_ASSIGNED_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  async notifyOwnerAssigned(event: HorseOwnerAssignedEvent): Promise<string[]> {
+    const horseName = await this.horseName(event.horseId);
+    if (!horseName) {
+      this.logger.warn(
+        `Bỏ qua thông báo gán chủ ${event.eventId}: không tìm thấy ngựa ${event.horseId}`,
+      );
+      return [];
+    }
+    return this.notifications.send({
+      eventId: event.eventId,
+      recipientIds: [event.ownerId],
+      category: NotificationCategory.OWNERSHIP,
+      priority: NotificationPriority.NORMAL,
+      title: `Bạn đã trở thành chủ sở hữu ngựa ${horseName}`,
+      message: `Hiệu lực từ ${toDisplayDate(toClubDate(event.assignedAt))}`,
+      resource: horseResource(event.horseId),
+    });
   }
 
   /**

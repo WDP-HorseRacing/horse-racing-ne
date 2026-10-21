@@ -106,7 +106,7 @@ export class HorseOwnershipsService {
         before: { ownerId: fromOwnerId },
         after: { ownerId: body.newOwnerId },
         reason: body.reason,
-        feature: HORSE_AUDIT_FEATURE.UPDATE_PROFILE,
+        feature: HORSE_AUDIT_FEATURE.OWNERSHIP_TRANSFER,
       });
       const event: HorseOwnershipTransferredEvent = {
         eventId: randomUUID(),

@@ -25,6 +25,7 @@ import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
 import { HorseDeceasedListener } from './horse-deceased.listener';
 import { HorseLifecycleChangedListener } from './horse-lifecycle-changed.listener';
 import { HorseOwnershipTransferredListener } from './horse-ownership-transferred.listener';
+import { HorseOwnerAssignedListener } from './horse-owner-assigned.listener';
 import { HorseGroomReleasedListener } from './horse-groom-released.listener';
 import { HorseMeasurementAlertListener } from './horse-measurement-alert.listener';
 import { HorseNotificationsService } from './horse-notifications.service';
@@ -80,6 +81,7 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     HorseGroomReleasedListener,
     HorseDeceasedListener,
     HorseOwnershipTransferredListener,
+    HorseOwnerAssignedListener,
     GroomAssignmentChangedListener,
     ChecklistTaskAddedListener,
     CareTaskChangedListener,

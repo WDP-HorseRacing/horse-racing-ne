@@ -184,6 +184,20 @@ export interface HorseOwnershipTransferredEvent {
 }
 
 /**
+ * Payload của domain event HORSE_OWNER_ASSIGNED_EVENT, ghi vào outbox trong transaction tạo hồ sơ hoặc sửa hồ sơ có gán chủ.
+ *
+ * - eventId: sinh mới cho mỗi lần gán, dùng để chống gửi trùng thông báo
+ * - ownerId: chủ vừa được gán
+ * - assignedAt: thời điểm ghi nhận gán chủ (chuỗi ISO), cũng là lúc chủ mới bắt đầu sở hữu
+ */
+export interface HorseOwnerAssignedEvent {
+  eventId: string;
+  horseId: string;
+  ownerId: string;
+  assignedAt: string;
+}
+
+/**
  * Một giai đoạn sở hữu: chủ và khoảng thời gian ghi nhận trên hệ thống
  *
  * - endedAt null: giai đoạn đang mở

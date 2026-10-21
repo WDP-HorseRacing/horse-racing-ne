@@ -23,6 +23,7 @@ import {
   CREATE_AUDIT_FIELDS,
   HORSE_AUDIT_FEATURE,
   HORSE_BARN_ASSIGNED_EVENT,
+  HORSE_OWNER_ASSIGNED_EVENT,
   PEDIGREE_DEPTH,
   PEDIGREE_FIELDS,
   STALE_HORSE_MESSAGE,
@@ -69,6 +70,7 @@ import { HorseOwnershipService } from '../shared/horse-ownership.service';
 import { HorsePedigreeService } from '../shared/horse-pedigree.service';
 import type {
   HorseBarnAssignedEvent,
+  HorseOwnerAssignedEvent,
   HorseLocationRow,
   HorsePersonRow,
 } from '../types/horse.types';
@@ -228,7 +230,7 @@ export class HorseProfilesService {
    * - Cha mẹ phải là ngựa có hồ sơ tại câu lạc bộ, đúng giới tính, sinh trước con
    * - Khu (nếu có) phải đang hoạt động, có Head Trainer và còn ô trống; không chọn thì ngựa vào "Chờ xếp khu"
    * - Kiểm ảnh trên storage trước khi mở transaction (có gọi mạng tới storage)
-   * - Tạo hồ sơ, xếp khu và ghi nhật ký trong cùng một transaction; có khu thì ghi HORSE_BARN_ASSIGNED_EVENT vào outbox trong cùng transaction để báo Head Trainer của khu
+   * - Tạo hồ sơ, xếp khu và ghi nhật ký trong cùng một transaction; ghi HORSE_OWNER_ASSIGNED_EVENT vào outbox để báo chủ; có khu thì ghi thêm HORSE_BARN_ASSIGNED_EVENT để báo Head Trainer của khu
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin hồ sơ ngựa
@@ -283,10 +285,11 @@ export class HorseProfilesService {
             ownerId,
             barnId: body.barnId ?? null,
           });
+          const assignedAt = new Date();
           await this.ownerships.recordOwnerChange(manager, {
             horseId: created.id,
             ownerId,
-            at: new Date(),
+            at: assignedAt,
             recordedBy: caller.id,
           });
           await this.auditService.record(manager, {
@@ -298,6 +301,17 @@ export class HorseProfilesService {
             after: pickFields(created, CREATE_AUDIT_FIELDS),
             feature: HORSE_AUDIT_FEATURE.CREATE_PROFILE,
           });
+          const ownerEvent: HorseOwnerAssignedEvent = {
+            eventId: randomUUID(),
+            horseId: created.id,
+            ownerId,
+            assignedAt: assignedAt.toISOString(),
+          };
+          await this.events.publish(
+            manager,
+            HORSE_OWNER_ASSIGNED_EVENT,
+            ownerEvent,
+          );
           if (created.barnId) {
             const event: HorseBarnAssignedEvent = {
               eventId: randomUUID(),
@@ -325,7 +339,7 @@ export class HorseProfilesService {
    * - Gửi field ngoài quyền thì trả 403, không âm thầm bỏ qua
    * - Bắt buộc gửi version lấy từ lần GET gần nhất; người khác đã lưu trước thì trả 409
    * - Chủ sở hữu: chỉ gán được cho ngựa chưa có chủ, mở giai đoạn sở hữu mới; ngựa đã có chủ khác trả 409, bỏ trống chủ (null) trả 400
-   * - Gán chủ: chủ mới thấy toàn bộ lịch sử; nhật ký ghi từ ai sang ai
+   * - Gán chủ: chủ mới thấy toàn bộ lịch sử; nhật ký ghi từ ai sang ai; ghi HORSE_OWNER_ASSIGNED_EVENT vào outbox để báo chủ mới
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của ngựa
@@ -392,11 +406,12 @@ export class HorseProfilesService {
           if (!result.affected) {
             throw new ConflictException(STALE_HORSE_MESSAGE);
           }
+          const assignedAt = new Date();
           if (changes.ownerId) {
             await this.ownerships.recordOwnerChange(manager, {
               horseId: id,
               ownerId: changes.ownerId,
-              at: new Date(),
+              at: assignedAt,
               recordedBy: caller.id,
             });
           }
@@ -409,6 +424,19 @@ export class HorseProfilesService {
             after: changes,
             feature: HORSE_AUDIT_FEATURE.UPDATE_PROFILE,
           });
+          if (changes.ownerId) {
+            const event: HorseOwnerAssignedEvent = {
+              eventId: randomUUID(),
+              horseId: id,
+              ownerId: changes.ownerId,
+              assignedAt: assignedAt.toISOString(),
+            };
+            await this.events.publish(
+              manager,
+              HORSE_OWNER_ASSIGNED_EVENT,
+              event,
+            );
+          }
         }),
       UNIQUE_CONFLICT_MESSAGES,
     );

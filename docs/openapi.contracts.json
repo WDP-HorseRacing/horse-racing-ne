@@ -12876,6 +12876,7 @@
             "enum": [
               "HORSE_CREATE",
               "HORSE_UPDATE",
+              "HORSE_OWNER",
               "HORSE_MEASURE",
               "HORSE_BARN",
               "HORSE_LIFECYCLE",

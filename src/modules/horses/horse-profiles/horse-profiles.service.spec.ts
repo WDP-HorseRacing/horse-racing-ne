@@ -26,6 +26,7 @@ import {
 } from '../enums/horse-status.enum';
 import {
   HORSE_BARN_ASSIGNED_EVENT,
+  HORSE_OWNER_ASSIGNED_EVENT,
   MICROCHIP_TAKEN_MESSAGE,
   STALE_HORSE_MESSAGE,
 } from '../constants/horse.constants';
@@ -863,10 +864,21 @@ describe('HorseProfilesService', () => {
           barnId: 'b2',
         },
       );
+      expect(events.publish).toHaveBeenCalledWith(
+        createManager,
+        HORSE_OWNER_ASSIGNED_EVENT,
+        {
+          eventId: anyString,
+          horseId: 'h-new',
+          ownerId: 'owner-1',
+          assignedAt: anyString,
+        },
+      );
       expect(calls).toEqual([
         'transaction:start',
         'lockBarnRow',
         'lockAssignableBarn',
+        'publish',
         'publish',
         'transaction:commit',
       ]);
@@ -889,7 +901,7 @@ describe('HorseProfilesService', () => {
       ).rejects.toThrow('outbox down');
       expect(events.publish).toHaveBeenCalledWith(
         createManager,
-        HORSE_BARN_ASSIGNED_EVENT,
+        HORSE_OWNER_ASSIGNED_EVENT,
         expect.anything(),
       );
       expect(calls).not.toContain('transaction:commit');
@@ -912,7 +924,7 @@ describe('HorseProfilesService', () => {
       expect(events.publish).not.toHaveBeenCalled();
     });
 
-    it('neither locks a barn nor notifies without a barnId', async () => {
+    it('neither locks a barn nor notifies the barn without a barnId', async () => {
       await service.create(actorWith(UserRole.CLUB_MANAGER), {
         name: 'Gió',
         gender: HorseGender.MALE,
@@ -924,7 +936,12 @@ describe('HorseProfilesService', () => {
         HorseEntity,
         expect.objectContaining({ barnId: null }),
       );
-      expect(events.publish).not.toHaveBeenCalled();
+      expect(events.publish).toHaveBeenCalledTimes(1);
+      expect(events.publish).toHaveBeenCalledWith(
+        createManager,
+        HORSE_OWNER_ASSIGNED_EVENT,
+        expect.anything(),
+      );
     });
 
     it('checks the photo on storage before opening the transaction', async () => {
@@ -942,6 +959,7 @@ describe('HorseProfilesService', () => {
       expect(calls).toEqual([
         'assertAttachableHorsePhoto',
         'transaction:start',
+        'publish',
         'transaction:commit',
       ]);
     });

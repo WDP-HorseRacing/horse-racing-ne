@@ -8,6 +8,11 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 ## Ngày 21/10/2026
 
+### Nhật ký chuyển chủ có mã chức năng riêng, tạo hồ sơ và gán chủ báo chủ mới
+
+- `GET /audit-logs`: dòng nhật ký của chuyển nhượng nội bộ (`POST /horses/:id/ownership-transfers`) nay có `feature = HORSE_OWNER` thay vì `HORSE_UPDATE`; dữ liệu cũ đã đổi theo. Lọc `feature=HORSE_OWNER` ra đúng các lần chuyển chủ. Gán chủ qua sửa hồ sơ (`PATCH /horses/:id` có `ownerId`) vẫn là `HORSE_UPDATE`. Danh sách mã chức năng có thêm `HORSE_OWNER`.
+- `POST /horses` (tạo hồ sơ) và `PATCH /horses/:id` gán chủ cho ngựa chưa có chủ: chủ được chọn nhận thông báo loại `OWNERSHIP` "Bạn đã trở thành chủ sở hữu ngựa X", trỏ tới hồ sơ ngựa (giống chủ mới khi chuyển nhượng). Request và response không đổi.
+
 ### Gửi trùng đánh giá lượt tập trả 409
 
 - `POST /session-participants/:id/evaluation`: gửi hai lần cùng lúc cho một lượt (bấm Lưu hai lần, hai tab, tự gửi lại khi mạng chậm) thì lần sau nhận 409 "Lượt tập đã có đánh giá" thay vì 500. Cùng câu với khi lượt đã có đánh giá từ trước; request và response không đổi.

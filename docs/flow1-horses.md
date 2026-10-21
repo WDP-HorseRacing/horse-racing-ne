@@ -299,7 +299,7 @@ Tạo mới một con ngựa cho câu lạc bộ. Trong cùng một thao tác c�
    - Nếu cả con và cha (hoặc mẹ) đều có ngày sinh thì cha mẹ phải lớn hơn con ít nhất 2 năm; đúng bằng 2 năm thì được. Thiếu ngày sinh ở một bên thì bỏ qua kiểm tra này.
    - Không được tạo vòng lặp: một con ngựa không được là tổ tiên của chính nó.
    - Cha hoặc mẹ không có trong câu lạc bộ thì để trống. Hệ thống không lưu ngựa ngoài dưới bất kỳ dạng nào.
-7. Chủ sở hữu: bắt buộc chọn một chủ từ danh sách tài khoản HORSE OWNER đang hoạt động (thiếu: 400). Mỗi con ngựa có nhiều nhất một chủ. Hệ thống mở giai đoạn sở hữu đầu tiên, bắt đầu từ lúc tạo hồ sơ. Ngựa chỉ còn rơi vào cảnh không có chủ khi kích hoạt lại hoặc khôi phục hồ sơ mà chủ cũ không còn là HORSE OWNER hoạt động; khi đó CLUB MANAGER gán chủ bằng F1.4.
+7. Chủ sở hữu: bắt buộc chọn một chủ từ danh sách tài khoản HORSE OWNER đang hoạt động (thiếu: 400). Mỗi con ngựa có nhiều nhất một chủ. Hệ thống mở giai đoạn sở hữu đầu tiên, bắt đầu từ lúc tạo hồ sơ, và thông báo cho chủ ("Bạn đã trở thành chủ sở hữu ngựa X"). Ngựa chỉ còn rơi vào cảnh không có chủ khi kích hoạt lại hoặc khôi phục hồ sơ mà chủ cũ không còn là HORSE OWNER hoạt động; khi đó CLUB MANAGER gán chủ bằng F1.4.
 8. Ảnh đại diện: mỗi con ngựa có một ảnh, định dạng JPEG, PNG hoặc WebP, dung lượng tối đa 10 MB.
 9. Khu chuồng: chỉ chọn được khu đang hoạt động, có HEAD TRAINER đang hoạt động phụ trách, và còn chỗ nhận ngựa. Số chỗ còn nhận = số ô trống − số ngựa của khu đang chờ xếp ô (ví dụ khu có 2 ô trống nhưng đã có 2 ngựa chờ xếp ô thì hết chỗ). *(BA chốt)* Không chọn thì ngựa nằm trong danh sách "Chờ xếp khu" của CLUB MANAGER.
 10. Hồ sơ mới tạo luôn bắt đầu ở trạng thái sức khỏe "Đủ điều kiện" và trạng thái vòng đời "Đang hoạt động". Không được tự chọn hai giá trị này lúc tạo.
@@ -402,12 +402,12 @@ Sửa thông tin định danh, ảnh đại diện, cha mẹ, chủ sở hữu v
 2. Không cho đổi giới tính nếu con ngựa đang được dùng làm cha hoặc mẹ của con khác mà giới tính mới làm sai vai trò. Chuyển từ MALE sang GELDING luôn được phép. Đổi ngày sinh của ngựa đang làm cha hoặc mẹ thì vẫn phải sinh trước con sớm nhất ít nhất 2 năm, tính cả con đã bị xóa hồ sơ (vì con đó có thể được khôi phục). *(BA chốt)*
 3. Đổi cha hoặc mẹ phải kiểm tra lại vòng lặp phả hệ.
 4. Chủ sở hữu (chỉ CLUB MANAGER):
-   - Gán chủ: chỉ dùng cho ngựa chưa có chủ. Hệ thống mở giai đoạn sở hữu mới, bắt đầu từ lúc lưu.
+   - Gán chủ: chỉ dùng cho ngựa chưa có chủ. Hệ thống mở giai đoạn sở hữu mới, bắt đầu từ lúc lưu, và thông báo cho chủ mới ("Bạn đã trở thành chủ sở hữu ngựa X").
    - Ngựa đã có chủ thì không đổi chủ bằng chức năng sửa hồ sơ (409), phải dùng chuyển nhượng nội bộ (mục 9). Không bỏ trống được chủ (400). Không gửi trường chủ sở hữu thì chủ giữ nguyên.
    - Hệ thống lưu lịch sử các giai đoạn sở hữu: chủ, thời điểm bắt đầu, thời điểm kết thúc, lý do, người ghi nhận. Thời điểm bắt đầu là lúc CLUB MANAGER lưu việc gán chủ hoặc chuyển chủ. Mỗi con ngựa có tối đa một giai đoạn đang mở.
    - Chủ mới thấy được toàn bộ lịch sử sức khỏe của con ngựa, nhưng chi phí của các buổi khám thuộc thời gian chủ khác sở hữu bị ẩn (Flow 3).
    - Chủ cũ mất quyền xem ngay khi việc chuyển chủ được lưu.
-   - Việc gán chủ và chuyển chủ được ghi vào nhật ký: từ ai sang ai, ai thực hiện, thời điểm nào.
+   - Việc gán chủ và chuyển chủ được ghi vào nhật ký: từ ai sang ai, ai thực hiện, thời điểm nào. Gán chủ ghi chung chức năng sửa hồ sơ (`HORSE_UPDATE`); chuyển nhượng nội bộ có chức năng riêng `HORSE_OWNER`, lọc nhật ký theo chức năng này ra đúng các lần chuyển chủ.
 5. Không cho sửa hồ sơ của ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 6. Khi HEAD TRAINER gửi kèm những trường ngoài quyền, hệ thống phải từ chối và báo lỗi, không âm thầm bỏ qua.
 7. Nếu hai người cùng mở một hồ sơ và cùng bấm lưu, người lưu sau bị chặn và được thông báo dữ liệu vừa thay đổi kèm nội dung mới nhất. Không ghi đè âm thầm.

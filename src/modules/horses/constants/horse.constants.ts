@@ -168,6 +168,12 @@ export const HORSE_LIFECYCLE_CHANGED_EVENT = 'horse.lifecycle-changed';
 export const HORSE_OWNERSHIP_TRANSFERRED_EVENT = 'horse.ownership.transferred';
 
 /**
+ * Tên domain event phát ra khi Club Manager tạo hồ sơ ngựa hoặc gán chủ cho ngựa chưa có chủ qua sửa hồ sơ, ghi vào outbox trong cùng transaction.
+ * Payload là HorseOwnerAssignedEvent.
+ */
+export const HORSE_OWNER_ASSIGNED_EVENT = 'horse.owner.assigned';
+
+/**
  * Kết luận ghi vào lệnh khóa huấn luyện khi hệ thống tự gỡ do ngựa chuyển nhượng.
  */
 export const TRANSFER_LOCK_RELEASE_CONCLUSION = 'Gỡ do chuyển nhượng';
@@ -363,6 +369,7 @@ export const RACE_APTITUDE_FIELD = 'raceAptitude';
 export const HORSE_AUDIT_FEATURE = {
   CREATE_PROFILE: AuditFeature.HORSE_CREATE,
   UPDATE_PROFILE: AuditFeature.HORSE_UPDATE,
+  OWNERSHIP_TRANSFER: AuditFeature.HORSE_OWNER,
   MEASUREMENT: AuditFeature.HORSE_MEASURE,
   BARN_PLACEMENT: AuditFeature.HORSE_BARN,
   LIFECYCLE_AND_DELETION: AuditFeature.HORSE_LIFECYCLE,
