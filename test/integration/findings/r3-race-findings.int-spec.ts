@@ -984,6 +984,45 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     expect(rawErrors(rounds)).toEqual([]);
   });
 
+  it('R3-DL-N8 HT assigns the new groom to a run (session → run → groom user) while changing the horse groom to him (horse → … → run): no deadlock 40P01, the run ends with the new groom', async () => {
+    const rounds: Array<{ outcomes: Outcome[]; runGroom: string | null }> = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { horseId, participantId } = await plannedRun(`Đổi dắt ${i}`);
+      const oldGroomId = await seed.user(UserRole.GROOM);
+      const newGroomId = await seed.user(UserRole.GROOM);
+      await assignGroomRow(horseId, oldGroomId);
+      await dataSource.query(
+        'UPDATE session_participants SET assigned_groom_id = $1 WHERE id = $2',
+        [oldGroomId, participantId],
+      );
+      const outcomes = await contend(
+        'SELECT 1 FROM session_participants WHERE id = $1 FOR UPDATE',
+        [participantId],
+        [
+          () =>
+            participants.assignGroom(trainer, participantId, {
+              groomId: newGroomId,
+            }),
+          () => grooms.assign(trainer, horseId, { groomId: newGroomId }),
+        ],
+      );
+      const [row] = await dataSource.query<
+        { assigned_groom_id: string | null }[]
+      >('SELECT assigned_groom_id FROM session_participants WHERE id = $1', [
+        participantId,
+      ]);
+      rounds.push({
+        outcomes,
+        runGroom: row.assigned_groom_id === newGroomId ? 'new' : 'other',
+      });
+    }
+
+    expect(rawErrors(rounds.map((round) => round.outcomes))).toEqual([]);
+    expect(rounds.map((round) => round.runGroom)).toEqual(
+      Array(ROUNDS).fill('new'),
+    );
+  });
+
   it('R3-4b CM deactivates a head trainer while he creates a training plan: one refused (403 inactive caller or 409 plan exists), never a plan of an inactive HT', async () => {
     const [subject] = await dataSource.query<{ id: string }[]>(
       `INSERT INTO training_subjects (version, name, session_type, intensity, planned_distance_m)
