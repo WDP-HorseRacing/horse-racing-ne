@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model, QueryFilter } from 'mongoose';
 import type { Actor } from '../../../common/types/actor';
-import { decodeKeysetCursor } from '../../../common/utils/keyset-cursor';
+import { decodeKeysetCursor } from '../../../common/utils/pagination/keyset-cursor';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
   NOTIFICATION_ALL_READ_SOCKET_EVENT,

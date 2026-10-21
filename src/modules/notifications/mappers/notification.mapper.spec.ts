@@ -1,4 +1,4 @@
-import { decodeKeysetCursor } from '../../../common/utils/keyset-cursor';
+import { decodeKeysetCursor } from '../../../common/utils/pagination/keyset-cursor';
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationResourceType } from '../enums/notification-resource-type.enum';
