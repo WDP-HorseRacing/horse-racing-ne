@@ -1,6 +1,6 @@
 # Hỏi đáp chuẩn bị bảo vệ
 
-Cập nhật: 20/10/2026
+Cập nhật: 21/10/2026
 
 Các câu hội đồng có thể hỏi về những quyết định nghiệp vụ "cố ý không làm" hoặc "chọn cách đơn giản", kèm câu trả lời ngắn và lý do. Mã trong ngoặc là mã mục trong bản rà nghiệp vụ.
 
@@ -161,3 +161,19 @@ Mỗi con ngựa có tối đa một bệnh án đang mở. Bệnh án là một
 **Trả lời:** Checklist là việc trong ngày. Groom có cả ngày để xác nhận; quá ngày thì checklist khóa và ghi nhận là chưa xong, đúng với việc không được xác nhận kịp. Trạng thái này không ảnh hưởng phí, báo cáo hay đánh giá nào.
 
 **Đánh đổi đã biết:** bệnh viện cho y tá ghi bù sổ cho thuốc (ghi giờ thật, đánh dấu ghi trễ) vì luật bắt hồ sơ thuốc phải đầy đủ; checklist chuồng không có ràng buộc đó nên không làm ghi bù.
+
+## Dữ liệu và báo cáo
+
+### 22. Sao báo cáo phí và lịch sử sức khỏe đọc từ Audit Log mà không có bảng lịch sử riêng? (NEW-3)
+
+**Trả lời:** Mỗi lần đổi vòng đời hay sức khỏe đều ghi một dòng nhật ký có giá trị trước và sau, trong cùng giao dịch với thao tác. Hệ thống dùng chính chuỗi nhật ký đó làm lịch sử trạng thái, nên không phải ghi cùng một sự kiện vào hai nơi. Lịch sử chủ sở hữu thì có bảng riêng (giai đoạn sở hữu) vì cần tra theo khoảng thời gian cho từng chủ.
+
+**Lý do:**
+- Mọi đường tạo ngựa, đổi vòng đời, đổi sức khỏe đều đi qua service và luôn ghi nhật ký, nên lịch sử không bị thiếu.
+- Nhật ký không cho sửa hay xóa trên hệ thống, nên lịch sử không bị đổi sau khi đã ghi.
+
+**Đánh đổi đã biết:**
+- Nhật ký vừa để tra cứu trách nhiệm vừa làm dữ liệu nghiệp vụ: không được dọn bớt nhật ký của ngựa hay đổi định dạng giá trị trước/sau (ghi ở Flow 1 mục 6).
+- Dữ liệu nạp thẳng vào DB mà thiếu dòng tạo hồ sơ thì báo cáo phí tính sai; seed đã ghi đủ.
+- Báo cáo phí kỳ dài chậm vì phải tra nhật ký cho từng ngày.
+- Hướng làm khi hệ thống lớn: tách bảng lịch sử vòng đời và lịch sử sức khỏe riêng như bảng giai đoạn sở hữu, ghi trong cùng giao dịch, rồi chuyển các chỗ đọc sang bảng mới.

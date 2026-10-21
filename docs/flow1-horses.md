@@ -1,6 +1,6 @@
 # Đề bài
 
-> Cập nhật: 20/10/2026
+> Cập nhật: 21/10/2026
 
 ## Hệ thống Quản lý Huấn luyện Ngựa đua — Racehorse Training & Management System
 
@@ -179,6 +179,9 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
    - CLUB MANAGER thao tác ghi trên hồ sơ đã xóa: 409 "Hồ sơ đã xóa, chỉ xem được. Khôi phục hồ sơ trước khi thao tác". Vai trò khác không thấy hồ sơ đã xóa nên nhận 404. *(BA chốt)*
    - Chọn một tài khoản (chủ sở hữu, HEAD TRAINER phụ trách khu, GROOM) mà tài khoản đó không còn hoạt động: 409. Chọn sai tài khoản hoặc tài khoản sai vai trò: 400. *(BA chốt)*
 4. Đổi vòng đời ghi một dòng nhật ký cho con ngựa, kèm đủ các hệ quả đã xảy ra: ô chuồng được trả, GROOM bị kết thúc phân công, lệnh khóa huấn luyện được gỡ, số yêu cầu khám bị bỏ qua, lịch hẹn khám và lịch chăm sóc bị hủy, số đăng ký thi đấu bị rút, số lớp bị rút, chủ bị bỏ trống, ngày mất (khi ghi nhận ngựa mất), số khẩu phần lưu trữ, số bản nháp xóa, số việc riêng kết thúc và bị xóa, checklist hôm nay bị hủy (chỉ ghi phần có xảy ra). *(BA chốt)*
+5. Nhật ký của con ngựa đồng thời là nguồn lịch sử trạng thái: báo cáo phí ngày tính trạng thái từng ngày theo `lifecycleStatus`, còn dashboard y tế, lịch sử sức khỏe, hủy buổi khám và báo cáo sức khỏe đọc `healthStatus` trong giá trị trước/sau của nhật ký. Vì vậy:
+   - Không xóa, không dọn bớt nhật ký có `entity_type = HORSE`, không đổi tên hay bỏ các khóa `lifecycleStatus`, `healthStatus` trong giá trị trước/sau.
+   - Mọi cách tạo ngựa hoặc đổi vòng đời, sức khỏe (kể cả dữ liệu nạp thẳng vào DB như seed) phải ghi kèm dòng nhật ký đúng định dạng service ghi; thiếu dòng tạo hồ sơ thì báo cáo phí lấy trạng thái hiện tại cho mọi ngày trước đó.
 
 ## Phụ lục: Thay đổi so với bản trước
 
