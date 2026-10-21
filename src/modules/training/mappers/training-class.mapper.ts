@@ -10,7 +10,7 @@ import { TrainingClassEntity } from '../entities/training-class.entity';
 import {
   type ClassWeekProgress,
   phaseMinMinutes,
-} from '../policies/training-plan.policy';
+} from '../policy/training-plan.policy';
 import { toTrainingSubjectResponse } from './training-subject.mapper';
 
 const MAPPER_OPTIONS = { excludeExtraneousValues: true } as const;

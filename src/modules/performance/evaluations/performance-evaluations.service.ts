@@ -19,7 +19,7 @@ import {
 } from '../dto/performance-evaluation.dto';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';
 import { toPerformanceEvaluationResponse } from '../mappers/performance-evaluation.mapper';
-import { assertSessionRecordEditable } from '../../training/policies/training.policy';
+import { assertSessionRecordEditable } from '../../training/policy/training.policy';
 import { TrainingAccessService } from '../../training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
 

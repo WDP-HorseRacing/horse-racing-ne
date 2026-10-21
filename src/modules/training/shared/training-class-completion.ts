@@ -10,7 +10,7 @@ import { TrainingSessionEntity } from '../entities/training-session.entity';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import { assertClassCompletable } from '../policies/training.policy';
+import { assertClassCompletable } from '../policy/training.policy';
 
 /**
  * Hoàn thành lớp trong transaction đang chạy và ghi nhật ký đổi trạng thái

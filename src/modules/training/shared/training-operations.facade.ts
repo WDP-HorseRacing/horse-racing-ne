@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EntityManager, In } from 'typeorm';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { evaluateEligibility } from '../../horses/policies/horse.policy';
@@ -18,7 +22,7 @@ import {
   assertHeadTrainerFreeForMovedClasses,
   eligibilityForSession,
   initialParticipantEligibility,
-} from '../policies/training.policy';
+} from '../policy/training.policy';
 import type { ParticipantEligibilityChange } from '../types/training-session.types';
 import { toGroomRun } from '../utils/groom-run';
 import { TrainingAccessService } from './training-access.service';

@@ -27,7 +27,7 @@ import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import {
   findGroomRunClashes,
   HORSE_SCHEDULE_SESSION_STATUSES,
-} from '../policies/training.policy';
+} from '../policy/training.policy';
 import { toGroomRun } from '../utils/groom-run';
 import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
 import type {
@@ -508,11 +508,7 @@ export class TrainingAccessService {
         (await manager
           .getRepository(HorseEnrollmentEntity)
           .createQueryBuilder('enrollment')
-          .innerJoin(
-            HorseEntity,
-            'horse',
-            'horse.id = enrollment.horse_id',
-          )
+          .innerJoin(HorseEntity, 'horse', 'horse.id = enrollment.horse_id')
           .where('enrollment.class_id = :classId', {
             classId: trainingClass.id,
           })

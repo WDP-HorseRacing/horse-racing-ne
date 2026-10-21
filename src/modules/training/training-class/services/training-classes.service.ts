@@ -46,7 +46,7 @@ import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import {
   classWeeklyProgress,
   phaseMinMinutes,
-} from '../../policies/training-plan.policy';
+} from '../../policy/training-plan.policy';
 import {
   toTrainingClassPlanResponse,
   toTrainingClassProgressResponse,
@@ -58,7 +58,7 @@ import {
   assertClassStartNotPast,
   classEndDate,
   totalPlanWeeks,
-} from '../../policies/training.policy';
+} from '../../policy/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
 import { completeTrainingClass } from '../../shared/training-class-completion';
 import { classAuditData } from '../../utils/training-audit';

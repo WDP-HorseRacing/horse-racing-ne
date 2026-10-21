@@ -58,7 +58,7 @@ import {
   sessionsByHorse,
   horseScheduleClashError,
   initialParticipantEligibility,
-} from '../../policies/training.policy';
+} from '../../policy/training.policy';
 import { TrainingAccessService } from '../../shared/training-access.service';
 import { sessionAuditData } from '../../utils/training-audit';
 import { TRAINING_SESSION_CANCELLED_EVENT } from '../../constants/training-events.constants';
