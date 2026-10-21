@@ -48,6 +48,8 @@ import { TrainingClassStatus } from '../../../src/modules/training/enums/trainin
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
 import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
 import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
+import { TrainingPlansModule } from '../../../src/modules/training/training-plans/training-plans.module';
+import { TrainingPlansService } from '../../../src/modules/training/training-plans/training-plans.service';
 import { TrainingClassesModule } from '../../../src/modules/training/training-classes/training-classes.module';
 import { SessionParticipantsService } from '../../../src/modules/training/training-sessions/session-participants.service';
 import { TrainingSessionsModule } from '../../../src/modules/training/training-sessions/training-sessions.module';
@@ -110,6 +112,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
   let checklists: ChecklistsService;
   let measurements: HorseMeasurementsService;
   let ownerships: HorseOwnershipsService;
+  let plans: TrainingPlansService;
   let cm: Actor;
   let cmId: string;
   let trainer: Actor;
@@ -260,6 +263,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
         DailyChecklistsModule,
         HorseMeasurementsModule,
         HorseOwnershipsModule,
+        TrainingPlansModule,
       ],
     })
       .overrideProvider(MediaService)
@@ -279,6 +283,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     checklists = moduleRef.get(ChecklistsService);
     measurements = moduleRef.get(HorseMeasurementsService);
     ownerships = moduleRef.get(HorseOwnershipsService);
+    plans = moduleRef.get(TrainingPlansService);
 
     const audit = new AuditService();
     users = new UsersService(
@@ -710,6 +715,348 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     }
 
     expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  /** Môn đầu tiên trong giáo án chép của lớp */
+  const classSubject = async (classId: string) => {
+    const [row] = await dataSource.query<{ subject_id: string }[]>(
+      `SELECT s.subject_id FROM training_class_phase_subjects s
+         JOIN training_class_phases p ON p.id = s.phase_id WHERE p.class_id = $1 LIMIT 1`,
+      [classId],
+    );
+    return row.subject_id;
+  };
+
+  /** Thân request thêm một buổi bắt đầu sau `hours` giờ, dài một giờ */
+  const sessionBody = (subjectId: string, hours: number) => ({
+    name: `Buổi +${hours}h`,
+    subjectId,
+    intensity: TrainingIntensity.LIGHT,
+    plannedDistanceM: 1200,
+    scheduledStartAt: new Date(Date.now() + hours * HOUR).toISOString(),
+    scheduledEndAt: new Date(Date.now() + (hours + 1) * HOUR).toISOString(),
+  });
+
+  /** Ngựa đã ghi danh lớp, có một lượt PLANNED trong buổi SCHEDULED ngày mai */
+  const plannedRun = async (name: string) => {
+    const run = await enrolled(name);
+    const sessionId = await session(run.classId, 'SCHEDULED', 24);
+    const participantId = await participantOf(
+      sessionId,
+      run.horseId,
+      run.enrollmentId,
+      'PLANNED',
+    );
+    return { ...run, sessionId, participantId };
+  };
+
+  const assignGroomRow = (horseId: string, groomId: string) =>
+    dataSource.query(
+      `INSERT INTO groom_assignments (version, horse_id, groom_id, start_at)
+       VALUES (1, $1, $2, now() - interval '1 day')`,
+      [horseId, groomId],
+    );
+
+  it('R3-DL-N1a vet records death (horse → run → session) while the HT assigns a groom to its run (session → run): no deadlock 40P01', async () => {
+    const vetId = await seed.user(UserRole.VETERINARIAN);
+    const vet = await actorOf(vetId, UserRole.VETERINARIAN);
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { horseId, participantId } = await plannedRun(`Mất ${i}`);
+      const caseId = await seed.medicalCase(horseId, vetId);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM session_participants WHERE id = $1 FOR UPDATE',
+          [participantId],
+          [
+            () =>
+              cases.closeCase(vet, caseId, {
+                finalConclusion: 'Không qua khỏi',
+                deceased: true,
+              }),
+            () =>
+              participants.assignGroom(trainer, participantId, {
+                groomId: null,
+              }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-N1b CM moves a horse to another HT barn (enrollment → run → session) while the HT assigns a groom to its run (session → run): no deadlock 40P01', async () => {
+    const other = await headTrainer();
+    const otherBarn = await seed.barn('Khu B');
+    await dataSource.query(
+      'UPDATE barns SET head_trainer_id = $1 WHERE id = $2',
+      [other.id, otherBarn],
+    );
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      await stall(otherBarn, `B-${i}`);
+      const { horseId, participantId } = await plannedRun(`Chuyển ${i}`);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM session_participants WHERE id = $1 FOR UPDATE',
+          [participantId],
+          [
+            () =>
+              placements.assignBarn(cm, horseId, {
+                barnId: otherBarn,
+                reason: 'Đổi khu',
+              }),
+            () =>
+              participants.assignGroom(trainer, participantId, {
+                groomId: null,
+              }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-N1c vet records death (run → … → enrollment) while the HT takes the horse out of the class (enrollment → run): no deadlock 40P01', async () => {
+    const vetId = await seed.user(UserRole.VETERINARIAN);
+    const vet = await actorOf(vetId, UserRole.VETERINARIAN);
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { horseId, enrollmentId, participantId } = await plannedRun(
+        `Mất rời ${i}`,
+      );
+      const caseId = await seed.medicalCase(horseId, vetId);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM session_participants WHERE id = $1 FOR UPDATE',
+          [participantId],
+          [
+            () =>
+              cases.closeCase(vet, caseId, {
+                finalConclusion: 'Không qua khỏi',
+                deceased: true,
+              }),
+            () => enrollments.leave(trainer, enrollmentId, {}),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-N2 HT cancels the class (class → session) while editing one of its sessions (session → class): no deadlock 40P01', async () => {
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { classId, sessionId } = await plannedRun(`Sửa ${i}`);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM training_classes WHERE id = $1 FOR UPDATE',
+          [classId],
+          [
+            () =>
+              classes.updateStatus(trainer, classId, {
+                status: TrainingClassStatus.CANCELLED,
+                cancelReason: 'Hết ngân sách',
+              }),
+            () =>
+              sessions.updateSession(trainer, sessionId, {
+                name: 'Đổi tên',
+              }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-N3 HT adds a session (class → HT user) while the CM hands his work over (HT user → class): no deadlock 40P01', async () => {
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const a = await headTrainer();
+      const b = await headTrainer();
+      const { classId } = await seed.trainingClass(a.id, {
+        startDate: '2020-01-01',
+        endDate: '2099-12-31',
+      });
+      const subjectId = await classSubject(classId);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM training_classes WHERE id = $1 FOR UPDATE',
+          [classId],
+          [
+            () =>
+              sessions.createSession(
+                a.actor,
+                classId,
+                sessionBody(subjectId, 48),
+              ),
+            () => handover.handover(cm, a.id, { toHeadTrainerId: b.id }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-N4 HT enrolls a horse (groom user → new run, FK on session) while assigning that groom to a run of the session (session → groom user): no deadlock 40P01', async () => {
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { classId, participantId } = await plannedRun(`Có lượt ${i}`);
+      const groomId = await seed.user(UserRole.GROOM);
+      const newcomer = await barnHorse(`Mới ${i}`);
+      await assignGroomRow(newcomer, groomId);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM users WHERE id = $1 FOR UPDATE',
+          [groomId],
+          [
+            () => enrollments.create(trainer, classId, { horseId: newcomer }),
+            () => participants.assignGroom(trainer, participantId, { groomId }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-N5 HT adds two sessions (… groom user → horse of the 2nd session) while changing that horse groom (horse → groom user): no deadlock 40P01', async () => {
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { classId, horseId } = await enrolled(`Đầu ${i}`);
+      const groomId = await seed.user(UserRole.GROOM);
+      await assignGroomRow(horseId, groomId);
+      const late = await barnHorse(`Sau ${i}`);
+      await dataSource.query(
+        `INSERT INTO horse_enrollments (version, class_id, horse_id, status, enrolled_at)
+         VALUES (1, $1, $2, 'ACTIVE', $3)`,
+        [classId, late, new Date(Date.now() + (50 + 10 * i) * HOUR)],
+      );
+      const subjectId = await classSubject(classId);
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM users WHERE id = $1 FOR UPDATE',
+          [groomId],
+          [
+            () =>
+              sessions.createSessions(trainer, classId, {
+                sessions: [
+                  sessionBody(subjectId, 48 + 10 * i),
+                  sessionBody(subjectId, 52 + 10 * i),
+                ],
+              }),
+            () => grooms.assign(trainer, late, { groomId }),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-DL-N7 HT cancels the class (session → run → enrollment) while taking a horse out of it (enrollment → run): no deadlock 40P01', async () => {
+    const rounds: Outcome[][] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const { classId, enrollmentId, sessionId } = await plannedRun(
+        `Hủy rời ${i}`,
+      );
+      rounds.push(
+        await contend(
+          'SELECT 1 FROM training_sessions WHERE id = $1 FOR UPDATE',
+          [sessionId],
+          [
+            () =>
+              classes.updateStatus(trainer, classId, {
+                status: TrainingClassStatus.CANCELLED,
+                cancelReason: 'Hết ngân sách',
+              }),
+            () => enrollments.leave(trainer, enrollmentId, {}),
+          ],
+        ),
+      );
+    }
+
+    expect(rawErrors(rounds)).toEqual([]);
+  });
+
+  it('R3-4b CM deactivates a head trainer while he creates a training plan: one 409, never a plan of an inactive HT', async () => {
+    const [subject] = await dataSource.query<{ id: string }[]>(
+      `INSERT INTO training_subjects (version, name, session_type, intensity, planned_distance_m)
+       VALUES (1, 'Phi nước kiệu', 'REGULAR', 'LIGHT', 1200) RETURNING id`,
+    );
+    const rounds: Array<{ outcomes: string[]; inactiveOwner: number }> = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const ht = await headTrainer();
+      const outcomes = await contend(
+        'SELECT 1 FROM users WHERE id = $1 FOR UPDATE',
+        [ht.id],
+        [
+          () => users.setStatus(cm, ht.id, UserStatus.INACTIVE),
+          () =>
+            plans.create(ht.actor, {
+              name: `Giáo án ${i}`,
+              phases: [
+                {
+                  weeks: 4,
+                  subjects: [{ subjectId: subject.id, minSessionsPerWeek: 3 }],
+                },
+              ],
+            }),
+        ],
+      );
+      const [row] = await dataSource.query<{ n: number }[]>(
+        `SELECT count(*)::int AS n FROM training_plans p JOIN users u ON u.id = p.head_trainer_id
+          WHERE u.id = $1 AND u.status <> 'ACTIVE'`,
+        [ht.id],
+      );
+      rounds.push({ outcomes: sorted(outcomes), inactiveOwner: row.n });
+    }
+
+    expect(rounds).toEqual(
+      Array(ROUNDS).fill({ outcomes: ['409', 'ok'], inactiveOwner: 0 }),
+    );
+  });
+
+  it('R3-4c CM deactivates a head trainer while he creates a class: one 409, never an active class of an inactive HT', async () => {
+    const rounds: Array<{ outcomes: string[]; inactiveOwner: number }> = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const ht = await headTrainer();
+      const { planId, classId } = await seed.trainingClass(ht.id, {
+        weeks: 4,
+      });
+      await dataSource.query('DELETE FROM training_classes WHERE id = $1', [
+        classId,
+      ]);
+      const outcomes = await contend(
+        'SELECT 1 FROM users WHERE id = $1 FOR UPDATE',
+        [ht.id],
+        [
+          () => users.setStatus(cm, ht.id, UserStatus.INACTIVE),
+          () =>
+            classes.create(ht.actor, {
+              code: `HT-${i}`,
+              name: `Lớp HT ${i}`,
+              planId,
+              startDate: '2026-11-02',
+            }),
+        ],
+      );
+      const [row] = await dataSource.query<{ n: number }[]>(
+        `SELECT count(*)::int AS n FROM training_classes c JOIN users u ON u.id = c.head_trainer_id
+          WHERE u.id = $1 AND u.status <> 'ACTIVE' AND c.status = 'ACTIVE'`,
+        [ht.id],
+      );
+      rounds.push({ outcomes: sorted(outcomes), inactiveOwner: row.n });
+    }
+
+    expect(rounds).toEqual(
+      Array(ROUNDS).fill({ outcomes: ['409', 'ok'], inactiveOwner: 0 }),
+    );
   });
 
   it('R3-11 ten max-size receipts push stock past numeric(12,2): the last one gets a domain error, not a raw 22003', async () => {
