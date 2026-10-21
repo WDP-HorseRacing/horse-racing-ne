@@ -236,6 +236,16 @@ export class TrainingSessionsService {
             Date.parse(a.item.scheduledStartAt) -
             Date.parse(b.item.scheduledStartAt),
         );
+      const horseIds: string[] = [];
+      for (const { item } of order) {
+        const enrollments = await this.enrollmentsAt(
+          manager,
+          classId,
+          new Date(item.scheduledStartAt),
+        );
+        horseIds.push(...enrollments.map((enrollment) => enrollment.horseId));
+      }
+      if (horseIds.length) await this.access.lockHorses(manager, horseIds);
       const saved: TrainingSessionEntity[] = [];
       for (const { item, index } of order) {
         try {
@@ -426,6 +436,12 @@ export class TrainingSessionsService {
   ): Promise<TrainingSessionResponseDto> {
     const row = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
+      const snapshot = await manager.findOneBy(TrainingSessionEntity, {
+        id: sessionId,
+      });
+      if (snapshot) {
+        await this.access.lockedTrainingClass(manager, snapshot.classId);
+      }
       const session = await this.access.lockedSession(manager, sessionId);
       const trainingClass = await this.access.lockedTrainingClass(
         manager,
@@ -489,6 +505,7 @@ export class TrainingSessionsService {
         start.getTime() !== session.scheduledStartAt.getTime() ||
         end.getTime() !== session.scheduledEndAt.getTime();
       const nextIntensity = body.intensity ?? session.intensity;
+      await this.lockSyncTargets(manager, session, start);
       if (timeChanged || nextIntensity !== session.intensity) {
         const classSessions = await manager.find(TrainingSessionEntity, {
           where: {
@@ -801,6 +818,40 @@ export class TrainingSessionsService {
         `Môn ${subject.name} không có trong giai đoạn ${phase?.position ?? '?'} của lớp`,
       );
     }
+  }
+
+  /**
+   * Khóa trước các ngựa và lượt mà syncParticipants sẽ đụng khi sửa buổi, ngựa trước lượt sau, mỗi loại theo thứ tự UUID
+   *
+   * - Ngựa: ngựa đang học lớp vào giờ bắt đầu mới và ngựa đang có lượt trong buổi
+   * - Lượt: mọi lượt hiện có của buổi
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param session Buổi tập đã khóa
+   * @param start Giờ bắt đầu sau khi sửa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  private async lockSyncTargets(
+    manager: EntityManager,
+    session: TrainingSessionEntity,
+    start: Date,
+  ): Promise<void> {
+    const participants = await manager.find(SessionParticipantEntity, {
+      select: { id: true, horseId: true },
+      where: { sessionId: session.id },
+    });
+    const horseIds = [
+      ...(await this.enrollmentsAt(manager, session.classId, start)).map(
+        (enrollment) => enrollment.horseId,
+      ),
+      ...participants.map((participant) => participant.horseId),
+    ];
+    if (horseIds.length) await this.access.lockHorses(manager, horseIds);
+    await this.access.lockParticipants(
+      manager,
+      participants.map((participant) => participant.id),
+    );
   }
 
   /**

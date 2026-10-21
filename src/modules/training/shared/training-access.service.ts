@@ -242,6 +242,70 @@ export class TrainingAccessService {
   }
 
   /**
+   * Khóa nhiều buổi tập theo thứ tự UUID tới hết transaction, không kiểm gì
+   *
+   * - Bỏ id trùng; id không có buổi thì bỏ qua
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param sessionIds UUID các buổi cần khóa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockSessions(
+    manager: EntityManager,
+    sessionIds: string[],
+  ): Promise<void> {
+    const ids = [...new Set(sessionIds)].sort();
+    if (ids.length === 0) return;
+    await manager.find(TrainingSessionEntity, {
+      select: { id: true },
+      where: { id: In(ids) },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+  }
+
+  /**
+   * Khóa nhiều lượt tham gia theo thứ tự UUID tới hết transaction, không kiểm gì
+   *
+   * - Bỏ id trùng; id không có lượt thì bỏ qua
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param participantIds UUID các lượt cần khóa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockParticipants(
+    manager: EntityManager,
+    participantIds: string[],
+  ): Promise<void> {
+    const ids = [...new Set(participantIds)].sort();
+    if (ids.length === 0) return;
+    await manager.find(SessionParticipantEntity, {
+      select: { id: true },
+      where: { id: In(ids) },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+  }
+
+  /**
+   * Khóa chia sẻ (FOR SHARE) row lớp tới hết transaction, không kiểm gì; lớp không có thì bỏ qua
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param classId UUID của lớp
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  async lockTrainingClassShared(
+    manager: EntityManager,
+    classId: string,
+  ): Promise<void> {
+    await manager.find(TrainingClassEntity, {
+      select: { id: true },
+      where: { id: classId },
+      lock: { mode: 'pessimistic_read' },
+    });
+  }
+
+  /**
    * Khóa row user của nhiều người theo thứ tự UUID
    *
    * - Bỏ id trùng; id không có user thì bỏ qua

@@ -165,7 +165,8 @@ export class SessionParticipantsService {
   /**
    * Giao hoặc gỡ Groom dắt một lượt tập
    *
-   * - Lock buổi tập, user của Groom được giao (nếu có), rồi lượt tập trước khi kiểm
+   * - Lock buổi tập, lượt tập, rồi user của Groom được giao (nếu có) trước khi kiểm
+   * - Thứ tự kiểm: người gọi quản lý lớp (403) trước trạng thái buổi (409)
    * - Groom mới đang dắt lượt còn mở ở buổi khác chưa hủy trùng giờ: 409 (assertGroomFreeForRun)
    * - Người dắt đổi: ghi nhật ký người dắt trước và sau
    * - Người dắt đổi sang Groom khác: ghi TRAINING_RUN_GROOM_ASSIGNED_EVENT vào outbox để báo Groom mới; gỡ người dắt thì không ghi
@@ -194,18 +195,18 @@ export class SessionParticipantsService {
         manager,
         snapshot.sessionId,
       );
-      if (body.groomId) await this.access.lockUsers(manager, [body.groomId]);
       const participant = await this.access.lockedParticipant(
         manager,
         participantId,
       );
-      assertSessionOperational(session.status);
+      if (body.groomId) await this.access.lockUsers(manager, [body.groomId]);
       const context = await this.access.findParticipant(manager, participantId);
       this.access.assertCanManageClass(
         actor,
         caller.id,
         context.session.trainingClass.headTrainerId,
       );
+      assertSessionOperational(session.status);
       await this.access.assertTrainerBarn(
         manager,
         actor,
@@ -309,6 +310,7 @@ export class SessionParticipantsService {
         manager,
         participantId,
       );
+      await this.access.lockSessions(manager, [snapshot.sessionId]);
       const horse = await this.access.lockedHorse(manager, snapshot.horseId);
       const session = await this.access.lockedSession(
         manager,
@@ -406,6 +408,7 @@ export class SessionParticipantsService {
   /**
    * Bắt đầu lượt tập của một con ngựa
    *
+   * - Khóa chia sẻ lớp, rồi khóa buổi, ngựa và lượt trước khi kiểm
    * - Ngựa đang bị khóa huấn luyện: lưu lượt thành CANCELLED_BY_LOCK rồi trả 409
    * - Ngựa không được tập vì lý do khác: lưu lượt thành INELIGIBLE rồi trả 409
    * - Ngựa được tập: lượt chuyển ONGOING, buổi SCHEDULED chuyển IN_PROGRESS
@@ -429,8 +432,11 @@ export class SessionParticipantsService {
         manager,
         participantId,
       );
-      // Lock ordering is intentional: Horse -> Session -> Participant. The
-      // Medical flow uses the same Horse lock before changing TrainingLock.
+      await this.access.lockTrainingClassShared(
+        manager,
+        snapshot.session.classId,
+      );
+      await this.access.lockSessions(manager, [snapshot.sessionId]);
       const horse = await this.access.lockedHorse(manager, snapshot.horseId);
       const session = await this.access.lockedSession(
         manager,
@@ -552,7 +558,7 @@ export class SessionParticipantsService {
   /**
    * Kết thúc một lượt đang tập trong transaction, rồi cập nhật trạng thái buổi
    *
-   * - Khóa ngựa, buổi và lượt; kiểm quyền thao tác, kiểm trạng thái lượt rồi buổi IN_PROGRESS
+   * - Khóa buổi, ngựa rồi lượt; kiểm quyền thao tác, kiểm trạng thái lượt rồi buổi IN_PROGRESS
    * - Giờ kết thúc lưu vào completedAt; ghi nhật ký trạng thái lượt trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -576,6 +582,7 @@ export class SessionParticipantsService {
         manager,
         participantId,
       );
+      await this.access.lockSessions(manager, [snapshot.sessionId]);
       const horse = await this.access.lockedHorse(manager, snapshot.horseId);
       const session = await this.access.lockedSession(
         manager,

@@ -305,6 +305,7 @@ export class TrainingClassesService {
           'Không thể hủy lớp khi còn lượt tập đang tập',
         );
       }
+      await this.lockClassRowsToCancel(manager, classId);
 
       const now = new Date();
       await manager.update(
@@ -358,6 +359,64 @@ export class TrainingClassesService {
       return saved;
     });
     return toTrainingClassResponse(saved);
+  }
+
+  /**
+   * Khóa các row mà hủy lớp sẽ đổi, theo thứ tự buổi → ghi danh → lượt, mỗi loại theo thứ tự UUID
+   *
+   * - Buổi SCHEDULED, IN_PROGRESS của lớp; ghi danh ACTIVE của lớp; lượt PLANNED, PRESENT, READY ở các buổi của lớp
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param classId UUID của lớp đã khóa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  private async lockClassRowsToCancel(
+    manager: EntityManager,
+    classId: string,
+  ): Promise<void> {
+    const sessions = await manager.find(TrainingSessionEntity, {
+      select: { id: true },
+      where: {
+        classId,
+        status: In([
+          TrainingSessionStatus.SCHEDULED,
+          TrainingSessionStatus.IN_PROGRESS,
+        ]),
+      },
+    });
+    await this.access.lockSessions(
+      manager,
+      sessions.map((session) => session.id),
+    );
+    await manager.find(HorseEnrollmentEntity, {
+      select: { id: true },
+      where: { classId, status: HorseEnrollmentStatus.ACTIVE },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
+    const participants = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .select('participant.id', 'id')
+      .innerJoin(
+        TrainingSessionEntity,
+        'session',
+        'session.id = participant.session_id',
+      )
+      .where('session.class_id = :classId', { classId })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: [
+          SessionParticipantStatus.PLANNED,
+          SessionParticipantStatus.PRESENT,
+          SessionParticipantStatus.READY,
+        ],
+      })
+      .getRawMany<{ id: string }>();
+    await this.access.lockParticipants(
+      manager,
+      participants.map((participant) => participant.id),
+    );
   }
 
   async update(

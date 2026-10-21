@@ -60,6 +60,8 @@ describe('HorseStatusesService', () => {
     withdrawHorseFromClasses: jest.Mock;
     hasOnSiteParticipant: jest.Mock;
     cancelUnfinishedParticipants: jest.Mock;
+    lockHorseSessions: jest.Mock;
+    lockHorseEnrollments: jest.Mock;
   };
   let access: {
     currentUser: jest.Mock;
@@ -158,6 +160,8 @@ describe('HorseStatusesService', () => {
       }),
       hasOnSiteParticipant: jest.fn().mockResolvedValue(false),
       cancelUnfinishedParticipants: jest.fn().mockResolvedValue(0),
+      lockHorseSessions: jest.fn().mockResolvedValue(undefined),
+      lockHorseEnrollments: jest.fn().mockResolvedValue(undefined),
     };
     access = {
       currentUser: jest.fn().mockResolvedValue({ id: CALLER_ID }),

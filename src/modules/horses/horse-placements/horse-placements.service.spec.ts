@@ -50,6 +50,7 @@ describe('HorsePlacementsService', () => {
     withdrawHorseFromClasses: jest.Mock;
     assertNoOnSiteParticipantInClassesToWithdraw: jest.Mock;
     hasOnSiteParticipantInClassesToWithdraw: jest.Mock;
+    lockHorseSessions: jest.Mock;
   };
   let events: { publish: jest.Mock };
   let audit: { record: jest.Mock };
@@ -178,6 +179,7 @@ describe('HorsePlacementsService', () => {
           participantsCancelled: 2,
         }),
       ),
+      lockHorseSessions: jest.fn().mockResolvedValue(undefined),
     };
     audit = { record: jest.fn(track('audit')) };
     placements = {

@@ -163,6 +163,7 @@ export class HorseStatusesService {
   ): Promise<HorseResponseDto> {
     await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
+      await this.training.lockHorseSessions(manager, id);
       const horse = await this.access.lockWritableHorse(manager, actor, id);
       assertLifecycleChanged(
         horse.name,
@@ -175,9 +176,25 @@ export class HorseStatusesService {
   }
 
   /**
+   * Khóa các buổi tập còn lượt chưa kết thúc của một con ngựa theo thứ tự UUID, trong transaction của nơi gọi
+   *
+   * - Nơi gọi chạy trước khi khóa ngựa rồi mới gọi recordDeathInTransaction
+   *
+   * @param manager EntityManager của transaction đang mở
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  lockSessionsBeforeDeath(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    return this.training.lockHorseSessions(manager, horseId);
+  }
+
+  /**
    * Ghi nhận ngựa mất trong transaction đang mở, chạy đủ hệ quả như khi Club Manager ghi nhận mất
    *
-   * - Người gọi phải khóa row ngựa trước và đã đóng bệnh án đang mở trong cùng transaction
+   * - Người gọi phải khóa các buổi tập của ngựa (lockSessionsBeforeDeath) rồi khóa row ngựa trước và đã đóng bệnh án đang mở trong cùng transaction
    * - Kiểm cặp trạng thái, ghi ngày mất là hôm nay theo lịch câu lạc bộ, dọn ô, groom, lớp, khóa huấn luyện, việc y tế đang chờ, ghi nhật ký và HORSE_DECEASED_EVENT vào outbox
    *
    * @param manager EntityManager của transaction đang mở
@@ -348,6 +365,9 @@ export class HorseStatusesService {
       (await this.training.hasOnSiteParticipant(manager, id))
     ) {
       throw new ConflictException(ON_SITE_RUN_LIFECYCLE_MESSAGE);
+    }
+    if (body.lifecycleStatus === HorseLifecycleStatus.DECEASED) {
+      await this.training.lockHorseEnrollments(manager, id);
     }
     const unfinishedRunsCancelled =
       body.lifecycleStatus === HorseLifecycleStatus.DECEASED

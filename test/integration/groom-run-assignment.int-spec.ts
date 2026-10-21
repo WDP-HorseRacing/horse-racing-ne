@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
@@ -206,6 +206,24 @@ describe('Assigning grooms to training runs (Postgres)', () => {
       );
       expect(await groomOf(target)).toBe(groomA);
       expect(await outbox()).toEqual([]);
+    });
+
+    it('answers 403 to a head trainer outside the class before checking that the session is no longer operational', async () => {
+      const target = await run(gio, 'Sáng', at('06:00'), groomA);
+      await dataSource.query(
+        `UPDATE training_sessions SET status = 'CANCELLED'
+          WHERE id = (SELECT session_id FROM session_participants WHERE id = $1)`,
+        [target],
+      );
+      const outsider = await actorOf(
+        await seed.user(UserRole.HEAD_TRAINER),
+        UserRole.HEAD_TRAINER,
+      );
+
+      await expect(
+        participants.assignGroom(outsider, target, { groomId: groomB }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(await groomOf(target)).toBe(groomA);
     });
 
     it('lets only one of two head trainers give the same groom two clashing runs at once', async () => {

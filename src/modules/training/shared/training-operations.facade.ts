@@ -92,6 +92,11 @@ const NON_TERMINAL_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.ONGOING,
 ];
 
+const SESSION_LOCKED_PARTICIPANT_STATUSES = [
+  ...LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES,
+  SessionParticipantStatus.ONGOING,
+];
+
 /**
  * Kiểm tra enrollment chưa bắt đầu tại một thời điểm
  *
@@ -282,7 +287,7 @@ export class TrainingOperationsFacade {
    * - Ngựa đang bị khóa huấn luyện: CANCELLED_BY_LOCK
    * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi không phải LIGHT: INELIGIBLE kèm lý do
    * - Ngựa được tập: PLANNED, xóa lý do không đủ điều kiện
-   * - Khóa theo thứ tự ngựa → buổi → lượt; chạy lại nhiều lần cho cùng kết quả
+   * - Khóa theo thứ tự buổi → ngựa → lượt (lockHorseSessions trước khi khóa ngựa); chạy lại nhiều lần cho cùng kết quả
    * - Hồ sơ ngựa đã xóa vẫn được chấm (thành INELIGIBLE); không có ngựa thì không làm gì
    *
    * @param manager EntityManager của transaction đang chạy
@@ -293,6 +298,7 @@ export class TrainingOperationsFacade {
     manager: EntityManager,
     horseId: string,
   ): Promise<ParticipantEligibilityChange[]> {
+    await this.lockHorseSessions(manager, horseId);
     const horse = await manager.findOne(HorseEntity, {
       where: { id: horseId },
       withDeleted: true,
@@ -406,6 +412,7 @@ export class TrainingOperationsFacade {
       );
     }
     const enrollments = await query
+      .orderBy('enrollment.id', 'ASC')
       .setLock('pessimistic_write', undefined, ['enrollment'])
       .getMany();
     if (enrollments.length === 0) {
@@ -439,7 +446,7 @@ export class TrainingOperationsFacade {
    *
    * - Chỉ hủy lượt PLANNED/PRESENT/READY/CANCELLED_BY_LOCK/INELIGIBLE của buổi có giờ bắt đầu từ `from` trở đi
    * - Lượt ONGOING, lượt đã kết thúc và buổi trước `from` giữ nguyên
-   * - Khóa các lượt sẽ hủy; lượt vừa được thao tác khác chuyển sang ONGOING thì không bị hủy
+   * - Khóa các buổi có lượt của các enrollment (lockEnrollmentSessions) rồi mới khóa các lượt sẽ hủy theo thứ tự UUID; lượt vừa được thao tác khác chuyển sang ONGOING thì không bị hủy
    * - Buổi không còn lượt nào mở thì cập nhật lại trạng thái buổi
    *
    * @param manager EntityManager của transaction đang chạy
@@ -455,6 +462,7 @@ export class TrainingOperationsFacade {
     reason: string,
   ): Promise<number> {
     if (enrollmentIds.length === 0) return 0;
+    await this.lockEnrollmentSessions(manager, enrollmentIds);
     const participants = await manager
       .getRepository(SessionParticipantEntity)
       .createQueryBuilder('participant')
@@ -470,6 +478,7 @@ export class TrainingOperationsFacade {
         statuses: LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES,
       })
       .andWhere('session.scheduled_start_at >= :from', { from })
+      .orderBy('participant.id', 'ASC')
       .setLock('pessimistic_write', undefined, ['participant'])
       .getMany();
     return this.cancelLoadedParticipants(manager, participants, reason);
@@ -478,7 +487,7 @@ export class TrainingOperationsFacade {
   /**
    * Hủy mọi lượt chưa kết thúc của một con ngựa rồi cập nhật trạng thái các buổi liên quan, chạy trong transaction của nơi gọi
    *
-   * - Xét lượt PLANNED, PRESENT, READY, ONGOING ở mọi buổi, kể cả buổi đã bắt đầu; khóa từng lượt theo thứ tự UUID
+   * - Xét lượt PLANNED, PRESENT, READY, ONGOING ở mọi buổi, kể cả buổi đã bắt đầu; khóa các buổi (lockHorseSessions) rồi khóa từng lượt theo thứ tự UUID
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -490,12 +499,87 @@ export class TrainingOperationsFacade {
     horseId: string,
     reason: string,
   ): Promise<number> {
+    await this.lockHorseSessions(manager, horseId);
     const participants = await manager.find(SessionParticipantEntity, {
       where: { horseId, status: In(NON_TERMINAL_PARTICIPANT_STATUSES) },
       order: { id: 'ASC' },
       lock: { mode: 'pessimistic_write' },
     });
     return this.cancelLoadedParticipants(manager, participants, reason);
+  }
+
+  /**
+   * Khóa các buổi tập đang có lượt chưa kết thúc của một con ngựa theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Xét lượt PLANNED, PRESENT, READY, ONGOING, CANCELLED_BY_LOCK, INELIGIBLE ở mọi buổi
+   * - Nơi gọi chạy trước khi khóa ngựa; các hàm hủy, rút và chấm lại lượt của ngựa sau đó khóa lại đúng các buổi này
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHorseSessions(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    const rows = await manager.find(SessionParticipantEntity, {
+      select: { id: true, sessionId: true },
+      where: { horseId, status: In(SESSION_LOCKED_PARTICIPANT_STATUSES) },
+    });
+    await this.access.lockSessions(
+      manager,
+      rows.map((row) => row.sessionId),
+    );
+  }
+
+  /**
+   * Khóa các buổi tập đang có lượt còn hủy được của những enrollment theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Xét lượt PLANNED, PRESENT, READY, CANCELLED_BY_LOCK, INELIGIBLE ở mọi buổi
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param enrollmentIds UUID các enrollment
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockEnrollmentSessions(
+    manager: EntityManager,
+    enrollmentIds: string[],
+  ): Promise<void> {
+    if (enrollmentIds.length === 0) return;
+    const rows = await manager.find(SessionParticipantEntity, {
+      select: { id: true, sessionId: true },
+      where: {
+        horseEnrollmentId: In(enrollmentIds),
+        status: In(LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES),
+      },
+    });
+    await this.access.lockSessions(
+      manager,
+      rows.map((row) => row.sessionId),
+    );
+  }
+
+  /**
+   * Khóa các enrollment ACTIVE của một con ngựa theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHorseEnrollments(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    await manager.find(HorseEnrollmentEntity, {
+      select: { id: true },
+      where: { horseId, status: HorseEnrollmentStatus.ACTIVE },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_write' },
+    });
   }
 
   /**
@@ -596,6 +680,7 @@ export class TrainingOperationsFacade {
         statuses: OPEN_PARTICIPANT_STATUSES,
       })
       .andWhere('session.scheduled_start_at >= :from', { from })
+      .orderBy('participant.id', 'ASC')
       .setLock('pessimistic_write', undefined, ['participant'])
       .getMany();
     if (participants.length) {

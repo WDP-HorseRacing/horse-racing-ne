@@ -112,6 +112,7 @@ export class HorsePlacementsService {
   ): Promise<HorseResponseDto> {
     const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
+      await this.training.lockHorseSessions(manager, horseId);
       const horse = await this.access.lockWritableHorse(
         manager,
         actor,

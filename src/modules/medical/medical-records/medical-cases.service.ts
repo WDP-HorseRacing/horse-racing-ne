@@ -262,6 +262,9 @@ export class MedicalCasesService {
     const now = new Date();
     let totalCost = 0;
     const closed = await this.dataSource.transaction(async (manager) => {
+      if (body.deceased === true) {
+        await this.horseStatuses.lockSessionsBeforeDeath(manager, horseId);
+      }
       const { caller, horse } = await this.access.lockHorseForWrite(
         manager,
         actor,

@@ -177,9 +177,13 @@ describe('SessionParticipantsService.absent', () => {
     } as unknown as EntityManager;
     const access = {
       currentUser: jest.fn().mockResolvedValue({ id: 'ht-1' }),
-      findParticipant: jest
-        .fn()
-        .mockResolvedValue({ sessionId: 's1', horseId: 'h1' }),
+      findParticipant: jest.fn().mockResolvedValue({
+        sessionId: 's1',
+        horseId: 'h1',
+        session: { classId: 'c1' },
+      }),
+      lockTrainingClassShared: jest.fn().mockResolvedValue(undefined),
+      lockSessions: jest.fn().mockResolvedValue(undefined),
       lockedHorse: jest.fn().mockResolvedValue({ id: 'h1' }),
       findTrainingClass: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
       lockedSession: jest.fn().mockResolvedValue({
@@ -295,6 +299,7 @@ describe('SessionParticipantsService.stop', () => {
       findParticipant: jest
         .fn()
         .mockResolvedValue({ sessionId: 's1', horseId: 'h1' }),
+      lockSessions: jest.fn().mockResolvedValue(undefined),
       lockedHorse: jest.fn().mockResolvedValue({ id: 'h1' }),
       lockedSession: jest.fn().mockResolvedValue({ status: sessionStatus }),
       lockedParticipant: jest.fn().mockResolvedValue(row),

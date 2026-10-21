@@ -1,4 +1,8 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
 import { UserRole } from '../../../../common/enums/role.enum';
@@ -36,6 +40,7 @@ function setup(
     innerJoin: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
     setLock: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue(participants),
   };
@@ -69,8 +74,13 @@ function setup(
       lifecycleStatus: HorseLifecycleStatus.ACTIVE,
     }),
     assertTrainerBarn: jest.fn(),
+    lockSessions: jest.fn().mockResolvedValue(undefined),
+    lockParticipants: jest.fn().mockResolvedValue(undefined),
+    lockUsers: jest.fn().mockResolvedValue(undefined),
   };
-  const operations = new TrainingOperationsFacade({} as TrainingAccessService);
+  const operations = new TrainingOperationsFacade({
+    lockSessions: jest.fn().mockResolvedValue(undefined),
+  } as unknown as TrainingAccessService);
   const refresh = jest
     .spyOn(operations, 'refreshSessionStatus')
     .mockResolvedValue({} as never);
@@ -171,6 +181,18 @@ describe('TrainingClassEnrollmentsService.leave', () => {
     await expect(
       service.leave(actor, 'e1', { leftAt: LEFT_AT }),
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 with the same message when the enrollment does not exist', async () => {
+    const { service, save, manager } = setup(buildEnrollment(), []);
+    (manager.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      service.leave(actor, 'e1', { leftAt: LEFT_AT }),
+    ).rejects.toThrow(
+      new NotFoundException('Không tìm thấy ghi danh của ngựa'),
+    );
     expect(save).not.toHaveBeenCalled();
   });
 

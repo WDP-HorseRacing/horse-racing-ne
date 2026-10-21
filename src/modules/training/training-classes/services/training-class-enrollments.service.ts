@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import type { Actor } from '../../../../common/types/actor';
@@ -149,6 +153,12 @@ export class TrainingClassEnrollmentsService {
           );
         }
       }
+      await this.access.lockSessions(
+        manager,
+        (await this.upcomingSchedule(manager, classId, new Date())).map(
+          (session) => session.id,
+        ),
+      );
       const horse = await this.access.lockedHorse(manager, body.horseId);
       await this.access.assertTrainerBarn(manager, actor, caller.id, horse.id);
       assertHorseEnrollable(horse.lifecycleStatus);
@@ -314,11 +324,12 @@ export class TrainingClassEnrollmentsService {
   ): Promise<HorseEnrollmentResponseDto> {
     const saved = await this.dataSource.transaction(async (manager) => {
       const caller = await this.access.currentUser(actor, manager);
+      await this.operations.lockEnrollmentSessions(manager, [enrollmentId]);
       const row = await manager.findOne(HorseEnrollmentEntity, {
         where: { id: enrollmentId },
         lock: { mode: 'pessimistic_write' },
       });
-      if (!row) throw new ConflictException('Không tìm thấy ghi danh của ngựa');
+      if (!row) throw new NotFoundException('Không tìm thấy ghi danh của ngựa');
       const trainingClass = await this.access.findTrainingClass(
         manager,
         row.classId,
@@ -376,7 +387,7 @@ export class TrainingClassEnrollmentsService {
    * - Buổi chưa có lượt của ngựa: tạo lượt mới theo điều kiện huấn luyện hiện tại
    * - Buổi có lượt cũ CANCELLED (do rời lớp): dùng lại lượt đó, gắn ghi danh mới và đặt lại như lượt mới tạo
    * - Buổi có lượt cũ ở trạng thái khác: giữ nguyên
-   * - Lượt mới hoặc dùng lại gắn Groom phụ trách ngựa lúc bắt đầu buổi; khóa user các Groom đó theo thứ tự UUID rồi mới ghi lượt; Groom đang dắt lượt khác trùng giờ thì từ chối cả lần ghi danh (assertNoGroomRunClashes)
+   * - Lượt mới hoặc dùng lại gắn Groom phụ trách ngựa lúc bắt đầu buổi; khóa các lượt dùng lại rồi khóa user các Groom đó theo thứ tự UUID, sau đó mới ghi lượt; Groom đang dắt lượt khác trùng giờ thì từ chối cả lần ghi danh (assertNoGroomRunClashes)
    *
    * @param manager EntityManager của transaction đang chạy
    * @param enrollment Lượt ghi danh vừa tạo
@@ -482,6 +493,10 @@ export class TrainingClassEnrollmentsService {
         });
       }
     }
+    await this.access.lockParticipants(
+      manager,
+      writes.filter((row) => row.id).map((row) => row.id),
+    );
     await this.access.lockUsers(
       manager,
       assigned.map(({ groomId }) => groomId),

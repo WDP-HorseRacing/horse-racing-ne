@@ -18,10 +18,17 @@ function buildQueryBuilder(rows: Row[]) {
     withDeleted: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
     setLock: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue(rows),
   };
   return qb;
+}
+
+function accessStub(): TrainingAccessService {
+  return {
+    lockSessions: jest.fn().mockResolvedValue(undefined),
+  } as unknown as TrainingAccessService;
 }
 
 function buildManager(enrollments: Row[], participants: Row[]) {
@@ -34,7 +41,8 @@ function buildManager(enrollments: Row[], participants: Row[]) {
   const save = jest.fn((_entity: unknown, rows: unknown) =>
     Promise.resolve(rows),
   );
-  const manager = { getRepository, save } as unknown as EntityManager;
+  const find = jest.fn().mockResolvedValue([]);
+  const manager = { getRepository, save, find } as unknown as EntityManager;
   return { manager, enrollmentQb, participantQb, getRepository, save };
 }
 
@@ -64,7 +72,7 @@ describe('TrainingOperationsFacade.withdrawHorseFromClasses', () => {
   let refresh: jest.SpyInstance;
 
   beforeEach(() => {
-    facade = new TrainingOperationsFacade({} as TrainingAccessService);
+    facade = new TrainingOperationsFacade(accessStub());
     refresh = jest
       .spyOn(facade, 'refreshSessionStatus')
       .mockResolvedValue({} as never);
@@ -190,7 +198,7 @@ describe('TrainingOperationsFacade.cancelParticipantsFromEnrollments', () => {
   let facade: TrainingOperationsFacade;
 
   beforeEach(() => {
-    facade = new TrainingOperationsFacade({} as TrainingAccessService);
+    facade = new TrainingOperationsFacade(accessStub());
     jest.spyOn(facade, 'refreshSessionStatus').mockResolvedValue({} as never);
   });
 
@@ -371,7 +379,7 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
 
 describe('TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock', () => {
   it('uses the same >= cut-off as leaving a class, so a session starting at the lock time is cancelled', async () => {
-    const facade = new TrainingOperationsFacade({} as TrainingAccessService);
+    const facade = new TrainingOperationsFacade(accessStub());
     const { manager, participantQb } = buildManager([], []);
 
     await facade.cancelFutureParticipationsByTrainingLock(
@@ -389,7 +397,7 @@ describe('TrainingOperationsFacade.cancelFutureParticipationsByTrainingLock', ()
 });
 
 describe('TrainingOperationsFacade.refreshSessionStatus', () => {
-  const facade = new TrainingOperationsFacade({} as TrainingAccessService);
+  const facade = new TrainingOperationsFacade(accessStub());
 
   function sessionManager(
     status: TrainingSessionStatus,

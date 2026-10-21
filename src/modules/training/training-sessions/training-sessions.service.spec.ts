@@ -39,6 +39,9 @@ function setup() {
   const save = jest.fn((row: unknown) => Promise.resolve(row));
   const manager = {
     save,
+    findOneBy: jest.fn((target: unknown) =>
+      Promise.resolve(target === TrainingSessionEntity ? session : null),
+    ),
     existsBy: jest.fn().mockResolvedValue(false),
     find: jest.fn().mockResolvedValue([]),
     getRepository: jest.fn(() => ({
@@ -69,6 +72,8 @@ function setup() {
     assertCanManageClass: jest.fn(),
     groomRunClashes: jest.fn().mockResolvedValue([]),
     lockUsers: jest.fn(),
+    lockHorses: jest.fn(),
+    lockParticipants: jest.fn(),
     headTrainerSessions: jest.fn().mockResolvedValue([]),
   };
   const service = new TrainingSessionsService(
@@ -219,6 +224,8 @@ function setupCreate(
     assertCanManageClass: jest.fn(),
     groomRunClashes: jest.fn().mockResolvedValue([]),
     lockUsers: jest.fn(),
+    lockHorses: jest.fn(),
+    lockParticipants: jest.fn(),
     headTrainerSessions: jest.fn().mockResolvedValue([]),
   };
   const service = new TrainingSessionsService(

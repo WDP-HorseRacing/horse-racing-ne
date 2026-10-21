@@ -12,6 +12,11 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 - `POST /session-participants/:id/evaluation`: gửi hai lần cùng lúc cho một lượt (bấm Lưu hai lần, hai tab, tự gửi lại khi mạng chậm) thì lần sau nhận 409 "Lượt tập đã có đánh giá" thay vì 500. Cùng câu với khi lượt đã có đánh giá từ trước; request và response không đổi.
 
+### Đổi mã lỗi giao Groom cho lượt và rời lớp
+
+- `PATCH /session-participants/:id/groom`: HT không quản lý lớp của lượt nay luôn nhận 403 trước, kể cả khi buổi đã kết thúc hoặc đã hủy (trước đây nhận 409 "Buổi tập đã kết thúc hoặc đã hủy, không thao tác được"). HT của lớp vẫn nhận 409 như cũ khi buổi không còn thực thi.
+- `PATCH /enrollments/:id/leave`: id ghi danh không tồn tại trả 404 thay vì 409, câu báo giữ nguyên "Không tìm thấy ghi danh của ngựa". Ghi danh đã rời lớp vẫn 409 "Ngựa đã rời lớp".
+
 ## Ngày 20/10/2026
 
 ### Dashboard báo cáo đếm cả ngựa đã rời CLB
