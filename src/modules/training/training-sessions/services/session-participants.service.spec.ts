@@ -1,16 +1,16 @@
 import { ConflictException } from '@nestjs/common';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import type { MediaService } from '../../media/services/media.service';
-import { UserEntity } from '../../users/entities/user.entity';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
-import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
-import { TrainingAccessService } from '../shared/training-access.service';
-import { TrainingOperationsFacade } from '../shared/training-operations.facade';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import type { MediaService } from '../../../media/services/media.service';
+import { UserEntity } from '../../../users/entities/user.entity';
+import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
+import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
+import { SessionParticipantEntity } from '../../entities/session-participant.entity';
+import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
+import { TrainingAccessService } from '../../shared/training-access.service';
+import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
 import { SessionParticipantsService } from './session-participants.service';
 
 const actor: Actor = { sub: 'kc-ht', roles: [UserRole.HEAD_TRAINER] };

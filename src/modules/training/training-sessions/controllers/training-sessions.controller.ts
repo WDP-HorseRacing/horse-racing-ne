@@ -6,17 +6,17 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Access, CurrentUser } from '../../../common/decorators';
-import type { Actor } from '../../../common/types/actor';
-import { UserRole } from '../../users/user.enums';
+import { Access, CurrentUser } from '../../../../common/decorators';
+import type { Actor } from '../../../../common/types/actor';
+import { UserRole } from '../../../users/user.enums';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
   CreateTrainingSessionsDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
-} from '../dto/training-session.dto';
-import { TrainingSessionsService } from './training-sessions.service';
+} from '../../dto/training-session.dto';
+import { TrainingSessionsService } from '../services/training-sessions.service';
 
 @ApiTags('training')
 @ApiBearerAuth()

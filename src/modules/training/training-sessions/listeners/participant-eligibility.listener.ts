@@ -1,23 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { DataSource } from 'typeorm';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
 import {
   MEDICAL_HEALTH_CHANGED_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
-} from '../../medical/constants/medical-events.constants';
+} from '../../../medical/constants/medical-events.constants';
 import type {
   HealthChangedEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
-} from '../../medical/types/medical-events.types';
-import { ELIGIBILITY_REEVALUATED_REASON } from '../constants/participant-window.constants';
-import { TrainingOperationsFacade } from '../shared/training-operations.facade';
+} from '../../../medical/types/medical-events.types';
+import { ELIGIBILITY_REEVALUATED_REASON } from '../../constants/participant-window.constants';
+import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
 
 @Injectable()
 export class ParticipantEligibilityListener {

@@ -7,38 +7,38 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { toClubDate } from '../../../common/utils/club-date';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
-import { changedFieldsDiff } from '../../../common/utils/record-diff';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
-import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { evaluateEligibility } from '../../horses/policies/horse.policy';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { toClubDate } from '../../../../common/utils/club-date';
+import { fieldBadRequest } from '../../../../common/utils/field-errors';
+import { changedFieldsDiff } from '../../../../common/utils/record-diff';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
+import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
+import { evaluateEligibility } from '../../../horses/policies/horse.policy';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
   CreateTrainingSessionsDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
-} from '../dto/training-session.dto';
-import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
-import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
-import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import { TrainingIntensity } from '../enums/training-intensity.enum';
-import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
-import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
-import { TrainingClassEntity } from '../entities/training-class.entity';
-import { TrainingSessionEntity } from '../entities/training-session.entity';
-import { TrainingSubjectEntity } from '../entities/training-subject.entity';
-import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
+} from '../../dto/training-session.dto';
+import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
+import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
+import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
+import { TrainingIntensity } from '../../enums/training-intensity.enum';
+import { TrainingSessionType } from '../../enums/training-session-type.enum';
+import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
+import { SessionParticipantEntity } from '../../entities/session-participant.entity';
+import { TrainingClassPhaseEntity } from '../../entities/training-class-phase.entity';
+import { TrainingClassEntity } from '../../entities/training-class.entity';
+import { TrainingSessionEntity } from '../../entities/training-session.entity';
+import { TrainingSubjectEntity } from '../../entities/training-subject.entity';
+import { toTrainingSessionResponse } from '../../mappers/training-session.mapper';
 import {
   assertNoGroomRunClashes,
   assertNoOverlappingClassSession,
@@ -58,15 +58,15 @@ import {
   sessionsByHorse,
   horseScheduleClashError,
   initialParticipantEligibility,
-} from '../policies/training.policy';
-import { TrainingAccessService } from '../shared/training-access.service';
-import { sessionAuditData } from '../utils/training-audit';
-import { TRAINING_SESSION_CANCELLED_EVENT } from '../constants/training-events.constants';
+} from '../../policies/training.policy';
+import { TrainingAccessService } from '../../shared/training-access.service';
+import { sessionAuditData } from '../../utils/training-audit';
+import { TRAINING_SESSION_CANCELLED_EVENT } from '../../constants/training-events.constants';
 import type {
   GroomRun,
   SessionWindow,
   TrainingSessionCancelledEvent,
-} from '../types/training-session.types';
+} from '../../types/training-session.types';
 
 /**
  * Lượt tập được đồng bộ lại khi buổi đổi giờ hoặc cường độ
