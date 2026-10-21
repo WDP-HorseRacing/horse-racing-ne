@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
+import { deterministicUuid } from '../../../common/utils/data/deterministic-uuid';
 import { INCIDENT_REMINDER_AFTER_HOURS } from '../constants/incident.constants';
 import { IncidentStatus } from '../constants/incident-status.enum';
 import { INCIDENT_STALE_EVENT } from '../constants/stable-events.constants';
