@@ -24,7 +24,7 @@ import {
   SaveTrainingPlanDto,
   TrainingPlanResponseDto,
 } from '../dto/training-plan.dto';
-import { TrainingPlansService } from './training-plans.service';
+import { TrainingPlansService } from './training-plan.service';
 
 @ApiTags('training')
 @ApiBearerAuth()
