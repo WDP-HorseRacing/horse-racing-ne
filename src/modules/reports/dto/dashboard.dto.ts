@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
-import { toQueryBoolean } from '../../../common/utils/query-boolean';
+import { toQueryBoolean } from '../../../common/utils/query/query-boolean';
 import {
   HorseHealthStatus,
   HorseLifecycleStatus,

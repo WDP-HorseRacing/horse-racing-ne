@@ -10,7 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
-import { toQueryArray } from '../../../common/utils/query-array';
+import { toQueryArray } from '../../../common/utils/query/query-array';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { HorseTrainingSessionWhen } from '../enums/horse-training-session-when.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';

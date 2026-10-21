@@ -9,7 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { toQueryBoolean } from '../../../common/utils/query-boolean';
+import { toQueryBoolean } from '../../../common/utils/query/query-boolean';
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { NotificationPriority } from '../enums/notification-priority.enum';
 import { NotificationResourceType } from '../enums/notification-resource-type.enum';
