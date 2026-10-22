@@ -21,6 +21,7 @@ import type {
   MedicalCaseClosedEvent,
   MedicalVisitCostAdjustedEvent,
   MedicalCaseOpenedEvent,
+  TrainingLockKeptEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
 } from '../../medical/types/medical-events.types';
@@ -116,17 +117,29 @@ export class MedicalNotificationsService {
   /**
    * Báo người gửi yêu cầu khám khi bác sĩ khám xong hoặc bỏ qua yêu cầu
    *
+   * - Yêu cầu từ sự cố tại chuồng: báo thêm người báo sự cố và Groom đang phụ trách ngựa; trùng người thì chỉ nhận một lần
    * - Bỏ qua: kèm lý do trong nội dung
    *
    * @param event Payload của MEDICAL_EXAM_REQUEST_HANDLED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
    */
-  notifyExamRequestHandled(event: ExamRequestHandledEvent): Promise<string[]> {
+  async notifyExamRequestHandled(
+    event: ExamRequestHandledEvent,
+  ): Promise<string[]> {
     const examined = event.outcome === ExamRequestStatus.EXAMINED;
+    const audience: MedicalAudience = event.incidentId
+      ? {
+          extraUserIds: [
+            event.requestedBy,
+            await this.recipients.findIncidentReporterId(event.incidentId),
+          ],
+          groom: true,
+        }
+      : { extraUserIds: [event.requestedBy] };
     return this.sendForHorse(
       event,
       horseResource(event.horseId),
-      { extraUserIds: [event.requestedBy] },
+      audience,
       NotificationCategory.EXAM_REQUEST,
       NotificationPriority.NORMAL,
       (horse) =>
@@ -165,6 +178,30 @@ export class MedicalNotificationsService {
       (horse) => ({
         title: `Ngựa ${horse} bị khóa huấn luyện`,
         message: `Bác sĩ đã khóa huấn luyện ngựa ${horse}: ${event.reason}.${until} Ngựa không được tập và không được đua cho tới khi gỡ khóa.`,
+      }),
+    );
+  }
+
+  /**
+   * Báo Head Trainer của khu, Club Manager, chủ ngựa và Groom phụ trách khi bác sĩ đóng bệnh án mà vẫn giữ khóa huấn luyện, kèm ngày dự kiến gỡ mới
+   *
+   * @param event Payload của MEDICAL_TRAINING_LOCK_KEPT_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  notifyLockKept(event: TrainingLockKeptEvent): Promise<string[]> {
+    return this.sendForHorse(
+      event,
+      {
+        type: NotificationResourceType.TRAINING_LOCK,
+        id: event.lockId,
+        horseId: event.horseId,
+      },
+      { headTrainer: true, clubManagers: true, owner: true, groom: true },
+      NotificationCategory.TRAINING_LOCK,
+      NotificationPriority.NORMAL,
+      (horse) => ({
+        title: `Ngựa ${horse} vẫn bị khóa huấn luyện`,
+        message: `Bệnh án của ngựa ${horse} đã đóng nhưng vẫn giữ khóa huấn luyện. Dự kiến gỡ: ${toClubDate(event.expectedEnd)}. Ngựa không được tập và không được đua cho tới khi gỡ khóa.`,
       }),
     );
   }

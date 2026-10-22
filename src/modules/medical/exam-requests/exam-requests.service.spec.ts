@@ -302,6 +302,18 @@ describe('ExamRequestsService', () => {
       expect(result.status).toBe(ExamRequestStatus.DISMISSED);
     });
 
+    it('carries the incident of the request so its reporter hears back', async () => {
+      requestRow = { ...requestRow, requestedBy: 'ht-1', incidentId: 'inc-1' };
+
+      await service.dismiss(vet, 'req-1', { reason: 'Đã khám sáng nay' });
+
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+        expect.objectContaining({ requestId: 'req-1', incidentId: 'inc-1' }),
+      );
+    });
+
     it('tells the person who asked why the request was skipped', async () => {
       requestRow = { ...requestRow, requestedBy: 'groom-2' };
 

@@ -210,6 +210,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
       dataSource,
       audit,
       stableAccess,
+      new DomainEventPublisher(),
     );
     barns = new BarnsService(
       dataSource.getRepository(BarnEntity),

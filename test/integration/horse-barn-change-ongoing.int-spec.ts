@@ -65,6 +65,7 @@ describe('Đổi khu của ngựa đang có lượt tập (Postgres)', () => {
         dataSource,
         audit,
         stableAccess,
+        new DomainEventPublisher(),
       ),
       new DomainEventPublisher(),
       dataSource,

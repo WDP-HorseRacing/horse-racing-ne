@@ -1,10 +1,20 @@
 # Thay đổi API cần FE cập nhật
 
-Cập nhật: 2026-10-21
+Cập nhật: 2026-10-22
 
 Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, HT = Head Trainer, VET = bác sĩ thú y, GROOM = người chăm ngựa, OWNER = chủ ngựa. Lỗi vẫn theo format chung. Schema chi tiết: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
 Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều ngày thì mục của ngày mới nhất là hành vi hiện tại; phần cũ đã bị thay có ghi "(đã thay ở ...)". API chặn field lạ: gửi field không có trong request là 400 "Không nhận ô `<tên ô>`", không ghi gì.
+
+## Ngày 22/10/2026
+
+### Thông báo mới (request, response không đổi)
+
+- Loại thông báo mới `TRAINING_CLASS`: HT phụ trách lớp nhận khi ngựa bị rút khỏi lớp của mình do đổi khu hoặc đổi vòng đời (giải nghệ, chuyển nhượng, mất), vd "Ngựa X đã được rút khỏi lớp "Bền". Lý do: ...". Mỗi HT một thông báo gộp các lớp của mình. FE thêm icon, nhãn cho loại này; trỏ tới hồ sơ ngựa.
+- `BARN_ASSIGNED` thêm cho Groom phụ trách: ngựa đổi khu ("Ngựa X đã chuyển sang khu "Y", đang chờ xếp ô chuồng") và chuyển ô ("Ngựa X đã được xếp vào ô A-03 khu "Y"").
+- Giải nghệ: Groom phụ trách nhận cùng thông báo với chủ ngựa.
+- Đóng bệnh án mà giữ khóa tập: HT khu, CM, chủ ngựa, Groom phụ trách nhận "Ngựa X vẫn bị khóa huấn luyện" kèm ngày gỡ dự kiến mới (cùng loại với thông báo đặt khóa tập). Thông báo đóng bệnh án giữ nguyên.
+- `INCIDENT` thêm cho người báo sự cố và Groom phụ trách: HT chuyển bác sĩ ("Sự cố của ngựa X đã được chuyển bác sĩ khám"), HT đóng sự cố ("Sự cố của ngựa X đã xử lý: <ghi chú>"). Yêu cầu khám từ sự cố được bác sĩ xử lý xong: thông báo "yêu cầu khám đã xử lý" gửi thêm hai người này.
 
 ## Ngày 21/10/2026
 

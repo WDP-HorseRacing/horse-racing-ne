@@ -88,6 +88,7 @@ describe('Rời lớp khi còn lượt bị khóa hoặc không đủ điều ki
         dataSource,
         audit,
         stableAccess,
+        new DomainEventPublisher(),
       ),
       new DomainEventPublisher(),
       dataSource,

@@ -11,6 +11,7 @@ import { HorseMeasurementAlertListener } from './horse-measurement-alert.listene
 const event: HorseMeasurementAlertEvent = {
   alert: HorseMeasurementAlert.FEVER,
   severity: HorseMeasurementAlertSeverity.URGENT,
+  eventId: 'alert-1',
   measurementId: 'measurement-1',
   horseId: 'horse-1',
   measuredBy: 'groom-1',

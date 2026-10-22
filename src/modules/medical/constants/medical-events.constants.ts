@@ -7,6 +7,7 @@ export const MEDICAL_EXAM_REQUEST_HANDLED_EVENT =
 export const MEDICAL_TRAINING_LOCK_SET_EVENT = 'medical.training-lock.set';
 export const MEDICAL_TRAINING_LOCK_RELEASED_EVENT =
   'medical.training-lock.released';
+export const MEDICAL_TRAINING_LOCK_KEPT_EVENT = 'medical.training-lock.kept';
 export const MEDICAL_HEALTH_CHANGED_EVENT = 'medical.health.changed';
 export const MEDICAL_CASE_OPENED_EVENT = 'medical.case.opened';
 export const MEDICAL_CASE_CLOSED_EVENT = 'medical.case.closed';

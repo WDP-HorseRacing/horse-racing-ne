@@ -17,6 +17,7 @@ import {
 } from '../constants/medical-case.enum';
 import {
   MEDICAL_CASE_CLOSED_EVENT,
+  MEDICAL_TRAINING_LOCK_KEPT_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
 } from '../constants/medical-events.constants';
 import { RecoveryStatus } from '../constants/injury-marker.enum';
@@ -565,9 +566,24 @@ describe('MedicalCasesService', () => {
       });
       expect(
         (events.publish.mock.calls as Array<[unknown, string]>).map(
-          ([, name]) => name,
+          ([tx, name]) => [tx, name],
         ),
-      ).toEqual([MEDICAL_CASE_CLOSED_EVENT]);
+      ).toEqual([
+        [manager, MEDICAL_CASE_CLOSED_EVENT],
+        [manager, MEDICAL_TRAINING_LOCK_KEPT_EVENT],
+      ]);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        MEDICAL_TRAINING_LOCK_KEPT_EVENT,
+        {
+          eventId: expect.any(String) as unknown,
+          horseId: 'h1',
+          lockId: 'lock-1',
+          caseId: 'case-1',
+          expectedEnd,
+          ownerId: 'owner-b',
+        },
+      );
     });
   });
 

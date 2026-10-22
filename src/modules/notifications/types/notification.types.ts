@@ -103,3 +103,11 @@ export interface HorseMedicalContact {
   ownerId: string | null;
   groomId: string | null;
 }
+
+/**
+ * Lớp huấn luyện kèm Head Trainer đang phụ trách, dùng để báo khi ngựa bị rút khỏi lớp.
+ */
+export interface ClassHeadTrainer {
+  className: string;
+  headTrainerId: string;
+}

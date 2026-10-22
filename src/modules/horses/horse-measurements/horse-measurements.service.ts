@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'node:crypto';
 import {
   Between,
   DataSource,
@@ -586,6 +587,7 @@ export class HorseMeasurementsService {
     return created.flatMap(({ measurement, alerts }) =>
       alerts.map((alert) => ({
         ...alert,
+        eventId: randomUUID(),
         measurementId: measurement.id,
         horseId: measurement.horseId,
         measuredBy,

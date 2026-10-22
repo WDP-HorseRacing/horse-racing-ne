@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'node:crypto';
 import {
   DataSource,
   EntityManager,
@@ -27,7 +28,10 @@ import { MedicalExamRequestEntity } from '../../medical/entities/medical-exam-re
 import { ExamRequestsService } from '../../medical/exam-requests/exam-requests.service';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { IncidentStatus } from '../constants/incident-status.enum';
-import { INCIDENT_REPORTED_EVENT } from '../constants/stable-events.constants';
+import {
+  INCIDENT_HANDLED_EVENT,
+  INCIDENT_REPORTED_EVENT,
+} from '../constants/stable-events.constants';
 import {
   IncidentListQueryDto,
   IncidentPageResponseDto,
@@ -46,7 +50,10 @@ import {
 } from '../policies/incident.policy';
 import { assertHorseLifecycleWritable } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
-import type { IncidentReportedEvent } from '../types/stable-events.types';
+import type {
+  IncidentHandledEvent,
+  IncidentReportedEvent,
+} from '../types/stable-events.types';
 
 const INCIDENT_RELATIONS = {
   horse: true,
@@ -276,6 +283,7 @@ export class IncidentsService {
    * - Khóa ngựa của sự cố rồi mới khóa sự cố
    * - Khẩn: ghi event báo mọi bác sĩ vào outbox trong cùng transaction
    * - Ghi nhật ký kèm yêu cầu khám vừa tạo và mức khẩn
+   * - Ghi INCIDENT_HANDLED_EVENT (REFERRED) vào outbox trong cùng transaction để báo người báo sự cố và Groom đang phụ trách ngựa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của sự cố
@@ -324,6 +332,16 @@ export class IncidentsService {
         after: { examRequestId: exam.id, urgent: exam.urgent },
         feature: AuditFeature.INCIDENT,
       });
+      const handled: IncidentHandledEvent = {
+        eventId: randomUUID(),
+        incidentId: incident.id,
+        horseId: incident.horseId,
+        reportedBy: incident.reportedBy,
+        handledBy: caller.id,
+        action: 'REFERRED',
+        resolution: null,
+      };
+      await this.events.publish(manager, INCIDENT_HANDLED_EVENT, handled);
     });
     return this.get(actor, id);
   }
@@ -332,6 +350,7 @@ export class IncidentsService {
    * Head Trainer của khu đóng sự cố kèm kết quả xử lý
    *
    * - Ghi nhật ký trạng thái trước và sau, kết quả xử lý ghi vào cột lý do
+   * - Ghi INCIDENT_HANDLED_EVENT (RESOLVED) kèm kết quả xử lý vào outbox trong cùng transaction để báo người báo sự cố và Groom đang phụ trách ngựa
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của sự cố
@@ -375,6 +394,16 @@ export class IncidentsService {
         reason: incident.resolution,
         feature: AuditFeature.INCIDENT,
       });
+      const handled: IncidentHandledEvent = {
+        eventId: randomUUID(),
+        incidentId: incident.id,
+        horseId: incident.horseId,
+        reportedBy: incident.reportedBy,
+        handledBy: caller.id,
+        action: 'RESOLVED',
+        resolution: incident.resolution,
+      };
+      await this.events.publish(manager, INCIDENT_HANDLED_EVENT, handled);
     });
     return this.get(actor, id);
   }

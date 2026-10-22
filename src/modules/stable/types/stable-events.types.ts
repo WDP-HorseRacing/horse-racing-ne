@@ -70,6 +70,40 @@ export interface IncidentReportedEvent {
 }
 
 /**
+ * Payload của domain event STALL_HORSE_MOVED_EVENT
+ *
+ * - eventId: sinh mới cho mỗi lần xếp hoặc chuyển ô, dùng để chống gửi trùng thông báo
+ * - barnId, stallCode: khu và mã ô mới, chụp lúc chuyển
+ * - movedBy: người đã xếp hoặc chuyển ô
+ */
+export interface StallHorseMovedEvent {
+  eventId: string;
+  horseId: string;
+  barnId: string;
+  stallCode: string;
+  movedBy: string;
+}
+
+/**
+ * Payload của domain event INCIDENT_HANDLED_EVENT
+ *
+ * - eventId: sinh mới cho mỗi lần chuyển bác sĩ hoặc đóng, dùng để chống gửi trùng thông báo
+ * - reportedBy: người đã báo sự cố
+ * - handledBy: Head Trainer đã chuyển bác sĩ hoặc đóng sự cố
+ * - action: REFERRED khi chuyển bác sĩ, RESOLVED khi đóng
+ * - resolution: kết quả xử lý khi đóng, null khi chuyển bác sĩ
+ */
+export interface IncidentHandledEvent {
+  eventId: string;
+  incidentId: string;
+  horseId: string;
+  reportedBy: string;
+  handledBy: string;
+  action: 'REFERRED' | 'RESOLVED';
+  resolution: string | null;
+}
+
+/**
  * Payload của domain event INCIDENT_STALE_EVENT
  *
  * - eventId: UUID suy ra cố định từ id sự cố, mỗi sự cố chỉ nhắc một lần

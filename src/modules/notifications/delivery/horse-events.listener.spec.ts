@@ -2,16 +2,25 @@ import type {
   HorseBarnAssignedEvent,
   HorseGroomReleasedEvent,
 } from '../../horses/types/horse.types';
-import type { GroomAssignmentChangedEvent } from '../../stable/types/stable-events.types';
+import type {
+  GroomAssignmentChangedEvent,
+  IncidentHandledEvent,
+  StallHorseMovedEvent,
+} from '../../stable/types/stable-events.types';
 import { HorseNotificationsService } from './horse-notifications.service';
 import { GroomAssignmentChangedListener } from './groom-assignment-changed.listener';
 import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
 import { HorseGroomReleasedListener } from './horse-groom-released.listener';
+import { IncidentHandledListener } from './incident-handled.listener';
+import { StallHorseMovedListener } from './stall-horse-moved.listener';
 
 const barnAssigned: HorseBarnAssignedEvent = {
   eventId: 'e1',
   horseId: 'h1',
   barnId: 'b1',
+  fromBarnId: null,
+  reason: null,
+  withdrawnClassIds: [],
 };
 const groomReleased: HorseGroomReleasedEvent = {
   eventId: 'e2',
@@ -23,6 +32,23 @@ const groomChanged: GroomAssignmentChangedEvent = {
   horseId: 'h1',
   newGroomId: 'g2',
   previousGroomId: 'g1',
+};
+
+const stallMoved: StallHorseMovedEvent = {
+  eventId: 'e4',
+  horseId: 'h1',
+  barnId: 'b1',
+  stallCode: 'A-01',
+  movedBy: 'ht-1',
+};
+const incidentHandled: IncidentHandledEvent = {
+  eventId: 'e5',
+  incidentId: 'i1',
+  horseId: 'h1',
+  reportedBy: 'g1',
+  handledBy: 'ht-1',
+  action: 'RESOLVED',
+  resolution: 'Đã sát trùng',
 };
 
 const cases = [
@@ -46,6 +72,20 @@ const cases = [
     make: (service: HorseNotificationsService) =>
       new GroomAssignmentChangedListener(service),
     event: groomChanged,
+  },
+  {
+    name: 'StallHorseMovedListener',
+    method: 'notifyStallMoved',
+    make: (service: HorseNotificationsService) =>
+      new StallHorseMovedListener(service),
+    event: stallMoved,
+  },
+  {
+    name: 'IncidentHandledListener',
+    method: 'notifyIncidentHandled',
+    make: (service: HorseNotificationsService) =>
+      new IncidentHandledListener(service),
+    event: incidentHandled,
   },
 ] as const;
 

@@ -15001,7 +15001,8 @@
               "INCIDENT",
               "SUPPLY",
               "SURCHARGE",
-              "TRAINING_SESSION"
+              "TRAINING_SESSION",
+              "TRAINING_CLASS"
             ]
           },
           "priority": {

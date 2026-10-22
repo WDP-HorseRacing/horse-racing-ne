@@ -25,6 +25,7 @@ import { StallType } from '../constants/stall-type.enum';
 import { BarnEntity } from '../entities/barn.entity';
 import { StallAssignmentEntity } from '../entities/stall-assignment.entity';
 import { StallEntity } from '../entities/stall.entity';
+import { STALL_HORSE_MOVED_EVENT } from '../constants/stable-events.constants';
 import { StableAccessService } from '../shared/stable-access.service';
 import { StallsService } from './stalls.service';
 
@@ -71,6 +72,7 @@ describe('StallsService', () => {
   let stallRepository: { findOneBy: jest.Mock; softDelete: jest.Mock };
   let stallAssignmentRepository: { findOne: jest.Mock; exists: jest.Mock };
   let audit: { record: jest.Mock };
+  let events: { publish: jest.Mock };
   let service: StallsService;
 
   const actorWith = (role: UserRole): Actor => ({
@@ -166,6 +168,7 @@ describe('StallsService', () => {
       exists: jest.fn().mockResolvedValue(false),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    events = { publish: jest.fn().mockResolvedValue(undefined) };
     const dataSource = {
       manager,
       transaction: jest.fn((work: (m: typeof manager) => Promise<unknown>) =>
@@ -178,6 +181,7 @@ describe('StallsService', () => {
       dataSource,
       audit,
       new StableAccessService(new HorseAccessService(dataSource)),
+      events,
     );
   });
 
@@ -364,6 +368,20 @@ describe('StallsService', () => {
           ([, entry]: [unknown, { action: AuditAction }]) => entry.action,
         ),
       ).toEqual([AuditAction.UPDATE, AuditAction.CREATE]);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        STALL_HORSE_MOVED_EVENT,
+        {
+          eventId: expect.any(String) as unknown,
+          horseId: 'h1',
+          barnId: 'b1',
+          stallCode: 'A-01',
+          movedBy: expect.any(String) as unknown,
+        },
+      );
+      expect(events.publish.mock.invocationCallOrder[0]).toBeGreaterThan(
+        audit.record.mock.invocationCallOrder[1],
+      );
     });
 
     it('changes nothing when the horse is already in that stall', async () => {
@@ -377,6 +395,7 @@ describe('StallsService', () => {
       expect(manager.save).not.toHaveBeenCalled();
       expect(manager.update).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
+      expect(events.publish).not.toHaveBeenCalled();
     });
 
     it('maps a concurrent stall unique violation to 409', async () => {

@@ -21,6 +21,25 @@ describe('MedicalEventsListener', () => {
     expect(medical.notifyLockSet).toHaveBeenCalledWith(event);
   });
 
+  it('forwards a lock kept on case close to the notification service', async () => {
+    const medical = { notifyLockKept: jest.fn().mockResolvedValue([]) };
+    const listener = new MedicalEventsListener(
+      medical as unknown as MedicalNotificationsService,
+    );
+    const event = {
+      eventId: 'e4',
+      horseId: 'h1',
+      lockId: 'l1',
+      caseId: 'c1',
+      expectedEnd: '2026-10-04T17:00:00.000Z',
+      ownerId: null,
+    };
+
+    await listener.onLockKept(event);
+
+    expect(medical.notifyLockKept).toHaveBeenCalledWith(event);
+  });
+
   it('forwards a due checkup to the notification service', async () => {
     const medical = { notifyCheckupDue: jest.fn().mockResolvedValue([]) };
     const listener = new MedicalEventsListener(

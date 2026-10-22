@@ -11,7 +11,10 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { BarnsService } from '../../stable/barns/barns.service';
 import { BarnEntity } from '../../stable/entities/barn.entity';
-import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../stable/constants/stable-events.constants';
+import {
+  GROOM_ASSIGNMENT_CHANGED_EVENT,
+  STALL_HORSE_MOVED_EVENT,
+} from '../../stable/constants/stable-events.constants';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import { TrainingOperationsFacade } from '../../training/shared/training-operations.facade';
@@ -157,7 +160,10 @@ describe('HorsePlacementsService', () => {
     stalls = {
       lockOpenStallOfHorse: jest.fn().mockResolvedValue(undefined),
       moveHorseToStallInTransaction: jest.fn(
-        track('moveHorseToStallInTransaction', { id: 'sa-1', stallId: 's1' }),
+        track('moveHorseToStallInTransaction', {
+          response: { id: 'sa-1', stallId: 's1' },
+          movedEvent: { eventId: 'sa-1', horseId: HORSE_ID },
+        }),
       ),
       closeOpenStallAssignment: jest.fn(
         track('closeOpenStallAssignment', { stallId: 's1', stallCode: 'A-01' }),
@@ -265,6 +271,9 @@ describe('HorsePlacementsService', () => {
         eventId: anyString,
         horseId: HORSE_ID,
         barnId: 'b2',
+        fromBarnId: 'b1',
+        reason: 'Cân bằng khu',
+        withdrawnClassIds: ['c1'],
       },
     );
     expect(calls).toEqual([
@@ -311,6 +320,15 @@ describe('HorsePlacementsService', () => {
     expect(horseRepository.update).toHaveBeenCalledWith(
       { id: HORSE_ID },
       { barnId: 'b2' },
+    );
+    expect(events.publish).toHaveBeenCalledWith(
+      manager,
+      HORSE_BARN_ASSIGNED_EVENT,
+      expect.objectContaining({
+        fromBarnId: null,
+        reason: null,
+        withdrawnClassIds: ['c1'],
+      }),
     );
     expect(audit.record).toHaveBeenCalledWith(
       manager,
@@ -414,10 +432,46 @@ describe('HorsePlacementsService', () => {
         GROOM_ASSIGNMENT_CHANGED_EVENT,
         { eventId: 'ga-1', horseId: HORSE_ID },
       );
+      expect(events.publish).not.toHaveBeenCalledWith(
+        manager,
+        STALL_HORSE_MOVED_EVENT,
+        expect.anything(),
+      );
       expect(result).toEqual({
         stallAssignment: { id: 'sa-1', stallId: 's1' },
         groomAssignment: { id: 'ga-1', groomId: 'g-1' },
       });
+    });
+
+    it('tells the kept groom about the new stall when the groom does not change', async () => {
+      grooms.assignInTransaction.mockResolvedValue({
+        response: { id: 'ga-1', groomId: 'g-1' },
+        changedEvent: null,
+      });
+
+      await place();
+
+      expect(events.publish).toHaveBeenCalledTimes(1);
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        STALL_HORSE_MOVED_EVENT,
+        { eventId: 'sa-1', horseId: HORSE_ID },
+      );
+    });
+
+    it('writes no event when neither the stall nor the groom changes', async () => {
+      stalls.moveHorseToStallInTransaction.mockResolvedValue({
+        response: { id: 'sa-1', stallId: 's1' },
+        movedEvent: null,
+      });
+      grooms.assignInTransaction.mockResolvedValue({
+        response: { id: 'ga-1', groomId: 'g-1' },
+        changedEvent: null,
+      });
+
+      await place();
+
+      expect(events.publish).not.toHaveBeenCalled();
     });
 
     it('fails as a whole and notifies nobody when the groom part fails', async () => {

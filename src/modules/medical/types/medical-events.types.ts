@@ -24,11 +24,13 @@ export interface ExamRequestUrgentEvent extends MedicalEventBase {
  * Bác sĩ khám xong hoặc bỏ qua yêu cầu khám do một người gửi.
  *
  * - requestedBy: người gửi yêu cầu, người nhận thông báo
+ * - incidentId: sự cố tại chuồng sinh ra yêu cầu, null nếu yêu cầu không từ sự cố
  * - dismissReason: lý do bỏ qua, null khi đã khám
  */
 export interface ExamRequestHandledEvent extends MedicalEventBase {
   requestId: string;
   requestedBy: string;
+  incidentId: string | null;
   outcome: ExamRequestStatus.EXAMINED | ExamRequestStatus.DISMISSED;
   description: string;
   dismissReason: string | null;
@@ -54,6 +56,19 @@ export interface TrainingLockSetEvent extends MedicalEventBase {
 export interface TrainingLockReleasedEvent extends MedicalEventBase {
   lockId: string;
   conclusion: string;
+  ownerId: string | null;
+}
+
+/**
+ * Bác sĩ đóng bệnh án nhưng giữ khóa huấn luyện, kèm ngày dự kiến gỡ mới.
+ *
+ * - expectedEnd: ngày dự kiến gỡ khóa mới, chuỗi ISO
+ * - ownerId: chủ của ngựa lúc phát event, null nếu ngựa không có chủ
+ */
+export interface TrainingLockKeptEvent extends MedicalEventBase {
+  lockId: string;
+  caseId: string;
+  expectedEnd: string;
   ownerId: string | null;
 }
 

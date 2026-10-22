@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'node:crypto';
 import {
   DataSource,
   EntityManager,
@@ -13,6 +14,7 @@ import {
   IsNull,
   Repository,
 } from 'typeorm';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
 import {
   fieldConflict,
@@ -31,6 +33,7 @@ import { currentUserForActor } from '../../users/utils/current-user';
 import { StallStatus } from '../constants/stall-status.enum';
 import { StallType } from '../constants/stall-type.enum';
 import { STABLE_AUDIT_FEATURE } from '../constants/stable-audit.constants';
+import { STALL_HORSE_MOVED_EVENT } from '../constants/stable-events.constants';
 import {
   CreateStallDto,
   MoveHorseStallDto,
@@ -55,6 +58,7 @@ import {
   isStallFree,
 } from '../policies/stable.policy';
 import { StableAccessService } from '../shared/stable-access.service';
+import type { StallHorseMovedEvent } from '../types/stable-events.types';
 
 /**
  * Ô chuồng vừa được trả lại khi đóng phân công ô của một con ngựa.
@@ -102,6 +106,7 @@ export class StallsService {
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly access: StableAccessService,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
@@ -382,6 +387,7 @@ export class StallsService {
    * - Đang ở ô khác thì đóng phân công cũ, trả ô cũ về AVAILABLE và mở phân công mới trong cùng transaction.
    * - Chọn lại đúng ô đang ở thì không thay đổi gì.
    * - Không đụng tới groom phụ trách. Ghi nhật ký cho phân công đóng và phân công mở.
+   * - Đổi ô thật sự thì ghi STALL_HORSE_MOVED_EVENT vào outbox trong cùng transaction để báo groom phụ trách ô mới.
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -398,26 +404,31 @@ export class StallsService {
     body: MoveHorseStallDto,
   ): Promise<StallAssignmentResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
-    return this.dataSource.transaction((manager) =>
-      this.moveHorseToStallInTransaction(
+    return this.dataSource.transaction(async (manager) => {
+      const { response, movedEvent } = await this.moveHorseToStallInTransaction(
         manager,
         caller.id,
         horseId,
         body.stallId,
-      ),
-    );
+      );
+      if (movedEvent) {
+        await this.events.publish(manager, STALL_HORSE_MOVED_EVENT, movedEvent);
+      }
+      return response;
+    });
   }
 
   /**
    * Xếp ngựa vào một ô chuồng hoặc chuyển ô, chạy trong transaction của nơi gọi (luật như moveHorseToStall)
    *
    * - Khóa khu của ngựa, ô đích và ô đang ở (theo UUID) trước khi khóa ngựa
+   * - Không ghi event; nơi gọi ghi STALL_HORSE_MOVED_EVENT với movedEvent trả về vào outbox trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param callerId UUID của người gọi (users.id)
    * @param horseId UUID của ngựa
    * @param stallId UUID của ô chuồng đích
-   * @returns Promise chứa phân công ô đang mở của ngựa sau thao tác
+   * @returns Promise chứa phân công ô đang mở của ngựa sau thao tác và event cần phát (null nếu chọn lại đúng ô đang ở)
    * @throws NotFoundException Nếu không có ngựa, không có khu hoặc không có ô chuồng
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    * @throws BadRequestException Nếu ô đích không thuộc khu của ngựa
@@ -428,7 +439,10 @@ export class StallsService {
     callerId: string,
     horseId: string,
     stallId: string,
-  ): Promise<StallAssignmentResponseDto> {
+  ): Promise<{
+    response: StallAssignmentResponseDto;
+    movedEvent: StallHorseMovedEvent | null;
+  }> {
     return mapUniqueViolation(async () => {
       await this.access.lockBarnOfHorse(manager, horseId);
       const open = await manager.findOneBy(StallAssignmentEntity, {
@@ -452,7 +466,10 @@ export class StallsService {
       // Nếu ngựa đã được phân công ô nào rồi thì look ô đó trước
       const current = await this.lockOpenAssignmentByHorse(manager, horseId);
       if (current?.stallId === stallId) {
-        return toStallAssignmentResponse({ ...current, horse });
+        return {
+          response: toStallAssignmentResponse({ ...current, horse }),
+          movedEvent: null,
+        };
       }
 
       // Lock ô đích, check thuộc đúng khu, và đang trống
@@ -503,7 +520,16 @@ export class StallsService {
         },
       });
 
-      return toStallAssignmentResponse({ ...saved, horse });
+      return {
+        response: toStallAssignmentResponse({ ...saved, horse }),
+        movedEvent: {
+          eventId: randomUUID(),
+          horseId,
+          barnId: stall.barnId,
+          stallCode: stall.code,
+          movedBy: callerId,
+        },
+      };
     }, STALL_ASSIGNMENT_CONFLICT_MESSAGES);
   }
 

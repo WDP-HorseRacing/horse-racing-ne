@@ -17,10 +17,22 @@ export const CHECKLIST_TASK_ADDED_EVENT = 'stable.checklist.task-added';
 export const CARE_TASK_CHANGED_EVENT = 'stable.care-task.changed';
 
 /**
+ * Tên domain event phát khi Head Trainer xếp ngựa vào ô chuồng hoặc chuyển ô, trừ khi giao groom mới cùng lúc.
+ * Payload là StallHorseMovedEvent; module notifications nghe event này để báo Groom đang phụ trách ngựa.
+ */
+export const STALL_HORSE_MOVED_EVENT = 'stable.stall.horse-moved';
+
+/**
  * Tên domain event phát khi Groom báo một sự cố tại chuồng.
  * Payload là IncidentReportedEvent; module notifications nghe event này để báo Head Trainer của khu chứa ngựa.
  */
 export const INCIDENT_REPORTED_EVENT = 'stable.incident.reported';
+
+/**
+ * Tên domain event phát khi Head Trainer chuyển sự cố cho bác sĩ hoặc đóng sự cố; sự cố hệ thống tự đóng không phát event này.
+ * Payload là IncidentHandledEvent; module notifications nghe event này để báo người báo sự cố và Groom đang phụ trách ngựa.
+ */
+export const INCIDENT_HANDLED_EVENT = 'stable.incident.handled';
 
 /**
  * Tên domain event phát khi sự cố thường còn mở quá hạn mà chưa chuyển bác sĩ.

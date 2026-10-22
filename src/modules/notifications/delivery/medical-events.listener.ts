@@ -12,6 +12,7 @@ import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_URGENT_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
+  MEDICAL_TRAINING_LOCK_KEPT_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
   MEDICAL_VISIT_COST_ADJUSTED_EVENT,
@@ -28,6 +29,7 @@ import type {
   MedicalCaseClosedEvent,
   MedicalCaseOpenedEvent,
   MedicalVisitCostAdjustedEvent,
+  TrainingLockKeptEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
 } from '../../medical/types/medical-events.types';
@@ -79,6 +81,17 @@ export class MedicalEventsListener {
   @OnEvent(MEDICAL_TRAINING_LOCK_RELEASED_EVENT, OUTBOX_LISTENER_OPTIONS)
   async onLockReleased(event: TrainingLockReleasedEvent): Promise<void> {
     await this.medical.notifyLockReleased(event);
+  }
+
+  /**
+   * Nghe MEDICAL_TRAINING_LOCK_KEPT_EVENT và báo ngày dự kiến gỡ khóa mới khi bệnh án đóng mà vẫn giữ khóa
+   *
+   * @param event Payload của event
+   * @returns Promise hoàn tất khi đã gửi xong
+   */
+  @OnEvent(MEDICAL_TRAINING_LOCK_KEPT_EVENT, OUTBOX_LISTENER_OPTIONS)
+  async onLockKept(event: TrainingLockKeptEvent): Promise<void> {
+    await this.medical.notifyLockKept(event);
   }
 
   /**

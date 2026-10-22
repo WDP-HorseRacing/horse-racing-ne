@@ -4,10 +4,13 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { BarnEntity } from '../../stable/entities/barn.entity';
+import { IncidentEntity } from '../../stable/entities/incident.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
+import { TrainingClassEntity } from '../../training/entities/training-class.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import type {
   BarnContact,
+  ClassHeadTrainer,
   HorseBarnContact,
   HorseMedicalContact,
 } from '../types/notification.types';
@@ -147,6 +150,49 @@ export class NotificationRecipientsRepository {
       return null;
     }
     return { barnName: row.barnName, headTrainerId: row.headTrainerId };
+  }
+
+  /**
+   * Lấy tên và Head Trainer phụ trách của các lớp huấn luyện, sắp theo tên lớp
+   *
+   * - Lớp chưa có Head Trainer, hoặc Head Trainer không còn ACTIVE/không còn role HEAD_TRAINER thì bỏ lớp đó
+   *
+   * @param classIds UUID các lớp
+   * @returns Promise trả về tên lớp kèm Head Trainer, rỗng nếu không có lớp nào để báo
+   */
+  async findClassHeadTrainers(classIds: string[]): Promise<ClassHeadTrainer[]> {
+    if (classIds.length === 0) return [];
+    return this.dataSource
+      .getRepository(TrainingClassEntity)
+      .createQueryBuilder('class')
+      .innerJoin(
+        UserEntity,
+        'trainer',
+        'trainer.id = class.headTrainerId AND trainer.deletedAt IS NULL AND trainer.status = :trainerStatus AND trainer.role = :trainerRole',
+        {
+          trainerStatus: UserStatus.ACTIVE,
+          trainerRole: UserRole.HEAD_TRAINER,
+        },
+      )
+      .select('class.name', 'className')
+      .addSelect('trainer.id', 'headTrainerId')
+      .where('class.id IN (:...classIds)', { classIds })
+      .orderBy('class.name', 'ASC')
+      .getRawMany<ClassHeadTrainer>();
+  }
+
+  /**
+   * Lấy người đã báo một sự cố tại chuồng
+   *
+   * @param incidentId UUID của sự cố
+   * @returns Promise trả về id người báo, hoặc null nếu không tìm thấy sự cố
+   */
+  async findIncidentReporterId(incidentId: string): Promise<string | null> {
+    const incident = await this.dataSource.manager.findOne(IncidentEntity, {
+      where: { id: incidentId },
+      select: { id: true, reportedBy: true },
+    });
+    return incident?.reportedBy ?? null;
   }
 
   /**

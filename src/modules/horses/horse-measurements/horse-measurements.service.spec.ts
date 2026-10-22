@@ -282,6 +282,7 @@ describe('HorseMeasurementsService', () => {
           alert: HorseMeasurementAlert.FEVER,
           horseId: HORSE_ID,
           measurementId: 'm-new',
+          eventId: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown,
           source: HorseMeasurementSource.MANUAL,
         }),
       );

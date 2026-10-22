@@ -152,6 +152,45 @@ describe('NotificationRecipientsRepository (Postgres)', () => {
     await expect(recipients.findBarnContact(barn)).resolves.toBeNull();
   });
 
+  it('finds the active head trainer of each withdrawn class, ordered by class name', async () => {
+    const trainer = await seed.user(UserRole.HEAD_TRAINER);
+    const locked = await seed.user(UserRole.HEAD_TRAINER, UserStatus.LOCKED);
+    const { classId: sprint } = await seed.trainingClass(trainer, {
+      name: 'Nước rút',
+    });
+    const { classId: base } = await seed.trainingClass(trainer, {
+      name: 'Bền',
+    });
+    const { classId: lockedClass } = await seed.trainingClass(locked);
+    const { classId: noTrainer } = await seed.trainingClass(trainer);
+    await dataSource.query(
+      'UPDATE training_classes SET head_trainer_id = NULL WHERE id = $1',
+      [noTrainer],
+    );
+
+    await expect(
+      recipients.findClassHeadTrainers([sprint, lockedClass, noTrainer, base]),
+    ).resolves.toEqual([
+      { className: 'Bền', headTrainerId: trainer },
+      { className: 'Nước rút', headTrainerId: trainer },
+    ]);
+    await expect(recipients.findClassHeadTrainers([])).resolves.toEqual([]);
+  });
+
+  it('finds the incident reporter', async () => {
+    const groom = await seed.user(UserRole.GROOM);
+    const horse = await seed.horse('Gió');
+    const [incident] = await dataSource.query<{ id: string }[]>(
+      `INSERT INTO incidents (version, horse_id, reported_by, description)
+       VALUES (1, $1, $2, 'Bỏ ăn') RETURNING id`,
+      [horse, groom],
+    );
+
+    await expect(recipients.findIncidentReporterId(incident.id)).resolves.toBe(
+      groom,
+    );
+  });
+
   it('reads the horse name, also for a deleted horse', async () => {
     const horse = await seed.horse('Gió', { deleted: true });
 

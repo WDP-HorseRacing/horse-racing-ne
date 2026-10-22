@@ -7,6 +7,7 @@ import { NotificationResourceType } from '../enums/notification-resource-type.en
 import { NotificationCategory } from '../enums/notification-category.enum';
 import { NotificationRecipientsRepository } from './notification-recipients.repository';
 import type {
+  ExamRequestHandledEvent,
   HealthChangedEvent,
   MedicalCaseCancelledEvent,
   MedicalCaseClosedEvent,
@@ -23,6 +24,7 @@ describe('MedicalNotificationsService', () => {
     findHorseMedicalContact: jest.Mock;
     findActiveUserIdsByRole: jest.Mock;
     isActiveUserWithRole: jest.Mock;
+    findIncidentReporterId: jest.Mock;
   };
   let notifications: { send: jest.Mock };
   let service: MedicalNotificationsService;
@@ -44,6 +46,7 @@ describe('MedicalNotificationsService', () => {
         ),
       ),
       isActiveUserWithRole: jest.fn().mockResolvedValue(true),
+      findIncidentReporterId: jest.fn().mockResolvedValue('groom-3'),
     };
     notifications = {
       send: jest.fn((draft: { recipientIds: string[] }) =>
@@ -87,6 +90,32 @@ describe('MedicalNotificationsService', () => {
     expect(sentDraft()).toMatchObject({
       recipientIds: ['cm-1', 'ht-1', 'owner-1', 'groom-1'],
       priority: NotificationPriority.HIGH,
+      resource: {
+        type: NotificationResourceType.TRAINING_LOCK,
+        id: 'l1',
+        horseId: 'h1',
+      },
+    });
+  });
+
+  it('tells the lock audience the new expected end when a closed case keeps the lock', async () => {
+    await service.notifyLockKept({
+      eventId: 'e2k',
+      horseId: 'h1',
+      lockId: 'l1',
+      caseId: 'c1',
+      expectedEnd: '2026-10-04T17:00:00.000Z',
+      ownerId: 'owner-1',
+    });
+    expect(notifications.send).toHaveBeenCalledTimes(1);
+    expect(sentDraft()).toEqual({
+      eventId: 'e2k',
+      recipientIds: ['cm-1', 'ht-1', 'owner-1', 'groom-1'],
+      category: NotificationCategory.TRAINING_LOCK,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Winx vẫn bị khóa huấn luyện',
+      message:
+        'Bệnh án của ngựa Winx đã đóng nhưng vẫn giữ khóa huấn luyện. Dự kiến gỡ: 2026-10-05. Ngựa không được tập và không được đua cho tới khi gỡ khóa.',
       resource: {
         type: NotificationResourceType.TRAINING_LOCK,
         id: 'l1',
@@ -341,6 +370,7 @@ describe('MedicalNotificationsService', () => {
       horseId: 'h1',
       requestId: 'r1',
       requestedBy: 'groom-2',
+      incidentId: null,
       description: 'Đi khập khiễng',
     };
 
@@ -370,6 +400,52 @@ describe('MedicalNotificationsService', () => {
         message:
           'Bác sĩ bỏ qua yêu cầu khám "Đi khập khiễng" của ngựa Winx. Lý do: Đã khám sáng nay',
       });
+    });
+
+    it.each<ExamRequestHandledEvent['outcome']>([
+      ExamRequestStatus.EXAMINED,
+      ExamRequestStatus.DISMISSED,
+    ])(
+      'also tells the incident reporter and the groom in charge when a request from an incident is %s',
+      async (outcome) => {
+        await service.notifyExamRequestHandled({
+          ...handled,
+          incidentId: 'i1',
+          outcome,
+          dismissReason:
+            outcome === ExamRequestStatus.DISMISSED ? 'Không cần' : null,
+        });
+        expect(recipients.findIncidentReporterId).toHaveBeenCalledWith('i1');
+        expect(notifications.send).toHaveBeenCalledTimes(1);
+        expect(sentDraft()).toMatchObject({
+          eventId: 'e11',
+          recipientIds: ['groom-2', 'groom-3', 'groom-1'],
+          category: NotificationCategory.EXAM_REQUEST,
+        });
+      },
+    );
+
+    it('tells the reporter once when the reporter also sent the request and cares for the horse', async () => {
+      recipients.findIncidentReporterId.mockResolvedValue('groom-1');
+      await service.notifyExamRequestHandled({
+        ...handled,
+        requestedBy: 'groom-1',
+        incidentId: 'i1',
+        outcome: ExamRequestStatus.EXAMINED,
+        dismissReason: null,
+      });
+      expect(sentDraft().recipientIds).toEqual(['groom-1']);
+    });
+
+    it('keeps the requester only when the request has no incident', async () => {
+      await service.notifyExamRequestHandled({
+        ...handled,
+        incidentId: null,
+        outcome: ExamRequestStatus.EXAMINED,
+        dismissReason: null,
+      });
+      expect(recipients.findIncidentReporterId).not.toHaveBeenCalled();
+      expect(sentDraft().recipientIds).toEqual(['groom-2']);
     });
   });
 

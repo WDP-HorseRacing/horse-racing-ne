@@ -8,7 +8,10 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
 import { BarnsService } from '../../stable/barns/barns.service';
 import { BarnEntity } from '../../stable/entities/barn.entity';
-import { GROOM_ASSIGNMENT_CHANGED_EVENT } from '../../stable/constants/stable-events.constants';
+import {
+  GROOM_ASSIGNMENT_CHANGED_EVENT,
+  STALL_HORSE_MOVED_EVENT,
+} from '../../stable/constants/stable-events.constants';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
 import {
@@ -92,7 +95,7 @@ export class HorsePlacementsService {
    * - Khu mới phải đang hoạt động, có Head Trainer phụ trách và còn ít nhất một ô trống (khóa row khu trước khi kiểm)
    * - Đổi khu: trả ô cũ về trống, ngựa vào "Chờ xếp ô" của khu mới; giữ nguyên Groom
    * - Chọn đúng khu đang ở thì không đổi gì
-   * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; ghi HORSE_BARN_ASSIGNED_EVENT vào outbox trong cùng transaction để báo Head Trainer khu mới
+   * - Đổi khu (ngựa đã có khu) bắt buộc lý do, xếp khu lần đầu không cần; ghi nhật ký; ghi HORSE_BARN_ASSIGNED_EVENT kèm lý do và các lớp vừa rút vào outbox trong cùng transaction để báo Head Trainer khu mới, Groom đang phụ trách và Head Trainer của các lớp bị rút
    * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách; có rút thì nhật ký ghi thêm classesWithdrawn
    * - Ngựa đang ở buổi tập (lượt PRESENT, READY, ONGOING) của lớp sẽ bị rút thì không đổi khu được; lớp do Head Trainer khu mới phụ trách không tính
    *
@@ -123,7 +126,7 @@ export class HorsePlacementsService {
       assertLifecycleWritable(horse);
       if (horse.barnId === body.barnId) return;
       assertBarnChangeReason(horse.barnId, body.reason);
-      await this.applyBarnChange(manager, {
+      const withdrawnClassIds = await this.applyBarnChange(manager, {
         callerId: caller.id,
         horseId,
         fromBarnId: horse.barnId,
@@ -134,6 +137,9 @@ export class HorsePlacementsService {
         eventId: randomUUID(),
         horseId,
         barnId: body.barnId,
+        fromBarnId: horse.barnId,
+        reason: body.reason ?? null,
+        withdrawnClassIds,
       };
       await this.events.publish(manager, HORSE_BARN_ASSIGNED_EVENT, event);
     });
@@ -200,6 +206,7 @@ export class HorsePlacementsService {
    *
    * - Luật xếp ô như StallsService.moveHorseToStall, luật giao groom như GroomAssignmentsService.assign
    * - Chạy cả hai trong cùng một transaction; GROOM_ASSIGNMENT_CHANGED_EVENT ghi vào outbox trong cùng transaction
+   * - Đổi ô mà giữ nguyên groom: ghi STALL_HORSE_MOVED_EVENT để báo groom ô mới; đổi groom thì chỉ ghi GROOM_ASSIGNMENT_CHANGED_EVENT
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
@@ -218,7 +225,7 @@ export class HorsePlacementsService {
     const caller = await this.access.currentUser(actor);
     const { stallAssignment, groom } = await this.dataSource.transaction(
       async (manager) => {
-        const stallAssignment = await this.stalls.moveHorseToStallInTransaction(
+        const stall = await this.stalls.moveHorseToStallInTransaction(
           manager,
           caller.id,
           horseId,
@@ -236,8 +243,14 @@ export class HorsePlacementsService {
             GROOM_ASSIGNMENT_CHANGED_EVENT,
             groom.changedEvent,
           );
+        } else if (stall.movedEvent) {
+          await this.events.publish(
+            manager,
+            STALL_HORSE_MOVED_EVENT,
+            stall.movedEvent,
+          );
         }
-        return { stallAssignment, groom };
+        return { stallAssignment: stall.response, groom };
       },
     );
     return toHorsePlacementResponse(stallAssignment, groom.response);
@@ -251,11 +264,11 @@ export class HorsePlacementsService {
    * - Trả ô đang giữ về trống
    * - Rút ngựa khỏi mọi lớp không do Head Trainer khu mới phụ trách
    * - Cập nhật khu của ngựa rồi ghi nhật ký; có rút lớp thì nhật ký ghi thêm classesWithdrawn
-   * - Không phát event; nơi gọi phát sau khi commit
+   * - Không phát event; nơi gọi ghi event vào outbox trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Người gọi, ngựa, khu hiện tại (null nếu chưa có khu), khu mới và lý do (bỏ trống khi xếp khu lần đầu)
-   * @returns Promise hoàn tất khi đã đổi khu và ghi nhật ký
+   * @returns Promise trả về UUID các lớp ngựa vừa bị rút, rỗng nếu không rút lớp nào
    * @throws NotFoundException Nếu không có khu
    * @throws ConflictException Nếu khu không hoạt động, chưa có Head Trainer, hết ô trống hoặc ngựa đang ở buổi tập của lớp sẽ bị rút
    */
@@ -268,7 +281,7 @@ export class HorsePlacementsService {
       toBarnId: string;
       reason?: string;
     },
-  ): Promise<void> {
+  ): Promise<string[]> {
     const { callerId, horseId, reason } = input;
     const newBarn = await this.barns.lockAssignableBarn(
       manager,
@@ -315,6 +328,7 @@ export class HorsePlacementsService {
       reason: reason ?? null,
       feature: HORSE_AUDIT_FEATURE.BARN_PLACEMENT,
     });
+    return withdrawn.classIds;
   }
 
   /**

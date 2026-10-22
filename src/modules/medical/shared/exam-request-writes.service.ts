@@ -148,7 +148,7 @@ export class ExamRequestWritesService {
 export function examRequestHandledEvent(
   request: Pick<
     MedicalExamRequestEntity,
-    'id' | 'horseId' | 'requestedBy' | 'description'
+    'id' | 'horseId' | 'requestedBy' | 'incidentId' | 'description'
   >,
   outcome: ExamRequestHandledEvent['outcome'],
   handledBy: string,
@@ -160,6 +160,7 @@ export function examRequestHandledEvent(
     horseId: request.horseId,
     requestId: request.id,
     requestedBy: request.requestedBy,
+    incidentId: request.incidentId,
     outcome,
     description: request.description,
     dismissReason,

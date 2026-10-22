@@ -2,21 +2,22 @@
  * Loại nghiệp vụ của thông báo, dùng để lọc và chọn biểu tượng hiển thị.
  *
  * - MEASUREMENT_ALERT: cảnh báo chỉ số cơ thể (sốt, giảm cân)
- * - BARN_ASSIGNED: ngựa được xếp vào khu
+ * - BARN_ASSIGNED: ngựa được xếp vào khu, đổi khu hoặc chuyển ô chuồng
  * - GROOM_ASSIGNMENT: phân công chăm ngựa thay đổi hoặc kết thúc
  * - MEDICAL_CASE: bệnh án được mở, hủy, đóng hoặc điều chỉnh chi phí
  * - TRAINING_LOCK: khóa huấn luyện được đặt hoặc gỡ
  * - HEALTH_STATUS: trạng thái sức khỏe thay đổi
  * - EXAM_REQUEST: yêu cầu khám khẩn
  * - CARE_REMINDER: nhắc khám định kỳ, lịch chăm sóc đến hạn
- * - HORSE_LIFECYCLE: vòng đời ngựa thay đổi (ngựa đã mất)
+ * - HORSE_LIFECYCLE: vòng đời ngựa thay đổi (giải nghệ, chuyển nhượng, hoạt động trở lại, ngựa đã mất)
  * - OWNERSHIP: chủ sở hữu ngựa thay đổi do chuyển nhượng nội bộ
  * - PERFORMANCE_ALERT: nhịp tim của ngựa vượt ngưỡng nguy hiểm khi đang tập
  * - DAILY_CHECKLIST: có việc mới trong checklist chăm sóc hôm nay; checklist hôm nay sinh lỗi hoặc đã sinh đủ lại; bác sĩ đổi việc riêng của ngựa
- * - INCIDENT: Groom báo sự cố tại chuồng
+ * - INCIDENT: Groom báo sự cố tại chuồng; sự cố được chuyển bác sĩ hoặc đã xử lý
  * - SUPPLY: đề xuất bổ sung vật tư mới, đổi trạng thái, hoặc vật tư sắp hết
  * - SURCHARGE: ngựa có phụ phí chăm sóc riêng mới
  * - TRAINING_SESSION: buổi tập có ngựa mình dắt bị hủy; được giao dắt một lượt tập
+ * - TRAINING_CLASS: ngựa bị rút khỏi lớp huấn luyện mình phụ trách
  */
 export enum NotificationCategory {
   MEASUREMENT_ALERT = 'MEASUREMENT_ALERT',
@@ -35,4 +36,5 @@ export enum NotificationCategory {
   SUPPLY = 'SUPPLY',
   SURCHARGE = 'SURCHARGE',
   TRAINING_SESSION = 'TRAINING_SESSION',
+  TRAINING_CLASS = 'TRAINING_CLASS',
 }

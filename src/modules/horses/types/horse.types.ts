@@ -107,11 +107,14 @@ export type HorseMeasurementAlertResult =
 /**
  * Payload của domain event HORSE_MEASUREMENT_ALERT_EVENT, phát một lần cho mỗi cảnh báo sau khi bản ghi đã lưu.
  *
+ * - eventId: sinh mới cho mỗi cảnh báo, dùng để chống gửi trùng thông báo
+ *
  * Quy ước người nhận cho listener gửi thông báo:
  * - FEVER (URGENT): mọi Veterinarian đang ACTIVE và Head Trainer của khu đang chứa ngựa
  * - WEIGHT_DROP (WARNING): như trên (cảnh báo y tế cho Vet, cảnh báo quá tải cho Head Trainer)
  */
 export type HorseMeasurementAlertEvent = HorseMeasurementAlertResult & {
+  eventId: string;
   measurementId: string;
   horseId: string;
   measuredBy: string;
@@ -149,11 +152,17 @@ export interface ExamMeasurementInput {
  * Payload của domain event HORSE_BARN_ASSIGNED_EVENT, phát sau khi transaction xếp khu đã commit.
  *
  * - eventId: sinh mới cho mỗi lần xếp khu, dùng để chống gửi trùng thông báo
+ * - fromBarnId: khu trước khi đổi, null khi xếp khu lần đầu
+ * - reason: lý do người dùng nhập, null nếu không nhập
+ * - withdrawnClassIds: các lớp ngựa vừa bị rút do đổi khu, rỗng nếu không rút lớp nào
  */
 export interface HorseBarnAssignedEvent {
   eventId: string;
   horseId: string;
   barnId: string;
+  fromBarnId: string | null;
+  reason: string | null;
+  withdrawnClassIds: string[];
 }
 
 /**
@@ -242,6 +251,7 @@ export interface HorseDeath {
  * - eventId: sinh mới cho mỗi lần ghi nhận, dùng để chống gửi trùng thông báo
  * - barnId, groomId: khu và Groom của ngựa trước khi bị dọn, null nếu không có
  * - dateOfDeath: ngày mất (YYYY-MM-DD); reason: nguyên nhân mất
+ * - withdrawnClassIds: các lớp ngựa vừa bị rút, rỗng nếu không rút lớp nào
  */
 export interface HorseDeceasedEvent {
   eventId: string;
@@ -250,6 +260,7 @@ export interface HorseDeceasedEvent {
   groomId: string | null;
   dateOfDeath: string;
   reason: string;
+  withdrawnClassIds: string[];
 }
 
 /**
@@ -258,6 +269,7 @@ export interface HorseDeceasedEvent {
  * - eventId: sinh mới cho mỗi lần đổi, dùng để chống gửi trùng thông báo
  * - from, to: vòng đời trước và sau; reason: lý do Club Manager nhập
  * - ownerId: chủ cần báo, chụp lúc đổi; bán ra ngoài là chủ vừa kết thúc sở hữu, kích hoạt lại là chủ mới, null nếu ngựa không có chủ
+ * - withdrawnClassIds: các lớp ngựa vừa bị rút, rỗng nếu không rút lớp nào
  */
 export interface HorseLifecycleChangedEvent {
   eventId: string;
@@ -266,6 +278,7 @@ export interface HorseLifecycleChangedEvent {
   to: HorseLifecycleStatus;
   reason: string;
   ownerId: string | null;
+  withdrawnClassIds: string[];
 }
 
 /**

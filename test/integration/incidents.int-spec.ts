@@ -22,6 +22,7 @@ import { ExamRequestsService } from '../../src/modules/medical/exam-requests/exa
 import type { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
 import { IncidentStatus } from '../../src/modules/stable/constants/incident-status.enum';
 import {
+  INCIDENT_HANDLED_EVENT,
   INCIDENT_REPORTED_EVENT,
   INCIDENT_STALE_EVENT,
 } from '../../src/modules/stable/constants/stable-events.constants';
@@ -288,6 +289,31 @@ describe('Stable incidents (Postgres)', () => {
       await expect(
         incidents.resolve(trainer, routineId, { resolution: 'lần hai' }),
       ).rejects.toBeInstanceOf(ConflictException);
+      const handled = await outbox(INCIDENT_HANDLED_EVENT);
+      expect(handled).toHaveLength(1);
+      expect(handled[0].payload).toMatchObject({
+        eventId: expect.any(String) as unknown,
+        incidentId: routineId,
+        horseId: gio,
+        reportedBy: groomId,
+        handledBy: resolved.resolver?.id,
+        action: 'RESOLVED',
+        resolution: 'Báo nhầm, ngựa bình thường',
+      });
+    });
+
+    it('records the referral to a vet for the reporter and the groom in charge', async () => {
+      await incidents.refer(trainer, routineId, {});
+
+      const handled = await outbox(INCIDENT_HANDLED_EVENT);
+      expect(handled).toHaveLength(1);
+      expect(handled[0].payload).toMatchObject({
+        incidentId: routineId,
+        horseId: gio,
+        reportedBy: groomId,
+        action: 'REFERRED',
+        resolution: null,
+      });
     });
 
     it('refers once, then waits for the vet before closing', async () => {
@@ -583,6 +609,11 @@ describe('Stable incidents (Postgres)', () => {
       );
 
       expect(closed).toBe(1);
+      expect(
+        (await outbox(INCIDENT_HANDLED_EVENT)).map(
+          ({ payload }) => payload.incidentId,
+        ),
+      ).toEqual([done.id]);
       expect(await incidents.get(manager, open.id)).toMatchObject({
         status: IncidentStatus.RESOLVED,
         resolution: 'Ngựa đã chuyển nhượng',

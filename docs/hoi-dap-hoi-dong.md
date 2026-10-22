@@ -1,6 +1,6 @@
 # Hỏi đáp chuẩn bị bảo vệ
 
-Cập nhật: 21/10/2026
+Cập nhật: 22/10/2026
 
 Các câu hội đồng có thể hỏi về những quyết định nghiệp vụ "cố ý không làm" hoặc "chọn cách đơn giản", kèm câu trả lời ngắn và lý do. Mã trong ngoặc là mã mục trong bản rà nghiệp vụ.
 
@@ -219,3 +219,51 @@ Hồ sơ ngựa đua thường ghi giới tính thành một nhóm duy nhất c�
 - Không có đường sửa số đo để giữ dữ liệu trung thực: mọi thay đổi đều là xóa có lý do và bản ghi mới.
 
 **Đánh đổi đã biết:** giờ trên biểu đồ lệch vài giờ so với lúc đo thật nếu nhập trễ. Thông báo khẩn đã gửi từ bản ghi nhập sai không thu hồi được; xóa bản ghi không xóa thông báo.
+
+## Giới hạn nhập liệu
+
+Nguyên tắc chung: hệ thống chặn những giá trị làm hỏng dữ liệu hoặc làm API lỗi (vd số vượt kiểu cột trả 400 thay vì lỗi máy chủ). Giá trị hợp lệ về kiểu nhưng sai về nghiệp vụ do người nhập gõ nhầm thì không đặt trần tùy ý; người nhập sửa lại, mọi lần sửa đều có nhật ký.
+
+### 28. Lịch chăm sóc đặt hạn năm 9999 thì sao không chặn? (NEW-2)
+
+**Trả lời:** Hạn quá xa chỉ làm lịch đó không bao giờ tới hạn, không ảnh hưởng ngựa khác hay phần khác của hệ thống. Lịch vẫn hiện trong danh sách, người lập thấy và sửa hạn hoặc hủy lịch (có nhật ký). Một con số trần (1 năm, 2 năm) là tùy ý: lịch tiêm nhắc lại hay làm móng có thể đặt xa, chặn cứng dễ chặn nhầm ca hợp lệ.
+
+**Đánh đổi đã biết:** gõ nhầm năm thì lịch không nhắc cho tới khi có người phát hiện và sửa.
+
+### 29. Đơn thuốc nhập ngày bắt đầu năm 2019 hay 2099 vẫn được? (F3-17)
+
+**Trả lời:** Hệ thống chỉ chặn ngày kết thúc sớm hơn ngày bắt đầu, tức chặn đơn vô nghĩa. Ngày bắt đầu là bác sĩ chịu trách nhiệm chuyên môn: đơn có thể bắt đầu sau khám vài ngày (chờ hết thuốc cũ) hoặc ghi bù đơn đã cho trước đó. Khoảng cho phép cố định (vd từ 7 ngày trước đến 30 ngày sau ngày khám) là tùy ý. Gõ nhầm thì bác sĩ sửa buổi khám, thay lại đơn thuốc, có nhật ký.
+
+**Đánh đổi đã biết:** đơn gõ nhầm năm hiển thị sai khoảng ngày dùng thuốc cho tới khi được sửa.
+
+### 30. Báo cáo chọn kỳ từ năm 2020 tới nay có làm treo hệ thống? (F4-20)
+
+**Trả lời:** Báo cáo chỉ dành cho Club Manager và chủ ngựa, họ tự chọn khoảng ngày theo nhu cầu (thường theo tháng, quý, năm). Kỳ dài thì báo cáo chạy lâu hơn nhưng chỉ người xem phải chờ; dữ liệu không bị ảnh hưởng. Không đặt trần độ dài để không chặn nhu cầu xem nhiều năm.
+
+**Đánh đổi đã biết:** kỳ rất dài với dữ liệu lớn có thể chậm; hướng cải thiện là tối ưu câu truy vấn, không phải cấm kỳ dài.
+
+### 31. Nhập kho nhiều lần liệu số tồn có vượt sức chứa của cột? (F4-11)
+
+**Trả lời:** Cột tồn chứa tới khoảng 10 tỷ đơn vị, mỗi lần nhập tối đa 1 tỷ. Muốn chạm trần phải nhập khoảng 10 lần mức tối đa cho cùng một vật tư, không có kho câu lạc bộ nào như vậy. Không thêm bước kiểm tổng tồn cho một tình huống không xảy ra trong thực tế.
+
+**Đánh đổi đã biết:** nếu cố tình nhập số khổng lồ nhiều lần, lần vượt trần nhận lỗi máy chủ thay vì câu báo nghiệp vụ; không mất hay sai dữ liệu vì giao dịch bị hủy.
+
+## Thông báo
+
+### 32. Yêu cầu khám mức Bình thường sao không báo bác sĩ? (F3-14)
+
+**Trả lời:** Yêu cầu Khẩn báo ngay mọi bác sĩ. Yêu cầu Bình thường nằm trong danh sách chờ trên dashboard y tế, bác sĩ mở mỗi ngày để xếp việc. Báo từng yêu cầu thường cho mọi bác sĩ sinh nhiều thông báo, dễ làm bác sĩ bỏ qua cả thông báo khẩn.
+
+**Đánh đổi đã biết:** yêu cầu gửi lúc bác sĩ không mở dashboard (cuối tuần) chờ tới lần mở sau; việc gấp thì chọn mức Khẩn.
+
+### 33. Đề xuất vật tư chờ lâu sao không nhắc CM? (F4-12)
+
+**Trả lời:** CM nhận thông báo lúc đề xuất được tạo, và danh sách đề xuất chờ duyệt luôn hiện ở màn quản lý vật tư. Người gửi được báo khi đề xuất được duyệt hoặc từ chối, nên biết đề xuất còn đang chờ.
+
+**Đánh đổi đã biết:** không có nhắc lại tự động; CM bỏ sót thì người gửi nhắc trực tiếp.
+
+### 34. Thông báo "bị khóa tập" có thể hiện mới hơn "đã gỡ khóa"? (OB-6)
+
+**Trả lời:** Có thể, trong một ca hiếm: lần gửi thông báo khóa tập bị lỗi và được thử lại sau khi đã gỡ khóa, vì thông báo mang giờ gửi được thay vì giờ xảy ra. Trạng thái khóa thật luôn đúng trên hồ sơ ngựa và ở bước xếp lượt tập, nên không xếp sai được; thông báo chỉ là lời nhắc.
+
+**Đánh đổi đã biết:** cách sửa (thông báo mang giờ xảy ra của sự việc) đã ghi ở nợ kỹ thuật thông báo, làm khi cần.

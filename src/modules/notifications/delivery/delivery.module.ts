@@ -19,6 +19,7 @@ import { CareTaskChangedListener } from './care-task-changed.listener';
 import { ChecklistGenerationListener } from './checklist-generation.listener';
 import { ChecklistTaskAddedListener } from './checklist-task-added.listener';
 import { IncidentStaleListener } from './incident-stale.listener';
+import { IncidentHandledListener } from './incident-handled.listener';
 import { IncidentReportedListener } from './incident-reported.listener';
 import { GroomAssignmentChangedListener } from './groom-assignment-changed.listener';
 import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
@@ -38,6 +39,7 @@ import { NotificationPushProcessor } from './notification-push.processor';
 import { NotificationRecipientsRepository } from './notification-recipients.repository';
 import { PushChannel } from './push.channel';
 import { RealtimeChannel } from './realtime.channel';
+import { StallHorseMovedListener } from './stall-horse-moved.listener';
 import { SupplyEventsListener } from './supply-events.listener';
 import { SurchargeAddedListener } from './surcharge-added.listener';
 import { TrainingSessionCancelledListener } from './training-session-cancelled.listener';
@@ -78,6 +80,7 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     NotificationRecipientsRepository,
     HorseMeasurementAlertListener,
     HorseBarnAssignedListener,
+    StallHorseMovedListener,
     HorseGroomReleasedListener,
     HorseDeceasedListener,
     HorseOwnershipTransferredListener,
@@ -87,6 +90,7 @@ import { SupplyNotificationsService } from './supply-notifications.service';
     CareTaskChangedListener,
     ChecklistGenerationListener,
     IncidentReportedListener,
+    IncidentHandledListener,
     HorseLifecycleChangedListener,
     SurchargeAddedListener,
     TrainingSessionCancelledListener,

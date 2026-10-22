@@ -317,6 +317,9 @@ export class HorseProfilesService {
               eventId: randomUUID(),
               horseId: created.id,
               barnId: created.barnId,
+              fromBarnId: null,
+              reason: null,
+              withdrawnClassIds: [],
             };
             await this.events.publish(
               manager,

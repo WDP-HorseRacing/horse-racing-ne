@@ -24,6 +24,7 @@ function setup() {
     findHorseMedicalContact: jest.fn(),
     findHorseName: jest.fn(),
     isActiveUserWithRole: jest.fn(),
+    findClassHeadTrainers: jest.fn().mockResolvedValue([]),
   };
   const notifications = { send: jest.fn().mockResolvedValue([]) };
   const dataSource = {
@@ -45,6 +46,7 @@ function setup() {
 const feverEvent: HorseMeasurementAlertEvent = {
   alert: HorseMeasurementAlert.FEVER,
   severity: HorseMeasurementAlertSeverity.URGENT,
+  eventId: 'alert-1',
   measurementId: 'measurement-1',
   horseId: 'horse-1',
   measuredBy: 'groom-1',
@@ -60,6 +62,7 @@ const weightDropEvent: HorseMeasurementAlertEvent = {
   severity: HorseMeasurementAlertSeverity.WARNING,
   baselineValue: 500,
   dropPercent: 6,
+  eventId: 'alert-2',
   measurementId: 'measurement-2',
   horseId: 'horse-1',
   measuredBy: 'groom-1',
@@ -83,7 +86,7 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
 
     expect(recipients.findHorseMedicalContact).toHaveBeenCalledWith('horse-1');
     expect(notifications.send).toHaveBeenCalledWith({
-      eventId: 'measurement-1',
+      eventId: 'alert-1',
       recipientIds: ['vet-1', 'vet-2', 'ht-1', 'owner-1'],
       category: NotificationCategory.MEASUREMENT_ALERT,
       priority: NotificationPriority.URGENT,
@@ -125,13 +128,30 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
 
     expect(notifications.send).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventId: 'measurement-2',
+        eventId: 'alert-2',
         recipientIds: ['vet-1', 'vet-2', 'ht-1'],
         priority: NotificationPriority.HIGH,
         title: 'Cảnh báo: Ngựa Gió Bắc giảm cân',
         message:
           'Ngựa Gió Bắc giảm 6% cân nặng trong 14 ngày (từ 500 kg xuống 470 kg).',
       }),
+    );
+  });
+
+  it('falls back to measurementId as the idempotency key when the payload has no eventId', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+    });
+    const legacy = { ...feverEvent } as Partial<HorseMeasurementAlertEvent>;
+    delete legacy.eventId;
+
+    await service.notifyMeasurementAlert(legacy as HorseMeasurementAlertEvent);
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId: 'measurement-1' }),
     );
   });
 
@@ -147,11 +167,24 @@ describe('HorseNotificationsService.notifyMeasurementAlert', () => {
 });
 
 describe('HorseNotificationsService.notifyBarnAssigned', () => {
-  const notice = { eventId: 'event-9', horseId: 'horse-1', barnId: 'barn-1' };
+  const notice = {
+    eventId: 'event-9',
+    horseId: 'horse-1',
+    barnId: 'barn-1',
+    fromBarnId: 'barn-0' as string | null,
+    reason: 'Khu cũ quá tải',
+    withdrawnClassIds: [] as string[],
+  };
+  const contact = (groomId: string | null) => ({
+    horseName: 'Sao Mai',
+    headTrainerId: 'ht-1',
+    ownerId: null,
+    groomId,
+  });
 
   it('notifies the head trainer of the new barn', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseName.mockResolvedValue('Sao Mai');
+    recipients.findHorseMedicalContact.mockResolvedValue(contact(null));
     recipients.findBarnContact.mockResolvedValue({
       barnName: 'Khu A',
       headTrainerId: 'ht-1',
@@ -160,6 +193,7 @@ describe('HorseNotificationsService.notifyBarnAssigned', () => {
     await service.notifyBarnAssigned(notice);
 
     expect(recipients.findBarnContact).toHaveBeenCalledWith('barn-1');
+    expect(notifications.send).toHaveBeenCalledTimes(1);
     expect(notifications.send).toHaveBeenCalledWith(
       expect.objectContaining({
         eventId: 'event-9',
@@ -170,9 +204,163 @@ describe('HorseNotificationsService.notifyBarnAssigned', () => {
     );
   });
 
-  it('sends nothing when the barn has no head trainer', async () => {
+  it('tells the groom in charge the new barn, waiting for a stall', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseName.mockResolvedValue('Sao Mai');
+    recipients.findHorseMedicalContact.mockResolvedValue(contact('groom-1'));
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: 'ht-1',
+    });
+
+    await service.notifyBarnAssigned(notice);
+
+    expect(notifications.send).toHaveBeenCalledWith({
+      eventId: 'event-9',
+      recipientIds: ['groom-1'],
+      category: NotificationCategory.BARN_ASSIGNED,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Sao Mai chuyển khu',
+      message:
+        'Ngựa Sao Mai đã chuyển sang khu "Khu A", đang chờ xếp ô chuồng.',
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
+    });
+  });
+
+  it('tells each head trainer of the withdrawn classes once, naming the classes and the reason', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact(null));
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: 'ht-1',
+    });
+    recipients.findClassHeadTrainers.mockResolvedValue([
+      { className: 'Bền', headTrainerId: 'ht-2' },
+      { className: 'Nước rút', headTrainerId: 'ht-2' },
+      { className: 'Xuất phát', headTrainerId: 'ht-3' },
+    ]);
+
+    await service.notifyBarnAssigned({
+      ...notice,
+      withdrawnClassIds: ['c1', 'c2', 'c3'],
+    });
+
+    expect(recipients.findClassHeadTrainers).toHaveBeenCalledWith([
+      'c1',
+      'c2',
+      'c3',
+    ]);
+    expect(notifications.send).toHaveBeenCalledWith({
+      eventId: 'event-9',
+      recipientIds: ['ht-2'],
+      category: NotificationCategory.TRAINING_CLASS,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Sao Mai rút khỏi lớp',
+      message:
+        'Ngựa Sao Mai đã được rút khỏi lớp "Bền", "Nước rút". Lý do: chuyển sang khu "Khu A": Khu cũ quá tải',
+      resource: null,
+    });
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['ht-3'],
+        message:
+          'Ngựa Sao Mai đã được rút khỏi lớp "Xuất phát". Lý do: chuyển sang khu "Khu A": Khu cũ quá tải',
+      }),
+    );
+  });
+
+  it('says the horse was placed into the barn on a first placement', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact('groom-1'));
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: null,
+    });
+    recipients.findClassHeadTrainers.mockResolvedValue([
+      { className: 'Bền', headTrainerId: 'ht-2' },
+    ]);
+
+    await service.notifyBarnAssigned({
+      ...notice,
+      fromBarnId: null,
+      reason: null,
+      withdrawnClassIds: ['c1'],
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['groom-1'],
+        title: 'Ngựa Sao Mai được xếp khu',
+        message:
+          'Ngựa Sao Mai đã được xếp vào khu "Khu A", đang chờ xếp ô chuồng.',
+      }),
+    );
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['ht-2'],
+        message:
+          'Ngựa Sao Mai đã được rút khỏi lớp "Bền". Lý do: xếp vào khu "Khu A"',
+      }),
+    );
+  });
+
+  it('keeps a reason given on a first placement as a placement, not a move', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact('groom-1'));
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: null,
+    });
+    recipients.findClassHeadTrainers.mockResolvedValue([
+      { className: 'Bền', headTrainerId: 'ht-2' },
+    ]);
+
+    await service.notifyBarnAssigned({
+      ...notice,
+      fromBarnId: null,
+      reason: 'Ngựa mới nhập',
+      withdrawnClassIds: ['c1'],
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['groom-1'],
+        title: 'Ngựa Sao Mai được xếp khu',
+      }),
+    );
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['ht-2'],
+        message:
+          'Ngựa Sao Mai đã được rút khỏi lớp "Bền". Lý do: xếp vào khu "Khu A": Ngựa mới nhập',
+      }),
+    );
+  });
+
+  it('reads an event without withdrawn classes as none withdrawn', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact(null));
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: 'ht-1',
+    });
+
+    await service.notifyBarnAssigned({
+      eventId: 'event-9',
+      horseId: 'horse-1',
+      barnId: 'barn-1',
+    } as typeof notice);
+
+    expect(recipients.findClassHeadTrainers).not.toHaveBeenCalled();
+    expect(notifications.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends nothing when the barn has no head trainer and the horse no groom', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact(null));
     recipients.findBarnContact.mockResolvedValue({
       barnName: 'Khu A',
       headTrainerId: null,
@@ -184,10 +372,80 @@ describe('HorseNotificationsService.notifyBarnAssigned', () => {
 
   it('sends nothing when the barn is missing', async () => {
     const { service, recipients, notifications } = setup();
-    recipients.findHorseName.mockResolvedValue('Sao Mai');
+    recipients.findHorseMedicalContact.mockResolvedValue(contact('groom-1'));
     recipients.findBarnContact.mockResolvedValue(null);
 
     await expect(service.notifyBarnAssigned(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
+describe('HorseNotificationsService.notifyStallMoved', () => {
+  const notice = {
+    eventId: 'stall-1',
+    horseId: 'horse-1',
+    barnId: 'barn-1',
+    stallCode: 'A-03',
+    movedBy: 'ht-1',
+  };
+
+  it('tells the groom in charge the new barn and stall', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'ht-1',
+      ownerId: null,
+      groomId: 'groom-1',
+    });
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: 'ht-1',
+    });
+
+    await service.notifyStallMoved(notice);
+
+    expect(recipients.findBarnContact).toHaveBeenCalledWith('barn-1');
+    expect(notifications.send).toHaveBeenCalledWith({
+      eventId: 'stall-1',
+      recipientIds: ['groom-1'],
+      category: NotificationCategory.BARN_ASSIGNED,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Sao Mai chuyển ô',
+      message: 'Ngựa Sao Mai đã được xếp vào ô A-03 khu "Khu A".',
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
+    });
+  });
+
+  it.each([
+    ['has no groom', null],
+    ['is cared for by the person who moved it', 'ht-1'],
+  ])('sends nothing when the horse %s', async (_case, groomId) => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'ht-1',
+      ownerId: null,
+      groomId,
+    });
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: 'ht-1',
+    });
+
+    await expect(service.notifyStallMoved(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when the horse or the barn is missing', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(null);
+    recipients.findBarnContact.mockResolvedValue(null);
+
+    await expect(service.notifyStallMoved(notice)).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();
   });
 });
@@ -300,6 +558,93 @@ describe('HorseNotificationsService.notifyChecklistTaskAdded', () => {
     recipients.findHorseName.mockResolvedValue(null);
 
     await expect(service.notifyChecklistTaskAdded(notice)).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+});
+
+describe('HorseNotificationsService.notifyIncidentHandled', () => {
+  const referred = {
+    eventId: 'handled-1',
+    incidentId: 'incident-1',
+    horseId: 'horse-1',
+    reportedBy: 'groom-2',
+    handledBy: 'trainer-1',
+    action: 'REFERRED' as const,
+    resolution: null,
+  };
+  const contact = (groomId: string | null) => ({
+    horseName: 'Sao Mai',
+    headTrainerId: 'trainer-1',
+    ownerId: null,
+    groomId,
+  });
+
+  it('tells the reporter and the groom in charge that the incident went to a vet', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact('groom-1'));
+
+    await service.notifyIncidentHandled(referred);
+
+    expect(notifications.send).toHaveBeenCalledWith({
+      eventId: 'handled-1',
+      recipientIds: ['groom-2', 'groom-1'],
+      category: NotificationCategory.INCIDENT,
+      priority: NotificationPriority.NORMAL,
+      title: 'Sự cố ngựa Sao Mai đã chuyển bác sĩ',
+      message: 'Sự cố của ngựa Sao Mai đã được chuyển bác sĩ khám.',
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
+    });
+  });
+
+  it('tells them how the incident was resolved', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact('groom-1'));
+
+    await service.notifyIncidentHandled({
+      ...referred,
+      action: 'RESOLVED',
+      resolution: 'Đã sát trùng vết xước',
+    });
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientIds: ['groom-2', 'groom-1'],
+        title: 'Sự cố ngựa Sao Mai đã xử lý',
+        message: 'Sự cố của ngựa Sao Mai đã xử lý: Đã sát trùng vết xước',
+      }),
+    );
+  });
+
+  it('sends once when the reporter is the groom in charge', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact('groom-2'));
+
+    await service.notifyIncidentHandled(referred);
+
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientIds: ['groom-2'] }),
+    );
+  });
+
+  it('leaves out the person who handled it and sends nothing when nobody is left', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(contact(null));
+
+    await expect(
+      service.notifyIncidentHandled({ ...referred, handledBy: 'groom-2' }),
+    ).resolves.toEqual([]);
+    expect(notifications.send).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when the horse cannot be found', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue(null);
+
+    await expect(service.notifyIncidentHandled(referred)).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();
   });
 });
@@ -436,6 +781,7 @@ describe('HorseNotificationsService.notifyLifecycleChanged', () => {
     to: HorseLifecycleStatus.RETIRED,
     reason: 'Hết tuổi đua',
     ownerId: 'owner-1',
+    withdrawnClassIds: [] as string[],
   };
 
   it('tells the owner the new lifecycle and the reason', async () => {
@@ -490,8 +836,109 @@ describe('HorseNotificationsService.notifyLifecycleChanged', () => {
     );
   });
 
+  it('also tells the groom in charge when the horse retires', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.isActiveUserWithRole.mockResolvedValue(true);
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: 'trainer-1',
+      ownerId: 'owner-1',
+      groomId: 'groom-1',
+    });
+
+    await service.notifyLifecycleChanged(event);
+
+    expect(notifications.send).toHaveBeenCalledWith({
+      eventId: 'life-1',
+      recipientIds: ['groom-1'],
+      category: NotificationCategory.HORSE_LIFECYCLE,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Sao Mai: Đã giải nghệ',
+      message:
+        'Vòng đời của ngựa Sao Mai chuyển từ Đang hoạt động sang Đã giải nghệ. Lý do: Hết tuổi đua',
+      resource: {
+        type: NotificationResourceType.HORSE,
+        id: 'horse-1',
+        horseId: 'horse-1',
+      },
+    });
+  });
+
+  it('tells the groom even when the horse has no owner to tell', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+      groomId: 'groom-1',
+    });
+
+    await service.notifyLifecycleChanged({ ...event, ownerId: null });
+
+    expect(notifications.send).toHaveBeenCalledTimes(1);
+    expect(notifications.send).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientIds: ['groom-1'] }),
+    );
+  });
+
+  it.each([HorseLifecycleStatus.TRANSFERRED, HorseLifecycleStatus.ACTIVE])(
+    'does not tell the groom on a change to %s',
+    async (to) => {
+      const { service, recipients, notifications } = setup();
+      recipients.findHorseMedicalContact.mockResolvedValue({
+        horseName: 'Sao Mai',
+        headTrainerId: null,
+        ownerId: null,
+        groomId: 'groom-1',
+      });
+
+      await service.notifyLifecycleChanged({ ...event, to, ownerId: null });
+
+      expect(notifications.send).not.toHaveBeenCalled();
+    },
+  );
+
+  it('tells the head trainers of the withdrawn classes the lifecycle and the reason', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+      groomId: null,
+    });
+    recipients.findClassHeadTrainers.mockResolvedValue([
+      { className: 'Bền', headTrainerId: 'ht-2' },
+    ]);
+
+    await service.notifyLifecycleChanged({
+      ...event,
+      to: HorseLifecycleStatus.TRANSFERRED,
+      reason: 'Bán cho trại B',
+      ownerId: null,
+      withdrawnClassIds: ['c1'],
+    });
+
+    expect(recipients.findClassHeadTrainers).toHaveBeenCalledWith(['c1']);
+    expect(notifications.send).toHaveBeenCalledWith({
+      eventId: 'life-1',
+      recipientIds: ['ht-2'],
+      category: NotificationCategory.TRAINING_CLASS,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Sao Mai rút khỏi lớp',
+      message:
+        'Ngựa Sao Mai đã được rút khỏi lớp "Bền". Lý do: Đã chuyển nhượng: Bán cho trại B',
+      resource: null,
+    });
+  });
+
   it('sends nothing when the event has no owner', async () => {
-    const { service, notifications } = setup();
+    const { service, recipients, notifications } = setup();
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+      groomId: null,
+    });
 
     await expect(
       service.notifyLifecycleChanged({ ...event, ownerId: null }),
@@ -502,6 +949,12 @@ describe('HorseNotificationsService.notifyLifecycleChanged', () => {
   it('sends nothing when the owner is no longer an active horse owner', async () => {
     const { service, recipients, notifications } = setup();
     recipients.isActiveUserWithRole.mockResolvedValue(false);
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+      groomId: null,
+    });
 
     await expect(service.notifyLifecycleChanged(event)).resolves.toEqual([]);
     expect(notifications.send).not.toHaveBeenCalled();
@@ -597,6 +1050,7 @@ describe('HorseNotificationsService.notifyHorseDeceased', () => {
     groomId: 'groom-1',
     dateOfDeath: '2026-10-01',
     reason: 'Đau bụng cấp',
+    withdrawnClassIds: [] as string[],
   };
 
   it('tells the active owner, the old barn head trainer, the old groom and every club manager', async () => {
@@ -630,6 +1084,41 @@ describe('HorseNotificationsService.notifyHorseDeceased', () => {
         id: 'horse-1',
         horseId: 'horse-1',
       },
+    });
+  });
+
+  it('tells the head trainers of the withdrawn classes who were not told of the death already', async () => {
+    const { service, recipients, notifications } = setup();
+    recipients.findActiveUserIdsByRole.mockResolvedValue(['cm-1']);
+    recipients.findHorseMedicalContact.mockResolvedValue({
+      horseName: 'Sao Mai',
+      headTrainerId: null,
+      ownerId: null,
+    });
+    recipients.findBarnContact.mockResolvedValue({
+      barnName: 'Khu A',
+      headTrainerId: 'ht-1',
+    });
+    recipients.findClassHeadTrainers.mockResolvedValue([
+      { className: 'Bền', headTrainerId: 'ht-1' },
+      { className: 'Nước rút', headTrainerId: 'ht-2' },
+    ]);
+
+    await service.notifyHorseDeceased({
+      ...event,
+      withdrawnClassIds: ['c1', 'c2'],
+    });
+
+    expect(notifications.send).toHaveBeenCalledTimes(2);
+    expect(notifications.send).toHaveBeenLastCalledWith({
+      eventId: 'event-9',
+      recipientIds: ['ht-2'],
+      category: NotificationCategory.TRAINING_CLASS,
+      priority: NotificationPriority.NORMAL,
+      title: 'Ngựa Sao Mai rút khỏi lớp',
+      message:
+        'Ngựa Sao Mai đã được rút khỏi lớp "Nước rút". Lý do: Đã mất: Đau bụng cấp',
+      resource: null,
     });
   });
 

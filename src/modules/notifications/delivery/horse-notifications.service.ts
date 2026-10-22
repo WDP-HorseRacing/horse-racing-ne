@@ -14,6 +14,7 @@ import {
   HORSE_LIFECYCLE_LABELS,
   WEIGHT_DROP_WINDOW_DAYS,
 } from '../../horses/constants/horse.constants';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { formatMeasurement } from '../../horses/utils/measurement-format';
 import type {
@@ -32,8 +33,10 @@ import type {
   ChecklistGenerationRecoveredEvent,
   ChecklistTaskAddedEvent,
   GroomAssignmentChangedEvent,
+  IncidentHandledEvent,
   IncidentReportedEvent,
   IncidentStaleEvent,
+  StallHorseMovedEvent,
 } from '../../stable/types/stable-events.types';
 import type { SurchargeAddedEvent } from '../../billing/types/billing-events.types';
 import type {
@@ -62,7 +65,7 @@ export class HorseNotificationsService {
    * - Người nhận: mọi Veterinarian đang ACTIVE, Head Trainer đang ACTIVE phụ trách khu hiện tại của ngựa và chủ ngựa đang ACTIVE
    * - Ngựa chưa có khu (hoặc khu chưa có Head Trainer), hoặc chưa có chủ, thì bỏ người đó
    * - Mức ưu tiên lấy theo severity của event: URGENT → URGENT, WARNING → HIGH
-   * - eventId của thông báo là measurementId: event phát lại không sinh thông báo trùng
+   * - eventId của thông báo là event.eventId, payload không có eventId thì dùng measurementId: event phát lại không sinh thông báo trùng
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
    * @param event Event cảnh báo số đo do module horses phát
@@ -90,7 +93,7 @@ export class HorseNotificationsService {
     }
 
     return this.notifications.send({
-      eventId: event.measurementId,
+      eventId: event.eventId ?? event.measurementId,
       recipientIds,
       category: NotificationCategory.MEASUREMENT_ALERT,
       priority: toAlertPriority(event.severity),
@@ -100,38 +103,90 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo Head Trainer của khu khi một con ngựa được xếp hoặc đổi vào khu đó.
+   * Báo khi một con ngựa được xếp hoặc đổi vào khu: Head Trainer của khu mới, Groom đang phụ trách và Head Trainer của các lớp vừa bị rút
    *
    * - Ghi bằng connection riêng, không nhận EntityManager
-   * - Người nhận: Head Trainer đang ACTIVE phụ trách khu; khu chưa có Head Trainer thì không gửi gì
+   * - Head Trainer đang ACTIVE phụ trách khu mới: báo ngựa mới vào khu; khu chưa có Head Trainer thì bỏ
+   * - Groom đang phụ trách ngựa: báo khu mới (chuyển khu khi có khu cũ, xếp khu lần đầu khi không) và ngựa đang chờ xếp ô; ngựa chưa có Groom thì bỏ
+   * - Head Trainer của các lớp vừa bị rút: mỗi người một thông báo nêu các lớp của mình và lý do (theo notifyClassesWithdrawn)
    * - Idempotent theo notice.eventId: phát lại cùng event không sinh thông báo trùng
    * - Không tìm thấy ngựa hoặc khu (đã bị xóa) thì log cảnh báo và bỏ qua
    *
-   * @param notice Payload của HORSE_BARN_ASSIGNED_EVENT: ngựa, khu mới và eventId chống trùng
+   * @param notice Payload của HORSE_BARN_ASSIGNED_EVENT: ngựa, khu mới, khu cũ, lý do, các lớp vừa bị rút và eventId chống trùng
    * @returns Promise trả về danh sách id người nhận vừa được lưu mới (rỗng nếu không có ai để báo)
    */
   async notifyBarnAssigned(notice: HorseBarnAssignedEvent): Promise<string[]> {
-    const [horseName, barn] = await Promise.all([
-      this.horseName(notice.horseId),
+    const [horse, barn] = await Promise.all([
+      this.recipients.findHorseMedicalContact(notice.horseId),
       this.recipients.findBarnContact(notice.barnId),
     ]);
-    if (!horseName || !barn) {
+    if (!horse || !barn) {
       this.logger.warn(
         `Bỏ qua thông báo xếp khu ${notice.eventId}: không tìm thấy ngựa ${notice.horseId} hoặc khu ${notice.barnId}`,
       );
       return [];
     }
-    if (!barn.headTrainerId) {
+    const horseName = horse.horseName;
+    const moved = !!notice.fromBarnId;
+    const toTrainer = barn.headTrainerId
+      ? await this.notifications.send({
+          eventId: notice.eventId,
+          recipientIds: [barn.headTrainerId],
+          category: NotificationCategory.BARN_ASSIGNED,
+          priority: NotificationPriority.NORMAL,
+          title: 'Ngựa mới vào khu phụ trách',
+          message: `Ngựa ${horseName} vừa được xếp vào khu "${barn.barnName}". Vui lòng xếp ô chuồng và đăng ký lớp huấn luyện nếu cần.`,
+          resource: horseResource(notice.horseId),
+        })
+      : [];
+    const toGroom = horse.groomId
+      ? await this.notifications.send({
+          eventId: notice.eventId,
+          recipientIds: [horse.groomId],
+          category: NotificationCategory.BARN_ASSIGNED,
+          priority: NotificationPriority.NORMAL,
+          title: moved
+            ? `Ngựa ${horseName} chuyển khu`
+            : `Ngựa ${horseName} được xếp khu`,
+          message: `Ngựa ${horseName} đã ${moved ? 'chuyển sang' : 'được xếp vào'} khu "${barn.barnName}", đang chờ xếp ô chuồng.`,
+          resource: horseResource(notice.horseId),
+        })
+      : [];
+    const toClasses = await this.notifyClassesWithdrawn(
+      notice.eventId,
+      horseName,
+      notice.withdrawnClassIds,
+      `${moved ? 'chuyển sang' : 'xếp vào'} khu "${barn.barnName}"${notice.reason ? `: ${notice.reason}` : ''}`,
+      [barn.headTrainerId, horse.groomId],
+    );
+    return [...toTrainer, ...toGroom, ...toClasses];
+  }
+
+  /**
+   * Báo Groom đang phụ trách ngựa khi Head Trainer xếp ngựa vào ô chuồng hoặc chuyển ô, kèm khu và ô mới
+   *
+   * - Ghi bằng connection riêng, không nhận EntityManager; idempotent theo notice.eventId
+   * - Ngựa chưa có Groom, hoặc Groom chính là người chuyển ô thì không gửi
+   * - Không tìm thấy ngựa hoặc khu thì không gửi
+   *
+   * @param notice Payload của STALL_HORSE_MOVED_EVENT
+   * @returns Promise trả về id những người nhận vừa được lưu mới; không gửi thì trả mảng rỗng
+   */
+  async notifyStallMoved(notice: StallHorseMovedEvent): Promise<string[]> {
+    const [horse, barn] = await Promise.all([
+      this.recipients.findHorseMedicalContact(notice.horseId),
+      this.recipients.findBarnContact(notice.barnId),
+    ]);
+    if (!horse?.groomId || !barn || horse.groomId === notice.movedBy) {
       return [];
     }
-
     return this.notifications.send({
       eventId: notice.eventId,
-      recipientIds: [barn.headTrainerId],
+      recipientIds: [horse.groomId],
       category: NotificationCategory.BARN_ASSIGNED,
       priority: NotificationPriority.NORMAL,
-      title: 'Ngựa mới vào khu phụ trách',
-      message: `Ngựa ${horseName} vừa được xếp vào khu "${barn.barnName}". Vui lòng xếp ô chuồng và đăng ký lớp huấn luyện nếu cần.`,
+      title: `Ngựa ${horse.horseName} chuyển ô`,
+      message: `Ngựa ${horse.horseName} đã được xếp vào ô ${notice.stallCode} khu "${barn.barnName}".`,
       resource: horseResource(notice.horseId),
     });
   }
@@ -444,6 +499,39 @@ export class HorseNotificationsService {
   }
 
   /**
+   * Báo người báo sự cố và Groom đang phụ trách ngựa khi Head Trainer chuyển sự cố cho bác sĩ hoặc đóng sự cố
+   *
+   * - REFERRED: báo sự cố đã được chuyển bác sĩ khám; RESOLVED: báo sự cố đã xử lý kèm kết quả
+   * - Người báo cũng là Groom phụ trách thì chỉ nhận một lần; bỏ người đã chuyển hoặc đóng sự cố
+   * - Không còn ai nhận hoặc không tìm thấy ngựa thì không gửi; idempotent theo notice.eventId
+   *
+   * @param notice Payload do module stable phát khi chuyển bác sĩ hoặc đóng sự cố
+   * @returns Promise trả về id những người nhận vừa được lưu mới; không gửi thì trả mảng rỗng
+   */
+  async notifyIncidentHandled(notice: IncidentHandledEvent): Promise<string[]> {
+    const horse = await this.recipients.findHorseMedicalContact(notice.horseId);
+    if (!horse) return [];
+    const recipientIds = [
+      ...new Set([notice.reportedBy, horse.groomId]),
+    ].filter((id): id is string => !!id && id !== notice.handledBy);
+    if (recipientIds.length === 0) return [];
+    const referred = notice.action === 'REFERRED';
+    return this.notifications.send({
+      eventId: notice.eventId,
+      recipientIds,
+      category: NotificationCategory.INCIDENT,
+      priority: NotificationPriority.NORMAL,
+      title: referred
+        ? `Sự cố ngựa ${horse.horseName} đã chuyển bác sĩ`
+        : `Sự cố ngựa ${horse.horseName} đã xử lý`,
+      message: referred
+        ? `Sự cố của ngựa ${horse.horseName} đã được chuyển bác sĩ khám.`
+        : `Sự cố của ngựa ${horse.horseName} đã xử lý: ${notice.resolution}`,
+      resource: horseResource(notice.horseId),
+    });
+  }
+
+  /**
    * Nhắc Head Trainer của khu và mọi Club Manager đang hoạt động về sự cố còn mở quá hạn mà chưa chuyển bác sĩ
    *
    * - Không tìm thấy ngựa thì không gửi
@@ -506,11 +594,13 @@ export class HorseNotificationsService {
   }
 
   /**
-   * Báo chủ ngựa khi ngựa giải nghệ, chuyển nhượng hoặc hoạt động trở lại
+   * Báo chủ ngựa khi ngựa giải nghệ, chuyển nhượng hoặc hoạt động trở lại; báo thêm Groom khi giải nghệ và Head Trainer của các lớp vừa bị rút
    *
-   * - Người nhận là chủ chụp trong event (bán ra ngoài: chủ vừa kết thúc sở hữu), chỉ khi còn là HORSE_OWNER đang ACTIVE; event không có chủ thì không gửi
-   * - Người nhận không còn là chủ hiện tại thì thông báo không gắn link tới ngựa
-   * - Idempotent theo event.eventId
+   * - Chủ: người nhận là chủ chụp trong event (bán ra ngoài: chủ vừa kết thúc sở hữu), chỉ khi còn là HORSE_OWNER đang ACTIVE; event không có chủ thì bỏ
+   * - Chủ không còn là chủ hiện tại thì thông báo không gắn link tới ngựa
+   * - Giải nghệ: Groom đang phụ trách nhận cùng nội dung, gắn link tới ngựa; ngựa chưa có Groom thì bỏ
+   * - Head Trainer của các lớp vừa bị rút: mỗi người một thông báo nêu các lớp của mình và lý do (theo notifyClassesWithdrawn)
+   * - Không tìm thấy ngựa thì không gửi; idempotent theo event.eventId
    *
    * @param event Payload của HORSE_LIFECYCLE_CHANGED_EVENT
    * @returns Promise trả về id những người nhận vừa được lưu mới
@@ -518,29 +608,51 @@ export class HorseNotificationsService {
   async notifyLifecycleChanged(
     event: HorseLifecycleChangedEvent,
   ): Promise<string[]> {
-    if (
-      !event.ownerId ||
-      !(await this.recipients.isActiveUserWithRole(
+    const ownerActive =
+      !!event.ownerId &&
+      (await this.recipients.isActiveUserWithRole(
         event.ownerId,
         UserRole.HORSE_OWNER,
-      ))
-    ) {
-      return [];
-    }
+      ));
     const contact = await this.recipients.findHorseMedicalContact(
       event.horseId,
     );
     if (!contact) return [];
-    return this.notifications.send({
+    const draft = {
       eventId: event.eventId,
-      recipientIds: [event.ownerId],
       category: NotificationCategory.HORSE_LIFECYCLE,
       priority: NotificationPriority.NORMAL,
       title: `Ngựa ${contact.horseName}: ${HORSE_LIFECYCLE_LABELS[event.to]}`,
       message: `Vòng đời của ngựa ${contact.horseName} chuyển từ ${HORSE_LIFECYCLE_LABELS[event.from]} sang ${HORSE_LIFECYCLE_LABELS[event.to]}. Lý do: ${event.reason}`,
-      resource:
-        contact.ownerId === event.ownerId ? horseResource(event.horseId) : null,
-    });
+    };
+    const toOwner =
+      ownerActive && event.ownerId
+        ? await this.notifications.send({
+            ...draft,
+            recipientIds: [event.ownerId],
+            resource:
+              contact.ownerId === event.ownerId
+                ? horseResource(event.horseId)
+                : null,
+          })
+        : [];
+    const groomId =
+      event.to === HorseLifecycleStatus.RETIRED ? contact.groomId : null;
+    const toGroom = groomId
+      ? await this.notifications.send({
+          ...draft,
+          recipientIds: [groomId],
+          resource: horseResource(event.horseId),
+        })
+      : [];
+    const toClasses = await this.notifyClassesWithdrawn(
+      event.eventId,
+      contact.horseName,
+      event.withdrawnClassIds,
+      `${HORSE_LIFECYCLE_LABELS[event.to]}: ${event.reason}`,
+      [event.ownerId, groomId],
+    );
+    return [...toOwner, ...toGroom, ...toClasses];
   }
 
   /**
@@ -549,6 +661,7 @@ export class HorseNotificationsService {
    * - Khu và Groom lấy từ payload (trước khi bị dọn); chủ ngựa chỉ nhận khi còn là HORSE_OWNER đang ACTIVE
    * - Huấn luyện viên trưởng chỉ nhận khi khu còn và người đó còn ACTIVE, còn vai trò HEAD_TRAINER
    * - Club Manager: mọi tài khoản CLUB_MANAGER đang ACTIVE, kể cả người vừa ghi nhận; mỗi người chỉ nhận một lần
+   * - Head Trainer của các lớp vừa bị rút mà chưa nhận thông báo ngựa mất: mỗi người một thông báo nêu các lớp của mình (theo notifyClassesWithdrawn)
    * - Ghi bằng connection riêng, không nhận EntityManager; idempotent theo event.eventId
    * - Không tìm thấy ngựa thì log cảnh báo và bỏ qua
    *
@@ -581,7 +694,7 @@ export class HorseNotificationsService {
         ].filter((id): id is string => id !== null),
       ),
     ];
-    return this.notifications.send({
+    const toAll = await this.notifications.send({
       eventId: event.eventId,
       recipientIds,
       category: NotificationCategory.HORSE_LIFECYCLE,
@@ -590,6 +703,14 @@ export class HorseNotificationsService {
       message: `Ngày mất ${toDisplayDate(event.dateOfDeath)}. Nguyên nhân: ${event.reason}`,
       resource: horseResource(event.horseId),
     });
+    const toClasses = await this.notifyClassesWithdrawn(
+      event.eventId,
+      contact.horseName,
+      event.withdrawnClassIds,
+      `${HORSE_LIFECYCLE_LABELS[HorseLifecycleStatus.DECEASED]}: ${event.reason}`,
+      recipientIds,
+    );
+    return [...toAll, ...toClasses];
   }
 
   /**
@@ -662,6 +783,54 @@ export class HorseNotificationsService {
       message: `Hiệu lực từ ${toDisplayDate(toClubDate(event.assignedAt))}`,
       resource: horseResource(event.horseId),
     });
+  }
+
+  /**
+   * Báo Head Trainer đang phụ trách các lớp mà ngựa vừa bị rút, mỗi người một thông báo
+   *
+   * - Mỗi thông báo nêu các lớp của người đó (theo tên lớp) và lý do rút; không gắn link
+   * - Lớp không có Head Trainer đang ACTIVE thì bỏ; người đã nhận thông báo khác của cùng event thì bỏ
+   * - Không có lớp nào (kể cả payload không có trường này) thì không gửi
+   *
+   * @param eventId Id của event gây rút lớp, dùng làm khóa chống trùng
+   * @param horseName Tên ngựa
+   * @param classIds UUID các lớp vừa bị rút, undefined khi payload không có trường này
+   * @param cause Lý do rút lớp hiển thị sau "Lý do:"
+   * @param notifiedIds Người đã nhận thông báo khác của cùng event
+   * @returns Promise trả về id những người nhận vừa được lưu mới
+   */
+  private async notifyClassesWithdrawn(
+    eventId: string,
+    horseName: string,
+    classIds: string[] | undefined,
+    cause: string,
+    notifiedIds: Array<string | null>,
+  ): Promise<string[]> {
+    if (!classIds?.length) return [];
+    const classesByTrainer = new Map<string, string[]>();
+    const classes = await this.recipients.findClassHeadTrainers(classIds);
+    for (const { className, headTrainerId } of classes) {
+      if (notifiedIds.includes(headTrainerId)) continue;
+      classesByTrainer.set(headTrainerId, [
+        ...(classesByTrainer.get(headTrainerId) ?? []),
+        `"${className}"`,
+      ]);
+    }
+    const sent: string[] = [];
+    for (const [headTrainerId, classNames] of classesByTrainer) {
+      sent.push(
+        ...(await this.notifications.send({
+          eventId,
+          recipientIds: [headTrainerId],
+          category: NotificationCategory.TRAINING_CLASS,
+          priority: NotificationPriority.NORMAL,
+          title: `Ngựa ${horseName} rút khỏi lớp`,
+          message: `Ngựa ${horseName} đã được rút khỏi lớp ${classNames.join(', ')}. Lý do: ${cause}`,
+          resource: null,
+        })),
+      );
+    }
+    return sent;
   }
 
   /**

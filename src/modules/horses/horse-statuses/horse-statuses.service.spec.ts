@@ -301,7 +301,19 @@ describe('HorseStatusesService', () => {
           from: HorseLifecycleStatus.ACTIVE,
           to: HorseLifecycleStatus.RETIRED,
           ownerId: 'owner-1',
+          withdrawnClassIds: ['c1', 'c2'],
         }),
+      );
+    });
+
+    it('puts no withdrawn class into the lifecycle event when the change withdraws none', async () => {
+      horse.lifecycleStatus = HorseLifecycleStatus.RETIRED;
+      await change(HorseLifecycleStatus.ACTIVE, 'Trở lại');
+      expect(training.withdrawHorseFromClasses).not.toHaveBeenCalled();
+      expect(events.publish).toHaveBeenCalledWith(
+        manager,
+        HORSE_LIFECYCLE_CHANGED_EVENT,
+        expect.objectContaining({ withdrawnClassIds: [] }),
       );
     });
 
@@ -377,6 +389,7 @@ describe('HorseStatusesService', () => {
             groomId: 'g1',
             dateOfDeath: clubToday(),
             reason: 'Đau bụng cấp',
+            withdrawnClassIds: ['c1', 'c2'],
           },
         );
       });

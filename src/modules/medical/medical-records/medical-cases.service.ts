@@ -22,6 +22,7 @@ import {
 } from '../constants/medical-case.enum';
 import {
   MEDICAL_CASE_CLOSED_EVENT,
+  MEDICAL_TRAINING_LOCK_KEPT_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
 } from '../constants/medical-events.constants';
 import { TrainingLockStatus } from '../constants/training-lock.enum';
@@ -59,6 +60,7 @@ import { TrainingLockWritesService } from '../shared/training-lock-writes.servic
 import type { MedicalCostViewer } from '../types/medical-cost.types';
 import type {
   MedicalCaseClosedEvent,
+  TrainingLockKeptEvent,
   TrainingLockReleasedEvent,
 } from '../types/medical-events.types';
 import { MedicalCasesRepository } from './medical-cases.repository';
@@ -241,7 +243,7 @@ export class MedicalCasesService {
    * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
    * - Còn chấn thương chưa lành: 409, trừ khi đóng kèm ghi nhận ngựa mất
    * - Lịch tái khám đang chờ của bệnh án chuyển Đã hủy
-   * - Ghi event vào outbox trong cùng transaction: báo chủ ngựa và Club Manager kèm tổng chi phí các buổi khám chưa hủy lúc đóng và phần của chủ hiện tại; gỡ khóa thì báo Head Trainer và Club Manager
+   * - Ghi event vào outbox trong cùng transaction: báo chủ ngựa và Club Manager kèm tổng chi phí các buổi khám chưa hủy lúc đóng và phần của chủ hiện tại; gỡ khóa thì báo Head Trainer và Club Manager; giữ khóa thì báo ngày dự kiến gỡ mới (MEDICAL_TRAINING_LOCK_KEPT_EVENT)
    * - Kèm ghi nhận ngựa mất (deceased = true): không nhận lựa chọn gỡ hay giữ khóa; sau khi đóng thì ghi nhận ngựa mất trong cùng transaction (HorseStatusesService.recordDeathInTransaction), lấy kết luận cuối làm nguyên nhân mất, ngày mất là hôm nay theo lịch câu lạc bộ; một bước lỗi thì hủy toàn bộ
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -398,6 +400,21 @@ export class MedicalCasesService {
           manager,
           MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
           lockEvent,
+        );
+      }
+      if (activeLock && decision === CaseLockDecision.KEEP && lockExpectedEnd) {
+        const keptEvent: TrainingLockKeptEvent = {
+          eventId: randomUUID(),
+          horseId,
+          lockId: activeLock.id,
+          caseId,
+          expectedEnd: lockExpectedEnd.toISOString(),
+          ownerId: horse.ownerId,
+        };
+        await this.events.publish(
+          manager,
+          MEDICAL_TRAINING_LOCK_KEPT_EVENT,
+          keptEvent,
         );
       }
       if (body.deceased === true) {

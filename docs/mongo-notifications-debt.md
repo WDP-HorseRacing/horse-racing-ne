@@ -1,6 +1,6 @@
 # Nợ kỹ thuật: MongoDB, thông báo, outbox
 
-Cập nhật: 2026-10-21.
+Cập nhật: 2026-10-22.
 
 ## 1. Tự xóa thông báo cũ (TTL)
 
@@ -65,3 +65,15 @@ nhưng outbox phình theo số giây vượt ngưỡng (dọn sau 7 ngày).
 
 Khi cần: trước khi publish, kiểm lượt tập đã có điểm CRITICAL trong Mongo chưa; có rồi thì bỏ qua.
 
+## 7. Thứ tự thông báo lệch khi event được giao lại (OB-6)
+
+Hiện trạng: `NotificationDeliveryService.send` đặt `createdAt = new Date()` lúc listener chạy, tức giờ giao chứ không phải giờ sự việc. Payload event không có thời điểm xảy ra; relay chỉ `emitAsync(eventName, payload)`. Hộp thông báo sắp theo `createdAt` giảm dần.
+
+Ca lỗi: event A (vd khóa tập) giao lỗi, relay lùi lịch thử lại; event B xảy ra sau (gỡ khóa) giao thành công trước; lần thử lại của A tạo thông báo có `createdAt` mới hơn B. Người nhận thấy "bị khóa" nằm trên "đã gỡ khóa". Trạng thái thật trên hồ sơ ngựa vẫn đúng.
+
+Cách sửa khi cần:
+
+- `DomainEventPublisher.publish` thêm `occurredAt` (chuỗi ISO, lấy lúc ghi outbox) vào payload, hoặc relay truyền `outbox_events.created_at` kèm payload.
+- `NotificationDeliveryService.send` nhận `occurredAt` và dùng làm `createdAt` (vẫn `$setOnInsert`); thiếu thì dùng giờ hiện tại.
+- Cập nhật mọi listener truyền `occurredAt` sang `send`. Index và cursor của inbox (`createdAt`, `_id`) giữ nguyên.
+- Test: giao B trước, A sau, A có `occurredAt` sớm hơn thì inbox trả B trên A.

@@ -862,6 +862,9 @@ describe('HorseProfilesService', () => {
           eventId: anyString,
           horseId: 'h-new',
           barnId: 'b2',
+          fromBarnId: null,
+          reason: null,
+          withdrawnClassIds: [],
         },
       );
       expect(events.publish).toHaveBeenCalledWith(
