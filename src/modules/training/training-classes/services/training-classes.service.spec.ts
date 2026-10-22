@@ -18,11 +18,10 @@ function setup(
 ) {
   const manager = {
     findOneBy: jest.fn().mockResolvedValue(sameCodeClass),
-    findOne: jest.fn().mockResolvedValue({
-      id: 'p1',
-      headTrainerId: 'ht',
-      phases: [{ position: 1, weeks: 4, subjects: [] }],
-    }),
+    findOne: jest.fn().mockResolvedValue({ id: 'p1', headTrainerId: 'ht' }),
+    find: jest
+      .fn()
+      .mockResolvedValue([{ position: 1, weeks: 4, subjects: [] }]),
     findBy: jest.fn().mockResolvedValue([{ weeks: 4 }]),
     countBy: jest.fn().mockResolvedValue(0),
     getRepository: jest.fn(() => ({

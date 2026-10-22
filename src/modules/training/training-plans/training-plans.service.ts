@@ -27,6 +27,7 @@ import { TrainingAccessService } from '../shared/training-access.service';
 import { planAuditData } from '../utils/training-audit';
 
 const PLAN_NOT_FOUND = 'Không tìm thấy giáo án';
+const SUBJECT_MISSING = 'Có môn học không tồn tại';
 
 /**
  * Giáo án của Head Trainer: chia giai đoạn theo thứ tự, mỗi giai đoạn có số tuần và các môn kèm số buổi tối thiểu mỗi tuần; lớp tạo từ giáo án giữ bản chép riêng
@@ -91,7 +92,7 @@ export class TrainingPlansService {
   /**
    * Tạo giáo án cho chính Head Trainer gọi
    *
-   * - Khóa chia sẻ tài khoản người gọi trong transaction và kiểm lại còn hoạt động
+   * - Khóa chia sẻ các môn dùng trong giáo án, rồi tài khoản người gọi, trong transaction; kiểm lại tài khoản còn hoạt động trước khi kiểm môn
    * - Ghi nhật ký kèm tên, mô tả và các giai đoạn
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -106,8 +107,9 @@ export class TrainingPlansService {
   ): Promise<TrainingPlanResponseDto> {
     const caller = await this.access.currentUser(actor);
     const planId = await this.dataSource.transaction(async (manager) => {
+      const subjectsFound = await this.lockSubjects(manager, body);
       await this.access.lockActiveUser(manager, caller.id);
-      await this.assertSubjectsExist(manager, body);
+      if (!subjectsFound) throw new BadRequestException(SUBJECT_MISSING);
       assertPlanPhases(body.phases);
       const plan = await manager.save(
         manager.create(TrainingPlanEntity, {
@@ -134,6 +136,7 @@ export class TrainingPlansService {
   /**
    * Thay toàn bộ tên, mô tả và các giai đoạn của giáo án; lớp đã tạo từ giáo án giữ nguyên bản chép của lớp
    *
+   * - Khóa chia sẻ các môn dùng trong nội dung mới trước khi khóa giáo án; kiểm môn sau khi kiểm giáo án
    * - Ghi nhật ký toàn bộ nội dung giáo án trước và sau khi thay
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -151,8 +154,14 @@ export class TrainingPlansService {
   ): Promise<TrainingPlanResponseDto> {
     const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
-      const plan = await this.lockedOwnPlan(manager, planId, caller.id);
-      await this.assertSubjectsExist(manager, body);
+      const subjectsFound = await this.lockSubjects(manager, body);
+      const plan = await this.lockedOwnPlan(
+        manager,
+        planId,
+        caller.id,
+        'for_no_key_update',
+      );
+      if (!subjectsFound) throw new BadRequestException(SUBJECT_MISSING);
       assertPlanPhases(body.phases);
       const oldPhases = await manager.find(TrainingPlanPhaseEntity, {
         where: { planId },
@@ -193,7 +202,12 @@ export class TrainingPlansService {
   async remove(actor: Actor, planId: string): Promise<void> {
     const caller = await this.access.currentUser(actor);
     await this.dataSource.transaction(async (manager) => {
-      const plan = await this.lockedOwnPlan(manager, planId, caller.id);
+      const plan = await this.lockedOwnPlan(
+        manager,
+        planId,
+        caller.id,
+        'pessimistic_write',
+      );
       if (await manager.existsBy(TrainingClassEntity, { planId })) {
         throw new ConflictException('Giáo án đã có lớp dùng, không xóa được');
       }
@@ -213,9 +227,13 @@ export class TrainingPlansService {
   /**
    * Khóa giáo án của chính người gọi để sửa hoặc xóa
    *
+   * - Sửa: FOR NO KEY UPDATE
+   * - Xóa: FOR UPDATE
+   *
    * @param manager EntityManager của transaction đang chạy
    * @param planId UUID của giáo án
    * @param callerId UUID của Head Trainer gọi
+   * @param mode Mức khóa row giáo án
    * @returns Promise trả về giáo án đã khóa
    * @throws NotFoundException Nếu không có giáo án hoặc giáo án của Head Trainer khác
    */
@@ -223,10 +241,11 @@ export class TrainingPlansService {
     manager: EntityManager,
     planId: string,
     callerId: string,
+    mode: 'for_no_key_update' | 'pessimistic_write',
   ): Promise<TrainingPlanEntity> {
     const plan = await manager.findOne(TrainingPlanEntity, {
       where: { id: planId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode },
     });
     if (!plan || plan.headTrainerId !== callerId) {
       throw new NotFoundException(PLAN_NOT_FOUND);
@@ -235,17 +254,16 @@ export class TrainingPlansService {
   }
 
   /**
-   * Kiểm mọi môn trong các giai đoạn của giáo án đều tồn tại
+   * Khóa chia sẻ (FOR SHARE) các môn trong các giai đoạn của giáo án theo thứ tự UUID tới hết transaction, không ném lỗi
    *
    * @param manager EntityManager của transaction đang chạy
    * @param body Nội dung giáo án gửi lên
-   * @returns Promise hoàn tất khi kiểm xong
-   * @throws BadRequestException Nếu có môn học không tồn tại
+   * @returns Promise trả về true nếu mọi môn đều tồn tại
    */
-  private async assertSubjectsExist(
+  private async lockSubjects(
     manager: EntityManager,
     body: SaveTrainingPlanDto,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const ids = [
       ...new Set(
         body.phases.flatMap((phase) =>
@@ -253,10 +271,13 @@ export class TrainingPlansService {
         ),
       ),
     ];
-    const found = await manager.countBy(TrainingSubjectEntity, { id: In(ids) });
-    if (found !== ids.length) {
-      throw new BadRequestException('Có môn học không tồn tại');
-    }
+    const found = await manager.find(TrainingSubjectEntity, {
+      select: { id: true },
+      where: { id: In(ids) },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_read' },
+    });
+    return found.length === ids.length;
   }
 
   /**

@@ -103,3 +103,23 @@ describe('trial time caps', () => {
     },
   );
 });
+
+describe('CreateTrialResultDto.attemptNo cap', () => {
+  it('accepts attemptNo at the int column max and rejects one more', async () => {
+    await expect(
+      validate(
+        plainToInstance(CreateTrialResultDto, {
+          attemptNo: 2_147_483_647,
+          elapsedMs: 60_000,
+        }),
+      ),
+    ).resolves.toEqual([]);
+    const errors = await validate(
+      plainToInstance(CreateTrialResultDto, {
+        attemptNo: 2_147_483_648,
+        elapsedMs: 60_000,
+      }),
+    );
+    expect(errors.map((error) => error.property)).toEqual(['attemptNo']);
+  });
+});

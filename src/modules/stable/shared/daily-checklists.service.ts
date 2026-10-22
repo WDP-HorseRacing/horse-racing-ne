@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EntityManager, In, IsNull, MoreThanOrEqual } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
@@ -70,8 +70,7 @@ export class DailyChecklistsService {
    * - Chỉ chuyển checklist của đúng con ngựa, của groom cũ và có ngày từ fromDate trở đi
    * - Checklist của ngày trước fromDate giữ nguyên groom cũ
    * - Việc đã tick giữ nguyên người tick và thời điểm tick
-   * - Lock các checklist sẽ chuyển (for_no_key_update) trước khi kiểm trùng ngày
-   * - Groom mới đã có checklist cùng ngày cho ngựa này thì báo lỗi, không gộp và không bỏ qua
+   * - Lock các checklist sẽ chuyển (for_no_key_update) trước khi chuyển
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -79,7 +78,6 @@ export class DailyChecklistsService {
    * @param toGroomId UUID của groom mới
    * @param fromDate Ngày bắt đầu chuyển, dạng YYYY-MM-DD (thường là hôm nay theo giờ câu lạc bộ)
    * @returns Promise trả về UUID các checklist đã chuyển
-   * @throws ConflictException Nếu groom mới đã có checklist trùng ngày cho ngựa này
    */
   async moveChecklistsToGroom(
     manager: EntityManager,
@@ -99,22 +97,6 @@ export class DailyChecklistsService {
       lock: { mode: 'for_no_key_update' },
     });
     if (movedChecklists.length === 0) return [];
-
-    // Kiểm tra xem groom mới đã có checklist cùng ngày cho ngựa này thì báo lỗi, không gộp và không bỏ qua
-    const clashes = await manager.find(DailyChecklistEntity, {
-      where: {
-        horseId,
-        groomId: toGroomId,
-        checklistDate: In(movedChecklists.map((c) => c.checklistDate)),
-      },
-      order: { checklistDate: 'ASC' },
-    });
-    if (clashes.length > 0) {
-      const clashDates = clashes.map((c) => c.checklistDate).join(', ');
-      throw new ConflictException(
-        `Groom mới đã có checklist của ngựa này vào ngày ${clashDates}, không chuyển được checklist của groom cũ`,
-      );
-    }
 
     const ids = movedChecklists.map((c) => c.id);
     await manager.update(

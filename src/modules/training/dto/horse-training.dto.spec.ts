@@ -49,3 +49,16 @@ describe('HorseTrainingSessionQueryDto status', () => {
     },
   );
 });
+
+describe('HorseTrainingSessionQueryDto page cap', () => {
+  it('accepts page 10000 and rejects 10001', async () => {
+    const query = (page: string) =>
+      pipe.transform(
+        { page },
+        { type: 'query', metatype: HorseTrainingSessionQueryDto },
+      );
+
+    await expect(query('10000')).resolves.toMatchObject({ page: 10000 });
+    await expect(query('10001')).rejects.toThrow(BadRequestException);
+  });
+});

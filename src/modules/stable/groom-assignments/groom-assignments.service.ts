@@ -36,8 +36,6 @@ import { GroomAssignmentsRepository } from './groom-assignments.repository';
 const GROOM_CONFLICT_MESSAGES: Record<string, string> = {
   groom_assignments_active_horse_uq:
     'Ngựa vừa được giao groom khác, vui lòng tải lại',
-  daily_checklists_horse_groom_date_uq:
-    'Groom mới vừa có checklist trùng ngày cho ngựa này, không chuyển được checklist của groom cũ',
 };
 
 @Injectable()
@@ -97,7 +95,7 @@ export class GroomAssignmentsService {
    * @returns Promise chứa phân công groom đang mở của ngựa sau thao tác
    * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    */
   async assign(
@@ -139,7 +137,7 @@ export class GroomAssignmentsService {
    * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, groom không còn hoạt động, groom mới đã có checklist trùng ngày, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, groom không còn hoạt động, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
    */
   async assignInTransaction(
     manager: EntityManager,

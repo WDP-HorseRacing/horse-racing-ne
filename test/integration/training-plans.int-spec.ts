@@ -371,23 +371,43 @@ describe('Training plans and classes built from them (Postgres)', () => {
     });
   });
 
-  it('rejects a class built from another head trainer plan', async () => {
+  it('forbids a class built from another head trainer plan, before checking the code', async () => {
     const plan = await plans.create(trainer, twoPhases());
-    const otherId = await seed.user(UserRole.HEAD_TRAINER);
+    await classes.create(trainer, {
+      code: 'K1',
+      name: 'K1',
+      planId: plan.id,
+      startDate: '2099-10-05',
+    });
+    const other = await actorOf(UserRole.HEAD_TRAINER);
 
-    await expect(
-      classes.create(manager, {
-        code: 'K2',
+    const error: unknown = await classes
+      .create(other, {
+        code: 'K1',
         name: 'K2',
         planId: plan.id,
-        headTrainerId: otherId,
         startDate: '2099-10-05',
-      }),
-    ).rejects.toThrow(
-      new BadRequestException(
-        'Giáo án không thuộc Huấn luyện viên trưởng phụ trách lớp',
-      ),
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect((error as Error).message).toBe(
+      'Giáo án không thuộc Huấn luyện viên trưởng phụ trách lớp',
     );
+  });
+
+  it('rejects a class built from a missing plan with 404', async () => {
+    const error: unknown = await classes
+      .create(trainer, {
+        code: 'K1',
+        name: 'K1',
+        planId: '7f1c1d0e-3f4a-4b57-9f0c-2f6f8b9b6a11',
+        startDate: '2099-10-05',
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(NotFoundException);
+    expect((error as Error).message).toBe('Không tìm thấy giáo án');
   });
 
   it('refuses to delete a plan used by a class', async () => {

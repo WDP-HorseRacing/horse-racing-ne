@@ -246,6 +246,11 @@ export class CareTasksService {
     const mode = body.mode ?? HorseCareTaskMode.EXTRA;
     const note = body.note?.trim() || null;
     const id = await this.dataSource.transaction(async (manager) => {
+      await manager.find(CareTaskTypeEntity, {
+        select: { id: true },
+        where: { id: body.taskTypeId },
+        lock: { mode: 'pessimistic_read' },
+      });
       const { inTrainerBarn } = await this.access.lockCareTaskHorse(
         manager,
         actor,
@@ -343,14 +348,19 @@ export class CareTasksService {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     const today = clubToday();
     await this.dataSource.transaction(async (manager) => {
-      const task = await manager.findOneBy(HorseCareTaskEntity, { id });
-      if (!task) throw new NotFoundException(HORSE_CARE_TASK_NOT_FOUND);
+      const found = await manager.findOneBy(HorseCareTaskEntity, { id });
+      if (!found) throw new NotFoundException(HORSE_CARE_TASK_NOT_FOUND);
       const { inTrainerBarn } = await this.access.lockCareTaskHorse(
         manager,
         actor,
         caller.id,
-        task.horseId,
+        found.horseId,
       );
+      const task = await manager.findOne(HorseCareTaskEntity, {
+        where: { id },
+        lock: { mode: 'for_no_key_update' },
+      });
+      if (!task) throw new NotFoundException(HORSE_CARE_TASK_NOT_FOUND);
       const removal = careTaskRemovalOf(
         task.mode,
         task.fromDate,

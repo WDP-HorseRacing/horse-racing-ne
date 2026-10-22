@@ -68,6 +68,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 1. Chỉ Head Trainer tạo lớp, và lớp luôn do chính Head Trainer đó phụ trách.
    - Ngựa cần giáo án riêng (ví dụ ngựa đang hồi phục): Head Trainer tạo một lớp riêng chỉ ghi danh con ngựa đó. Không có giáo án gắn thẳng vào ngựa.
 2. Tạo lớp chỉ cần giáo án và ngày bắt đầu. Lớp chép các giai đoạn và môn của giáo án (`GET /classes/:classId/plan`, kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn). Không tạo buổi tập nào; Head Trainer thêm buổi sau.
+   - Giáo án không có: 404 "Không tìm thấy giáo án". Giáo án của Head Trainer khác: 403. Hai lỗi này báo trước mã lớp trùng (409).
+   - Hai người lưu cùng một mã lớp cùng lúc: người sau nhận 409 "Mã lớp X đã tồn tại" như khi mã đã có từ trước.
 3. Ngày kết thúc lớp = ngày bắt đầu + tổng số tuần của giáo án − 1 ngày. Giai đoạn nối tiếp nhau từ ngày bắt đầu, mỗi tuần 7 ngày.
    - Tiến độ xếp lịch (`GET /classes/:classId/progress`): từng tuần của lớp (tuần thứ n gồm 7 ngày từ ngày bắt đầu + (n − 1) × 7), mỗi môn của giai đoạn đã xếp bao nhiêu buổi chưa hủy so với số buổi tối thiểu; buổi tính vào tuần theo ngày bắt đầu (lịch CLB). Kèm thời lượng tối thiểu của lớp và tổng thời lượng các buổi chưa hủy đã xếp (phút). Thiếu hay vượt chỉ để hiển thị, không chặn.
 4. Mỗi buổi phải nằm trong thời gian của lớp, so theo ngày lịch CLB (giờ Việt Nam).
@@ -78,7 +80,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
    - Lớp Đang chạy đã qua ngày kết thúc (ngày kết thúc trước hôm nay theo lịch CLB) và không còn buổi Đã lên lịch hay Đang diễn ra thì trong vòng một phút hệ thống tự chuyển Hoàn thành, như Head Trainer bấm hoàn thành: ngựa đang học chuyển Rời lớp, nhật ký ghi người thao tác trống, lý do "Hệ thống tự hoàn thành lớp". Không gửi thông báo. Lớp còn buổi chưa kết thúc thì chờ các buổi đó tự đóng (mục 5 luật 11) rồi mới hoàn thành.
 7. Đổi ngày bắt đầu của lớp thì ngày kết thúc tự tính lại theo giáo án của lớp; buổi nằm ngoài khoảng mới thì chặn.
 8. Lớp không đổi được giáo án hay Head Trainer sau khi tạo. Đổi Head Trainer chỉ qua bàn giao (mục 7).
-9. Không lên lịch lớp ở quá khứ: ngày bắt đầu phải từ hôm nay trở đi theo lịch CLB (bắt đầu đúng hôm nay vẫn được), không thì 400 ở ô `startDate` "Ngày bắt đầu không được ở quá khứ". Kiểm khi tạo lớp, và khi sửa lớp có gửi `startDate` khác ngày bắt đầu đang có; sửa tên, sức chứa... hoặc gửi lại đúng ngày cũ của lớp đã bắt đầu thì không kiểm. Kiểm sau cùng, sau mọi lỗi đã có (403, 409 mã lớp trùng, 400 giáo án; khi sửa: 409 sức chứa, 409 khoảng ngày không bao phủ buổi hoặc ghi danh). Dữ liệu cũ giữ nguyên.
+9. Không lên lịch lớp ở quá khứ: ngày bắt đầu phải từ hôm nay trở đi theo lịch CLB (bắt đầu đúng hôm nay vẫn được), không thì 400 ở ô `startDate` "Ngày bắt đầu không được ở quá khứ". Kiểm khi tạo lớp, và khi sửa lớp có gửi `startDate` khác ngày bắt đầu đang có; sửa tên, sức chứa... hoặc gửi lại đúng ngày cũ của lớp đã bắt đầu thì không kiểm. Kiểm sau cùng, sau mọi lỗi đã có (404, 403 giáo án, 409 mã lớp trùng; khi sửa: 409 sức chứa, 409 khoảng ngày không bao phủ buổi hoặc ghi danh). Dữ liệu cũ giữ nguyên.
 
 ### 4. Buổi tập và chạy thử
 

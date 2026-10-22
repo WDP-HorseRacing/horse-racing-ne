@@ -47,3 +47,18 @@ describe('Training class text length limits', () => {
     },
   );
 });
+
+describe('Training class maxHorses cap', () => {
+  it('accepts maxHorses at the int column max and rejects one more', async () => {
+    for (const type of [CreateTrainingClassDto, UpdateTrainingClassDto]) {
+      const base = type === CreateTrainingClassDto ? valid : {};
+      const at = plainToInstance(type, { ...base, maxHorses: 2_147_483_647 });
+      expect((await constraintsOf(at)).maxHorses).toBeUndefined();
+      const over = plainToInstance(type, {
+        ...base,
+        maxHorses: 2_147_483_648,
+      });
+      expect((await constraintsOf(over)).maxHorses).toHaveLength(1);
+    }
+  });
+});

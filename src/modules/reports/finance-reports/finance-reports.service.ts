@@ -4,6 +4,7 @@ import { UserRole } from '../../../common/enums';
 import type { Actor } from '../../../common/types/actor';
 import { toClubDate } from '../../../common/utils/club-date';
 import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { HorseOwnershipEntity } from '../../horses/entities/horse-ownership.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { currentUserForActor } from '../../users/utils/current-user';
 import {
@@ -70,7 +71,7 @@ export class FinanceReportsService {
    * @returns Promise trả về tổng phí nuôi, chi phí y tế, phụ phí, tiền thưởng và từng con ngựa
    * @throws ForbiddenException Nếu tài khoản không tồn tại, không hoạt động hoặc chưa được gán vai trò
    * @throws BadRequestException Nếu ngày bắt đầu sau ngày kết thúc, hoặc Club Manager không truyền ownerId
-   * @throws NotFoundException Nếu không có tài khoản có id ownerId
+   * @throws NotFoundException Nếu không có tài khoản chủ ngựa có id ownerId
    */
   async ownerCost(
     actor: Actor,
@@ -99,12 +100,13 @@ export class FinanceReportsService {
   /**
    * Tìm tài khoản chủ ngựa mà Club Manager muốn xem báo cáo
    *
-   * - Gồm cả tài khoản đã khóa, đã xóa hoặc đã đổi vai trò
+   * - Nhận tài khoản đang có vai trò Horse Owner, hoặc đã từng sở hữu ngựa dù nay đã đổi vai trò
+   * - Gồm cả tài khoản đã khóa hoặc đã xóa
    *
    * @param ownerId UUID tài khoản chủ ngựa
    * @returns Promise trả về tài khoản
    * @throws BadRequestException Nếu không truyền ownerId
-   * @throws NotFoundException Nếu không có tài khoản có id ownerId
+   * @throws NotFoundException Nếu không có tài khoản có id ownerId, hoặc tài khoản đó không phải Horse Owner và chưa từng sở hữu ngựa
    */
   private async findOwner(ownerId: string | undefined): Promise<UserEntity> {
     if (!ownerId) throw fieldBadRequest('ownerId', 'Phải chọn chủ ngựa');
@@ -112,7 +114,15 @@ export class FinanceReportsService {
       where: { id: ownerId },
       withDeleted: true,
     });
-    if (!owner) throw new NotFoundException('Không tìm thấy chủ ngựa');
+    const isOwner =
+      owner?.role === UserRole.HORSE_OWNER ||
+      (owner !== null &&
+        (await this.dataSource.manager.exists(HorseOwnershipEntity, {
+          where: { ownerId },
+        })));
+    if (!owner || !isOwner) {
+      throw new NotFoundException('Không tìm thấy chủ ngựa');
+    }
     return owner;
   }
 }

@@ -38,7 +38,7 @@ export class FinanceReportsController {
   @ApiOperation({
     summary: 'Phí nuôi và chi phí y tế của một chủ ngựa theo khoảng ngày',
     description:
-      'Club Manager bắt buộc truyền ownerId (thiếu: 400, không có tài khoản: 404).',
+      'Club Manager bắt buộc truyền ownerId (thiếu: 400; không có tài khoản, hoặc tài khoản không phải Horse Owner và chưa từng sở hữu ngựa: 404).',
   })
   @ApiOkResponse({ type: OwnerCostResponseDto })
   ownerCost(@CurrentUser() actor: Actor, @Query() query: OwnerCostQueryDto) {

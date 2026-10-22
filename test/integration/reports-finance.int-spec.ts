@@ -278,6 +278,29 @@ describe('Reports finance (Postgres)', () => {
     await expect(
       service.ownerCost(manager, { ...period, ownerId: randomUUID() }),
     ).rejects.toBeInstanceOf(NotFoundException);
+    const groom = await seed.user(UserRole.GROOM);
+    await expect(
+      service.ownerCost(manager, { ...period, ownerId: groom }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('lets the club manager read a former owner whose role has changed', async () => {
+    await dataSource.query('UPDATE users SET role = $1 WHERE id = $2', [
+      UserRole.GROOM,
+      bId,
+    ]);
+
+    const report = await service.ownerCost(manager, {
+      ...period,
+      ownerId: bId,
+    });
+
+    expect(report).toMatchObject({
+      ownerName: 'Bình',
+      dailyFee: 600000,
+      medicalCost: 2000000,
+      surcharge: 100000,
+    });
   });
 
   it('stops at the moment of reading and leaves a midnight start to the next day', async () => {

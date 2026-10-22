@@ -32,6 +32,7 @@ export class KeycloakHttpService {
         // Keycloak co tra loi, nhung la loi. Loi cua he thong phia sau -> 502.
         throw new BadGatewayException(
           keycloakFailureMessage(error.response.status),
+          { cause: error.response.data },
         );
       }
       // Timeout, DNS hong, connection refused: khong voi toi duoc -> 503.

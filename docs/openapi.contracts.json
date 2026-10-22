@@ -12,6 +12,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -1099,6 +1100,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -1475,6 +1477,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -2621,6 +2624,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -4164,6 +4168,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -5074,7 +5079,7 @@
     },
     "/api/v1/reports/owner/costs": {
       "get": {
-        "description": "Club Manager bắt buộc truyền ownerId (thiếu: 400, không có tài khoản: 404).",
+        "description": "Club Manager bắt buộc truyền ownerId (thiếu: 400; không có tài khoản, hoặc tài khoản không phải Horse Owner và chưa từng sở hữu ngựa: 404).",
         "operationId": "FinanceReportsController_ownerCost",
         "parameters": [
           {
@@ -6173,6 +6178,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -6810,6 +6816,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -7268,6 +7275,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -7342,6 +7350,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -7641,6 +7650,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -9212,6 +9222,7 @@
             "description": "Trang hiện tại",
             "schema": {
               "minimum": 1,
+              "maximum": 10000,
               "default": 1,
               "type": "number"
             }
@@ -19190,7 +19201,8 @@
         "properties": {
           "attemptNo": {
             "type": "number",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 2147483647
           },
           "elapsedMs": {
             "type": "number",
@@ -19353,6 +19365,7 @@
             "type": "number",
             "default": 10,
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "Sức chứa tối đa số ngựa trong lớp"
           },
           "planId": {
@@ -19640,6 +19653,7 @@
             "type": "number",
             "default": 10,
             "minimum": 1,
+            "maximum": 2147483647,
             "description": "Sức chứa tối đa số ngựa trong lớp"
           },
           "startDate": {

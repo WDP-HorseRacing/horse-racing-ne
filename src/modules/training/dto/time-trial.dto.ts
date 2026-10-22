@@ -12,15 +12,17 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { trimValue } from '../../../common/utils/dto-input';
+import { INT_COLUMN_MAX } from '../constants/column-limits.constants';
 import {
   MAX_TRIAL_TIME_MESSAGE,
   MAX_TRIAL_TIME_MS,
 } from '../constants/trial-time.constants';
 
 export class CreateTrialResultDto {
-  @ApiProperty({ minimum: 1 })
+  @ApiProperty({ minimum: 1, maximum: INT_COLUMN_MAX })
   @IsInt()
   @Min(1)
+  @Max(INT_COLUMN_MAX)
   attemptNo!: number;
 
   @ApiProperty({ minimum: 1, maximum: MAX_TRIAL_TIME_MS })

@@ -38,6 +38,17 @@ export class KeycloakTokenService {
     });
   }
 
+  /**
+   * Đổi tài khoản và mật khẩu lấy bộ token trên Keycloak
+   *
+   * - Keycloak từ chối đăng nhập (401, hoặc 400 với lỗi invalid_grant như tài khoản bị khóa): 401 cùng một câu báo sai tài khoản hoặc mật khẩu
+   * - Lỗi khác của Keycloak: giữ nguyên 502
+   *
+   * @param params Tài khoản và mật khẩu người dùng nhập
+   * @returns Promise trả về bộ token
+   * @throws UnauthorizedException Nếu Keycloak từ chối đăng nhập
+   * @throws BadGatewayException Nếu Keycloak trả lỗi khác
+   */
   async exchangePasswordForToken(
     params: KeycloakPasswordGrantParams,
   ): Promise<KeycloakTokenResponse> {
@@ -51,7 +62,10 @@ export class KeycloakTokenService {
     } catch (error) {
       if (
         error instanceof BadGatewayException &&
-        error.message === keycloakFailureMessage(401)
+        (error.message === keycloakFailureMessage(401) ||
+          (error.message === keycloakFailureMessage(400) &&
+            (error.cause as { error?: unknown } | undefined)?.error ===
+              'invalid_grant'))
       ) {
         throw new UnauthorizedException(
           'Tài khoản hoặc mật khẩu không chính xác!',

@@ -1,7 +1,8 @@
 import {
-  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
@@ -12,8 +13,12 @@ import {
   shiftDays,
   toClubDate,
 } from '../../../../common/utils/club-date';
-import { fieldConflict } from '../../../../common/utils/field-errors';
+import {
+  fieldConflict,
+  type FieldError,
+} from '../../../../common/utils/field-errors';
 import { changedFieldsDiff } from '../../../../common/utils/record-diff';
+import { mapUniqueViolation } from '../../../../common/utils/unique-violation';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
@@ -58,6 +63,25 @@ import { TrainingAccessService } from '../../shared/training-access.service';
 import { completeTrainingClass } from '../../shared/training-class-completion';
 import { classAuditData } from '../../utils/training-audit';
 
+const PLAN_NOT_FOUND = 'Không tìm thấy giáo án';
+const PLAN_NOT_OWNED =
+  'Giáo án không thuộc Huấn luyện viên trưởng phụ trách lớp';
+
+/**
+ * Câu báo lỗi trùng mã lớp theo tên unique constraint, dùng cho mapUniqueViolation
+ *
+ * @param code Mã lớp đã chuẩn hóa
+ * @returns Ô code kèm câu báo lỗi, theo tên unique constraint của mã lớp
+ */
+function classCodeConflicts(code: string): Record<string, FieldError> {
+  return {
+    UQ_training_classes_code: {
+      field: 'code',
+      message: `Mã lớp ${code} đã tồn tại`,
+    },
+  };
+}
+
 @Injectable()
 export class TrainingClassesService {
   constructor(
@@ -80,9 +104,10 @@ export class TrainingClassesService {
    * @param actor Thông tin danh tính từ Access Token
    * @param body Thông tin lớp, giáo án và ngày bắt đầu
    * @returns Promise trả về lớp vừa tạo
-   * @throws ForbiddenException Nếu tài khoản không hoạt động
-   * @throws ConflictException Nếu mã lớp đã tồn tại
-   * @throws BadRequestException Nếu giáo án không thuộc Head Trainer gọi, hoặc ngày bắt đầu ở quá khứ (kiểm sau cùng)
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc giáo án của Head Trainer khác
+   * @throws NotFoundException Nếu không có giáo án
+   * @throws BadRequestException Nếu ngày bắt đầu ở quá khứ (kiểm sau cùng)
+   * @throws ConflictException Nếu mã lớp đã tồn tại (kiểm sau giáo án)
    */
   async create(
     actor: Actor,
@@ -90,10 +115,6 @@ export class TrainingClassesService {
   ): Promise<TrainingClassResponseDto> {
     const caller = await this.access.currentUser(actor);
     const code = body.code.trim().toUpperCase();
-    const existing = await this.classes.findOneBy({ code });
-    if (existing) {
-      throw fieldConflict('code', `Mã lớp ${code} đã tồn tại`);
-    }
     const headTrainerId = caller.id;
     const row = await this.dataSource.transaction(async (manager) => {
       const phases = await this.ownedPlanPhases(
@@ -101,21 +122,29 @@ export class TrainingClassesService {
         body.planId,
         headTrainerId,
       );
+      const existing = await manager.findOneBy(TrainingClassEntity, { code });
+      if (existing) {
+        throw fieldConflict('code', `Mã lớp ${code} đã tồn tại`);
+      }
       const startDate = body.startDate;
       assertClassStartNotPast(startDate, clubToday());
-      const saved = await manager.save(
-        manager.create(TrainingClassEntity, {
-          code,
-          name: body.name,
-          description: body.description ?? null,
-          raceAptitude: body.raceAptitude ?? null,
-          maxHorses: body.maxHorses ?? 10,
-          headTrainerId,
-          planId: body.planId,
-          startDate,
-          endDate: classEndDate(startDate, totalPlanWeeks(phases)),
-          status: TrainingClassStatus.ACTIVE,
-        }),
+      const saved = await mapUniqueViolation(
+        () =>
+          manager.save(
+            manager.create(TrainingClassEntity, {
+              code,
+              name: body.name,
+              description: body.description ?? null,
+              raceAptitude: body.raceAptitude ?? null,
+              maxHorses: body.maxHorses ?? 10,
+              headTrainerId,
+              planId: body.planId,
+              startDate,
+              endDate: classEndDate(startDate, totalPlanWeeks(phases)),
+              status: TrainingClassStatus.ACTIVE,
+            }),
+          ),
+        classCodeConflicts(code),
       );
       await this.copyPlanPhases(manager, saved.id, phases);
       await this.auditService.record(manager, {
@@ -504,7 +533,10 @@ export class TrainingClassesService {
         startDate,
         endDate,
       });
-      const saved = await manager.save(row);
+      const saved = await mapUniqueViolation(
+        () => manager.save(row),
+        classCodeConflicts(row.code),
+      );
       const diff = changedFieldsDiff(before, classAuditData(saved));
       if (diff) {
         await this.auditService.record(manager, {
@@ -586,28 +618,32 @@ export class TrainingClassesService {
   }
 
   /**
-   * Lấy các giai đoạn của giáo án dùng cho lớp theo thứ tự, kèm kiểm giáo án thuộc Head Trainer phụ trách lớp
+   * Khóa chia sẻ (FOR SHARE) giáo án dùng cho lớp tới hết transaction, kiểm giáo án thuộc Head Trainer phụ trách lớp, rồi lấy các giai đoạn theo thứ tự
    *
-   * @param manager EntityManager dùng để query
+   * @param manager EntityManager của transaction đang chạy
    * @param planId UUID của giáo án
    * @param headTrainerId UUID của Head Trainer phụ trách lớp
    * @returns Promise trả về các giai đoạn của giáo án kèm số tuần và các môn, theo thứ tự
-   * @throws BadRequestException Nếu không có giáo án hoặc giáo án không thuộc Head Trainer phụ trách lớp
+   * @throws NotFoundException Nếu không có giáo án
+   * @throws ForbiddenException Nếu giáo án không thuộc Head Trainer phụ trách lớp
    */
   private async ownedPlanPhases(
     manager: EntityManager,
     planId: string,
-    headTrainerId: string | null,
+    headTrainerId: string,
   ): Promise<TrainingPlanPhaseEntity[]> {
     const plan = await manager.findOne(TrainingPlanEntity, {
       where: { id: planId },
-      relations: { phases: { subjects: true } },
+      lock: { mode: 'pessimistic_read' },
     });
-    if (!plan || plan.headTrainerId !== headTrainerId) {
-      throw new BadRequestException(
-        'Giáo án không thuộc Huấn luyện viên trưởng phụ trách lớp',
-      );
+    if (!plan) throw new NotFoundException(PLAN_NOT_FOUND);
+    if (plan.headTrainerId !== headTrainerId) {
+      throw new ForbiddenException(PLAN_NOT_OWNED);
     }
-    return [...plan.phases].sort((a, b) => a.position - b.position);
+    return manager.find(TrainingPlanPhaseEntity, {
+      where: { planId },
+      relations: { subjects: true },
+      order: { position: 'ASC' },
+    });
   }
 }

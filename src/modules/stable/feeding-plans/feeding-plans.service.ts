@@ -280,7 +280,9 @@ export class FeedingPlansService {
   async approve(actor: Actor, id: string): Promise<FeedingPlanResponseDto> {
     const caller = await currentUserForActor(this.dataSource.manager, actor);
     await this.dataSource.transaction(async (manager) => {
+      await this.lockPlanSupplies(manager, id);
       const plan = await this.lockDraftForTrainer(manager, caller.id, id);
+      await this.lockPlanSupplies(manager, plan.id);
       const deleted = await manager
         .getRepository(SupplyItemEntity)
         .createQueryBuilder('supply')
@@ -373,6 +375,32 @@ export class FeedingPlansService {
     await manager.find(SupplyItemEntity, {
       select: { id: true },
       where: { id: In(ids) },
+      order: { id: 'ASC' },
+      lock: { mode: 'pessimistic_read' },
+    });
+  }
+
+  /**
+   * Khóa chia sẻ (FOR SHARE) các vật tư đang có trong dòng của một khẩu phần, kể cả vật tư đã xóa, theo thứ tự UUID tới hết transaction, không kiểm gì
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param planId UUID của khẩu phần
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  private async lockPlanSupplies(
+    manager: EntityManager,
+    planId: string,
+  ): Promise<void> {
+    const lines = await manager.find(FeedingPlanItemEntity, {
+      select: { supplyItemId: true },
+      where: { planId },
+    });
+    const ids = [...new Set(lines.map((line) => line.supplyItemId))];
+    if (ids.length === 0) return;
+    await manager.find(SupplyItemEntity, {
+      select: { id: true },
+      where: { id: In(ids) },
+      withDeleted: true,
       order: { id: 'ASC' },
       lock: { mode: 'pessimistic_read' },
     });

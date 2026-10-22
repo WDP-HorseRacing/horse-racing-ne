@@ -12,6 +12,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -21,6 +22,7 @@ import { RaceAptitude } from '../../horses/enums/race-aptitude.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingPlanSubjectResponseDto } from './training-plan.dto';
 import { IsDateOnly } from '../../../common/utils/dto-input';
+import { INT_COLUMN_MAX } from '../constants/column-limits.constants';
 
 export class CreateTrainingClassDto {
   @ApiProperty({
@@ -54,11 +56,13 @@ export class CreateTrainingClassDto {
   @ApiPropertyOptional({
     default: 10,
     minimum: 1,
+    maximum: INT_COLUMN_MAX,
     description: 'Sức chứa tối đa số ngựa trong lớp',
   })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(INT_COLUMN_MAX)
   maxHorses?: number;
 
   @ApiProperty({

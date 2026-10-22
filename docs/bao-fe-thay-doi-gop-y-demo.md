@@ -33,6 +33,25 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 - `PATCH /session-participants/:id/groom`: HT không quản lý lớp của lượt nay luôn nhận 403 trước, kể cả khi buổi đã kết thúc hoặc đã hủy (trước đây nhận 409 "Buổi tập đã kết thúc hoặc đã hủy, không thao tác được"). HT của lớp vẫn nhận 409 như cũ khi buổi không còn thực thi.
 - `PATCH /enrollments/:id/leave`: id ghi danh không tồn tại trả 404 thay vì 409, câu báo giữ nguyên "Không tìm thấy ghi danh của ngựa". Ghi danh đã rời lớp vẫn 409 "Ngựa đã rời lớp".
 
+### Tạo lớp: đổi mã lỗi giáo án, trùng mã lớp cùng lúc trả 409
+
+- `POST /classes`: `planId` không tồn tại trả 404 "Không tìm thấy giáo án" (trước đây 400). Giáo án của HT khác trả 403 (trước đây 400), câu báo giữ nguyên.
+- Thứ tự lỗi: giáo án (404, 403) báo trước trùng mã lớp (409), rồi mới tới ngày bắt đầu ở quá khứ (400). Trước đây gửi vừa trùng mã vừa sai giáo án thì nhận 409 trùng mã.
+- `POST /classes`, `PATCH /classes/:classId`: hai người lưu cùng một mã lớp cùng lúc thì người sau nhận 409 "Mã lớp X đã tồn tại" gắn ô `code` thay vì 500 (cùng câu với khi mã đã có từ trước).
+
+### Trần giá trị số và trang
+
+- Query `page` của mọi danh sách phân trang, kể cả `GET /horses/:horseId/training/sessions` và `GET /horses/:horseId/measurements`: lớn hơn 10000 trả 400 (trước đây 500).
+- `maxHorses` (`POST /classes`, `PATCH /classes/:classId`) và `attemptNo` (`POST /session-participants/:id/trial-results`): lớn hơn 2147483647 trả 400 (trước đây 500). Swagger ghi `maximum`.
+
+### Đăng nhập tài khoản bị khóa trả 401
+
+- `POST /auth/login`: tài khoản bị khóa hoặc chưa hoàn tất thiết lập trên Keycloak nay trả 401 "Tài khoản hoặc mật khẩu không chính xác!", giống sai mật khẩu (trước đây 502). FE không phân biệt được tài khoản bị khóa; muốn mở khóa thì liên hệ CM.
+
+### Báo cáo chi phí chủ ngựa: id không phải chủ trả 404
+
+- `GET /reports/owner/costs` (CM): `ownerId` của tài khoản không phải chủ ngựa và chưa từng sở hữu ngựa nào (vd chọn nhầm Groom) trả 404 "Không tìm thấy chủ ngựa" thay vì 200 với số 0. Chủ cũ đã đổi vai trò vẫn xem được báo cáo như trước. Tài khoản không tồn tại vẫn 404.
+
 ## Ngày 20/10/2026
 
 ### Dashboard báo cáo đếm cả ngựa đã rời CLB

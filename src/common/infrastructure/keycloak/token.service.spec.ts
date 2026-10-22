@@ -6,7 +6,10 @@ import type { KeycloakConfig } from './keycloak.config';
 import { KeycloakHttpService } from './keycloak-http.service';
 import { KeycloakTokenService } from './token.service';
 
-function tokenServiceAnswering(status: number): KeycloakTokenService {
+function tokenServiceAnswering(
+  status: number,
+  data?: unknown,
+): KeycloakTokenService {
   const config = {
     tokenEndpoint: '/token',
     authServerUrl: 'http://keycloak',
@@ -18,6 +21,7 @@ function tokenServiceAnswering(status: number): KeycloakTokenService {
         Promise.reject(
           new AxiosError('fail', 'ERR_BAD_REQUEST', undefined, undefined, {
             status,
+            data,
           } as AxiosResponse),
         ),
     }),
@@ -30,8 +34,8 @@ function tokenServiceAnswering(status: number): KeycloakTokenService {
 }
 
 describe('KeycloakTokenService.exchangePasswordForToken', () => {
-  const login = (status: number) =>
-    tokenServiceAnswering(status).exchangePasswordForToken({
+  const login = (status: number, data?: unknown) =>
+    tokenServiceAnswering(status, data).exchangePasswordForToken({
       username: 'a@b.c',
       password: 'x',
     });
@@ -39,6 +43,23 @@ describe('KeycloakTokenService.exchangePasswordForToken', () => {
   it('turns a Keycloak 401 into a wrong credentials 401', async () => {
     await expect(login(401)).rejects.toEqual(
       new UnauthorizedException('Tài khoản hoặc mật khẩu không chính xác!'),
+    );
+  });
+
+  it('turns a disabled account (400 invalid_grant) into the same wrong credentials 401', async () => {
+    await expect(
+      login(400, {
+        error: 'invalid_grant',
+        error_description: 'Account disabled',
+      }),
+    ).rejects.toEqual(
+      new UnauthorizedException('Tài khoản hoặc mật khẩu không chính xác!'),
+    );
+  });
+
+  it('keeps a Keycloak 400 that is not invalid_grant as 502', async () => {
+    await expect(login(400, { error: 'unauthorized_client' })).rejects.toEqual(
+      new BadGatewayException('Máy chủ xác thực báo lỗi (mã 400)'),
     );
   });
 

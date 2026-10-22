@@ -7,12 +7,14 @@ export class PaginationQueryDto {
   @ApiPropertyOptional({
     default: 1,
     minimum: 1,
+    maximum: 10000,
     description: 'Trang hiện tại',
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(10000)
   page: number = 1;
 
   @ApiPropertyOptional({

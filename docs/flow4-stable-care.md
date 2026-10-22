@@ -188,6 +188,7 @@ Ngựa theo tên. Groom chưa phụ trách ngựa nào thì danh sách ngựa r�
 4. Kết thúc sớm (khoản đang tính): đến ngày thành hôm nay, hôm nay vẫn tính phí; khoản chưa bắt đầu hoặc đã kết thúc thì 409. Xóa chỉ khi chưa tới từ ngày; đã bắt đầu thì 409, phải kết thúc sớm. Không sửa nội dung hay số tiền; ghi sai thì xóa (chưa bắt đầu) hoặc kết thúc sớm rồi ghi khoản mới.
 5. Tính tiền theo từng ngày trong khoảng, cùng cách phí ngày: ngày tính cho người là chủ lúc hết ngày, chỉ tính ngày ngựa còn ở CLB lúc hết ngày. Báo cáo chi phí của chủ và báo cáo tài chính CLB có thêm cột `surcharge`, cộng vào `total`.
    - Báo cáo "định kỳ" của đề: chủ ngựa và Club Manager tự xem báo cáo theo khoảng ngày bất kỳ (`GET /reports/owner/costs`, `GET /reports/club/finance` với `from`, `to`), ví dụ từng tháng. Hệ thống không tự gửi báo cáo theo lịch.
+   - Club Manager xem báo cáo của một chủ bằng `ownerId`: nhận tài khoản đang là chủ ngựa hoặc đã từng sở hữu ngựa (chủ cũ đã đổi vai trò vẫn xem được). Tài khoản không có, hoặc chưa từng là chủ (vd Groom): 404 "Không tìm thấy chủ ngựa".
 6. Ghi, xác nhận áp dụng, kết thúc sớm, xóa đều ghi nhật ký (`HORSE_SURCHARGE`).
 
 ### 9. Phân quyền

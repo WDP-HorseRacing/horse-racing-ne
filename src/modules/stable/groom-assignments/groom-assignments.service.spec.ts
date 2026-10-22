@@ -69,7 +69,6 @@ describe('GroomAssignmentsService', () => {
   let rows: Map<unknown, Row>;
   let groomRow: Row;
   let openChecklists: Record<string, unknown>[];
-  let clashingChecklists: Record<string, unknown>[];
   let manager: {
     findOne: jest.Mock;
     findOneBy: jest.Mock;
@@ -112,7 +111,6 @@ describe('GroomAssignmentsService', () => {
     ]);
     groomRow = newGroom;
     openChecklists = [];
-    clashingChecklists = [];
     manager = {
       findOne: jest.fn((entity: unknown, options: { where: { id?: string } }) =>
         Promise.resolve(
@@ -131,9 +129,7 @@ describe('GroomAssignmentsService', () => {
       find: jest.fn(
         (_entity: unknown, options: { where: { groomId: string } }) =>
           Promise.resolve(
-            options.where.groomId === 'g-old'
-              ? openChecklists
-              : clashingChecklists,
+            options.where.groomId === 'g-old' ? openChecklists : [],
           ),
       ),
       query: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
@@ -443,13 +439,6 @@ describe('GroomAssignmentsService', () => {
         );
       });
 
-      it('moves no participant when the new groom already has a clashing checklist', async () => {
-        openChecklists = [{ id: 'c1', checklistDate: '2026-09-23' }];
-        clashingChecklists = [{ id: 'c9', checklistDate: '2026-09-23' }];
-        await expect(assign()).rejects.toThrow(/2026-09-23/);
-        expect(training.moveFutureParticipantsToGroom).not.toHaveBeenCalled();
-      });
-
       it('publishes the change with both the new and the old groom', async () => {
         await assign();
         expect(events.publish).toHaveBeenCalledWith(
@@ -471,13 +460,6 @@ describe('GroomAssignmentsService', () => {
           anything,
           anything,
         );
-      });
-
-      it('rejects when the new groom already has a checklist on the same day', async () => {
-        openChecklists = [{ id: 'c1', checklistDate: '2026-09-23' }];
-        clashingChecklists = [{ id: 'c9', checklistDate: '2026-09-23' }];
-        await expect(assign()).rejects.toThrow(/2026-09-23/);
-        expect(manager.save).not.toHaveBeenCalled();
       });
     });
 
