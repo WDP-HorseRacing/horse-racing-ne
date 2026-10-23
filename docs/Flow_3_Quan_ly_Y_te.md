@@ -478,7 +478,7 @@ Ghi lại từng lần bác sĩ tái khám con ngựa trong quá trình điều 
 10. **Sửa buổi khám** (áp dụng cho buổi khám của F3.3 và F3.6), theo mục III.2.4:
    - Chỉ VETERINARIAN ghi buổi khám đó (bác sĩ khác 403, kể cả khi bác sĩ ghi đã nghỉ việc), bắt buộc lý do và ít nhất một nội dung cần sửa. Buổi đã hủy: 409. Ngựa đã chuyển nhượng, đã mất: 409 như mọi thao tác ghi khác.
    - Sửa được các nội dung bác sĩ nhập lúc ghi: chẩn đoán, ghi chú chăm sóc, ngày hẹn tái khám (ba ô này để trống được), trạng thái sức khỏe sau khám, số đo (theo loại chỉ số đã đo trong buổi), đơn thuốc (gửi danh sách mới thay toàn bộ), chấn thương, yêu cầu khám được gắn (gửi danh sách mới thay toàn bộ). Riêng buổi khám ngoài bệnh án và buổi mở bệnh án: loại (Định kỳ, Theo yêu cầu), kết luận, chẩn đoán ban đầu. Nội dung không gửi giữ nguyên.
-   - Không sửa: con ngựa, bác sĩ, thời điểm khám (III.2.5), chi phí (mục 9), kết luận cuối của bệnh án (F3.9).
+   - Không sửa: con ngựa, bác sĩ, thời điểm khám (III.2.5), chi phí (mục 9), kết luận cuối của bệnh án (đính chính riêng ở F3.9 nghiệp vụ 3b).
    - Sau khi sửa, nội dung phải vẫn đúng các luật như lúc ghi (F3.3 mục 1, mục 2 ở trên, ngày hẹn không ở quá khứ, xác nhận số đo bất thường).
    - Trạng thái sức khỏe sau khám: nếu từ buổi khám tới nay chưa có lần đổi sức khỏe nào khác thì đổi cả sức khỏe hiện tại của ngựa theo F3.7 (lý do sửa là lý do đổi, thông báo, chấm lại lượt tập). Đã có lần đổi khác thì chỉ sửa kết quả ghi trên buổi khám, giữ nguyên sức khỏe hiện tại và báo bác sĩ ai đổi, lúc nào. Lần sửa chính buổi khám không tính là "lần đổi khác" khi hủy buổi đó sau này (hủy vẫn đưa sức khỏe về giá trị trước buổi khám).
    - Số đo: giá trị mới đi qua khoảng hợp lệ và xác nhận bất thường như F1.5; không gửi cảnh báo (III.5.4).
@@ -580,7 +580,7 @@ Lệnh của bác sĩ ngăn một con ngựa tham gia huấn luyện và thi đ�
 4. Khóa chặn cả "được tập" và "được đua", bất kể trạng thái sức khỏe đang là gì.
 5. Ngày dự kiến gỡ chỉ là thông tin tham khảo cho HEAD TRAINER. Hệ thống không tự gỡ khóa khi đến ngày, vì việc ngựa đã hồi phục hay chưa phải do bác sĩ xác nhận.
 6. Gỡ khóa bắt buộc nhập lý do và chỉ VETERINARIAN thực hiện. Ngoại lệ duy nhất: khi ngựa được chuyển nhượng hoặc được ghi nhận mất, hệ thống tự gỡ khóa với ghi chú "Gỡ do chuyển nhượng" hoặc "Gỡ do ngựa mất" (xem F1.8); lịch sử khóa hiển thị người gỡ là "Hệ thống".
-7. Khi đóng bệnh án mà lệnh khóa gắn với bệnh án đó vẫn còn hiệu lực, hệ thống bắt bác sĩ chọn một trong hai: gỡ khóa ngay, hoặc giữ khóa và nhập ngày dự kiến gỡ.
+7. Khi đóng bệnh án mà ngựa còn lệnh khóa đang hiệu lực (khóa thuộc về con ngựa, kể cả lệnh giữ lại từ bệnh án trước), hệ thống bắt bác sĩ chọn một trong hai: gỡ khóa ngay, hoặc giữ khóa và nhập ngày dự kiến gỡ. Lệnh khóa vẫn ghi bệnh án đã đặt nó để tra cứu.
 8. Thông báo theo mục III.7: mức HIGH khi đặt khóa và mức NORMAL khi bác sĩ gỡ khóa, gửi cho HEAD TRAINER phụ trách khu, CLUB MANAGER, HORSE OWNER và GROOM phụ trách ngựa.
 9. Không đặt khóa cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 10. Ghi nhật ký cho cả thao tác đặt và gỡ.
@@ -622,7 +622,8 @@ Kết thúc một bệnh án khi con ngựa đã khỏi hoặc đã mất, ghi k
 1. Chỉ đóng được bệnh án đang ở trạng thái Đang điều trị.
 2. Khi đóng, bác sĩ nhập kết luận cuối. Không nhập chi phí; tổng chi phí của bệnh án là tổng các buổi khám chưa hủy (III.6.4).
 3. Ngày đóng là thời điểm thực hiện thao tác.
-4. Nếu lệnh khóa huấn luyện gắn với bệnh án này còn hiệu lực, hệ thống bắt chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ (theo F3.8 nghiệp vụ 7).
+3b. Đính chính kết luận cuối (`PATCH /medical-cases/:caseId/conclusion`, VETERINARIAN): chỉ bệnh án Đã đóng, bắt buộc lý do; không đổi thời điểm và người đóng; ghi nhật ký trước/sau, không thông báo. Bệnh án đang điều trị hoặc đã hủy: 409. Ngựa đã mất hoặc đã chuyển nhượng: 409, hồ sơ chỉ đọc (kết luận đã thành nguyên nhân mất). Gửi đúng kết luận cũ thì không ghi gì.
+4. Nếu ngựa còn lệnh khóa huấn luyện đang hiệu lực (kể cả lệnh giữ lại từ bệnh án trước), hệ thống bắt chọn gỡ khóa hoặc giữ kèm ngày dự kiến gỡ (theo F3.8 nghiệp vụ 7).
 4b. **Ngựa mất trong lúc điều trị:**
    - Bác sĩ đánh dấu ngựa mất. Bác sĩ không nhập ngày mất; hệ thống ghi ngày mất là ngày ghi nhận theo lịch câu lạc bộ (lý do ở F1.8).
    - Trước khi lưu, hệ thống hiện bảng xác nhận hệ quả giống F1.8 (số lớp bị rút, ô bị trả, GROOM bị bỏ, khóa tự gỡ, yêu cầu khám và lịch bị hủy). Bệnh án đang mở không làm bảng này bị chặn, vì bệnh án được đóng trước khi ghi nhận mất.
@@ -743,7 +744,8 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần cho mỗi ngày đến hạn: lịch bị dời sang ngày khác thì được nhắc lại theo ngày mới. *(BA chốt)* Người nhận: mọi bác sĩ và người làm lịch. Không đẩy thông báo nhắc trước hạn hay nhắc lại khi quá hạn; nhắc trước và quá hạn xem trên màn hình: bảng điều khiển y tế (khối lịch chăm sóc gồm lịch quá hạn và đến hạn trong 3 ngày tới) và màn Hôm nay của Groom (lịch giao Groom, có cờ quá hạn).
 6. Khi ngựa chuyển nhượng, các lịch đang Đã lên lịch tự hủy với lý do "Do chuyển nhượng".
 7. Không tạo lịch cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
-8. Ghi nhật ký khi tạo, dời, hủy và hoàn tất.
+8. Ghi nhật ký khi tạo, dời, hủy, hoàn tất và mở lại.
+9. Mở lại lịch đã hoàn tất (`POST /care-schedules/:id/reopen`, VETERINARIAN, bắt buộc lý do) khi bấm hoàn tất nhầm: lịch về Đã lên lịch, xóa người và thời điểm hoàn tất, giữ ngày đến hạn, được nhắc lại như thường. Lịch kế tiếp đã tạo lúc hoàn tất giữ nguyên. Lịch đang chờ hoặc đã hủy: 409. Lịch khám định kỳ và lịch tái khám không mở lại ở đây (đi theo buổi khám). Không nhập ngày làm thật; thời điểm hoàn tất là lúc bấm.
 
 ### Bảng use case
 

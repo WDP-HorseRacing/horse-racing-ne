@@ -43,7 +43,7 @@ export class CloseMedicalCaseDto {
   @ApiPropertyOptional({
     enum: CaseLockDecision,
     description:
-      'Bắt buộc khi lệnh khóa huấn luyện gắn với bệnh án còn hiệu lực',
+      'Bắt buộc khi ngựa còn lệnh khóa huấn luyện đang hiệu lực, kể cả lệnh giữ lại từ bệnh án trước',
   })
   @IsOptional()
   @IsEnum(CaseLockDecision)
@@ -65,6 +65,25 @@ export class CloseMedicalCaseDto {
   @IsOptional()
   @IsBoolean()
   deceased?: boolean;
+}
+
+/**
+ * Đính chính kết luận cuối của bệnh án đã đóng, bắt buộc lý do.
+ */
+export class CorrectCaseConclusionDto {
+  @ApiProperty({ minLength: 1, maxLength: 4000 })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(4000)
+  finalConclusion!: string;
+
+  @ApiProperty({ minLength: 1, maxLength: 500 })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason!: string;
 }
 
 /**

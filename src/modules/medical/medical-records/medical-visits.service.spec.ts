@@ -860,7 +860,7 @@ describe('MedicalVisitsService', () => {
         before: { status: ExamRequestStatus.EXAMINED, medicalRecordId: 'r1' },
         after: { status: ExamRequestStatus.PENDING, medicalRecordId: null },
         reason: 'Sai ngựa',
-        feature: 'MED_CASE_VISIT',
+        feature: 'MED_VISIT',
       });
       expect(events.publish).not.toHaveBeenCalled();
     });
@@ -882,7 +882,7 @@ describe('MedicalVisitsService', () => {
         to: HorseHealthStatus.ELIGIBLE,
         actorId: 'vet-1',
         reason: 'Hủy buổi khám: Sai ngựa',
-        feature: 'MED_CASE_VISIT',
+        feature: 'MED_VISIT',
       });
       expect(steps).toEqual([MEDICAL_HEALTH_CHANGED_EVENT, 'commit']);
       expect(result).toMatchObject({

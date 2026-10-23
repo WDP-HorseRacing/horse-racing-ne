@@ -295,3 +295,11 @@ Nguyên tắc chung: hệ thống chặn những giá trị làm hỏng dữ li�
 - Những lượt chưa ai làm (chưa điểm danh, đã báo vắng nhưng buổi còn giờ, lượt sắp tới đang tạm không đủ điều kiện hoặc bị khóa tập) chuyển sang Groom mới ngay khi đổi, nên Groom mới không bị sót việc. Lượt đã xong giữ tên người đã làm.
 
 **Đánh đổi đã biết:** CM phải đợi hết buổi mới đổi được người phụ trách; trong lúc đó HT lo lượt đang dở.
+
+## Khóa huấn luyện
+
+### 38. Ngựa hồi phục chậm hơn dự kiến, bác sĩ dời ngày gỡ khóa tập thế nào? (F3-8)
+
+**Trả lời:** Bác sĩ gỡ khóa hiện tại rồi đặt khóa mới với ngày gỡ dự kiến mới; khi đóng bệnh án mà chọn giữ khóa thì nhập luôn ngày mới. Mỗi lần đặt, gỡ đều ghi nhật ký người làm, thời điểm, lý do, và báo HT, CM, chủ ngựa, Groom. Ngày gỡ chỉ là dự kiến, ngựa chỉ tập lại khi bác sĩ gỡ khóa, nên không có trường hợp ngựa tự được tập khi chưa hồi phục.
+
+**Đánh đổi đã biết:** dời ngày bằng cách gỡ rồi đặt lại sinh hai thông báo (đã gỡ, rồi bị khóa) và lịch sử khóa thành hai dòng.

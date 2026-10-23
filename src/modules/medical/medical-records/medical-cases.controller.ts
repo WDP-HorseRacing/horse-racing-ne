@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
   CloseMedicalCaseDto,
+  CorrectCaseConclusionDto,
   CreateFollowUpVisitDto,
   MedicalCaseClosePreviewResponseDto,
   MedicalCaseDetailResponseDto,
@@ -105,7 +107,7 @@ export class MedicalCasesController {
   @ApiOperation({
     summary: 'Close a case with final conclusion',
     description:
-      'Lệnh khóa gắn bệnh án còn hiệu lực thì bắt buộc lockDecision (RELEASE hoặc KEEP kèm lockExpectedEnd). Bệnh án đã đóng: 409.',
+      'Ngựa còn lệnh khóa huấn luyện đang hiệu lực (kể cả lệnh giữ lại từ bệnh án trước) thì bắt buộc lockDecision (RELEASE hoặc KEEP kèm lockExpectedEnd). Bệnh án đã đóng: 409.',
   })
   @ApiCreatedResponse({ type: MedicalCaseResponseDto })
   close(
@@ -114,6 +116,22 @@ export class MedicalCasesController {
     @Body() body: CloseMedicalCaseDto,
   ): Promise<MedicalCaseResponseDto> {
     return this.cases.closeCase(actor, caseId, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Patch('medical-cases/:caseId/conclusion')
+  @ApiOperation({
+    summary: 'Correct the final conclusion of a closed case with a reason',
+    description:
+      'Chỉ đổi kết luận cuối, ghi nhật ký kèm lý do, không báo ai. Kết luận trùng kết luận cũ thì không ghi gì. Bệnh án đang điều trị hoặc đã hủy: 409. Ngựa đã chuyển nhượng hoặc đã mất: 409.',
+  })
+  @ApiOkResponse({ type: MedicalCaseResponseDto })
+  correctConclusion(
+    @CurrentUser() actor: Actor,
+    @Param('caseId', ParseUUIDPipe) caseId: string,
+    @Body() body: CorrectCaseConclusionDto,
+  ): Promise<MedicalCaseResponseDto> {
+    return this.cases.correctConclusion(actor, caseId, body);
   }
 
   @Access([UserRole.CLUB_MANAGER])

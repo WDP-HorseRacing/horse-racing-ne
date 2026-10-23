@@ -2388,6 +2388,53 @@
         ]
       }
     },
+    "/api/v1/care-schedules/{id}/reopen": {
+      "post": {
+        "description": "Lịch về Đã lên lịch, giữ ngày đến hạn; lịch lần tới đã tạo lúc hoàn tất giữ nguyên. Ngày hẹn khám định kỳ, lịch tái khám: 404. Lịch chưa hoàn tất hoặc đã hủy: 409.",
+        "operationId": "CareSchedulesController_reopen",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReopenCareScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareScheduleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reopen a completed care schedule with a reason",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
     "/api/v1/medical/checkups": {
       "get": {
         "description": "Chu kỳ cố định 30 ngày. Quá hạn lên đầu rồi tới đến hạn. Không tính ngựa đã chuyển nhượng và hồ sơ đã xóa.",
@@ -3184,7 +3231,7 @@
     },
     "/api/v1/medical-cases/{caseId}/close": {
       "post": {
-        "description": "Lệnh khóa gắn bệnh án còn hiệu lực thì bắt buộc lockDecision (RELEASE hoặc KEEP kèm lockExpectedEnd). Bệnh án đã đóng: 409.",
+        "description": "Ngựa còn lệnh khóa huấn luyện đang hiệu lực (kể cả lệnh giữ lại từ bệnh án trước) thì bắt buộc lockDecision (RELEASE hoặc KEEP kèm lockExpectedEnd). Bệnh án đã đóng: 409.",
         "operationId": "MedicalCasesController_close",
         "parameters": [
           {
@@ -3224,6 +3271,53 @@
           }
         ],
         "summary": "Close a case with final conclusion",
+        "tags": [
+          "medical"
+        ]
+      }
+    },
+    "/api/v1/medical-cases/{caseId}/conclusion": {
+      "patch": {
+        "description": "Chỉ đổi kết luận cuối, ghi nhật ký kèm lý do, không báo ai. Kết luận trùng kết luận cũ thì không ghi gì. Bệnh án đang điều trị hoặc đã hủy: 409. Ngựa đã chuyển nhượng hoặc đã mất: 409.",
+        "operationId": "MedicalCasesController_correctConclusion",
+        "parameters": [
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectCaseConclusionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalCaseResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Correct the final conclusion of a closed case with a reason",
         "tags": [
           "medical"
         ]
@@ -12528,6 +12622,19 @@
           "reason"
         ]
       },
+      "ReopenCareScheduleDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "CheckupAppointmentDto": {
         "type": "object",
         "properties": {
@@ -14101,7 +14208,7 @@
               "RELEASE",
               "KEEP"
             ],
-            "description": "Bắt buộc khi lệnh khóa huấn luyện gắn với bệnh án còn hiệu lực"
+            "description": "Bắt buộc khi ngựa còn lệnh khóa huấn luyện đang hiệu lực, kể cả lệnh giữ lại từ bệnh án trước"
           },
           "lockExpectedEnd": {
             "type": "string",
@@ -14116,6 +14223,25 @@
         },
         "required": [
           "finalConclusion"
+        ]
+      },
+      "CorrectCaseConclusionDto": {
+        "type": "object",
+        "properties": {
+          "finalConclusion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "finalConclusion",
+          "reason"
         ]
       },
       "MedicalCostReportRowDto": {

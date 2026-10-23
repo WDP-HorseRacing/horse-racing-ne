@@ -343,6 +343,10 @@ export class MedicalVisitsService {
         lock: { mode: 'for_no_key_update' },
       });
       assertVisitAuthor(visit.vetId, caller.id, VISIT_VOID_AUTHOR_ONLY_MESSAGE);
+      const feature =
+        visit.kind === MedicalVisitKind.FOLLOW_UP
+          ? MEDICAL_AUDIT_FEATURE.CASE_VISIT
+          : MEDICAL_AUDIT_FEATURE.STANDALONE_VISIT;
       const medicalCase = visit.caseId
         ? await manager.findOneOrFail(MedicalCaseEntity, {
             where: { id: visit.caseId },
@@ -376,7 +380,7 @@ export class MedicalVisitsService {
           medicalRecordId: recordId,
           reason: body.reason,
           actorId: caller.id,
-          feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
+          feature,
         },
       );
       await this.visitWrites.reopenRequests(manager, {
@@ -384,7 +388,7 @@ export class MedicalVisitsService {
         callerId: caller.id,
         reason: body.reason,
         duplicateReason: DUPLICATE_ALERT_REQUEST_REASON,
-        feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
+        feature,
       });
       const laterChange =
         visit.healthBefore !== null &&
@@ -408,7 +412,7 @@ export class MedicalVisitsService {
               to: visit.healthBefore as HorseHealthStatus,
               actorId: caller.id,
               reason: `Hủy buổi khám: ${body.reason}`,
-              feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
+              feature,
             })
           : null;
       const checkupAppointmentReopened =
@@ -430,7 +434,7 @@ export class MedicalVisitsService {
           checkupAppointmentReopened,
         },
         reason: body.reason,
-        feature: MEDICAL_AUDIT_FEATURE.CASE_VISIT,
+        feature,
       });
       const cancelledCase =
         action === VisitVoidAction.VOID_AND_CANCEL_CASE && medicalCase

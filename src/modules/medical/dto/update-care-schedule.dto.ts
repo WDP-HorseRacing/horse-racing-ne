@@ -76,6 +76,18 @@ export class CancelCareScheduleDto {
 }
 
 /**
+ * Mở lại lịch chăm sóc đã hoàn tất, bắt buộc lý do.
+ */
+export class ReopenCareScheduleDto {
+  @ApiProperty({ minLength: 1, maxLength: 500 })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason!: string;
+}
+
+/**
  * Hoàn tất lịch chăm sóc, tùy chọn hẹn luôn lần tới.
  */
 export class CompleteCareScheduleDto {

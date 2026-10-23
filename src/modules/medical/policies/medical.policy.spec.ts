@@ -32,6 +32,7 @@ import {
   assertCareAssigneeAllowed,
   assertCareDueDate,
   assertCareScheduleOpen,
+  assertCareScheduleReopenable,
   assertAppointmentDate,
   assertRescheduleReason,
   checkupStateOf,
@@ -42,6 +43,7 @@ import {
   assertCanRequestExam,
   assertRequestPending,
   examRequestSourceFor,
+  assertCaseConclusionCorrectable,
   assertCaseOpen,
   assertInjuriesHealedBeforeClose,
   assertInjuryUpdates,
@@ -297,6 +299,18 @@ describe('medical.policy', () => {
         ConflictException,
       );
       expect(() => assertCaseOpen(MedicalCaseStatus.OPEN)).not.toThrow();
+    });
+
+    it('corrects the final conclusion of a closed case only', () => {
+      expect(() =>
+        assertCaseConclusionCorrectable(MedicalCaseStatus.CLOSED),
+      ).not.toThrow();
+      expect(() =>
+        assertCaseConclusionCorrectable(MedicalCaseStatus.OPEN),
+      ).toThrow(ConflictException);
+      expect(() =>
+        assertCaseConclusionCorrectable(MedicalCaseStatus.CANCELLED),
+      ).toThrow(ConflictException);
     });
 
     it('lets only the author vet write on a visit, with the message of the action', () => {
@@ -656,6 +670,18 @@ describe('medical.policy', () => {
       ).toThrow(ConflictException);
       expect(() =>
         assertCareScheduleOpen(CareScheduleStatus.CANCELLED),
+      ).toThrow(ConflictException);
+    });
+
+    it('reopens only a completed care schedule', () => {
+      expect(() =>
+        assertCareScheduleReopenable(CareScheduleStatus.COMPLETED),
+      ).not.toThrow();
+      expect(() =>
+        assertCareScheduleReopenable(CareScheduleStatus.SCHEDULED),
+      ).toThrow(ConflictException);
+      expect(() =>
+        assertCareScheduleReopenable(CareScheduleStatus.CANCELLED),
       ).toThrow(ConflictException);
     });
 

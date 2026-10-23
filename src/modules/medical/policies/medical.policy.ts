@@ -304,6 +304,22 @@ export function assertCaseOpen(status: MedicalCaseStatus): void {
 }
 
 /**
+ * Chỉ đính chính kết luận cuối của bệnh án đã đóng
+ *
+ * @param status Trạng thái bệnh án
+ * @throws ConflictException Nếu bệnh án đang điều trị hoặc đã hủy
+ */
+export function assertCaseConclusionCorrectable(
+  status: MedicalCaseStatus,
+): void {
+  if (status !== MedicalCaseStatus.CLOSED) {
+    throw new ConflictException(
+      'Chỉ đính chính được kết luận cuối của bệnh án đã đóng',
+    );
+  }
+}
+
+/**
  * Chỉ bác sĩ ghi buổi khám mới được thao tác ghi trên buổi khám đó (hủy, điều chỉnh chi phí)
  *
  * @param visitVetId UUID của bác sĩ ghi buổi khám
@@ -766,6 +782,18 @@ export function healthPriority(status: HorseHealthStatus): number {
 export function assertCareScheduleOpen(status: CareScheduleStatus): void {
   if (status !== CareScheduleStatus.SCHEDULED) {
     throw new ConflictException('Lịch chăm sóc đã hoàn tất hoặc đã hủy');
+  }
+}
+
+/**
+ * Chỉ mở lại lịch chăm sóc đang Hoàn tất
+ *
+ * @param status Trạng thái lịch chăm sóc
+ * @throws ConflictException Nếu lịch chưa hoàn tất hoặc đã hủy
+ */
+export function assertCareScheduleReopenable(status: CareScheduleStatus): void {
+  if (status !== CareScheduleStatus.COMPLETED) {
+    throw new ConflictException('Chỉ mở lại được lịch chăm sóc đã hoàn tất');
   }
 }
 

@@ -13,6 +13,13 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 - `PUT /horses/:id/groom` và `PUT /horses/:id/placement` (có giao Groom): ngựa có lượt tập Có mặt, Sẵn sàng hoặc Đang tập (bất kỳ lớp nào) nhận 409 "Ngựa đang ở buổi tập, đổi Groom sau khi buổi kết thúc", kể cả giao Groom lần đầu. FE hiện câu báo, cho đổi lại sau khi buổi kết thúc.
 - Đổi Groom thành công: lượt chuyển sang Groom mới gồm thêm lượt Chờ điểm danh, Vắng của buổi đang diễn ra (chưa hết giờ) và lượt Không đủ điều kiện, Hủy do khóa của buổi sắp tới. Lượt Vắng của buổi chưa hết giờ tính vào kiểm trùng giờ (409 trùng giờ như cũ, câu báo không đổi). Response không đổi.
 
+### Y tế: mở lại lịch chăm sóc, đính chính kết luận bệnh án, khóa giữ từ bệnh án trước
+
+- Route mới `POST /care-schedules/:id/reopen` (VET), body `{ reason }` bắt buộc (1–500 ký tự): mở lại lịch tiêm phòng, tẩy giun, làm móng đã hoàn tất nhầm, lịch về `SCHEDULED`, `completedAt`, `completedBy` về null. Lịch đang chờ hoặc đã hủy: 409 "Chỉ mở lại được lịch chăm sóc đã hoàn tất"; lịch khám định kỳ, tái khám: 404; ngựa đã chuyển nhượng, đã mất: 409. FE thêm nút "Mở lại" cho VET ở lịch đã hoàn tất.
+- Route mới `PATCH /medical-cases/:caseId/conclusion` (VET), body `{ finalConclusion, reason }` bắt buộc (1–4000, 1–500 ký tự): đính chính kết luận cuối của bệnh án đã đóng. Bệnh án đang điều trị hoặc đã hủy: 409 "Chỉ đính chính được kết luận cuối của bệnh án đã đóng"; ngựa đã mất, đã chuyển nhượng: 409. FE thêm nút "Đính chính kết luận" ở bệnh án đã đóng.
+- Đóng bệnh án và xem trước đóng bệnh án: ngựa còn lệnh khóa giữ lại từ bệnh án trước nay cũng bắt chọn `lockDecision` (gỡ hoặc giữ kèm ngày). Request, response không đổi.
+- `GET /audit-logs`: hủy buổi khám lẻ nay ghi `feature = MED_VISIT` (trước ghi `MED_CASE_VISIT`); dữ liệu cũ đã đổi theo. Hủy buổi tái khám trong bệnh án vẫn `MED_CASE_VISIT`.
+
 ## Ngày 22/10/2026
 
 ### Thông báo mới (request, response không đổi)

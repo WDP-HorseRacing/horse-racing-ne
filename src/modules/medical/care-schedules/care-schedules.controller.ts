@@ -23,6 +23,7 @@ import {
   CompleteCareScheduleDto,
   CompleteCareScheduleResponseDto,
   CreateCareScheduleDto,
+  ReopenCareScheduleDto,
   UpdateCareScheduleDto,
 } from '../dto';
 import { CareSchedulesService } from './care-schedules.service';
@@ -117,5 +118,21 @@ export class CareSchedulesController {
     @Body() body: CancelCareScheduleDto,
   ): Promise<CareScheduleResponseDto> {
     return this.careSchedules.cancel(actor, id, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Post('care-schedules/:id/reopen')
+  @ApiOperation({
+    summary: 'Reopen a completed care schedule with a reason',
+    description:
+      'Lịch về Đã lên lịch, giữ ngày đến hạn; lịch lần tới đã tạo lúc hoàn tất giữ nguyên. Ngày hẹn khám định kỳ, lịch tái khám: 404. Lịch chưa hoàn tất hoặc đã hủy: 409.',
+  })
+  @ApiCreatedResponse({ type: CareScheduleResponseDto })
+  reopen(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ReopenCareScheduleDto,
+  ): Promise<CareScheduleResponseDto> {
+    return this.careSchedules.reopen(actor, id, body);
   }
 }

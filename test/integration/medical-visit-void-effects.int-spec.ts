@@ -7,6 +7,7 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
+import { HorseMeasurementType } from '../../src/modules/horses/enums/horse-measurement-type.enum';
 import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import {
@@ -436,5 +437,81 @@ describe('MedicalVisitsService.voidVisit effects on requests and health (Postgre
     expect(await voidAudit(visit.id)).toMatchObject({
       checkupAppointmentReopened: false,
     });
+  });
+
+  const featuresOfVoid = async (void_: () => Promise<unknown>) => {
+    const before = await dataSource.query<{ id: string }[]>(
+      'SELECT id FROM audit_logs',
+    );
+    await void_();
+    const rows = await dataSource.query<
+      { entity_type: string; feature: string }[]
+    >(
+      `SELECT entity_type, feature FROM audit_logs
+        WHERE NOT (id = ANY($1::uuid[])) AND entity_type <> 'MEDICAL_CASE'
+        ORDER BY entity_type`,
+      [before.map((row) => row.id)],
+    );
+    return rows;
+  };
+
+  it('audits every write of a voided visit outside a case under the standalone visit feature', async () => {
+    const vet = await newVet();
+    const horse = await seed.horse('Winx');
+    const request = await seed.examRequest(horse);
+    const visit = await service.createStandaloneVisit(vet.actor, horse, {
+      kind: MedicalVisitKind.REQUEST,
+      conclusion: MedicalVisitConclusion.NORMAL,
+      requestIds: [request],
+      healthStatus: HorseHealthStatus.INJURED,
+      healthReason: 'Khám thấy',
+      measurements: [{ type: HorseMeasurementType.WEIGHT, value: 450 }],
+    });
+
+    const rows = await featuresOfVoid(() =>
+      service.voidVisit(vet.actor, visit.id, { reason: 'Nhầm ngựa' }),
+    );
+
+    expect(rows.map((row) => row.entity_type)).toEqual(
+      expect.arrayContaining([
+        'HORSE',
+        'MEDICAL_EXAM_REQUEST',
+        'MEDICAL_RECORD',
+      ]),
+    );
+    expect(rows.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(rows.map((row) => row.feature))).toEqual(
+      new Set(['MED_VISIT']),
+    );
+  });
+
+  it('audits every write of a voided follow-up visit under the case visit feature', async () => {
+    const vet = await newVet();
+    const horse = await seed.horse('Winx');
+    const opening = await service.createStandaloneVisit(vet.actor, horse, {
+      kind: MedicalVisitKind.ROUTINE,
+      conclusion: MedicalVisitConclusion.ISSUE,
+      initialDiagnosis: 'Viêm gân',
+    });
+    const followUp = await service.createFollowUpVisit(
+      vet.actor,
+      opening.caseId as string,
+      {
+        healthStatus: HorseHealthStatus.INJURED,
+        healthReason: 'Khám thấy',
+        measurements: [{ type: HorseMeasurementType.WEIGHT, value: 450 }],
+      },
+    );
+
+    const rows = await featuresOfVoid(() =>
+      service.voidVisit(vet.actor, followUp.id, { reason: 'Nhầm ngựa' }),
+    );
+
+    expect(rows.map((row) => row.entity_type)).toEqual(
+      expect.arrayContaining(['HORSE', 'MEDICAL_RECORD']),
+    );
+    expect(new Set(rows.map((row) => row.feature))).toEqual(
+      new Set(['MED_CASE_VISIT']),
+    );
   });
 });

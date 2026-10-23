@@ -24,6 +24,7 @@ import {
   CompleteCareScheduleDto,
   CompleteCareScheduleResponseDto,
   CreateCareScheduleDto,
+  ReopenCareScheduleDto,
   UpdateCareScheduleDto,
 } from '../dto';
 import { CareScheduleEntity } from '../entities/care-schedule.entity';
@@ -34,6 +35,7 @@ import {
   assertCareAssigneeAllowed,
   assertCareDueDate,
   assertCareScheduleOpen,
+  assertCareScheduleReopenable,
   assertRescheduleReason,
   careAssignment,
   isCareScheduleDoer,
@@ -376,6 +378,62 @@ export class CareSchedulesService {
       return { ...schedule, ...changes };
     });
     return toCareScheduleResponse(cancelled);
+  }
+
+  /**
+   * Bác sĩ mở lại lịch chăm sóc đã hoàn tất, bắt buộc lý do
+   *
+   * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row lịch
+   * - Không gồm ngày hẹn khám định kỳ và lịch tái khám: 404
+   * - Lịch không ở Hoàn tất: 409
+   * - Lịch về Đã lên lịch, bỏ thời điểm và người hoàn tất, giữ ngày đến hạn; lịch lần tới đã tạo lúc hoàn tất giữ nguyên
+   * - Ghi nhật ký trạng thái, thời điểm và người hoàn tất trước/sau kèm lý do
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param scheduleId UUID của lịch chăm sóc
+   * @param body Lý do mở lại
+   * @returns Promise trả về lịch sau khi mở lại
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có lịch, hoặc ngựa ngoài phạm vi
+   * @throws ConflictException Nếu lịch chưa hoàn tất hoặc đã hủy, hoặc ngựa đã chuyển nhượng hay đã mất
+   */
+  async reopen(
+    actor: Actor,
+    scheduleId: string,
+    body: ReopenCareScheduleDto,
+  ): Promise<CareScheduleResponseDto> {
+    const { horseId } = await this.findSchedule(scheduleId);
+    const reopened = await this.dataSource.transaction(async (manager) => {
+      const { caller } = await this.access.lockHorseForWrite(
+        manager,
+        actor,
+        horseId,
+      );
+      const schedule = await this.lockSchedule(manager, scheduleId);
+      assertCareScheduleReopenable(schedule.status);
+      const changes = {
+        status: CareScheduleStatus.SCHEDULED,
+        completedAt: null,
+        completedBy: null,
+      };
+      await manager.update(CareScheduleEntity, { id: scheduleId }, changes);
+      await this.audit.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.CARE_SCHEDULE,
+        entityId: scheduleId,
+        before: {
+          status: schedule.status,
+          completedAt: schedule.completedAt,
+          completedBy: schedule.completedBy,
+        },
+        after: changes,
+        reason: body.reason,
+        feature: MEDICAL_AUDIT_FEATURE.CARE_SCHEDULE,
+      });
+      return { ...schedule, ...changes };
+    });
+    return toCareScheduleResponse(reopened);
   }
 
   /**

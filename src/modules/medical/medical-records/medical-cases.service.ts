@@ -28,6 +28,7 @@ import {
 import { TrainingLockStatus } from '../constants/training-lock.enum';
 import {
   CloseMedicalCaseDto,
+  CorrectCaseConclusionDto,
   MedicalCaseClosePreviewResponseDto,
   MedicalCaseDetailResponseDto,
   MedicalCaseListQueryDto,
@@ -46,6 +47,7 @@ import {
   toMedicalCostReport,
 } from '../mappers/medical.mapper';
 import {
+  assertCaseConclusionCorrectable,
   assertCaseOpen,
   assertInjuriesHealedBeforeClose,
   unhealedInjuryCount,
@@ -189,7 +191,7 @@ export class MedicalCasesService {
   }
 
   /**
-   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa gắn bệnh án, trạng thái sức khỏe, yêu cầu khám đang chờ, số chấn thương chưa lành, và hệ quả nếu đóng kèm ghi nhận ngựa mất
+   * Lấy những gì bác sĩ cần xem trước khi đóng bệnh án: lệnh khóa tập đang hiệu lực của ngựa (kể cả lệnh giữ lại từ bệnh án trước), trạng thái sức khỏe, yêu cầu khám đang chờ, số chấn thương chưa lành, và hệ quả nếu đóng kèm ghi nhận ngựa mất
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param caseId UUID của bệnh án
@@ -212,7 +214,10 @@ export class MedicalCasesService {
     const [activeLock, pendingRequestCount, deathImpact, injuryStatuses] =
       await Promise.all([
         manager.findOne(TrainingLockEntity, {
-          where: { caseId, status: TrainingLockStatus.ACTIVE },
+          where: {
+            horseId: medicalCase.horseId,
+            status: TrainingLockStatus.ACTIVE,
+          },
         }),
         manager.count(MedicalExamRequestEntity, {
           where: {
@@ -239,7 +244,7 @@ export class MedicalCasesService {
    * Đóng bệnh án, chốt kết luận cuối
    *
    * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row bệnh án
-   * - Lệnh khóa gắn bệnh án còn hiệu lực: bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
+   * - Ngựa còn lệnh khóa tập đang hiệu lực (gắn bệnh án này hay giữ lại từ bệnh án trước): bắt chọn gỡ ngay hoặc giữ kèm ngày dự kiến gỡ; lệnh khóa giữ nguyên bệnh án đang gắn; mỗi nhánh ghi thêm một dòng nhật ký TRAINING_LOCK
    * - Trạng thái sức khỏe vẫn Chấn thương/Cách ly vẫn cho đóng
    * - Còn chấn thương chưa lành: 409, trừ khi đóng kèm ghi nhận ngựa mất
    * - Lịch tái khám đang chờ của bệnh án chuyển Đã hủy
@@ -278,7 +283,7 @@ export class MedicalCasesService {
       });
       assertCaseOpen(medicalCase.status);
       const activeLock = await manager.findOne(TrainingLockEntity, {
-        where: { caseId, status: TrainingLockStatus.ACTIVE },
+        where: { horseId, status: TrainingLockStatus.ACTIVE },
         lock: { mode: 'for_no_key_update' },
       });
       const lockExpectedEnd = body.lockExpectedEnd
@@ -427,6 +432,68 @@ export class MedicalCasesService {
       return { ...medicalCase, ...changes };
     });
     return toMedicalCaseResponse(closed, totalCost);
+  }
+
+  /**
+   * Bác sĩ đính chính kết luận cuối của bệnh án đã đóng, bắt buộc lý do
+   *
+   * - Chỉ Veterinarian (kiểm ở controller); khóa row ngựa rồi row bệnh án
+   * - Ngựa đã chuyển nhượng hoặc đã mất (kể cả bệnh án đóng kèm ghi nhận ngựa mất): 409
+   * - Bệnh án đang điều trị hoặc đã hủy: 409
+   * - Kết luận mới trùng kết luận cũ thì không ghi gì
+   * - Chỉ đổi kết luận cuối; thời điểm và người đóng giữ nguyên; ghi nhật ký kết luận trước/sau kèm lý do; không báo ai
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param caseId UUID của bệnh án
+   * @param body Kết luận cuối mới và lý do
+   * @returns Promise trả về bệnh án sau khi đính chính, kèm tổng chi phí
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có bệnh án, hoặc ngựa nằm ngoài phạm vi
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hay đã mất, hoặc bệnh án chưa đóng
+   */
+  async correctConclusion(
+    actor: Actor,
+    caseId: string,
+    body: CorrectCaseConclusionDto,
+  ): Promise<MedicalCaseResponseDto> {
+    const { horseId } = await this.findCase(caseId);
+    const result = await this.dataSource.transaction(async (manager) => {
+      const { caller } = await this.access.lockHorseForWrite(
+        manager,
+        actor,
+        horseId,
+      );
+      const medicalCase = await manager.findOneOrFail(MedicalCaseEntity, {
+        where: { id: caseId },
+        lock: { mode: 'for_no_key_update' },
+      });
+      assertCaseConclusionCorrectable(medicalCase.status);
+      if (medicalCase.finalConclusion !== body.finalConclusion) {
+        await manager.update(
+          MedicalCaseEntity,
+          { id: caseId },
+          { finalConclusion: body.finalConclusion },
+        );
+        await this.audit.record(manager, {
+          actorId: caller.id,
+          action: AuditAction.UPDATE,
+          entityType: AuditEntityType.MEDICAL_CASE,
+          entityId: caseId,
+          before: { finalConclusion: medicalCase.finalConclusion },
+          after: { finalConclusion: body.finalConclusion },
+          reason: body.reason,
+          feature: MEDICAL_AUDIT_FEATURE.CLOSE_CASE,
+        });
+      }
+      const visits = await manager.find(MedicalRecordEntity, {
+        where: { caseId, voidedAt: IsNull() },
+      });
+      return {
+        medicalCase: { ...medicalCase, finalConclusion: body.finalConclusion },
+        totalCost: visibleVisitCost(ALL_COST_VIEWER, visits),
+      };
+    });
+    return toMedicalCaseResponse(result.medicalCase, result.totalCost);
   }
 
   /**

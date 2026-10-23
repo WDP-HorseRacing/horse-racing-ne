@@ -18,7 +18,7 @@ export const VET_APPOINTMENT_TYPES: readonly CareScheduleType[] = [
 ];
 
 /**
- * Trạng thái lịch chăm sóc: COMPLETED và CANCELLED là trạng thái cuối.
+ * Trạng thái lịch chăm sóc: CANCELLED là trạng thái cuối; COMPLETED mở lại được về SCHEDULED.
  */
 export enum CareScheduleStatus {
   SCHEDULED = 'SCHEDULED',

@@ -1,6 +1,6 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 217 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 219 REST operations are registered under `/api/v1`.
 
 Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
@@ -91,6 +91,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | PATCH | `/api/v1/care-schedules/{id}` | Reschedule or reassign a care schedule |
 | POST | `/api/v1/care-schedules/{id}/cancel` | Cancel a care schedule with a reason |
 | POST | `/api/v1/care-schedules/{id}/complete` | Complete a care schedule |
+| POST | `/api/v1/care-schedules/{id}/reopen` | Reopen a completed care schedule with a reason |
 | GET | `/api/v1/exam-requests` | Exam request queue |
 | PATCH | `/api/v1/exam-requests/{id}` | Change the urgency of a pending exam request |
 | POST | `/api/v1/exam-requests/{id}/dismiss` | Dismiss an exam request with a reason |
@@ -112,6 +113,7 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | GET | `/api/v1/medical-cases/{caseId}` | Get a medical case with its visits |
 | POST | `/api/v1/medical-cases/{caseId}/close` | Close a case with final conclusion |
 | GET | `/api/v1/medical-cases/{caseId}/close-preview` | Preview what must be handled before closing a case |
+| PATCH | `/api/v1/medical-cases/{caseId}/conclusion` | Correct the final conclusion of a closed case with a reason |
 | POST | `/api/v1/medical-cases/{caseId}/visits` | Record a follow-up visit in an open case |
 | GET | `/api/v1/medical-records/{id}` | Get a medical visit |
 | PATCH | `/api/v1/medical-records/{id}` | Edit a medical visit with a reason |
