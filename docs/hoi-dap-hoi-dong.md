@@ -1,6 +1,6 @@
 # Hỏi đáp chuẩn bị bảo vệ
 
-Cập nhật: 22/10/2026
+Cập nhật: 23/10/2026
 
 Các câu hội đồng có thể hỏi về những quyết định nghiệp vụ "cố ý không làm" hoặc "chọn cách đơn giản", kèm câu trả lời ngắn và lý do. Mã trong ngoặc là mã mục trong bản rà nghiệp vụ.
 
@@ -267,3 +267,31 @@ Nguyên tắc chung: hệ thống chặn những giá trị làm hỏng dữ li�
 **Trả lời:** Có thể, trong một ca hiếm: lần gửi thông báo khóa tập bị lỗi và được thử lại sau khi đã gỡ khóa, vì thông báo mang giờ gửi được thay vì giờ xảy ra. Trạng thái khóa thật luôn đúng trên hồ sơ ngựa và ở bước xếp lượt tập, nên không xếp sai được; thông báo chỉ là lời nhắc.
 
 **Đánh đổi đã biết:** cách sửa (thông báo mang giờ xảy ra của sự việc) đã ghi ở nợ kỹ thuật thông báo, làm khi cần.
+
+## Quyền xem thông tin sở hữu
+
+### 35. Groom, HT, bác sĩ xem được lý do chuyển chủ (số hợp đồng, ngày ký) có lộ thông tin giao dịch không? (F1-15)
+
+**Trả lời:** Ô lý do chỉ ghi lý do, số hợp đồng hoặc ngày ký để tra cứu, không ghi giá hay điều khoản. Nhân viên chuồng cần biết ngựa đang thuộc ai, từ ngày nào (để báo đúng chủ, tính đúng phí); số hợp đồng đi kèm không gây hại. Chủ ngựa chỉ thấy các giai đoạn của chính mình.
+
+**Đánh đổi đã biết:** nếu CM ghi thông tin nhạy cảm vào ô lý do thì mọi vai trò xem ngựa đều thấy; quy ước nhập là không ghi giá.
+
+### 36. Chủ cũ đã bán ngựa có xem lại được bệnh án, lịch tập trong thời gian mình sở hữu không? (F1-16)
+
+**Trả lời:** Chủ cũ (bán ra ngoài hoặc chuyển cho chủ khác trong câu lạc bộ) xem được danh sách ngựa từng sở hữu và hồ sơ cơ bản: tên, ảnh, giới tính, ngày sinh, màu lông, phả hệ, các khoảng thời gian đã sở hữu. Bệnh án và lượt tập thuộc về con ngựa và chủ hiện tại, nên chủ cũ không xem trực tiếp. Các khoản chi phí trong thời gian sở hữu vẫn nằm trong báo cáo chi phí của chủ cũ; có thắc mắc thì Club Manager tra và cung cấp.
+
+**Đánh đổi đã biết:** chủ cũ muốn xem chi tiết một lần khám phải hỏi Club Manager.
+
+## Phân công Groom
+
+### 37. Groom vắng đột xuất giữa buổi tập, sao không cho đổi hay giao Groom ngay lúc đó? Ngựa chưa có Groom cũng phải chờ? (F1-18)
+
+**Trả lời:** Khi ngựa đang ở buổi tập (đã điểm danh, đã sẵn sàng hoặc đang chạy), hệ thống không đổi người phụ trách ngựa, kể cả giao Groom lần đầu; hết buổi thì đổi bình thường. Cùng nguyên tắc với đổi khu.
+
+**Lý do:**
+- Trách nhiệm rõ ràng: lượt tập nào đã điểm danh thì người đó dắt tới cuối, nhật ký không có lượt "nửa đầu người này, nửa sau người kia".
+- Bàn giao ngựa diễn ra ở chuồng: Groom mới nhận ngựa, xem tình trạng và đồ dùng tại chuồng, không nhận giữa sân tập.
+- Không có ca bế tắc: lượt đang dở do Head Trainer của lớp tự thao tác (điểm danh, sẵn sàng, bắt đầu), hoặc HT giao riêng lượt đó cho một Groom dắt hộ. Thời gian chờ tối đa là tới hết buổi.
+- Những lượt chưa ai làm (chưa điểm danh, đã báo vắng nhưng buổi còn giờ, lượt sắp tới đang tạm không đủ điều kiện hoặc bị khóa tập) chuyển sang Groom mới ngay khi đổi, nên Groom mới không bị sót việc. Lượt đã xong giữ tên người đã làm.
+
+**Đánh đổi đã biết:** CM phải đợi hết buổi mới đổi được người phụ trách; trong lúc đó HT lo lượt đang dở.

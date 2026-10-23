@@ -450,6 +450,7 @@ describe('groom run clash policy', () => {
     ...extra,
   });
   const target = run('A', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z');
+  const NOW = new Date('2026-10-10T00:00:00Z');
 
   it('finds a run of another session whose window intersects', () => {
     const busy = run('B', '2026-10-10T01:30:00Z', '2026-10-10T03:00:00Z');
@@ -521,12 +522,51 @@ describe('groom run clash policy', () => {
       run('B', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z'),
       run('E', '2026-10-11T01:30:00Z', '2026-10-11T02:30:00Z'),
     ];
-    expect(() => assertGroomFreeForMovedRuns([target, second], busy)).toThrow(
+    expect(() =>
+      assertGroomFreeForMovedRuns([target, second], busy, NOW),
+    ).toThrow(
       new ConflictException(
         'Groom mới đang dắt lượt trùng giờ: buổi "A" lúc 08:00 ngày 10/10/2026 trùng lượt ngựa Ngựa B ở buổi "B" lúc 08:00 ngày 10/10/2026; buổi "D" lúc 08:00 ngày 11/10/2026 trùng lượt ngựa Ngựa E ở buổi "E" lúc 08:30 ngày 11/10/2026. Giao lại người dắt các lượt này trước khi đổi Groom',
       ),
     );
-    expect(() => assertGroomFreeForMovedRuns([target], [])).not.toThrow();
+    expect(() => assertGroomFreeForMovedRuns([target], [], NOW)).not.toThrow();
+  });
+
+  it('counts ABSENT runs of sessions not yet ended on either side when moving runs', () => {
+    const now = new Date('2026-10-10T01:30:00Z');
+    const absent = run('B', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', {
+      status: SessionParticipantStatus.ABSENT,
+    });
+    const absentTarget = run(
+      'A',
+      '2026-10-10T01:00:00Z',
+      '2026-10-10T02:00:00Z',
+      { status: SessionParticipantStatus.ABSENT },
+    );
+    const busy = run('B', '2026-10-10T01:30:00Z', '2026-10-10T03:00:00Z');
+    expect(() => assertGroomFreeForMovedRuns([target], [absent], now)).toThrow(
+      ConflictException,
+    );
+    expect(() =>
+      assertGroomFreeForMovedRuns([absentTarget], [busy], now),
+    ).toThrow(ConflictException);
+  });
+
+  it('ignores ABSENT runs of ended or cancelled sessions when moving runs', () => {
+    const ended = run('B', '2026-10-10T00:30:00Z', '2026-10-10T01:30:00Z', {
+      status: SessionParticipantStatus.ABSENT,
+    });
+    const cancelled = run('C', '2026-10-10T01:00:00Z', '2026-10-10T02:00:00Z', {
+      status: SessionParticipantStatus.ABSENT,
+      sessionStatus: TrainingSessionStatus.CANCELLED,
+    });
+    expect(() =>
+      assertGroomFreeForMovedRuns(
+        [target],
+        [ended, cancelled],
+        new Date('2026-10-10T01:30:00Z'),
+      ),
+    ).not.toThrow();
   });
 
   it('rejects automatic groom assignment listing each clashing pair', () => {

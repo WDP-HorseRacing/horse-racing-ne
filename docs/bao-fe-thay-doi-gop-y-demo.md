@@ -1,10 +1,17 @@
 # Thay đổi API cần FE cập nhật
 
-Cập nhật: 2026-10-22
+Cập nhật: 2026-10-23
 
 Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, HT = Head Trainer, VET = bác sĩ thú y, GROOM = người chăm ngựa, OWNER = chủ ngựa. Lỗi vẫn theo format chung. Schema chi tiết: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
 Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều ngày thì mục của ngày mới nhất là hành vi hiện tại; phần cũ đã bị thay có ghi "(đã thay ở ...)". API chặn field lạ: gửi field không có trong request là 400 "Không nhận ô `<tên ô>`", không ghi gì.
+
+## Ngày 23/10/2026
+
+### Đổi, giao Groom bị chặn khi ngựa đang ở buổi tập
+
+- `PUT /horses/:id/groom` và `PUT /horses/:id/placement` (có giao Groom): ngựa có lượt tập Có mặt, Sẵn sàng hoặc Đang tập (bất kỳ lớp nào) nhận 409 "Ngựa đang ở buổi tập, đổi Groom sau khi buổi kết thúc", kể cả giao Groom lần đầu. FE hiện câu báo, cho đổi lại sau khi buổi kết thúc.
+- Đổi Groom thành công: lượt chuyển sang Groom mới gồm thêm lượt Chờ điểm danh, Vắng của buổi đang diễn ra (chưa hết giờ) và lượt Không đủ điều kiện, Hủy do khóa của buổi sắp tới. Lượt Vắng của buổi chưa hết giờ tính vào kiểm trùng giờ (409 trùng giờ như cũ, câu báo không đổi). Response không đổi.
 
 ## Ngày 22/10/2026
 

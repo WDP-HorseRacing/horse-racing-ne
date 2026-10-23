@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
@@ -37,6 +37,12 @@ const GROOM_CONFLICT_MESSAGES: Record<string, string> = {
   groom_assignments_active_horse_uq:
     'Ngựa vừa được giao groom khác, vui lòng tải lại',
 };
+
+/**
+ * Câu báo khi ngựa đang ở buổi tập nên chưa đổi được Groom
+ */
+const ON_SITE_GROOM_CHANGE_REASON =
+  'Ngựa đang ở buổi tập, đổi Groom sau khi buổi kết thúc';
 
 @Injectable()
 export class GroomAssignmentsService {
@@ -86,7 +92,8 @@ export class GroomAssignmentsService {
    * - Đổi groom: đóng phân công cũ, mở phân công mới, chuyển checklist từ hôm nay trở đi của groom cũ sang groom mới, kể cả checklist đã hoàn thành.
    * - Giao lại đúng groom đang phụ trách thì không thay đổi gì.
    * - Ngựa chưa có checklist hôm nay thì sinh cho groom mới.
-   * - Giao hoặc đổi groom: chuyển các lượt tập tương lai của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom); một lượt trùng giờ với lượt groom mới đang dắt thì 409 cả thao tác; nhật ký ghi thêm movedParticipantIds.
+   * - Ngựa đang ở buổi tập (có lượt PRESENT, READY hoặc ONGOING ở bất kỳ lớp nào) thì 409, kể cả khi giao groom lần đầu; giao lại đúng groom đang phụ trách vẫn không thay đổi gì.
+   * - Giao hoặc đổi groom: chuyển các lượt chưa diễn ra của groom cũ và các lượt chưa ai dắt sang groom mới (TrainingOperationsFacade.moveFutureParticipantsToGroom): PLANNED, ABSENT của buổi chưa tới giờ kết thúc; INELIGIBLE, CANCELLED_BY_LOCK của buổi chưa tới giờ bắt đầu. Lượt đã kết thúc và lượt ABSENT của buổi đã hết giờ giữ groom cũ. Một lượt trùng giờ với lượt groom mới đang dắt thì 409 cả thao tác; nhật ký ghi thêm movedParticipantIds.
    * - Ghi GROOM_ASSIGNMENT_CHANGED_EVENT vào outbox trong cùng transaction để module notifications báo Groom mới được phân công và Groom cũ (nếu có) không còn phụ trách.
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -95,7 +102,7 @@ export class GroomAssignmentsService {
    * @returns Promise chứa phân công groom đang mở của ngựa sau thao tác
    * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu của ngựa không hoạt động, groom không còn hoạt động, ngựa đang ở buổi tập, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
    */
   async assign(
@@ -126,7 +133,8 @@ export class GroomAssignmentsService {
    * Giao hoặc đổi groom cho ngựa, chạy trong transaction của nơi gọi (luật như assign)
    *
    * - Ngựa chưa có checklist hôm nay thì sinh cho groom mới
-   * - Khóa khu của ngựa, ngựa, phân công đang mở, checklist từ hôm nay, các lượt mở sắp tới của ngựa, rồi mới khóa user Groom và kiểm lại Groom
+   * - Khóa khu của ngựa, ngựa, phân công đang mở, checklist từ hôm nay, các lượt của ngựa có thể chuyển sang groom mới, rồi mới khóa user Groom và kiểm lại Groom
+   * - Đổi sang groom khác mà ngựa đang ở buổi tập (lượt PRESENT, READY hoặc ONGOING) thì 409, kiểm sau khi khóa xong
    * - Không ghi event; nơi gọi ghi GROOM_ASSIGNMENT_CHANGED_EVENT với changedEvent trả về vào outbox trong cùng transaction
    *
    * @param manager EntityManager của transaction đang chạy
@@ -137,7 +145,7 @@ export class GroomAssignmentsService {
    * @throws BadRequestException Nếu groom không có hoặc không phải Groom
    * @throws NotFoundException Nếu không có ngựa hoặc không có khu
    * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
-   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, groom không còn hoạt động, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng, khu không hoạt động, groom không còn hoạt động, ngựa đang ở buổi tập, một lượt tập sẽ chuyển trùng giờ với lượt groom mới đang dắt, hoặc có thao tác khác chạy cùng lúc
    */
   async assignInTransaction(
     manager: EntityManager,
@@ -172,7 +180,7 @@ export class GroomAssignmentsService {
         horseId,
         clubToday(),
       );
-      await this.training.lockOpenFutureParticipantsOfHorse(
+      await this.training.lockGroomMovableParticipantsOfHorse(
         manager,
         horseId,
         new Date(),
@@ -188,6 +196,9 @@ export class GroomAssignmentsService {
           response: toGroomAssignmentResponse({ ...current, groom }),
           changedEvent: null,
         };
+      }
+      if (await this.training.hasOnSiteParticipant(manager, horseId)) {
+        throw new ConflictException(ON_SITE_GROOM_CHANGE_REASON);
       }
       const now = new Date();
       // Chuyển checklist của groom cũ sang groom mới (nếu có và groom rãnh khung giờ đó)

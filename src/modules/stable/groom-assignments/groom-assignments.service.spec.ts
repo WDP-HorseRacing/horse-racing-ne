@@ -85,7 +85,8 @@ describe('GroomAssignmentsService', () => {
   let events: { publish: jest.Mock };
   let training: {
     moveFutureParticipantsToGroom: jest.Mock;
-    lockOpenFutureParticipantsOfHorse: jest.Mock;
+    lockGroomMovableParticipantsOfHorse: jest.Mock;
+    hasOnSiteParticipant: jest.Mock;
   };
   let transaction: jest.Mock;
   let service: GroomAssignmentsService;
@@ -145,7 +146,10 @@ describe('GroomAssignmentsService', () => {
     events = { publish: jest.fn().mockResolvedValue(undefined) };
     training = {
       moveFutureParticipantsToGroom: jest.fn().mockResolvedValue(['p1', 'p2']),
-      lockOpenFutureParticipantsOfHorse: jest.fn().mockResolvedValue(undefined),
+      lockGroomMovableParticipantsOfHorse: jest
+        .fn()
+        .mockResolvedValue(undefined),
+      hasOnSiteParticipant: jest.fn().mockResolvedValue(false),
     };
     transaction = jest.fn((work: (m: typeof manager) => Promise<unknown>) =>
       work(manager),
@@ -185,6 +189,19 @@ describe('GroomAssignmentsService', () => {
         new ConflictException('Groom phụ trách không ở trạng thái hoạt động'),
       );
       expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects with 409 after locking when the horse is at a training session, writing nothing', async () => {
+      training.hasOnSiteParticipant.mockResolvedValue(true);
+      await expect(assign()).rejects.toThrow(
+        new ConflictException(
+          'Ngựa đang ở buổi tập, đổi Groom sau khi buổi kết thúc',
+        ),
+      );
+      expect(training.lockGroomMovableParticipantsOfHorse).toHaveBeenCalled();
+      expect(training.moveFutureParticipantsToGroom).not.toHaveBeenCalled();
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
     });
 
     it('rejects a user who is not a groom with 400', async () => {

@@ -6122,7 +6122,7 @@
     },
     "/api/v1/horses/{id}/groom": {
       "put": {
-        "description": "Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Future training participations of the horse (PLANNED/PRESENT/READY, sessions starting from now) that belong to the old groom or have no groom are moved to the new groom; if the horse had no groom, only the participations with no groom are filled. Assigning the current groom again changes nothing.",
+        "description": "Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Returns 409 while the horse is at a training session (a participation PRESENT, READY or ONGOING in any class), including a first assignment. Participations of the old groom or with no groom are moved to the new groom: PLANNED and ABSENT of sessions not yet ended, INELIGIBLE and CANCELLED_BY_LOCK of sessions not yet started; if the horse had no groom, only the participations with no groom are filled. Finished participations and ABSENT of ended sessions keep the old groom. Assigning the current groom again changes nothing.",
         "operationId": "GroomAssignmentsController_assign",
         "parameters": [
           {

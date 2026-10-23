@@ -281,7 +281,7 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
     new TrainingAccessService({} as DataSource, {} as HorseAccessService),
   );
 
-  it('targets open future participants of the horse assigned to the old groom or to nobody', async () => {
+  it('targets participants not yet run of the horse assigned to the old groom or to nobody', async () => {
     const { manager, participantQb } = buildManager([], []);
 
     await facade.moveFutureParticipantsToGroom(
@@ -301,18 +301,18 @@ describe('TrainingOperationsFacade.moveFutureParticipantsToGroom', () => {
       { previousGroomId: 'g-old' },
     );
     expect(participantQb.andWhere).toHaveBeenCalledWith(
-      'participant.status IN (:...statuses)',
+      '((participant.status IN (:...untilEndStatuses) AND session.scheduled_end_at > :now) OR (participant.status IN (:...beforeStartStatuses) AND session.scheduled_start_at >= :now))',
       {
-        statuses: [
+        now: AT,
+        untilEndStatuses: [
           SessionParticipantStatus.PLANNED,
-          SessionParticipantStatus.PRESENT,
-          SessionParticipantStatus.READY,
+          SessionParticipantStatus.ABSENT,
+        ],
+        beforeStartStatuses: [
+          SessionParticipantStatus.INELIGIBLE,
+          SessionParticipantStatus.CANCELLED_BY_LOCK,
         ],
       },
-    );
-    expect(participantQb.andWhere).toHaveBeenCalledWith(
-      'session.scheduled_start_at >= :from',
-      { from: AT },
     );
     expect(participantQb.setLock).toHaveBeenCalledWith(
       'for_no_key_update',

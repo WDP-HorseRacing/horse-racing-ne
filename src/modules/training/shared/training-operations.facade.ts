@@ -76,6 +76,33 @@ export const ON_SITE_PARTICIPANT_BARN_CHANGE_REASON =
 
 const NO_PARTICIPANT_LEFT_REASON = 'Không còn ngựa tham gia';
 
+const GROOM_MOVABLE_UNTIL_SESSION_END_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.ABSENT,
+];
+
+const GROOM_MOVABLE_BEFORE_SESSION_START_STATUSES = [
+  SessionParticipantStatus.INELIGIBLE,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+];
+
+const GROOM_MOVABLE_PARTICIPANT_CONDITION =
+  '((participant.status IN (:...untilEndStatuses) AND session.scheduled_end_at > :now) OR (participant.status IN (:...beforeStartStatuses) AND session.scheduled_start_at >= :now))';
+
+/**
+ * Tham số cho GROOM_MOVABLE_PARTICIPANT_CONDITION tại một thời điểm
+ *
+ * @param now Thời điểm đổi Groom
+ * @returns Tham số truyền cho QueryBuilder
+ */
+function groomMovableParticipantParams(now: Date): Record<string, unknown> {
+  return {
+    now,
+    untilEndStatuses: GROOM_MOVABLE_UNTIL_SESSION_END_STATUSES,
+    beforeStartStatuses: GROOM_MOVABLE_BEFORE_SESSION_START_STATUSES,
+  };
+}
+
 const REEVALUATED_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.PLANNED,
   SessionParticipantStatus.CANCELLED_BY_LOCK,
@@ -562,19 +589,21 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Khóa các lượt PLANNED, PRESENT, READY của một con ngựa ở các buổi bắt đầu từ một thời điểm trở đi, theo thứ tự UUID, chạy trong transaction của nơi gọi
+   * Khóa các lượt của một con ngựa có thể chuyển sang Groom mới tại một thời điểm, theo thứ tự UUID, chạy trong transaction của nơi gọi
    *
-   * - Không kiểm gì, không ném lỗi
+   * - Lượt PLANNED hoặc ABSENT của buổi chưa tới giờ kết thúc
+   * - Lượt INELIGIBLE hoặc CANCELLED_BY_LOCK của buổi chưa tới giờ bắt đầu
+   * - Khóa cả lượt đang giao cho Groom khác; không kiểm gì, không ném lỗi
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
-   * @param from Thời điểm bắt đầu xét
+   * @param now Thời điểm đổi Groom
    * @returns Promise hoàn tất khi đã khóa xong
    */
-  async lockOpenFutureParticipantsOfHorse(
+  async lockGroomMovableParticipantsOfHorse(
     manager: EntityManager,
     horseId: string,
-    from: Date,
+    now: Date,
   ): Promise<void> {
     const rows = await manager
       .getRepository(SessionParticipantEntity)
@@ -586,10 +615,10 @@ export class TrainingOperationsFacade {
         'session.id = participant.session_id',
       )
       .where('participant.horse_id = :horseId', { horseId })
-      .andWhere('participant.status IN (:...statuses)', {
-        statuses: OPEN_PARTICIPANT_STATUSES,
-      })
-      .andWhere('session.scheduled_start_at >= :from', { from })
+      .andWhere(
+        GROOM_MOVABLE_PARTICIPANT_CONDITION,
+        groomMovableParticipantParams(now),
+      )
       .getRawMany<{ id: string }>();
     await this.access.lockParticipants(
       manager,
@@ -676,19 +705,21 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Chuyển các lượt tham gia buổi tập tương lai của một con ngựa sang groom mới, chạy trong transaction của nơi gọi.
+   * Chuyển các lượt tham gia buổi tập chưa diễn ra của một con ngựa sang groom mới, chạy trong transaction của nơi gọi.
    *
    * - Chuyển lượt đang giao cho groom cũ và lượt chưa ai dắt; lượt giao cho người khác giữ nguyên
    * - `previousGroomId` null: chỉ điền các lượt chưa ai dắt
-   * - Chỉ lượt PLANNED/PRESENT/READY của buổi bắt đầu từ `from` trở đi; lượt ONGOING và lượt đã kết thúc giữ tên người đã làm
-   * - Lock các lượt sẽ chuyển rồi kiểm Groom mới không dắt lượt nào trùng giờ (assertGroomFreeForMovedRuns) trước khi ghi
+   * - Lượt PLANNED hoặc ABSENT của buổi chưa tới giờ kết thúc được chuyển, kể cả buổi đã tới giờ bắt đầu
+   * - Lượt INELIGIBLE hoặc CANCELLED_BY_LOCK của buổi chưa tới giờ bắt đầu được chuyển
+   * - Lượt PRESENT, READY, ONGOING, lượt đã kết thúc (COMPLETED, STOPPED, SKIPPED, CANCELLED) và lượt ABSENT của buổi đã hết giờ giữ tên người đã làm
+   * - Lock các lượt sẽ chuyển rồi kiểm Groom mới không dắt lượt nào trùng giờ (assertGroomFreeForMovedRuns, tính cả lượt ABSENT của buổi chưa hết giờ) trước khi ghi
    * - Không kiểm quyền, nơi gọi tự kiểm
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
    * @param previousGroomId UUID groom cũ, null nếu ngựa chưa có Groom
    * @param toGroomId UUID groom mới
-   * @param from Thời điểm đổi groom; buổi bắt đầu từ thời điểm này trở đi được chuyển
+   * @param now Thời điểm đổi groom
    * @returns Promise trả về UUID các lượt tham gia đã chuyển
    * @throws ConflictException Nếu một lượt sẽ chuyển trùng giờ với lượt Groom mới đang dắt
    */
@@ -697,7 +728,7 @@ export class TrainingOperationsFacade {
     horseId: string,
     previousGroomId: string | null,
     toGroomId: string,
-    from: Date,
+    now: Date,
   ): Promise<string[]> {
     const participants = await manager
       .getRepository(SessionParticipantEntity)
@@ -712,10 +743,10 @@ export class TrainingOperationsFacade {
           : 'participant.assigned_groom_id IS NULL',
         { previousGroomId },
       )
-      .andWhere('participant.status IN (:...statuses)', {
-        statuses: OPEN_PARTICIPANT_STATUSES,
-      })
-      .andWhere('session.scheduled_start_at >= :from', { from })
+      .andWhere(
+        GROOM_MOVABLE_PARTICIPANT_CONDITION,
+        groomMovableParticipantParams(now),
+      )
       .orderBy('participant.id', 'ASC')
       .setLock('for_no_key_update', undefined, ['participant'])
       .getMany();
@@ -727,7 +758,7 @@ export class TrainingOperationsFacade {
         new Date(Math.min(...moving.map((run) => +run.scheduledStartAt))),
         new Date(Math.max(...moving.map((run) => +run.scheduledEndAt))),
       );
-      assertGroomFreeForMovedRuns(moving, busy);
+      assertGroomFreeForMovedRuns(moving, busy, now);
     }
     for (const participant of participants) {
       participant.assignedGroomId = toGroomId;

@@ -232,9 +232,28 @@ export function findGroomRunClashes(
   runs: ReadonlyArray<GroomRun>,
   busy: ReadonlyArray<GroomRun>,
 ): Array<{ run: GroomRun; clash: GroomRun }> {
-  const open = busy.filter(isOpenGroomRun);
+  return findClashesAmong(runs, busy, isOpenGroomRun);
+}
+
+/**
+ * Tìm các cặp lượt trùng giờ giữa hai nhóm lượt, chỉ xét lượt thỏa điều kiện tính vào lịch dắt
+ *
+ * - Hai lượt trùng khi khoảng giờ buổi giao nhau; sát mép không trùng
+ * - Bỏ qua cặp cùng một buổi
+ *
+ * @param runs Các lượt sắp giao cho Groom
+ * @param busy Các lượt Groom đang được giao dắt
+ * @param counts Điều kiện để một lượt được tính vào lịch dắt
+ * @returns Các cặp lượt sắp giao và lượt đang dắt trùng giờ, theo thứ tự của runs rồi busy
+ */
+function findClashesAmong(
+  runs: ReadonlyArray<GroomRun>,
+  busy: ReadonlyArray<GroomRun>,
+  counts: (run: GroomRun) => boolean,
+): Array<{ run: GroomRun; clash: GroomRun }> {
+  const open = busy.filter(counts);
   return runs
-    .filter(isOpenGroomRun)
+    .filter(counts)
     .flatMap((run) =>
       open
         .filter(
@@ -268,15 +287,27 @@ export function assertGroomFreeForRun(
 /**
  * Chặn chuyển các lượt tập của ngựa sang Groom mới khi Groom mới đang dắt lượt khác trùng giờ
  *
+ * - Ở cả hai phía, tính lượt còn mở (PLANNED, PRESENT, READY, ONGOING) và lượt ABSENT của buổi chưa tới giờ kết thúc; bỏ buổi đã hủy
+ *
  * @param runs Các lượt sẽ chuyển sang Groom mới
  * @param busy Các lượt Groom mới đang được giao dắt
+ * @param now Thời điểm đổi Groom
  * @throws ConflictException Nếu có lượt trùng giờ; câu báo liệt kê từng cặp buổi và giờ theo giờ CLB
  */
 export function assertGroomFreeForMovedRuns(
   runs: ReadonlyArray<GroomRun>,
   busy: ReadonlyArray<GroomRun>,
+  now: Date,
 ): void {
-  const clashes = findGroomRunClashes(runs, busy);
+  const clashes = findClashesAmong(
+    runs,
+    busy,
+    (run) =>
+      isOpenGroomRun(run) ||
+      (run.status === SessionParticipantStatus.ABSENT &&
+        run.sessionStatus !== TrainingSessionStatus.CANCELLED &&
+        run.scheduledEndAt > now),
+  );
   if (clashes.length) {
     const list = clashes
       .map(

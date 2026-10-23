@@ -141,6 +141,9 @@ SỰ CỐ                             Groom báo, HT khu đóng
 7. Việc còn thiếu không dời sang ngày sau.
 8. Đổi Groom phụ trách: checklist hôm nay (kể cả đã xong) chuyển cho Groom mới; việc đã tick giữ nguyên người tick.
    Các lượt tập tương lai chuyển sang Groom mới (Flow 2) mà một lượt trùng giờ với lượt Groom mới đang dắt ở buổi khác thì chặn 409 cả thao tác, không lưu gì, câu báo liệt kê từng cặp buổi trùng để Head Trainer giao lại người dắt trước. Xếp ô kèm giao Groom (`PUT /horses/:id/placement`) áp cùng luật.
+   - Ngựa đang ở buổi tập (có lượt Có mặt, Sẵn sàng hoặc Đang tập ở bất kỳ lớp nào): chặn 409 "Ngựa đang ở buổi tập, đổi Groom sau khi buổi kết thúc", kể cả giao Groom lần đầu; hết buổi thì đổi bình thường. Lượt đang dở do HT của lớp thao tác hoặc giao riêng lượt đó cho Groom dắt hộ (Flow 2 luật 7a).
+   - Lượt chuyển sang Groom mới (của Groom cũ hoặc chưa ai dắt): Chờ điểm danh và Vắng của buổi chưa hết giờ (kể cả buổi đã tới giờ bắt đầu); Không đủ điều kiện và Hủy do khóa của buổi chưa bắt đầu. Các lượt khác giữ tên người cũ.
+   - Kiểm trùng giờ tính cả lượt Vắng của buổi chưa hết giờ (lượt đang chuyển và lượt Groom mới đang dắt), vì lượt Vắng còn điểm danh lại được.
 9. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction đổi vòng đời, checklist hôm nay còn `PENDING`/`IN_PROGRESS` chuyển `CANCELLED`; việc đã tick giữ làm lịch sử; checklist đã `COMPLETED` giữ nguyên. Tick hoặc gỡ tick checklist `CANCELLED`: 409. Việc chuyển `INCOMPLETE` (luật 6) không đụng tới checklist `CANCELLED`. Ngựa giải nghệ giữ nguyên checklist.
 
 ### 6. Sự cố
