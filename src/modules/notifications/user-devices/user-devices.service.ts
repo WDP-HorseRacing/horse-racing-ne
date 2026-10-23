@@ -52,6 +52,19 @@ export class UserDevicesService {
    */
   async unregister(actor: Actor, token: string): Promise<void> {
     const userId = await this.access.currentUserId(actor);
+    await this.removeUserDevice(userId, token);
+  }
+
+  /**
+   * Gỡ một thiết bị khỏi tài khoản cho trước
+   *
+   * - Token không có hoặc đang thuộc người khác: không đổi gì
+   *
+   * @param userId UUID người dùng sở hữu thiết bị
+   * @param token FCM registration token cần gỡ
+   * @returns Promise hoàn tất khi đã gỡ
+   */
+  async removeUserDevice(userId: string, token: string): Promise<void> {
     await this.devices.deleteOne({ _id: token, userId });
   }
 }

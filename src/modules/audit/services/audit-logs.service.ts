@@ -41,7 +41,7 @@ export class AuditLogsService {
   /**
    * Lấy một trang nhật ký thao tác, mới nhất trước
    *
-   * - Lọc theo người thực hiện, hành động, loại và id đối tượng; bỏ trống thì không lọc
+   * - Lọc theo người thực hiện, hành động, loại và id đối tượng, mã chức năng; bỏ trống thì không lọc
    * - from, to tính theo lịch câu lạc bộ, lấy trọn cả hai ngày đầu và cuối
    * - Người thực hiện đã bị xóa vẫn hiện tên và vai trò
    *
@@ -64,6 +64,7 @@ export class AuditLogsService {
       action: query.action,
       entityType: query.entityType,
       entityId: query.entityId,
+      feature: query.feature,
     };
     const start = query.from
       ? clubDateTimeToInstant(query.from, '00:00')

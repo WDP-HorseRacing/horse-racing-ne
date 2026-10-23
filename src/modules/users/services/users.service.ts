@@ -42,6 +42,7 @@ import { UserEntity } from '../entities/user.entity';
 import { toUserResponse } from '../mappers/user.mapper';
 import {
   assertNotSelfChange,
+  assertPasswordResettable,
   isRemovingActiveManager,
 } from '../policies/user.policy';
 import { UserRole, UserStatus } from '../user.enums';
@@ -327,6 +328,55 @@ export class UsersService {
   }
 
   /**
+   * Club Manager đặt lại mật khẩu cho tài khoản nhân viên rồi đăng xuất mọi phiên của người đó
+   *
+   * - Ghi nhật ký PASSWORD_CHANGE (không kèm mật khẩu) và commit trước, sau đó mới đặt mật khẩu trên Keycloak
+   * - Mật khẩu mới là mật khẩu thường, đăng nhập được ngay
+   * - Tài khoản đã khóa vẫn được đặt lại
+   * - Keycloak không nhận mật khẩu mới: ghi thêm nhật ký hoàn tác do hệ thống rồi ném lại lỗi gốc, không đăng xuất phiên
+   * - Đăng xuất các phiên lỗi: chỉ ghi log warning
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của user được đặt lại mật khẩu
+   * @param newPassword Mật khẩu mới
+   * @returns Promise hoàn tất khi Keycloak đã nhận mật khẩu mới và đã thử đăng xuất các phiên
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò, hoặc user là Club Manager khác
+   * @throws NotFoundException Nếu không có user
+   * @throws BadRequestException Nếu người gọi tự đặt lại mật khẩu của chính mình
+   * @throws Error Lỗi từ Keycloak khi đặt mật khẩu
+   */
+  async resetPassword(
+    actor: Actor,
+    id: string,
+    newPassword: string,
+  ): Promise<void> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+
+    const user = await this.dataSource.transaction(async (manager) => {
+      const target = await this.lockUser(manager, id);
+      assertPasswordResettable(caller.id, target);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.PASSWORD_CHANGE,
+        entityType: AuditEntityType.USER,
+        entityId: id,
+        before: null,
+        after: null,
+        feature: AuditFeature.USER_ACCOUNT,
+      });
+      return target;
+    });
+
+    try {
+      await this.keycloakUsers.resetUserPassword(user.keycloakId, newPassword);
+    } catch (error) {
+      await this.recordPasswordResetRevert(id);
+      throw error;
+    }
+    await this.revokeSessions(user);
+  }
+
+  /**
    * Khóa row user (SELECT ... FOR NO KEY UPDATE) trong transaction đang chạy
    *
    * @param manager EntityManager của transaction đang chạy
@@ -584,6 +634,36 @@ export class UsersService {
     } catch {
       this.logger.error(
         `Keycloak khong dong bo duoc va hoan tac DB cua user ${id} cung that bai: DB dang giu ${JSON.stringify(applied)}, can sua tay ve ${JSON.stringify(original)}.`,
+      );
+    }
+  }
+
+  /**
+   * Ghi nhật ký hoàn tác do hệ thống cho lần đặt lại mật khẩu đã commit mà Keycloak không nhận, lỗi thì chỉ log
+   *
+   * - Chạy trong transaction mới, không có người thực hiện
+   * - Lỗi khi ghi chỉ ghi log error, không ném ra
+   *
+   * @param id UUID của user được đặt lại mật khẩu
+   * @returns Promise hoàn tất khi lần ghi kết thúc (thành công hoặc đã log lỗi)
+   */
+  private async recordPasswordResetRevert(id: string): Promise<void> {
+    try {
+      await this.dataSource.transaction((manager) =>
+        this.auditService.record(manager, {
+          actorId: null,
+          action: AuditAction.PASSWORD_CHANGE,
+          entityType: AuditEntityType.USER,
+          entityId: id,
+          before: null,
+          after: null,
+          reason: KEYCLOAK_REVERT_REASON,
+          feature: AuditFeature.USER_ACCOUNT,
+        }),
+      );
+    } catch {
+      this.logger.error(
+        `Keycloak khong nhan mat khau moi cua user ${id} va ghi nhat ky hoan tac cung that bai: nhat ky dang ghi nhan doi mat khau du mat khau khong doi.`,
       );
     }
   }

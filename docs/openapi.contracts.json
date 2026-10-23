@@ -118,6 +118,54 @@
             }
           },
           {
+            "name": "feature",
+            "required": false,
+            "in": "query",
+            "description": "Mã chức năng của thao tác",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "HORSE_CREATE",
+                "HORSE_UPDATE",
+                "HORSE_OWNER",
+                "HORSE_MEASURE",
+                "HORSE_BARN",
+                "HORSE_LIFECYCLE",
+                "BARN",
+                "STALL_GROOM",
+                "MED_CHECKUP",
+                "MED_VISIT",
+                "MED_EXAM_REQUEST",
+                "MED_CASE_OPEN",
+                "MED_CASE_VISIT",
+                "MED_HEALTH",
+                "MED_TRAIN_LOCK",
+                "MED_CASE_CLOSE",
+                "MED_CARE",
+                "USER_ACCOUNT",
+                "HT_HANDOVER",
+                "SUPPLY_ITEM",
+                "SUPPLY_STOCK",
+                "SUPPLY_REQUEST",
+                "TRAIN_SUBJECT",
+                "TRAIN_PLAN",
+                "TRAIN_CLASS",
+                "TRAIN_ENROLL",
+                "TRAIN_SESSION",
+                "TRAIN_RUN",
+                "TIME_TRIAL",
+                "CARE_TASK",
+                "FEEDING_PLAN",
+                "INCIDENT",
+                "CHECKLIST",
+                "PERF_EVAL",
+                "DAILY_FEE",
+                "HORSE_SURCHARGE",
+                "AUTH"
+              ]
+            }
+          },
+          {
             "name": "from",
             "required": false,
             "in": "query",
@@ -263,6 +311,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
+        "description": "Gửi kèm deviceToken thì gỡ thiết bị đó khỏi tài khoản đăng xuất; token không có hoặc thuộc người khác thì bỏ qua.",
         "operationId": "AuthController_logout",
         "parameters": [],
         "requestBody": {
@@ -270,7 +319,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RefreshTokenDto"
+                "$ref": "#/components/schemas/LogoutDto"
               }
             }
           }
@@ -9579,6 +9628,46 @@
         ]
       }
     },
+    "/api/v1/users/{id}/reset-password": {
+      "post": {
+        "description": "Đặt mật khẩu mới (đăng nhập được ngay) cho tài khoản nhân viên rồi đăng xuất mọi phiên của người đó. Không đặt lại cho chính mình hoặc Club Manager khác; tài khoản đã khóa vẫn đặt lại được.",
+        "operationId": "UsersController_resetPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetUserPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reset a staff account password",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/v1/users/{id}/head-trainer-handover": {
       "post": {
         "operationId": "UsersController_handover",
@@ -9981,6 +10070,23 @@
         "properties": {
           "refreshToken": {
             "type": "string"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LogoutDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          },
+          "deviceToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "FCM registration token của thiết bị đang đăng xuất; gửi thì gỡ thiết bị này khỏi tài khoản"
           }
         },
         "required": [
@@ -20829,6 +20935,19 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "ResetUserPasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "newPassword"
         ]
       },
       "UpdateUserDto": {

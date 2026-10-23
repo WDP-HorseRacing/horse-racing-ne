@@ -41,6 +41,7 @@ describe('Auth audit (Postgres)', () => {
       new ProvisioningService(dataSource.getRepository(UserEntity)),
       dataSource,
       new AuditService(),
+      {} as never,
     );
   });
 

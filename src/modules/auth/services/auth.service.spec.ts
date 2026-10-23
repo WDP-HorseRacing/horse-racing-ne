@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { sign } from 'jsonwebtoken';
 import type { Actor } from '../../../common/types/actor';
 import { AuthService } from './auth.service';
 
@@ -15,6 +16,7 @@ describe('AuthService.changePassword', () => {
     {} as never,
     {} as never,
     { manager: { findOne: jest.fn().mockResolvedValue(null) } } as never,
+    {} as never,
     {} as never,
   );
 
@@ -44,5 +46,68 @@ describe('AuthService.changePassword', () => {
 
     expect(resetUserPassword).toHaveBeenCalledWith('user-1', 'moi');
     expect(logoutUser).toHaveBeenCalledWith('user-1');
+  });
+});
+
+describe('AuthService.logout', () => {
+  const revokeRefreshToken = jest.fn();
+  const findOne = jest.fn();
+  const record = jest.fn();
+  const removeUserDevice = jest.fn();
+  const service = new AuthService(
+    { revokeRefreshToken } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { manager: { findOne } } as never,
+    { record },
+    { removeUserDevice } as never,
+  );
+  const refreshToken = sign({ sub: 'kc-1' }, 'secret');
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    findOne.mockResolvedValue({ id: 'user-1' });
+  });
+
+  it('gửi deviceToken: gỡ thiết bị đó của chính người đăng xuất', async () => {
+    await service.logout(refreshToken, 'fcm-1');
+
+    expect(revokeRefreshToken).toHaveBeenCalledWith({ refreshToken });
+    expect(removeUserDevice).toHaveBeenCalledWith('user-1', 'fcm-1');
+  });
+
+  it('không gửi deviceToken: không gỡ thiết bị nào', async () => {
+    await service.logout(refreshToken);
+
+    expect(record).toHaveBeenCalled();
+    expect(removeUserDevice).not.toHaveBeenCalled();
+  });
+
+  it('refresh token không thuộc tài khoản local: không gỡ thiết bị', async () => {
+    findOne.mockResolvedValue(null);
+
+    await service.logout(refreshToken, 'fcm-1');
+
+    expect(removeUserDevice).not.toHaveBeenCalled();
+  });
+
+  it('gỡ thiết bị lỗi: đăng xuất vẫn thành công', async () => {
+    removeUserDevice.mockRejectedValue(new Error('mongo down'));
+
+    await expect(
+      service.logout(refreshToken, 'fcm-1'),
+    ).resolves.toBeUndefined();
+    expect(revokeRefreshToken).toHaveBeenCalled();
+    expect(record).toHaveBeenCalled();
+  });
+
+  it('Keycloak từ chối thu hồi: không gỡ thiết bị', async () => {
+    revokeRefreshToken.mockRejectedValue(new Error('502'));
+
+    await expect(service.logout(refreshToken, 'fcm-1')).rejects.toThrow('502');
+    expect(removeUserDevice).not.toHaveBeenCalled();
   });
 });

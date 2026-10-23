@@ -1,7 +1,12 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UserRole } from '../user.enums';
-import { CreateUserDto, UpdateUserDto, UserListQueryDto } from './user.dto';
+import {
+  CreateUserDto,
+  ResetUserPasswordDto,
+  UpdateUserDto,
+  UserListQueryDto,
+} from './user.dto';
 
 describe('user.dto', () => {
   const validCreate = {
@@ -84,5 +89,16 @@ describe('user.dto', () => {
     const { dto } = await errorsOf(UserListQueryDto, { search: '  ngua ' });
 
     expect(dto.search).toBe('ngua');
+  });
+
+  it('checks the reset password like the password of a new account', async () => {
+    const ok = await errorsOf(ResetUserPasswordDto, {
+      newPassword: 'secret12',
+    });
+    expect(ok.errors).toEqual([]);
+    for (const newPassword of ['short', 12345678, undefined]) {
+      const { errors } = await errorsOf(ResetUserPasswordDto, { newPassword });
+      expect(errors.map((e) => e.property)).toEqual(['newPassword']);
+    }
   });
 });

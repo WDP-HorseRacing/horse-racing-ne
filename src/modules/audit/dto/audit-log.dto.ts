@@ -6,6 +6,7 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { IsDateOnly } from '../../../common/utils/dto-input';
 import { AuditAction } from '../constants/audit-action.enum';
 import { AuditEntityType } from '../constants/audit-entity-type.enum';
+import { AuditFeature } from '../constants/audit-feature.enum';
 
 /**
  * Bộ lọc và phân trang nhật ký thao tác.
@@ -36,6 +37,14 @@ export class AuditLogListQueryDto extends PickType(PaginationQueryDto, [
   @IsOptional()
   @IsUUID()
   entityId?: string;
+
+  @ApiPropertyOptional({
+    enum: AuditFeature,
+    description: 'Mã chức năng của thao tác',
+  })
+  @IsOptional()
+  @IsEnum(AuditFeature)
+  feature?: AuditFeature;
 
   @ApiPropertyOptional({
     format: 'date',

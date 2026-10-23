@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { decode } from 'jsonwebtoken';
 import { DataSource } from 'typeorm';
 import { KeycloakOidcRedirectService } from '../../../common/infrastructure/keycloak/keycloak-oidc-redirect.service';
@@ -13,6 +13,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
+import { UserDevicesService } from '../../notifications/user-devices/user-devices.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import { ProvisioningService } from '../../users/services/provisioning.service';
 import { AuthTokensResponseDto } from '../dto/auth-tokens.response.dto';
@@ -23,6 +24,8 @@ import {
 } from '../mappers/auth.mapper';
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly keycloakTokens: KeycloakTokenService,
     private readonly keycloakUsers: KeycloakUserService,
@@ -32,6 +35,7 @@ export class AuthService {
     private readonly provisioning: ProvisioningService,
     private readonly dataSource: DataSource,
     private readonly audit: AuditService,
+    private readonly userDevices: UserDevicesService,
   ) {}
 
   /**
@@ -79,22 +83,27 @@ export class AuthService {
   }
 
   /**
-   * Thu hồi refresh token trên Keycloak rồi ghi nhật ký LOGOUT
+   * Thu hồi refresh token trên Keycloak, ghi nhật ký LOGOUT rồi gỡ thiết bị push nếu có gửi
    *
-   * - Chỉ ghi nhật ký khi claim sub của refresh token thuộc một tài khoản local
+   * - Chỉ ghi nhật ký và gỡ thiết bị khi claim sub của refresh token thuộc một tài khoản local
+   * - Có deviceToken: gỡ thiết bị đó khỏi tài khoản đăng xuất; token không có hoặc thuộc người khác thì bỏ qua
+   * - Gỡ thiết bị lỗi: chỉ ghi log warning, đăng xuất vẫn thành công
    *
    * @param refreshToken Refresh token cần thu hồi
-   * @returns Promise hoàn tất khi Keycloak đã thu hồi token và đã ghi nhật ký
+   * @param deviceToken FCM registration token của thiết bị cần gỡ, bỏ trống thì không gỡ thiết bị nào
+   * @returns Promise hoàn tất khi Keycloak đã thu hồi token, đã ghi nhật ký và đã thử gỡ thiết bị
    * @throws BadGatewayException Nếu Keycloak trả lỗi
    */
-  async logout(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string, deviceToken?: string): Promise<void> {
     await this.keycloakTokens.revokeRefreshToken({ refreshToken });
     const claims = decode(refreshToken, { json: true });
     if (!claims?.sub) return;
     const user = await this.dataSource.manager.findOne(UserEntity, {
       where: { keycloakId: claims.sub },
     });
-    if (user) await this.recordAuth(user.id, user.id, AuditAction.LOGOUT, null);
+    if (!user) return;
+    await this.recordAuth(user.id, user.id, AuditAction.LOGOUT, null);
+    if (deviceToken) await this.removeDevice(user.id, deviceToken);
   }
 
   /**
@@ -214,6 +223,26 @@ export class AuthService {
     const user = await this.provisioning.requireProvisionedUser(claims);
     await this.recordAuth(user.id, user.id, AuditAction.LOGIN, method);
     return tokens;
+  }
+
+  /**
+   * Gỡ thiết bị push của tài khoản, lỗi thì chỉ ghi log warning
+   *
+   * @param userId UUID người dùng sở hữu thiết bị
+   * @param deviceToken FCM registration token cần gỡ
+   * @returns Promise hoàn tất khi lần gỡ kết thúc (thành công hoặc đã log lỗi)
+   */
+  private async removeDevice(
+    userId: string,
+    deviceToken: string,
+  ): Promise<void> {
+    try {
+      await this.userDevices.removeUserDevice(userId, deviceToken);
+    } catch {
+      this.logger.warn(
+        `Khong go duoc thiet bi push cua ${userId} khi dang xuat; thiet bi co the van nhan thong bao`,
+      );
+    }
   }
 
   /**

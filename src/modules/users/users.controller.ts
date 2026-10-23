@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -12,6 +13,7 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -21,6 +23,7 @@ import { PaginationResponseDto } from '../../common/dto/pagination-response.dto'
 import type { Actor } from '../../common/types/actor';
 import {
   CreateUserDto,
+  ResetUserPasswordDto,
   UpdateUserDto,
   UpdateUserStatusDto,
   UserListQueryDto,
@@ -86,6 +89,23 @@ export class UsersController {
     @Body() body: UpdateUserStatusDto,
   ): Promise<UserResponseDto> {
     return this.usersService.setStatus(actor, id, body.status);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Post(':id/reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Reset a staff account password',
+    description:
+      'Đặt mật khẩu mới (đăng nhập được ngay) cho tài khoản nhân viên rồi đăng xuất mọi phiên của người đó. Không đặt lại cho chính mình hoặc Club Manager khác; tài khoản đã khóa vẫn đặt lại được.',
+  })
+  @ApiNoContentResponse()
+  resetPassword(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ResetUserPasswordDto,
+  ): Promise<void> {
+    return this.usersService.resetPassword(actor, id, body.newPassword);
   }
 
   @Access([UserRole.CLUB_MANAGER])

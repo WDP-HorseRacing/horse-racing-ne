@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 
@@ -72,4 +72,32 @@ export function isRemovingActiveManager(
   const losesStatus =
     change.status !== undefined && change.status !== UserStatus.ACTIVE;
   return losesRole || losesStatus;
+}
+
+/**
+ * Kiểm tra Club Manager được đặt lại mật khẩu cho tài khoản này không
+ *
+ * - Tài khoản của chính người gọi: 400, phải dùng chức năng đổi mật khẩu
+ * - Tài khoản Club Manager khác: 403
+ * - Tài khoản đã khóa vẫn được đặt lại
+ *
+ * @param actorUserId UUID (users.id) của người đang đặt lại mật khẩu
+ * @param target User được đặt lại mật khẩu
+ * @throws BadRequestException Nếu người gọi tự đặt lại mật khẩu của chính mình
+ * @throws ForbiddenException Nếu user là Club Manager khác
+ */
+export function assertPasswordResettable(
+  actorUserId: string,
+  target: ManagedUser,
+): void {
+  if (actorUserId === target.id) {
+    throw new BadRequestException(
+      'Không thể tự đặt lại mật khẩu của chính mình, hãy dùng chức năng đổi mật khẩu',
+    );
+  }
+  if (target.role === UserRole.CLUB_MANAGER) {
+    throw new ForbiddenException(
+      'Không thể đặt lại mật khẩu của Club Manager khác',
+    );
+  }
 }

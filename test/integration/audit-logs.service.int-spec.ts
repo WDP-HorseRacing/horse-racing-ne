@@ -16,6 +16,7 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { AuditAction } from '../../src/modules/audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../src/modules/audit/constants/audit-feature.enum';
 import { AuditLogEntity } from '../../src/modules/audit/entities/audit-log.entity';
 import { AuditLogsService } from '../../src/modules/audit/services/audit-logs.service';
 
@@ -62,11 +63,12 @@ describe('AuditLogsService (Postgres)', () => {
       entityId?: string;
       before?: Record<string, unknown> | null;
       after?: Record<string, unknown> | null;
+      feature?: AuditFeature;
     } = {},
   ): Promise<string> => {
     const [row] = await dataSource.query<{ id: string }[]>(
       `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, before_data, after_data, reason, feature, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Lý do', 'HORSE_CREATE', $7)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Lý do', $8, $7)
        RETURNING id`,
       [
         options.actorId ?? null,
@@ -76,6 +78,7 @@ describe('AuditLogsService (Postgres)', () => {
         options.before === undefined ? null : JSON.stringify(options.before),
         options.after === undefined ? null : JSON.stringify(options.after),
         at,
+        options.feature ?? AuditFeature.HORSE_CREATE,
       ],
     );
     return row.id;
@@ -158,6 +161,29 @@ describe('AuditLogsService (Postgres)', () => {
       });
 
       expect(page.items.map((item) => item.id)).toEqual([match]);
+    });
+
+    it('filters by feature together with the other filters', async () => {
+      const horseId = randomUUID();
+      const transfer = await log('2026-10-01T02:00:00Z', {
+        entityId: horseId,
+        feature: AuditFeature.HORSE_OWNER,
+      });
+      await log('2026-10-02T02:00:00Z', {
+        entityId: horseId,
+        feature: AuditFeature.HORSE_UPDATE,
+      });
+      await log('2026-10-03T02:00:00Z', { feature: AuditFeature.HORSE_OWNER });
+
+      const page = await service.list(manager, {
+        page: 1,
+        limit: 20,
+        feature: AuditFeature.HORSE_OWNER,
+        entityId: horseId,
+      });
+
+      expect(page.items.map((item) => item.id)).toEqual([transfer]);
+      expect(page.meta.total).toBe(1);
     });
 
     it('takes both ends of the date range on the club calendar', async () => {

@@ -39,6 +39,13 @@ export class CreateUserDto {
   password!: string;
 }
 
+export class ResetUserPasswordDto {
+  @ApiProperty({ minLength: 8, writeOnly: true })
+  @IsString()
+  @MinLength(8)
+  newPassword!: string;
+}
+
 export class UpdateUserDto {
   @ApiPropertyOptional({ minLength: 1, maxLength: 160 })
   @Transform(({ value }: { value: unknown }) =>

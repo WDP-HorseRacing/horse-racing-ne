@@ -1,8 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
 import {
   assertNotSelfChange,
+  assertPasswordResettable,
   isRemovingActiveManager,
   ManagedUser,
 } from './user.policy';
@@ -92,6 +93,36 @@ describe('user.policy', () => {
           { status: UserStatus.LOCKED },
         ),
       ).toBe(false);
+    });
+  });
+
+  describe('assertPasswordResettable', () => {
+    it('allows resetting a staff account, active or locked', () => {
+      for (const status of [UserStatus.ACTIVE, UserStatus.INACTIVE]) {
+        expect(() =>
+          assertPasswordResettable('user-1', {
+            id: 'user-2',
+            role: UserRole.GROOM,
+            status,
+          }),
+        ).not.toThrow();
+      }
+    });
+
+    it('rejects resetting the own password with 400', () => {
+      expect(() => assertPasswordResettable('user-1', manager)).toThrow(
+        new BadRequestException(
+          'Không thể tự đặt lại mật khẩu của chính mình, hãy dùng chức năng đổi mật khẩu',
+        ),
+      );
+    });
+
+    it('rejects resetting another club manager with 403', () => {
+      expect(() => assertPasswordResettable('user-9', manager)).toThrow(
+        new ForbiddenException(
+          'Không thể đặt lại mật khẩu của Club Manager khác',
+        ),
+      );
     });
   });
 });

@@ -19,4 +19,11 @@ describe('AuditLogListQueryDto', () => {
       failedFields({ from: '2026-02-30', to: '2026-13-45' }),
     ).resolves.toEqual(['from', 'to']);
   });
+
+  it('accepts a known feature and rejects an unknown one', async () => {
+    await expect(failedFields({ feature: 'HORSE_OWNER' })).resolves.toEqual([]);
+    await expect(failedFields({ feature: 'F1.3' })).resolves.toEqual([
+      'feature',
+    ]);
+  });
 });

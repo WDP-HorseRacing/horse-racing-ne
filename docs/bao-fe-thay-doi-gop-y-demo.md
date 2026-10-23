@@ -20,6 +20,12 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 - Đóng bệnh án và xem trước đóng bệnh án: ngựa còn lệnh khóa giữ lại từ bệnh án trước nay cũng bắt chọn `lockDecision` (gỡ hoặc giữ kèm ngày). Request, response không đổi.
 - `GET /audit-logs`: hủy buổi khám lẻ nay ghi `feature = MED_VISIT` (trước ghi `MED_CASE_VISIT`); dữ liệu cũ đã đổi theo. Hủy buổi tái khám trong bệnh án vẫn `MED_CASE_VISIT`.
 
+### Lọc nhật ký theo chức năng, đăng xuất gỡ thiết bị, CM đặt lại mật khẩu
+
+- `GET /audit-logs`: thêm query `feature` (không bắt buộc, giá trị trong danh sách mã chức năng, vd `HORSE_OWNER`, `MED_VISIT`), kết hợp được với các bộ lọc khác; giá trị sai 400.
+- `POST /auth/logout`: body nhận thêm `deviceToken` (không bắt buộc, token push của máy đang dùng). Có gửi thì máy đó thôi nhận push của tài khoản vừa đăng xuất. App nên luôn gửi kèm, nhất là máy dùng chung ở chuồng. Không gửi thì như cũ.
+- Route mới `POST /users/:id/reset-password` (CM), body `{ newPassword }` (tối thiểu 8 ký tự, như lúc tạo tài khoản), trả 204: đặt mật khẩu mới (mật khẩu thường, nhân viên đăng nhập được ngay, muốn thì tự đổi) và đăng xuất mọi phiên của nhân viên đó. 404 "Không tìm thấy người dùng"; 400 "Không thể tự đặt lại mật khẩu của chính mình, hãy dùng chức năng đổi mật khẩu"; 403 "Không thể đặt lại mật khẩu của Club Manager khác". Tài khoản đã khóa vẫn đặt lại được. FE thêm nút "Đặt lại mật khẩu" ở màn quản lý nhân viên.
+
 ## Ngày 22/10/2026
 
 ### Thông báo mới (request, response không đổi)
@@ -45,7 +51,7 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 
 ### Nhật ký chuyển chủ có mã chức năng riêng, tạo hồ sơ và gán chủ báo chủ mới
 
-- `GET /audit-logs`: dòng nhật ký của chuyển nhượng nội bộ (`POST /horses/:id/ownership-transfers`) nay có `feature = HORSE_OWNER` thay vì `HORSE_UPDATE`; dữ liệu cũ đã đổi theo. Lọc `feature=HORSE_OWNER` ra đúng các lần chuyển chủ. Gán chủ qua sửa hồ sơ (`PATCH /horses/:id` có `ownerId`) vẫn là `HORSE_UPDATE`. Danh sách mã chức năng có thêm `HORSE_OWNER`.
+- `GET /audit-logs`: dòng nhật ký của chuyển nhượng nội bộ (`POST /horses/:id/ownership-transfers`) nay có `feature = HORSE_OWNER` thay vì `HORSE_UPDATE`; dữ liệu cũ đã đổi theo. Lọc `feature=HORSE_OWNER` ra đúng các lần chuyển chủ (ô lọc `feature` có từ 23/10, xem mục 23/10; trước đó gửi `feature` nhận 400). Gán chủ qua sửa hồ sơ (`PATCH /horses/:id` có `ownerId`) vẫn là `HORSE_UPDATE`. Danh sách mã chức năng có thêm `HORSE_OWNER`.
 - `POST /horses` (tạo hồ sơ) và `PATCH /horses/:id` gán chủ cho ngựa chưa có chủ: chủ được chọn nhận thông báo loại `OWNERSHIP` "Bạn đã trở thành chủ sở hữu ngựa X", trỏ tới hồ sơ ngựa (giống chủ mới khi chuyển nhượng). Request và response không đổi.
 
 ### Gửi trùng đánh giá lượt tập trả 409
