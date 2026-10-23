@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
@@ -10,6 +10,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
 import {
   MAX_TRIAL_TIME_MESSAGE,
   MAX_TRIAL_TIME_MS,
@@ -18,7 +19,11 @@ import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 
 export class CreateTrainingSubjectDto {
-  @ApiProperty({ maxLength: 160, description: 'Tên môn, duy nhất trong CLB' })
+  @ApiProperty({
+    maxLength: 160,
+    description: 'Tên môn, duy nhất trong CLB, không phân biệt hoa thường',
+  })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(160)

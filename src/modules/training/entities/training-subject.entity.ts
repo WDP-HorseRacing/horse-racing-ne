@@ -1,13 +1,14 @@
-import { Check, Column, Entity, Index } from 'typeorm';
+import { Check, Column, Entity } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 
 /**
  * TrainingSubjectEntity: một môn học là một bài tập cố định (loại buổi, cường độ, cự ly, thời lượng, mặt sân), dùng chung toàn CLB.
+ *
+ * - Tên duy nhất không phân biệt hoa thường: unique index `training_subjects_name_uq` trên `lower(name)`, chỉ khai trong migration
  */
 @Entity({ name: 'training_subjects' })
-@Index('training_subjects_name_uq', ['name'], { unique: true })
 @Check(
   'training_subjects_duration_minutes_ck',
   '"duration_minutes" BETWEEN 15 AND 480',

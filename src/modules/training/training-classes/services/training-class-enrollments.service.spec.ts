@@ -96,7 +96,15 @@ function setup(
 }
 
 describe('TrainingClassEnrollmentsService.leave', () => {
-  it('marks the enrollment LEFT and cancels open, locked and ineligible participants from leftAt', async () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date(LEFT_AT) });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('marks the enrollment LEFT at the current time and cancels open, locked and ineligible participants from then on', async () => {
     const enrollment = buildEnrollment();
     const participants = [
       {
@@ -117,10 +125,7 @@ describe('TrainingClassEnrollmentsService.leave', () => {
       participants,
     );
 
-    await service.leave(actor, 'e1', {
-      leftAt: LEFT_AT,
-      reason: 'Chấn thương',
-    });
+    await service.leave(actor, 'e1', { reason: 'Chấn thương' });
 
     expect(enrollment.status).toBe(HorseEnrollmentStatus.LEFT);
     expect(enrollment.leftAt).toEqual(new Date(LEFT_AT));
@@ -167,7 +172,7 @@ describe('TrainingClassEnrollmentsService.leave', () => {
     ];
     const { service } = setup(buildEnrollment(), participants);
 
-    await service.leave(actor, 'e1', { leftAt: LEFT_AT });
+    await service.leave(actor, 'e1', {});
 
     expect(participants[0].cancelReason).toBe('Ngựa đã rời lớp');
   });
@@ -178,9 +183,9 @@ describe('TrainingClassEnrollmentsService.leave', () => {
       [],
     );
 
-    await expect(
-      service.leave(actor, 'e1', { leftAt: LEFT_AT }),
-    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.leave(actor, 'e1', {})).rejects.toBeInstanceOf(
+      ConflictException,
+    );
     expect(save).not.toHaveBeenCalled();
   });
 
@@ -188,9 +193,7 @@ describe('TrainingClassEnrollmentsService.leave', () => {
     const { service, save, manager } = setup(buildEnrollment(), []);
     (manager.findOne as jest.Mock).mockResolvedValue(null);
 
-    await expect(
-      service.leave(actor, 'e1', { leftAt: LEFT_AT }),
-    ).rejects.toThrow(
+    await expect(service.leave(actor, 'e1', {})).rejects.toThrow(
       new NotFoundException('Không tìm thấy ghi danh của ngựa'),
     );
     expect(save).not.toHaveBeenCalled();
@@ -202,9 +205,9 @@ describe('TrainingClassEnrollmentsService.leave', () => {
       throw new ForbiddenException();
     });
 
-    await expect(
-      service.leave(actor, 'e1', { leftAt: LEFT_AT }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.leave(actor, 'e1', {})).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
     expect(save).not.toHaveBeenCalled();
   });
 });
@@ -233,36 +236,45 @@ describe('TrainingClassEnrollmentsService.create', () => {
       endDate: '2026-10-10',
     };
 
-    it.each([
-      ['06:30 giờ VN ngày khai giảng', '2026-10-04T23:30:00.000Z'],
-      ['00:00 giờ VN ngày khai giảng', '2026-10-04T17:00:00.000Z'],
-      ['23:59 giờ VN ngày kết thúc', '2026-10-10T16:59:00.000Z'],
-    ])('nhận ghi danh lúc %s', async (_label, enrolledAt) => {
-      const { service, access, save } = setup(buildEnrollment(), []);
-      access.lockedTrainingClass.mockResolvedValue(club);
-      jest
-        .spyOn(
-          service as unknown as {
-            addToFuturePublishedSessions: () => Promise<void>;
-          },
-          'addToFuturePublishedSessions',
-        )
-        .mockResolvedValue();
-
-      await service.create(actor, 'c1', { horseId: 'h1', enrolledAt });
-
-      expect(save).toHaveBeenCalledTimes(1);
+    afterEach(() => {
+      jest.useRealTimers();
     });
 
     it.each([
-      ['23:59:59 giờ VN trước ngày khai giảng', '2026-10-04T16:59:59.000Z'],
-      ['00:00 giờ VN ngày sau ngày kết thúc', '2026-10-10T17:00:00.000Z'],
-    ])('từ chối ghi danh lúc %s bằng 409', async (_label, enrolledAt) => {
+      ['trước ngày khai giảng', '2026-10-01T03:00:00.000Z'],
+      ['00:00 giờ VN ngày khai giảng', '2026-10-04T17:00:00.000Z'],
+      ['23:59 giờ VN ngày kết thúc', '2026-10-10T16:59:00.000Z'],
+    ])(
+      'nhận ghi danh lúc %s và ghi enrolledAt là thời điểm hiện tại',
+      async (_label, now) => {
+        jest.useFakeTimers({ now: new Date(now) });
+        const { service, access, save } = setup(buildEnrollment(), []);
+        access.lockedTrainingClass.mockResolvedValue(club);
+        jest
+          .spyOn(
+            service as unknown as {
+              addToFuturePublishedSessions: () => Promise<void>;
+            },
+            'addToFuturePublishedSessions',
+          )
+          .mockResolvedValue();
+
+        await service.create(actor, 'c1', { horseId: 'h1' });
+
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(save).toHaveBeenCalledWith(
+          expect.objectContaining({ enrolledAt: new Date(now) }),
+        );
+      },
+    );
+
+    it('từ chối ghi danh lúc 00:00 giờ VN ngày sau ngày kết thúc bằng 409', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-10T17:00:00.000Z') });
       const { service, access, save } = setup(buildEnrollment(), []);
       access.lockedTrainingClass.mockResolvedValue(club);
 
       await expect(
-        service.create(actor, 'c1', { horseId: 'h1', enrolledAt }),
+        service.create(actor, 'c1', { horseId: 'h1' }),
       ).rejects.toThrow('Thời điểm ghi danh phải nằm trong thời gian của lớp');
       expect(save).not.toHaveBeenCalled();
     });
@@ -276,20 +288,24 @@ describe('TrainingClassEnrollmentsService.leave theo ngày lịch CLB', () => {
     return enrollment;
   }
 
-  it('nhận leftAt lúc 23:59 giờ VN ngày kết thúc', async () => {
-    const { service } = setup(enrollmentEndingOn('2026-12-31'), []);
-
-    await expect(
-      service.leave(actor, 'e1', { leftAt: '2026-12-31T16:59:00.000Z' }),
-    ).resolves.toBeDefined();
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
-  it('từ chối leftAt lúc 00:00 giờ VN ngày sau ngày kết thúc bằng 409', async () => {
+  it('cho rời lớp lúc 23:59 giờ VN ngày kết thúc', async () => {
+    jest.useFakeTimers({ now: new Date('2026-12-31T16:59:00.000Z') });
+    const { service } = setup(enrollmentEndingOn('2026-12-31'), []);
+
+    await expect(service.leave(actor, 'e1', {})).resolves.toBeDefined();
+  });
+
+  it('từ chối rời lớp lúc 00:00 giờ VN ngày sau ngày kết thúc bằng 409', async () => {
+    jest.useFakeTimers({ now: new Date('2026-12-31T17:00:00.000Z') });
     const { service, save } = setup(enrollmentEndingOn('2026-12-31'), []);
 
-    await expect(
-      service.leave(actor, 'e1', { leftAt: '2026-12-31T17:00:00.000Z' }),
-    ).rejects.toThrow('Thời điểm rời lớp phải nằm trong thời gian của lớp');
+    await expect(service.leave(actor, 'e1', {})).rejects.toThrow(
+      'Thời điểm rời lớp phải nằm trong thời gian của lớp',
+    );
     expect(save).not.toHaveBeenCalled();
   });
 });

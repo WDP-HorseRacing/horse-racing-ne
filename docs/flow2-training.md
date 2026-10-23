@@ -49,7 +49,7 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 
 ### 1. Môn học
 
-1. Tên môn duy nhất trong CLB.
+1. Tên môn duy nhất trong CLB, không phân biệt hoa thường; tên được bỏ khoảng trắng hai đầu, tên rỗng 400.
 2. Môn chạy thử phải có cự ly lớn hơn 0. Môn thường không có thời gian mục tiêu.
 3. Môn đang nằm trong giáo án, giáo án của lớp hoặc buổi tập thì không xóa được.
 4. Sửa môn không làm đổi các buổi tập đã tạo.
@@ -90,7 +90,8 @@ Ngựa cần bài khác nhau thì ghi danh vào các lớp khác nhau; trong m�
 4. Môn của buổi phải có trong giai đoạn của lớp chứa ngày bắt đầu của buổi (lịch CLB), không thì 409 "Môn {tên} không có trong giai đoạn {n} của lớp". Kiểm khi thêm buổi, và khi sửa buổi có đổi môn hoặc đổi giờ bắt đầu. Xếp nhiều hơn số buổi tối thiểu vẫn được.
 5. Thêm nhiều buổi một lần (`POST /classes/:classId/sessions/bulk`, 1–100 buổi, dùng cho nút lặp lại trên lịch): lưu theo thứ tự giờ bắt đầu, mỗi buổi áp đúng luật của thêm từng buổi, kể cả trùng giờ với các buổi vừa thêm trước nó. Một buổi lỗi thì không lưu buổi nào; câu báo có tiền tố "Buổi {thứ tự trong body}: " và ô lỗi `sessions.{chỉ số}`.
 6. Xóa buổi trên lịch là hủy buổi (`POST /training-sessions/:sessionId/cancel`): buổi giữ lại ở trạng thái Đã hủy, lượt chưa tập bị hủy. Người dắt từng lượt vừa bị hủy nhận thông báo (mức HIGH), mỗi Groom một tin liệt kê các ngựa của mình; lượt chưa có người dắt thì báo Groom đang phụ trách ngựa. Hủy cả lớp không gửi thông báo này.
-7. Ghi danh ngựa vào lớp đang chạy: tạo lượt cho các buổi đã lên lịch trong tương lai.
+7. Ghi danh ngựa vào lớp chưa kết thúc (kể cả lớp chưa khai giảng): tạo lượt cho các buổi đã lên lịch trong tương lai. Thời điểm ghi danh là lúc bấm, hệ thống tự ghi (request không nhận `enrolledAt`, gửi lên 400); lớp đã qua ngày kết thúc thì 409. Buổi của lớp luôn nằm trong thời gian của lớp nên ghi danh trước ngày khai giảng vẫn có lượt từ buổi đầu.
+   - Thời điểm rời lớp là lúc bấm, hệ thống tự ghi (request chỉ nhận `reason`, gửi `leftAt` 400); không hẹn trước, không ghi lùi. Rút ngựa trước ngày khai giảng thì rời lớp bình thường.
    - Rời lớp (`PATCH /enrollments/:id/leave`) hoặc bị rút khỏi lớp (đổi khu, giải nghệ, chuyển nhượng, ngựa mất): lượt Chờ điểm danh, Có mặt, Sẵn sàng, Hủy do khóa, Không đủ điều kiện ở các buổi bắt đầu từ lúc rời trở đi chuyển Đã hủy (`CANCELLED`) kèm lý do rời lớp. Lượt Đang tập, lượt đã kết thúc và buổi trước lúc rời giữ nguyên. Lượt đã hủy không còn giữ chỗ (luật 8.3) và không được chấm lại (mục 5 luật 6).
 8. Trùng giờ: mỗi buổi tính từ giờ bắt đầu tới trước giờ kết thúc; buổi này kết thúc đúng lúc buổi kia bắt đầu thì không trùng.
    1. Thêm buổi hoặc đổi giờ buổi trùng với buổi chưa hủy khác của cùng lớp: chặn 409, câu báo kèm giờ và ngày của buổi trùng.

@@ -110,10 +110,7 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
     });
 
   const reenroll = (horseId: string) =>
-    enrollments.create(trainer, classId, {
-      horseId,
-      enrolledAt: new Date(Date.now() + 1000).toISOString(),
-    });
+    enrollments.create(trainer, classId, { horseId });
 
   it('reuses the cancelled participant of a future session and resets it like a new one', async () => {
     const winx = await seed.horse('Winx', { barnId });
@@ -178,6 +175,18 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
     });
   });
 
+  it('409 when enrolling into a class that has already ended', async () => {
+    const winx = await seed.horse('Winx', { barnId });
+    await dataSource.query(
+      `UPDATE training_classes SET end_date = '2026-01-31' WHERE id = $1`,
+      [classId],
+    );
+
+    await expect(
+      enrollments.create(trainer, classId, { horseId: winx }),
+    ).rejects.toThrow('Thời điểm ghi danh phải nằm trong thời gian của lớp');
+  });
+
   describe('leave (service)', () => {
     it('marks the enrollment LEFT and cancels future participants', async () => {
       const winx = await seed.horse('Winx', { barnId });
@@ -189,12 +198,14 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
         horseId: winx,
       });
 
+      const before = Date.now();
       const left = await enrollments.leave(trainer, first.id, {
         reason: 'Nghỉ tập',
       });
 
       expect(left).toMatchObject({ id: first.id, status: 'LEFT' });
-      expect(left.leftAt).toBeTruthy();
+      expect(left.leftAt!.getTime()).toBeGreaterThanOrEqual(before);
+      expect(left.leftAt!.getTime()).toBeLessThanOrEqual(Date.now());
       expect((await participantsOf(future))[0]).toMatchObject({
         status: 'CANCELLED',
         cancel_reason: 'Nghỉ tập',
@@ -219,30 +230,19 @@ describe('Re-enrolling a horse that left a class (Postgres)', () => {
       ).rejects.toThrow('Không tìm thấy ghi danh của ngựa');
     });
 
-    it('409 when leftAt is before enrolledAt', async () => {
+    it('409 when the class has already ended', async () => {
       const winx = await seed.horse('Winx', { barnId });
       const first = await enrollments.create(trainer, classId, {
         horseId: winx,
       });
+      await dataSource.query(
+        `UPDATE training_classes SET end_date = '2026-01-31' WHERE id = $1`,
+        [classId],
+      );
 
-      await expect(
-        enrollments.leave(trainer, first.id, {
-          leftAt: '2000-01-01T00:00:00Z',
-        }),
-      ).rejects.toThrow('Thời điểm rời lớp không hợp lệ');
-    });
-
-    it('409 when leftAt is after the class end', async () => {
-      const winx = await seed.horse('Winx', { barnId });
-      const first = await enrollments.create(trainer, classId, {
-        horseId: winx,
-      });
-
-      await expect(
-        enrollments.leave(trainer, first.id, {
-          leftAt: '2031-06-01T00:00:00Z',
-        }),
-      ).rejects.toThrow('Thời điểm rời lớp phải nằm trong thời gian của lớp');
+      await expect(enrollments.leave(trainer, first.id, {})).rejects.toThrow(
+        'Thời điểm rời lớp phải nằm trong thời gian của lớp',
+      );
     });
   });
 });

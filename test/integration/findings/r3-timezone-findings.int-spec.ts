@@ -22,7 +22,6 @@ import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-st
 import { HorseMeasurementType } from '../../../src/modules/horses/enums/horse-measurement-type.enum';
 import { HorseMeasurementsService } from '../../../src/modules/horses/horse-measurements/horse-measurements.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
-import type { MediaService } from '../../../src/modules/media/services/media.service';
 import { CareSchedulesModule } from '../../../src/modules/medical/care-schedules/care-schedules.module';
 import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
 import { CheckupsService } from '../../../src/modules/medical/care-schedules/checkups.service';
@@ -55,21 +54,14 @@ import type { PerformanceMetric } from '../../../src/modules/performance/schemas
 import type { RealtimeGateway } from '../../../src/modules/realtime/realtime.gateway';
 import { CreateTrainingClassDto } from '../../../src/modules/training/dto/training-class.dto';
 import {
-  CreateHorseEnrollmentDto,
-  LeaveHorseEnrollmentDto,
-} from '../../../src/modules/training/dto/horse-enrollment.dto';
-import {
   CreateTrainingSessionDto,
   UpdateTrainingSessionDto,
 } from '../../../src/modules/training/dto/training-session.dto';
-import { HorseEnrollmentEntity } from '../../../src/modules/training/entities/horse-enrollment.entity';
 import { TrainingClassEntity } from '../../../src/modules/training/entities/training-class.entity';
 import { TrainingSessionEntity } from '../../../src/modules/training/entities/training-session.entity';
 import { TrainingIntensity } from '../../../src/modules/training/enums/training-intensity.enum';
 import { classEndDate } from '../../../src/modules/training/policies/training.policy';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
-import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
 import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
 import { TrainingSessionsService } from '../../../src/modules/training/training-sessions/training-sessions.service';
 import { fixtures } from '../fixtures';
@@ -133,7 +125,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
   let measurements: HorseMeasurementsService;
   let sessions: TrainingSessionsService;
   let classes: TrainingClassesService;
-  let enrollments: TrainingClassEnrollmentsService;
   let metrics: PerformanceMetricsService;
   const inserted: Array<{ recordedAt: Date }> = [];
 
@@ -255,16 +246,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       dataSource.getRepository(TrainingClassEntity),
       trainingAccess,
       dataSource,
-      audit,
-    );
-    enrollments = new TrainingClassEnrollmentsService(
-      dataSource.getRepository(HorseEnrollmentEntity),
-      trainingAccess,
-      new TrainingOperationsFacade(
-        new TrainingAccessService({} as DataSource, {} as HorseAccessService),
-      ),
-      dataSource,
-      {} as MediaService,
       audit,
     );
     const metricModel = {
@@ -538,41 +519,6 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
     expect(failed()).toEqual([]);
     const row = await classes.create(trainer, body);
     expect(row.startDate).toBe(futureDay);
-  });
-
-  it('TZ3-16 enrollment enrolledAt without offset is rejected, with offset is stored as club time', async () => {
-    const { classId } = await activeClass();
-    const body = { horseId: gio, enrolledAt: PAST } as CreateHorseEnrollmentDto;
-    await expectOffsetRequired(
-      CreateHorseEnrollmentDto,
-      body,
-      'enrolledAt',
-      () => enrollments.create(trainer, classId, body),
-      () =>
-        one(
-          'SELECT enrolled_at AS v FROM horse_enrollments WHERE class_id = $1',
-          [classId],
-        ),
-    );
-  });
-
-  it('TZ3-17 enrollment leftAt without offset is rejected, with offset is stored as club time', async () => {
-    const { classId } = await activeClass();
-    const id = randomUUID();
-    await dataSource.query(
-      `INSERT INTO horse_enrollments (id, version, class_id, horse_id, status, enrolled_at)
-       VALUES ($1, 1, $2, $3, 'ACTIVE', $4)`,
-      [id, classId, gio, clubDateTimeToInstant(shiftDays(D, -7), '08:00')],
-    );
-    const body = { leftAt: PAST } as LeaveHorseEnrollmentDto;
-    await expectOffsetRequired(
-      LeaveHorseEnrollmentDto,
-      body,
-      'leftAt',
-      () => enrollments.leave(trainer, id, body),
-      () =>
-        one('SELECT left_at AS v FROM horse_enrollments WHERE id = $1', [id]),
-    );
   });
 
   it('TZ3-18 measurement list filter from without offset is rejected, with offset filters by club time', async () => {

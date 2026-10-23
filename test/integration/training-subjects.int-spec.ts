@@ -87,6 +87,18 @@ describe('TrainingSubjectsService (Postgres)', () => {
     );
   });
 
+  it('rejects a subject name that differs only by case with 409 on create and update', async () => {
+    await service.create(manager, { ...endurance, name: 'Nước rút' });
+    const other = await service.create(manager, endurance);
+
+    await expect(
+      service.create(manager, { ...endurance, name: 'nước rút' }),
+    ).rejects.toThrow(new ConflictException('Tên môn học đã tồn tại'));
+    await expect(
+      service.update(manager, other.id, { name: 'NƯỚC RÚT' }),
+    ).rejects.toThrow(new ConflictException('Tên môn học đã tồn tại'));
+  });
+
   it('keeps unsent fields on update and clears a field sent as null', async () => {
     const created = await service.create(manager, endurance);
 

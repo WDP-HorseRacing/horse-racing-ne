@@ -26,6 +26,12 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 - `POST /auth/logout`: body nhận thêm `deviceToken` (không bắt buộc, token push của máy đang dùng). Có gửi thì máy đó thôi nhận push của tài khoản vừa đăng xuất. App nên luôn gửi kèm, nhất là máy dùng chung ở chuồng. Không gửi thì như cũ.
 - Route mới `POST /users/:id/reset-password` (CM), body `{ newPassword }` (tối thiểu 8 ký tự, như lúc tạo tài khoản), trả 204: đặt mật khẩu mới (mật khẩu thường, nhân viên đăng nhập được ngay, muốn thì tự đổi) và đăng xuất mọi phiên của nhân viên đó. 404 "Không tìm thấy người dùng"; 400 "Không thể tự đặt lại mật khẩu của chính mình, hãy dùng chức năng đổi mật khẩu"; 403 "Không thể đặt lại mật khẩu của Club Manager khác". Tài khoản đã khóa vẫn đặt lại được. FE thêm nút "Đặt lại mật khẩu" ở màn quản lý nhân viên.
 
+### Ghi danh, rời lớp lấy thời điểm lúc bấm; tên môn không phân biệt hoa thường
+
+- `POST /classes/:classId/enrollments`: body bỏ `enrolledAt` (chỉ còn `horseId`); gửi lên 400 "Không nhận ô enrolledAt". Thời điểm ghi danh là lúc gọi; lớp chưa khai giảng vẫn ghi danh được (trước đây phải gửi `enrolledAt` từ ngày khai giảng). Lớp đã kết thúc 409 như cũ. Response vẫn có `enrolledAt`.
+- `PATCH /enrollments/:id/leave`: body bỏ `leftAt` (chỉ còn `reason`); gửi lên 400 "Không nhận ô leftAt". Thời điểm rời lớp là lúc gọi; không chọn ngày rời. Rút ngựa trước ngày khai giảng được (trước đây 409).
+- Môn học (`POST /training-subjects`, `PATCH /training-subjects/:subjectId`): tên bỏ khoảng trắng hai đầu, tên toàn khoảng trắng 400; trùng tên không phân biệt hoa thường ("Nước rút" và "nước rút") 409 "Tên môn học đã tồn tại".
+
 ## Ngày 22/10/2026
 
 ### Thông báo mới (request, response không đổi)

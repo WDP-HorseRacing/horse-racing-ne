@@ -560,19 +560,19 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
     expect(count).toBe(0);
   });
 
-  it('F2-7: leaving a class with a future leave date is rejected', async () => {
+  it('F2-7: leaving a class always records the current time, a client leave date is not accepted', async () => {
     const winx = await enrolledHorse();
+    const before = Date.now();
 
-    const outcome = await outcomeOf(
-      enrollments.leave(trainer, winx.enrollmentId, {
-        leftAt: new Date(Date.now() + 72 * HOUR).toISOString(),
-      }),
-    );
+    await enrollments.leave(trainer, winx.enrollmentId, {});
 
-    expect(outcome).not.toBe('ok');
-    expect(await statusOf('horse_enrollments', winx.enrollmentId)).toBe(
-      'ACTIVE',
+    const [{ leftAt }] = await dataSource.query<Array<{ leftAt: Date }>>(
+      'SELECT left_at AS "leftAt" FROM horse_enrollments WHERE id = $1',
+      [winx.enrollmentId],
     );
+    expect(await statusOf('horse_enrollments', winx.enrollmentId)).toBe('LEFT');
+    expect(leftAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(leftAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
 
   it('F2-8: cancelling a class requires re-typing the class code', async () => {

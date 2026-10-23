@@ -303,3 +303,37 @@ Nguyên tắc chung: hệ thống chặn những giá trị làm hỏng dữ li�
 **Trả lời:** Bác sĩ gỡ khóa hiện tại rồi đặt khóa mới với ngày gỡ dự kiến mới; khi đóng bệnh án mà chọn giữ khóa thì nhập luôn ngày mới. Mỗi lần đặt, gỡ đều ghi nhật ký người làm, thời điểm, lý do, và báo HT, CM, chủ ngựa, Groom. Ngày gỡ chỉ là dự kiến, ngựa chỉ tập lại khi bác sĩ gỡ khóa, nên không có trường hợp ngựa tự được tập khi chưa hồi phục.
 
 **Đánh đổi đã biết:** dời ngày bằng cách gỡ rồi đặt lại sinh hai thông báo (đã gỡ, rồi bị khóa) và lịch sử khóa thành hai dòng.
+
+## Lớp huấn luyện
+
+### 40. Sao HT không hẹn trước được ngày ngựa rời lớp, hay ghi ngựa đã rời lớp từ tuần trước? (F2-7)
+
+**Trả lời:** Rời lớp tính tại lúc HT bấm: ghi danh thành Rời lớp, các lượt tập từ lúc đó trở đi bị hủy, lớp nhả chỗ ngay. Muốn ngựa rời từ ngày 30 thì ngày 30 HT bấm. Cùng nguyên tắc "thời điểm trên hệ thống là thời điểm ghi nhận" như số đo, giờ khám, ngày mất.
+
+**Lý do:**
+- Hẹn trước cho đúng phải có thêm trạng thái "sắp rời" và job chạy theo ngày: trong lúc chờ ngựa vẫn chiếm chỗ, vẫn có lượt tập, tới ngày mới nhả chỗ. Nhận ngày tương lai mà nhả chỗ ngay thì lớp vượt sức chứa trong lúc ngựa còn tập. Với quy mô câu lạc bộ, bấm đúng ngày đơn giản và không sai số liệu.
+- Ghi lùi là sửa lịch sử: các lượt đã diễn ra sẽ thành lượt của ngựa "đã rời lớp", sĩ số và báo cáo các ngày đó đổi theo.
+
+**Đánh đổi đã biết:** HT phải nhớ ngày để bấm; không đặt lịch rời trước được.
+
+### 41. Hủy lớp nhầm thì sao, sao không cho khôi phục hay dùng lại mã lớp? (F2-8)
+
+**Trả lời:** Hủy lớp là thao tác cuối: buổi, lượt, ghi danh của lớp bị hủy theo, nhật ký ghi người hủy và lý do. Hủy nhầm thì HT tạo lại lớp (chọn giáo án, ngày bắt đầu, thêm buổi, ghi danh lại) với mã khác.
+
+**Lý do:**
+- Khôi phục phải mở lại từng buổi, lượt, ghi danh và kiểm lại sức chứa, trùng giờ, sức khỏe ngựa tại thời điểm mở lại; tạo lại lớp đi qua đúng các kiểm tra đó nên an toàn hơn.
+- Mã lớp duy nhất trong toàn bộ lịch sử: thấy mã trong nhật ký hay báo cáo là biết chắc đó là lớp nào, không lẫn giữa lớp đã hủy và lớp tạo lại.
+
+**Đánh đổi đã biết:** phải nhập lại lớp từ đầu và đặt mã mới; giao diện nên có hộp thoại xác nhận trước khi hủy.
+
+### 42. Ngựa vượt ngưỡng nhịp tim 2 phút sao lịch sử cảnh báo ra hàng trăm dòng? (F2-14)
+
+**Trả lời:** Lịch sử cảnh báo liệt kê đúng từng điểm đo vượt ngưỡng (mỗi giây một điểm), có phân trang và lọc theo mức, theo ngày. Dữ liệu đầy đủ, không mất điểm nào; gom thành "đợt" (từ giờ nào tới giờ nào, đỉnh bao nhiêu) là việc hiển thị.
+
+**Đánh đổi đã biết:** chưa gom theo đợt ở máy chủ; số đo hiện là dữ liệu giả lập, khi có thiết bị thật sẽ gom ở truy vấn.
+
+### 43. Chủ mới mua ngựa xem được nhận xét huấn luyện từ trước khi mua; chủ cũ thì không xem được nữa? (F2-16)
+
+**Trả lời:** Lớp, lượt tập, nhận xét thuộc về con ngựa: người đang sở hữu xem toàn bộ lịch sử tập để biết con ngựa mình mua, giống bệnh án. Chủ cũ xem hồ sơ cơ bản của ngựa từng sở hữu và báo cáo chi phí của các khoảng mình đã sở hữu; dữ liệu tập luyện và bệnh án không còn xem.
+
+**Đánh đổi đã biết:** chủ cũ muốn xem lại một buổi tập cũ phải hỏi Club Manager.

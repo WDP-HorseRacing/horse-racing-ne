@@ -121,6 +121,23 @@ export class TrainingClassEnrollmentsService {
     );
   }
 
+  /**
+   * Ghi danh ngựa vào lớp tại thời điểm hiện tại
+   *
+   * - Lớp không ở trạng thái ACTIVE hoặc đã đủ sĩ số: 409
+   * - Ngựa không ở trạng thái ACTIVE: 409
+   * - Lớp đã qua ngày kết thúc theo giờ CLB: 409; lớp chưa khai giảng vẫn nhận, enrolledAt vẫn là thời điểm hiện tại
+   * - Ngựa còn khoảng ghi danh chưa kết thúc ở lớp này: 409
+   * - Thêm ngựa vào các buổi đã công bố chưa tới giờ của lớp (addToFuturePublishedSessions)
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param classId UUID của lớp
+   * @param body Ngựa được ghi danh
+   * @returns Promise trả về ghi danh vừa tạo
+   * @throws NotFoundException Nếu không có lớp hoặc ngựa
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp hoặc ngựa không thuộc khu của Head Trainer
+   * @throws ConflictException Nếu lớp không nhận thêm ngựa, ngựa không ghi danh được, lớp đã kết thúc, khoảng ghi danh chồng lấn hoặc lịch tập bị trùng
+   */
   async create(
     actor: Actor,
     classId: string,
@@ -162,13 +179,10 @@ export class TrainingClassEnrollmentsService {
       const horse = await this.access.lockedHorse(manager, body.horseId);
       await this.access.assertTrainerBarn(manager, actor, caller.id, horse.id);
       assertHorseEnrollable(horse.lifecycleStatus);
-      const enrolledAt = body.enrolledAt
-        ? new Date(body.enrolledAt)
-        : new Date();
+      const enrolledAt = new Date();
       if (
-        enrolledAt < clubDateTimeToInstant(trainingClass.startDate, '00:00') ||
         enrolledAt >=
-          clubDateTimeToInstant(shiftDays(trainingClass.endDate, 1), '00:00')
+        clubDateTimeToInstant(shiftDays(trainingClass.endDate, 1), '00:00')
       ) {
         throw new ConflictException(
           'Thời điểm ghi danh phải nằm trong thời gian của lớp',
@@ -317,6 +331,22 @@ export class TrainingClassEnrollmentsService {
     );
   }
 
+  /**
+   * Cho ngựa rời lớp tại thời điểm hiện tại
+   *
+   * - Ghi danh không còn ACTIVE: 409
+   * - Ghi danh chưa bắt đầu (enrolledAt sau thời điểm hiện tại): 409
+   * - Lớp đã qua ngày kết thúc theo giờ CLB: 409
+   * - Ghi danh chuyển LEFT, leftAt là thời điểm hiện tại; hủy lượt tham gia các buổi bắt đầu từ thời điểm đó trở đi (cancelParticipantsFromEnrollments) với lý do gửi lên hoặc "Ngựa đã rời lớp"
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param enrollmentId UUID của ghi danh
+   * @param body Lý do rời lớp (nếu có)
+   * @returns Promise trả về ghi danh sau khi rời lớp
+   * @throws NotFoundException Nếu không có ghi danh hoặc lớp
+   * @throws ForbiddenException Nếu người gọi không quản lý lớp
+   * @throws ConflictException Nếu ngựa đã rời lớp, ghi danh chưa bắt đầu hoặc lớp đã kết thúc
+   */
   async leave(
     actor: Actor,
     enrollmentId: string,
@@ -342,7 +372,7 @@ export class TrainingClassEnrollmentsService {
       if (row.status !== HorseEnrollmentStatus.ACTIVE) {
         throw new ConflictException('Ngựa đã rời lớp');
       }
-      const leftAt = body.leftAt ? new Date(body.leftAt) : new Date();
+      const leftAt = new Date();
       if (leftAt < row.enrolledAt) {
         throw new ConflictException('Thời điểm rời lớp không hợp lệ');
       }

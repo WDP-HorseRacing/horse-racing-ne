@@ -200,10 +200,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
     await seedSession(b, 'SCHEDULED');
     const horse = await seed.horse('Winx', { barnId: a.barnId });
 
-    await enrollments.create(a.trainer, a.classId, {
-      horseId: horse,
-      enrolledAt: '2026-06-01T00:00:00Z',
-    });
+    await enrollments.create(a.trainer, a.classId, { horseId: horse });
 
     const rows = await dataSource.query<Array<{ session_id: string }>>(
       'SELECT session_id FROM session_participants WHERE horse_id = $1',
@@ -216,14 +213,11 @@ describe('Training class queries over its sessions (Postgres)', () => {
     const a = await seedClass('A');
     const horse = await seed.horse('Winx', { barnId: a.barnId });
 
+    const before = Date.now();
     const enrolled = await enrollments.create(a.trainer, a.classId, {
       horseId: horse,
-      enrolledAt: '2026-06-01T00:00:00Z',
     });
-    await enrollments.leave(a.trainer, enrolled.id, {
-      leftAt: '2026-07-01T00:00:00Z',
-      reason: 'Chuyển lớp',
-    });
+    await enrollments.leave(a.trainer, enrolled.id, { reason: 'Chuyển lớp' });
 
     const rows = await dataSource.query<
       Array<{
@@ -247,7 +241,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
         after_data: {
           classId: a.classId,
           horseId: horse,
-          enrolledAt: '2026-06-01T00:00:00.000Z',
+          enrolledAt: expect.any(String),
         },
         reason: null,
         feature: 'TRAIN_ENROLL',
@@ -256,10 +250,53 @@ describe('Training class queries over its sessions (Postgres)', () => {
         action: 'UPDATE',
         entity_type: 'CLASS_ENROLLMENT',
         before_data: { status: 'ACTIVE' },
-        after_data: { status: 'LEFT', leftAt: '2026-07-01T00:00:00.000Z' },
+        after_data: { status: 'LEFT', leftAt: expect.any(String) },
         reason: 'Chuyển lớp',
         feature: 'TRAIN_ENROLL',
       },
+    ]);
+    for (const at of [
+      rows[0].after_data?.enrolledAt,
+      rows[1].after_data?.leftAt,
+    ]) {
+      expect(Date.parse(at as string)).toBeGreaterThanOrEqual(before);
+      expect(Date.parse(at as string)).toBeLessThanOrEqual(Date.now());
+    }
+  });
+
+  it('enrolls a horse before the class starts at the current time, keeps the class editable and lets it leave before the start', async () => {
+    const a = await seedClass('A');
+    await dataSource.query(
+      `UPDATE training_classes SET start_date = '2099-01-01' WHERE id = $1`,
+      [a.classId],
+    );
+    const first = await seedSession(a, 'SCHEDULED');
+    const horse = await seed.horse('Winx', { barnId: a.barnId });
+
+    const before = Date.now();
+    const enrolled = await enrollments.create(a.trainer, a.classId, {
+      horseId: horse,
+    });
+
+    expect(enrolled.enrolledAt.getTime()).toBeGreaterThanOrEqual(before);
+    expect(enrolled.enrolledAt.getTime()).toBeLessThanOrEqual(Date.now());
+    const participants = () =>
+      dataSource.query<Array<{ session_id: string; status: string }>>(
+        'SELECT session_id, status FROM session_participants WHERE horse_id = $1',
+        [horse],
+      );
+    expect(await participants()).toEqual([
+      { session_id: first, status: 'PLANNED' },
+    ]);
+    await expect(
+      classes.update(a.trainer, a.classId, { name: 'Lớp A mới' }),
+    ).resolves.toMatchObject({ name: 'Lớp A mới' });
+
+    await expect(
+      enrollments.leave(a.trainer, enrolled.id, {}),
+    ).resolves.toMatchObject({ status: 'LEFT' });
+    expect(await participants()).toEqual([
+      { session_id: first, status: 'CANCELLED' },
     ]);
   });
 

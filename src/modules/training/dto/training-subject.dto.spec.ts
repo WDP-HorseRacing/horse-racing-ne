@@ -2,7 +2,10 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { CreateTrainingSubjectDto } from './training-subject.dto';
+import {
+  CreateTrainingSubjectDto,
+  UpdateTrainingSubjectDto,
+} from './training-subject.dto';
 
 function subject(
   targetTimeMs: number,
@@ -35,6 +38,34 @@ describe('CreateTrainingSubjectDto duration', () => {
       expect(errors.map((error) => error.property)).toEqual([
         'durationMinutes',
       ]);
+    }
+  });
+});
+
+describe('Training subject name', () => {
+  const base = {
+    sessionType: TrainingSessionType.REGULAR,
+    intensity: TrainingIntensity.LIGHT,
+    plannedDistanceM: 1000,
+    durationMinutes: 30,
+  };
+
+  it('trims the name before saving', async () => {
+    const dto = plainToInstance(CreateTrainingSubjectDto, {
+      ...base,
+      name: '  Nước rút  ',
+    });
+    await expect(validate(dto)).resolves.toEqual([]);
+    expect(dto.name).toBe('Nước rút');
+  });
+
+  it('rejects a whitespace-only name on create and update', async () => {
+    for (const dto of [
+      plainToInstance(CreateTrainingSubjectDto, { ...base, name: '   ' }),
+      plainToInstance(UpdateTrainingSubjectDto, { name: '   ' }),
+    ]) {
+      const errors = await validate(dto);
+      expect(errors.map((error) => error.property)).toEqual(['name']);
     }
   });
 });

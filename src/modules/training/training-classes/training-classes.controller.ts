@@ -148,6 +148,10 @@ export class TrainingClassesController {
   // create enrollment
   @Access([UserRole.HEAD_TRAINER])
   @Post('classes/:classId/enrollments')
+  @ApiOperation({
+    summary:
+      'Ghi danh ngựa vào lớp tại thời điểm hiện tại, kể cả khi lớp chưa khai giảng',
+  })
   @ApiCreatedResponse({ type: HorseEnrollmentResponseDto })
   createEnrollment(
     @CurrentUser() actor: Actor,
@@ -160,6 +164,10 @@ export class TrainingClassesController {
   // leave enrollment
   @Access([UserRole.HEAD_TRAINER])
   @Patch('enrollments/:id/leave')
+  @ApiOperation({
+    summary:
+      'Cho ngựa rời lớp tại thời điểm hiện tại, hủy lượt tham gia các buổi từ lúc đó trở đi',
+  })
   @ApiOkResponse({ type: HorseEnrollmentResponseDto })
   leaveEnrollment(
     @CurrentUser() actor: Actor,

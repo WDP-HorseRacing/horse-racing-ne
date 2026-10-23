@@ -509,8 +509,8 @@ export class TrainingClassesService {
         .createQueryBuilder('enrollment')
         .where('enrollment.class_id = :classId', { classId })
         .andWhere(
-          '(enrollment.enrolled_at < :rangeStart OR enrollment.enrolled_at >= :rangeEnd OR (enrollment.left_at IS NOT NULL AND enrollment.left_at >= :rangeEnd))',
-          { rangeStart, rangeEnd },
+          '(enrollment.enrolled_at >= :rangeEnd OR (enrollment.left_at IS NOT NULL AND enrollment.left_at >= :rangeEnd))',
+          { rangeEnd },
         )
         .getCount();
       if (outsideEnrollments) {
