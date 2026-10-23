@@ -619,15 +619,19 @@ describe('Stable incidents (Postgres)', () => {
         resolution: 'Ngựa đã chuyển nhượng',
         resolver: null,
         resolvedBySystem: true,
+        resolutionSource: 'LIFECYCLE',
         resolvedAt: expect.any(Date) as unknown,
       });
       expect(await incidents.get(manager, done.id)).toMatchObject({
         resolution: 'Ổn',
         resolvedBySystem: false,
+        resolutionSource: 'HEAD_TRAINER',
       });
-      expect((await incidents.get(manager, other.id)).status).toBe(
-        IncidentStatus.OPEN,
-      );
+      expect(await incidents.get(manager, other.id)).toMatchObject({
+        status: IncidentStatus.OPEN,
+        resolvedBySystem: false,
+        resolutionSource: null,
+      });
     });
   });
 

@@ -57,7 +57,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 ### 1. Vật tư
 
 1. Kho chung cả CLB, không chia theo khu.
-2. Tên vật tư duy nhất trong CLB (không tính bản đã xóa). Số tồn và ngưỡng báo thiếu không âm.
+2. Tên vật tư duy nhất trong CLB, không phân biệt hoa thường ("Cám A" và "cám a" trùng; không tính bản đã xóa). Số tồn và ngưỡng báo thiếu không âm.
 3. Chỉ Club Manager thêm, sửa (tên, loại, đơn vị, ngưỡng), xóa mềm vật tư. Sửa vật tư không đổi được số tồn.
    - Vật tư đã có dòng sổ khác `OPENING` (nhập hàng, xuất dùng, hủy lần xuất...) thì không đổi đơn vị hoặc loại: 409 gắn với ô `unit` (hoặc `category`) "Vật tư đã có nhập xuất kho, không đổi được đơn vị. Hãy tạo vật tư mới" ("... không đổi được loại..."). Gửi cả hai thì báo ô `unit`. Gửi đúng giá trị đang có không tính là đổi. Tên, ngưỡng vẫn sửa được.
    - Vật tư mới chỉ có dòng `OPENING` (tạo nhầm) vẫn đổi được đơn vị, loại.
@@ -73,7 +73,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 6. Hệ thống không tự trừ tồn theo khẩu phần hay theo đơn thuốc; người lấy hàng tự ghi xuất dùng. Chưa có kiểm kê và ghi hao hụt.
 7. Vật tư còn đề xuất `PENDING` hoặc `APPROVED` thì không xóa được (409); Club Manager từ chối, cấp hoặc hủy xong trước. Đề xuất `REJECTED`, `FULFILLED`, `CANCELLED` không chặn xóa.
 8. Vật tư đã xóa không nhận đề xuất mới, không đưa vào khẩu phần mới; đề xuất và khẩu phần cũ vẫn hiện tên.
-9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô, làm tròn nửa xa số 0 tới đồng theo từng dòng; mọi tổng tiền dưới đây cộng các dòng đã làm tròn, không làm tròn lại tổng. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE` của các lần xuất chưa bị hủy (lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau, nên báo cáo kỳ gốc tự đổi số); dòng `USAGE_REVERSAL` không tính vào mua vào hay đã dùng; giá trị tồn kho = tổng số còn × đơn giá của các lô. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
+9. Đơn giá (VND, số nguyên, không âm) nằm trên lô; mỗi lô có giá riêng. Tiền của một dòng sổ = số chênh lệch × đơn giá lô, làm tròn nửa xa số 0 tới đồng theo từng dòng; mọi tổng tiền dưới đây cộng các dòng đã làm tròn, không làm tròn lại tổng. Trong một kỳ: tiền mua vào = tổng tiền các dòng `RESTOCK`; giá trị đã dùng = tổng tiền các dòng `USAGE` của các lần xuất chưa bị hủy (lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau, nên báo cáo kỳ gốc tự đổi số); dòng `USAGE_REVERSAL` không tính vào mua vào hay đã dùng; giá trị tồn kho cuối kỳ (`supplies.inventoryValue` trong báo cáo tài chính CLB) = tổng tiền mọi dòng sổ có lô tới hết ngày cuối kỳ, bỏ lần xuất đã hủy và dòng hủy; dòng điều chỉnh không có lô không có tiền; vật tư đã xóa vẫn tính. Lô tồn ban đầu không tính là mua vào; dòng ghi trước khi có lô không có tiền.
 
 ### 2. Đề xuất bổ sung
 
@@ -99,15 +99,16 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 ### 4. Loại việc và việc riêng của ngựa
 
-1. Club Manager thêm, sửa loại việc (tên duy nhất, cờ "áp mọi ngựa", đang dùng hay ngưng). Không xóa; ngưng dùng thì checklist sinh sau đó (kể cả trong ngày) không còn việc này, checklist đã sinh giữ nguyên.
+1. Club Manager thêm, sửa loại việc (tên duy nhất, cờ "áp mọi ngựa", đang dùng hay ngưng). Không xóa; ngưng dùng thì checklist sinh sau đó (kể cả trong ngày) không còn việc này, và checklist hôm nay bỏ dòng chưa tick của việc này (dòng đã tick giữ nguyên).
+   - Loại việc đã có dòng trong checklist (bất kỳ ngày nào) thì không đổi tên (409 "Loại việc đã dùng trong checklist, không đổi tên được"), để checklist cũ giữ đúng tên; muốn đổi thì tạo loại mới rồi ngưng loại cũ. Chưa dùng ngày nào thì đổi tên được.
    - Mỗi loại việc là một dòng trong checklist mỗi ngày. Việc làm nhiều lần trong ngày thì Club Manager khai mỗi lần một loại việc, ví dụ "Cho ăn sáng" và "Cho ăn tối".
    - Khẩu phần (các bữa và món ăn) chỉ là thực đơn để Groom làm theo; khẩu phần không quyết định checklist có những dòng nào.
 2. Head Trainer của khu, hoặc bác sĩ (mọi ngựa trong CLB, không giới hạn khu), gắn loại việc cho một ngựa trong khoảng ngày (từ ngày ≤ đến ngày, từ ngày không ở quá khứ, dài tối đa 366 ngày). Một loại việc không gắn trùng khoảng ngày cho cùng một ngựa (409). Loại việc đã ngưng hoặc đã "áp mọi ngựa" thì không gắn riêng được (409).
 3. Gắn việc có hiệu lực hôm nay khi checklist hôm nay đã có: thêm dòng vào checklist hôm nay; checklist đang `COMPLETED` quay về `IN_PROGRESS`; báo Groom phụ trách.
-4. Gỡ việc riêng: chưa tới ngày bắt đầu thì xóa; đã bắt đầu thì kết thúc ở hôm nay. Checklist đã sinh không đổi.
+4. Gỡ việc riêng: bắt đầu từ hôm nay trở đi thì xóa (gỡ nhầm thì gắn lại được ngay); bắt đầu trước hôm nay thì kết thúc ở hôm nay. Việc có hiệu lực hôm nay bị gỡ thì checklist hôm nay bỏ dòng chưa tick của việc đó (dòng đã tick giữ nguyên).
 5. Miễn việc chung cho một ngựa (dòng `EXEMPT`, ví dụ ngựa sốt nên không tắm trong 5 ngày): Head Trainer của khu hoặc bác sĩ chọn một loại việc đang dùng và đang "áp mọi ngựa", khoảng ngày như luật 2, lý do bắt buộc (400 nếu thiếu). Loại việc không áp mọi ngựa: 409. Ghi nhật ký.
    - Trong khoảng miễn, checklist sinh ra không có việc đó; hết hạn thì việc tự có lại.
-   - Miễn bắt đầu hôm nay khi checklist hôm nay đã sinh: bỏ dòng việc đó nếu chưa tick (dòng đã tick giữ nguyên), rồi tính lại trạng thái; checklist không còn dòng nào thì xóa. Checklist hôm nay chưa sinh thì không sinh thêm, không báo Groom.
+   - Miễn bắt đầu hôm nay khi checklist hôm nay đã sinh: bỏ dòng việc đó nếu chưa tick (dòng đã tick giữ nguyên), rồi tính lại trạng thái. Checklist hôm nay chưa sinh thì không sinh thêm, không báo Groom.
    - Gỡ dòng miễn: bắt đầu từ hôm nay trở đi thì xóa; bắt đầu trước hôm nay thì kết thúc ở hôm qua. Việc chung có lại ngay trong checklist hôm nay (chưa có checklist thì sinh) và báo Groom như luật 3.
    - Không trùng khoảng ngày với dòng khác cùng ngựa, cùng loại việc (409), dù là gắn thêm hay miễn.
 6. Club Manager đổi cờ "áp mọi ngựa" của loại việc khi còn dòng gắn thêm hoặc miễn của loại đó chưa hết hạn (ngày kết thúc từ hôm nay trở đi): 409, phải gỡ các dòng đó trước.
@@ -122,7 +123,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 
 1. Checklist thuộc một ngựa, một ngày, giao cho Groom đang phụ trách ngựa. Ngựa chưa có Groom thì không có checklist.
 2. Sinh sẵn mỗi ngày: lúc 00:05 (giờ CLB) và một lần khi khởi động, hệ thống tạo checklist hôm nay cho mọi ngựa đang có Groom, từ các loại việc "áp mọi ngựa" đang dùng cộng việc riêng của ngựa có hiệu lực hôm nay. Chạy lại hoặc chạy cùng lúc không tạo trùng. Chỉ sinh cho hôm nay, không sinh ngày tương lai. Xem checklist không bao giờ tạo checklist.
-   - Ngày không có việc nào thì không có checklist.
+   - Ngày không có việc nào thì không sinh checklist. Checklist đã sinh mà bị bỏ hết dòng (miễn, gỡ, ngưng loại việc) thì giữ lại, trạng thái `COMPLETED`; gắn việc mới trong ngày thì thêm dòng vào chính checklist đó.
    - Ngựa được giao Groom trong ngày mà chưa có checklist hôm nay: sinh ngay lúc giao.
    - Gắn việc riêng bắt đầu hôm nay cho ngựa chưa có checklist hôm nay (ví dụ sáng nay không có việc nào): sinh ngay lúc gắn.
    - Nhờ sinh sẵn, ngày không ai mở checklist vẫn có dòng để chuyển `INCOMPLETE` (luật 6).
@@ -132,7 +133,7 @@ SỰ CỐ                             Groom báo, HT khu đóng
 3. Trạng thái (lưu cột, tính lại trong cùng transaction mỗi lần tick, gỡ tick, thêm việc):
    - `PENDING`: chưa việc nào xong.
    - `IN_PROGRESS`: xong một phần.
-   - `COMPLETED`: xong hết, ghi thời điểm hoàn thành.
+   - `COMPLETED`: xong hết (kể cả checklist không còn dòng nào), ghi thời điểm hoàn thành.
    - `INCOMPLETE`: ngày đã qua mà chưa xong; checklist bị khóa.
    - `CANCELLED`: hủy vì ngựa chuyển nhượng hoặc ghi nhận đã mất trong ngày (luật 9); checklist bị khóa.
 4. Groom phụ trách tick hoặc gỡ tick từng việc, kèm ghi chú, chỉ trong ngày. Mỗi việc lưu ai tick, lúc nào. Việc không có giờ phải làm; chỉ cần xong trong ngày.
@@ -151,15 +152,18 @@ SỰ CỐ                             Groom báo, HT khu đóng
 1. Mọi Groom đang hoạt động báo được sự cố cho ngựa đang ở CLB, không cần đang phụ trách con đó (ví dụ Groom trực đêm thấy ngựa khác lăn lộn): mô tả, cờ khẩn, ảnh (tùy chọn, tối đa một). Ảnh tải lên trước qua `POST /media/upload-requests` với `purpose = INCIDENT_PHOTO` (JPEG, PNG hoặc WebP, tối đa 10 MB), phải do chính người báo tải lên; mỗi ảnh gắn cho tối đa một sự cố (409). Ngựa đã xóa: 404; đã chuyển nhượng hoặc đã mất: 409.
 2. Sự cố khẩn: trong cùng transaction hệ thống tạo yêu cầu khám khẩn (nguồn `GROOM_INCIDENT`, gắn sự cố, mô tả lấy từ sự cố); mọi bác sĩ nhận thông báo khẩn như Flow 3.
 3. Sự cố thường: không tạo yêu cầu khám. Head Trainer của khu bấm "Chuyển bác sĩ" thì tạo yêu cầu khám gắn sự cố; tick "Khẩn" thì yêu cầu khám là khẩn và mọi bác sĩ được báo ngay. Mỗi sự cố tối đa một yêu cầu khám.
-4. Sự cố thường còn mở từ 4 giờ trở lên mà chưa chuyển bác sĩ: hệ thống nhắc Head Trainer của khu và mọi Club Manager một lần (kiểm mỗi 30 phút).
+4. Sự cố thường còn mở từ 4 giờ trở lên mà chưa chuyển bác sĩ (chưa có yêu cầu khám): hệ thống nhắc Head Trainer của khu và mọi Club Manager một lần (kiểm mỗi 30 phút).
 5. Mọi sự cố mới đều báo Head Trainer của khu chứa ngựa (khẩn: ưu tiên cao). Groom báo không phải Groom đang phụ trách ngựa thì Groom phụ trách cũng nhận thông báo. Head Trainer, Club Manager, bác sĩ không báo sự cố; họ gửi yêu cầu khám thẳng (Flow 3).
 6. Head Trainer của khu đóng sự cố (`OPEN` → `RESOLVED`) kèm kết quả xử lý (bắt buộc), ví dụ "Báo nhầm, ngựa bình thường" hoặc "Đã sát trùng móng".
-7. Yêu cầu khám gắn sự cố còn chờ khám thì không đóng được sự cố (409). Bác sĩ khám xong hoặc bỏ qua (có lý do) rồi Head Trainer mới đóng.
-8. Trạng thái sự cố và trạng thái yêu cầu khám độc lập; xem sự cố thì thấy kèm trạng thái yêu cầu khám (chỉ đọc).
+7. Yêu cầu khám gắn sự cố còn chờ khám thì Head Trainer không đóng được sự cố (409 "Sự cố đang chờ bác sĩ khám, sẽ tự đóng khi bác sĩ xử lý xong"); ngựa ổn lại thì báo bác sĩ bỏ qua yêu cầu.
+   - Bác sĩ khám xong hoặc bỏ qua yêu cầu khám gắn sự cố: sự cố tự đóng (`RESOLVED`), kết quả "Bác sĩ đã khám" hoặc "Bác sĩ đã bỏ qua yêu cầu khám", người đóng là bác sĩ; không gửi thêm thông báo (người báo và Groom phụ trách đã nhận "bác sĩ đã khám"). Sự cố đã đóng trước đó thì giữ nguyên.
+   - Bác sĩ hủy buổi khám làm yêu cầu khám quay về chờ: sự cố đã tự đóng theo yêu cầu đó mở lại (`OPEN`); sự cố Head Trainer đóng tay hoặc đóng do đổi vòng đời thì không mở lại.
+8. Xem sự cố thì thấy kèm trạng thái yêu cầu khám (chỉ đọc); sự cố có yêu cầu khám thì đóng, mở theo yêu cầu khám (luật 7).
    Groom xem (danh sách và chi tiết) sự cố mình báo, và mọi sự cố (mọi trạng thái, ai báo cũng vậy) của ngựa mình đang phụ trách. Ngựa đã chuyển cho Groom khác thì Groom cũ chỉ còn thấy sự cố mình báo. Ngoài hai trường hợp đó: 403. Đây chỉ là quyền xem; chuyển bác sĩ và đóng sự cố vẫn chỉ Head Trainer của khu.
    Sự cố không tự lưu mức khẩn: ô "Khẩn" lúc báo chỉ quyết có tạo yêu cầu khám khẩn ngay hay không. Mức khẩn hiện tại (`urgent` trong response) lấy theo yêu cầu khám của sự cố; chưa có yêu cầu khám thì không khẩn.
 9. Groom không còn gửi yêu cầu khám trực tiếp; mọi yêu cầu từ Groom đi qua sự cố.
-10. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction hệ thống tự đóng mọi sự cố còn mở của ngựa, kết quả "Ngựa đã chuyển nhượng" hoặc "Ngựa đã mất", không ghi người đóng (`resolvedBySystem = true`). Xem trước đổi vòng đời có `incidentsClosed` và câu tóm tắt nêu số sự cố đang mở.
+10. Ngựa chuyển nhượng hoặc ghi nhận đã mất: trong cùng transaction hệ thống tự đóng mọi sự cố còn mở của ngựa, kết quả "Ngựa đã chuyển nhượng" hoặc "Ngựa đã mất", không ghi người đóng (`resolvedBySystem = true`).
+11. Sự cố lưu cách đóng (`resolutionSource`): `HEAD_TRAINER` (HT đóng tay), `EXAM` (tự đóng theo yêu cầu khám, luật 7), `LIFECYCLE` (luật 10); còn mở thì trống. Chỉ sự cố `EXAM` được mở lại khi yêu cầu khám quay về chờ. Xem trước đổi vòng đời có `incidentsClosed` và câu tóm tắt nêu số sự cố đang mở.
 
 ### 7. Màn Hôm nay của Groom
 
@@ -284,5 +288,8 @@ Chi tiết schema: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 6. Loại thông báo mới cho sự cố và việc được thêm vào checklist.
 
 ## Phụ lục 2: Việc còn lại
+
+- Tên vật tư dùng unique trên `lower(name)`: `lower()` gộp đúng chữ có dấu khi DB dùng locale UTF-8; trước khi chạy migration `SupplyItemNameCaseInsensitive` (và `TrainingSubjectNameCaseInsensitive`) ở môi trường mới, kiểm `SHOW lc_ctype` (DB dev `en_US.utf8`).
+- Ngưng loại việc đúng lúc đang sinh checklist hôm nay có thể sót dòng của loại vừa ngưng; sửa thì phải đổi thứ tự khóa trong `ensureChecklist`.
 
 - Việc theo giờ: mỗi loại việc có danh sách giờ, mỗi giờ sinh một dòng checklist, kèm nhắc Groom khi trễ giờ. Làm phần này thì xem lại quyết định "checklist không có giờ" (D6).

@@ -169,9 +169,10 @@ export interface MedicalChargeRow {
 }
 
 /**
- * Giá trị vật tư nhập vào và đã dùng trong kỳ, đọc từ DB
+ * Giá trị vật tư nhập vào, đã dùng trong kỳ và tồn kho lúc hết kỳ, đọc từ DB
  */
 export interface SupplyValueRow {
   purchased: string;
   used: string;
+  inventoryValue: string;
 }

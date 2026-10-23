@@ -304,6 +304,20 @@ Nguyên tắc chung: hệ thống chặn những giá trị làm hỏng dữ li�
 
 **Đánh đổi đã biết:** dời ngày bằng cách gỡ rồi đặt lại sinh hai thông báo (đã gỡ, rồi bị khóa) và lịch sử khóa thành hai dòng.
 
+## Sự cố tại chuồng
+
+### 39. Sự cố đã chuyển bác sĩ, ngựa ổn lại thì sao HT không tự đóng sự cố được? (F4-5)
+
+**Trả lời:** Sự cố đã chuyển bác sĩ thì quyết định "ngựa có cần khám không" thuộc về bác sĩ. Bác sĩ khám xong hoặc bỏ qua yêu cầu khám thì sự cố tự đóng; HT không phải bấm thêm. Trong lúc yêu cầu khám còn chờ, HT không đóng được sự cố. Ngựa ổn lại thì HT báo bác sĩ, bác sĩ xem tình trạng rồi bấm bỏ qua (kèm lý do), sự cố tự đóng theo. Sự cố HT tự xử lý, không chuyển bác sĩ, thì HT đóng như thường.
+
+**Lý do:**
+- Đúng phân quyền: chỉ bác sĩ được bỏ qua yêu cầu khám; để HT đóng sự cố mà hủy ngầm việc của bác sĩ là phá luật đó.
+- An toàn cho ngựa: sự cố khẩn do Groom báo đi thẳng tới bác sĩ; nếu HT đóng được thì yêu cầu khám khẩn có thể biến mất khi HT nhận định sai.
+- Khớp thực tế: quản lý chuồng gọi báo bác sĩ "không cần qua nữa", bác sĩ tự quyết có qua hay không.
+- Dấu vết rõ: nhật ký ghi bác sĩ nào bỏ qua, lý do gì.
+
+**Đánh đổi đã biết:** HT muốn kết thúc sớm phải chờ bác sĩ bấm bỏ qua, chậm hơn một bước.
+
 ## Lớp huấn luyện
 
 ### 40. Sao HT không hẹn trước được ngày ngựa rời lớp, hay ghi ngựa đã rời lớp từ tuần trước? (F2-7)

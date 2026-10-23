@@ -254,14 +254,14 @@ Socket.IO uses the `/events` namespace. The gateway verifies the access token on
 | PATCH | `/api/v1/classes/{classId}` |  |
 | GET | `/api/v1/classes/{classId}/enrollable-horses` | Ngựa trong khu của Head Trainer ghi danh được vào lớp lúc này (bỏ ngựa đã ghi danh và ngựa trùng giờ) |
 | GET | `/api/v1/classes/{classId}/enrollments` |  |
-| POST | `/api/v1/classes/{classId}/enrollments` |  |
+| POST | `/api/v1/classes/{classId}/enrollments` | Ghi danh ngựa vào lớp tại thời điểm hiện tại, kể cả khi lớp chưa khai giảng |
 | GET | `/api/v1/classes/{classId}/plan` | Giáo án của lớp (bản chép lúc tạo lớp) kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn |
 | GET | `/api/v1/classes/{classId}/progress` | Tiến độ xếp lịch theo tuần: mỗi môn đã xếp bao nhiêu buổi so với số buổi tối thiểu |
 | GET | `/api/v1/classes/{classId}/sessions` |  |
 | POST | `/api/v1/classes/{classId}/sessions` |  |
 | POST | `/api/v1/classes/{classId}/sessions/bulk` | Thêm nhiều buổi vào lớp cùng lúc (vd lặp hằng tuần); một buổi lỗi thì không lưu buổi nào |
 | PATCH | `/api/v1/classes/{classId}/status` |  |
-| PATCH | `/api/v1/enrollments/{id}/leave` |  |
+| PATCH | `/api/v1/enrollments/{id}/leave` | Cho ngựa rời lớp tại thời điểm hiện tại, hủy lượt tham gia các buổi từ lúc đó trở đi |
 | GET | `/api/v1/horses/{horseId}/training/classes` | List classes of a horse |
 | GET | `/api/v1/horses/{horseId}/training/sessions` | List training sessions of a horse |
 | POST | `/api/v1/session-participants/{id}/absent` |  |

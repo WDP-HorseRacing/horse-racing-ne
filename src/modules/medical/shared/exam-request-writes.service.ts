@@ -17,24 +17,26 @@ export class ExamRequestWritesService {
    * @param requestIds UUID các yêu cầu khám
    * @param handledBy UUID người khám
    * @param medicalRecordId UUID buổi khám
-   * @returns Promise hoàn tất khi đã ghi
+   * @returns Promise trả về thời điểm xử lý đã ghi
    */
   async markExamined(
     manager: EntityManager,
     requestIds: string[],
     handledBy: string,
     medicalRecordId: string,
-  ): Promise<void> {
+  ): Promise<Date> {
+    const handledAt = new Date();
     await manager.update(
       MedicalExamRequestEntity,
       { id: In(requestIds) },
       {
         status: ExamRequestStatus.EXAMINED,
         handledBy,
-        handledAt: new Date(),
+        handledAt,
         medicalRecordId,
       },
     );
+    return handledAt;
   }
 
   /**
@@ -135,15 +137,14 @@ export class ExamRequestWritesService {
 }
 
 /**
- * Dựng payload báo người gửi yêu cầu khám rằng bác sĩ đã khám hoặc bỏ qua
- *
- * - Yêu cầu không có người gửi (hệ thống tự sinh) hoặc người gửi chính là người xử lý: không báo
+ * Dựng payload event bác sĩ đã khám hoặc bỏ qua một yêu cầu khám
  *
  * @param request Yêu cầu khám trước khi đổi trạng thái
  * @param outcome Trạng thái mới: đã khám hoặc bỏ qua
  * @param handledBy UUID người xử lý
+ * @param handledAt Thời điểm xử lý đã ghi vào yêu cầu
  * @param dismissReason Lý do bỏ qua, null khi đã khám
- * @returns Payload của MEDICAL_EXAM_REQUEST_HANDLED_EVENT, hoặc null nếu không cần báo
+ * @returns Payload của MEDICAL_EXAM_REQUEST_HANDLED_EVENT
  */
 export function examRequestHandledEvent(
   request: Pick<
@@ -152,9 +153,9 @@ export function examRequestHandledEvent(
   >,
   outcome: ExamRequestHandledEvent['outcome'],
   handledBy: string,
+  handledAt: Date,
   dismissReason: string | null,
-): ExamRequestHandledEvent | null {
-  if (!request.requestedBy || request.requestedBy === handledBy) return null;
+): ExamRequestHandledEvent {
   return {
     eventId: randomUUID(),
     horseId: request.horseId,
@@ -164,5 +165,7 @@ export function examRequestHandledEvent(
     outcome,
     description: request.description,
     dismissReason,
+    handledBy,
+    handledAt: handledAt.toISOString(),
   };
 }

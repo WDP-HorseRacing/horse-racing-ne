@@ -24,10 +24,16 @@ import { AuditService } from '../../audit/services/audit.service';
 import { mapUniqueViolation } from '../../../common/utils/unique-violation';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { MediaService } from '../../media/services/media.service';
+import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
 import { MedicalExamRequestEntity } from '../../medical/entities/medical-exam-request.entity';
 import { ExamRequestsService } from '../../medical/exam-requests/exam-requests.service';
+import type {
+  ExamRequestHandledEvent,
+  ExamRequestReopenedEvent,
+} from '../../medical/types/medical-events.types';
 import { currentUserForActor } from '../../users/utils/current-user';
 import { IncidentStatus } from '../constants/incident-status.enum';
+import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
 import {
   INCIDENT_HANDLED_EVENT,
   INCIDENT_REPORTED_EVENT,
@@ -349,6 +355,8 @@ export class IncidentsService {
   /**
    * Head Trainer của khu đóng sự cố kèm kết quả xử lý
    *
+   * - Khóa sự cố rồi khóa chia sẻ yêu cầu khám của sự cố, chờ bác sĩ đang xử lý yêu cầu đó xong mới kiểm
+   * - Nguồn đóng HEAD_TRAINER
    * - Ghi nhật ký trạng thái trước và sau, kết quả xử lý ghi vào cột lý do
    * - Ghi INCIDENT_HANDLED_EVENT (RESOLVED) kèm kết quả xử lý vào outbox trong cùng transaction để báo người báo sự cố và Groom đang phụ trách ngựa
    *
@@ -374,8 +382,9 @@ export class IncidentsService {
         caller.id,
       );
       assertIncidentOpen(incident.status);
-      const exam = await manager.findOneBy(MedicalExamRequestEntity, {
-        incidentId: incident.id,
+      const exam = await manager.findOne(MedicalExamRequestEntity, {
+        where: { incidentId: incident.id },
+        lock: { mode: 'pessimistic_read' },
       });
       assertIncidentResolvable(exam?.status ?? null);
       const previousStatus = incident.status;
@@ -383,6 +392,7 @@ export class IncidentsService {
       incident.resolution = body.resolution.trim();
       incident.resolvedBy = caller.id;
       incident.resolvedAt = new Date();
+      incident.resolutionSource = IncidentResolutionSource.HEAD_TRAINER;
       await manager.save(incident);
       await this.auditService.record(manager, {
         actorId: caller.id,
@@ -406,6 +416,110 @@ export class IncidentsService {
       await this.events.publish(manager, INCIDENT_HANDLED_EVENT, handled);
     });
     return this.get(actor, id);
+  }
+
+  /**
+   * Đóng sự cố đang mở khi bác sĩ khám xong hoặc bỏ qua yêu cầu khám sinh ra từ sự cố đó
+   *
+   * - Yêu cầu không từ sự cố, sự cố không còn hoặc đã đóng, hoặc yêu cầu không còn đúng kết quả và thời điểm xử lý trong event (event cũ giao lại sau khi yêu cầu đã quay về chờ): không làm gì
+   * - Khóa sự cố rồi khóa chia sẻ yêu cầu khám
+   * - Nguồn đóng EXAM
+   * - Kết quả xử lý "Bác sĩ đã khám" hoặc "Bác sĩ đã bỏ qua yêu cầu khám"; người đóng và thời điểm đóng lấy theo bác sĩ xử lý và thời điểm xử lý yêu cầu
+   * - Ghi nhật ký trạng thái trước và sau như khi Head Trainer đóng, không ghi INCIDENT_HANDLED_EVENT
+   *
+   * @param event Payload của MEDICAL_EXAM_REQUEST_HANDLED_EVENT
+   * @returns Promise hoàn tất khi đã đóng hoặc bỏ qua
+   */
+  async resolveFromExam(event: ExamRequestHandledEvent): Promise<void> {
+    const incidentId = event.incidentId;
+    if (!incidentId) return;
+    await this.dataSource.transaction(async (manager) => {
+      const incident = await manager.findOne(IncidentEntity, {
+        where: { id: incidentId },
+        lock: { mode: 'for_no_key_update' },
+      });
+      if (incident?.status !== IncidentStatus.OPEN) return;
+      const request = await manager.findOne(MedicalExamRequestEntity, {
+        where: { id: event.requestId },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (
+        request?.status !== event.outcome ||
+        request.handledAt?.toISOString() !== event.handledAt
+      ) {
+        return;
+      }
+      incident.status = IncidentStatus.RESOLVED;
+      incident.resolutionSource = IncidentResolutionSource.EXAM;
+      incident.resolution =
+        event.outcome === ExamRequestStatus.EXAMINED
+          ? 'Bác sĩ đã khám'
+          : 'Bác sĩ đã bỏ qua yêu cầu khám';
+      incident.resolvedBy = event.handledBy;
+      incident.resolvedAt = new Date(event.handledAt);
+      await manager.save(incident);
+      await this.auditService.record(manager, {
+        actorId: event.handledBy,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before: { status: IncidentStatus.OPEN },
+        after: { status: incident.status },
+        reason: incident.resolution,
+        feature: AuditFeature.INCIDENT,
+      });
+    });
+  }
+
+  /**
+   * Mở lại sự cố đã tự đóng theo yêu cầu khám khi yêu cầu đó quay về chờ bác sĩ
+   *
+   * - Chỉ mở sự cố có nguồn đóng EXAM; sự cố Head Trainer đóng tay hoặc đóng do đổi vòng đời ngựa giữ nguyên
+   * - Yêu cầu không từ sự cố, sự cố không còn, hoặc yêu cầu không còn chờ bác sĩ (event cũ giao lại): không làm gì
+   * - Khóa sự cố rồi khóa chia sẻ yêu cầu khám
+   * - Xóa kết quả xử lý, người đóng, thời điểm đóng, nguồn đóng; ghi nhật ký kèm lý do trong event, người thao tác là bác sĩ
+   *
+   * @param event Payload của MEDICAL_EXAM_REQUEST_REOPENED_EVENT
+   * @returns Promise hoàn tất khi đã mở lại hoặc bỏ qua
+   */
+  async reopenFromExam(event: ExamRequestReopenedEvent): Promise<void> {
+    const incidentId = event.incidentId;
+    if (!incidentId) return;
+    await this.dataSource.transaction(async (manager) => {
+      const incident = await manager.findOne(IncidentEntity, {
+        where: { id: incidentId },
+        lock: { mode: 'for_no_key_update' },
+      });
+      if (incident?.resolutionSource !== IncidentResolutionSource.EXAM) {
+        return;
+      }
+      const request = await manager.findOne(MedicalExamRequestEntity, {
+        where: { id: event.requestId },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (request?.status !== ExamRequestStatus.PENDING) return;
+      const before = {
+        status: incident.status,
+        resolution: incident.resolution,
+        resolvedBy: incident.resolvedBy,
+      };
+      incident.status = IncidentStatus.OPEN;
+      incident.resolution = null;
+      incident.resolvedBy = null;
+      incident.resolvedAt = null;
+      incident.resolutionSource = null;
+      await manager.save(incident);
+      await this.auditService.record(manager, {
+        actorId: event.reopenedBy,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before,
+        after: { status: incident.status },
+        reason: event.reason,
+        feature: AuditFeature.INCIDENT,
+      });
+    });
   }
 
   /**

@@ -63,6 +63,11 @@ export class FinanceSuppliesDto {
   purchased!: number;
   @ApiProperty({ description: 'Giá trị vật tư đã xuất dùng (VND)' })
   used!: number;
+  @ApiProperty({
+    description:
+      'Giá trị tồn kho lúc hết ngày cuối kỳ (VND): cộng tiền các dòng sổ tới hết ngày cuối kỳ (tồn ban đầu, nhập hàng, xuất dùng), bỏ các lần xuất đã hủy; gồm cả vật tư đã xóa',
+  })
+  inventoryValue!: number;
 }
 
 export class FinanceOwnerDto extends FinanceOwnerChargesDto {

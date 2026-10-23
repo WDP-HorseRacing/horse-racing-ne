@@ -24,7 +24,7 @@ export const MAX_UNIT_PRICE_VND = 1_000_000_000;
 export class CreateSupplyItemDto {
   @ApiProperty({
     maxLength: 160,
-    description: 'Tên vật tư, duy nhất trong CLB',
+    description: 'Tên vật tư, duy nhất trong CLB, không phân biệt hoa thường',
   })
   @Transform(trimValue)
   @IsString()
@@ -81,7 +81,7 @@ export class CreateSupplyItemDto {
 export class UpdateSupplyItemDto {
   @ApiPropertyOptional({
     maxLength: 160,
-    description: 'Tên vật tư, duy nhất trong CLB',
+    description: 'Tên vật tư, duy nhất trong CLB, không phân biệt hoa thường',
   })
   @IsOptional()
   @Transform(trimValue)

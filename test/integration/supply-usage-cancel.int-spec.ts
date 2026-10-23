@@ -188,6 +188,7 @@ describe('Cancelling a supply usage (Postgres)', () => {
     expect(await repository.supplyValues(period)).toEqual({
       purchased: String(20 * 20000 + 30 * 15000),
       used: String(20 * 20000 + 5 * 15000 + kept),
+      inventoryValue: String(23 * 15000),
     });
     const [first] = await dataSource.query<{ usage_id: string }[]>(
       `SELECT usage_id FROM supply_stock_movements
@@ -202,6 +203,7 @@ describe('Cancelling a supply usage (Postgres)', () => {
     expect(await repository.supplyValues(period)).toEqual({
       purchased: String(20 * 20000 + 30 * 15000),
       used: String(kept),
+      inventoryValue: String(20 * 20000 + 28 * 15000),
     });
   });
 

@@ -149,6 +149,29 @@ describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres
       await expect(oats()).rejects.toBeInstanceOf(ConflictException);
     });
 
+    it('treats names that differ only in case as the same, except for deleted items', async () => {
+      const item = (name: string) =>
+        items.create(manager, {
+          name,
+          category: SupplyCategory.FEED,
+          unit: 'kg',
+          reorderThreshold: 0,
+        });
+      const taken = { field: 'name', message: 'Tên vật tư đã tồn tại' };
+      const bran = await item('Cám A');
+      const hay = await item('Cỏ khô');
+
+      await expect(item('cám a')).rejects.toMatchObject({
+        response: { errors: [taken] },
+      });
+      await expect(
+        items.update(manager, hay.id, { name: 'CÁM A' }),
+      ).rejects.toMatchObject({ response: { errors: [taken] } });
+
+      await items.remove(manager, bran.id);
+      await expect(item('cám a')).resolves.toMatchObject({ name: 'cám a' });
+    });
+
     it('does not change the stock when editing the item', async () => {
       const item = await oats(40);
 

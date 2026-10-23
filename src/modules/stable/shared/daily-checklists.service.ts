@@ -232,7 +232,7 @@ export class DailyChecklistsService {
    * Bỏ một loại việc chưa tick khỏi checklist đã sinh của ngựa trong ngày
    *
    * - Checklist chưa sinh, không có việc này hoặc việc đã tick thì không đổi gì
-   * - Bỏ xong mà checklist không còn việc nào thì xóa checklist; còn việc thì tính lại trạng thái
+   * - Bỏ xong thì tính lại trạng thái; checklist không còn việc nào vẫn giữ, trạng thái COMPLETED
    *
    * @param manager EntityManager của transaction đang chạy
    * @param horseId UUID của ngựa
@@ -251,21 +251,42 @@ export class DailyChecklistsService {
       lock: { mode: 'for_no_key_update' },
     });
     if (!checklist) return false;
-    const removed = await manager.delete(DailyChecklistItemEntity, {
-      checklistId: checklist.id,
-      taskTypeId,
-      doneAt: IsNull(),
-    });
-    if (!removed.affected) return false;
-    const left = await manager.countBy(DailyChecklistItemEntity, {
-      checklistId: checklist.id,
-    });
-    if (left === 0) {
-      await manager.delete(DailyChecklistEntity, { id: checklist.id });
-    } else {
-      await this.refreshStatus(manager, checklist);
+    return this.dropUntickedTask(manager, checklist, taskTypeId);
+  }
+
+  /**
+   * Bỏ một loại việc chưa tick khỏi mọi checklist của một ngày
+   *
+   * - Khóa các checklist còn dòng chưa tick của loại việc theo thứ tự UUID
+   * - Mỗi checklist theo cùng luật với removeUntickedTaskFromChecklist: dòng đã tick giữ nguyên, tính lại trạng thái, checklist không còn việc nào vẫn giữ với trạng thái COMPLETED
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param date Ngày của checklist, YYYY-MM-DD
+   * @param taskTypeId UUID của loại việc
+   * @returns Promise trả về số checklist đã bỏ việc
+   */
+  async removeUntickedTaskFromDay(
+    manager: EntityManager,
+    date: string,
+    taskTypeId: string,
+  ): Promise<number> {
+    const checklists = await manager
+      .createQueryBuilder(DailyChecklistEntity, 'checklist')
+      .where('checklist.checklistDate = :date', { date })
+      .andWhere(
+        'EXISTS (SELECT 1 FROM daily_checklist_items i WHERE i.checklist_id = checklist.id AND i.task_type_id = :taskTypeId AND i.done_at IS NULL)',
+        { taskTypeId },
+      )
+      .orderBy('checklist.id', 'ASC')
+      .setLock('for_no_key_update')
+      .getMany();
+    let removed = 0;
+    for (const checklist of checklists) {
+      if (await this.dropUntickedTask(manager, checklist, taskTypeId)) {
+        removed += 1;
+      }
     }
-    return true;
+    return removed;
   }
 
   /**
@@ -293,5 +314,30 @@ export class DailyChecklistsService {
         ? (checklist.completedAt ?? new Date())
         : null;
     return manager.save(checklist);
+  }
+
+  /**
+   * Bỏ dòng chưa tick của một loại việc khỏi checklist đã khóa
+   *
+   * - Tính lại trạng thái; không còn việc nào thì checklist COMPLETED
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param checklist Checklist đã khóa trong transaction
+   * @param taskTypeId UUID của loại việc
+   * @returns Promise trả về true nếu đã bỏ dòng
+   */
+  private async dropUntickedTask(
+    manager: EntityManager,
+    checklist: DailyChecklistEntity,
+    taskTypeId: string,
+  ): Promise<boolean> {
+    const removed = await manager.delete(DailyChecklistItemEntity, {
+      checklistId: checklist.id,
+      taskTypeId,
+      doneAt: IsNull(),
+    });
+    if (!removed.affected) return false;
+    await this.refreshStatus(manager, checklist);
+    return true;
   }
 }

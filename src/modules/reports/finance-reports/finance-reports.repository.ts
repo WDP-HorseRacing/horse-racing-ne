@@ -196,23 +196,25 @@ export class FinanceReportsRepository {
   }
 
   /**
-   * Tính giá trị vật tư nhập vào và đã dùng trong kỳ theo đơn giá của lô
+   * Tính giá trị vật tư nhập vào, đã dùng trong kỳ và giá trị tồn kho lúc hết kỳ theo đơn giá của lô
    *
    * - Nhập vào: các dòng sổ nhập hàng (không gồm tồn ban đầu); đã dùng: các dòng sổ xuất dùng
-   * - Lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau; dòng hủy không tính vào nhập vào hay đã dùng
+   * - Tồn kho lúc hết kỳ: mọi dòng sổ có lô ghi trước hết ngày cuối kỳ (tồn ban đầu, nhập hàng, xuất dùng), kể cả của vật tư đã xóa
+   * - Lần xuất đã hủy coi như chưa từng có, kể cả khi hủy ở kỳ sau; dòng hủy không tính vào nhập vào, đã dùng hay tồn kho
+   * - Dòng sổ không có lô (dữ liệu cũ) không có tiền
    * - Giá trị mỗi dòng sổ là số lượng × đơn giá lô, làm tròn tới đồng rồi mới cộng
    *
    * @param period Khoảng ngày của báo cáo
-   * @returns Promise trả về tổng giá trị nhập vào và đã dùng
+   * @returns Promise trả về tổng giá trị nhập vào, đã dùng và tồn kho lúc hết kỳ
    */
   async supplyValues(period: ReportPeriod): Promise<SupplyValueRow> {
     const [row] = await this.dataSource.query<SupplyValueRow[]>(
-      `SELECT COALESCE(SUM(ROUND(m.delta * l.unit_price)) FILTER (WHERE m.type = $3), 0)::text AS purchased,
-              COALESCE(SUM(ROUND(-m.delta * l.unit_price)) FILTER (WHERE m.type = $4), 0)::text AS used
+      `SELECT COALESCE(SUM(ROUND(m.delta * l.unit_price)) FILTER (WHERE m.type = $3 AND m.created_at >= $1), 0)::text AS purchased,
+              COALESCE(SUM(ROUND(-m.delta * l.unit_price)) FILTER (WHERE m.type = $4 AND m.created_at >= $1), 0)::text AS used,
+              COALESCE(SUM(ROUND(m.delta * l.unit_price)) FILTER (WHERE m.type <> $5), 0)::text AS "inventoryValue"
          FROM supply_stock_movements m
          JOIN supply_lots l ON l.id = m.lot_id
-        WHERE m.created_at >= $1
-          AND m.created_at < $2
+        WHERE m.created_at < $2
           AND NOT (m.type = $4 AND EXISTS (SELECT 1
                                              FROM supply_stock_movements r
                                             WHERE r.usage_id = m.usage_id

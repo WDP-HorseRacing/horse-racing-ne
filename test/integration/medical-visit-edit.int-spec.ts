@@ -484,9 +484,16 @@ describe('MedicalVisitEditsService.editVisit (Postgres)', () => {
         status: 'EXAMINED',
         medical_record_id: visit.id,
       });
-      expect(await outbox(MEDICAL_EXAM_REQUEST_HANDLED_EVENT)).toEqual([
-        expect.objectContaining({ requestId: added, requestedBy: trainer }),
-      ]);
+      const handled = await outbox(MEDICAL_EXAM_REQUEST_HANDLED_EVENT);
+      expect(
+        handled.map((event) => [event.requestId, event.requestedBy]).sort(),
+      ).toEqual(
+        [
+          [kept, null],
+          [dropped, null],
+          [added, trainer],
+        ].sort(),
+      );
     });
 
     it('requires a request for a REQUEST visit after merging', async () => {

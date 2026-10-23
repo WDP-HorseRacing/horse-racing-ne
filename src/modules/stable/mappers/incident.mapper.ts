@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import type { MedicalExamRequestEntity } from '../../medical/entities/medical-exam-request.entity';
-import { IncidentStatus } from '../constants/incident-status.enum';
+import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
 import { IncidentResponseDto } from '../dto/incident.dto';
 import type { IncidentEntity } from '../entities/incident.entity';
 
@@ -30,8 +30,7 @@ export function toIncidentResponse(
       urgent: examRequest?.urgent ?? false,
       resolver: incident.resolvedBy ? incident.resolver : null,
       resolvedBySystem:
-        incident.status === IncidentStatus.RESOLVED &&
-        incident.resolvedBy === null,
+        incident.resolutionSource === IncidentResolutionSource.LIFECYCLE,
       examRequest,
     },
     MAPPER_OPTIONS,

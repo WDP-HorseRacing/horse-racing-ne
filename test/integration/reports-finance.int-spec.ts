@@ -365,7 +365,7 @@ describe('Reports finance (Postgres)', () => {
         surcharge: 260000,
         total: 6660000,
       },
-      supplies: { purchased: 150833, used: 45000 },
+      supplies: { purchased: 150833, used: 45000, inventoryValue: 305833 },
       prizeMoney: 0,
       owners: [
         {
@@ -393,6 +393,71 @@ describe('Reports finance (Postgres)', () => {
         total: 1600000,
       },
     });
+  });
+
+  it('values the stock at the end of the period from the ledger, leaving out cancelled usages', async () => {
+    const [creator] = await dataSource.query<Array<{ id: string }>>(
+      `SELECT id FROM users WHERE role = 'CLUB_MANAGER' LIMIT 1`,
+    );
+    const [item] = await dataSource.query<Array<{ id: string }>>(
+      `INSERT INTO supply_items (version, name, category, unit, deleted_at)
+       VALUES (1, 'Thuốc sát trùng', 'MEDICINE', 'chai', '2026-10-30T00:00:00Z') RETURNING id`,
+    );
+    const [lot] = await dataSource.query<Array<{ id: string }>>(
+      `INSERT INTO supply_lots (version, item_id, quantity, remaining, unit_price, created_at)
+       VALUES (1, $1, 5, 3, 2000, '2026-10-05T03:00:00Z') RETURNING id`,
+      [item.id],
+    );
+    const write = (
+      type: string,
+      delta: string,
+      at: string,
+      lotId: string | null = lot.id,
+      usageId: string | null = null,
+    ) =>
+      dataSource.query(
+        `INSERT INTO supply_stock_movements (item_id, lot_id, usage_id, delta, balance_after, type, created_by, created_at)
+         VALUES ($1, $2, $3, $4, 0, $5, $6, $7)`,
+        [item.id, lotId, usageId, delta, type, creator.id, at],
+      );
+    const kept = '00000000-0000-4000-8000-000000000001';
+    const cancelled = '00000000-0000-4000-8000-000000000002';
+    await write('RESTOCK', '5', '2026-10-05T03:00:00Z');
+    await write('USAGE', '-2', '2026-10-06T03:00:00Z', lot.id, kept);
+    await write('USAGE', '-1', '2026-10-07T03:00:00Z', lot.id, cancelled);
+    await write(
+      'USAGE_REVERSAL',
+      '1',
+      '2026-10-20T03:00:00Z',
+      lot.id,
+      cancelled,
+    );
+    await write('COUNT_ADJUST', '7', '2026-10-08T03:00:00Z', null);
+    await movement(
+      item.id,
+      'RESTOCK',
+      '1',
+      1000,
+      '2026-10-12T16:59:59Z',
+      creator.id,
+    );
+    await movement(
+      item.id,
+      'RESTOCK',
+      '1',
+      3000,
+      '2026-10-12T17:00:00Z',
+      creator.id,
+    );
+
+    const valueTo = async (to: string) =>
+      (await service.clubFinance(manager, { from: '2026-10-01', to })).supplies
+        .inventoryValue;
+
+    expect(await valueTo('2026-10-03')).toBe(350833);
+    expect(await valueTo('2026-10-05')).toBe(305833 + 10000);
+    expect(await valueTo('2026-10-12')).toBe(305833 + 10000 - 4000 + 1000);
+    expect(await valueTo('2026-10-13')).toBe(305833 + 10000 - 4000 + 4000);
   });
 
   it('bills the days a horse stays at the club without owner to the unowned part, only from its creation', async () => {

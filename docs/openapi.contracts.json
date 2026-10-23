@@ -8352,6 +8352,7 @@
             "bearer": []
           }
         ],
+        "summary": "Ghi danh ngựa vào lớp tại thời điểm hiện tại, kể cả khi lớp chưa khai giảng",
         "tags": [
           "training"
         ]
@@ -8436,6 +8437,7 @@
             "bearer": []
           }
         ],
+        "summary": "Cho ngựa rời lớp tại thời điểm hiện tại, hủy lượt tham gia các buổi từ lúc đó trở đi",
         "tags": [
           "training"
         ]
@@ -16312,11 +16314,16 @@
           "used": {
             "type": "number",
             "description": "Giá trị vật tư đã xuất dùng (VND)"
+          },
+          "inventoryValue": {
+            "type": "number",
+            "description": "Giá trị tồn kho lúc hết ngày cuối kỳ (VND): cộng tiền các dòng sổ tới hết ngày cuối kỳ (tồn ban đầu, nhập hàng, xuất dùng), bỏ các lần xuất đã hủy; gồm cả vật tư đã xóa"
           }
         },
         "required": [
           "purchased",
-          "used"
+          "used",
+          "inventoryValue"
         ]
       },
       "FinanceOwnerDto": {
@@ -18285,6 +18292,16 @@
             "type": "boolean",
             "description": "True khi hệ thống tự đóng (ví dụ ngựa chuyển nhượng hoặc đã mất)"
           },
+          "resolutionSource": {
+            "type": "string",
+            "enum": [
+              "HEAD_TRAINER",
+              "EXAM",
+              "LIFECYCLE"
+            ],
+            "nullable": true,
+            "description": "Cách sự cố được đóng: HEAD_TRAINER (Head Trainer đóng tay), EXAM (tự đóng khi bác sĩ khám xong hoặc bỏ qua yêu cầu khám), LIFECYCLE (tự đóng khi ngựa chuyển nhượng hoặc đã mất); null khi đang mở"
+          },
           "resolvedAt": {
             "type": "object",
             "format": "date-time",
@@ -18614,7 +18631,7 @@
           "name": {
             "type": "string",
             "maxLength": 160,
-            "description": "Tên vật tư, duy nhất trong CLB"
+            "description": "Tên vật tư, duy nhất trong CLB, không phân biệt hoa thường"
           },
           "category": {
             "type": "string",
@@ -18665,7 +18682,7 @@
           "name": {
             "type": "string",
             "maxLength": 160,
-            "description": "Tên vật tư, duy nhất trong CLB"
+            "description": "Tên vật tư, duy nhất trong CLB, không phân biệt hoa thường"
           },
           "category": {
             "type": "string",
@@ -20003,11 +20020,6 @@
           "horseId": {
             "type": "string",
             "format": "uuid"
-          },
-          "enrolledAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-10-23T00:30:00+07:00"
           }
         },
         "required": [
@@ -20067,11 +20079,6 @@
       "LeaveHorseEnrollmentDto": {
         "type": "object",
         "properties": {
-          "leftAt": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2026-10-23T00:30:00+07:00"
-          },
           "reason": {
             "type": "string"
           }
@@ -20719,7 +20726,7 @@
           "name": {
             "type": "string",
             "maxLength": 160,
-            "description": "Tên môn, duy nhất trong CLB"
+            "description": "Tên môn, duy nhất trong CLB, không phân biệt hoa thường"
           },
           "description": {
             "type": "string",
@@ -20779,7 +20786,7 @@
           "name": {
             "type": "string",
             "maxLength": 160,
-            "description": "Tên môn, duy nhất trong CLB"
+            "description": "Tên môn, duy nhất trong CLB, không phân biệt hoa thường"
           },
           "description": {
             "type": "string",

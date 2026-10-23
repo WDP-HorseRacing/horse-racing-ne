@@ -95,7 +95,7 @@ export function toOwnerCost(
  * - Phần không có chủ (ownerId null) gom vào unowned, kèm tổng số ngày tính phí
  *
  * @param source Phí ngày, chi phí y tế và phụ phí của mọi chủ trong kỳ
- * @param supplies Giá trị vật tư nhập vào và đã dùng trong kỳ
+ * @param supplies Giá trị vật tư nhập vào, đã dùng trong kỳ và tồn kho lúc hết kỳ
  * @returns ClubFinanceResponseDto
  */
 export function toClubFinance(
@@ -171,6 +171,7 @@ export function toClubFinance(
     supplies: {
       purchased: Number(supplies.purchased),
       used: Number(supplies.used),
+      inventoryValue: Number(supplies.inventoryValue),
     },
     prizeMoney: 0,
     owners,

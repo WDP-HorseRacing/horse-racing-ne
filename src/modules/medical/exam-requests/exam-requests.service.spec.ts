@@ -334,13 +334,20 @@ describe('ExamRequestsService', () => {
     it.each([
       ['raised by the system', null],
       ['raised by the same vet', 'user-1'],
-    ])('tells nobody when the request was %s', async (_case, requestedBy) => {
-      requestRow = { ...requestRow, requestedBy };
+    ])(
+      'still records the handled event when the request was %s',
+      async (_case, requestedBy) => {
+        requestRow = { ...requestRow, requestedBy };
 
-      await service.dismiss(vet, 'req-1', { reason: 'Nhầm' });
+        await service.dismiss(vet, 'req-1', { reason: 'Nhầm' });
 
-      expect(events.publish).not.toHaveBeenCalled();
-    });
+        expect(events.publish).toHaveBeenCalledWith(
+          manager,
+          MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+          expect.objectContaining({ requestId: 'req-1', requestedBy }),
+        );
+      },
+    );
   });
 
   describe('updateUrgency', () => {

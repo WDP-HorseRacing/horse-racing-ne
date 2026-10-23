@@ -32,6 +32,16 @@ Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều
 - `PATCH /enrollments/:id/leave`: body bỏ `leftAt` (chỉ còn `reason`); gửi lên 400 "Không nhận ô leftAt". Thời điểm rời lớp là lúc gọi; không chọn ngày rời. Rút ngựa trước ngày khai giảng được (trước đây 409).
 - Môn học (`POST /training-subjects`, `PATCH /training-subjects/:subjectId`): tên bỏ khoảng trắng hai đầu, tên toàn khoảng trắng 400; trùng tên không phân biệt hoa thường ("Nước rút" và "nước rút") 409 "Tên môn học đã tồn tại".
 
+### Chuồng, kho: sự cố tự đóng theo bác sĩ, checklist rỗng, loại việc, vật tư, giá trị tồn kho
+
+- Sự cố có yêu cầu khám: bác sĩ khám xong hoặc bỏ qua yêu cầu thì sự cố tự chuyển `RESOLVED` (kết quả "Bác sĩ đã khám" / "Bác sĩ đã bỏ qua yêu cầu khám", người đóng là bác sĩ), HT không cần bấm đóng. Bác sĩ hủy buổi khám làm yêu cầu quay về chờ thì sự cố tự đóng đó mở lại `OPEN`. HT đóng sự cố còn yêu cầu khám chờ: 409 đổi câu thành "Sự cố đang chờ bác sĩ khám, sẽ tự đóng khi bác sĩ xử lý xong".
+- Response sự cố thêm `resolutionSource` (`HEAD_TRAINER` | `EXAM` | `LIFECYCLE`, null khi còn mở): sự cố đóng theo cách nào. `resolvedBySystem` giữ nguyên nghĩa (đóng do ngựa chuyển nhượng hoặc mất).
+- Checklist hằng ngày: bỏ hết dòng (miễn việc chung, gỡ việc riêng, ngưng loại việc) thì checklist vẫn còn, `items: []`, trạng thái `COMPLETED` (trước đây checklist biến mất). Gỡ việc riêng hoặc ngưng loại việc có hiệu lực hôm nay thì dòng chưa tick hôm nay của việc đó biến mất (dòng đã tick giữ).
+- Gỡ việc riêng bắt đầu đúng hôm nay: xóa hẳn (trước đây kết thúc ở hôm nay), nên gắn lại ngay được.
+- `PATCH /care-task-types/:id`: loại việc đã có dòng trong checklist thì đổi tên 409 "Loại việc đã dùng trong checklist, không đổi tên được" (ô `name`).
+- Vật tư: tên trùng không phân biệt hoa thường ("Cám A" và "cám a") 409 "Tên vật tư đã tồn tại".
+- `GET /reports/club/finance`: `supplies` thêm `inventoryValue` (VND), giá trị tồn kho tới hết ngày `to`.
+
 ## Ngày 22/10/2026
 
 ### Thông báo mới (request, response không đổi)

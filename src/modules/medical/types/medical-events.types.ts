@@ -21,19 +21,35 @@ export interface ExamRequestUrgentEvent extends MedicalEventBase {
 }
 
 /**
- * Bác sĩ khám xong hoặc bỏ qua yêu cầu khám do một người gửi.
+ * Bác sĩ khám xong hoặc bỏ qua yêu cầu khám, phát cho mọi yêu cầu.
  *
- * - requestedBy: người gửi yêu cầu, người nhận thông báo
+ * - requestedBy: người gửi yêu cầu, null khi hệ thống tự sinh
  * - incidentId: sự cố tại chuồng sinh ra yêu cầu, null nếu yêu cầu không từ sự cố
  * - dismissReason: lý do bỏ qua, null khi đã khám
+ * - handledBy, handledAt: bác sĩ xử lý và thời điểm xử lý (chuỗi ISO)
  */
 export interface ExamRequestHandledEvent extends MedicalEventBase {
   requestId: string;
-  requestedBy: string;
+  requestedBy: string | null;
   incidentId: string | null;
   outcome: ExamRequestStatus.EXAMINED | ExamRequestStatus.DISMISSED;
   description: string;
   dismissReason: string | null;
+  handledBy: string;
+  handledAt: string;
+}
+
+/**
+ * Yêu cầu khám đã khám quay về chờ bác sĩ vì buổi khám bị hủy hoặc bỏ gắn yêu cầu.
+ *
+ * - incidentId: sự cố tại chuồng sinh ra yêu cầu, null nếu yêu cầu không từ sự cố
+ * - reopenedBy: bác sĩ hủy hoặc sửa buổi khám; reason: lý do ghi nhật ký
+ */
+export interface ExamRequestReopenedEvent extends MedicalEventBase {
+  requestId: string;
+  incidentId: string | null;
+  reopenedBy: string;
+  reason: string;
 }
 
 /**

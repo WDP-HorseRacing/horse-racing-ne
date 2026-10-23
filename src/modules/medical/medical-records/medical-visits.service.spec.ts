@@ -24,6 +24,7 @@ import { ExamRequestStatus } from '../constants/exam-request.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+  MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
   MEDICAL_VISIT_COST_ADJUSTED_EVENT,
 } from '../constants/medical-events.constants';
 import {
@@ -563,7 +564,7 @@ describe('MedicalVisitsService', () => {
       });
     });
 
-    it('tells each person who asked that the horse was examined, but not the examining vet nor the system', async () => {
+    it('records a handled event for every examined request, whoever asked', async () => {
       manager.find.mockImplementation((entity: unknown) =>
         Promise.resolve(
           entity === MedicalExamRequestEntity
@@ -593,14 +594,21 @@ describe('MedicalVisitsService', () => {
       const handled = (
         events.publish.mock.calls as Array<[unknown, string, unknown]>
       ).filter(([, name]) => name === MEDICAL_EXAM_REQUEST_HANDLED_EVENT);
-      expect(handled.map(([, , payload]) => payload)).toEqual([
-        expect.objectContaining({
-          requestId: 'req-1',
-          requestedBy: 'groom-2',
-          outcome: ExamRequestStatus.EXAMINED,
-          dismissReason: null,
-        }),
-      ]);
+      expect(handled.map(([, , payload]) => payload)).toEqual(
+        [
+          ['req-1', 'groom-2'],
+          ['req-2', null],
+          ['req-3', 'vet-1'],
+        ].map(([requestId, requestedBy]): unknown =>
+          expect.objectContaining({
+            requestId,
+            requestedBy,
+            outcome: ExamRequestStatus.EXAMINED,
+            dismissReason: null,
+            handledBy: 'vet-1',
+          }),
+        ),
+      );
     });
   });
 
@@ -862,7 +870,17 @@ describe('MedicalVisitsService', () => {
         reason: 'Sai ngựa',
         feature: 'MED_VISIT',
       });
-      expect(events.publish).not.toHaveBeenCalled();
+      expect(events.publish.mock.calls).toEqual([
+        [
+          manager,
+          MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
+          expect.objectContaining({
+            requestId: 'req-1',
+            reopenedBy: 'vet-1',
+            reason: 'Sai ngựa',
+          }),
+        ],
+      ]);
     });
 
     it('reverts the health the visit changed when nothing changed it since, and publishes the change in the transaction', async () => {

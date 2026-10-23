@@ -473,6 +473,10 @@ describe('Daily checklists and care tasks (Postgres)', () => {
         fromDate: today,
         toDate: shiftDays(today, 4),
       });
+      await dataSource.query(
+        'UPDATE horse_daily_tasks SET from_date = $1 WHERE id = $2',
+        [shiftDays(today, -1), running.id],
+      );
 
       await careTasks.removeForHorse(trainer, future.id);
       await careTasks.removeForHorse(trainer, running.id);

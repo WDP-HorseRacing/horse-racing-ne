@@ -14,6 +14,7 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
 import { IncidentStatus } from '../constants/incident-status.enum';
+import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
 import { CareTaskUserSummaryResponseDto } from './care-task.dto';
 
 export class ReportIncidentDto {
@@ -174,6 +175,15 @@ export class IncidentResponseDto {
       'True khi hệ thống tự đóng (ví dụ ngựa chuyển nhượng hoặc đã mất)',
   })
   resolvedBySystem!: boolean;
+
+  @Expose()
+  @ApiPropertyOptional({
+    enum: IncidentResolutionSource,
+    nullable: true,
+    description:
+      'Cách sự cố được đóng: HEAD_TRAINER (Head Trainer đóng tay), EXAM (tự đóng khi bác sĩ khám xong hoặc bỏ qua yêu cầu khám), LIFECYCLE (tự đóng khi ngựa chuyển nhượng hoặc đã mất); null khi đang mở',
+  })
+  resolutionSource!: IncidentResolutionSource | null;
 
   @Expose()
   @ApiPropertyOptional({ format: 'date-time', nullable: true })

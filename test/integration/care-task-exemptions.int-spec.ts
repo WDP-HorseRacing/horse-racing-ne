@@ -163,13 +163,18 @@ describe('Exempting a horse from a shared care task (Postgres)', () => {
     expect(await tasksOn(today)).toEqual(['Cho ăn sáng']);
   });
 
-  it('drops the checklist of today when the exemption leaves nothing to do', async () => {
+  it('keeps the checklist of today as done when the exemption leaves nothing to do', async () => {
     await checklists.generateDay(today);
 
     await exempt('Tắm rửa');
     await exempt('Cho ăn sáng');
 
-    expect(await tasksOn(today)).toBeUndefined();
+    expect(await tasksOn(today)).toEqual([]);
+    const [checklist] = await checklists.listForHorse(trainer, gio, {
+      from: today,
+      to: today,
+    });
+    expect(checklist.status).toBe('COMPLETED');
   });
 
   it('brings the shared task back into today when the exemption is removed', async () => {

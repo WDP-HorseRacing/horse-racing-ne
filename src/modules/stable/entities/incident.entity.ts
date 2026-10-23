@@ -1,15 +1,22 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
 import { IncidentStatus } from '../constants/incident-status.enum';
+import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
 
 /**
  * IncidentEntity: lưu các sự cố / bất thường xảy ra với ngựa.
  * Dùng để báo cáo, ưu tiên xử lý, đính kèm hình ảnh và theo dõi trạng thái giải quyết.
+ *
+ * - resolutionSource: cách sự cố được đóng, null khi đang mở
  */
 @Entity({ name: 'incidents' })
+@Check(
+  'incidents_resolution_source_ck',
+  `("status" = 'OPEN') = ("resolution_source" IS NULL)`,
+)
 @Index('incidents_horse_created_idx', ['horseId', 'createdAt'])
 @Index('incidents_status_created_idx', ['status', 'createdAt'])
 @Index('incidents_media_asset_uq', ['mediaAssetId'], {
@@ -64,6 +71,15 @@ export class IncidentEntity extends MutableRecordEntity {
 
   @Column({ name: 'resolved_at', type: 'timestamptz', nullable: true })
   resolvedAt!: Date | null;
+
+  @Column({
+    name: 'resolution_source',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+    enum: IncidentResolutionSource,
+  })
+  resolutionSource!: IncidentResolutionSource | null;
 
   @Column({ name: 'reminded_at', type: 'timestamptz', nullable: true })
   remindedAt!: Date | null;

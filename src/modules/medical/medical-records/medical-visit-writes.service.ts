@@ -13,6 +13,7 @@ import { ExamRequestStatus } from '../constants/exam-request.enum';
 import { MedicalCaseStatus } from '../constants/medical-case.enum';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+  MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
 } from '../constants/medical-events.constants';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
@@ -24,7 +25,10 @@ import {
 } from '../shared/exam-request-writes.service';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
-import type { HealthChangedEvent } from '../types/medical-events.types';
+import type {
+  ExamRequestReopenedEvent,
+  HealthChangedEvent,
+} from '../types/medical-events.types';
 
 /**
  * Các bước ghi dùng chung giữa ghi, hủy và sửa buổi khám: mở, hủy bệnh án, gắn, trả yêu cầu khám, event đổi sức khỏe. Luôn chạy trong transaction của nơi gọi.
@@ -92,7 +96,7 @@ export class MedicalVisitWritesService {
   /**
    * Chuyển các yêu cầu khám đã gắn sang EXAMINED, mỗi yêu cầu một dòng nhật ký
    *
-   * - Yêu cầu có người gửi khác người khám: ghi MEDICAL_EXAM_REQUEST_HANDLED_EVENT để báo người gửi
+   * - Mỗi yêu cầu ghi một MEDICAL_EXAM_REQUEST_HANDLED_EVENT
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Bối cảnh buổi khám, gồm các yêu cầu đã khóa
@@ -109,7 +113,7 @@ export class MedicalVisitWritesService {
     visitId: string,
   ): Promise<void> {
     if (input.requests.length === 0) return;
-    await this.requestWrites.markExamined(
+    const handledAt = await this.requestWrites.markExamined(
       manager,
       input.requests.map((request) => request.id),
       input.callerId,
@@ -129,15 +133,14 @@ export class MedicalVisitWritesService {
         request,
         ExamRequestStatus.EXAMINED,
         input.callerId,
+        handledAt,
         null,
       );
-      if (handled) {
-        await this.events.publish(
-          manager,
-          MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
-          handled,
-        );
-      }
+      await this.events.publish(
+        manager,
+        MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+        handled,
+      );
     }
   }
 
@@ -146,6 +149,7 @@ export class MedicalVisitWritesService {
    *
    * - Dùng khi hủy buổi khám (mọi yêu cầu) và khi sửa buổi khám bỏ gắn một số yêu cầu
    * - Yêu cầu tự sinh trùng loại cảnh báo với yêu cầu đang chờ thì chuyển DISMISSED với duplicateReason
+   * - Mỗi yêu cầu về PENDING ghi một MEDICAL_EXAM_REQUEST_REOPENED_EVENT
    *
    * @param manager EntityManager của transaction đang chạy
    * @param input Buổi khám, người thao tác, lý do ghi nhật ký, lý do bỏ qua yêu cầu trùng cảnh báo, mã chức năng và các yêu cầu cần trả (bỏ trống là mọi yêu cầu)
@@ -194,6 +198,21 @@ export class MedicalVisitWritesService {
         reason: input.reason,
         feature: input.feature,
       });
+    }
+    for (const request of reopened) {
+      const event: ExamRequestReopenedEvent = {
+        eventId: randomUUID(),
+        horseId: request.horseId,
+        requestId: request.id,
+        incidentId: request.incidentId,
+        reopenedBy: input.callerId,
+        reason: input.reason,
+      };
+      await this.events.publish(
+        manager,
+        MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
+        event,
+      );
     }
   }
 

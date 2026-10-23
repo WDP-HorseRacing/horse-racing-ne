@@ -29,7 +29,9 @@ describe('incident policy', () => {
 
   it('waits for the vet on a pending exam request', () => {
     expect(() => assertIncidentResolvable(ExamRequestStatus.PENDING)).toThrow(
-      ConflictException,
+      new ConflictException(
+        'Sự cố đang chờ bác sĩ khám, sẽ tự đóng khi bác sĩ xử lý xong',
+      ),
     );
   });
 });

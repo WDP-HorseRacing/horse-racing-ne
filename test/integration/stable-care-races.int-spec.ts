@@ -86,7 +86,7 @@ describe('Stable care races (Postgres, concurrent transactions)', () => {
 
   /**
    * Giữ row lock ở một kết nối riêng để `first` dừng giữa chừng, rồi bắn `second`.
-   * Trả về thứ tự hai thao tác kết thúc và kết quả của từng thao tác.
+   * Trả về kết quả của từng thao tác và cờ `bothWaited`: có lúc cả hai thao tác cùng chờ khóa (second phải chờ first).
    */
   const interleave = async (
     lockSql: string,
@@ -101,12 +101,16 @@ describe('Stable care races (Postgres, concurrent transactions)', () => {
     await holder.query(lockSql, params);
     let firstDone: Promise<Outcome>;
     let secondDone: Promise<Outcome>;
+    let bothWaited = false;
     try {
       firstDone = settle(first()).finally(() => finished.push('first'));
       await waitBlocked(1);
       secondDone = settle(second()).finally(() => finished.push('second'));
       for (let i = 0; i < 300 && finished.length === 0; i++) {
-        if ((await waitingOnLock()) >= 2) break;
+        if ((await waitingOnLock()) >= 2) {
+          bothWaited = true;
+          break;
+        }
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
     } finally {
@@ -116,7 +120,7 @@ describe('Stable care races (Postgres, concurrent transactions)', () => {
     return {
       first: await firstDone,
       second: await secondDone,
-      finished,
+      bothWaited,
     };
   };
 
@@ -222,11 +226,17 @@ describe('Stable care races (Postgres, concurrent transactions)', () => {
       () => careTasks.updateType(cm, type.id, { active: false }),
     );
 
-    expect(result).toEqual({
-      first: 'ok',
-      second: 'ok',
-      finished: ['first', 'second'],
-    });
+    expect(result).toEqual({ first: 'ok', second: 'ok', bothWaited: true });
+    await expect(
+      dataSource.query(
+        `SELECT t.active, count(h.id)::int AS tasks
+           FROM daily_task_types t
+           LEFT JOIN horse_daily_tasks h ON h.task_type_id = t.id
+          WHERE t.id = $1
+          GROUP BY t.active`,
+        [type.id],
+      ),
+    ).resolves.toEqual([{ active: false, tasks: 1 }]);
   });
 
   it('a supply deleted while a ration is being approved waits for the approval to commit', async () => {
@@ -251,11 +261,15 @@ describe('Stable care races (Postgres, concurrent transactions)', () => {
       () => items.remove(cm, oats.id),
     );
 
-    expect(result).toEqual({
-      first: 'ok',
-      second: 'ok',
-      finished: ['first', 'second'],
-    });
+    expect(result).toEqual({ first: 'ok', second: 'ok', bothWaited: true });
+    await expect(
+      dataSource.query(
+        `SELECT p.status, s.deleted_at IS NOT NULL AS deleted
+           FROM feeding_plans p, supply_items s
+          WHERE p.id = $1 AND s.id = $2`,
+        [draft.id, oats.id],
+      ),
+    ).resolves.toEqual([{ status: 'ACTIVE', deleted: true }]);
   });
 
   it('approving a ration after its supply was deleted is 409', async () => {

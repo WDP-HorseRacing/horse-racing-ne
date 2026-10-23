@@ -37,7 +37,7 @@ export function assertIncidentResolvable(
 ): void {
   if (examStatus === ExamRequestStatus.PENDING) {
     throw new ConflictException(
-      'Bác sĩ chưa xử lý yêu cầu khám của sự cố, chưa đóng được',
+      'Sự cố đang chờ bác sĩ khám, sẽ tự đóng khi bác sĩ xử lý xong',
     );
   }
 }

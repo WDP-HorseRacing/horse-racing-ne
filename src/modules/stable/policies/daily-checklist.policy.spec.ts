@@ -12,6 +12,7 @@ import {
   assertCareTaskWriter,
   assertExemptionReason,
   assertCareTaskRange,
+  assertCareTaskTypeRenamable,
   assertChecklistRange,
   assertChecklistGroom,
   assertChecklistNotCancelled,
@@ -27,6 +28,7 @@ describe('daily checklist policy', () => {
     [1, 4, DailyChecklistStatus.IN_PROGRESS],
     [3, 4, DailyChecklistStatus.IN_PROGRESS],
     [4, 4, DailyChecklistStatus.COMPLETED],
+    [0, 0, DailyChecklistStatus.COMPLETED],
   ])('derives %d of %d done as %s', (done, total, expected) => {
     expect(checklistStatusOf(done, total)).toBe(expected);
   });
@@ -135,6 +137,23 @@ describe('daily checklist policy', () => {
     expect(() => assertAppliesToAllChangeable(false, true)).not.toThrow();
   });
 
+  it('refuses to rename a type already on a checklist, with the name field', () => {
+    const message = 'Loại việc đã dùng trong checklist, không đổi tên được';
+    expect(() => assertCareTaskTypeRenamable(true, false)).not.toThrow();
+    expect(() => assertCareTaskTypeRenamable(false, true)).not.toThrow();
+    let error: unknown;
+    try {
+      assertCareTaskTypeRenamable(true, true);
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(ConflictException);
+    expect((error as ConflictException).getResponse()).toEqual({
+      message,
+      errors: [{ field: 'name', message }],
+    });
+  });
+
   it('rejects an overlapping assignment', () => {
     expect(() => assertNoOverlappingCareTask(false)).not.toThrow();
     expect(() => assertNoOverlappingCareTask(true)).toThrow(ConflictException);
@@ -144,17 +163,17 @@ describe('daily checklist policy', () => {
     const today = '2026-10-10';
     const { EXTRA, EXEMPT } = HorseCareTaskMode;
 
-    it('deletes an added task that has not started', () => {
+    it('deletes an added task that has not started or starts today', () => {
       expect(careTaskRemovalOf(EXTRA, '2026-10-11', '2026-10-20', today)).toBe(
+        'DELETE',
+      );
+      expect(careTaskRemovalOf(EXTRA, today, '2026-10-20', today)).toBe(
         'DELETE',
       );
     });
 
-    it('ends a running added task today', () => {
+    it('ends an added task that started before today today', () => {
       expect(careTaskRemovalOf(EXTRA, '2026-10-01', '2026-10-10', today)).toBe(
-        'END_TODAY',
-      );
-      expect(careTaskRemovalOf(EXTRA, today, '2026-10-20', today)).toBe(
         'END_TODAY',
       );
     });

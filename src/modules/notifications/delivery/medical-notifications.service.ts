@@ -117,6 +117,7 @@ export class MedicalNotificationsService {
   /**
    * Báo người gửi yêu cầu khám khi bác sĩ khám xong hoặc bỏ qua yêu cầu
    *
+   * - Yêu cầu không có người gửi (hệ thống tự sinh) hoặc người gửi chính là bác sĩ xử lý: không báo ai
    * - Yêu cầu từ sự cố tại chuồng: báo thêm người báo sự cố và Groom đang phụ trách ngựa; trùng người thì chỉ nhận một lần
    * - Bỏ qua: kèm lý do trong nội dung
    *
@@ -126,16 +127,18 @@ export class MedicalNotificationsService {
   async notifyExamRequestHandled(
     event: ExamRequestHandledEvent,
   ): Promise<string[]> {
+    const requestedBy = event.requestedBy;
+    if (!requestedBy || requestedBy === event.handledBy) return [];
     const examined = event.outcome === ExamRequestStatus.EXAMINED;
     const audience: MedicalAudience = event.incidentId
       ? {
           extraUserIds: [
-            event.requestedBy,
+            requestedBy,
             await this.recipients.findIncidentReporterId(event.incidentId),
           ],
           groom: true,
         }
-      : { extraUserIds: [event.requestedBy] };
+      : { extraUserIds: [requestedBy] };
     return this.sendForHorse(
       event,
       horseResource(event.horseId),

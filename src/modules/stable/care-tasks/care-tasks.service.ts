@@ -32,6 +32,7 @@ import {
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 import { CARE_TASK_CHANGED_EVENT } from '../constants/stable-events.constants';
 import { CareTaskTypeEntity } from '../entities/care-task-type.entity';
+import { DailyChecklistItemEntity } from '../entities/daily-checklist-item.entity';
 import { HorseCareTaskEntity } from '../entities/horse-care-task.entity';
 import {
   toCareTaskTypeResponse,
@@ -41,6 +42,7 @@ import {
   assertAppliesToAllChangeable,
   assertAssignableCareTaskType,
   assertCareTaskRange,
+  assertCareTaskTypeRenamable,
   assertExemptionReason,
   assertNoOverlappingCareTask,
   careTaskRemovalOf,
@@ -129,9 +131,11 @@ export class CareTasksService {
   }
 
   /**
-   * Sửa tên, cờ áp mọi ngựa hoặc ngưng/dùng lại loại việc; checklist đã sinh không đổi
+   * Sửa tên, cờ áp mọi ngựa hoặc ngưng/dùng lại loại việc
    *
    * - Đổi cờ áp mọi ngựa khi còn ngựa được gắn thêm hoặc được miễn loại này chưa hết hạn: 409
+   * - Đổi tên (khác tên hiện tại sau trim) khi loại việc đã có dòng trong checklist: 409 gắn với ô `name`
+   * - Ngưng loại việc đang dùng: bỏ dòng chưa tick của loại này khỏi checklist hôm nay của mọi ngựa; dòng đã tick và checklist ngày khác giữ nguyên
    * - Có field đổi giá trị: ghi nhật ký giá trị trước và sau của các field đó
    *
    * @param actor Thông tin danh tính từ Access Token
@@ -140,7 +144,7 @@ export class CareTasksService {
    * @returns Promise trả về loại việc sau khi sửa
    * @throws ForbiddenException Nếu tài khoản không hoạt động
    * @throws NotFoundException Nếu không có loại việc
-   * @throws ConflictException Nếu tên loại việc đã tồn tại, hoặc đổi cờ áp mọi ngựa khi còn dòng việc riêng chưa hết hạn
+   * @throws ConflictException Nếu đổi cờ áp mọi ngựa khi còn dòng việc riêng chưa hết hạn, đổi tên loại việc đã dùng trong checklist, hoặc tên loại việc đã tồn tại
    */
   async updateType(
     actor: Actor,
@@ -166,13 +170,29 @@ export class CareTasksService {
                 where: { taskTypeId: id, toDate: MoreThanOrEqual(clubToday()) },
               })),
           );
+          const name = body.name?.trim() ?? type.name;
+          const renaming = name !== type.name;
+          assertCareTaskTypeRenamable(
+            renaming,
+            renaming &&
+              (await manager.exists(DailyChecklistItemEntity, {
+                where: { taskTypeId: id },
+              })),
+          );
           const before = careTaskTypeAuditData(type);
           Object.assign(type, {
-            name: body.name?.trim() ?? type.name,
+            name,
             appliesToAll: body.appliesToAll ?? type.appliesToAll,
             active: body.active ?? type.active,
           });
           const updated = await manager.save(type);
+          if (before.active && !updated.active) {
+            await this.checklists.removeUntickedTaskFromDay(
+              manager,
+              clubToday(),
+              id,
+            );
+          }
           const diff = changedFieldsDiff(
             before,
             careTaskTypeAuditData(updated),
@@ -332,7 +352,7 @@ export class CareTasksService {
   /**
    * Gỡ việc riêng của ngựa theo kiểu dòng
    *
-   * - Gắn thêm: chưa bắt đầu thì xóa, đang hiệu lực thì kết thúc ở hôm nay; checklist đã sinh không đổi
+   * - Gắn thêm: bắt đầu từ hôm nay trở đi thì xóa, bắt đầu trước hôm nay thì kết thúc ở hôm nay; đang hiệu lực hôm nay thì bỏ dòng chưa tick khỏi checklist hôm nay (dòng đã tick giữ nguyên, checklist không còn việc nào thì COMPLETED)
    * - Miễn: bắt đầu từ hôm nay trở đi thì xóa, bắt đầu trước hôm nay thì kết thúc ở hôm qua; việc chung có lại ngay trong checklist hôm nay (nếu loại việc còn dùng và còn áp mọi ngựa) và báo Groom
    * - Ghi nhật ký: xóa kèm nội dung dòng, hoặc kết thúc kèm ngày kết thúc trước và sau
    * - Người gọi không phải Head Trainer của khu (Veterinarian): phát CARE_TASK_CHANGED_EVENT để báo Head Trainer của khu
@@ -399,6 +419,13 @@ export class CareTasksService {
       }
       if (task.mode === HorseCareTaskMode.EXEMPT) {
         await this.restoreSharedTaskToday(manager, task, today);
+      } else if (task.fromDate <= today) {
+        await this.checklists.removeUntickedTaskFromChecklist(
+          manager,
+          task.horseId,
+          today,
+          task.taskTypeId,
+        );
       }
       if (!inTrainerBarn) {
         const type = await manager.findOneByOrFail(CareTaskTypeEntity, {

@@ -372,6 +372,8 @@ describe('MedicalNotificationsService', () => {
       requestedBy: 'groom-2',
       incidentId: null,
       description: 'Đi khập khiễng',
+      handledBy: 'vet-1',
+      handledAt: '2026-10-20T03:00:00.000Z',
     };
 
     it('tells the requester that the vet examined the horse', async () => {
@@ -435,6 +437,22 @@ describe('MedicalNotificationsService', () => {
         dismissReason: null,
       });
       expect(sentDraft().recipientIds).toEqual(['groom-1']);
+    });
+
+    it.each([
+      ['raised by the system', null],
+      ['raised by the vet who handled it', 'vet-1'],
+    ])('tells nobody when the request was %s', async (_case, requestedBy) => {
+      await expect(
+        service.notifyExamRequestHandled({
+          ...handled,
+          requestedBy,
+          incidentId: 'i1',
+          outcome: ExamRequestStatus.EXAMINED,
+          dismissReason: null,
+        }),
+      ).resolves.toEqual([]);
+      expect(notifications.send).not.toHaveBeenCalled();
     });
 
     it('keeps the requester only when the request has no incident', async () => {

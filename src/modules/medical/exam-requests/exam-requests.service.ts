@@ -295,15 +295,14 @@ export class ExamRequestsService {
         current,
         ExamRequestStatus.DISMISSED,
         caller.id,
+        changes.handledAt,
         body.reason,
       );
-      if (handled) {
-        await this.events.publish(
-          manager,
-          MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
-          handled,
-        );
-      }
+      await this.events.publish(
+        manager,
+        MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
+        handled,
+      );
       return { ...current, ...changes, horse };
     });
     return toExamRequestResponse(dismissed);

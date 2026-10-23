@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { shiftDays } from '../../../common/utils/club-date';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+import {
+  fieldBadRequest,
+  fieldConflict,
+} from '../../../common/utils/field-errors';
 import type { HorseEntity } from '../../horses/entities/horse.entity';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
@@ -28,12 +31,13 @@ export type CareTaskRemoval = 'DELETE' | 'END_TODAY' | 'END_YESTERDAY';
  *
  * @param doneCount Số việc đã xong
  * @param total Tổng số việc
- * @returns PENDING khi chưa xong việc nào, COMPLETED khi xong hết, còn lại IN_PROGRESS
+ * @returns COMPLETED khi không còn việc nào hoặc xong hết, PENDING khi chưa xong việc nào, còn lại IN_PROGRESS
  */
 export function checklistStatusOf(
   doneCount: number,
   total: number,
 ): DailyChecklistStatus {
+  if (total === 0) return DailyChecklistStatus.COMPLETED;
   if (doneCount === 0) return DailyChecklistStatus.PENDING;
   if (doneCount >= total) return DailyChecklistStatus.COMPLETED;
   return DailyChecklistStatus.IN_PROGRESS;
@@ -200,6 +204,25 @@ export function assertAppliesToAllChangeable(
 }
 
 /**
+ * Chặn đổi tên loại việc đã có dòng trong checklist
+ *
+ * @param renaming Tên mới (đã trim) khác tên hiện tại
+ * @param usedInChecklists Đã có ít nhất một dòng checklist của loại việc này
+ * @throws ConflictException Nếu đổi tên loại việc đã dùng trong checklist, gắn với ô `name`
+ */
+export function assertCareTaskTypeRenamable(
+  renaming: boolean,
+  usedInChecklists: boolean,
+): void {
+  if (renaming && usedInChecklists) {
+    throw fieldConflict(
+      'name',
+      'Loại việc đã dùng trong checklist, không đổi tên được',
+    );
+  }
+}
+
+/**
  * Chặn gắn trùng một loại việc cho cùng ngựa trong khoảng ngày chồng nhau
  *
  * @param overlapping Đã có việc riêng cùng loại chồng khoảng ngày
@@ -244,7 +267,7 @@ export function assertCareTaskWriter(
 /**
  * Chọn cách gỡ việc riêng theo hôm nay và kiểu dòng
  *
- * - Gắn thêm: chưa bắt đầu thì xóa, đang hiệu lực thì kết thúc ở hôm nay
+ * - Gắn thêm: bắt đầu từ hôm nay trở đi thì xóa, bắt đầu trước hôm nay thì kết thúc ở hôm nay
  * - Miễn: bắt đầu từ hôm nay trở đi thì xóa, bắt đầu trước hôm nay thì kết thúc ở hôm qua
  *
  * @param mode Kiểu dòng việc riêng
@@ -263,8 +286,6 @@ export function careTaskRemovalOf(
   if (toDate < today) {
     throw new ConflictException('Việc riêng đã kết thúc, không gỡ được');
   }
-  if (mode === HorseCareTaskMode.EXEMPT) {
-    return fromDate >= today ? 'DELETE' : 'END_YESTERDAY';
-  }
-  return fromDate > today ? 'DELETE' : 'END_TODAY';
+  if (fromDate >= today) return 'DELETE';
+  return mode === HorseCareTaskMode.EXEMPT ? 'END_YESTERDAY' : 'END_TODAY';
 }
