@@ -44,16 +44,19 @@ export class TrainingSubjectsController {
   @Get('training-subjects')
   @ApiOperation({ summary: 'Liệt kê danh mục môn học' })
   @ApiOkResponse({ type: [TrainingSubjectResponseDto] })
-  list() {
-    return this.subjects.list();
+  list(@CurrentUser() actor: Actor) {
+    return this.subjects.list(actor);
   }
 
   @Access(SUBJECT_READERS)
   @Get('training-subjects/:subjectId')
   @ApiOperation({ summary: 'Xem một môn học' })
   @ApiOkResponse({ type: TrainingSubjectResponseDto })
-  get(@Param('subjectId', ParseUUIDPipe) subjectId: string) {
-    return this.subjects.get(subjectId);
+  get(
+    @CurrentUser() actor: Actor,
+    @Param('subjectId', ParseUUIDPipe) subjectId: string,
+  ) {
+    return this.subjects.get(actor, subjectId);
   }
 
   @Access([UserRole.CLUB_MANAGER])

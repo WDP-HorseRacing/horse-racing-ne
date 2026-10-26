@@ -131,4 +131,13 @@ export class RealtimeGateway
   emitToUser(userId: string, event: string, payload: unknown): void {
     this.server.to(`user:${userId}`).emit(event, payload);
   }
+
+  /**
+   * Ngắt mọi socket đang mở của một user
+   *
+   * @param userId UUID của user cần ngắt kết nối
+   */
+  disconnectUser(userId: string): void {
+    this.server.in(`user:${userId}`).disconnectSockets(true);
+  }
 }

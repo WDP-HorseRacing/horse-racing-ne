@@ -55,6 +55,7 @@ import { TrainingOperationsFacade } from '../../../src/modules/training/shared/t
 import { ParticipantEligibilityListener } from '../../../src/modules/training/training-sessions/participant-eligibility.listener';
 import { UserEntity } from '../../../src/modules/users/entities/user.entity';
 import { UsersService } from '../../../src/modules/users/services/users.service';
+import { RealtimeGateway } from '../../../src/modules/realtime/realtime.gateway';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,
@@ -235,6 +236,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
       keycloak as unknown as KeycloakUserService,
       dataSource,
       audit,
+      { disconnectUser: jest.fn() } as unknown as RealtimeGateway,
     );
     auditLogs = new AuditLogsService(
       dataSource.getRepository(AuditLogEntity),

@@ -14,6 +14,7 @@ import { TrainingOperationsFacade } from '../../src/modules/training/shared/trai
 import { UserEntity } from '../../src/modules/users/entities/user.entity';
 import { HeadTrainerHandoverService } from '../../src/modules/users/services/head-trainer-handover.service';
 import { UsersService } from '../../src/modules/users/services/users.service';
+import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -70,6 +71,7 @@ describe('Users audit trail (Postgres)', () => {
       keycloak as unknown as KeycloakUserService,
       dataSource,
       audit,
+      { disconnectUser: jest.fn() } as unknown as RealtimeGateway,
     );
     handover = new HeadTrainerHandoverService(
       dataSource,

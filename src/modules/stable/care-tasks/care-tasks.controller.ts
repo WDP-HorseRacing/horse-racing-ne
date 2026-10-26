@@ -47,8 +47,8 @@ export class CareTasksController {
   @Get('care-task-types')
   @ApiOperation({ summary: 'Liệt kê danh mục loại việc chăm sóc' })
   @ApiOkResponse({ type: [CareTaskTypeResponseDto] })
-  listTypes() {
-    return this.careTasks.listTypes();
+  listTypes(@CurrentUser() actor: Actor) {
+    return this.careTasks.listTypes(actor);
   }
 
   @Access([UserRole.CLUB_MANAGER])

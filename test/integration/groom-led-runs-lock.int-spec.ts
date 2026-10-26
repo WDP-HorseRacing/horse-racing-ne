@@ -15,6 +15,7 @@ import { TrainingOperationsFacade } from '../../src/modules/training/shared/trai
 import { SessionParticipantsService } from '../../src/modules/training/training-sessions/session-participants.service';
 import { UserEntity } from '../../src/modules/users/entities/user.entity';
 import { UsersService } from '../../src/modules/users/services/users.service';
+import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -86,6 +87,7 @@ describe('Locking a groom who still leads training runs (Postgres)', () => {
       } as unknown as KeycloakUserService,
       dataSource,
       new AuditService(),
+      { disconnectUser: jest.fn() } as unknown as RealtimeGateway,
     );
     participants = new SessionParticipantsService(
       dataSource.getRepository(SessionParticipantEntity),

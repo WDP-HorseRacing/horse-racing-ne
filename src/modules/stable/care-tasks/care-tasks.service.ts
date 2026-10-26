@@ -79,9 +79,12 @@ export class CareTasksService {
   /**
    * Liệt kê mọi loại việc theo thứ tự tạo
    *
+   * @param actor Thông tin danh tính từ Access Token
    * @returns Promise trả về các loại việc, kể cả loại đã ngưng
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
    */
-  async listTypes(): Promise<CareTaskTypeResponseDto[]> {
+  async listTypes(actor: Actor): Promise<CareTaskTypeResponseDto[]> {
+    await currentUserForActor(this.dataSource.manager, actor);
     const rows = await this.types.find({
       order: { createdAt: 'ASC', name: 'ASC' },
     });

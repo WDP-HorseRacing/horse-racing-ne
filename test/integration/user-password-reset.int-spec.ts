@@ -12,6 +12,7 @@ import type { Actor } from '../../src/common/types/actor';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { UserEntity } from '../../src/modules/users/entities/user.entity';
 import { UsersService } from '../../src/modules/users/services/users.service';
+import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -41,6 +42,7 @@ describe('UsersService.resetPassword (Postgres)', () => {
       keycloak as unknown as KeycloakUserService,
       dataSource,
       new AuditService(),
+      { disconnectUser: jest.fn() } as unknown as RealtimeGateway,
     );
   });
 

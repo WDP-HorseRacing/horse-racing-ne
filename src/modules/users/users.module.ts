@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { KeycloakModule } from '../../common/infrastructure/keycloak/keycloak.module';
 import { AuditModule } from '../audit/audit.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { BarnsModule } from '../stable/barns/barns.module';
 import { TrainingSharedModule } from '../training/shared/training-shared.module';
 import { UserEntity } from './entities/user.entity';
@@ -15,6 +16,7 @@ import { UsersController } from './users.controller';
     TypeOrmModule.forFeature([UserEntity]),
     KeycloakModule,
     AuditModule,
+    RealtimeModule,
     BarnsModule,
     TrainingSharedModule,
   ],

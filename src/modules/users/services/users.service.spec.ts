@@ -7,6 +7,7 @@ import {
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { KeycloakUserService } from '../../../common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../common/types/actor';
+import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { CareScheduleStatus } from '../../medical/constants/care-schedule.enum';
@@ -72,6 +73,7 @@ describe('UsersService', () => {
     logoutUser: jest.Mock;
   };
   let users: { findOneBy: jest.Mock };
+  let realtime: { disconnectUser: jest.Mock };
   let service: UsersService;
 
   beforeEach(() => {
@@ -144,11 +146,17 @@ describe('UsersService', () => {
       logoutUser: keycloak('logout'),
     };
     users = { findOneBy: jest.fn(() => Promise.resolve({ ...target })) };
+    realtime = {
+      disconnectUser: jest.fn(() => {
+        events.push('realtime:disconnect');
+      }),
+    };
     service = new UsersService(
       users as unknown as Repository<UserEntity>,
       keycloakUsers as unknown as KeycloakUserService,
       { manager, transaction } as unknown as DataSource,
       { record: jest.fn() },
+      realtime as unknown as RealtimeGateway,
     );
   });
 
@@ -585,6 +593,7 @@ describe('UsersService', () => {
         owner.keycloakId,
         true,
       );
+      expect(realtime.disconnectUser).not.toHaveBeenCalled();
     });
 
     it('does nothing when the status is unchanged', async () => {
@@ -606,11 +615,13 @@ describe('UsersService', () => {
         'tx:commit',
         'keycloak:setEnabled',
         'keycloak:logout',
+        'realtime:disconnect',
       ]);
       expect(keycloakUsers.setUserEnabled).toHaveBeenCalledWith(
         owner.keycloakId,
         false,
       );
+      expect(realtime.disconnectUser).toHaveBeenCalledWith(owner.id);
     });
 
     it('reverts the committed status when Keycloak fails and rethrows the Keycloak error', async () => {
@@ -626,6 +637,7 @@ describe('UsersService', () => {
         { status: UserStatus.ACTIVE },
       );
       expect(keycloakUsers.logoutUser).not.toHaveBeenCalled();
+      expect(realtime.disconnectUser).not.toHaveBeenCalled();
     });
 
     it('logs an error when reverting the status also fails, still rethrowing the Keycloak error', async () => {

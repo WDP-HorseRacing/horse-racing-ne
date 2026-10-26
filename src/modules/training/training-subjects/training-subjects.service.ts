@@ -49,9 +49,12 @@ export class TrainingSubjectsService {
   /**
    * Liệt kê mọi môn học theo tên
    *
+   * @param actor Thông tin danh tính từ Access Token
    * @returns Promise trả về các môn học, sắp theo tên tăng dần
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
    */
-  async list(): Promise<TrainingSubjectResponseDto[]> {
+  async list(actor: Actor): Promise<TrainingSubjectResponseDto[]> {
+    await this.access.currentUser(actor);
     const rows = await this.subjects.find({ order: { name: 'ASC' } });
     return rows.map(toTrainingSubjectResponse);
   }
@@ -59,11 +62,17 @@ export class TrainingSubjectsService {
   /**
    * Lấy một môn học
    *
+   * @param actor Thông tin danh tính từ Access Token
    * @param subjectId UUID của môn học
    * @returns Promise trả về môn học
+   * @throws ForbiddenException Nếu tài khoản người gọi không tồn tại, không hoạt động hoặc chưa được gán vai trò
    * @throws NotFoundException Nếu không có môn học
    */
-  async get(subjectId: string): Promise<TrainingSubjectResponseDto> {
+  async get(
+    actor: Actor,
+    subjectId: string,
+  ): Promise<TrainingSubjectResponseDto> {
+    await this.access.currentUser(actor);
     const row = await this.subjects.findOneBy({ id: subjectId });
     if (!row) throw new NotFoundException(SUBJECT_NOT_FOUND);
     return toTrainingSubjectResponse(row);

@@ -1,6 +1,11 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
+import { UserStatus } from '../../src/common/enums/user-status.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { TrainingSubjectEntity } from '../../src/modules/training/entities/training-subject.entity';
@@ -68,7 +73,7 @@ describe('TrainingSubjectsService (Postgres)', () => {
       targetTimeMs: 75000,
     });
 
-    const rows = await service.list();
+    const rows = await service.list(manager);
 
     expect(rows.map((row) => row.name)).toEqual(['Chạy thử 1200', 'Sức bền']);
     expect(rows[0]).toMatchObject({
@@ -77,6 +82,29 @@ describe('TrainingSubjectsService (Postgres)', () => {
       durationMinutes: 30,
     });
     expect(rows[1]).toMatchObject({ durationMinutes: 90 });
+  });
+
+  it('rejects an inactive account with 403 when listing or reading subjects', async () => {
+    const created = await service.create(manager, endurance);
+    const lockedId = await seed.user(
+      UserRole.HEAD_TRAINER,
+      UserStatus.INACTIVE,
+    );
+    const [row] = await dataSource.query<Array<{ keycloak_id: string }>>(
+      'SELECT keycloak_id FROM users WHERE id = $1',
+      [lockedId],
+    );
+    const locked: Actor = {
+      sub: row.keycloak_id,
+      roles: [UserRole.HEAD_TRAINER],
+    };
+
+    await expect(service.list(locked)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    await expect(service.get(locked, created.id)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('rejects a duplicate subject name with 409', async () => {
@@ -138,7 +166,9 @@ describe('TrainingSubjectsService (Postgres)', () => {
 
     await service.remove(manager, created.id);
 
-    await expect(service.get(created.id)).rejects.toThrow(NotFoundException);
+    await expect(service.get(manager, created.id)).rejects.toThrow(
+      NotFoundException,
+    );
     await expect(service.remove(manager, created.id)).rejects.toThrow(
       NotFoundException,
     );

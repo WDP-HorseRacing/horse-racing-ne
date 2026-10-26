@@ -1,6 +1,7 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
+import { UserStatus } from '../../src/common/enums/user-status.enum';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../src/common/types/actor';
 import { clubToday, shiftDays } from '../../src/common/utils/club-date';
@@ -105,6 +106,17 @@ describe('Removing a horse task or switching off a task type changes today’s c
         await careTasks.createType(manager, { name, appliesToAll })
       ).id;
     }
+  });
+
+  it('rejects an inactive account with 403 when listing task types', async () => {
+    const locked = await actorOf(
+      await seed.user(UserRole.GROOM, UserStatus.INACTIVE),
+      UserRole.GROOM,
+    );
+
+    await expect(careTasks.listTypes(locked)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   const checklistOf = async (horseId: string, date = today) => {

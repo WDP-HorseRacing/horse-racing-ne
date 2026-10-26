@@ -57,6 +57,7 @@ import { TrainingSessionsService } from '../../../src/modules/training/training-
 import { UserEntity } from '../../../src/modules/users/entities/user.entity';
 import { HeadTrainerHandoverService } from '../../../src/modules/users/services/head-trainer-handover.service';
 import { UsersService } from '../../../src/modules/users/services/users.service';
+import { RealtimeGateway } from '../../../src/modules/realtime/realtime.gateway';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,
@@ -294,6 +295,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
       } as unknown as KeycloakUserService,
       dataSource,
       audit,
+      { disconnectUser: jest.fn() } as unknown as RealtimeGateway,
     );
     handover = new HeadTrainerHandoverService(
       dataSource,

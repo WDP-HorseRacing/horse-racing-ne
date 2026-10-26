@@ -22,6 +22,7 @@ import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../audit/services/audit.service';
+import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
 import { CareScheduleStatus } from '../../medical/constants/care-schedule.enum';
@@ -82,6 +83,7 @@ export class UsersService {
     private readonly keycloakUsers: KeycloakUserService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   /**
@@ -274,7 +276,7 @@ export class UsersService {
    *
    * - Trạng thái không đổi: trả user hiện tại, không ghi gì
    * - Có đổi: ghi nhật ký trạng thái trước và sau
-   * - Chuyển sang trạng thái khác ACTIVE: thu hồi phiên đăng nhập của user
+   * - Chuyển sang trạng thái khác ACTIVE: thu hồi phiên đăng nhập và ngắt mọi socket đang mở của user
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param id UUID của user
@@ -323,7 +325,10 @@ export class UsersService {
 
     if (previous.status === status) return toUserResponse(previous);
     await this.syncStatusAfterCommit(previous, status);
-    if (status !== UserStatus.ACTIVE) await this.revokeSessions(previous);
+    if (status !== UserStatus.ACTIVE) {
+      await this.revokeSessions(previous);
+      this.realtime.disconnectUser(previous.id);
+    }
     return toUserResponse(await this.findUser(id));
   }
 

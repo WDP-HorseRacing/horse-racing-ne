@@ -7,6 +7,7 @@ import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { UserListQueryDto } from '../../src/modules/users/dto/user.dto';
 import { UserEntity } from '../../src/modules/users/entities/user.entity';
 import { UsersService } from '../../src/modules/users/services/users.service';
+import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 import {
   startTestPostgres,
   stopTestPostgres,
@@ -28,6 +29,7 @@ describe('UsersService.list search (Postgres)', () => {
       {} as KeycloakUserService,
       dataSource,
       new AuditService(),
+      { disconnectUser: jest.fn() } as unknown as RealtimeGateway,
     );
   });
 

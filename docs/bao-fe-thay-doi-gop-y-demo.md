@@ -1,10 +1,17 @@
 # Thay đổi API cần FE cập nhật
 
-Cập nhật: 2026-10-23
+Cập nhật: 2026-10-26
 
 Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, HT = Head Trainer, VET = bác sĩ thú y, GROOM = người chăm ngựa, OWNER = chủ ngựa. Lỗi vẫn theo format chung. Schema chi tiết: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
 Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều ngày thì mục của ngày mới nhất là hành vi hiện tại; phần cũ đã bị thay có ghi "(đã thay ở ...)". API chặn field lạ: gửi field không có trong request là 400 "Không nhận ô `<tên ô>`", không ghi gì.
+
+## Ngày 26/10/2026
+
+### Tài khoản bị khóa: chặn đọc danh mục, ngắt socket ngay
+
+- `GET /training-subjects`, `GET /training-subjects/:subjectId`, `GET /care-task-types`: tài khoản không hoạt động nhận 403 như mọi route khác (trước đây vẫn đọc được tới khi token hết hạn). Request, response không đổi.
+- CM khóa tài khoản (`PATCH /users/:id/status` sang trạng thái khác `ACTIVE`): mọi socket `/events` đang mở của người đó bị ngắt ngay (trước đây sống tới khi access token hết hạn). FE nhận `disconnect` với lý do `io server disconnect`, không tự kết nối lại; gọi API tiếp sẽ nhận 401/403 và đưa về màn đăng nhập.
 
 ## Ngày 23/10/2026
 
