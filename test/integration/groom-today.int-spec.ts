@@ -138,7 +138,6 @@ describe('Groom today view (Postgres)', () => {
     expect(result).toEqual({
       date: today,
       horses: [],
-      otherCareSchedules: [],
       assistedRuns: [],
       horseVetAppointments: [],
     });
@@ -378,32 +377,7 @@ describe('Groom today view (Postgres)', () => {
     ]);
   });
 
-  it('shows open care schedules due by the end of today, flagging overdue ones', async () => {
-    const at = (date: string) => clubDateTimeToInstant(date, '12:00');
-    await seed.schedule(gio, at(today).toISOString(), { assignedTo: groomId });
-    await seed.schedule(gio, at(shiftDays(today, -2)).toISOString(), {
-      assignedTo: groomId,
-    });
-    await seed.schedule(gio, at(shiftDays(today, 1)).toISOString(), {
-      assignedTo: groomId,
-    });
-    await seed.schedule(gio, at(today).toISOString(), {
-      assignedTo: groomId,
-      status: CareScheduleStatus.COMPLETED,
-    });
-    await seed.schedule(gio, at(today).toISOString(), {
-      assignedTo: otherGroomId,
-    });
-
-    const [first] = (await service.today(groom)).horses;
-
-    expect(first.careSchedules.map((item) => item.overdue)).toEqual([
-      true,
-      false,
-    ]);
-  });
-
-  it('shows today vet appointments of the groom horses as a read-only block, not as care schedules', async () => {
+  it('shows today vet appointments of the groom horses as a read-only block', async () => {
     const lua = await seed.horse('Lửa');
     await assign(lua, groomId);
     const at = (date: string, time = '09:00') =>
@@ -436,6 +410,5 @@ describe('Groom today view (Postgres)', () => {
         scheduledAt: new Date(at(today)),
       }),
     ]);
-    expect(result.horses.flatMap((horse) => horse.careSchedules)).toEqual([]);
   });
 });

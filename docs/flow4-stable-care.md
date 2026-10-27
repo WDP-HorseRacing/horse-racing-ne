@@ -1,6 +1,6 @@
 # Flow 4 — Chăm sóc chuồng trại và dinh dưỡng hằng ngày
 
-> Cập nhật: 20/10/2026
+> Cập nhật: 27/10/2026
 
 ## I. Đề bài liên quan
 
@@ -173,7 +173,6 @@ SỰ CỐ                             Groom báo, HT khu đóng
 - Checklist hôm nay (đã sinh theo luật 5.2; chưa có thì để trống).
 - Khẩu phần `ACTIVE` theo bữa.
 - Lượt tập hôm nay Groom được giao dắt (Flow 2), theo giờ bắt đầu, kèm địa điểm (`location`) và mặt sân (`surface`) của buổi; bỏ buổi đã hủy, bỏ lượt đã hủy, hủy do khóa, vắng, bỏ qua, không đủ điều kiện.
-- Lịch chăm sóc Groom là người làm (Flow 3 F3.11: giao Groom phụ trách ở ngựa mình phụ trách, hoặc giao đích danh cho mình) đến hạn tới hết hôm nay mà chưa làm, kể cả lịch quá hạn (đánh dấu `overdue`). Lịch giao đích danh ở ngựa Groom không phụ trách nằm riêng ở `otherCareSchedules` (kèm tên ngựa).
 
 Lượt Groom được giao dắt ở ngựa Groom không phụ trách (dắt hộ) nằm riêng ở `assistedRuns`, cùng bộ lọc trên, kèm tên ngựa.
 

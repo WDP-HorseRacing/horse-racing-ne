@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
-  IsEnum,
   IsOptional,
   IsString,
   IsUUID,
@@ -9,7 +8,6 @@ import {
   MinLength,
 } from 'class-validator';
 import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
-import { CareAssigneeType } from '../constants/care-schedule.enum';
 
 /**
  * Dời ngày, đổi người được giao hoặc ghi chú của lịch chăm sóc.
@@ -25,19 +23,10 @@ export class UpdateCareScheduleDto {
   dueAt?: string;
 
   @ApiPropertyOptional({
-    enum: CareAssigneeType,
-    nullable: true,
-    description:
-      'Đổi cách giao: gửi kiểu giao mới cùng assignedTo (bỏ trống assignedTo là không chọn người). Gửi null để bỏ giao',
-  })
-  @IsOptional()
-  @IsEnum(CareAssigneeType)
-  assigneeType?: CareAssigneeType | null;
-
-  @ApiPropertyOptional({
     format: 'uuid',
     nullable: true,
-    description: 'Người cụ thể, chỉ gửi kèm assigneeType',
+    description:
+      'Đổi bác sĩ được giao (bác sĩ đang hoạt động). Gửi null để bỏ giao',
   })
   @IsOptional()
   @IsUUID('4')
@@ -94,8 +83,7 @@ export class CompleteCareScheduleDto {
   @ApiPropertyOptional({
     format: 'date-time',
     example: '2026-10-23T00:30:00+07:00',
-    description:
-      'Ngày đến hạn lần tới; có thì tạo lịch mới cùng loại. Chỉ Veterinarian được nhập',
+    description: 'Ngày đến hạn lần tới; có thì tạo lịch mới cùng loại',
   })
   @IsOptional()
   @IsIsoInstant()

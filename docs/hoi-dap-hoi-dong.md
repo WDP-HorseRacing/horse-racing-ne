@@ -1,6 +1,6 @@
 # Hỏi đáp chuẩn bị bảo vệ
 
-Cập nhật: 23/10/2026
+Cập nhật: 27/10/2026
 
 Các câu hội đồng có thể hỏi về những quyết định nghiệp vụ "cố ý không làm" hoặc "chọn cách đơn giản", kèm câu trả lời ngắn và lý do. Mã trong ngoặc là mã mục trong bản rà nghiệp vụ.
 
@@ -351,3 +351,21 @@ Nguyên tắc chung: hệ thống chặn những giá trị làm hỏng dữ li�
 **Trả lời:** Lớp, lượt tập, nhận xét thuộc về con ngựa: người đang sở hữu xem toàn bộ lịch sử tập để biết con ngựa mình mua, giống bệnh án. Chủ cũ xem hồ sơ cơ bản của ngựa từng sở hữu và báo cáo chi phí của các khoảng mình đã sở hữu; dữ liệu tập luyện và bệnh án không còn xem.
 
 **Đánh đổi đã biết:** chủ cũ muốn xem lại một buổi tập cũ phải hỏi Club Manager.
+
+## Lịch chăm sóc định kỳ
+
+### 44. Sao tách tiêm phòng, tẩy giun thành lịch riêng, không làm luôn trong buổi khám định kỳ?
+
+**Trả lời:** Đề bài nêu đích danh cho bác sĩ: theo dõi và nhận thông báo về lịch tiêm phòng, tẩy giun, kiểm tra móng định kỳ. Mỗi loại có chu kỳ riêng (tiêm phòng thường năm một lần, tẩy giun vài tháng một lần, khám định kỳ 30 ngày), nên phải là lịch riêng mới nhắc đúng hạn. Bác sĩ làm tiêm hay tẩy giun ngay trong buổi khám thì bấm hoàn tất lịch đó và nhập ngày lần tới.
+
+**Đánh đổi đã biết:** bác sĩ bấm thêm một thao tác hoàn tất ngoài việc ghi buổi khám.
+
+### 45. Ngoài đời trainer thường xếp lịch thợ móng, sao hệ thống để bác sĩ quản lịch móng? Groom làm gì?
+
+**Trả lời:** Đề bài giao việc theo dõi lịch kiểm tra móng cho bác sĩ, nên câu lạc bộ để bác sĩ giữ sổ sức khỏe ngựa, gồm cả móng. Thợ móng là người ngoài, không có tài khoản: bác sĩ hẹn thợ, thợ làm xong thì bác sĩ bấm hoàn tất và đặt ngày lần tới. Groom không cắt móng, chỉ phụ giữ ngựa; việc đó bác sĩ hoặc HT giao vào checklist của ngựa.
+
+**Lý do:**
+- Tách quyền riêng cho HT chỉ vì một loại lịch thì phải chia quyền theo từng loại lịch, gửi nhắc thêm cho HT; không đáng so với lợi ích.
+- Trước đây cho giao lịch móng cho Groom hoàn tất, nhưng Groom không phải người làm và không đặt được ngày lần tới, nên đã bỏ.
+
+**Đánh đổi đã biết:** HT muốn đổi ngày thợ móng tới phải nhờ bác sĩ dời lịch.

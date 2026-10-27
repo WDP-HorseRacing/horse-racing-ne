@@ -5,7 +5,6 @@ import { UserEntity } from '../../users/entities/user.entity';
 import { MedicalCaseEntity } from './medical-case.entity';
 import { MedicalRecordEntity } from './medical-record.entity';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
@@ -29,10 +28,6 @@ import {
   'care_schedules_follow_up_ck',
   `type <> '${CareScheduleType.FOLLOW_UP}' OR (case_id IS NOT NULL AND record_id IS NOT NULL)`,
 )
-@Check(
-  'care_schedules_assignee_ck',
-  `(assignee_type IS NULL AND assigned_to IS NULL) OR assignee_type = '${CareAssigneeType.GROOM}' OR (assignee_type = '${CareAssigneeType.VET}' AND assigned_to IS NOT NULL)`,
-)
 export class CareScheduleEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -46,14 +41,6 @@ export class CareScheduleEntity extends MutableRecordEntity {
 
   @Column({ name: 'due_at', type: 'timestamptz' })
   dueAt!: Date;
-
-  @Column({
-    name: 'assignee_type',
-    type: 'varchar',
-    length: 16,
-    nullable: true,
-  })
-  assigneeType!: CareAssigneeType | null;
 
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
   assignedTo!: string | null;

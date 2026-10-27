@@ -15,7 +15,6 @@ import {
   shiftDays,
 } from '../../../common/utils/club-date';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   VET_APPOINTMENT_TYPES,
 } from '../../medical/constants/care-schedule.enum';
@@ -72,8 +71,6 @@ export class GroomTodayService {
    * - Checklist hôm nay (nếu đã sinh)
    * - Khẩu phần đang áp dụng
    * - Lượt tập hôm nay Groom được giao dắt, bỏ buổi đã hủy
-   * - Lịch chăm sóc Groom là người làm (giao Groom phụ trách ở ngựa mình phụ trách, hoặc giao đích danh cho mình), đến hạn tới hết hôm nay mà chưa làm
-   * - Lịch giao đích danh ở ngựa Groom không phụ trách: tách ra otherCareSchedules
    * - Lượt tập Groom được giao dắt ở ngựa Groom không phụ trách: tách ra assistedRuns
    * - Lịch hẹn khám định kỳ và tái khám hôm nay của ngựa Groom phụ trách: horseVetAppointments, chỉ để xem
    *
@@ -95,27 +92,11 @@ export class GroomTodayService {
       .flatMap((assignment) => (assignment.horse ? [assignment.horse] : []))
       .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
     const horseIds = horses.map((horse) => horse.id);
-    const schedules = await this.careSchedulesOf(
-      manager,
-      caller.id,
-      horseIds,
-      dayEnd,
-    );
     const ownHorseIds = new Set(horseIds);
-    const otherSchedules = schedules.filter(
-      (schedule) => !ownHorseIds.has(schedule.horseId),
-    );
     const runs = await this.runsOf(manager, caller.id, dayStart, dayEnd);
     const assistedRuns = runs.filter((run) => !ownHorseIds.has(run.horseId));
     if (horseIds.length === 0) {
-      return toGroomTodayResponse(
-        date,
-        dayStart,
-        [],
-        otherSchedules,
-        assistedRuns,
-        [],
-      );
+      return toGroomTodayResponse(date, [], assistedRuns, []);
     }
     const [stalls, checklists, plans, vetAppointments] = await Promise.all([
       manager.find(StallAssignmentEntity, {
@@ -156,59 +137,16 @@ export class GroomTodayService {
     );
     return toGroomTodayResponse(
       date,
-      dayStart,
       horses.map((horse) => ({
         horse,
         stallCode: stallByHorse.get(horse.id) ?? null,
         checklist: checklistByHorse.get(horse.id) ?? null,
         feedingPlan: planByHorse.get(horse.id) ?? null,
         runs: runs.filter((run) => run.horseId === horse.id),
-        schedules: schedules.filter(
-          (schedule) => schedule.horseId === horse.id,
-        ),
       })),
-      otherSchedules,
       assistedRuns,
       vetAppointments,
     );
-  }
-
-  /**
-   * Lấy lịch chăm sóc còn Đã lên lịch, đến hạn trước dayEnd mà Groom là người làm
-   *
-   * - Giao Groom phụ trách ở các ngựa Groom đang phụ trách
-   * - Giao đích danh cho Groom ở bất kỳ ngựa nào (kèm horse để lấy tên)
-   *
-   * @param manager EntityManager dùng để query
-   * @param groomId UUID của Groom
-   * @param horseIds UUID các ngựa Groom đang phụ trách
-   * @param dayEnd Đầu ngày mai theo giờ CLB
-   * @returns Promise trả về các lịch, ngày đến hạn sớm nhất lên trên
-   */
-  private careSchedulesOf(
-    manager: EntityManager,
-    groomId: string,
-    horseIds: string[],
-    dayEnd: Date,
-  ): Promise<CareScheduleEntity[]> {
-    const open = {
-      status: CareScheduleStatus.SCHEDULED,
-      dueAt: LessThan(dayEnd),
-    };
-    const ownHorses = {
-      ...open,
-      horseId: In(horseIds),
-      assigneeType: CareAssigneeType.GROOM,
-      assignedTo: IsNull(),
-    };
-    return manager.find(CareScheduleEntity, {
-      where: horseIds.length
-        ? [{ ...open, assignedTo: groomId }, ownHorses]
-        : { ...open, assignedTo: groomId },
-      relations: { horse: true },
-      withDeleted: true,
-      order: { dueAt: 'ASC' },
-    });
   }
 
   /**

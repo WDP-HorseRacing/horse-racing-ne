@@ -20,11 +20,9 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
 import { CheckupsService } from '../../../src/modules/medical/care-schedules/checkups.service';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../../src/modules/medical/constants/care-schedule.enum';
-import { MedicalCheckupsService } from '../../../src/modules/medical/shared/medical-checkups.service';
 import { MEDICAL_CARE_SCHEDULE_DUE_EVENT } from '../../../src/modules/medical/constants/medical-events.constants';
 import { CaseLockDecision } from '../../../src/modules/medical/constants/medical-case.enum';
 import {
@@ -54,7 +52,6 @@ import { NotificationDeliveryService } from '../../../src/modules/notifications/
 import { NotificationRecipientsRepository } from '../../../src/modules/notifications/delivery/notification-recipients.repository';
 import type { NotificationDraft } from '../../../src/modules/notifications/types/notification.types';
 import { GroomAssignmentsModule } from '../../../src/modules/stable/groom-assignments/groom-assignments.module';
-import { GroomAssignmentsService } from '../../../src/modules/stable/groom-assignments/groom-assignments.service';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,
@@ -79,7 +76,6 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
   let reminders: MedicalRemindersService;
   let dashboard: MedicalDashboardService;
   let statuses: HorseStatusesService;
-  let grooms: GroomAssignmentsService;
   let profiles: HorseProfilesService;
   let relay: OutboxRelayService;
   const sent: NotificationDraft[] = [];
@@ -197,7 +193,6 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     reminders = get(MedicalRemindersService);
     dashboard = get(MedicalDashboardService);
     statuses = get(HorseStatusesService);
-    grooms = get(GroomAssignmentsService);
     relay = get(OutboxRelayService);
     const access = new HorseAccessService(dataSource);
     const horseRepo = dataSource.getRepository(HorseEntity);
@@ -223,25 +218,6 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
   beforeEach(async () => {
     await truncateAllTables(dataSource);
     sent.length = 0;
-  });
-
-  it('B14: changing the groom moves the old groom SCHEDULED care schedules to the new groom', async () => {
-    const { ht, horse } = await scene();
-    const oldGroom = await seed.user(UserRole.GROOM);
-    const newGroom = await seed.user(UserRole.GROOM);
-    await grooms.assign(ht.actor, horse, { groomId: oldGroom });
-    const schedule = await seed.schedule(horse, isoIn(3), {
-      type: CareScheduleType.FARRIER,
-      assigneeType: CareAssigneeType.GROOM,
-    });
-
-    await grooms.assign(ht.actor, horse, { groomId: newGroom });
-
-    const [due] = await new MedicalCheckupsService(dataSource).dueCareSchedules(
-      isoIn(4).slice(0, 10),
-      [horse],
-    );
-    expect(due).toMatchObject({ scheduleId: schedule, assignedTo: newGroom });
   });
 
   it('N1: a horse with an open-ended prescription from a closed case is not racing eligible', async () => {

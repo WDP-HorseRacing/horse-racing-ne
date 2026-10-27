@@ -25,7 +25,6 @@ import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-ta
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
 import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
-import { GroomTodayService } from '../../../src/modules/stable/daily-checklists/groom-today.service';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../../src/modules/stable/entities/daily-checklist.entity';
 import { HorseCareTaskEntity } from '../../../src/modules/stable/entities/horse-care-task.entity';
@@ -72,7 +71,6 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
   let checklists: ChecklistsService;
   let generation: ChecklistGenerationService;
   let careTasks: CareTasksService;
-  let groomToday: GroomTodayService;
   let fees: DailyFeesService;
   let finance: FinanceReportsService;
   let measurements: HorseMeasurementsService;
@@ -129,7 +127,6 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
       new AuditService(),
       new DomainEventPublisher(),
     );
-    groomToday = new GroomTodayService(dataSource);
     fees = new DailyFeesService(
       dataSource.getRepository(DailyFeeEntity),
       dataSource,
@@ -164,7 +161,6 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
     (dbTz) => {
       let cm: Actor;
       let groomId: string;
-      let groom: Actor;
       let trainerId: string;
       let trainer: Actor;
       let vet: Actor;
@@ -182,7 +178,6 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
         trainerId = await seed.user(UserRole.HEAD_TRAINER);
         trainer = await actorOf(trainerId, UserRole.HEAD_TRAINER);
         groomId = await seed.user(UserRole.GROOM);
-        groom = await actorOf(groomId, UserRole.GROOM);
         vet = await actorOf(
           await seed.user(UserRole.VETERINARIAN),
           UserRole.VETERINARIAN,
@@ -230,37 +225,6 @@ describe(`Timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeFormat(
         await generation.runDaily();
 
         expect(await checklistRows()).toEqual([{ day: D, status: 'PENDING' }]);
-      });
-
-      it('TZ-3: groom-today at 06:00 club time uses the club day window for care schedules', async () => {
-        const at = (date: string, time: string) =>
-          clubDateTimeToInstant(date, time).toISOString();
-        const overdue = await seed.schedule(
-          gio,
-          at(shiftDays(D, -1), '23:30'),
-          {
-            assignedTo: groomId,
-          },
-        );
-        const earlyToday = await seed.schedule(gio, at(D, '00:30'), {
-          assignedTo: groomId,
-          type: CareScheduleType.DEWORMING,
-        });
-        await seed.schedule(gio, at(shiftDays(D, 1), '00:30'), {
-          assignedTo: groomId,
-          type: CareScheduleType.VACCINATION,
-        });
-        fakeNow(D, '06:00');
-
-        const result = await groomToday.today(groom);
-
-        expect(result.date).toBe(D);
-        expect(
-          result.horses[0].careSchedules.map((s) => [s.id, s.overdue]),
-        ).toEqual([
-          [overdue, true],
-          [earlyToday, false],
-        ]);
       });
 
       it('TZ-4 (B12): editing a class keeps an enrollment made at 00:30 club time on the start date valid', async () => {

@@ -17,27 +17,20 @@ export interface GroomTodayHorseSource {
   checklist: DailyChecklistResponseDto | null;
   feedingPlan: FeedingPlanResponseDto | null;
   runs: SessionParticipantEntity[];
-  schedules: CareScheduleEntity[];
 }
 
 /**
  * Chuyển dữ liệu hôm nay của Groom sang response
  *
- * - Lịch chăm sóc đến hạn trước đầu ngày được đánh dấu overdue
- *
  * @param date Hôm nay theo lịch CLB, YYYY-MM-DD
- * @param dayStart Đầu ngày theo giờ CLB
  * @param horses Dữ liệu từng ngựa; mỗi lượt tập đã load session
- * @param otherSchedules Lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, đã load horse
  * @param assistedRuns Lượt Groom được giao dắt ở ngựa Groom không phụ trách, đã load session và horse
  * @param vetAppointments Lịch hẹn bác sĩ hôm nay ở ngựa Groom phụ trách, đã load horse
  * @returns Response màn Hôm nay
  */
 export function toGroomTodayResponse(
   date: string,
-  dayStart: Date,
   horses: readonly GroomTodayHorseSource[],
-  otherSchedules: readonly CareScheduleEntity[],
   assistedRuns: readonly SessionParticipantEntity[],
   vetAppointments: readonly CareScheduleEntity[],
 ): GroomTodayResponseDto {
@@ -53,22 +46,6 @@ export function toGroomTodayResponse(
         checklist: source.checklist,
         feedingPlan: source.feedingPlan,
         trainingRuns: source.runs.map(toRun),
-        careSchedules: source.schedules.map((schedule) => ({
-          id: schedule.id,
-          type: schedule.type,
-          dueAt: schedule.dueAt,
-          overdue: schedule.dueAt < dayStart,
-          notes: schedule.notes,
-        })),
-      })),
-      otherCareSchedules: otherSchedules.map((schedule) => ({
-        id: schedule.id,
-        horseId: schedule.horseId,
-        horseName: schedule.horse.name,
-        type: schedule.type,
-        dueAt: schedule.dueAt,
-        overdue: schedule.dueAt < dayStart,
-        notes: schedule.notes,
       })),
       assistedRuns: assistedRuns.map((run) => ({
         ...toRun(run),

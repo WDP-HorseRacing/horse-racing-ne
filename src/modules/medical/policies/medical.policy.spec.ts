@@ -5,11 +5,7 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import {
-  CareAssigneeType,
-  CareScheduleStatus,
-  CareScheduleType,
-} from '../constants/care-schedule.enum';
+import { CareScheduleStatus } from '../constants/care-schedule.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import {
   ExamRequestSource,
@@ -28,8 +24,6 @@ import {
 } from '../constants/medical-visit.enum';
 import {
   addDays,
-  assertCanCompleteCareSchedule,
-  assertCareAssigneeAllowed,
   assertCareDueDate,
   assertCareScheduleOpen,
   assertCareScheduleReopenable,
@@ -627,40 +621,6 @@ describe('medical.policy', () => {
   });
 
   describe('care schedules', () => {
-    it('gives vaccination and deworming only to a vet or to nobody, farrier to anyone', () => {
-      for (const type of [
-        CareScheduleType.VACCINATION,
-        CareScheduleType.DEWORMING,
-      ]) {
-        let error: unknown;
-        try {
-          assertCareAssigneeAllowed(type, CareAssigneeType.GROOM);
-        } catch (thrown) {
-          error = thrown;
-        }
-        expect(error).toBeInstanceOf(BadRequestException);
-        expect((error as BadRequestException).getResponse()).toEqual({
-          message: 'Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ',
-          errors: [
-            {
-              field: 'assigneeType',
-              message: 'Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ',
-            },
-          ],
-        });
-        expect(() =>
-          assertCareAssigneeAllowed(type, CareAssigneeType.VET),
-        ).not.toThrow();
-        expect(() => assertCareAssigneeAllowed(type, null)).not.toThrow();
-      }
-      expect(() =>
-        assertCareAssigneeAllowed(
-          CareScheduleType.FARRIER,
-          CareAssigneeType.GROOM,
-        ),
-      ).not.toThrow();
-    });
-
     it('only changes a scheduled task', () => {
       expect(() =>
         assertCareScheduleOpen(CareScheduleStatus.SCHEDULED),
@@ -690,18 +650,6 @@ describe('medical.policy', () => {
         BadRequestException,
       );
       expect(() => assertCareDueDate('2026-09-27', '2026-09-27')).not.toThrow();
-    });
-
-    it('lets a vet or the assignee complete a task', () => {
-      expect(() =>
-        assertCanCompleteCareSchedule([UserRole.VETERINARIAN], false),
-      ).not.toThrow();
-      expect(() =>
-        assertCanCompleteCareSchedule([UserRole.GROOM], true),
-      ).not.toThrow();
-      expect(() =>
-        assertCanCompleteCareSchedule([UserRole.GROOM], false),
-      ).toThrow(ForbiddenException);
     });
   });
 

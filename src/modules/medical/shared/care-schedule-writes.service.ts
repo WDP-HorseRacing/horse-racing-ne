@@ -157,7 +157,6 @@ export class CareScheduleWritesService {
         horseId: visit.horseId,
         type: CareScheduleType.FOLLOW_UP,
         dueAt,
-        assigneeType: null,
         assignedTo: null,
         status: CareScheduleStatus.SCHEDULED,
         completedAt: null,

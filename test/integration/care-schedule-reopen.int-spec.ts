@@ -6,7 +6,6 @@ import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { CareSchedulesService } from '../../src/modules/medical/care-schedules/care-schedules.service';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../src/modules/medical/constants/care-schedule.enum';
@@ -64,7 +63,6 @@ describe('CareSchedulesService.reopen (Postgres)', () => {
     schedules.create(vet, horse, {
       type: CareScheduleType.VACCINATION,
       dueAt: dueAt(),
-      assigneeType: CareAssigneeType.VET,
       assignedTo: vetId,
     });
 

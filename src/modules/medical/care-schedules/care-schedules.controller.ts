@@ -44,7 +44,7 @@ export class CareSchedulesController {
   @Get('horses/:horseId/care-schedules')
   @ApiOperation({
     summary: 'List vaccination, deworming and farrier schedules',
-    description: 'Groom chỉ thấy lịch được giao cho mình.',
+    description: 'Mọi vai trò xem được lịch của ngựa trong phạm vi của mình.',
     operationId: 'MedicalDetailsController_careSchedules',
   })
   @ApiOkResponse({ type: [CareScheduleResponseDto] })
@@ -88,12 +88,12 @@ export class CareSchedulesController {
     return this.careSchedules.update(actor, id, body);
   }
 
-  @Access([UserRole.VETERINARIAN, UserRole.GROOM])
+  @Access([UserRole.VETERINARIAN])
   @Post('care-schedules/:id/complete')
   @ApiOperation({
     summary: 'Complete a care schedule',
     description:
-      'Veterinarian, hoặc đúng Groom được giao mà vẫn phụ trách ngựa; người khác 403. Chỉ Veterinarian được nhập nextDueAt để tạo luôn lịch lần tới. Lịch đã hoàn tất/đã hủy: 409.',
+      'Nhập nextDueAt để tạo luôn lịch lần tới cùng loại, giữ bác sĩ được giao. Lịch đã hoàn tất/đã hủy: 409.',
     operationId: 'MedicalDetailsController_completeCareSchedule',
   })
   @ApiCreatedResponse({ type: CompleteCareScheduleResponseDto })

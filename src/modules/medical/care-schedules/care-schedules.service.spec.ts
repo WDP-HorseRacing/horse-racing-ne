@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
@@ -9,7 +8,6 @@ import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../constants/care-schedule.enum';
@@ -27,8 +25,6 @@ const inDays = (days: number) =>
 describe('CareSchedulesService', () => {
   let scheduleRow: Row | null;
   let assigneeValid: boolean;
-  let assigneeRole: UserRole;
-  let groomAssigned: boolean;
   let callerId: string;
   let manager: {
     create: jest.Mock;
@@ -47,14 +43,11 @@ describe('CareSchedulesService', () => {
   beforeEach(() => {
     callerId = 'vet-1';
     assigneeValid = true;
-    assigneeRole = UserRole.GROOM;
-    groomAssigned = true;
     scheduleRow = {
       id: 's1',
       horseId: 'h1',
       type: CareScheduleType.FARRIER,
       dueAt: new Date(inDays(5)),
-      assigneeType: CareAssigneeType.GROOM,
       assignedTo: null,
       status: CareScheduleStatus.SCHEDULED,
       notes: null,
@@ -64,9 +57,7 @@ describe('CareSchedulesService', () => {
       save: jest.fn((row: Row) => Promise.resolve({ id: 's-new', ...row })),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOne: jest.fn((_entity: unknown, options: { where: Row }) =>
-        Promise.resolve(
-          assigneeValid ? { id: options.where.id, role: assigneeRole } : null,
-        ),
+        Promise.resolve(assigneeValid ? { id: options.where.id } : null),
       ),
       findOneOrFail: jest.fn(() => Promise.resolve({ ...scheduleRow })),
       exists: jest.fn(() => Promise.resolve(assigneeValid)),
@@ -91,7 +82,6 @@ describe('CareSchedulesService', () => {
       {
         findReadableHorseForActor,
         currentUser: jest.fn(() => Promise.resolve({ id: callerId })),
-        isGroomAssigned: jest.fn(() => Promise.resolve(groomAssigned)),
       } as unknown as HorseAccessService,
       audit,
     );
@@ -123,62 +113,39 @@ describe('CareSchedulesService', () => {
       expect(manager.save).not.toHaveBeenCalled();
     });
 
-    it('assigns a groom by name even when that groom does not look after the horse', async () => {
-      groomAssigned = false;
+    it('assigns an active vet', async () => {
       const result = await service.create(vet, 'h1', {
         type: CareScheduleType.FARRIER,
         dueAt: inDays(3),
-        assigneeType: CareAssigneeType.GROOM,
-        assignedTo: 'groom-2',
+        assignedTo: 'vet-2',
       });
-      expect(result).toMatchObject({
-        assigneeType: CareAssigneeType.GROOM,
-        assignedTo: 'groom-2',
-      });
+      expect(result).toMatchObject({ assignedTo: 'vet-2' });
     });
 
-    it('rejects a named person who is not an active groom', async () => {
+    it('rejects a person who is not an active vet', async () => {
       assigneeValid = false;
       await expect(
         service.create(vet, 'h1', {
           type: CareScheduleType.FARRIER,
           dueAt: inDays(3),
-          assigneeType: CareAssigneeType.GROOM,
-          assignedTo: 'owner-1',
+          assignedTo: 'groom-1',
         }),
       ).rejects.toThrow(
-        new BadRequestException('Người được giao phải là Groom đang hoạt động'),
+        new BadRequestException(
+          'Người được giao phải là Bác sĩ thú y đang hoạt động',
+        ),
       );
       expect(manager.save).not.toHaveBeenCalled();
     });
 
-    it.each([
-      [{ assignedTo: 'groom-1' }],
-      [{ assigneeType: CareAssigneeType.VET }],
-    ])(
-      'rejects a person without a kind, or a vet kind without a person (%o)',
-      async (assignment) => {
-        await expect(
-          service.create(vet, 'h1', {
-            type: CareScheduleType.FARRIER,
-            dueAt: inDays(3),
-            ...assignment,
-          }),
-        ).rejects.toThrow(BadRequestException);
-        expect(manager.save).not.toHaveBeenCalled();
-      },
-    );
-
-    it('creates a scheduled task given to the horse groom and audits it', async () => {
+    it('creates an unassigned scheduled task and audits it', async () => {
       const result = await service.create(vet, 'h1', {
         type: CareScheduleType.FARRIER,
         dueAt: inDays(3),
-        assigneeType: CareAssigneeType.GROOM,
       });
       expect(result).toMatchObject({
         status: CareScheduleStatus.SCHEDULED,
         type: CareScheduleType.FARRIER,
-        assigneeType: CareAssigneeType.GROOM,
         assignedTo: null,
       });
       expect(audit.record).toHaveBeenCalledWith(
@@ -212,13 +179,10 @@ describe('CareSchedulesService', () => {
       expect(manager.update).not.toHaveBeenCalled();
     });
 
-    it('rejects an assignee who is not an active vet or groom', async () => {
+    it('rejects an assignee who is not an active vet', async () => {
       assigneeValid = false;
       await expect(
-        service.update(vet, 's1', {
-          assigneeType: CareAssigneeType.VET,
-          assignedTo: 'user-x',
-        }),
+        service.update(vet, 's1', { assignedTo: 'user-x' }),
       ).rejects.toThrow(BadRequestException);
       expect(manager.update).not.toHaveBeenCalled();
     });
@@ -238,10 +202,7 @@ describe('CareSchedulesService', () => {
     });
 
     it('writes nothing and audits nothing when no field changes', async () => {
-      await service.update(vet, 's1', {
-        notes: null,
-        assigneeType: CareAssigneeType.GROOM,
-      });
+      await service.update(vet, 's1', { notes: null, assignedTo: null });
       expect(manager.update).not.toHaveBeenCalled();
       expect(audit.record).not.toHaveBeenCalled();
     });
@@ -259,73 +220,34 @@ describe('CareSchedulesService', () => {
   });
 
   describe('complete', () => {
-    it('lets the groom looking after the horse complete a task given to the horse groom', async () => {
-      callerId = 'groom-1';
-      const result = await service.complete(groom, 's1', {});
+    it('completes a task without a next one', async () => {
+      const result = await service.complete(vet, 's1', {});
       expect(result.completed).toMatchObject({
         status: CareScheduleStatus.COMPLETED,
-        completedBy: 'groom-1',
+        completedBy: 'vet-1',
       });
       expect(result.next).toBeNull();
     });
 
-    it('rejects a groom who no longer looks after the horse with 403', async () => {
-      callerId = 'groom-1';
-      groomAssigned = false;
-      await expect(service.complete(groom, 's1', {})).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(manager.update).not.toHaveBeenCalled();
-    });
-
-    it('lets a vet book the next due date and keeps the way it was given', async () => {
-      scheduleRow = { ...scheduleRow, assignedTo: 'groom-9' };
+    it('books the next due date and keeps the vet', async () => {
+      scheduleRow = { ...scheduleRow, assignedTo: 'vet-9' };
       const result = await service.complete(vet, 's1', {
         nextDueAt: inDays(60),
       });
       expect(result.next).toMatchObject({
         type: CareScheduleType.FARRIER,
         status: CareScheduleStatus.SCHEDULED,
-        assigneeType: CareAssigneeType.GROOM,
-        assignedTo: 'groom-9',
+        assignedTo: 'vet-9',
       });
     });
 
-    it('gives the next schedule to the horse groom when the named groom is no longer valid', async () => {
-      scheduleRow = { ...scheduleRow, assignedTo: 'groom-9' };
+    it('leaves the next schedule unassigned when the vet is no longer valid', async () => {
+      scheduleRow = { ...scheduleRow, assignedTo: 'vet-9' };
       assigneeValid = false;
       const result = await service.complete(vet, 's1', {
         nextDueAt: inDays(60),
       });
-      expect(result.next).toMatchObject({
-        assigneeType: CareAssigneeType.GROOM,
-        assignedTo: null,
-      });
-    });
-
-    it('lets a groom named on the schedule complete it without looking after the horse', async () => {
-      scheduleRow = { ...scheduleRow, assignedTo: 'groom-9' };
-      callerId = 'groom-9';
-      groomAssigned = false;
-      const result = await service.complete(groom, 's1', {});
-      expect(result.completed).toMatchObject({ completedBy: 'groom-9' });
-    });
-
-    it('rejects a groom booking the next due date with 403', async () => {
-      callerId = 'groom-1';
-      await expect(
-        service.complete(groom, 's1', { nextDueAt: inDays(60) }),
-      ).rejects.toThrow(ForbiddenException);
-      expect(manager.update).not.toHaveBeenCalled();
-    });
-
-    it('rejects a groom who is neither named nor looking after the horse with 403', async () => {
-      callerId = 'groom-2';
-      groomAssigned = false;
-      await expect(service.complete(groom, 's1', {})).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(manager.update).not.toHaveBeenCalled();
+      expect(result.next).toMatchObject({ assignedTo: null });
     });
 
     it('answers conflict for a cancelled schedule', async () => {
@@ -401,35 +323,14 @@ describe('CareSchedulesService', () => {
       expect(schedules.find).not.toHaveBeenCalled();
     });
 
-    it.each([
-      [true, ['horse-groom', 'named']],
-      [false, ['named']],
-    ])(
-      'shows a groom only the tasks they have to do (looks after the horse: %s)',
-      async (looksAfter, expected) => {
-        callerId = 'groom-1';
-        groomAssigned = looksAfter;
-        const row = (
-          id: string,
-          assigneeType: unknown,
-          assignedTo: unknown,
-        ) => ({
-          ...scheduleRow,
-          id,
-          assigneeType,
-          assignedTo,
-        });
-        schedules.find.mockResolvedValue([
-          row('horse-groom', CareAssigneeType.GROOM, null),
-          row('named', CareAssigneeType.GROOM, 'groom-1'),
-          row('other-groom', CareAssigneeType.GROOM, 'groom-7'),
-          row('vet', CareAssigneeType.VET, 'vet-1'),
-          row('nobody', null, null),
-        ]);
-        const result = await service.list(groom, 'h1');
-        expect(result.map((item) => item.id)).toEqual(expected);
-      },
-    );
+    it('shows a groom every task of the horse', async () => {
+      schedules.find.mockResolvedValue([
+        { ...scheduleRow, id: 'vet', assignedTo: 'vet-1' },
+        { ...scheduleRow, id: 'nobody' },
+      ]);
+      const result = await service.list(groom, 'h1');
+      expect(result.map((item) => item.id)).toEqual(['vet', 'nobody']);
+    });
 
     it('shows a vet every task of the horse', async () => {
       await service.list(vet, 'h1');

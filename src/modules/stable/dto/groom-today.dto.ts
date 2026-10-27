@@ -65,38 +65,6 @@ export class GroomTodayAssistedRunResponseDto extends GroomTodayRunResponseDto {
   horseName!: string;
 }
 
-export class GroomTodayCareScheduleResponseDto {
-  @Expose()
-  @ApiProperty({ format: 'uuid' })
-  id!: string;
-
-  @Expose()
-  @ApiProperty({ enum: CareScheduleType })
-  type!: CareScheduleType;
-
-  @Expose()
-  @ApiProperty({ format: 'date-time' })
-  dueAt!: Date;
-
-  @Expose()
-  @ApiProperty({ description: 'Đến hạn trước hôm nay mà chưa làm' })
-  overdue!: boolean;
-
-  @Expose()
-  @ApiPropertyOptional({ nullable: true, type: String })
-  notes!: string | null;
-}
-
-export class GroomTodayOtherCareScheduleResponseDto extends GroomTodayCareScheduleResponseDto {
-  @Expose()
-  @ApiProperty({ format: 'uuid' })
-  horseId!: string;
-
-  @Expose()
-  @ApiProperty()
-  horseName!: string;
-}
-
 export class GroomTodayVetAppointmentResponseDto {
   @Expose()
   @ApiProperty({ format: 'uuid', description: 'Ngày hẹn khám' })
@@ -165,15 +133,6 @@ export class GroomTodayHorseResponseDto {
     description: 'Lượt tập hôm nay Groom được giao dắt, theo giờ bắt đầu',
   })
   trainingRuns!: GroomTodayRunResponseDto[];
-
-  @Expose()
-  @Type(() => GroomTodayCareScheduleResponseDto)
-  @ApiProperty({
-    type: [GroomTodayCareScheduleResponseDto],
-    description:
-      'Lịch chăm sóc Groom là người làm (giao Groom phụ trách, hoặc giao đích danh cho Groom), đến hạn tới hết hôm nay mà chưa làm',
-  })
-  careSchedules!: GroomTodayCareScheduleResponseDto[];
 }
 
 export class GroomTodayResponseDto {
@@ -188,15 +147,6 @@ export class GroomTodayResponseDto {
     description: 'Ngựa Groom đang phụ trách, theo tên',
   })
   horses!: GroomTodayHorseResponseDto[];
-
-  @Expose()
-  @Type(() => GroomTodayOtherCareScheduleResponseDto)
-  @ApiProperty({
-    type: [GroomTodayOtherCareScheduleResponseDto],
-    description:
-      'Lịch chăm sóc giao đích danh cho Groom ở ngựa Groom không phụ trách, đến hạn tới hết hôm nay mà chưa làm, ngày đến hạn sớm nhất lên trên',
-  })
-  otherCareSchedules!: GroomTodayOtherCareScheduleResponseDto[];
 
   @Expose()
   @Type(() => GroomTodayAssistedRunResponseDto)

@@ -289,7 +289,6 @@ describe('Follow-up appointments in care_schedules (Postgres)', () => {
     expect(today.horseVetAppointments).toEqual([
       expect.objectContaining({ id: row.id, type: CareScheduleType.FOLLOW_UP }),
     ]);
-    expect(today.horses[0].careSchedules).toEqual([]);
   });
 
   describe('migration FollowUpSchedules', () => {

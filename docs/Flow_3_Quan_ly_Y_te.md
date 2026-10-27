@@ -1,6 +1,6 @@
 # FLOW 3: LUỒNG QUẢN LÝ Y TẾ
 
-> Cập nhật: 20/10/2026
+> Cập nhật: 27/10/2026
 
 ## I. Những main feature liên quan
 
@@ -26,7 +26,7 @@
 ### GROOM / STABLE HAND (Nhân viên Chăm sóc & Chuồng trại)
 
 - Báo cáo sự cố hoặc dấu hiệu bất thường của ngựa để bác sĩ xử lý (chức năng nằm ở Flow 4, Flow 3 nhận kết quả dưới dạng yêu cầu khám).
-- Thực hiện lịch chăm sóc được giao (ví dụ kiểm tra móng) và đánh dấu hoàn tất.
+- Xem lịch chăm sóc của ngựa mình phụ trách. Việc phụ (ví dụ giữ ngựa cho thợ móng) nhận qua checklist (Flow 4).
 
 ### CLUB MANAGER (Quản lý Câu lạc bộ)
 
@@ -141,7 +141,7 @@ Nguyên tắc phạm vi của HEAD TRAINER: xem tổng quan toàn câu lạc b�
 | Đóng bệnh án | NORMAL | CLUB MANAGER (kèm tổng chi phí của cả bệnh án), HORSE OWNER (kèm phần chi phí thuộc giai đoạn mình sở hữu); số tiền chụp lúc đóng |
 | Hủy bệnh án mở nhầm | NORMAL | CLUB MANAGER, HORSE OWNER |
 | Điều chỉnh chi phí một buổi khám | NORMAL | HORSE OWNER của giai đoạn chứa ngày khám (III.6.6), CLUB MANAGER |
-| Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, người làm lịch (xem F3.11 mục 1) |
+| Lịch chăm sóc định kỳ đến hạn (F3.11) | NORMAL | Mọi VETERINARIAN đang hoạt động, bác sĩ được giao lịch |
 | Tới ngày hẹn khám định kỳ (F3.2) hoặc ngày hẹn tái khám (F3.6) mà chưa khám | NORMAL | Mọi VETERINARIAN đang hoạt động |
 
 1. Ngựa chưa được xếp khu thì không có HEAD TRAINER nhận thông báo, khi đó chỉ gửi cho các vai trò còn lại.
@@ -725,23 +725,19 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 | VETERINARIAN | Thêm, Sửa, Xem | Toàn câu lạc bộ | Tạo, dời, hủy, đánh dấu hoàn tất. |
 | CLUB MANAGER | Xem | Toàn câu lạc bộ | |
 | HEAD TRAINER | Xem | Toàn câu lạc bộ | Xem để tránh xếp buổi tập trùng lịch. |
-| GROOM | Xem, Sửa (hoàn tất) | Lịch mình là người làm: giao GROOM phụ trách ở ngựa mình đang phụ trách, hoặc giao đích danh cho mình | Đánh dấu hoàn tất việc được giao, ví dụ kiểm tra móng. |
+| GROOM | Xem | Ngựa mình phụ trách | Việc phụ (giữ ngựa cho thợ móng...) nhận qua checklist (Flow 4). |
 | HORSE OWNER | Xem | Ngựa sở hữu | |
 
 ### Nghiệp vụ
 
-1. Một lịch chăm sóc gồm: con ngựa, loại (Tiêm phòng, Tẩy giun, Kiểm tra móng), ngày đến hạn, cách giao (tùy chọn), ghi chú. Cách giao gồm kiểu giao và người cụ thể:
-   - Chưa giao ai.
-   - Giao GROOM phụ trách (không chọn người): người làm là GROOM đang phụ trách con ngựa lúc đó. HEAD TRAINER đổi GROOM thì lịch tự theo GROOM mới, GROOM cũ không còn thấy và không hoàn tất được.
-   - Giao một GROOM cụ thể (GROOM đang hoạt động, không bắt buộc phụ trách con ngựa, ví dụ GROOM chuyên làm móng): đổi GROOM phụ trách không làm đổi người làm.
-   - Giao một VETERINARIAN cụ thể (bắt buộc chọn người, VETERINARIAN đang hoạt động).
-   - Người làm là người hệ thống nhắc hạn và là GROOM duy nhất được hoàn tất lịch; VETERINARIAN hoàn tất được mọi lịch.
-   - Tiêm phòng và Tẩy giun chỉ giao được cho VETERINARIAN (hoặc để chưa giao ai); giao GROOM khi tạo hoặc khi đổi cách giao bị chặn (400 ở ô `assigneeType`). Kiểm tra móng giao được cho GROOM hoặc VETERINARIAN.
+1. Một lịch chăm sóc gồm: con ngựa, loại (Tiêm phòng, Tẩy giun, Kiểm tra móng), ngày đến hạn, bác sĩ được giao (tùy chọn), ghi chú.
+   - Lịch chỉ thuộc VETERINARIAN: giao một VETERINARIAN đang hoạt động, hoặc chưa giao ai (mọi bác sĩ cùng thấy và nhận nhắc). Giao người không phải VETERINARIAN đang hoạt động: 400.
+   - Kiểm tra móng: thợ móng là người ngoài, không có tài khoản. VETERINARIAN theo dõi lịch, hẹn thợ và đánh dấu hoàn tất. Cần GROOM giữ ngựa thì VETERINARIAN hoặc HEAD TRAINER giao việc riêng vào checklist của ngựa (Flow 4).
 2. Trạng thái: Đã lên lịch, Hoàn tất, Đã hủy. Hoàn tất và Đã hủy là trạng thái cuối.
 3. Dời ngày đến hạn hoặc hủy lịch bắt buộc nhập lý do.
-4. Đánh dấu hoàn tất ghi lại thời điểm và người thực hiện. Khi hoàn tất, VETERINARIAN có thể nhập "Ngày đến hạn lần tới" (ví dụ tẩy giun sau 3 tháng): hệ thống tạo luôn lịch mới cùng loại trong cùng thao tác, giữ cách giao (người cụ thể không còn hợp lệ thì giao GROOM về GROOM phụ trách, giao VETERINARIAN về chưa giao ai). Để trống thì không tạo lịch mới. GROOM hoàn tất thì không nhập được ngày lần tới.
-   - Không khóa tài khoản hay đổi vai trò người còn lịch Đã lên lịch được giao đích danh cho mình (409): VETERINARIAN phải giao lại các lịch đó trước.
-5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần cho mỗi ngày đến hạn: lịch bị dời sang ngày khác thì được nhắc lại theo ngày mới. *(BA chốt)* Người nhận: mọi bác sĩ và người làm lịch. Không đẩy thông báo nhắc trước hạn hay nhắc lại khi quá hạn; nhắc trước và quá hạn xem trên màn hình: bảng điều khiển y tế (khối lịch chăm sóc gồm lịch quá hạn và đến hạn trong 3 ngày tới) và màn Hôm nay của Groom (lịch giao Groom, có cờ quá hạn).
+4. Chỉ VETERINARIAN đánh dấu hoàn tất; hệ thống ghi lại thời điểm và người thực hiện. Khi hoàn tất có thể nhập "Ngày đến hạn lần tới" (ví dụ tẩy giun sau 3 tháng): hệ thống tạo luôn lịch mới cùng loại trong cùng thao tác, giữ bác sĩ được giao (bác sĩ đó không còn hoạt động thì lịch mới chưa giao ai). Để trống thì không tạo lịch mới.
+   - Không khóa tài khoản hay đổi vai trò bác sĩ còn lịch Đã lên lịch được giao cho mình (409): phải giao lại các lịch đó trước.
+5. Đến ngày đến hạn, hệ thống gửi thông báo mức NORMAL theo mục III.7, mỗi lịch một lần cho mỗi ngày đến hạn: lịch bị dời sang ngày khác thì được nhắc lại theo ngày mới. *(BA chốt)* Người nhận: mọi bác sĩ và bác sĩ được giao. Không đẩy thông báo nhắc trước hạn hay nhắc lại khi quá hạn; nhắc trước và quá hạn xem trên bảng điều khiển y tế (khối lịch chăm sóc gồm lịch quá hạn và đến hạn trong 3 ngày tới).
 6. Khi ngựa chuyển nhượng, các lịch đang Đã lên lịch tự hủy với lý do "Do chuyển nhượng".
 7. Không tạo lịch cho ngựa đã chuyển nhượng, đã mất hoặc hồ sơ đã xóa.
 8. Ghi nhật ký khi tạo, dời, hủy, hoàn tất và mở lại.
@@ -754,12 +750,12 @@ Theo dõi các việc chăm sóc y tế lặp lại theo đề bài: tiêm phòn
 | **Mã use case** | UC-F3-11 |
 | **Tên use case** | Quản lý lịch chăm sóc định kỳ |
 | **Actor chính** | VETERINARIAN |
-| **Actor phụ** | GROOM (hoàn tất việc được giao), Hệ thống (nhắc hạn, ghi nhật ký) |
+| **Actor phụ** | Hệ thống (nhắc hạn, ghi nhật ký) |
 | **Tiền điều kiện** | Người dùng đã đăng nhập. Con ngựa ở trạng thái Đang hoạt động hoặc Đã giải nghệ. |
 | **Hậu điều kiện** | Lịch chăm sóc được tạo, dời, hủy hoặc hoàn tất và ghi nhật ký. |
-| **Luồng sự kiện chính** | 1. VETERINARIAN mở tab Lịch chăm sóc của con ngựa.<br>2. VETERINARIAN chọn loại, ngày đến hạn, người được giao và lưu.<br>3. Đến hạn, hệ thống gửi thông báo.<br>4. Người thực hiện đánh dấu hoàn tất.<br>5. Hệ thống lưu thời điểm, người thực hiện và ghi nhật ký. |
+| **Luồng sự kiện chính** | 1. VETERINARIAN mở tab Lịch chăm sóc của con ngựa.<br>2. VETERINARIAN chọn loại, ngày đến hạn, người được giao và lưu.<br>3. Đến hạn, hệ thống gửi thông báo.<br>4. VETERINARIAN đánh dấu hoàn tất, tùy chọn nhập ngày đến hạn lần tới.<br>5. Hệ thống lưu thời điểm, người thực hiện và ghi nhật ký. |
 | **Luồng thay thế** | A1. Dời ngày -> nhập lý do, hệ thống lưu ngày mới.<br>A2. Hủy lịch -> nhập lý do, hệ thống chuyển Đã hủy. |
-| **Luồng ngoại lệ** | E1. Ngày đến hạn ở quá khứ khi tạo hoặc dời -> báo lỗi.<br>E2. Dời, hủy hoặc hoàn tất lịch đã Hoàn tất hoặc Đã hủy -> trả về 409.<br>E3. GROOM hoàn tất lịch không giao cho mình, hoặc không còn phụ trách con ngựa, hoặc nhập ngày lần tới -> trả về 403.<br>E4. Ngựa đã chuyển nhượng hoặc đã mất -> không cho tạo lịch (409). Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E5. Giao lịch cho người không phải VETERINARIAN hoặc GROOM đang phụ trách con ngựa -> báo lỗi.<br>E6. Giao lịch Tiêm phòng hoặc Tẩy giun cho GROOM -> báo lỗi (400). |
+| **Luồng ngoại lệ** | E1. Ngày đến hạn ở quá khứ khi tạo hoặc dời -> báo lỗi.<br>E2. Dời, hủy hoặc hoàn tất lịch đã Hoàn tất hoặc Đã hủy -> trả về 409.<br>E3. Vai trò khác VETERINARIAN tạo, sửa, hủy hoặc hoàn tất lịch -> trả về 403.<br>E4. Ngựa đã chuyển nhượng hoặc đã mất -> không cho tạo lịch (409). Hồ sơ đã xóa -> 404 (CLUB MANAGER: 409).<br>E5. Giao lịch cho người không phải VETERINARIAN đang hoạt động -> báo lỗi (400). |
 
 ---
 

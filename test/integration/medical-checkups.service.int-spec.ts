@@ -14,7 +14,6 @@ import {
   HorseLifecycleStatus,
 } from '../../src/modules/horses/enums/horse-status.enum';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../src/modules/medical/constants/care-schedule.enum';
@@ -92,7 +91,7 @@ describe('MedicalCheckupsService (Postgres)', () => {
       await expect(scheduleIds()).resolves.toEqual([kept]);
     });
 
-    it('resolves the doer: a named person still active with the right role, or the groom looking after the horse', async () => {
+    it('resolves the doer: the assigned vet while still an active vet, otherwise nobody', async () => {
       const horse = await seed.horse('Winx');
       const vet = await seed.user(UserRole.VETERINARIAN);
       const inactiveVet = await seed.user(
@@ -100,50 +99,31 @@ describe('MedicalCheckupsService (Postgres)', () => {
         UserStatus.INACTIVE,
       );
       const groom = await seed.user(UserRole.GROOM);
-      const formerGroom = await seed.user(UserRole.GROOM);
-      await dataSource.query(
-        `INSERT INTO groom_assignments (version, horse_id, groom_id, start_at, end_at)
-         VALUES (1, $1, $2, '2026-09-01', NULL), (1, $1, $3, '2026-08-01', '2026-09-01')`,
-        [horse, groom, formerGroom],
-      );
       for (const [hour, assignee] of [
         [1, vet],
         [2, inactiveVet],
         [3, groom],
-        [4, formerGroom],
       ] as const) {
         await seed.schedule(horse, `2026-09-26T0${hour}:00:00Z`, {
           assignedTo: assignee,
         });
       }
-      await seed.schedule(horse, '2026-09-26T05:00:00Z', {
-        assigneeType: CareAssigneeType.GROOM,
-      });
-      await seed.schedule(horse, '2026-09-26T06:00:00Z');
+      await seed.schedule(horse, '2026-09-26T04:00:00Z');
 
       const rows = await repository.dueCareSchedules(TODAY);
 
       expect(rows.map((row) => row.assignedTo)).toEqual([
         vet,
         null,
-        groom,
-        formerGroom,
-        groom,
+        null,
         null,
       ]);
-      const names = new Map(
-        (
-          await dataSource.query<{ id: string; full_name: string }[]>(
-            'SELECT id, full_name FROM users',
-          )
-        ).map((user) => [user.id, user.full_name]),
-      );
-      expect(rows.map((row) => row.assignedToName)).toEqual(
-        rows.map((row) =>
-          row.assignedTo ? (names.get(row.assignedTo) ?? 'missing') : null,
-        ),
-      );
-      expect(rows[0].assignedToName).toEqual(expect.any(String));
+      expect(rows.map((row) => row.assignedToName)).toEqual([
+        expect.any(String),
+        null,
+        null,
+        null,
+      ]);
     });
 
     it('limits the result to the given horses', async () => {

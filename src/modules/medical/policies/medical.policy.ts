@@ -10,11 +10,7 @@ import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { OwnershipPeriod } from '../../horses/types/horse.types';
 import type { MedicalCostViewer } from '../types/medical-cost.types';
-import {
-  CareAssigneeType,
-  CareScheduleStatus,
-  CareScheduleType,
-} from '../constants/care-schedule.enum';
+import { CareScheduleStatus } from '../constants/care-schedule.enum';
 import { CheckupDueStatus } from '../constants/checkup.enum';
 import {
   ExamRequestSource,
@@ -40,11 +36,6 @@ import {
 } from '../constants/medical.constants';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-const VET_ONLY_CARE_TYPES: readonly CareScheduleType[] = [
-  CareScheduleType.VACCINATION,
-  CareScheduleType.DEWORMING,
-];
 
 /**
  * Các mốc để tính hạn khám định kỳ của một con ngựa, đều là ngày theo lịch câu lạc bộ (YYYY-MM-DD).
@@ -811,40 +802,6 @@ export function assertCareDueDate(dueDate: string, today: string): void {
 }
 
 /**
- * Chỉ Veterinarian hoặc đúng người được giao mới đánh dấu hoàn tất lịch chăm sóc
- *
- * @param roles Vai trò người gọi
- * @param isAssignee Người gọi có phải người được giao không
- * @throws ForbiddenException Nếu người gọi không được hoàn tất lịch này
- */
-export function assertCanCompleteCareSchedule(
-  roles: UserRole[],
-  isAssignee: boolean,
-): void {
-  if (!roles.includes(UserRole.VETERINARIAN) && !isAssignee) {
-    throw new ForbiddenException(
-      'Bạn chỉ hoàn tất được lịch chăm sóc được giao cho mình',
-    );
-  }
-}
-
-/**
- * Chỉ Veterinarian được hẹn lịch lần tới khi hoàn tất lịch chăm sóc
- *
- * @param roles Vai trò người gọi
- * @param hasNext Người gọi có nhập ngày đến hạn lần tới không
- * @throws ForbiddenException Nếu không phải Veterinarian mà nhập ngày lần tới
- */
-export function assertCanScheduleNext(
-  roles: UserRole[],
-  hasNext: boolean,
-): void {
-  if (hasNext && !roles.includes(UserRole.VETERINARIAN)) {
-    throw new ForbiddenException('Chỉ bác sĩ được hẹn lịch chăm sóc lần tới');
-  }
-}
-
-/**
  * Kiểm tra danh sách cập nhật mức hồi phục của buổi khám
  *
  * - Một chấn thương xuất hiện quá một lần: 400
@@ -893,83 +850,4 @@ export function assertPrescriptionDates(
       'Ngày kết thúc đơn thuốc không được sớm hơn ngày bắt đầu',
     );
   }
-}
-
-/**
- * Kiểm cặp kiểu giao và người được giao của lịch chăm sóc rồi trả về cặp đã chuẩn hóa
- *
- * - Không có kiểu giao: không được có người được giao (400 ô assignedTo); kết quả là chưa giao ai
- * - Giao bác sĩ: bắt buộc chọn bác sĩ (400 ô assignedTo)
- * - Giao Groom: bỏ trống người là Groom đang phụ trách ngựa
- *
- * @param assigneeType Kiểu giao gửi lên, null hoặc bỏ trống là chưa giao
- * @param assignedTo Người được giao gửi lên, null hoặc bỏ trống là không chọn người
- * @returns Kiểu giao và người được giao để lưu
- * @throws BadRequestException Nếu cặp kiểu giao và người được giao không hợp lệ
- */
-export function careAssignment(
-  assigneeType: CareAssigneeType | null | undefined,
-  assignedTo: string | null | undefined,
-): { assigneeType: CareAssigneeType | null; assignedTo: string | null } {
-  const type = assigneeType ?? null;
-  const person = assignedTo ?? null;
-  if (type === null && person !== null) {
-    throw fieldBadRequest(
-      'assignedTo',
-      'Chọn kiểu giao (assigneeType) khi giao cho một người cụ thể',
-    );
-  }
-  if (type === CareAssigneeType.VET && person === null) {
-    throw fieldBadRequest('assignedTo', 'Giao bác sĩ phải chọn bác sĩ cụ thể');
-  }
-  return { assigneeType: type, assignedTo: person };
-}
-
-/**
- * Kiểm loại lịch chăm sóc có được giao theo kiểu giao này không
- *
- * - Tiêm phòng, tẩy giun: không được giao Groom (400 ô assigneeType); giao bác sĩ hoặc chưa giao ai thì được
- * - Loại khác: kiểu giao nào cũng được
- *
- * @param type Loại lịch chăm sóc
- * @param assigneeType Kiểu giao đã chuẩn hóa, null là chưa giao ai
- * @throws BadRequestException Nếu lịch tiêm phòng hoặc tẩy giun giao cho Groom
- */
-export function assertCareAssigneeAllowed(
-  type: CareScheduleType,
-  assigneeType: CareAssigneeType | null,
-): void {
-  if (
-    assigneeType === CareAssigneeType.GROOM &&
-    VET_ONLY_CARE_TYPES.includes(type)
-  ) {
-    throw fieldBadRequest(
-      'assigneeType',
-      'Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ',
-    );
-  }
-}
-
-/**
- * Kiểm một người có phải người làm lịch chăm sóc không
- *
- * - Giao đích danh: đúng người đó
- * - Giao Groom phụ trách: người đó đang phụ trách ngựa
- * - Chưa giao ai: không ai
- *
- * @param schedule Kiểu giao và người được giao của lịch
- * @param userId UUID người cần kiểm
- * @param isHorseGroom Người đó có đang phụ trách ngựa không
- * @returns true nếu người đó là người làm lịch
- */
-export function isCareScheduleDoer(
-  schedule: {
-    assigneeType: CareAssigneeType | null;
-    assignedTo: string | null;
-  },
-  userId: string,
-  isHorseGroom: boolean,
-): boolean {
-  if (schedule.assignedTo !== null) return schedule.assignedTo === userId;
-  return schedule.assigneeType === CareAssigneeType.GROOM && isHorseGroom;
 }

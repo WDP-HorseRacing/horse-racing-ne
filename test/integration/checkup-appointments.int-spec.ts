@@ -9,6 +9,7 @@ import {
   shiftDays,
 } from '../../src/common/utils/club-date';
 import { CheckupAppointmentUnassign1789829600000 } from '../../src/migrations/1789829600000-CheckupAppointmentUnassign';
+import { CareScheduleVetOnly1789830300000 } from '../../src/migrations/1789830300000-CareScheduleVetOnly';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
@@ -66,12 +67,11 @@ describe('Routine checkup appointments (Postgres)', () => {
       {
         id: string;
         status: string;
-        assignee_type: string | null;
         assigned_to: string | null;
         cancel_reason: string | null;
       }[]
     >(
-      `SELECT id, status, assignee_type, assigned_to, cancel_reason
+      `SELECT id, status, assigned_to, cancel_reason
          FROM care_schedules
         WHERE horse_id = $1 AND type = $2
         ORDER BY created_at DESC LIMIT 1`,
@@ -137,7 +137,6 @@ describe('Routine checkup appointments (Postgres)', () => {
     });
 
     await expect(appointmentRow(horse)).resolves.toMatchObject({
-      assignee_type: null,
       assigned_to: null,
     });
   });
@@ -264,6 +263,7 @@ describe('Routine checkup appointments (Postgres)', () => {
 
   describe('migration CheckupAppointmentUnassign', () => {
     const migration = new CheckupAppointmentUnassign1789829600000();
+    const vetOnly = new CareScheduleVetOnly1789830300000();
 
     it('clears the vet of every appointment and refills it from the latest vet audit row on down', async () => {
       const appointment = await seed.schedule(horse, at(today), {
@@ -290,6 +290,7 @@ describe('Routine checkup appointments (Postgres)', () => {
           );
       const runner = dataSource.createQueryRunner();
       try {
+        await vetOnly.down(runner);
         await migration.up(runner);
         await expect(assignees()).resolves.toEqual({
           [appointment]: null,
@@ -302,6 +303,7 @@ describe('Routine checkup appointments (Postgres)', () => {
           [farrier]: vetA,
         });
       } finally {
+        await vetOnly.up(runner);
         await runner.release();
       }
     });

@@ -16,16 +16,12 @@ function rolesOf(method: string): UserRole[] {
 }
 
 describe('CareSchedulesController access', () => {
-  it.each(['create', 'update', 'cancel'])('lets only VETERINARIAN %s', (m) => {
-    expect(rolesOf(m)).toEqual([UserRole.VETERINARIAN]);
-  });
-
-  it('lets vets and grooms complete a task', () => {
-    expect(rolesOf('complete')).toEqual([
-      UserRole.VETERINARIAN,
-      UserRole.GROOM,
-    ]);
-  });
+  it.each(['create', 'update', 'complete', 'cancel'])(
+    'lets only VETERINARIAN %s',
+    (m) => {
+      expect(rolesOf(m)).toEqual([UserRole.VETERINARIAN]);
+    },
+  );
 
   it('lets every role read the schedules', () => {
     expect(rolesOf('list')).toHaveLength(5);

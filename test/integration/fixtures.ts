@@ -8,7 +8,6 @@ import {
   HorseLifecycleStatus,
 } from '../../src/modules/horses/enums/horse-status.enum';
 import {
-  CareAssigneeType,
   CareScheduleStatus,
   CareScheduleType,
 } from '../../src/modules/medical/constants/care-schedule.enum';
@@ -101,7 +100,7 @@ export function fixtures(dataSource: DataSource) {
    *
    * @param horseId Id ngựa
    * @param dueAt Thời điểm đến hạn (ISO)
-   * @param options Loại, trạng thái, kiểu giao và người được giao; bỏ trống kiểu giao mà có người thì suy theo vai trò người đó (bác sĩ: VET, còn lại: GROOM)
+   * @param options Loại, trạng thái và người được giao
    * @returns A promise resolving to id lịch
    */
   const schedule = async (
@@ -110,15 +109,13 @@ export function fixtures(dataSource: DataSource) {
     options: {
       type?: CareScheduleType;
       status?: CareScheduleStatus;
-      assigneeType?: CareAssigneeType | null;
       assignedTo?: string | null;
     } = {},
   ): Promise<string> => {
     const id = randomUUID();
     await dataSource.query(
-      `INSERT INTO care_schedules (id, version, horse_id, type, due_at, status, assigned_to, assignee_type)
-       VALUES ($1, 1, $2, $3, $4, $5, $6::uuid,
-               COALESCE($7, (SELECT CASE role WHEN 'VETERINARIAN' THEN 'VET' ELSE 'GROOM' END FROM users WHERE id = $6::uuid)))`,
+      `INSERT INTO care_schedules (id, version, horse_id, type, due_at, status, assigned_to)
+       VALUES ($1, 1, $2, $3, $4, $5, $6)`,
       [
         id,
         horseId,
@@ -126,7 +123,6 @@ export function fixtures(dataSource: DataSource) {
         dueAt,
         options.status ?? CareScheduleStatus.SCHEDULED,
         options.assignedTo ?? null,
-        options.assigneeType ?? null,
       ],
     );
     return id;

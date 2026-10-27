@@ -1,10 +1,27 @@
 # Thay đổi API cần FE cập nhật
 
-Cập nhật: 2026-10-26
+Cập nhật: 2026-10-27
 
 Mọi path có tiền tố `/api/v1`. Vai trò viết tắt: CM = Club Manager, HT = Head Trainer, VET = bác sĩ thú y, GROOM = người chăm ngựa, OWNER = chủ ngựa. Lỗi vẫn theo format chung. Schema chi tiết: `docs/api-catalog.md`, `docs/openapi.contracts.json`.
 
 Xếp theo ngày, ngày mới nhất ở trên. Cùng một field đổi nhiều ngày thì mục của ngày mới nhất là hành vi hiện tại; phần cũ đã bị thay có ghi "(đã thay ở ...)". API chặn field lạ: gửi field không có trong request là 400 "Không nhận ô `<tên ô>`", không ghi gì.
+
+## Ngày 27/10/2026
+
+### Lịch chăm sóc chỉ thuộc bác sĩ, bỏ giao Groom
+
+- `POST /horses/:horseId/care-schedules`, `PATCH /care-schedules/:id`: bỏ ô `assigneeType` (gửi lên là 400 "Không nhận ô `assigneeType`"). `assignedTo` giờ là bác sĩ được giao, phải là VET đang hoạt động (400 "Người được giao phải là Bác sĩ thú y đang hoạt động"); bỏ trống khi tạo hoặc gửi `null` khi sửa là chưa giao ai.
+- Response lịch chăm sóc (`GET /horses/:horseId/care-schedules`, tạo, sửa, hoàn tất, hủy, mở lại) bỏ field `assigneeType`.
+- `POST /care-schedules/:id/complete`: chỉ VET (GROOM nhận 403). Lịch lần tới giữ bác sĩ được giao; bác sĩ đó không còn hoạt động thì lịch mới chưa giao ai.
+- `GET /horses/:horseId/care-schedules`: GROOM thấy mọi lịch của ngựa mình được xem (trước chỉ thấy lịch giao cho mình).
+- `GET /grooms/me/today`: bỏ `otherCareSchedules` và `horses[].careSchedules`. `horseVetAppointments` giữ nguyên.
+- `GET /medical/dashboard`: `assignedTo`, `assignedToName` trong khối `careSchedules` là bác sĩ được giao (còn hoạt động), không còn tra Groom phụ trách.
+- Dữ liệu cũ: lịch đang giao Groom chuyển về chưa giao ai.
+
+**FE cần sửa:**
+- Form lịch chăm sóc: bỏ chọn kiểu giao, chỉ còn chọn bác sĩ (tùy chọn).
+- Màn Hôm nay của Groom: bỏ khối lịch chăm sóc và `otherCareSchedules`; bỏ nút hoàn tất lịch chăm sóc ở phía Groom.
+- Việc Groom cần phụ (giữ ngựa cho thợ móng...) giao qua checklist như việc riêng.
 
 ## Ngày 26/10/2026
 
@@ -704,7 +721,7 @@ Ví dụ bulk: `{ "message": "Buổi 2: Giờ bắt đầu buổi tập phải s
 
 **Luật / hành vi API mới**
 1. `GET /grooms/me/today`: mỗi lượt trong `horses[].trainingRuns` có thêm `location`, `surface` (chuỗi hoặc null) của buổi.
-2. Thêm mảng `assistedRuns`: lượt hôm nay Groom được giao dắt ở ngựa Groom không phụ trách, theo giờ bắt đầu, cùng field với `trainingRuns` kèm `horseId`, `horseName`. Groom không phụ trách ngựa nào vẫn có mảng này.
+2. Thêm mảng `assistedRuns`: lượt hôm nay Groom được giao dắt ở ngựa Groom không phụ trách, theo giờ bắt đầu, cùng field với `trainingRuns` kèm `horseId`, `horseName`. Groom không phụ trách ngựa nào vẫn có mảng này. Mảng `otherCareSchedules` trong ví dụ đã bỏ (đã thay ở 27/10).
 
    ```json
    {
@@ -904,11 +921,11 @@ Mỗi vết chấn thương có mã riêng (`injuryId`) và sống qua nhiều b
 **Lý do**
 - HT cần nhìn toàn CLB; thao tác ghi vẫn giới hạn theo khu.
 
-### Tiêm phòng, tẩy giun chỉ giao bác sĩ
+### Tiêm phòng, tẩy giun chỉ giao bác sĩ (đã thay ở 27/10: lịch chăm sóc chỉ giao bác sĩ, bỏ `assigneeType`)
 
 **Luật / hành vi API mới**
-1. `POST /horses/:horseId/care-schedules` và `PATCH /care-schedules/:id` (khi đổi cách giao): lịch Tiêm phòng hoặc Tẩy giun giao Groom (`assigneeType: GROOM`): 400 ô `assigneeType` "Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ". Kiểm tra móng vẫn giao Groom hoặc bác sĩ như cũ.
-2. Sửa lịch mà không đổi cách giao (dời ngày, ghi chú) không bị kiểm luật này.
+1. ~~`POST /horses/:horseId/care-schedules` và `PATCH /care-schedules/:id` (khi đổi cách giao): lịch Tiêm phòng hoặc Tẩy giun giao Groom (`assigneeType: GROOM`): 400 ô `assigneeType` "Tiêm phòng, tẩy giun chỉ giao được cho bác sĩ". Kiểm tra móng vẫn giao Groom hoặc bác sĩ như cũ.~~
+2. ~~Sửa lịch mà không đổi cách giao (dời ngày, ghi chú) không bị kiểm luật này.~~
 
 **FE cần sửa**
 - Ẩn lựa chọn Groom khi loại lịch là Tiêm phòng hoặc Tẩy giun.
@@ -1061,10 +1078,10 @@ Mỗi vết chấn thương có mã riêng (`injuryId`) và sống qua nhiều b
 **Lý do**
 - Ngựa phải có chủ và định danh rõ; bán ra ngoài thì chủ cũ không còn quyền xem hồ sơ hiện tại.
 
-### Lịch chăm sóc y tế: giao theo vai trò
+### Lịch chăm sóc y tế: giao theo vai trò (đã thay ở 27/10: lịch chăm sóc chỉ giao bác sĩ, bỏ `assigneeType`)
 
 **Luật / hành vi API mới**
-1. `POST /horses/:horseId/care-schedules` và `PATCH /care-schedules/:id` có thêm `assigneeType` (`GROOM` | `VET`), đi kèm `assignedTo`:
+1. ~~`POST /horses/:horseId/care-schedules` và `PATCH /care-schedules/:id` có thêm `assigneeType` (`GROOM` | `VET`), đi kèm `assignedTo`~~ (đã thay ở 27/10: chỉ còn `assignedTo` là bác sĩ):
 
    | `assigneeType` | `assignedTo` | Nghĩa |
    |---|---|---|
@@ -1075,14 +1092,14 @@ Mỗi vết chấn thương có mã riêng (`injuryId`) và sống qua nhiều b
 
    - Gửi `assignedTo` mà không có `assigneeType`, hoặc `VET` không kèm người: 400 ô `assignedTo`. Người không đúng vai trò hoặc không hoạt động: 400.
    - Sửa lịch: muốn đổi cách giao thì gửi `assigneeType` (kèm `assignedTo` nếu chọn người). Tiêm phòng, Tẩy giun không giao Groom được (từ 18/10).
-2. Response lịch chăm sóc có thêm `assigneeType`. `assignedTo = null` kèm `assigneeType = GROOM` nghĩa là "Groom phụ trách".
-3. `GET /grooms/me/today` có thêm `otherCareSchedules`: lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, mỗi dòng có `horseId`, `horseName`. `careSchedules` trong từng ngựa gồm cả lịch giao "Groom phụ trách".
-4. `assignedTo` trong khối lịch chăm sóc của `GET /medical/dashboard` là người làm hiện tại (đã tra Groom phụ trách), `null` nếu chưa có ai.
+2. ~~Response lịch chăm sóc có thêm `assigneeType`. `assignedTo = null` kèm `assigneeType = GROOM` nghĩa là "Groom phụ trách".~~
+3. ~~`GET /grooms/me/today` có thêm `otherCareSchedules`: lịch giao đích danh cho Groom ở ngựa Groom không phụ trách, mỗi dòng có `horseId`, `horseName`. `careSchedules` trong từng ngựa gồm cả lịch giao "Groom phụ trách".~~ (đã thay ở 27/10: bỏ cả hai khối)
+4. ~~`assignedTo` trong khối lịch chăm sóc của `GET /medical/dashboard` là người làm hiện tại (đã tra Groom phụ trách), `null` nếu chưa có ai.~~ (đã thay ở 27/10: là bác sĩ được giao còn hoạt động)
 5. Khóa tài khoản hoặc đổi vai trò người còn lịch chưa làm được giao đích danh: 409 `Người này còn N lịch chăm sóc được giao đích danh chưa làm, cần nhờ bác sĩ giao lại trước khi khóa tài khoản` (đổi vai trò thì kết thúc bằng "trước khi đổi vai trò").
 
 **FE cần sửa**
-- Form lịch chăm sóc: chọn cách giao (`assigneeType`) rồi mới chọn người; hiện "Groom phụ trách" khi `assignedTo = null` và `assigneeType = GROOM`.
-- Màn Hôm nay của Groom: thêm khối `otherCareSchedules`.
+- ~~Form lịch chăm sóc: chọn cách giao (`assigneeType`) rồi mới chọn người; hiện "Groom phụ trách" khi `assignedTo = null` và `assigneeType = GROOM`.~~
+- ~~Màn Hôm nay của Groom: thêm khối `otherCareSchedules`.~~
 
 **Lý do**
 - Lịch giao "Groom phụ trách" tự theo khi ngựa đổi Groom, không phải giao lại tay.
