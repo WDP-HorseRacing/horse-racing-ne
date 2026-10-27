@@ -8,6 +8,7 @@ export function validateEnvironment(config: Record<string, unknown>) {
     'DB_USERNAME',
     'DB_PASSWORD',
     'DB_NAME',
+    'MONGO_URI',
     'REDIS_HOST',
     'KEYCLOAK_AUTH_SERVER_URL',
     'KEYCLOAK_REALM',
@@ -22,6 +23,18 @@ export function validateEnvironment(config: Record<string, unknown>) {
     'S3_ACCESS_KEY',
     'S3_SECRET_KEY',
   ]);
+
+  const firebaseKeys = [
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_CLIENT_EMAIL',
+    'FIREBASE_PRIVATE_KEY',
+  ];
+  const firebaseSet = firebaseKeys.filter(
+    (key) => typeof config[key] === 'string' && config[key] !== '',
+  );
+  if (firebaseSet.length > 0 && firebaseSet.length < firebaseKeys.length) {
+    throw new Error(`${firebaseKeys.join(', ')} must be set together`);
+  }
 
   const authServerUrl = String(config.KEYCLOAK_AUTH_SERVER_URL).replace(
     /\/+$/,

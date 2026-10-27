@@ -1,31 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import {
-  IsDateString,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MinLength,
-} from 'class-validator';
+import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 
 export class CreateHorseEnrollmentDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   horseId!: string;
-
-  @ApiPropertyOptional({ format: 'date-time' })
-  @IsOptional()
-  @IsDateString()
-  enrolledAt?: string;
 }
 
 export class LeaveHorseEnrollmentDto {
-  @ApiPropertyOptional({ format: 'date-time' })
-  @IsOptional()
-  @IsDateString()
-  leftAt?: string;
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -65,4 +49,36 @@ export class HorseEnrollmentResponseDto {
   @ApiProperty({ format: 'date-time' })
   @Expose()
   updatedAt!: Date;
+}
+
+export class HorseEnrollmentListItemDto extends HorseEnrollmentResponseDto {
+  @ApiProperty({ description: 'Tên ngựa, kể cả ngựa đã xóa mềm' })
+  @Expose()
+  horseName!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh',
+  })
+  @Expose()
+  horsePhotoUrl!: string | null;
+}
+
+export class EnrollableHorseDto {
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  horseId!: string;
+
+  @ApiProperty()
+  @Expose()
+  horseName!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh',
+  })
+  @Expose()
+  horsePhotoUrl!: string | null;
 }

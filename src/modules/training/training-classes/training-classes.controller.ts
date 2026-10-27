@@ -11,6 +11,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { Access, CurrentUser } from '../../../common/decorators';
@@ -18,11 +19,15 @@ import type { Actor } from '../../../common/types/actor';
 import { UserRole } from '../../users/user.enums';
 import {
   CreateHorseEnrollmentDto,
+  EnrollableHorseDto,
+  HorseEnrollmentListItemDto,
   HorseEnrollmentResponseDto,
   LeaveHorseEnrollmentDto,
 } from '../dto/horse-enrollment.dto';
 import {
   CreateTrainingClassDto,
+  TrainingClassPlanResponseDto,
+  TrainingClassProgressResponseDto,
   TrainingClassResponseDto,
   UpdateTrainingClassStatusDto,
   UpdateTrainingClassDto,
@@ -49,7 +54,7 @@ export class TrainingClassesController {
   }
 
   // create class
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('classes')
   @ApiCreatedResponse({ type: TrainingClassResponseDto })
   create(@CurrentUser() actor: Actor, @Body() body: CreateTrainingClassDto) {
@@ -66,8 +71,34 @@ export class TrainingClassesController {
     return this.classes.get(actor, classId);
   }
 
+  @Get('classes/:classId/plan')
+  @ApiOperation({
+    summary:
+      'Giáo án của lớp (bản chép lúc tạo lớp) kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn',
+  })
+  @ApiOkResponse({ type: TrainingClassPlanResponseDto })
+  getPlan(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+  ) {
+    return this.classes.getPlan(actor, classId);
+  }
+
+  @Get('classes/:classId/progress')
+  @ApiOperation({
+    summary:
+      'Tiến độ xếp lịch theo tuần: mỗi môn đã xếp bao nhiêu buổi so với số buổi tối thiểu',
+  })
+  @ApiOkResponse({ type: TrainingClassProgressResponseDto })
+  getProgress(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+  ) {
+    return this.classes.getProgress(actor, classId);
+  }
+
   // update class
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('classes/:classId')
   @ApiOkResponse({ type: TrainingClassResponseDto })
   update(
@@ -79,7 +110,7 @@ export class TrainingClassesController {
   }
 
   // update class status
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('classes/:classId/status')
   @ApiOkResponse({ type: TrainingClassResponseDto })
   updateStatus(
@@ -92,7 +123,7 @@ export class TrainingClassesController {
 
   // get enrollments by classId
   @Get('classes/:classId/enrollments')
-  @ApiOkResponse({ type: [HorseEnrollmentResponseDto] })
+  @ApiOkResponse({ type: [HorseEnrollmentListItemDto] })
   listEnrollments(
     @CurrentUser() actor: Actor,
     @Param('classId', ParseUUIDPipe) classId: string,
@@ -100,9 +131,27 @@ export class TrainingClassesController {
     return this.enrollments.list(actor, classId);
   }
 
+  @Access([UserRole.HEAD_TRAINER])
+  @Get('classes/:classId/enrollable-horses')
+  @ApiOperation({
+    summary:
+      'Ngựa trong khu của Head Trainer ghi danh được vào lớp lúc này (bỏ ngựa đã ghi danh và ngựa trùng giờ)',
+  })
+  @ApiOkResponse({ type: [EnrollableHorseDto] })
+  listEnrollableHorses(
+    @CurrentUser() actor: Actor,
+    @Param('classId', ParseUUIDPipe) classId: string,
+  ) {
+    return this.enrollments.listEnrollableHorses(actor, classId);
+  }
+
   // create enrollment
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Post('classes/:classId/enrollments')
+  @ApiOperation({
+    summary:
+      'Ghi danh ngựa vào lớp tại thời điểm hiện tại, kể cả khi lớp chưa khai giảng',
+  })
   @ApiCreatedResponse({ type: HorseEnrollmentResponseDto })
   createEnrollment(
     @CurrentUser() actor: Actor,
@@ -113,8 +162,12 @@ export class TrainingClassesController {
   }
 
   // leave enrollment
-  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Access([UserRole.HEAD_TRAINER])
   @Patch('enrollments/:id/leave')
+  @ApiOperation({
+    summary:
+      'Cho ngựa rời lớp tại thời điểm hiện tại, hủy lượt tham gia các buổi từ lúc đó trở đi',
+  })
   @ApiOkResponse({ type: HorseEnrollmentResponseDto })
   leaveEnrollment(
     @CurrentUser() actor: Actor,

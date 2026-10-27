@@ -2,10 +2,14 @@ import { HorseRaceResultResponseDto } from '../dto/horse-race-result.response.dt
 import type { RaceRegistrationEntity } from '../entities/race-registration.entity';
 
 /**
- * Map a race registration with its loaded race relation to the public result DTO.
+ * Chuyển một đăng ký thi đấu (kèm cuộc đua) sang dòng kết quả thi đấu của con ngựa
  *
- * Keeping this projection in the mapper prevents the service from exposing an
- * entity shape and makes the response contract explicit.
+ * - Lấy tên, lịch, trạng thái cuộc đua từ quan hệ `race`, nơi gọi phải tải kèm quan hệ này
+ * - placing, timeSeconds giữ null khi cuộc đua chưa có kết quả
+ *
+ * @param registration Đăng ký thi đấu đã tải kèm cuộc đua
+ * @returns HorseRaceResultResponseDto - Một dòng kết quả thi đấu của con ngựa
+ * @throws Error Nếu nơi gọi quên tải quan hệ `race`
  */
 export function toHorseRaceResultResponse(
   registration: RaceRegistrationEntity,
@@ -24,6 +28,9 @@ export function toHorseRaceResultResponse(
     raceStatus: registration.race.status,
     registrationStatus: registration.status,
     placing: registration.placing,
-    timeSeconds: registration.timeSeconds,
+    timeSeconds:
+      registration.timeSeconds === null
+        ? null
+        : Number(registration.timeSeconds),
   };
 }

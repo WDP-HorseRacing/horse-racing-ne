@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BarnsModule } from './barns/barns.module';
+import { CareTasksModule } from './care-tasks/care-tasks.module';
 import { DailyChecklistsModule } from './daily-checklists/daily-checklists.module';
 import { FeedingPlansModule } from './feeding-plans/feeding-plans.module';
 import { GroomAssignmentsModule } from './groom-assignments/groom-assignments.module';
@@ -12,6 +13,7 @@ import { StallsModule } from './stalls/stalls.module';
     StallsModule,
     GroomAssignmentsModule,
     FeedingPlansModule,
+    CareTasksModule,
     DailyChecklistsModule,
     IncidentsModule,
   ],

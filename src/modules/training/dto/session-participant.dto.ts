@@ -1,6 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { Expose, Transform } from 'class-transformer';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 
 export class AssignParticipantGroomDto {
@@ -14,6 +21,15 @@ export class MarkParticipantAbsentDto {
   @ApiProperty({ minLength: 1 })
   @IsString()
   @MinLength(1)
+  reason!: string;
+}
+
+export class StopParticipantDto {
+  @ApiProperty({ minLength: 1, maxLength: 500, description: 'Lý do dừng sớm' })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
   reason!: string;
 }
 
@@ -57,13 +73,23 @@ export class SessionParticipantResponseDto {
   @Expose()
   startedAt!: Date | null;
 
-  @ApiPropertyOptional({ format: 'date-time' })
+  @ApiPropertyOptional({
+    format: 'date-time',
+    description: 'Giờ kết thúc lượt, gồm hoàn thành hoặc dừng sớm',
+  })
   @Expose()
   completedAt!: Date | null;
 
   @ApiPropertyOptional()
   @Expose()
   absenceReason!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Lý do dừng sớm, null nếu lượt không dừng sớm',
+  })
+  @Expose()
+  stoppedReason!: string | null;
 
   @ApiPropertyOptional()
   @Expose()
@@ -80,4 +106,32 @@ export class SessionParticipantResponseDto {
   @ApiProperty({ format: 'date-time' })
   @Expose()
   updatedAt!: Date;
+}
+
+export class SessionParticipantListItemDto extends SessionParticipantResponseDto {
+  @ApiProperty({
+    description:
+      'Ngựa đang có lệnh khóa huấn luyện hiệu lực, tính tại lúc đọc. Lượt còn mở sẽ bị chặn khi bắt đầu buổi',
+  })
+  @Expose()
+  trainingLocked!: boolean;
+
+  @ApiProperty({ description: 'Tên ngựa, kể cả ngựa đã xóa mềm' })
+  @Expose()
+  horseName!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Link xem ảnh đại diện ngựa (có hạn), null nếu ngựa chưa có ảnh',
+  })
+  @Expose()
+  horsePhotoUrl!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Tên Groom được giao, null nếu chưa giao',
+  })
+  @Expose()
+  assignedGroomName!: string | null;
 }

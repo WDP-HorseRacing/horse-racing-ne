@@ -15,6 +15,8 @@ import { S3_CLIENT } from './object-storage.token';
           endpoint: config.getOrThrow<string>('S3_ENDPOINT'),
           region: config.getOrThrow<string>('S3_REGION'),
           forcePathStyle: config.getOrThrow<boolean>('S3_FORCE_PATH_STYLE'),
+          requestChecksumCalculation: 'WHEN_REQUIRED',
+          responseChecksumValidation: 'WHEN_REQUIRED',
           credentials: {
             accessKeyId: config.getOrThrow<string>('S3_ACCESS_KEY'),
             secretAccessKey: config.getOrThrow<string>('S3_SECRET_KEY'),

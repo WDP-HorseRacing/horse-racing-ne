@@ -1,16 +1,14 @@
-import { Check, Column, Entity, Index } from 'typeorm';
+import { Check, Column, Entity } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
 import { SupplyCategory } from '../enums/supply-category.enum';
 
 /**
  * SupplyItemEntity: vật tư / hàng hóa tồn kho của club.
  * Dùng để quản lý tên, đơn vị, số lượng hiện có và mức đặt hàng lại.
+ *
+ * - Tên duy nhất không phân biệt hoa thường trong các vật tư chưa xóa: unique index `supply_items_name_uq` trên `lower(name)`, chỉ khai trong migration
  */
 @Entity({ name: 'supply_items' })
-@Index('supply_items_name_uq', ['name'], {
-  unique: true,
-  where: 'deleted_at IS NULL',
-})
 @Check(
   'supply_items_quantity_on_hand_nonnegative_ck',
   '"quantity_on_hand" >= 0',

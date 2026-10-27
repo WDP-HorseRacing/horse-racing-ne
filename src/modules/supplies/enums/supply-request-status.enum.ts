@@ -3,4 +3,5 @@ export enum SupplyRequestStatus {
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   FULFILLED = 'FULFILLED',
+  CANCELLED = 'CANCELLED',
 }

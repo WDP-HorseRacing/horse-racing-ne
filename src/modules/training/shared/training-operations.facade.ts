@@ -1,9 +1,53 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager, In } from 'typeorm';
+import { HorseEntity } from '../../horses/entities/horse.entity';
+import { evaluateEligibility } from '../../horses/policies/horse.policy';
+import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
+import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
+import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../enums/training-class-status.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';
+import { TrainingClassEntity } from '../entities/training-class.entity';
+import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSessionEntity } from '../entities/training-session.entity';
+import {
+  assertGroomFreeForMovedRuns,
+  assertHeadTrainerFreeForMovedClasses,
+  eligibilityForSession,
+  initialParticipantEligibility,
+} from '../policies/training.policy';
+import type { ParticipantEligibilityChange } from '../types/training-session.types';
+import { toGroomRun } from '../utils/groom-run';
+import { TrainingAccessService } from './training-access.service';
+import {
+  ON_SITE_PARTICIPANT_STATUSES,
+  TRAINED_PARTICIPANT_STATUSES,
+} from '../constants/participant-window.constants';
+
+/**
+ * Tham số khi hệ thống tự rút một con ngựa khỏi lớp.
+ */
+export interface WithdrawHorseOptions {
+  /** Lý do ghi vào từng lượt tham gia bị hủy */
+  reason: string;
+  /** Thời điểm rút; buổi bắt đầu từ thời điểm này trở đi bị hủy lượt */
+  at: Date;
+  /** Giữ lại lớp do Head Trainer này phụ trách; bỏ trống là rút khỏi mọi lớp */
+  exceptHeadTrainerId?: string;
+}
+
+/**
+ * Kết quả rút ngựa khỏi lớp.
+ */
+export interface WithdrawHorseResult {
+  /** UUID các lớp con ngựa vừa bị rút */
+  classIds: string[];
+  /** Số lượt tham gia buổi tập đã hủy */
+  participantsCancelled: number;
+}
 
 const OPEN_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.PLANNED,
@@ -11,24 +55,115 @@ const OPEN_PARTICIPANT_STATUSES = [
   SessionParticipantStatus.READY,
 ];
 
+const LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES = [
+  ...OPEN_PARTICIPANT_STATUSES,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
+];
+
+const HAPPENED_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.COMPLETED,
+  SessionParticipantStatus.STOPPED,
+  SessionParticipantStatus.ABSENT,
+  SessionParticipantStatus.SKIPPED,
+];
+
+/**
+ * Câu báo khi ngựa đang ở buổi tập của lớp sẽ bị rút nên không đổi khu được
+ */
+export const ON_SITE_PARTICIPANT_BARN_CHANGE_REASON =
+  'Ngựa đang ở buổi tập (đã điểm danh), chờ kết thúc lượt tập rồi mới đổi khu';
+
+const NO_PARTICIPANT_LEFT_REASON = 'Không còn ngựa tham gia';
+
+const GROOM_MOVABLE_UNTIL_SESSION_END_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.ABSENT,
+];
+
+const GROOM_MOVABLE_BEFORE_SESSION_START_STATUSES = [
+  SessionParticipantStatus.INELIGIBLE,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+];
+
+const GROOM_MOVABLE_PARTICIPANT_CONDITION =
+  '((participant.status IN (:...untilEndStatuses) AND session.scheduled_end_at > :now) OR (participant.status IN (:...beforeStartStatuses) AND session.scheduled_start_at >= :now))';
+
+/**
+ * Tham số cho GROOM_MOVABLE_PARTICIPANT_CONDITION tại một thời điểm
+ *
+ * @param now Thời điểm đổi Groom
+ * @returns Tham số truyền cho QueryBuilder
+ */
+function groomMovableParticipantParams(now: Date): Record<string, unknown> {
+  return {
+    now,
+    untilEndStatuses: GROOM_MOVABLE_UNTIL_SESSION_END_STATUSES,
+    beforeStartStatuses: GROOM_MOVABLE_BEFORE_SESSION_START_STATUSES,
+  };
+}
+
+const REEVALUATED_PARTICIPANT_STATUSES = [
+  SessionParticipantStatus.PLANNED,
+  SessionParticipantStatus.CANCELLED_BY_LOCK,
+  SessionParticipantStatus.INELIGIBLE,
+];
+
+const REEVALUATED_SESSION_STATUSES = [
+  TrainingSessionStatus.SCHEDULED,
+  TrainingSessionStatus.IN_PROGRESS,
+];
+
 const NON_TERMINAL_PARTICIPANT_STATUSES = [
   ...OPEN_PARTICIPANT_STATUSES,
   SessionParticipantStatus.ONGOING,
 ];
 
+const SESSION_LOCKED_PARTICIPANT_STATUSES = [
+  ...LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES,
+  SessionParticipantStatus.ONGOING,
+];
+
+/**
+ * Kiểm tra enrollment chưa bắt đầu tại một thời điểm
+ *
+ * - Chưa bắt đầu khi enrolledAt lớn hơn hẳn `at`; enrolledAt bằng `at` coi như đã bắt đầu
+ *
+ * @param enrollment Enrollment cần kiểm tra
+ * @param at Thời điểm so sánh
+ * @returns true nếu enrollment chưa bắt đầu tại `at`
+ */
+function isEnrollmentNotYetStarted(
+  enrollment: HorseEnrollmentEntity,
+  at: Date,
+): boolean {
+  return enrollment.enrolledAt > at;
+}
+
 @Injectable()
 export class TrainingOperationsFacade {
-  async assertParticipantCompleted(
+  constructor(private readonly access: TrainingAccessService) {}
+
+  /**
+   * Kiểm lượt tập đã tập xong, gồm hoàn thành hoặc dừng sớm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param participantId UUID của lượt tập
+   * @returns Promise trả về lượt tập
+   * @throws NotFoundException Nếu không có lượt tập
+   * @throws ConflictException Nếu lượt không ở COMPLETED hoặc STOPPED
+   */
+  async assertParticipantFinished(
     manager: EntityManager,
     participantId: string,
   ): Promise<SessionParticipantEntity> {
     const participant = await manager.findOneBy(SessionParticipantEntity, {
       id: participantId,
     });
-    if (!participant) throw new NotFoundException('Không tìm thấy participant');
-    if (participant.status !== SessionParticipantStatus.COMPLETED) {
+    if (!participant) throw new NotFoundException('Không tìm thấy lượt tập');
+    if (!TRAINED_PARTICIPANT_STATUSES.includes(participant.status)) {
       throw new ConflictException(
-        'Chỉ participant COMPLETED mới được ghi dữ liệu performance',
+        'Chỉ lượt tập đã hoàn thành hoặc dừng sớm mới được ghi dữ liệu hiệu suất',
       );
     }
     return participant;
@@ -55,17 +190,105 @@ export class TrainingOperationsFacade {
   }
 
   /**
-   * Medical must call this while holding the same Horse pessimistic lock that
-   * it uses to insert an ACTIVE TrainingLock. This closes the opposite race:
-   * startParticipant() and createTrainingLock() cannot both commit for one
-   * Horse.
+   * Chặn tạo TrainingLock khi ngựa đang có lượt tập ONGOING, chạy trong transaction của nơi gọi
+   *
+   * - Nơi gọi giữ lock for_no_key_update trên row ngựa, cùng lock dùng khi thêm TrainingLock ACTIVE
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về khi kiểm tra xong
+   * @throws ConflictException Nếu ngựa đang có lượt tham gia ONGOING
    */
   async assertNoOngoingParticipant(
     manager: EntityManager,
     horseId: string,
   ): Promise<void> {
     if (await this.hasOngoingParticipant(manager, horseId)) {
-      throw new ConflictException('Ngựa đang ONGOING, không thể tạo TrainingLock');
+      throw new ConflictException(
+        'Ngựa đang tập, không thể tạo khóa huấn luyện',
+      );
+    }
+  }
+
+  /**
+   * Kiểm ngựa có đang ở buổi tập không, tức có lượt PRESENT, READY hoặc ONGOING ở bất kỳ lớp nào
+   *
+   * @param manager EntityManager dùng để đọc
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về true nếu ngựa có lượt tập đã điểm danh mà chưa kết thúc
+   */
+  hasOnSiteParticipant(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<boolean> {
+    return manager.existsBy(SessionParticipantEntity, {
+      horseId,
+      status: In(ON_SITE_PARTICIPANT_STATUSES),
+    });
+  }
+
+  /**
+   * Kiểm ngựa có đang ở buổi tập của lớp sẽ bị rút khi đổi khu không
+   *
+   * - Chỉ xét lượt PRESENT, READY, ONGOING thuộc ghi danh ACTIVE của lớp mà withdrawHorseFromClasses sẽ rút
+   * - Có `exceptHeadTrainerId` thì lớp do Head Trainer đó phụ trách không tính (lớp được giữ lại)
+   *
+   * @param manager EntityManager dùng để đọc
+   * @param horseId UUID của ngựa
+   * @param exceptHeadTrainerId UUID Head Trainer khu mới, bỏ trống nếu khu mới chưa có
+   * @returns Promise trả về true nếu ngựa có lượt tập đã điểm danh mà chưa kết thúc ở lớp sẽ bị rút
+   */
+  async hasOnSiteParticipantInClassesToWithdraw(
+    manager: EntityManager,
+    horseId: string,
+    exceptHeadTrainerId?: string,
+  ): Promise<boolean> {
+    const query = manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .innerJoin('participant.horseEnrollment', 'enrollment')
+      .innerJoin('enrollment.trainingClass', 'class')
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: ON_SITE_PARTICIPANT_STATUSES,
+      })
+      .andWhere('enrollment.status = :enrollmentStatus', {
+        enrollmentStatus: HorseEnrollmentStatus.ACTIVE,
+      });
+    if (exceptHeadTrainerId) {
+      query.andWhere(
+        '(class.head_trainer_id IS NULL OR class.head_trainer_id <> :exceptHeadTrainerId)',
+        { exceptHeadTrainerId },
+      );
+    }
+    return (await query.getCount()) > 0;
+  }
+
+  /**
+   * Chặn đổi khu khi ngựa đang ở buổi tập của lớp sẽ bị rút, chạy trong transaction của nơi gọi
+   *
+   * - Điều kiện chặn như hasOnSiteParticipantInClassesToWithdraw
+   * - Nơi gọi giữ lock for_no_key_update trên row ngựa
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param exceptHeadTrainerId UUID Head Trainer khu mới, bỏ trống nếu khu mới chưa có
+   * @returns Promise trả về khi kiểm tra xong
+   * @throws ConflictException Nếu ngựa có lượt PRESENT, READY hoặc ONGOING ở lớp sẽ bị rút
+   */
+  async assertNoOnSiteParticipantInClassesToWithdraw(
+    manager: EntityManager,
+    horseId: string,
+    exceptHeadTrainerId?: string,
+  ): Promise<void> {
+    if (
+      await this.hasOnSiteParticipantInClassesToWithdraw(
+        manager,
+        horseId,
+        exceptHeadTrainerId,
+      )
+    ) {
+      throw new ConflictException(ON_SITE_PARTICIPANT_BARN_CHANGE_REASON);
     }
   }
 
@@ -84,19 +307,466 @@ export class TrainingOperationsFacade {
     );
   }
 
-  async cancelFutureParticipationsByLifecycle(
+  /**
+   * Chấm lại điều kiện tập các lượt sắp tới của một con ngựa, chạy trong transaction của nơi gọi
+   *
+   * - Chỉ xét lượt PLANNED, CANCELLED_BY_LOCK hoặc INELIGIBLE của buổi SCHEDULED hoặc IN_PROGRESS chưa tới giờ bắt đầu
+   * - Ngựa đang bị khóa huấn luyện: CANCELLED_BY_LOCK
+   * - Ngựa không được tập vì lý do khác, kể cả ngựa Cần theo dõi gặp buổi không phải LIGHT: INELIGIBLE kèm lý do
+   * - Ngựa được tập: PLANNED, xóa lý do không đủ điều kiện
+   * - Khóa theo thứ tự buổi → ngựa → lượt (lockHorseSessions trước khi khóa ngựa); chạy lại nhiều lần cho cùng kết quả
+   * - Hồ sơ ngựa đã xóa vẫn được chấm (thành INELIGIBLE); không có ngựa thì không làm gì
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về các lượt đã đổi trạng thái hoặc lý do, kèm giá trị trước và sau
+   */
+  async reevaluateUpcomingParticipants(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<ParticipantEligibilityChange[]> {
+    await this.lockHorseSessions(manager, horseId);
+    const horse = await manager.findOne(HorseEntity, {
+      where: { id: horseId },
+      withDeleted: true,
+      lock: { mode: 'for_no_key_update' },
+    });
+    if (!horse) return [];
+    const sessions = await manager
+      .getRepository(TrainingSessionEntity)
+      .createQueryBuilder('session')
+      .innerJoin(
+        SessionParticipantEntity,
+        'participant',
+        'participant.session_id = session.id',
+      )
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: REEVALUATED_PARTICIPANT_STATUSES,
+      })
+      .andWhere('session.status IN (:...sessionStatuses)', {
+        sessionStatuses: REEVALUATED_SESSION_STATUSES,
+      })
+      .andWhere('session.scheduled_start_at > :now', { now: new Date() })
+      .orderBy('session.id', 'ASC')
+      .setLock('for_no_key_update', undefined, ['session'])
+      .getMany();
+    if (sessions.length === 0) return [];
+    const participants = await manager.find(SessionParticipantEntity, {
+      where: {
+        horseId,
+        sessionId: In(sessions.map((session) => session.id)),
+        status: In(REEVALUATED_PARTICIPANT_STATUSES),
+      },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+    const hasActiveTrainingLock = await manager.existsBy(TrainingLockEntity, {
+      horseId,
+      status: TrainingLockStatus.ACTIVE,
+    });
+    const eligibility = evaluateEligibility({
+      isDeleted: Boolean(horse.deletedAt),
+      lifecycleStatus: horse.lifecycleStatus,
+      healthStatus: horse.healthStatus,
+      hasActiveTrainingLock,
+    });
+    const intensityBySession = new Map(
+      sessions.map((session) => [session.id, session.intensity]),
+    );
+    const changes: ParticipantEligibilityChange[] = [];
+    const changed = participants.filter((participant) => {
+      const next = initialParticipantEligibility(
+        eligibilityForSession(
+          eligibility,
+          intensityBySession.get(participant.sessionId)!,
+        ),
+        hasActiveTrainingLock,
+      );
+      if (
+        next.status === participant.status &&
+        next.ineligibilityReason === participant.ineligibilityReason
+      ) {
+        return false;
+      }
+      changes.push({
+        participantId: participant.id,
+        before: {
+          status: participant.status,
+          ineligibilityReason: participant.ineligibilityReason,
+        },
+        after: next,
+      });
+      Object.assign(participant, next);
+      return true;
+    });
+    if (changed.length) {
+      await manager.save(SessionParticipantEntity, changed);
+    }
+    return changes;
+  }
+
+  /**
+   * Rút một con ngựa khỏi các lớp đang học, chạy trong transaction của nơi gọi.
+   *
+   * - Chỉ xét enrollment ACTIVE; có `exceptHeadTrainerId` thì giữ lại lớp do Head Trainer đó phụ trách
+   * - Enrollment đã bắt đầu (enrolledAt <= at) chuyển LEFT, ghi leftAt = at; enrollment chưa bắt đầu chuyển CANCELLED
+   * - Hủy lượt tham gia các buổi từ `at` trở đi (cancelParticipantsFromEnrollments); buổi đã học và lượt ONGOING giữ nguyên
+   * - Không kiểm quyền, nơi gọi tự kiểm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param options Lý do, thời điểm rút và Head Trainer được giữ lớp (nếu có)
+   * @returns Promise trả về các lớp đã rút và số lượt tham gia đã hủy
+   */
+  async withdrawHorseFromClasses(
+    manager: EntityManager,
+    horseId: string,
+    options: WithdrawHorseOptions,
+  ): Promise<WithdrawHorseResult> {
+    const query = manager
+      .getRepository(HorseEnrollmentEntity)
+      .createQueryBuilder('enrollment')
+      .innerJoin('enrollment.trainingClass', 'class')
+      .where('enrollment.horse_id = :horseId', { horseId })
+      .andWhere('enrollment.status = :status', {
+        status: HorseEnrollmentStatus.ACTIVE,
+      });
+    if (options.exceptHeadTrainerId) {
+      query.andWhere(
+        '(class.head_trainer_id IS NULL OR class.head_trainer_id <> :exceptHeadTrainerId)',
+        { exceptHeadTrainerId: options.exceptHeadTrainerId },
+      );
+    }
+    const enrollments = await query
+      .orderBy('enrollment.id', 'ASC')
+      .setLock('for_no_key_update', undefined, ['enrollment'])
+      .getMany();
+    if (enrollments.length === 0) {
+      return { classIds: [], participantsCancelled: 0 };
+    }
+
+    for (const enrollment of enrollments) {
+      // Nếu lớp học chưa bắt đầu (enrolledAt(lớp khai giảng hay bắt đầu) > at)
+      if (isEnrollmentNotYetStarted(enrollment, options.at)) {
+        enrollment.status = HorseEnrollmentStatus.CANCELLED;
+      } else {
+        enrollment.status = HorseEnrollmentStatus.LEFT;
+        enrollment.leftAt = options.at;
+      }
+    }
+    await manager.save(HorseEnrollmentEntity, enrollments);
+    const participantsCancelled = await this.cancelParticipantsFromEnrollments(
+      manager,
+      enrollments.map((enrollment) => enrollment.id),
+      options.at,
+      options.reason,
+    );
+    return {
+      classIds: enrollments.map((enrollment) => enrollment.classId),
+      participantsCancelled,
+    };
+  }
+
+  /**
+   * Hủy các lượt tham gia chưa diễn ra của những enrollment vừa rời lớp.
+   *
+   * - Chỉ hủy lượt PLANNED/PRESENT/READY/CANCELLED_BY_LOCK/INELIGIBLE của buổi có giờ bắt đầu từ `from` trở đi
+   * - Lượt ONGOING, lượt đã kết thúc và buổi trước `from` giữ nguyên
+   * - Khóa các buổi có lượt của các enrollment (lockEnrollmentSessions) rồi mới khóa các lượt sẽ hủy theo thứ tự UUID; lượt vừa được thao tác khác chuyển sang ONGOING thì không bị hủy
+   * - Buổi không còn lượt nào mở thì cập nhật lại trạng thái buổi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param enrollmentIds UUID các enrollment vừa rời lớp
+   * @param from Thời điểm rời lớp; buổi bắt đầu từ thời điểm này trở đi bị hủy lượt
+   * @param reason Lý do hủy ghi vào từng lượt
+   * @returns Promise trả về số lượt tham gia đã hủy
+   */
+  async cancelParticipantsFromEnrollments(
+    manager: EntityManager,
+    enrollmentIds: string[],
+    from: Date,
+    reason: string,
+  ): Promise<number> {
+    if (enrollmentIds.length === 0) return 0;
+    await this.lockEnrollmentSessions(manager, enrollmentIds);
+    const participants = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .innerJoin(
+        TrainingSessionEntity,
+        'session',
+        'session.id = participant.session_id',
+      )
+      .where('participant.horse_enrollment_id IN (:...enrollmentIds)', {
+        enrollmentIds,
+      })
+      .andWhere('participant.status IN (:...statuses)', {
+        statuses: LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES,
+      })
+      .andWhere('session.scheduled_start_at >= :from', { from })
+      .orderBy('participant.id', 'ASC')
+      .setLock('for_no_key_update', undefined, ['participant'])
+      .getMany();
+    return this.cancelLoadedParticipants(manager, participants, reason);
+  }
+
+  /**
+   * Hủy mọi lượt chưa kết thúc của một con ngựa rồi cập nhật trạng thái các buổi liên quan, chạy trong transaction của nơi gọi
+   *
+   * - Xét lượt PLANNED, PRESENT, READY, ONGOING ở mọi buổi, kể cả buổi đã bắt đầu; khóa các buổi (lockHorseSessions) rồi khóa từng lượt theo thứ tự UUID
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param reason Lý do hủy ghi vào từng lượt
+   * @returns Promise trả về số lượt đã hủy
+   */
+  async cancelUnfinishedParticipants(
     manager: EntityManager,
     horseId: string,
     reason: string,
-    now = new Date(),
   ): Promise<number> {
-    return this.cancelFutureParticipations(
+    await this.lockHorseSessions(manager, horseId);
+    const participants = await manager.find(SessionParticipantEntity, {
+      where: { horseId, status: In(NON_TERMINAL_PARTICIPANT_STATUSES) },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+    return this.cancelLoadedParticipants(manager, participants, reason);
+  }
+
+  /**
+   * Khóa các buổi tập đang có lượt chưa kết thúc của một con ngựa theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Xét lượt PLANNED, PRESENT, READY, ONGOING, CANCELLED_BY_LOCK, INELIGIBLE ở mọi buổi
+   * - Nơi gọi chạy trước khi khóa ngựa; các hàm hủy, rút và chấm lại lượt của ngựa sau đó khóa lại đúng các buổi này
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHorseSessions(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    const rows = await manager.find(SessionParticipantEntity, {
+      select: { id: true, sessionId: true },
+      where: { horseId, status: In(SESSION_LOCKED_PARTICIPANT_STATUSES) },
+    });
+    await this.access.lockSessions(
       manager,
-      horseId,
-      SessionParticipantStatus.CANCELLED,
-      reason,
-      now,
+      rows.map((row) => row.sessionId),
     );
+  }
+
+  /**
+   * Khóa các buổi tập đang có lượt còn hủy được của những enrollment theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Xét lượt PLANNED, PRESENT, READY, CANCELLED_BY_LOCK, INELIGIBLE ở mọi buổi
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param enrollmentIds UUID các enrollment
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockEnrollmentSessions(
+    manager: EntityManager,
+    enrollmentIds: string[],
+  ): Promise<void> {
+    if (enrollmentIds.length === 0) return;
+    const rows = await manager.find(SessionParticipantEntity, {
+      select: { id: true, sessionId: true },
+      where: {
+        horseEnrollmentId: In(enrollmentIds),
+        status: In(LEFT_CLASS_CANCELLED_PARTICIPANT_STATUSES),
+      },
+    });
+    await this.access.lockSessions(
+      manager,
+      rows.map((row) => row.sessionId),
+    );
+  }
+
+  /**
+   * Khóa các lượt của một con ngựa có thể chuyển sang Groom mới tại một thời điểm, theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Lượt PLANNED hoặc ABSENT của buổi chưa tới giờ kết thúc
+   * - Lượt INELIGIBLE hoặc CANCELLED_BY_LOCK của buổi chưa tới giờ bắt đầu
+   * - Khóa cả lượt đang giao cho Groom khác; không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param now Thời điểm đổi Groom
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockGroomMovableParticipantsOfHorse(
+    manager: EntityManager,
+    horseId: string,
+    now: Date,
+  ): Promise<void> {
+    const rows = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .select('participant.id', 'id')
+      .innerJoin(
+        TrainingSessionEntity,
+        'session',
+        'session.id = participant.session_id',
+      )
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere(
+        GROOM_MOVABLE_PARTICIPANT_CONDITION,
+        groomMovableParticipantParams(now),
+      )
+      .getRawMany<{ id: string }>();
+    await this.access.lockParticipants(
+      manager,
+      rows.map((row) => row.id),
+    );
+  }
+
+  /**
+   * Khóa các enrollment ACTIVE của một con ngựa theo thứ tự UUID, chạy trong transaction của nơi gọi
+   *
+   * - Không kiểm gì, không ném lỗi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHorseEnrollments(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    await manager.find(HorseEnrollmentEntity, {
+      select: { id: true },
+      where: { horseId, status: HorseEnrollmentStatus.ACTIVE },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+  }
+
+  /**
+   * Khóa mọi giáo án và các lớp ACTIVE của một Head Trainer theo thứ tự UUID, giáo án trước lớp sau, chạy trong transaction của nơi gọi
+   *
+   * - Khóa đúng các row mà handOverHeadTrainerWork sẽ chuyển
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param headTrainerId UUID Head Trainer bàn giao
+   * @returns Promise hoàn tất khi đã khóa xong
+   */
+  async lockHeadTrainerWork(
+    manager: EntityManager,
+    headTrainerId: string,
+  ): Promise<void> {
+    await manager.find(TrainingPlanEntity, {
+      select: { id: true },
+      where: { headTrainerId },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+    await manager.find(TrainingClassEntity, {
+      select: { id: true },
+      where: { headTrainerId, status: TrainingClassStatus.ACTIVE },
+      order: { id: 'ASC' },
+      lock: { mode: 'for_no_key_update' },
+    });
+  }
+
+  /**
+   * Hủy các lượt tham gia đã đọc sẵn rồi cập nhật lại trạng thái các buổi liên quan
+   *
+   * - Chuyển từng lượt sang CANCELLED kèm lý do, lưu một lần nếu có lượt nào
+   * - Sau khi lưu, cập nhật trạng thái từng buổi có lượt bị hủy theo thứ tự xuất hiện đầu tiên
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param participants Các lượt tham gia cần hủy
+   * @param reason Lý do hủy ghi vào từng lượt
+   * @returns Promise trả về số lượt tham gia đã hủy
+   * @throws NotFoundException Nếu một buổi tập của lượt bị hủy không còn tồn tại
+   */
+  private async cancelLoadedParticipants(
+    manager: EntityManager,
+    participants: SessionParticipantEntity[],
+    reason: string,
+  ): Promise<number> {
+    for (const participant of participants) {
+      participant.status = SessionParticipantStatus.CANCELLED;
+      participant.cancelReason = reason;
+    }
+    if (participants.length) {
+      await manager.save(SessionParticipantEntity, participants);
+    }
+    for (const sessionId of new Set(participants.map((row) => row.sessionId))) {
+      await this.refreshSessionStatus(manager, sessionId);
+    }
+    return participants.length;
+  }
+
+  /**
+   * Chuyển các lượt tham gia buổi tập chưa diễn ra của một con ngựa sang groom mới, chạy trong transaction của nơi gọi.
+   *
+   * - Chuyển lượt đang giao cho groom cũ và lượt chưa ai dắt; lượt giao cho người khác giữ nguyên
+   * - `previousGroomId` null: chỉ điền các lượt chưa ai dắt
+   * - Lượt PLANNED hoặc ABSENT của buổi chưa tới giờ kết thúc được chuyển, kể cả buổi đã tới giờ bắt đầu
+   * - Lượt INELIGIBLE hoặc CANCELLED_BY_LOCK của buổi chưa tới giờ bắt đầu được chuyển
+   * - Lượt PRESENT, READY, ONGOING, lượt đã kết thúc (COMPLETED, STOPPED, SKIPPED, CANCELLED) và lượt ABSENT của buổi đã hết giờ giữ tên người đã làm
+   * - Lock các lượt sẽ chuyển rồi kiểm Groom mới không dắt lượt nào trùng giờ (assertGroomFreeForMovedRuns, tính cả lượt ABSENT của buổi chưa hết giờ) trước khi ghi
+   * - Không kiểm quyền, nơi gọi tự kiểm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @param previousGroomId UUID groom cũ, null nếu ngựa chưa có Groom
+   * @param toGroomId UUID groom mới
+   * @param now Thời điểm đổi groom
+   * @returns Promise trả về UUID các lượt tham gia đã chuyển
+   * @throws ConflictException Nếu một lượt sẽ chuyển trùng giờ với lượt Groom mới đang dắt
+   */
+  async moveFutureParticipantsToGroom(
+    manager: EntityManager,
+    horseId: string,
+    previousGroomId: string | null,
+    toGroomId: string,
+    now: Date,
+  ): Promise<string[]> {
+    const participants = await manager
+      .getRepository(SessionParticipantEntity)
+      .createQueryBuilder('participant')
+      .innerJoinAndSelect('participant.session', 'session')
+      .innerJoinAndSelect('participant.horse', 'horse')
+      .withDeleted()
+      .where('participant.horse_id = :horseId', { horseId })
+      .andWhere(
+        previousGroomId
+          ? '(participant.assigned_groom_id = :previousGroomId OR participant.assigned_groom_id IS NULL)'
+          : 'participant.assigned_groom_id IS NULL',
+        { previousGroomId },
+      )
+      .andWhere(
+        GROOM_MOVABLE_PARTICIPANT_CONDITION,
+        groomMovableParticipantParams(now),
+      )
+      .orderBy('participant.id', 'ASC')
+      .setLock('for_no_key_update', undefined, ['participant'])
+      .getMany();
+    if (participants.length) {
+      const moving = participants.map(toGroomRun);
+      const busy = await this.access.groomRunsBetween(
+        manager,
+        toGroomId,
+        new Date(Math.min(...moving.map((run) => +run.scheduledStartAt))),
+        new Date(Math.max(...moving.map((run) => +run.scheduledEndAt))),
+      );
+      assertGroomFreeForMovedRuns(moving, busy, now);
+    }
+    for (const participant of participants) {
+      participant.assignedGroomId = toGroomId;
+    }
+    if (participants.length) {
+      await manager.save(SessionParticipantEntity, participants);
+    }
+    return participants.map((participant) => participant.id);
   }
 
   private async cancelFutureParticipations(
@@ -118,7 +788,7 @@ export class TrainingOperationsFacade {
       .andWhere('participant.status IN (:...statuses)', {
         statuses: OPEN_PARTICIPANT_STATUSES,
       })
-      .andWhere('session.scheduled_start_at > :now', { now })
+      .andWhere('session.scheduled_start_at >= :now', { now })
       .getMany();
 
     for (const row of rows) {
@@ -132,30 +802,110 @@ export class TrainingOperationsFacade {
     return rows.length;
   }
 
+  /**
+   * Đóng buổi tập khi không còn lượt nào đang mở.
+   *
+   * - Chỉ xét buổi SCHEDULED hoặc IN_PROGRESS; buổi đã đóng giữ nguyên
+   * - Buổi SCHEDULED chưa tới giờ bắt đầu: giữ nguyên dù không còn lượt mở
+   * - Còn lượt mở (PLANNED/PRESENT/READY/ONGOING): không đổi gì
+   * - Hết lượt mở và có lượt COMPLETED, STOPPED, ABSENT hoặc SKIPPED: COMPLETED
+   * - Hết lượt mở và mọi lượt đều bị hủy hoặc không đủ điều kiện: CANCELLED, ghi thời điểm và lý do "Không còn ngựa tham gia"
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param sessionId UUID của buổi tập
+   * @returns Promise trả về buổi tập sau khi cập nhật
+   * @throws NotFoundException Nếu không có buổi tập
+   */
   async refreshSessionStatus(
     manager: EntityManager,
     sessionId: string,
   ): Promise<TrainingSessionEntity> {
     const session = await manager.findOne(TrainingSessionEntity, {
       where: { id: sessionId },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!session) throw new NotFoundException('Không tìm thấy buổi tập');
+    // Chỉ reset khi còn SCHEDULED hay IN_PROGRESS
     if (
       session.status !== TrainingSessionStatus.SCHEDULED &&
       session.status !== TrainingSessionStatus.IN_PROGRESS
     ) {
       return session;
     }
+    if (
+      session.status === TrainingSessionStatus.SCHEDULED &&
+      session.scheduledStartAt > new Date()
+    ) {
+      return session;
+    }
+    // Đếm số ngựa còn đang học
     const open = await manager.countBy(SessionParticipantEntity, {
       sessionId,
       status: In(NON_TERMINAL_PARTICIPANT_STATUSES),
     });
-    if (open === 0) {
+    if (open > 0) return session;
+    // Đếm số ngựa xong hết rồi
+    const happened = await manager.countBy(SessionParticipantEntity, {
+      sessionId,
+      status: In(HAPPENED_PARTICIPANT_STATUSES),
+    });
+    // Nếu có ít nhất 1 ngựa học xong thì
+    if (happened > 0) {
       session.status = TrainingSessionStatus.COMPLETED;
-      await manager.save(session);
+    } else {
+      session.status = TrainingSessionStatus.CANCELLED;
+      session.cancelledAt = new Date();
+      session.cancelReason = NO_PARTICIPANT_LEFT_REASON;
     }
+    await manager.save(session);
     return session;
+  }
+
+  /**
+   * Chuyển mọi giáo án và các lớp chưa kết thúc của một Head Trainer sang Head Trainer khác, chạy trong transaction của nơi gọi
+   *
+   * - Giáo án: mọi giáo án của người bàn giao
+   * - Lớp: ACTIVE; lớp COMPLETED hoặc CANCELLED giữ người cũ
+   * - Trước khi ghi, kiểm các buổi chưa hủy chưa kết thúc của lớp sẽ chuyển không trùng giờ với buổi ở lớp của người nhận (assertHeadTrainerFreeForMovedClasses)
+   * - Không kiểm quyền, không khóa và không kiểm người nhận, nơi gọi tự làm
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param fromHeadTrainerId UUID Head Trainer bàn giao
+   * @param toHeadTrainerId UUID Head Trainer nhận
+   * @returns Promise trả về số giáo án và số lớp đã chuyển
+   * @throws ConflictException Nếu một buổi của lớp sẽ chuyển trùng giờ với buổi ở lớp của người nhận
+   */
+  async handOverHeadTrainerWork(
+    manager: EntityManager,
+    fromHeadTrainerId: string,
+    toHeadTrainerId: string,
+  ): Promise<{ plansMoved: number; classesMoved: number }> {
+    const upcoming = await this.access.headTrainerSessions(
+      manager,
+      [fromHeadTrainerId, toHeadTrainerId],
+      new Date(),
+    );
+    assertHeadTrainerFreeForMovedClasses(
+      upcoming.filter((s) => s.headTrainerId === fromHeadTrainerId),
+      upcoming.filter((s) => s.headTrainerId === toHeadTrainerId),
+    );
+    const plans = await manager.update(
+      TrainingPlanEntity,
+      { headTrainerId: fromHeadTrainerId },
+      { headTrainerId: toHeadTrainerId },
+    );
+    const classes = await manager.update(
+      TrainingClassEntity,
+      {
+        headTrainerId: fromHeadTrainerId,
+        status: TrainingClassStatus.ACTIVE,
+      },
+      { headTrainerId: toHeadTrainerId },
+    );
+    return {
+      plansMoved: plans.affected ?? 0,
+      classesMoved: classes.affected ?? 0,
+    };
   }
 }
 

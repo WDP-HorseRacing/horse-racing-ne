@@ -1,37 +1,213 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   MinLength,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
+import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
 import { IncidentStatus } from '../constants/incident-status.enum';
+import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
+import { CareTaskUserSummaryResponseDto } from './care-task.dto';
 
 export class ReportIncidentDto {
-  @ApiProperty({ format: 'uuid', description: 'ID ngựa gặp sự cố' })
+  @ApiProperty({ format: 'uuid', description: 'Ngựa gặp sự cố' })
   @IsUUID()
   horseId!: string;
 
-  @ApiProperty({ description: 'Mô tả chi tiết sự cố' })
+  @ApiProperty({
+    minLength: 1,
+    maxLength: 2000,
+    description: 'Mô tả sự cố',
+  })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
+  @MaxLength(2000)
   description!: string;
 
-  @ApiPropertyOptional({ default: false, description: 'Mức độ khẩn cấp' })
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Khẩn: tự tạo yêu cầu khám khẩn cho bác sĩ',
+  })
   @IsOptional()
   @IsBoolean()
   urgent?: boolean;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'Hình ảnh/video đính kèm (nếu có)' })
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Ảnh tải lên với purpose INCIDENT_PHOTO',
+  })
   @IsOptional()
   @IsUUID()
-  mediaAssetId?: string;
+  photoMediaId?: string;
 }
 
-export class UpdateIncidentStatusDto {
-  @ApiProperty({ enum: IncidentStatus, description: 'Trạng thái xử lý sự cố' })
+export class ReferIncidentDto {
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Khẩn: báo ngay mọi bác sĩ',
+  })
+  @IsOptional()
+  @IsBoolean()
+  urgent?: boolean;
+}
+
+export class ResolveIncidentDto {
+  @ApiProperty({
+    minLength: 1,
+    maxLength: 1000,
+    description: 'Kết quả xử lý',
+  })
+  @Transform(trimValue)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  resolution!: string;
+}
+
+export class IncidentListQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: IncidentStatus })
+  @IsOptional()
   @IsEnum(IncidentStatus)
+  status?: IncidentStatus;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  horseId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Khu chứa ngựa' })
+  @IsOptional()
+  @IsUUID()
+  barnId?: string;
+}
+
+export class IncidentExamRequestResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @Expose()
+  @ApiProperty({ enum: ExamRequestStatus })
+  status!: ExamRequestStatus;
+
+  @Expose()
+  @ApiProperty()
+  urgent!: boolean;
+
+  @Expose()
+  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  handledAt!: Date | null;
+
+  @Expose()
+  @ApiPropertyOptional({ nullable: true, type: String })
+  dismissReason!: string | null;
+}
+
+export class IncidentResponseDto {
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @Expose()
+  @ApiProperty({ format: 'uuid' })
+  horseId!: string;
+
+  @Expose()
+  @ApiProperty({ description: 'Tên ngựa' })
+  horseName!: string;
+
+  @Expose()
+  @ApiProperty()
+  description!: string;
+
+  @Expose()
+  @ApiProperty({
+    description:
+      'Mức khẩn hiện tại: theo yêu cầu khám của sự cố; chưa có yêu cầu khám thì false',
+  })
+  urgent!: boolean;
+
+  @Expose()
+  @ApiProperty({ enum: IncidentStatus })
   status!: IncidentStatus;
+
+  @Expose()
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Link xem ảnh có hạn; null nếu không có ảnh',
+  })
+  photoUrl!: string | null;
+
+  @Expose()
+  @Type(() => CareTaskUserSummaryResponseDto)
+  @ApiProperty({
+    type: CareTaskUserSummaryResponseDto,
+    description: 'Người báo',
+  })
+  reporter!: CareTaskUserSummaryResponseDto;
+
+  @Expose()
+  @ApiPropertyOptional({ nullable: true, type: String })
+  resolution!: string | null;
+
+  @Expose()
+  @Type(() => CareTaskUserSummaryResponseDto)
+  @ApiPropertyOptional({
+    type: CareTaskUserSummaryResponseDto,
+    nullable: true,
+    description: 'Người đóng',
+  })
+  resolver!: CareTaskUserSummaryResponseDto | null;
+
+  @Expose()
+  @ApiProperty({
+    description:
+      'True khi hệ thống tự đóng (ví dụ ngựa chuyển nhượng hoặc đã mất)',
+  })
+  resolvedBySystem!: boolean;
+
+  @Expose()
+  @ApiPropertyOptional({
+    enum: IncidentResolutionSource,
+    nullable: true,
+    description:
+      'Cách sự cố được đóng: HEAD_TRAINER (Head Trainer đóng tay), EXAM (tự đóng khi bác sĩ khám xong hoặc bỏ qua yêu cầu khám), LIFECYCLE (tự đóng khi ngựa chuyển nhượng hoặc đã mất); null khi đang mở',
+  })
+  resolutionSource!: IncidentResolutionSource | null;
+
+  @Expose()
+  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  resolvedAt!: Date | null;
+
+  @Expose()
+  @Type(() => IncidentExamRequestResponseDto)
+  @ApiPropertyOptional({
+    type: IncidentExamRequestResponseDto,
+    nullable: true,
+    description: 'Yêu cầu khám gắn với sự cố, chỉ để xem',
+  })
+  examRequest!: IncidentExamRequestResponseDto | null;
+
+  @Expose()
+  @ApiProperty({ format: 'date-time' })
+  createdAt!: Date;
+}
+
+export class IncidentPageResponseDto {
+  @ApiProperty({ type: [IncidentResponseDto] })
+  items!: IncidentResponseDto[];
+
+  @ApiProperty({ type: PaginationMetaDto })
+  @Type(() => PaginationMetaDto)
+  meta!: PaginationMetaDto;
 }

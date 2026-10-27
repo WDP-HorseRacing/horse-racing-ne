@@ -46,7 +46,10 @@ export class ObjectStorageService implements OnModuleDestroy {
         ContentType: contentType,
         ContentLength: byteSize,
       }),
-      { expiresIn: this.presignedUrlTtlSeconds },
+      {
+        expiresIn: this.presignedUrlTtlSeconds,
+        signableHeaders: new Set(['content-type']),
+      },
     );
   }
 

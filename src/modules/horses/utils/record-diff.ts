@@ -2,7 +2,7 @@
  * Lọc ra các field có giá trị mới khác giá trị đang lưu.
  *
  * - Field có giá trị undefined được coi là không gửi lên, bỏ qua
- * - So sánh bằng ===, nên chỉ dùng cho giá trị đơn (string, number, enum, null)
+ * - So sánh bằng ===, chỉ dùng cho giá trị đơn (string, number, enum, null)
  *
  * @param current Bản ghi đang lưu
  * @param next Các giá trị mới người gọi gửi lên

@@ -7,6 +7,16 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import { AxiosService } from '../axios/axios.service';
 import { KeycloakConfig } from './keycloak.config';
 
+/**
+ * Tạo câu lỗi 502 khi Keycloak trả lời bằng một mã lỗi HTTP
+ *
+ * @param status Mã HTTP Keycloak trả về
+ * @returns Câu báo lỗi tiếng Việt kèm mã
+ */
+export function keycloakFailureMessage(status: number): string {
+  return `Máy chủ xác thực báo lỗi (mã ${status})`;
+}
+
 @Injectable()
 export class KeycloakHttpService {
   constructor(
@@ -21,11 +31,12 @@ export class KeycloakHttpService {
       if (axios.isAxiosError(error) && error.response) {
         // Keycloak co tra loi, nhung la loi. Loi cua he thong phia sau -> 502.
         throw new BadGatewayException(
-          `Keycloak request failed with status ${error.response.status}`,
+          keycloakFailureMessage(error.response.status),
+          { cause: error.response.data },
         );
       }
       // Timeout, DNS hong, connection refused: khong voi toi duoc -> 503.
-      throw new ServiceUnavailableException('Khong ket noi duoc Keycloak');
+      throw new ServiceUnavailableException('Không kết nối được Keycloak');
     }
   }
 

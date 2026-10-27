@@ -2,36 +2,54 @@ import type {
   CreatedHorseMeasurementResponseDto,
   HorseLatestMeasurementDto,
   HorseMeasurementResponseDto,
-} from '../dto/horse-measure.dto';
+} from '../dto';
 import type { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
-import { HORSE_MEASUREMENT_SPECS } from '../enums/horse.constants';
-import { isAbnormalMeasurement } from '../policies/horse.policy';
-import { requiredRelationName } from './horse.mapper';
+import { HORSE_MEASUREMENT_SPECS } from '../constants/horse.constants';
 import type { HorseMeasurementAlertResult } from '../types/horse.types';
 
 /**
- * Map the latest horse measurement fields, including its unit and abnormal flag.
+ * Map các field của chỉ số mới nhất, kèm đơn vị và cờ bất thường đã lưu lúc ghi
  *
- * @param entity The horse measurement entity
- * @returns The latest measurement response fields
+ * @param entity Bản ghi chỉ số cơ thể
+ * @returns Các field chỉ số mới nhất trong response
  */
 export function toLatestMeasurement(
   entity: HorseMeasurementEntity,
 ): HorseLatestMeasurementDto {
   return {
     type: entity.type,
-    value: entity.value,
+    value: Number(entity.value),
     unit: HORSE_MEASUREMENT_SPECS[entity.type].unit,
     measuredAt: entity.measuredAt,
-    isAbnormal: isAbnormalMeasurement(entity.type, Number(entity.value)),
+    isAbnormal: entity.isAbnormal,
   };
 }
 
 /**
- * Map a measurement history row with its measurer's name.
+ * Đọc tên người dùng từ quan hệ, báo lỗi rõ ràng khi quan hệ chưa được load
  *
- * @param entity The horse measurement entity with its measurer relation loaded
- * @returns The measurement response
+ * @param user Người dùng của quan hệ, undefined hoặc null nếu chưa load
+ * @param relation Tên quan hệ, dùng trong message lỗi
+ * @returns Họ tên đầy đủ của người dùng
+ * @throws Error Nếu quan hệ chưa được load
+ */
+function requiredRelationName(
+  user: { fullName: string } | null | undefined,
+  relation: 'measurer',
+): string {
+  if (!user) {
+    throw new Error(
+      `Quan hệ ${relation} chưa được load khi ánh xạ dữ liệu ngựa`,
+    );
+  }
+  return user.fullName;
+}
+
+/**
+ * Map một dòng lịch sử chỉ số kèm tên người đo
+ *
+ * @param entity Bản ghi chỉ số cơ thể đã load quan hệ measurer
+ * @returns Response của bản ghi chỉ số
  */
 export function toMeasurementResponse(
   entity: HorseMeasurementEntity,
@@ -41,16 +59,17 @@ export function toMeasurementResponse(
     horseId: entity.horseId,
     measuredBy: entity.measuredBy,
     measuredByName: requiredRelationName(entity.measurer, 'measurer'),
+    source: entity.source,
     ...toLatestMeasurement(entity),
   };
 }
 
 /**
- * Map a newly created measurement together with its automatically calculated alerts.
+ * Map bản ghi chỉ số vừa tạo kèm các cảnh báo tự động tính được
  *
- * @param entity The saved measurement entity with its measurer relation loaded
- * @param alerts The alerts calculated for this measurement
- * @returns The created measurement response; FEVER alerts have null baseline and drop values
+ * @param entity Bản ghi chỉ số đã lưu, đã load quan hệ measurer
+ * @param alerts Các cảnh báo tính cho lần đo này
+ * @returns Response bản ghi chỉ số vừa tạo; cảnh báo FEVER có baselineValue và dropPercent là null
  */
 export function toCreatedMeasurementResponse(
   entity: HorseMeasurementEntity,

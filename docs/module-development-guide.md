@@ -31,11 +31,15 @@ dùng chung của domain:
 src/modules/<domain>/
 ├── <domain>.module.ts             # Module cha, chỉ ghép các feature
 ├── enums/                         # Enum/trạng thái chỉ thuộc domain
+├── constants/                     # Hằng số, tên event, injection token
+├── types/                         # Interface/type nội bộ của domain
 ├── dto/                           # Request DTO và response DTO
 │   └── index.ts
 ├── entities/                      # TypeORM entities của domain
-├── mappers/                       # Entity -> response DTO
+├── schemas/                       # Mongoose schemas của domain (mục 14)
+├── mappers/                       # Entity/document -> response DTO
 ├── policies/                      # Rule thuần, không gọi DB/HTTP
+├── utils/                         # Hàm thuần chỉ dùng trong domain
 ├── shared/                        # Access service, module dùng chung
 │   ├── <domain>-access.service.ts
 │   └── <domain>-shared.module.ts
@@ -107,7 +111,8 @@ Quy tắc:
 - **Entity ownership**: Mỗi module con chỉ khai báo và inject entity thuộc domain con của chính nó qua `TypeOrmModule.forFeature([EntityCon])`. Không khai báo hoặc inject trực tiếp entity của domain khác vào feature module con.
 - **Cross-domain access**: Muốn truy cập, kiểm tra hoặc cập nhật bảng thuộc domain khác (cross-domain):
   - Dùng `SharedAccessService` (ví dụ `HorseAccessService`, `TrainingAccessService`) cho các kiểm tra quyền, trạng thái, phạm vi.
-  - Dùng `DataSource` (`this.dataSource.manager...` hoặc raw query trong transaction) khi cần truy vấn hoặc thao tác liên bảng.
+  - Dùng `DataSource` (`this.dataSource.manager...` hoặc raw query trong transaction) khi cần truy vấn (đọc) liên bảng.
+  - Ghi (thêm, sửa, xóa) bảng của domain khác chỉ qua hàm do module sở hữu export, hàm này nhận `manager` của transaction bên gọi.
 - Chỉ export service thật sự được feature khác dùng.
 - Không export tất cả provider theo thói quen.
 - Nếu hai feature dùng chung access/auth logic, đưa logic đó vào `shared/` và export từ shared module.
@@ -252,7 +257,7 @@ Trình tự nên theo mẫu:
 4. Lock row cần bảo vệ trước khi kiểm tra invariant.
 5. Chạy policy thuần để kiểm tra trạng thái/input.
 6. Ghi dữ liệu bằng `EntityManager` của transaction.
-7. Commit xong mới publish domain event.
+7. Ghi domain event vào outbox bằng `manager` trước khi commit (mục 9).
 8. Map entity thành response DTO.
 
 Trong transaction phải dùng `manager` cho toàn bộ query có liên quan. Không dùng
@@ -263,35 +268,26 @@ không được lock/rollback cùng transaction.
 
 Repository riêng (`<feature>.repository.ts`) là **tùy chọn**, chỉ nên tạo khi có câu query phức tạp: dùng `QueryBuilder` nhiều dòng, join nhiều bảng, raw SQL tổng hợp (`GROUP BY`, `FILTER`), CTE đệ quy (`WITH RECURSIVE`), advisory lock (`pg_advisory_xact_lock`), hoặc transaction nhiều bảng liên kết.
 
-Ví dụ dưới đây là query tổng hợp chỉ số hiệu suất buổi tập bằng raw SQL với `GROUP BY`, `FILTER`, `ROUND(AVG(...))` và join 3 bảng:
+Ví dụ dưới đây là báo cáo chi phí y tế bằng raw SQL với `GROUP BY`, `SUM`, join 2 bảng và điều kiện lọc tùy chọn:
 
 ```ts
 @Injectable()
-export class PerformanceSummariesRepository {
-  constructor(
-    @InjectRepository(PerformanceMetricEntity)
-    private readonly metrics: Repository<PerformanceMetricEntity>,
-    @InjectRepository(PerformanceEvaluationEntity)
-    private readonly evaluations: Repository<PerformanceEvaluationEntity>,
-  ) {}
+export class MedicalCasesRepository {
+  constructor(private readonly dataSource: DataSource) {}
 
-  sessionSummaries(horseId: string): Promise<SessionPerformanceRow[]> {
-    return this.metrics.query(
-      `SELECT s.id AS "sessionId",
-              s.scheduled_at AS "scheduledAt",
-              ROUND(AVG(m.heart_rate_bpm))::int AS "avgHeartRateBpm",
-              MAX(m.heart_rate_bpm)::int AS "maxHeartRateBpm",
-              ROUND(AVG(m.speed_mps), 3)::text AS "avgSpeedMps",
-              MAX(m.speed_mps)::text AS "maxSpeedMps",
-              (COUNT(*) FILTER (WHERE m.alert_level <> $2))::int AS "alertCount"
-         FROM performance_metrics m
-         JOIN training_sessions s ON s.id = m.session_id
-         JOIN training_plans p ON p.id = s.plan_id
-        WHERE p.horse_id = $1
-        GROUP BY s.id, s.scheduled_at
-        ORDER BY s.scheduled_at DESC
-        LIMIT $3`,
-      [horseId, NORMAL_ALERT_LEVEL, PERFORMANCE_SESSION_LIMIT],
+  costByHorse(filter: CostReportFilter): Promise<MedicalCostReportRow[]> {
+    return this.dataSource.query(
+      `SELECT h.id AS "horseId",
+              h.name AS "horseName",
+              COUNT(r.id)::int AS "visitCount",
+              SUM(r.cost)::text AS "totalCost"
+         FROM medical_records r
+         JOIN horses h ON h.id = r.horse_id
+        WHERE r.voided_at IS NULL
+          AND (r.exam_date AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
+        GROUP BY h.id, h.name
+        ORDER BY SUM(r.cost) DESC, h.name`,
+      [CLUB_TIME_ZONE, filter.from, filter.to],
     );
   }
 }
@@ -318,7 +314,8 @@ export class MedicalRecordsService {
 - **Không inject entity của domain khác vào module con**: Tuyệt đối không import entity ngoài vào `forFeature` của module con để tránh phá vỡ ranh giới domain và gây phụ thuộc vòng.
 - **Truy cập bảng khác thông qua `DataSource` hoặc Shared Service**:
   - Dùng `SharedAccessService` (như `HorseAccessService`, `TrainingAccessService`) cho các kiểm tra quyền đọc, trạng thái hoặc phạm vi truy cập tài nguyên dùng chung.
-  - Dùng `DataSource` (`this.dataSource.manager...` hoặc raw SQL query, hoặc `manager.getRepository(...)` trong transaction) khi cần truy vấn hoặc thao tác liên bảng ngoài domain của module.
+  - Dùng `DataSource` (`this.dataSource.manager...` hoặc raw SQL query, hoặc `manager.getRepository(...)` trong transaction) khi cần truy vấn (đọc) liên bảng ngoài domain của module.
+- **Ghi bảng domain khác qua hàm của module sở hữu**: Đọc chéo qua `DataSource` hoặc access service; ghi chéo chỉ qua hàm do module sở hữu export, nhận `manager` của transaction bên gọi (ví dụ `TrainingLockService.releaseActiveLockByHorse(manager, horseId, conclusion)`).
 
 Trong trường hợp transaction:
 
@@ -357,25 +354,43 @@ thể unit test nhanh mà không cần khởi động Nest hoặc database.
 
 ## 9. Domain event và side effect
 
-Nếu workflow làm thay đổi trạng thái nghiệp vụ quan trọng, có thể publish event
-qua `DomainEventPublisher` sau khi transaction hoàn tất:
+Domain event đi qua transactional outbox: `DomainEventPublisher.publish(manager, name, payload)`
+ghi event vào bảng `outbox_events` **trong cùng transaction** với dữ liệu nghiệp vụ.
+Commit thì event chắc chắn được giao; rollback thì event mất theo.
 
 ```ts
-const plan = await this.dataSource.transaction(async (manager) => {
-  // update và save trong transaction
-  return manager.save(current);
-});
-
-this.events.publish('training.plan.completed', {
-  planId: plan.id,
-  horseId: plan.horseId,
+await this.dataSource.transaction(async (manager) => {
+  const plan = await manager.save(current);
+  await this.events.publish(manager, 'training.plan.completed', {
+    eventId: randomUUID(),
+    planId: plan.id,
+    horseId: plan.horseId,
+  });
 });
 ```
 
-Không publish event trước commit. Event handler không nên được dùng để thay thế
-việc ghi dữ liệu bắt buộc trong transaction. Với Keycloak, email, S3 hoặc HTTP
-external call, cân nhắc cơ chế retry/outbox nếu side effect cần đảm bảo không
-bị mất.
+`OutboxRelay` mỗi giây nhận các event đến hạn (`FOR UPDATE SKIP LOCKED`) và gọi
+`emitAsync` cho các listener `@OnEvent`:
+
+- Listener lỗi thì event được giao lại, lùi thời gian theo cấp số nhân; đủ
+  `OUTBOX_MAX_ATTEMPTS` lần thì đánh dấu `dead_at` và dừng.
+- Event giao xong được dọn sau 7 ngày.
+
+Quy tắc:
+
+- Gọi `publish` bên trong callback của transaction, sau khi ghi dữ liệu. Việc chạy
+  theo lịch (cron) không có transaction thì truyền `this.dataSource.manager`.
+- Payload là JSON: chỉ chuỗi, số, boolean, null, mảng, object. Thời điểm truyền dạng
+  chuỗi ISO (`toISOString()`), không truyền `Date`.
+- Mỗi payload có `eventId` ổn định (sinh một lần khi publish, hoặc id có sẵn như id
+  bản ghi). Listener dùng nó để chống xử lý trùng.
+- Listener dùng `@OnEvent(NAME, OUTBOX_LISTENER_OPTIONS)` và **ném lỗi** ra ngoài,
+  không tự nuốt lỗi.
+- Relay giao **ít nhất một lần**: cùng một event có thể tới listener nhiều lần.
+  Listener phải idempotent, ví dụ unique index trên khóa của event rồi
+  `ON CONFLICT DO NOTHING` (yêu cầu khám tự sinh dùng `(source, source_ref_id, alert_type)`, thông báo dùng
+  `(eventId, recipientId)`).
+- Không dùng event thay cho việc ghi dữ liệu bắt buộc trong transaction.
 
 ## 10. Quy trình tạo feature mới
 
@@ -441,8 +456,11 @@ và không nhận controller, provider hay đăng ký entity trực tiếp.
 - Transaction và cascade update:
   `src/modules/training/training-plans/training-plans.service.ts`
 - Query phức tạp gom trong repository:
-  `src/modules/performance/performance-summaries/performance-summaries.repository.ts` hoặc
+  `src/modules/medical/medical-records/medical-cases.repository.ts` hoặc
   `src/modules/horses/horse-profiles/horse-profiles.repository.ts`
+- Aggregate MongoDB ghép dữ liệu Postgres:
+  `src/modules/performance/performance-summaries/performance-summaries.repository.ts`
+- Feature dùng MongoDB, outbox listener, BullMQ: `src/modules/notifications/`
 - DTO và mapper: `src/modules/training/dto/`,
   `src/modules/training/mappers/`
 
@@ -454,3 +472,181 @@ controller/service/repository của mình và không import trực tiếp featur
 Domain mới có ít nhất 20 file TypeScript không phải test mà chưa có feature
 module, hoặc có service vượt 1.000 dòng, sẽ bị kiểm tra báo lỗi cho đến khi
 được tách theo use case.
+
+## 14. Dữ liệu ở MongoDB
+
+Hệ thống dùng hai DB. Postgres (TypeORM) là nơi lưu chính; MongoDB (Mongoose) chỉ
+nhận những dữ liệu hợp với nó. Không có transaction chung giữa hai DB.
+
+Chọn DB cho dữ liệu mới bằng ba câu hỏi:
+
+1. Có phải ghi cùng thành, cùng hỏng với dữ liệu lõi (một transaction) không?
+   Có thì để Postgres.
+2. Có quan hệ chặt, ràng buộc khóa ngoại, query chéo nhiều bảng không?
+   Có thì để Postgres.
+3. Dữ liệu tự đứng một cục, đọc theo một khóa, schema hay đổi, hoặc ghi dày theo
+   thời gian? Thì để MongoDB.
+
+Hiện ở MongoDB:
+
+| Collection | Module | Ghi chú |
+| --- | --- | --- |
+| `notifications` | notifications | Mỗi người nhận một document; unique `(eventId, recipientId)` |
+| `user_devices` | notifications | `_id` là FCM token |
+| `performance_metrics` | performance | Time-series, `timeField` `recordedAt`, `metaField` `meta` |
+
+Quy tắc:
+
+- Schema đặt ở `src/modules/<domain>/schemas/*.schema.ts`. Mỗi feature module tự
+  khai báo `MongooseModule.forFeature` cho đúng model nó dùng; `shared/` chỉ export
+  access service, không export model.
+- Dùng công cụ gốc của MongoDB: unique/partial index, cập nhật có điều kiện
+  (`findOneAndUpdate` với điều kiện trạng thái), `$setOnInsert` + `upsert` để
+  idempotent, time-series cho dữ liệu cảm biến, TTL index để tự xóa.
+  Không giả lập cơ chế Postgres (khóa giả, khóa ngoại giả).
+- `_id` của document trả ra API dùng UUID dạng chuỗi để giữ cùng dạng id với
+  Postgres.
+- Số thập phân cần chính xác (tiền, tốc độ) lưu `Decimal128`; làm tròn trong app
+  nếu phải khớp cách làm tròn của Postgres (`$round` làm tròn nửa về số chẵn).
+- Đọc dữ liệu Postgres để ghép (vd giờ của buổi tập) qua `this.dataSource.manager`,
+  không ghi chéo DB.
+- Time-series không có unique index và không ghi được trong transaction; chống
+  trùng phải làm ở tầng ghi.
+- Integration test dùng `test/integration/mongo.ts` (testcontainers). Driver cần
+  `runtimeAdapters: { os }` khi chạy trong Jest.
+- Mongo chưa có migration: index tạo khi app khởi động (`autoIndex`). Đổi TTL
+  hay granularity dùng lệnh `collMod`.
+
+## 15. Thứ tự khai báo trong một file
+
+Cấp file (policy, mapper, util, constants, phần ngoài class của service):
+
+1. `import`
+2. `type`/`interface` chỉ dùng trong file
+3. Hằng không export
+4. Hằng export
+5. Hàm export, gom theo nhóm nghiệp vụ, theo luồng tạo → sửa → đổi trạng thái → xóa
+6. Hàm phụ không export, theo thứ tự lần đầu được gọi
+
+Trong class (service, repository, listener):
+
+1. Field
+2. `constructor`
+3. Method `public`, theo thứ tự route trong controller
+4. Method `protected`
+5. Method `private`, theo thứ tự lần đầu được gọi
+
+ESLint `@typescript-eslint/member-ordering` (mức warn) canh thứ tự nhóm trong
+class. Thứ tự bên trong mỗi nhóm và thứ tự cấp file kiểm khi review. Sắp lại
+file cũ thì để riêng một commit, chỉ di chuyển code, không sửa nội dung.
+
+## 16. Thời điểm và ngày lịch
+
+Dữ liệu thời gian chỉ có hai loại:
+
+| Loại | Ví dụ | Request | Response | Cột DB |
+| --- | --- | --- | --- | --- |
+| Thời điểm | giờ buổi tập, `measuredAt`, `dueAt`, `lockEnd` | ISO 8601 bắt buộc có múi giờ: `2026-10-23T00:30:00+07:00` hoặc `2026-10-22T17:30:00Z` | Luôn UTC `...Z` (`toISOString`) | `timestamptz` |
+| Ngày lịch | `dateOfBirth`, `startDate` của lớp, `fromDate`/`toDate`, lọc theo ngày | Đúng `YYYY-MM-DD` | Đúng `YYYY-MM-DD` | `date` |
+
+Quy tắc:
+
+- DTO dùng validator chung ở `src/common/utils/dto-input.ts`: `@IsIsoInstant()` cho
+  thời điểm, `@IsDateOnly()` cho ngày lịch (truyền `message` nếu ô cần câu riêng).
+  Không dùng `@IsDateString()`: nó nhận chuỗi thiếu múi giờ và chuỗi có giờ cho ô
+  ngày.
+- Logic không phụ thuộc múi giờ của process. Mọi thứ về "ngày" (hôm nay, ngày của
+  một thời điểm, đầu ngày) theo `CLUB_TIME_ZONE`
+  (`src/common/constants/club.constants.ts`) qua helper ở
+  `src/common/utils/club-date.ts`: `clubToday`, `toClubDate`,
+  `clubDateTimeToInstant`, `shiftDays`.
+- So một thời điểm với một ngày D: BE đổi D thành khoảng nửa mở
+  `[00:00 ngày D, 00:00 ngày D+1)` theo giờ CLB, truyền hai đầu dạng `Date` làm
+  tham số SQL, so bằng `>=` và `<`.
+
+  ```ts
+  const from = clubDateTimeToInstant(startDate, '00:00');
+  const to = clubDateTimeToInstant(shiftDays(endDate, 1), '00:00');
+  qb.andWhere('e.enrolled_at >= :from AND e.enrolled_at < :to', { from, to });
+  ```
+
+- DB chỉ lưu và so. Cấm `<cột timestamptz>::date`, `CURRENT_DATE`, `now()::date`
+  (kết quả đổi theo `TimeZone` của session DB). Ép tham số chuỗi `'YYYY-MM-DD'`
+  bằng `$1::date` thì được. Báo cáo gom theo ngày, tuần đã dùng
+  `AT TIME ZONE $n` với `CLUB_TIME_ZONE` thì giữ.
+- Server và DB chạy ở múi giờ nào cũng được (mặc định khi deploy là UTC). Đổi múi
+  giờ của CLB chỉ cần đổi `CLUB_TIME_ZONE`.
+
+## 17. Thứ tự khóa và mức khóa
+
+Mọi luồng ghi khóa row theo cùng một thứ tự. Hai luồng chạy cùng lúc mà khóa hai
+row theo chiều ngược nhau thì Postgres hủy một bên (`40P01`), người dùng nhận 500.
+
+### Luật chọn thứ tự
+
+1. **Cha trước con theo khóa ngoại sở hữu.** Khóa ngoại sở hữu là cột không đổi
+   sau khi tạo row: lượt thuộc buổi, ghi danh và ngựa; xếp ô thuộc ô và ngựa;
+   dòng checklist thuộc checklist; lô thuộc vật tư. Biết id con mà cần khóa cha
+   thì đọc con không khóa để lấy id cha, khóa cha, rồi mới khóa con.
+2. **Khóa ngoại tham chiếu không tạo quan hệ cha con.** Cột đổi được như
+   `horses.barn_id`, `horses.owner_id`, `stalls.barn_id`, `*.groom_id`,
+   `head_trainer_id`, `*_by` chỉ là con trỏ; vị trí của bảng được trỏ tới theo
+   luật 3. Đi theo con trỏ đổi được (vd khu của ngựa) thì đọc không khóa, khóa
+   row được trỏ, khóa row giữ con trỏ, rồi dùng giá trị sau khi khóa.
+3. **Bảng ngang hàng: tầng rộng trước tầng hẹp**, trong một tầng thì cha trước
+   con, còn lại theo tên bảng:
+   1. Danh mục toàn câu lạc bộ: `daily_fees` (khóa bảng trước khóa row),
+      `daily_task_types`, `training_subjects`, `races`, `supply_items` →
+      `supply_requests` → `supply_lots` → `supply_stock_movements`.
+   2. Hạ tầng: `barns` → `stalls`.
+   3. Khung đào tạo: `training_plans` → giai đoạn, môn của giáo án →
+      `training_classes` → giai đoạn, môn của lớp → `training_sessions`.
+   4. Ngựa: khóa phả hệ (`pg_advisory_xact_lock`) → `horses` → các bảng con của
+      ngựa: `stall_assignments`, `groom_assignments`, `horse_enrollments` →
+      `session_participants` → `trial_results`, `performance_evaluations`;
+      `incidents`, `medical_cases`, `medical_records` → đơn thuốc, vết thương,
+      `medical_exam_requests`, `training_locks`, `care_schedules`, số đo;
+      `daily_checklists` → dòng checklist; `feeding_plans` → dòng khẩu phần;
+      việc riêng, lịch sử sở hữu, phụ phí, đăng ký đua.
+   5. Người: `users` khóa sau cùng. Nhiều lần khóa user trong một luồng theo vai
+      trò CM → HT → Groom → chủ ngựa.
+4. **Cùng loại theo id.** Khóa nhiều row cùng bảng trong một câu
+   `ORDER BY id`; helper nhận danh sách id thì bỏ trùng và sắp trước khi khóa
+   (`lockUsers`, `lockHorses`, `lockSessions`, `lockParticipants`).
+5. **Cổng ngựa.** Luồng đã khóa ngựa thì các bảng con của ngựa đó chỉ cần khóa sau
+   ngựa và cha sở hữu trước con; giữa các bảng con ngang hàng không bắt buộc thứ
+   tự. Luồng không khóa ngựa vẫn theo thứ tự đầy đủ (vd hủy lớp: lớp → buổi → ghi
+   danh → lượt).
+6. **Luồng một khóa.** Luồng chỉ khóa một loại row và không chờ khóa nào khác
+   sau đó (tick checklist, đóng sự cố, áp phụ phí, cron cập nhật hàng loạt một
+   bảng) được bỏ qua cổng ngựa.
+
+Khóa sẵn trước khi kiểm thì dùng helper không ném lỗi (`lockSessions`,
+`lockBarnOfHorse`, `lockOpenStallOfHorse`, `lockHorseSessions`...), rồi gọi lại
+helper khóa có kiểm ở đúng chỗ cũ. Khóa lại row đã giữ không chờ, nên thứ tự lỗi
+trả về không đổi.
+
+### Mức khóa
+
+| Trường hợp | Mức |
+|---|---|
+| Sửa row, hoặc khóa làm cổng cho các bảng con (ngựa, lớp, buổi, khu, vật tư) | `for_no_key_update` |
+| Chỉ cần row không bị đổi hoặc xóa, cho nhiều bên đọc cùng lúc (user chủ, HT được giao, lớp khi bắt đầu lượt, vật tư trong khẩu phần) | `pessimistic_read` (FOR SHARE) |
+| Khóa cha → kiểm không còn con → xóa cha (xóa môn, giáo án, khu, ô, vật tư, hồ sơ ngựa, mức phí) | `pessimistic_write` (FOR UPDATE) |
+
+`FOR NO KEY UPDATE` không chặn khóa `FOR KEY SHARE` mà Postgres lấy trên row cha
+khi INSERT hoặc UPDATE cột khóa ngoại, nên ghi nhật ký (`audit_logs.actor_id`)
+hay thêm row con không phải chờ khóa sửa của row cha. `FOR UPDATE` chặn cả khóa
+đó, nên chỉ dùng khi cần chặn row con mới trong lúc kiểm rồi xóa cha.
+
+### Thứ tự lỗi
+
+Thứ tự kiểm theo mục 6. Ngoại lệ: `StableAccessService.lockOperableHorse` kiểm
+vòng đời ngựa (409) và ngựa chưa có khu (409) trước phạm vi Head Trainer (403).
+
+### Kiểm tự động
+
+`test/integration/lock-order.int-spec.ts` đọc khóa ngoại thật từ `pg_constraint`
+và so với danh sách thứ tự trong test: thêm bảng mới hoặc khóa ngoại mới làm
+sai thứ tự thì test đỏ. Cặp thao tác chạy đồng thời được canh bằng các test ở
+`test/integration/findings/r3-race-findings.int-spec.ts`.

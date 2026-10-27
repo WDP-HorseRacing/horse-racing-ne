@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
 
 export class PerformanceMetricPointDto {
   @ApiProperty({ format: 'date-time' })
@@ -7,11 +8,11 @@ export class PerformanceMetricPointDto {
   @ApiProperty()
   heartRateBpm!: number;
 
-  @ApiProperty()
-  speedMps!: string;
+  @ApiProperty({ type: Number })
+  speedMps!: number;
 
-  @ApiProperty()
-  alertLevel!: string;
+  @ApiProperty({ enum: MetricAlertLevel })
+  alertLevel!: MetricAlertLevel;
 }
 
 export class PerformanceEvaluationDto {
@@ -55,12 +56,64 @@ export class SessionPerformanceSummaryDto {
   @ApiProperty({ description: 'Nhịp tim cao nhất trong buổi (bpm)' })
   maxHeartRateBpm!: number;
 
-  @ApiProperty({ description: 'Tốc độ trung bình trong buổi (m/s)' })
-  avgSpeedMps!: string;
+  @ApiProperty({
+    type: Number,
+    description: 'Tốc độ trung bình trong buổi (m/s)',
+  })
+  avgSpeedMps!: number;
 
-  @ApiProperty({ description: 'Tốc độ cao nhất trong buổi (m/s)' })
-  maxSpeedMps!: string;
+  @ApiProperty({
+    type: Number,
+    description: 'Tốc độ cao nhất trong buổi (m/s)',
+  })
+  maxSpeedMps!: number;
 
   @ApiProperty({ description: 'Số điểm đo có alertLevel khác NORMAL' })
   alertCount!: number;
+}
+
+export class ParticipantPerformanceSummaryDto {
+  @ApiProperty({ format: 'uuid' })
+  sessionParticipantId!: string;
+
+  @ApiProperty({ description: 'Số điểm đo của lượt tập' })
+  count!: number;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Nhịp tim trung bình (bpm), null khi chưa có điểm đo',
+  })
+  avgHeartRateBpm!: number | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Nhịp tim cao nhất (bpm), null khi chưa có điểm đo',
+  })
+  maxHeartRateBpm!: number | null;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: 'Tốc độ trung bình (m/s), null khi chưa có điểm đo',
+  })
+  avgSpeedMps!: number | null;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: 'Tốc độ cao nhất (m/s), null khi chưa có điểm đo',
+  })
+  maxSpeedMps!: number | null;
+
+  @ApiProperty({ description: 'Số điểm đo mức WARNING' })
+  warningCount!: number;
+
+  @ApiProperty({ description: 'Số điểm đo mức CRITICAL' })
+  criticalCount!: number;
+
+  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  firstRecordedAt!: Date | null;
+
+  @ApiPropertyOptional({ format: 'date-time', nullable: true })
+  lastRecordedAt!: Date | null;
 }

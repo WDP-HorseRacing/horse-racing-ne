@@ -24,6 +24,8 @@ import { AuthTokensResponseDto } from './dto/auth-tokens.response.dto';
 import { CurrentUserResponseDto } from './dto/current-user.response.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { LogoutDto } from './dto/logout.dto';
+import { OidcCallbackQueryDto } from './dto/oidc-callback-query.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('auth')
@@ -52,9 +54,13 @@ export class AuthController {
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Revoke refresh token' })
-  logout(@Body() body: RefreshTokenDto): Promise<void> {
-    return this.authService.logout(body.refreshToken);
+  @ApiOperation({
+    summary: 'Revoke refresh token',
+    description:
+      'Gửi kèm deviceToken thì gỡ thiết bị đó khỏi tài khoản đăng xuất; token không có hoặc thuộc người khác thì bỏ qua.',
+  })
+  logout(@Body() body: LogoutDto): Promise<void> {
+    return this.authService.logout(body.refreshToken, body.deviceToken);
   }
 
   @Get('me')
@@ -101,9 +107,12 @@ export class AuthController {
   oidcCallback(
     @Param('provider', new ParseEnumPipe(KeycloakIdentityProvider))
     provider: KeycloakIdentityProvider,
-    @Query('code') code: string,
-    @Query('state') state: string,
+    @Query() query: OidcCallbackQueryDto,
   ): Promise<AuthTokensResponseDto> {
-    return this.authService.completeOidcLogin(provider, code, state);
+    return this.authService.completeOidcLogin(
+      provider,
+      query.code,
+      query.state,
+    );
   }
 }

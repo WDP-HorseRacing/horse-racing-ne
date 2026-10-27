@@ -1,10 +1,10 @@
 # API endpoint catalog
 
-Generated from NestJS controller metadata. 143 REST operations are registered under `/api/v1`.
+Generated from NestJS controller metadata. 220 REST operations are registered under `/api/v1`.
 
-The health operation is functional. Every other operation is a contract-only route that returns HTTP 501 until authentication, authorization and its service are implemented. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
+Operations marked (501) are contract-only routes that return HTTP 501 until their service is implemented. Every other operation is functional. Request DTOs and operation details are available in Swagger at `/docs` when the API is running.
 
-Socket.IO uses the `/events` namespace. Its gateway currently rejects connections until JWT handshake authorization and room policies are implemented. Refresh sessions, audit writes, and domain events are internal operations rather than public REST endpoints.
+Socket.IO uses the `/events` namespace. The gateway verifies the access token on handshake and joins each user to the room `user:<userId>`. Refresh sessions, audit writes, and domain events are internal operations rather than public REST endpoints.
 
 ## audit
 
@@ -25,6 +25,21 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/auth/oidc/{provider}/callback` | Diem identity provider redirect ve |
 | POST | `/api/v1/auth/refresh` | Exchange refresh token |
 
+## billing
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/v1/daily-fees` | Lịch sử mức phí nuôi ngựa theo ngày |
+| POST | `/api/v1/daily-fees` | Đặt mức phí nuôi theo ngày áp dụng từ một ngày |
+| DELETE | `/api/v1/daily-fees/{id}` | Xóa mức phí chưa có hiệu lực |
+| PATCH | `/api/v1/daily-fees/{id}` | Sửa số tiền của mức phí nuôi theo ngày |
+| DELETE | `/api/v1/horse-surcharges/{id}` | Xóa phụ phí chưa tới ngày bắt đầu |
+| POST | `/api/v1/horse-surcharges/{id}/apply` | Head Trainer khu hiện tại xác nhận đã sắp xếp chế độ chăm sóc theo nội dung phụ phí |
+| POST | `/api/v1/horse-surcharges/{id}/end` | Kết thúc sớm phụ phí đang tính, tính tới hết hôm nay |
+| GET | `/api/v1/horse-surcharges/unapplied` | Phụ phí chưa được Head Trainer xác nhận áp dụng, kèm khu và Head Trainer đang phụ trách |
+| GET | `/api/v1/horses/{horseId}/surcharges` | Phụ phí chăm sóc riêng của ngựa |
+| POST | `/api/v1/horses/{horseId}/surcharges` | Ghi phụ phí chăm sóc riêng cho ngựa theo ngày trong một khoảng ngày; báo Head Trainer khu của ngựa |
+
 ## health
 
 | Method | Path | Purpose |
@@ -37,21 +52,28 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | --- | --- | --- |
 | GET | `/api/v1/horses` | List horses visible to the current user |
 | POST | `/api/v1/horses` | Create horse profile |
-| POST | `/api/v1/horses/{horseId}/activate` | Activate a reference horse as a club horse |
+| DELETE | `/api/v1/horses/{horseId}` | Soft-delete a horse profile created by mistake |
+| GET | `/api/v1/horses/{horseId}` | Get horse profile detail |
+| PATCH | `/api/v1/horses/{horseId}` | Update horse profile, parents and owner |
+| PUT | `/api/v1/horses/{horseId}/barn` | Assign or change the barn of a horse |
+| GET | `/api/v1/horses/{horseId}/barn-preview` | Preview the consequences of changing the barn of a horse |
+| GET | `/api/v1/horses/{horseId}/deletion-preview` | Preview whether a horse profile can be deleted |
 | GET | `/api/v1/horses/{horseId}/eligibility` | Get current training and racing eligibility |
-| PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status |
 | PATCH | `/api/v1/horses/{horseId}/lifecycle-status` | Change horse lifecycle status |
+| GET | `/api/v1/horses/{horseId}/lifecycle-status/preview` | Preview the consequences of a lifecycle change |
 | GET | `/api/v1/horses/{horseId}/measurements` | List horse measurement history |
-| POST | `/api/v1/horses/{horseId}/measurements` | Record a horse measurement |
-| DELETE | `/api/v1/horses/{horseId}/measurements/{measurementId}` | Soft-delete a horse measurement recorded by the caller |
-| GET | `/api/v1/horses/{horseId}/owners` | List horse ownership history |
-| PUT | `/api/v1/horses/{horseId}/owners` | Replace active ownership shares |
-| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree up to 4 generations |
+| POST | `/api/v1/horses/{horseId}/measurements` | Record one measuring session of a horse |
+| DELETE | `/api/v1/horses/{horseId}/measurements/{measurementId}` | Soft-delete a wrong horse measurement |
+| POST | `/api/v1/horses/{horseId}/ownership-transfers` | Transfer the horse to another owner in the club |
+| GET | `/api/v1/horses/{horseId}/ownerships` | List the ownership history of a horse |
+| GET | `/api/v1/horses/{horseId}/pedigree` | Get horse pedigree: parents and grandparents |
 | GET | `/api/v1/horses/{horseId}/permissions` | Get what the current user can do on this horse profile |
-| DELETE | `/api/v1/horses/{id}` | Soft-delete a horse profile created by mistake |
-| GET | `/api/v1/horses/{id}` | Get horse profile detail |
-| PATCH | `/api/v1/horses/{id}` | Update horse profile and pedigree parents |
-| GET | `/api/v1/owners/me/horses` | List horses currently owned by the current user |
+| GET | `/api/v1/horses/{horseId}/photo-url` | Get a time-limited download URL of the horse photo |
+| PUT | `/api/v1/horses/{horseId}/placement` | Place a horse in a stall and assign its groom in one step |
+| POST | `/api/v1/horses/{horseId}/restore` | Restore a soft-deleted horse profile |
+| GET | `/api/v1/horses/{horseId}/restore-preview` | Preview the consequences of restoring a deleted horse profile |
+| GET | `/api/v1/past-horses` | List horses the current owner sold or transferred |
+| GET | `/api/v1/past-horses/{horseId}` | Get basic information of a horse the current owner sold |
 
 ## media
 
@@ -66,29 +88,49 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| PATCH | `/api/v1/care-schedules/{id}` | Update veterinary care schedule |
-| POST | `/api/v1/care-schedules/{id}/complete` | Complete veterinary care item |
-| GET | `/api/v1/horses/{horseId}/care-schedules` | List vaccination, deworming and farrier schedule |
-| POST | `/api/v1/horses/{horseId}/care-schedules` | Schedule veterinary care |
-| GET | `/api/v1/horses/{horseId}/injuries` | List horse injury timeline |
-| GET | `/api/v1/horses/{horseId}/medical-records` | List horse medical records |
-| POST | `/api/v1/horses/{horseId}/medical-records` | Create append-only medical record |
-| GET | `/api/v1/horses/{horseId}/training-locks` | List horse training lock history |
-| POST | `/api/v1/horses/{horseId}/training-locks` | Create veterinary training lock |
-| POST | `/api/v1/injury-cases/{id}/recovery-events` | Append injury recovery event |
-| GET | `/api/v1/injury-cases/{id}/timeline` | Get append-only injury recovery timeline |
-| GET | `/api/v1/medical-records/{id}` | Get medical record |
-| POST | `/api/v1/medical-records/{id}/injuries` | Add injury marker to medical record |
-| POST | `/api/v1/medical-records/{id}/prescriptions` | Add prescription to medical record |
-| POST | `/api/v1/medical-records/{id}/void` | Void medical record with reason |
-| GET | `/api/v1/training-locks/{id}` | Get training lock details |
-| PATCH | `/api/v1/training-locks/{id}` | Update active veterinary training lock |
-| POST | `/api/v1/training-locks/{id}/release` | Release veterinary training lock |
+| PATCH | `/api/v1/care-schedules/{id}` | Reschedule or reassign a care schedule |
+| POST | `/api/v1/care-schedules/{id}/cancel` | Cancel a care schedule with a reason |
+| POST | `/api/v1/care-schedules/{id}/complete` | Complete a care schedule |
+| POST | `/api/v1/care-schedules/{id}/reopen` | Reopen a completed care schedule with a reason |
+| GET | `/api/v1/exam-requests` | Exam request queue |
+| PATCH | `/api/v1/exam-requests/{id}` | Change the urgency of a pending exam request |
+| POST | `/api/v1/exam-requests/{id}/dismiss` | Dismiss an exam request with a reason |
+| GET | `/api/v1/horses/{horseId}/care-instructions` | Get the current care instructions of a horse |
+| GET | `/api/v1/horses/{horseId}/care-schedules` | List vaccination, deworming and farrier schedules |
+| POST | `/api/v1/horses/{horseId}/care-schedules` | Create a care schedule |
+| DELETE | `/api/v1/horses/{horseId}/checkup-appointment` | Cancel the active routine checkup appointment |
+| PUT | `/api/v1/horses/{horseId}/checkup-appointment` | Set or reschedule the routine checkup appointment |
+| GET | `/api/v1/horses/{horseId}/exam-requests` | List exam requests of a horse |
+| POST | `/api/v1/horses/{horseId}/exam-requests` | Request a medical exam for a horse |
+| GET | `/api/v1/horses/{horseId}/health-history` | Horse health status history |
+| PATCH | `/api/v1/horses/{horseId}/health-status` | Change horse health status with a reason |
+| GET | `/api/v1/horses/{horseId}/injuries` | List horse injuries with current recovery status and history |
+| GET | `/api/v1/horses/{horseId}/medical-cases` | List horse medical cases |
+| GET | `/api/v1/horses/{horseId}/medical-records` | List horse medical visits |
+| POST | `/api/v1/horses/{horseId}/medical-records` | Record a medical visit outside a case |
+| GET | `/api/v1/horses/{horseId}/training-locks` | List current and past training locks of a horse |
+| POST | `/api/v1/horses/{horseId}/training-locks` | Set a veterinary training lock |
+| GET | `/api/v1/medical-cases/{caseId}` | Get a medical case with its visits |
+| POST | `/api/v1/medical-cases/{caseId}/close` | Close a case with final conclusion |
+| GET | `/api/v1/medical-cases/{caseId}/close-preview` | Preview what must be handled before closing a case |
+| PATCH | `/api/v1/medical-cases/{caseId}/conclusion` | Correct the final conclusion of a closed case with a reason |
+| POST | `/api/v1/medical-cases/{caseId}/visits` | Record a follow-up visit in an open case |
+| GET | `/api/v1/medical-records/{id}` | Get a medical visit |
+| PATCH | `/api/v1/medical-records/{id}` | Edit a medical visit with a reason |
+| PATCH | `/api/v1/medical-records/{id}/cost` | Adjust the cost of a medical visit with a reason |
+| POST | `/api/v1/medical-records/{id}/void` | Void a wrongly recorded medical visit |
+| GET | `/api/v1/medical/checkups` | Routine checkup schedule of the herd |
+| GET | `/api/v1/medical/cost-report` | Medical cost report by exam date |
+| GET | `/api/v1/medical/dashboard` | Medical dashboard |
+| GET | `/api/v1/training-locks/{id}` | Get a training lock |
+| POST | `/api/v1/training-locks/{id}/release` | Release a training lock with a reason |
 
 ## notifications
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| PUT | `/api/v1/me/devices` | Register the current device for push notifications |
+| DELETE | `/api/v1/me/devices/{token}` | Unregister a device of the current user |
 | GET | `/api/v1/notifications` | List current user notifications |
 | GET | `/api/v1/notifications/{id}` | Get current-user notification |
 | PATCH | `/api/v1/notifications/{id}/read` | Mark notification as read |
@@ -99,43 +141,44 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/horses/{id}/alerts` | List horse performance alerts |
+| GET | `/api/v1/horses/{id}/alerts` | Lịch sử điểm đo vượt ngưỡng (WARNING, CRITICAL) của ngựa |
 | GET | `/api/v1/horses/{id}/performance` | Get horse performance summary |
 | GET | `/api/v1/horses/{id}/performance/sessions` | List per-session performance summary of a horse |
-| GET | `/api/v1/horses/{id}/thresholds` | List current and historical threshold profiles |
-| PUT | `/api/v1/horses/{id}/thresholds` | Create new version of horse threshold profile |
-| GET | `/api/v1/horses/{id}/workload` | Get configured training workload summary |
-| GET | `/api/v1/sessions/{id}/metrics` | List session metrics |
-| POST | `/api/v1/sessions/{id}/metrics` | Ingest session metric |
-| POST | `/api/v1/sessions/{id}/metrics/batch` | Ingest metric batch for active session |
-| GET | `/api/v1/sessions/{id}/performance-summary` | Get session metric and alert summary |
+| GET | `/api/v1/horses/{id}/thresholds` | Xem ngưỡng nhịp tim/tốc độ đang áp cho ngựa |
+| GET | `/api/v1/horses/{id}/workload` | Khối lượng tập của ngựa trong một khoảng ngày (lượt đã hoàn thành) |
+| GET | `/api/v1/session-participants/{id}/evaluation` |  |
+| PATCH | `/api/v1/session-participants/{id}/evaluation` | Sửa điểm hoặc nhận xét của đánh giá lượt tập |
+| POST | `/api/v1/session-participants/{id}/evaluation` |  |
+| GET | `/api/v1/session-participants/{id}/metrics` | Xem các điểm đo nhịp tim/tốc độ của lượt tập theo thời gian |
+| POST | `/api/v1/session-participants/{id}/metrics` | Nhận một điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra |
+| POST | `/api/v1/session-participants/{id}/metrics/batch` | Nhận một lô điểm đo nhịp tim/tốc độ của lượt tập đang diễn ra |
+| GET | `/api/v1/session-participants/{id}/performance-summary` | Tổng kết nhịp tim, tốc độ và số cảnh báo của lượt tập |
 
 ## racing
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/v1/horses/{horseId}/race-results` | Get horse race history |
-| GET | `/api/v1/races` | List races |
-| POST | `/api/v1/races` | Create race |
-| GET | `/api/v1/races/{id}` | Get race and conditions |
-| PATCH | `/api/v1/races/{id}` | Update race before registration closes |
-| GET | `/api/v1/races/{id}/registrations` | List race registrations |
-| POST | `/api/v1/races/{id}/registrations` | Register eligible horse for race |
-| GET | `/api/v1/races/{id}/registrations/{registrationId}` | Get race registration and approvals |
-| PATCH | `/api/v1/races/{id}/registrations/{registrationId}` | Approve or reject race registration |
-| PATCH | `/api/v1/races/{id}/registrations/{registrationId}/result` | Record race result for registration |
-| GET | `/api/v1/races/{id}/results` | Get race results |
+| GET | `/api/v1/races` | (501) List races |
+| POST | `/api/v1/races` | (501) Create race |
+| GET | `/api/v1/races/{id}` | (501) Get race and conditions |
+| PATCH | `/api/v1/races/{id}` | (501) Update race before registration closes |
+| GET | `/api/v1/races/{id}/registrations` | (501) List race registrations |
+| POST | `/api/v1/races/{id}/registrations` | (501) Register eligible horse for race |
+| GET | `/api/v1/races/{id}/registrations/{registrationId}` | (501) Get race registration and approvals |
+| PATCH | `/api/v1/races/{id}/registrations/{registrationId}` | (501) Approve or reject race registration |
+| PATCH | `/api/v1/races/{id}/registrations/{registrationId}/result` | (501) Record race result for registration |
+| GET | `/api/v1/races/{id}/results` | (501) Get race results |
 
 ## reports
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/reports/club/finance` | Get later-phase manual finance summary |
-| GET | `/api/v1/reports/club/medical` | Get club medical activity report |
-| GET | `/api/v1/reports/club/training` | Get club training activity report |
-| GET | `/api/v1/reports/dashboard` | Get role-scoped dashboard summary |
-| GET | `/api/v1/reports/horses/{horseId}/health` | Get horse health history report |
-| GET | `/api/v1/reports/horses/{horseId}/progress` | Get horse training progress report |
+| GET | `/api/v1/reports/club/finance` | Khoản thu từ chủ ngựa, giá trị vật tư và tiền thưởng của CLB theo khoảng ngày |
+| GET | `/api/v1/reports/dashboard` | Tiến độ tập luyện và thể lực của ngựa trong CLB theo khoảng ngày |
+| GET | `/api/v1/reports/horses/{horseId}/health` | Lịch sử sức khỏe của một con ngựa theo khoảng ngày |
+| GET | `/api/v1/reports/horses/{horseId}/progress` | Tiến độ tập luyện của một con ngựa theo khoảng ngày |
+| GET | `/api/v1/reports/owner/costs` | Phí nuôi và chi phí y tế của một chủ ngựa theo khoảng ngày |
 
 ## stable
 
@@ -145,21 +188,33 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/barns` | Create barn |
 | DELETE | `/api/v1/barns/{id}` | Soft-delete barn |
 | GET | `/api/v1/barns/{id}` | Get barn details |
-| PATCH | `/api/v1/barns/{id}` | Rename barn or assign its head trainer |
-| PATCH | `/api/v1/checklists/{id}/complete` | Complete assigned checklist item |
-| POST | `/api/v1/feeding-plans/{id}/approve` | Approve feeding plan as Trainer or Vet |
-| GET | `/api/v1/grooms/me/today` | Get today assigned groom checklist |
-| GET | `/api/v1/horses/{horseId}/checklists` | List horse daily checklists |
-| POST | `/api/v1/horses/{horseId}/checklists` | Create assigned daily checklist |
-| GET | `/api/v1/horses/{horseId}/feeding-plans` | List horse feeding plans |
-| POST | `/api/v1/horses/{horseId}/feeding-plans` | Create feeding plan for approval |
-| DELETE | `/api/v1/horses/{id}/groom` | End the current groom assignment of a horse |
+| PATCH | `/api/v1/barns/{id}` | Update barn details or its head trainer |
+| GET | `/api/v1/care-task-types` | Liệt kê danh mục loại việc chăm sóc |
+| POST | `/api/v1/care-task-types` | Thêm loại việc chăm sóc |
+| PATCH | `/api/v1/care-task-types/{id}` | Sửa, ngưng hoặc dùng lại loại việc chăm sóc |
+| PATCH | `/api/v1/checklist-items/{id}` | Tick hoặc gỡ tick một việc trong checklist hôm nay |
+| POST | `/api/v1/daily-checklists/regenerate-today` | Sinh lại checklist hôm nay cho các ngựa có Groom mà còn thiếu; checklist đã sinh giữ nguyên |
+| POST | `/api/v1/feeding-plans` | Lập bản nháp khẩu phần cho một hoặc nhiều ngựa |
+| DELETE | `/api/v1/feeding-plans/{id}` | Xóa bản nháp khẩu phần |
+| GET | `/api/v1/feeding-plans/{id}` | Xem một khẩu phần |
+| PUT | `/api/v1/feeding-plans/{id}` | Thay toàn bộ dòng của bản nháp khẩu phần |
+| POST | `/api/v1/feeding-plans/{id}/approve` | Duyệt bản nháp thành khẩu phần đang áp dụng của ngựa |
+| GET | `/api/v1/grooms/me/today` | Màn Hôm nay của Groom: việc trong ngày của từng ngựa phụ trách |
+| GET | `/api/v1/grooms/workload` | List active grooms with the number of horses each one cares for |
+| DELETE | `/api/v1/horse-care-tasks/{id}` | Gỡ việc riêng: chưa bắt đầu thì xóa, đang chạy thì kết thúc hôm nay |
+| GET | `/api/v1/horses/{horseId}/care-tasks` | Liệt kê việc riêng của ngựa |
+| POST | `/api/v1/horses/{horseId}/care-tasks` | Gắn việc riêng cho ngựa trong khoảng ngày |
+| GET | `/api/v1/horses/{horseId}/checklists` | Checklist hằng ngày của ngựa theo khoảng ngày |
+| GET | `/api/v1/horses/{horseId}/feeding-plans` | Liệt kê khẩu phần của ngựa |
 | PUT | `/api/v1/horses/{id}/groom` | Assign or change the groom of a horse |
 | GET | `/api/v1/horses/{id}/grooms` | List the groom history of a horse |
-| GET | `/api/v1/incidents` | List stable incidents |
-| POST | `/api/v1/incidents` | Report stable incident |
-| GET | `/api/v1/incidents/{id}` | Get stable incident |
-| PATCH | `/api/v1/incidents/{id}/status` | Update incident resolution status |
+| DELETE | `/api/v1/horses/{id}/stall` | Remove a horse from its current stall |
+| PUT | `/api/v1/horses/{id}/stall` | Assign or move a horse to a stall in its barn |
+| GET | `/api/v1/incidents` | Liệt kê sự cố tại chuồng |
+| POST | `/api/v1/incidents` | Groom báo sự cố tại chuồng cho ngựa đang ở câu lạc bộ |
+| GET | `/api/v1/incidents/{id}` | Xem một sự cố kèm yêu cầu khám |
+| POST | `/api/v1/incidents/{id}/refer` | Chuyển sự cố cho bác sĩ: tạo yêu cầu khám, khẩn thì báo ngay mọi bác sĩ |
+| POST | `/api/v1/incidents/{id}/resolve` | Đóng sự cố kèm kết quả xử lý |
 | POST | `/api/v1/stall-assignments/{id}/end` | End stall assignment |
 | GET | `/api/v1/stalls` | List club stalls |
 | POST | `/api/v1/stalls` | Create stall |
@@ -167,47 +222,72 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | GET | `/api/v1/stalls/{id}` | Get stall |
 | PATCH | `/api/v1/stalls/{id}` | Update stall |
 | GET | `/api/v1/stalls/{id}/assignments` | List stall assignment history |
-| POST | `/api/v1/stalls/{id}/assignments` | Assign horse to stall |
 
 ## supplies
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/supplies/items` | List club supply inventory |
-| POST | `/api/v1/supplies/items` | Create supply item |
-| DELETE | `/api/v1/supplies/items/{id}` | Soft-delete supply item |
-| GET | `/api/v1/supplies/items/{id}` | Get supply item |
-| PATCH | `/api/v1/supplies/items/{id}` | Update supply quantity or threshold |
-| GET | `/api/v1/supplies/items/low-stock` | List items at or below reorder threshold |
-| GET | `/api/v1/supplies/requests` | List supply requests |
-| POST | `/api/v1/supplies/requests` | Request supply replenishment |
-| GET | `/api/v1/supplies/requests/{id}` | Get supply request |
-| PATCH | `/api/v1/supplies/requests/{id}` | Update a pending supply request |
-| PATCH | `/api/v1/supplies/requests/{id}/status` | Approve, reject or fulfill supply request |
+| GET | `/api/v1/supplies/items` | Liệt kê vật tư của kho chung |
+| POST | `/api/v1/supplies/items` | Thêm vật tư |
+| DELETE | `/api/v1/supplies/items/{id}` | Xóa mềm vật tư |
+| GET | `/api/v1/supplies/items/{id}` | Xem một vật tư |
+| PATCH | `/api/v1/supplies/items/{id}` | Sửa tên, loại, đơn vị, ngưỡng báo thiếu của vật tư |
+| GET | `/api/v1/supplies/items/{id}/lots` | Các lô của vật tư, lô nhập sớm nhất trước |
+| GET | `/api/v1/supplies/items/{id}/movements` | Sổ nhập xuất của vật tư, mới nhất trước |
+| POST | `/api/v1/supplies/items/{id}/receipts` | Nhập hàng trực tiếp vào kho, không qua đề xuất |
+| POST | `/api/v1/supplies/items/{id}/usages` | Lấy vật tư ra dùng, trừ tồn ngay |
+| GET | `/api/v1/supplies/items/low-stock` | Liệt kê vật tư sắp hết |
+| GET | `/api/v1/supplies/requests` | Liệt kê đề xuất bổ sung vật tư |
+| POST | `/api/v1/supplies/requests` | Gửi đề xuất bổ sung vật tư |
+| GET | `/api/v1/supplies/requests/{id}` | Xem một đề xuất bổ sung vật tư |
+| PATCH | `/api/v1/supplies/requests/{id}` | Sửa đề xuất đang chờ duyệt của mình |
+| PATCH | `/api/v1/supplies/requests/{id}/status` | Duyệt, từ chối, cấp hoặc hủy đề xuất bổ sung vật tư |
+| POST | `/api/v1/supplies/usages/{usageId}/cancel` | Hủy một lần xuất ghi nhầm, cộng trả tồn; người xuất trong 24 giờ, Club Manager bất kỳ lúc nào |
 
 ## training
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/horses/{horseId}/training-plans` | List horse training plans |
-| POST | `/api/v1/horses/{horseId}/training-plans` | Create training plan |
-| GET | `/api/v1/sessions/{id}` | Get training session |
-| PATCH | `/api/v1/sessions/{id}` | Reschedule or reassign a scheduled session |
-| POST | `/api/v1/sessions/{id}/cancel` | Cancel training session with a reason |
-| POST | `/api/v1/sessions/{id}/complete` | Complete training session and record actual result |
-| GET | `/api/v1/sessions/{id}/evaluation` | Get session evaluation |
-| POST | `/api/v1/sessions/{id}/evaluation` | Evaluate completed session |
-| POST | `/api/v1/sessions/{id}/start` | Start training session |
-| GET | `/api/v1/sessions/{id}/time-trials` | List session time trials |
-| POST | `/api/v1/sessions/{id}/time-trials` | Record time trial during an active session |
-| GET | `/api/v1/time-trials/{id}` | Get time trial result and media reference |
-| GET | `/api/v1/training-plans/{id}` | Get training plan |
-| PATCH | `/api/v1/training-plans/{id}` | Update a scheduled training plan |
-| POST | `/api/v1/training-plans/{id}/activate` | Activate training plan |
-| POST | `/api/v1/training-plans/{id}/cancel` | Cancel training plan and scheduled sessions |
-| POST | `/api/v1/training-plans/{id}/complete` | Complete training plan |
-| GET | `/api/v1/training-plans/{id}/sessions` | List sessions in training plan |
-| POST | `/api/v1/training-plans/{id}/sessions` | Schedule training session |
+| GET | `/api/v1/classes` |  |
+| POST | `/api/v1/classes` |  |
+| GET | `/api/v1/classes/{classId}` |  |
+| PATCH | `/api/v1/classes/{classId}` |  |
+| GET | `/api/v1/classes/{classId}/enrollable-horses` | Ngựa trong khu của Head Trainer ghi danh được vào lớp lúc này (bỏ ngựa đã ghi danh và ngựa trùng giờ) |
+| GET | `/api/v1/classes/{classId}/enrollments` |  |
+| POST | `/api/v1/classes/{classId}/enrollments` | Ghi danh ngựa vào lớp tại thời điểm hiện tại, kể cả khi lớp chưa khai giảng |
+| GET | `/api/v1/classes/{classId}/plan` | Giáo án của lớp (bản chép lúc tạo lớp) kèm khoảng ngày và thời lượng tối thiểu của từng giai đoạn |
+| GET | `/api/v1/classes/{classId}/progress` | Tiến độ xếp lịch theo tuần: mỗi môn đã xếp bao nhiêu buổi so với số buổi tối thiểu |
+| GET | `/api/v1/classes/{classId}/sessions` |  |
+| POST | `/api/v1/classes/{classId}/sessions` |  |
+| POST | `/api/v1/classes/{classId}/sessions/bulk` | Thêm nhiều buổi vào lớp cùng lúc (vd lặp hằng tuần); một buổi lỗi thì không lưu buổi nào |
+| PATCH | `/api/v1/classes/{classId}/status` |  |
+| PATCH | `/api/v1/enrollments/{id}/leave` | Cho ngựa rời lớp tại thời điểm hiện tại, hủy lượt tham gia các buổi từ lúc đó trở đi |
+| GET | `/api/v1/horses/{horseId}/training/classes` | List classes of a horse |
+| GET | `/api/v1/horses/{horseId}/training/sessions` | List training sessions of a horse |
+| POST | `/api/v1/session-participants/{id}/absent` |  |
+| POST | `/api/v1/session-participants/{id}/check-in` |  |
+| POST | `/api/v1/session-participants/{id}/complete` |  |
+| PATCH | `/api/v1/session-participants/{id}/groom` |  |
+| POST | `/api/v1/session-participants/{id}/ready` |  |
+| POST | `/api/v1/session-participants/{id}/start` |  |
+| POST | `/api/v1/session-participants/{id}/stop` | Dừng sớm lượt đang tập, bắt buộc lý do |
+| GET | `/api/v1/session-participants/{id}/trial-results` |  |
+| POST | `/api/v1/session-participants/{id}/trial-results` |  |
+| PATCH | `/api/v1/session-participants/{id}/trial-results/{attemptNo}` | Sửa video, thời gian hoặc ghi chú của một lần chạy thử |
+| GET | `/api/v1/training-plans` | Liệt kê giáo án (Head Trainer: của mình) |
+| POST | `/api/v1/training-plans` | Tạo giáo án ghép môn theo tuần |
+| DELETE | `/api/v1/training-plans/{id}` | Xóa giáo án chưa có lớp dùng |
+| GET | `/api/v1/training-plans/{id}` | Xem một giáo án kèm các môn |
+| PUT | `/api/v1/training-plans/{id}` | Thay nội dung giáo án của mình |
+| GET | `/api/v1/training-sessions/{sessionId}` |  |
+| PATCH | `/api/v1/training-sessions/{sessionId}` | Sửa buổi tập chưa tới giờ mở điểm danh |
+| POST | `/api/v1/training-sessions/{sessionId}/cancel` |  |
+| GET | `/api/v1/training-sessions/{sessionId}/participants` |  |
+| GET | `/api/v1/training-subjects` | Liệt kê danh mục môn học |
+| POST | `/api/v1/training-subjects` | Thêm môn học |
+| DELETE | `/api/v1/training-subjects/{subjectId}` | Xóa môn học |
+| GET | `/api/v1/training-subjects/{subjectId}` | Xem một môn học |
+| PATCH | `/api/v1/training-subjects/{subjectId}` | Sửa môn học |
 
 ## users
 
@@ -217,5 +297,7 @@ Socket.IO uses the `/events` namespace. Its gateway currently rejects connection
 | POST | `/api/v1/users` | Create club user |
 | GET | `/api/v1/users/{id}` | Get club user |
 | PATCH | `/api/v1/users/{id}` | Update club user |
+| POST | `/api/v1/users/{id}/head-trainer-handover` | Bàn giao khu chuồng, giáo án và lớp chưa kết thúc của Head Trainer sang Head Trainer khác |
+| POST | `/api/v1/users/{id}/reset-password` | Reset a staff account password |
 | PATCH | `/api/v1/users/{id}/status` | Change user account status |
 

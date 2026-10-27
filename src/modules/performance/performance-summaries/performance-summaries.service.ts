@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { findReadableHorse } from '../../horses/utils/horse-access';
-import { currentUserForActor } from '../../users/utils/current-user';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
   HorsePerformanceResponseDto,
   SessionPerformanceSummaryDto,
@@ -13,11 +11,14 @@ import {
 } from '../mappers/performance.mapper';
 import { PerformanceSummariesRepository } from './performance-summaries.repository';
 
+/**
+ * Tổng hợp chỉ số hiệu suất của con ngựa (tab hiệu suất). Chỉ đọc.
+ */
 @Injectable()
 export class PerformanceSummariesService {
   constructor(
     private readonly performanceRepository: PerformanceSummariesRepository,
-    private readonly dataSource: DataSource,
+    private readonly horseAccess: HorseAccessService,
   ) {}
 
   /**
@@ -25,15 +26,14 @@ export class PerformanceSummariesService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns HorsePerformanceResponseDto - Tổng quan chỉ số
+   * @returns Promise trả về HorsePerformanceResponseDto - Tổng quan chỉ số
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async getHorseSummary(
     actor: Actor,
     horseId: string,
   ): Promise<HorsePerformanceResponseDto> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
-    await findReadableHorse(this.dataSource.manager, actor, caller.id, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const metrics = await this.performanceRepository.listMetrics(horseId);
     const evaluations =
       await this.performanceRepository.listEvaluations(horseId);
@@ -46,15 +46,14 @@ export class PerformanceSummariesService {
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns Mỗi buổi tập một dòng tổng hợp, buổi mới nhất đứng đầu
+   * @returns Promise trả về mỗi buổi tập một dòng tổng hợp, buổi mới nhất đứng đầu
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
   async listSessionSummaries(
     actor: Actor,
     horseId: string,
   ): Promise<SessionPerformanceSummaryDto[]> {
-    const caller = await currentUserForActor(this.dataSource.manager, actor);
-    await findReadableHorse(this.dataSource.manager, actor, caller.id, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const rows = await this.performanceRepository.sessionSummaries(horseId);
     return rows.map(toSessionPerformanceSummary);
   }

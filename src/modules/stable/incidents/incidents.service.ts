@@ -1,0 +1,635 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'node:crypto';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
+import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
+import { UserRole } from '../../../common/enums/role.enum';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../audit/services/audit.service';
+import { mapUniqueViolation } from '../../../common/utils/unique-violation';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { MediaService } from '../../media/services/media.service';
+import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
+import { MedicalExamRequestEntity } from '../../medical/entities/medical-exam-request.entity';
+import { ExamRequestsService } from '../../medical/exam-requests/exam-requests.service';
+import type {
+  ExamRequestHandledEvent,
+  ExamRequestReopenedEvent,
+} from '../../medical/types/medical-events.types';
+import { currentUserForActor } from '../../users/utils/current-user';
+import { IncidentStatus } from '../constants/incident-status.enum';
+import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
+import {
+  INCIDENT_HANDLED_EVENT,
+  INCIDENT_REPORTED_EVENT,
+} from '../constants/stable-events.constants';
+import {
+  IncidentListQueryDto,
+  IncidentPageResponseDto,
+  IncidentResponseDto,
+  ReferIncidentDto,
+  ReportIncidentDto,
+  ResolveIncidentDto,
+} from '../dto/incident.dto';
+import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
+import { IncidentEntity } from '../entities/incident.entity';
+import { toIncidentResponse } from '../mappers/incident.mapper';
+import {
+  assertIncidentNotReferred,
+  assertIncidentOpen,
+  assertIncidentResolvable,
+} from '../policies/incident.policy';
+import { assertHorseLifecycleWritable } from '../policies/stable.policy';
+import { StableAccessService } from '../shared/stable-access.service';
+import type {
+  IncidentHandledEvent,
+  IncidentReportedEvent,
+} from '../types/stable-events.types';
+
+const INCIDENT_RELATIONS = {
+  horse: true,
+  reporter: true,
+  resolver: true,
+} as const;
+
+const INCIDENT_NOT_FOUND = 'Không tìm thấy sự cố';
+
+/**
+ * Sự cố tại chuồng: Groom báo, Head Trainer của khu chuyển bác sĩ và đóng
+ */
+@Injectable()
+export class IncidentsService {
+  constructor(
+    @InjectRepository(IncidentEntity)
+    private readonly incidents: Repository<IncidentEntity>,
+    private readonly access: StableAccessService,
+    private readonly horseAccess: HorseAccessService,
+    private readonly media: MediaService,
+    private readonly examRequests: ExamRequestsService,
+    private readonly events: DomainEventPublisher,
+    private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
+  ) {}
+
+  /**
+   * Liệt kê sự cố mới nhất trước
+   *
+   * - Club Manager, Veterinarian: mọi sự cố
+   * - Head Trainer: sự cố của ngựa thuộc khu mình phụ trách
+   * - Groom: sự cố mình báo, hoặc của ngựa mình đang phụ trách
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param query Lọc trạng thái, ngựa, khu và phân trang
+   * @returns Promise trả về một trang sự cố
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   */
+  async list(
+    actor: Actor,
+    query: IncidentListQueryDto,
+  ): Promise<IncidentPageResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const qb = this.incidents
+      .createQueryBuilder('incident')
+      .withDeleted()
+      .innerJoinAndSelect('incident.horse', 'horse')
+      .innerJoinAndSelect('incident.reporter', 'reporter')
+      .leftJoinAndSelect('incident.resolver', 'resolver')
+      .orderBy('incident.createdAt', 'DESC')
+      .addOrderBy('incident.id', 'DESC')
+      .skip(query.skip)
+      .take(query.limit);
+    if (query.status) {
+      qb.andWhere('incident.status = :status', { status: query.status });
+    }
+    if (query.horseId) {
+      qb.andWhere('incident.horseId = :horseId', { horseId: query.horseId });
+    }
+    if (query.barnId) {
+      qb.andWhere('horse.barnId = :barnId', { barnId: query.barnId });
+    }
+    if (!this.seesAll(actor)) {
+      if (this.horseAccess.hasRole(actor, UserRole.HEAD_TRAINER)) {
+        qb.innerJoin(
+          'horse.barn',
+          'scopeBarn',
+          'scopeBarn.deletedAt IS NULL AND scopeBarn.headTrainerId = :callerId',
+          { callerId: caller.id },
+        ).andWhere('horse.deletedAt IS NULL');
+      } else {
+        qb.andWhere(
+          (outer: SelectQueryBuilder<IncidentEntity>) =>
+            `(incident.reportedBy = :callerId OR EXISTS ${outer
+              .subQuery()
+              .select('1')
+              .from(GroomAssignmentEntity, 'assignment')
+              .where('assignment.horseId = incident.horseId')
+              .andWhere('assignment.groomId = :callerId')
+              .andWhere('assignment.endAt IS NULL')
+              .getQuery()})`,
+          { callerId: caller.id },
+        );
+      }
+    }
+    const [rows, total] = await qb.getManyAndCount();
+    return new PaginationResponseDto(
+      await this.toResponses(this.dataSource.manager, rows),
+      total,
+      query.page,
+      query.limit,
+    );
+  }
+
+  /**
+   * Groom đang hoạt động báo sự cố cho ngựa đang ở CLB, không cần đang phụ trách con đó
+   *
+   * - Kiểm ngựa trước khi kiểm ảnh, kiểm lại sau khi khóa ngựa
+   * - Sự cố khẩn: tạo yêu cầu khám khẩn gắn sự cố và báo mọi bác sĩ trong cùng transaction
+   * - Ghi INCIDENT_REPORTED_EVENT vào outbox để báo Head Trainer của khu, và Groom đang phụ trách ngựa nếu người báo không phải Groom đó
+   * - Ghi nhật ký kèm ngựa, mô tả, ảnh, cờ khẩn và yêu cầu khám (nếu có)
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param body Ngựa, mô tả, cờ khẩn, ảnh
+   * @returns Promise trả về sự cố vừa báo
+   * @throws ForbiddenException Nếu tài khoản không hoạt động
+   * @throws NotFoundException Nếu không có ngựa, hồ sơ đã xóa, hoặc không có ảnh của người gọi
+   * @throws BadRequestException Nếu ảnh không phải ảnh sự cố hoặc không đạt giới hạn
+   * @throws ConflictException Nếu ảnh chưa có trên storage hoặc đã gắn cho sự cố khác, hoặc ngựa đã chuyển nhượng hay đã mất
+   */
+  async report(
+    actor: Actor,
+    body: ReportIncidentDto,
+  ): Promise<IncidentResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    assertHorseLifecycleWritable(
+      await this.horseAccess.findWritableHorse(actor, body.horseId),
+      'INCIDENT',
+    );
+    if (body.photoMediaId) {
+      await this.media.assertAttachableIncidentPhoto(
+        caller.id,
+        body.photoMediaId,
+      );
+    }
+    const urgent = body.urgent === true;
+    const description = body.description.trim();
+    const id = await mapUniqueViolation(
+      () =>
+        this.dataSource.transaction(async (manager) => {
+          const horse = await this.horseAccess.lockWritableHorse(
+            manager,
+            actor,
+            body.horseId,
+          );
+          assertHorseLifecycleWritable(horse, 'INCIDENT');
+          const assignment = await manager.findOneBy(GroomAssignmentEntity, {
+            horseId: horse.id,
+            endAt: IsNull(),
+          });
+          const incident = await manager.save(
+            manager.create(IncidentEntity, {
+              horseId: horse.id,
+              reportedBy: caller.id,
+              description,
+              mediaAssetId: body.photoMediaId ?? null,
+              status: IncidentStatus.OPEN,
+            }),
+          );
+          let examRequestId: string | null = null;
+          if (urgent) {
+            const exam = await this.examRequests.createFromIncident(manager, {
+              horseId: horse.id,
+              incidentId: incident.id,
+              reportedBy: caller.id,
+              description,
+              urgent: true,
+            });
+            await this.examRequests.announceCreated(manager, exam);
+            examRequestId = exam.id;
+          }
+          await this.auditService.record(manager, {
+            actorId: caller.id,
+            action: AuditAction.CREATE,
+            entityType: AuditEntityType.INCIDENT,
+            entityId: incident.id,
+            before: null,
+            after: {
+              horseId: horse.id,
+              description,
+              photoMediaId: incident.mediaAssetId,
+              urgent,
+              examRequestId,
+            },
+            feature: AuditFeature.INCIDENT,
+          });
+          const event: IncidentReportedEvent = {
+            eventId: incident.id,
+            incidentId: incident.id,
+            horseId: horse.id,
+            urgent,
+            description,
+            assignedGroomId:
+              assignment && assignment.groomId !== caller.id
+                ? assignment.groomId
+                : null,
+          };
+          await this.events.publish(manager, INCIDENT_REPORTED_EVENT, event);
+          return incident.id;
+        }),
+      {
+        incidents_media_asset_uq: {
+          field: 'photoMediaId',
+          message: 'Ảnh đã gắn cho sự cố khác',
+        },
+      },
+    );
+    return this.get(actor, id);
+  }
+
+  /**
+   * Lấy một sự cố
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của sự cố
+   * @returns Promise trả về sự cố kèm ảnh và yêu cầu khám
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, Head Trainer xem sự cố ngoài khu, hoặc Groom xem sự cố không do mình báo và không thuộc ngựa mình đang phụ trách
+   * @throws NotFoundException Nếu không có sự cố
+   */
+  async get(actor: Actor, id: string): Promise<IncidentResponseDto> {
+    const manager = this.dataSource.manager;
+    const caller = await currentUserForActor(manager, actor);
+    const incident = await manager.findOne(IncidentEntity, {
+      where: { id },
+      relations: INCIDENT_RELATIONS,
+      withDeleted: true,
+    });
+    if (!incident) throw new NotFoundException(INCIDENT_NOT_FOUND);
+    await this.assertCanView(manager, actor, caller.id, incident);
+    const [response] = await this.toResponses(manager, [incident]);
+    return response;
+  }
+
+  /**
+   * Head Trainer của khu chuyển sự cố đang mở cho bác sĩ: tạo yêu cầu khám gắn sự cố
+   *
+   * - Khóa ngựa của sự cố rồi mới khóa sự cố
+   * - Khẩn: ghi event báo mọi bác sĩ vào outbox trong cùng transaction
+   * - Ghi nhật ký kèm yêu cầu khám vừa tạo và mức khẩn
+   * - Ghi INCIDENT_HANDLED_EVENT (REFERRED) vào outbox trong cùng transaction để báo người báo sự cố và Groom đang phụ trách ngựa
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của sự cố
+   * @param body Mức khẩn của yêu cầu khám
+   * @returns Promise trả về sự cố kèm yêu cầu khám
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc ngựa không thuộc khu người gọi
+   * @throws NotFoundException Nếu không có sự cố hoặc ngựa
+   * @throws ConflictException Nếu ngựa chưa có khu, đã chuyển nhượng hoặc đã mất; sự cố đã đóng; hoặc đã chuyển bác sĩ
+   */
+  async refer(
+    actor: Actor,
+    id: string,
+    body: ReferIncidentDto,
+  ): Promise<IncidentResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    await this.dataSource.transaction(async (manager) => {
+      const snapshot = await manager.findOneBy(IncidentEntity, { id });
+      if (!snapshot) throw new NotFoundException(INCIDENT_NOT_FOUND);
+      await this.access.lockOperableHorse(
+        manager,
+        caller.id,
+        snapshot.horseId,
+        'INCIDENT',
+      );
+      const incident = await this.lockIncident(manager, id);
+      assertIncidentOpen(incident.status);
+      assertIncidentNotReferred(
+        await manager.exists(MedicalExamRequestEntity, {
+          where: { incidentId: incident.id },
+        }),
+      );
+      const exam = await this.examRequests.createFromIncident(manager, {
+        horseId: incident.horseId,
+        incidentId: incident.id,
+        reportedBy: caller.id,
+        description: incident.description,
+        urgent: body.urgent === true,
+      });
+      await this.examRequests.announceCreated(manager, exam);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before: { examRequestId: null },
+        after: { examRequestId: exam.id, urgent: exam.urgent },
+        feature: AuditFeature.INCIDENT,
+      });
+      const handled: IncidentHandledEvent = {
+        eventId: randomUUID(),
+        incidentId: incident.id,
+        horseId: incident.horseId,
+        reportedBy: incident.reportedBy,
+        handledBy: caller.id,
+        action: 'REFERRED',
+        resolution: null,
+      };
+      await this.events.publish(manager, INCIDENT_HANDLED_EVENT, handled);
+    });
+    return this.get(actor, id);
+  }
+
+  /**
+   * Head Trainer của khu đóng sự cố kèm kết quả xử lý
+   *
+   * - Khóa sự cố rồi khóa chia sẻ yêu cầu khám của sự cố, chờ bác sĩ đang xử lý yêu cầu đó xong mới kiểm
+   * - Nguồn đóng HEAD_TRAINER
+   * - Ghi nhật ký trạng thái trước và sau, kết quả xử lý ghi vào cột lý do
+   * - Ghi INCIDENT_HANDLED_EVENT (RESOLVED) kèm kết quả xử lý vào outbox trong cùng transaction để báo người báo sự cố và Groom đang phụ trách ngựa
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param id UUID của sự cố
+   * @param body Kết quả xử lý
+   * @returns Promise trả về sự cố sau khi đóng
+   * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc ngựa không thuộc khu người gọi
+   * @throws NotFoundException Nếu không có sự cố
+   * @throws ConflictException Nếu sự cố đã đóng, hoặc yêu cầu khám của sự cố còn chờ bác sĩ
+   */
+  async resolve(
+    actor: Actor,
+    id: string,
+    body: ResolveIncidentDto,
+  ): Promise<IncidentResponseDto> {
+    const caller = await currentUserForActor(this.dataSource.manager, actor);
+    await this.dataSource.transaction(async (manager) => {
+      const incident = await this.lockIncident(manager, id);
+      await this.access.assertHorseInTrainerBarn(
+        manager,
+        incident.horseId,
+        caller.id,
+      );
+      assertIncidentOpen(incident.status);
+      const exam = await manager.findOne(MedicalExamRequestEntity, {
+        where: { incidentId: incident.id },
+        lock: { mode: 'pessimistic_read' },
+      });
+      assertIncidentResolvable(exam?.status ?? null);
+      const previousStatus = incident.status;
+      incident.status = IncidentStatus.RESOLVED;
+      incident.resolution = body.resolution.trim();
+      incident.resolvedBy = caller.id;
+      incident.resolvedAt = new Date();
+      incident.resolutionSource = IncidentResolutionSource.HEAD_TRAINER;
+      await manager.save(incident);
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before: { status: previousStatus },
+        after: { status: incident.status },
+        reason: incident.resolution,
+        feature: AuditFeature.INCIDENT,
+      });
+      const handled: IncidentHandledEvent = {
+        eventId: randomUUID(),
+        incidentId: incident.id,
+        horseId: incident.horseId,
+        reportedBy: incident.reportedBy,
+        handledBy: caller.id,
+        action: 'RESOLVED',
+        resolution: incident.resolution,
+      };
+      await this.events.publish(manager, INCIDENT_HANDLED_EVENT, handled);
+    });
+    return this.get(actor, id);
+  }
+
+  /**
+   * Đóng sự cố đang mở khi bác sĩ khám xong hoặc bỏ qua yêu cầu khám sinh ra từ sự cố đó
+   *
+   * - Yêu cầu không từ sự cố, sự cố không còn hoặc đã đóng, hoặc yêu cầu không còn đúng kết quả và thời điểm xử lý trong event (event cũ giao lại sau khi yêu cầu đã quay về chờ): không làm gì
+   * - Khóa sự cố rồi khóa chia sẻ yêu cầu khám
+   * - Nguồn đóng EXAM
+   * - Kết quả xử lý "Bác sĩ đã khám" hoặc "Bác sĩ đã bỏ qua yêu cầu khám"; người đóng và thời điểm đóng lấy theo bác sĩ xử lý và thời điểm xử lý yêu cầu
+   * - Ghi nhật ký trạng thái trước và sau như khi Head Trainer đóng, không ghi INCIDENT_HANDLED_EVENT
+   *
+   * @param event Payload của MEDICAL_EXAM_REQUEST_HANDLED_EVENT
+   * @returns Promise hoàn tất khi đã đóng hoặc bỏ qua
+   */
+  async resolveFromExam(event: ExamRequestHandledEvent): Promise<void> {
+    const incidentId = event.incidentId;
+    if (!incidentId) return;
+    await this.dataSource.transaction(async (manager) => {
+      const incident = await manager.findOne(IncidentEntity, {
+        where: { id: incidentId },
+        lock: { mode: 'for_no_key_update' },
+      });
+      if (incident?.status !== IncidentStatus.OPEN) return;
+      const request = await manager.findOne(MedicalExamRequestEntity, {
+        where: { id: event.requestId },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (
+        request?.status !== event.outcome ||
+        request.handledAt?.toISOString() !== event.handledAt
+      ) {
+        return;
+      }
+      incident.status = IncidentStatus.RESOLVED;
+      incident.resolutionSource = IncidentResolutionSource.EXAM;
+      incident.resolution =
+        event.outcome === ExamRequestStatus.EXAMINED
+          ? 'Bác sĩ đã khám'
+          : 'Bác sĩ đã bỏ qua yêu cầu khám';
+      incident.resolvedBy = event.handledBy;
+      incident.resolvedAt = new Date(event.handledAt);
+      await manager.save(incident);
+      await this.auditService.record(manager, {
+        actorId: event.handledBy,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before: { status: IncidentStatus.OPEN },
+        after: { status: incident.status },
+        reason: incident.resolution,
+        feature: AuditFeature.INCIDENT,
+      });
+    });
+  }
+
+  /**
+   * Mở lại sự cố đã tự đóng theo yêu cầu khám khi yêu cầu đó quay về chờ bác sĩ
+   *
+   * - Chỉ mở sự cố có nguồn đóng EXAM; sự cố Head Trainer đóng tay hoặc đóng do đổi vòng đời ngựa giữ nguyên
+   * - Yêu cầu không từ sự cố, sự cố không còn, hoặc yêu cầu không còn chờ bác sĩ (event cũ giao lại): không làm gì
+   * - Khóa sự cố rồi khóa chia sẻ yêu cầu khám
+   * - Xóa kết quả xử lý, người đóng, thời điểm đóng, nguồn đóng; ghi nhật ký kèm lý do trong event, người thao tác là bác sĩ
+   *
+   * @param event Payload của MEDICAL_EXAM_REQUEST_REOPENED_EVENT
+   * @returns Promise hoàn tất khi đã mở lại hoặc bỏ qua
+   */
+  async reopenFromExam(event: ExamRequestReopenedEvent): Promise<void> {
+    const incidentId = event.incidentId;
+    if (!incidentId) return;
+    await this.dataSource.transaction(async (manager) => {
+      const incident = await manager.findOne(IncidentEntity, {
+        where: { id: incidentId },
+        lock: { mode: 'for_no_key_update' },
+      });
+      if (incident?.resolutionSource !== IncidentResolutionSource.EXAM) {
+        return;
+      }
+      const request = await manager.findOne(MedicalExamRequestEntity, {
+        where: { id: event.requestId },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (request?.status !== ExamRequestStatus.PENDING) return;
+      const before = {
+        status: incident.status,
+        resolution: incident.resolution,
+        resolvedBy: incident.resolvedBy,
+      };
+      incident.status = IncidentStatus.OPEN;
+      incident.resolution = null;
+      incident.resolvedBy = null;
+      incident.resolvedAt = null;
+      incident.resolutionSource = null;
+      await manager.save(incident);
+      await this.auditService.record(manager, {
+        actorId: event.reopenedBy,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.INCIDENT,
+        entityId: incident.id,
+        before,
+        after: { status: incident.status },
+        reason: event.reason,
+        feature: AuditFeature.INCIDENT,
+      });
+    });
+  }
+
+  /**
+   * Kiểm người gọi có vai trò xem mọi sự cố
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @returns true nếu người gọi là Club Manager hoặc Veterinarian
+   */
+  private seesAll(actor: Actor): boolean {
+    return this.horseAccess.hasRole(
+      actor,
+      UserRole.CLUB_MANAGER,
+      UserRole.VETERINARIAN,
+    );
+  }
+
+  /**
+   * Ghép link ảnh và yêu cầu khám vào các sự cố, đọc gộp một lượt
+   *
+   * @param manager EntityManager dùng để query
+   * @param incidents Các sự cố đã load horse, reporter, resolver
+   * @returns Promise trả về response theo đúng thứ tự đầu vào
+   */
+  private async toResponses(
+    manager: EntityManager,
+    incidents: IncidentEntity[],
+  ): Promise<IncidentResponseDto[]> {
+    if (incidents.length === 0) return [];
+    const exams = await manager.findBy(MedicalExamRequestEntity, {
+      incidentId: In(incidents.map((incident) => incident.id)),
+    });
+    const examByIncident = new Map(
+      exams.map((exam) => [exam.incidentId, exam]),
+    );
+    const photoUrls = await this.media.signDownloadUrls(
+      incidents.flatMap((incident) =>
+        incident.mediaAssetId ? [incident.mediaAssetId] : [],
+      ),
+    );
+    return incidents.map((incident) =>
+      toIncidentResponse(
+        incident,
+        incident.mediaAssetId
+          ? (photoUrls.get(incident.mediaAssetId) ?? null)
+          : null,
+        examByIncident.get(incident.id) ?? null,
+      ),
+    );
+  }
+
+  /**
+   * Kiểm người gọi được xem một sự cố
+   *
+   * - Club Manager, Veterinarian: mọi sự cố
+   * - Head Trainer: sự cố của ngựa thuộc khu mình
+   * - Groom: sự cố mình báo, hoặc của ngựa mình đang phụ trách
+   *
+   * @param manager EntityManager dùng để query
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi
+   * @param incident Sự cố cần xem
+   * @returns Promise hoàn tất khi được xem
+   * @throws ForbiddenException Nếu Head Trainer xem sự cố ngoài khu, hoặc Groom xem sự cố không do mình báo và không thuộc ngựa mình đang phụ trách
+   */
+  private async assertCanView(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    incident: IncidentEntity,
+  ): Promise<void> {
+    if (this.seesAll(actor)) return;
+    if (this.horseAccess.hasRole(actor, UserRole.HEAD_TRAINER)) {
+      await this.access.assertHorseInTrainerBarn(
+        manager,
+        incident.horseId,
+        callerId,
+      );
+      return;
+    }
+    if (incident.reportedBy === callerId) return;
+    if (
+      !(await this.horseAccess.isGroomAssigned(
+        incident.horseId,
+        callerId,
+        manager,
+      ))
+    ) {
+      throw new ForbiddenException(
+        'Chỉ xem được sự cố bạn báo hoặc của ngựa bạn đang phụ trách',
+      );
+    }
+  }
+
+  /**
+   * Khóa row sự cố để đổi
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param id UUID của sự cố
+   * @returns Promise trả về sự cố đã khóa
+   * @throws NotFoundException Nếu không có sự cố
+   */
+  private async lockIncident(
+    manager: EntityManager,
+    id: string,
+  ): Promise<IncidentEntity> {
+    const incident = await manager.findOne(IncidentEntity, {
+      where: { id },
+      lock: { mode: 'for_no_key_update' },
+    });
+    if (!incident) throw new NotFoundException(INCIDENT_NOT_FOUND);
+    return incident;
+  }
+}

@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmOptions } from './common/database/typeorm.options';
 import { DomainEventsModule } from './common/infrastructure/events/domain-events.module';
@@ -10,12 +12,15 @@ import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.i
 import { AxiosModule } from './common/infrastructure/axios/axios.module';
 import { KeycloakGuard } from './common/guards/keycloak.guard';
 import { KeycloakModule } from './common/infrastructure/keycloak/keycloak.module';
+import { FirebaseModule } from './common/infrastructure/firebase/firebase.module';
 import { RedisModule } from './common/infrastructure/redis/redis.module';
 import { ObjectStorageModule } from './common/infrastructure/storage/object-storage.module';
 import { validateEnvironment } from './config/env.validation';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { HorsesModule } from './modules/horses/horses.module';
+import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
 import { MedicalModule } from './modules/medical/medical.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -42,13 +47,22 @@ import { UsersModule } from './modules/users/users.module';
           database: config.getOrThrow<string>('DB_NAME'),
         }),
     }),
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        uri: config.getOrThrow<string>('MONGO_URI'),
+      }),
+    }),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     DomainEventsModule,
     RedisModule,
+    FirebaseModule,
     AxiosModule,
     KeycloakModule,
     ObjectStorageModule,
     AuthModule,
+    BillingModule,
     UsersModule,
     HorsesModule,
     TrainingModule,
@@ -59,6 +73,7 @@ import { UsersModule } from './modules/users/users.module';
     SuppliesModule,
     ReportsModule,
     NotificationsModule,
+    HealthModule,
     AuditModule,
     MediaModule,
     RealtimeModule,

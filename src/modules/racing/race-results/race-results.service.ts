@@ -7,6 +7,9 @@ import { HorseRaceResultResponseDto } from '../dto/horse-race-result.response.dt
 import { RaceRegistrationEntity } from '../entities/race-registration.entity';
 import { toHorseRaceResultResponse } from '../mappers/racing.mapper';
 
+/**
+ * Đọc kết quả thi đấu.
+ */
 @Injectable()
 export class RaceResultsService {
   constructor(
@@ -15,11 +18,22 @@ export class RaceResultsService {
     private readonly horseAccess: HorseAccessService,
   ) {}
 
+  /**
+   * Lấy lịch sử thi đấu của con ngựa, cuộc đua mới nhất đứng đầu
+   *
+   * - Phạm vi xem theo HorseAccessService.findReadableHorseForActor: Club Manager xem cả hồ sơ đã xóa, Horse Owner chỉ ngựa mình sở hữu
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về danh sách kết quả thi đấu của con ngựa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
+   */
   async listHorseResults(
     actor: Actor,
     horseId: string,
   ): Promise<HorseRaceResultResponseDto[]> {
-    await this.horseAccess.findVisible(actor, horseId);
+    await this.horseAccess.findReadableHorseForActor(actor, horseId);
     const registrations = await this.registrationsRepo.find({
       select: {
         id: true,

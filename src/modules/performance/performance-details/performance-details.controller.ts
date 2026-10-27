@@ -1,82 +1,51 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Put,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiOkResponse,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser } from '../../../common/decorators';
-import { PendingApi } from '../../../common/openapi/pending-api';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { UserRole } from '../../../common/enums';
 import type { Actor } from '../../../common/types/actor';
-import { IngestMetricBatchDto } from '../dto/ingest-metric-batch.dto';
-import { UpsertThresholdDto } from '../dto/upsert-threshold.dto';
+import { HorseAlertPageDto, HorseAlertQueryDto } from '../dto/horse-alert.dto';
+import {
+  HorseWorkloadDto,
+  HorseWorkloadQueryDto,
+} from '../dto/horse-workload.dto';
+import { PerformanceDetailsService } from './performance-details.service';
 
 @ApiTags('performance')
 @ApiBearerAuth()
-@ApiResponse({ status: 501, description: 'Contract only' })
 @Controller()
-export class PerformanceDetailsController extends PendingApi {
-  @Post('session-participants/:id/metrics/batch')
-  @ApiOperation({ summary: 'Ingest metric batch for active participant' })
-  ingestBatch(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: IngestMetricBatchDto,
-  ) {
-    return this.pending();
-  }
+export class PerformanceDetailsController {
+  constructor(private readonly details: PerformanceDetailsService) {}
 
-  @Get('session-participants/:id/performance-summary')
-  @ApiOperation({ summary: 'Get session metric and alert summary' })
-  sessionSummary(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-  ) {
-    return this.pending();
-  }
-
-  @Get('horses/:id/thresholds')
-  @ApiOperation({ summary: 'List current and historical threshold profiles' })
-  thresholds(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-  ) {
-    return this.pending();
-  }
-
-  @Put('horses/:id/thresholds')
-  @ApiOperation({ summary: 'Create new version of horse threshold profile' })
-  setThreshold(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
-    @Body() _body: UpsertThresholdDto,
-  ) {
-    return this.pending();
-  }
-
+  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER, UserRole.VETERINARIAN])
   @Get('horses/:id/alerts')
-  @ApiOperation({ summary: 'List horse performance alerts' })
+  @ApiOperation({
+    summary: 'Lịch sử điểm đo vượt ngưỡng (WARNING, CRITICAL) của ngựa',
+  })
+  @ApiOkResponse({ type: HorseAlertPageDto })
   alerts(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: HorseAlertQueryDto,
   ) {
-    return this.pending();
+    return this.details.alerts(actor, id, query);
   }
 
   @Get('horses/:id/workload')
-  @ApiOperation({ summary: 'Get configured training workload summary' })
+  @ApiOperation({
+    summary:
+      'Khối lượng tập của ngựa trong một khoảng ngày (lượt đã hoàn thành)',
+  })
+  @ApiOkResponse({ type: HorseWorkloadDto })
   workload(
-    @CurrentUser() _actor: Actor,
-    @Param('id', ParseUUIDPipe) _id: string,
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: HorseWorkloadQueryDto,
   ) {
-    return this.pending();
+    return this.details.workload(actor, id, query);
   }
 }

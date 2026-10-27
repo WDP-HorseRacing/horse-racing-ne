@@ -1,0 +1,430 @@
+import { randomUUID } from 'node:crypto';
+import { DataSource } from 'typeorm';
+import { UserRole } from '../../src/common/enums/role.enum';
+import { UserStatus } from '../../src/common/enums/user-status.enum';
+import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
+import {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../../src/modules/horses/enums/horse-status.enum';
+import {
+  CareScheduleStatus,
+  CareScheduleType,
+} from '../../src/modules/medical/constants/care-schedule.enum';
+import {
+  ExamRequestSource,
+  ExamRequestStatus,
+} from '../../src/modules/medical/constants/exam-request.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+
+/**
+ * Tạo nhanh dữ liệu mẫu bằng SQL thô cho integration test, chỉ điền các cột bắt buộc và cột test cần
+ *
+ * @param dataSource DataSource của DB test
+ * @returns Các hàm insert, mỗi hàm trả về id của dòng vừa tạo
+ */
+export function fixtures(dataSource: DataSource) {
+  /**
+   * Tạo người dùng
+   *
+   * @param role Vai trò
+   * @param status Trạng thái tài khoản, mặc định ACTIVE
+   * @returns A promise resolving to id người dùng
+   */
+  const user = async (
+    role: UserRole,
+    status: UserStatus = UserStatus.ACTIVE,
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO users (id, version, keycloak_id, full_name, email, role, status)
+       VALUES ($1, 1, $2, $3, $4, $5, $6)`,
+      [id, randomUUID(), role, `${id}@test.local`, role, status],
+    );
+    return id;
+  };
+
+  /**
+   * Tạo khu chuồng
+   *
+   * @param name Tên khu
+   * @returns A promise resolving to id khu
+   */
+  const barn = async (name: string): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO barns (id, version, name) VALUES ($1, 1, $2)`,
+      [id, name],
+    );
+    return id;
+  };
+
+  /**
+   * Tạo hồ sơ ngựa
+   *
+   * @param name Tên ngựa
+   * @param options Vòng đời, sức khỏe, đã xóa, khu, chủ, ngày tạo
+   * @returns A promise resolving to id ngựa
+   */
+  const horse = async (
+    name: string,
+    options: {
+      lifecycle?: HorseLifecycleStatus;
+      health?: HorseHealthStatus;
+      deleted?: boolean;
+      barnId?: string;
+      ownerId?: string;
+      createdAt?: string;
+    } = {},
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO horses (id, version, name, lifecycle_status, health_status, deleted_at, barn_id, owner_id, created_at)
+       VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        id,
+        name,
+        options.lifecycle ?? HorseLifecycleStatus.ACTIVE,
+        options.health ?? HorseHealthStatus.ELIGIBLE,
+        options.deleted ? new Date() : null,
+        options.barnId ?? null,
+        options.ownerId ?? null,
+        options.createdAt ?? '2026-01-01T03:00:00Z',
+      ],
+    );
+    return id;
+  };
+
+  /**
+   * Tạo lịch chăm sóc
+   *
+   * @param horseId Id ngựa
+   * @param dueAt Thời điểm đến hạn (ISO)
+   * @param options Loại, trạng thái và người được giao
+   * @returns A promise resolving to id lịch
+   */
+  const schedule = async (
+    horseId: string,
+    dueAt: string,
+    options: {
+      type?: CareScheduleType;
+      status?: CareScheduleStatus;
+      assignedTo?: string | null;
+    } = {},
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO care_schedules (id, version, horse_id, type, due_at, status, assigned_to)
+       VALUES ($1, 1, $2, $3, $4, $5, $6)`,
+      [
+        id,
+        horseId,
+        options.type ?? CareScheduleType.FARRIER,
+        dueAt,
+        options.status ?? CareScheduleStatus.SCHEDULED,
+        options.assignedTo ?? null,
+      ],
+    );
+    return id;
+  };
+
+  /**
+   * Tạo bệnh án
+   *
+   * @param horseId Id ngựa
+   * @param vetId Id bác sĩ mở bệnh án
+   * @param options Trạng thái, thời điểm mở, thời điểm đóng
+   * @returns A promise resolving to id bệnh án
+   */
+  const medicalCase = async (
+    horseId: string,
+    vetId: string,
+    options: {
+      status?: MedicalCaseStatus;
+      openedAt?: string;
+      closedAt?: string;
+    } = {},
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO medical_cases (id, version, horse_id, opened_at, opened_by, initial_diagnosis, status, closed_at, closed_by)
+       VALUES ($1, 1, $2, $3, $4, 'Chẩn đoán', $5, $6, $7)`,
+      [
+        id,
+        horseId,
+        options.openedAt ?? '2026-09-01T02:00:00Z',
+        vetId,
+        options.status ?? MedicalCaseStatus.OPEN,
+        options.closedAt ?? null,
+        options.closedAt ? vetId : null,
+      ],
+    );
+    return id;
+  };
+
+  /**
+   * Tạo buổi khám
+   *
+   * @param horseId Id ngựa
+   * @param vetId Id bác sĩ khám
+   * @param examDate Thời điểm khám (ISO)
+   * @param options Đã hủy, bệnh án chứa buổi khám, ngày hẹn tái khám (tạo lịch FOLLOW_UP Đã lên lịch, hoặc Đã hủy nếu buổi đã hủy; cần caseId), chi phí, khu lúc khám
+   * @returns A promise resolving to id buổi khám
+   */
+  const visit = async (
+    horseId: string,
+    vetId: string,
+    examDate: string,
+    options: {
+      voided?: boolean;
+      caseId?: string;
+      nextVisitAt?: string;
+      cost?: number;
+      barnId?: string;
+    } = {},
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO medical_records (id, horse_id, vet_id, exam_date, resulting_status, kind, voided_at, case_id, cost, barn_id)
+       VALUES ($1, $2, $3, $4, 'ELIGIBLE', 'ROUTINE', $5, $6, $7, $8)`,
+      [
+        id,
+        horseId,
+        vetId,
+        examDate,
+        options.voided ? new Date() : null,
+        options.caseId ?? null,
+        options.cost ?? 0,
+        options.barnId ?? null,
+      ],
+    );
+    if (options.nextVisitAt) {
+      await dataSource.query(
+        `INSERT INTO care_schedules (version, horse_id, type, due_at, status, case_id, record_id)
+         VALUES (1, $1, 'FOLLOW_UP', $2, $3, $4, $5)`,
+        [
+          horseId,
+          options.nextVisitAt,
+          options.voided ? 'CANCELLED' : 'SCHEDULED',
+          options.caseId,
+          id,
+        ],
+      );
+    }
+    return id;
+  };
+
+  /**
+   * Ghi một dòng nhật ký đổi vòng đời ngựa
+   *
+   * @param horseId Id ngựa
+   * @param from Vòng đời trước
+   * @param to Vòng đời sau
+   * @param at Thời điểm ghi (ISO)
+   * @returns A promise resolving khi đã ghi
+   */
+  const lifecycleAudit = async (
+    horseId: string,
+    from: HorseLifecycleStatus,
+    to: HorseLifecycleStatus,
+    at: string,
+  ): Promise<void> => {
+    await dataSource.query(
+      `INSERT INTO audit_logs (action, entity_type, entity_id, before_data, after_data, created_at)
+       VALUES ('UPDATE', $1, $2, $3, $4, $5)`,
+      [
+        AuditEntityType.HORSE,
+        horseId,
+        JSON.stringify({ lifecycleStatus: from }),
+        JSON.stringify({ lifecycleStatus: to }),
+        at,
+      ],
+    );
+  };
+
+  /**
+   * Ghi một dòng nhật ký HORSE có dữ liệu trước và sau tùy ý
+   *
+   * @param horseId Id ngựa
+   * @param before Dữ liệu trước khi đổi
+   * @param after Dữ liệu sau khi đổi
+   * @param at Thời điểm ghi (ISO)
+   * @param options Lý do, tính năng, người thực hiện, loại đối tượng
+   * @returns A promise resolving khi đã ghi
+   */
+  const horseAudit = async (
+    horseId: string,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+    at: string,
+    options: {
+      reason?: string;
+      feature?: string;
+      actorId?: string;
+      entityType?: AuditEntityType;
+    } = {},
+  ): Promise<void> => {
+    await dataSource.query(
+      `INSERT INTO audit_logs (action, entity_type, entity_id, before_data, after_data, created_at, reason, feature, actor_id)
+       VALUES ('UPDATE', $1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        options.entityType ?? AuditEntityType.HORSE,
+        horseId,
+        JSON.stringify(before),
+        JSON.stringify(after),
+        at,
+        options.reason ?? null,
+        options.feature ?? null,
+        options.actorId ?? null,
+      ],
+    );
+  };
+
+  /**
+   * Tạo yêu cầu khám
+   *
+   * @param horseId Id ngựa
+   * @param options Trạng thái, khẩn, thời điểm tạo
+   * @returns A promise resolving to id yêu cầu
+   */
+  const examRequest = async (
+    horseId: string,
+    options: {
+      status?: ExamRequestStatus;
+      urgent?: boolean;
+      createdAt?: string;
+    } = {},
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO medical_exam_requests (id, version, horse_id, source, urgent, description, status, created_at)
+       VALUES ($1, 1, $2, $3, $4, 'Mô tả', $5, $6)`,
+      [
+        id,
+        horseId,
+        ExamRequestSource.STAFF,
+        options.urgent ?? false,
+        options.status ?? ExamRequestStatus.PENDING,
+        options.createdAt ?? '2026-09-20T02:00:00Z',
+      ],
+    );
+    return id;
+  };
+
+  /**
+   * Tạo một giai đoạn sở hữu
+   *
+   * @param horseId Id ngựa
+   * @param ownerId Id chủ
+   * @param startedAt Thời điểm bắt đầu (ISO)
+   * @param endedAt Thời điểm kết thúc (ISO), bỏ trống nếu là giai đoạn đang mở
+   * @returns A promise resolving to id giai đoạn
+   */
+  const ownership = async (
+    horseId: string,
+    ownerId: string,
+    startedAt: string,
+    endedAt?: string,
+  ): Promise<string> => {
+    const id = randomUUID();
+    await dataSource.query(
+      `INSERT INTO horse_ownerships (id, version, horse_id, owner_id, started_at, ended_at)
+       VALUES ($1, 1, $2, $3, $4, $5)`,
+      [id, horseId, ownerId, startedAt, endedAt ?? null],
+    );
+    return id;
+  };
+
+  /**
+   * Tạo môn học, giáo án một giai đoạn gồm môn đó (tối thiểu 3 buổi/tuần) và lớp dùng giáo án kèm bản chép giáo án, cùng Head Trainer
+   *
+   * @param headTrainerId Id Head Trainer sở hữu giáo án và phụ trách lớp
+   * @param options Mã, tên, trạng thái, ngày bắt đầu và kết thúc của lớp; số tuần của giai đoạn duy nhất trong giáo án (mặc định đủ phủ tới ngày kết thúc)
+   * @returns A promise resolving to id lớp và id giáo án
+   */
+  const trainingClass = async (
+    headTrainerId: string,
+    options: {
+      code?: string;
+      name?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      weeks?: number;
+    } = {},
+  ): Promise<{ classId: string; planId: string }> => {
+    const subjectId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO training_subjects (id, version, name, session_type, intensity, planned_distance_m)
+       VALUES ($1, 1, $2, 'REGULAR', 'HEAVY', 3000)`,
+      [subjectId, `Môn ${subjectId.slice(0, 8)}`],
+    );
+    const planId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO training_plans (id, version, name, head_trainer_id)
+       VALUES ($1, 1, 'Giáo án', $2)`,
+      [planId, headTrainerId],
+    );
+    const startDate = options.startDate ?? '2026-09-01';
+    const endDate = options.endDate ?? '2026-12-31';
+    const weeks =
+      options.weeks ??
+      Math.ceil(
+        (Date.parse(endDate) - Date.parse(startDate)) / (7 * 86_400_000) +
+          1 / 7,
+      );
+    const phaseId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO training_plan_phases (id, plan_id, position, weeks)
+       VALUES ($1, $2, 1, $3)`,
+      [phaseId, planId, weeks],
+    );
+    await dataSource.query(
+      `INSERT INTO training_plan_subjects (phase_id, subject_id, min_sessions_per_week)
+       VALUES ($1, $2, 3)`,
+      [phaseId, subjectId],
+    );
+    const classId = randomUUID();
+    const code = options.code ?? classId.slice(0, 8);
+    await dataSource.query(
+      `INSERT INTO training_classes (id, version, name, code, head_trainer_id, plan_id, start_date, end_date, status)
+       VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        classId,
+        options.name ?? `Lớp ${code}`,
+        code,
+        headTrainerId,
+        planId,
+        startDate,
+        endDate,
+        options.status ?? 'ACTIVE',
+      ],
+    );
+    const classPhaseId = randomUUID();
+    await dataSource.query(
+      `INSERT INTO training_class_phases (id, class_id, position, weeks)
+       VALUES ($1, $2, 1, $3)`,
+      [classPhaseId, classId, weeks],
+    );
+    await dataSource.query(
+      `INSERT INTO training_class_phase_subjects (phase_id, subject_id, min_sessions_per_week)
+       VALUES ($1, $2, 3)`,
+      [classPhaseId, subjectId],
+    );
+    return { classId, planId };
+  };
+
+  return {
+    user,
+    trainingClass,
+    barn,
+    horse,
+    ownership,
+    schedule,
+    medicalCase,
+    visit,
+    lifecycleAudit,
+    horseAudit,
+    examRequest,
+  };
+}

@@ -1,0 +1,376 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { EntityManager } from 'typeorm';
+import { UserRole } from '../../../common/enums/role.enum';
+import type { Actor } from '../../../common/types/actor';
+import { HorseEntity } from '../../horses/entities/horse.entity';
+import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
+import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { BarnEntity } from '../entities/barn.entity';
+import { assertCareTaskWriter } from '../policies/daily-checklist.policy';
+import { StallEntity } from '../entities/stall.entity';
+import { StallStatus } from '../constants/stall-status.enum';
+import {
+  assertBarnActive,
+  assertHorseHasBarn,
+  assertHorseInTrainerBarn,
+  assertHorseLifecycleWritable,
+  EMPTY_CAPACITY,
+} from '../policies/stable.policy';
+import type {
+  BarnStallCapacity,
+  StableHorseOperation,
+} from '../types/stable.types';
+
+/**
+ * Đếm ô trống và ngựa chờ xếp ô của nhiều khu trong một câu query.
+ *
+ * - Ô trống: ô thuộc khu, chưa xóa, đang AVAILABLE và không có phân công đang mở
+ * - Ngựa chờ xếp ô: horses.barn_id = khu, chưa xóa, không TRANSFERRED hay DECEASED và không có phân công ô đang mở
+ */
+const BARN_STALL_CAPACITY_SQL = `SELECT b.id AS "barnId",
+       (SELECT COUNT(*)::int
+          FROM stalls s
+         WHERE s.barn_id = b.id
+           AND s.deleted_at IS NULL
+           AND s.status = $2
+           AND NOT EXISTS (
+                 SELECT 1
+                   FROM stall_assignments sa
+                  WHERE sa.stall_id = s.id
+                    AND sa.end_at IS NULL
+               )) AS "freeStallCount",
+       (SELECT COUNT(*)::int
+          FROM horses h
+         WHERE h.barn_id = b.id
+           AND h.deleted_at IS NULL
+           AND h.lifecycle_status <> ALL($3::varchar[])
+           AND NOT EXISTS (
+                 SELECT 1
+                   FROM stall_assignments sa
+                  WHERE sa.horse_id = h.id
+                    AND sa.end_at IS NULL
+               )) AS "pendingStallHorseCount"
+  FROM barns b
+ WHERE b.id = ANY($1::uuid[])`;
+
+/**
+ * Con ngựa đã lock và chắc chắn đã được xếp khu
+ */
+export type HorseInBarn = HorseEntity & { barnId: string };
+
+/**
+ * Các kiểm tra quyền và lock dùng chung cho mọi feature của module stable (barns, stalls, groom-assignments).
+ *
+ * - Phạm vi Head Trainer theo khu lấy từ HorseAccessService (horses.barn_id)
+ * - Luật "ngựa thao tác được": chưa xóa, chưa chuyển nhượng, đã có khu, Head Trainer phụ trách khu
+ * - Lock khu chuồng (for_no_key_update) trước khi kiểm luật của khu
+ * - Đếm ô chuồng và sức chứa của một khu
+ */
+@Injectable()
+export class StableAccessService {
+  constructor(private readonly horseAccess: HorseAccessService) {}
+
+  /**
+   * Lock con ngựa và kiểm tra Head Trainer được thao tác trên nó (xếp ô, giao hoặc đổi groom)
+   *
+   * - Lock row ngựa (for_no_key_update) trước khi kiểm, hồ sơ đã xóa coi như không có
+   * - Thứ tự kiểm: có ngựa → chưa chuyển nhượng → đã xếp khu → người gọi phụ trách khu
+   * - Chỉ tính Head Trainer phụ trách khu, kể cả khi người gọi có thêm vai trò khác
+   * - Không kiểm trạng thái khu; nơi cần thì gọi thêm lockActiveBarn
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @param operation Thao tác đang làm, để chọn câu báo lỗi khi ngựa đã chuyển nhượng hoặc đã mất
+   * @returns Promise trả về con ngựa đã lock, chắc chắn đã có khu
+   * @throws NotFoundException Nếu không có ngựa hoặc hồ sơ đã xóa
+   * @throws ConflictException Nếu ngựa chưa được xếp khu, đã chuyển nhượng hoặc đã mất
+   * @throws ForbiddenException Nếu người gọi không phụ trách khu của ngựa
+   */
+  async lockOperableHorse(
+    manager: EntityManager,
+    callerId: string,
+    horseId: string,
+    operation: StableHorseOperation,
+  ): Promise<HorseInBarn> {
+    const horse = await manager.findOne(HorseEntity, {
+      where: { id: horseId },
+      lock: { mode: 'for_no_key_update' },
+    });
+    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    assertHorseLifecycleWritable(horse, operation);
+    assertHorseHasBarn(horse);
+    await this.assertHorseInTrainerBarn(manager, horseId, callerId);
+    return horse;
+  }
+
+  /**
+   * Lock con ngựa và kiểm người gọi được gắn, miễn hoặc gỡ việc riêng của nó
+   *
+   * - Lock row ngựa (for_no_key_update) trước khi kiểm, hồ sơ đã xóa coi như không có
+   * - Thứ tự kiểm: có ngựa → chưa chuyển nhượng hay mất → phạm vi người gọi (assertCareTaskWriter)
+   * - Veterinarian: mọi ngựa; Head Trainer: ngựa đã có khu và thuộc khu mình
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về con ngựa đã lock và inTrainerBarn = true nếu người gọi là Head Trainer phụ trách khu của ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc hồ sơ đã xóa
+   * @throws ConflictException Nếu ngựa đã chuyển nhượng hoặc đã mất, hoặc Head Trainer đổi ngựa chưa có khu
+   * @throws ForbiddenException Nếu người gọi không phải Veterinarian và không phụ trách khu của ngựa
+   */
+  async lockCareTaskHorse(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    horseId: string,
+  ): Promise<{ horse: HorseEntity; inTrainerBarn: boolean }> {
+    const horse = await manager.findOne(HorseEntity, {
+      where: { id: horseId },
+      lock: { mode: 'for_no_key_update' },
+    });
+    if (!horse) throw new NotFoundException('Không tìm thấy ngựa');
+    assertHorseLifecycleWritable(horse, 'CARE_TASK');
+    const inTrainerBarn =
+      horse.barnId !== null &&
+      this.horseAccess.hasRole(actor, UserRole.HEAD_TRAINER) &&
+      (await this.horseAccess.isHorseInTrainerBarn(manager, horseId, callerId));
+    assertCareTaskWriter(actor.roles, horse, inTrainerBarn);
+    return { horse, inTrainerBarn };
+  }
+
+  /**
+   * Tìm con ngựa và kiểm người gọi được xem dữ liệu chăm sóc hằng ngày của nó (khẩu phần, checklist)
+   *
+   * - Club Manager, Veterinarian: mọi ngựa trong phạm vi xem hồ sơ
+   * - Head Trainer: ngựa thuộc khu mình phụ trách
+   * - Chỉ có vai trò Groom: ngựa mình đang phụ trách
+   *
+   * @param manager EntityManager dùng để query
+   * @param actor Thông tin danh tính từ Access Token
+   * @param callerId UUID của người gọi (users.id)
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về con ngựa
+   * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi xem hồ sơ
+   * @throws ForbiddenException Nếu Head Trainer xem ngựa ngoài khu, hoặc Groom xem ngựa không do mình phụ trách
+   */
+  async findHorseForDailyCare(
+    manager: EntityManager,
+    actor: Actor,
+    callerId: string,
+    horseId: string,
+  ): Promise<HorseEntity> {
+    const horse = await this.horseAccess.findReadableHorse(
+      manager,
+      actor,
+      callerId,
+      horseId,
+    );
+    if (
+      this.horseAccess.hasRole(
+        actor,
+        UserRole.CLUB_MANAGER,
+        UserRole.VETERINARIAN,
+      )
+    ) {
+      return horse;
+    }
+    if (this.horseAccess.hasRole(actor, UserRole.HEAD_TRAINER)) {
+      await this.assertHorseInTrainerBarn(manager, horseId, callerId);
+      return horse;
+    }
+    if (!(await this.horseAccess.isGroomAssigned(horseId, callerId, manager))) {
+      throw new ForbiddenException('Ngựa không do bạn phụ trách');
+    }
+    return horse;
+  }
+
+  /**
+   * Kiểm người gọi chỉ có vai trò Groom trong số các vai trò được xem dữ liệu chăm sóc
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @returns true nếu người gọi là Groom và không có vai trò Club Manager, Head Trainer, Veterinarian
+   */
+  isGroomOnly(actor: Actor): boolean {
+    return (
+      this.horseAccess.hasRole(actor, UserRole.GROOM) &&
+      !this.horseAccess.hasRole(
+        actor,
+        UserRole.CLUB_MANAGER,
+        UserRole.HEAD_TRAINER,
+        UserRole.VETERINARIAN,
+      )
+    );
+  }
+
+  /**
+   * Lấy UUID các khu chuồng (chưa xóa) do một Head Trainer phụ trách
+   *
+   * @param manager EntityManager dùng để query
+   * @param trainerId UUID của Head Trainer
+   * @returns Promise trả về UUID các khu, rỗng nếu không phụ trách khu nào
+   */
+  async trainerBarnIds(
+    manager: EntityManager,
+    trainerId: string,
+  ): Promise<string[]> {
+    const barns = await manager.find(BarnEntity, {
+      select: { id: true },
+      where: { headTrainerId: trainerId },
+    });
+    return barns.map((barn) => barn.id);
+  }
+
+  /**
+   * Chặn Head Trainer thao tác trên ngựa ngoài khu mình phụ trách, kể cả khi người gọi có thêm vai trò Club Manager
+   *
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param horseId UUID của ngựa
+   * @param callerId UUID của người gọi (users.id)
+   * @returns Promise hoàn tất khi kiểm tra xong
+   * @throws ForbiddenException Nếu ngựa không thuộc khu người gọi phụ trách
+   */
+  async assertHorseInTrainerBarn(
+    manager: EntityManager,
+    horseId: string,
+    callerId: string,
+  ): Promise<void> {
+    assertHorseInTrainerBarn(
+      await this.horseAccess.isHorseInTrainerBarn(manager, horseId, callerId),
+    );
+  }
+
+  /**
+   * Khóa khu chuồng hiện tại của một con ngựa (for_no_key_update) tới hết transaction, không kiểm gì
+   *
+   * - Đọc ngựa không khóa để lấy khu; ngựa không có hoặc chưa có khu thì bỏ qua
+   * - Nơi gọi chạy trước khi khóa ngựa
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa
+   * @returns Promise hoàn tất khi đã khóa
+   */
+  async lockBarnOfHorse(
+    manager: EntityManager,
+    horseId: string,
+  ): Promise<void> {
+    const horse = await manager.findOne(HorseEntity, {
+      select: { id: true, barnId: true },
+      where: { id: horseId },
+    });
+    if (!horse?.barnId) return;
+    await manager.find(BarnEntity, {
+      select: { id: true },
+      where: { id: horse.barnId },
+      lock: { mode: 'for_no_key_update' },
+    });
+  }
+
+  /**
+   * Lock một khu chuồng (for_no_key_update), dùng khi đổi khu, thêm ô hoặc xếp ngựa vào khu
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param barnId UUID của khu chuồng
+   * @param notFoundMessage Câu báo 404 khi không có khu
+   * @returns Promise trả về khu chuồng đã lock
+   * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
+   */
+  async lockBarn(
+    manager: EntityManager,
+    barnId: string,
+    notFoundMessage = 'Không tìm thấy khu chuồng',
+  ): Promise<BarnEntity> {
+    const barn = await manager.findOne(BarnEntity, {
+      where: { id: barnId },
+      lock: { mode: 'for_no_key_update' },
+    });
+    if (!barn) throw new NotFoundException(notFoundMessage);
+    return barn;
+  }
+
+  /**
+   * Lock khu chuồng và chặn thao tác khi khu không ở trạng thái ACTIVE
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param barnId UUID của khu chuồng
+   * @param label Cách gọi khu trong câu báo lỗi (vd "Khu chuồng", "Khu chuồng đích")
+   * @returns Promise trả về khu chuồng đã lock, chắc chắn đang ACTIVE
+   * @throws NotFoundException Nếu không có khu hoặc khu đã xóa
+   * @throws ConflictException Nếu khu không ở trạng thái ACTIVE
+   */
+  async lockActiveBarn(
+    manager: EntityManager,
+    barnId: string,
+    label = 'Khu chuồng',
+  ): Promise<BarnEntity> {
+    const barn = await this.lockBarn(
+      manager,
+      barnId,
+      `Không tìm thấy ${label.toLowerCase()}`,
+    );
+    assertBarnActive(barn, label);
+    return barn;
+  }
+
+  /**
+   * Đếm số ô trống và số ngựa chờ xếp ô của từng khu chuồng
+   *
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param barnIds UUID các khu cần đếm
+   * @returns Promise trả về Map từ UUID khu sang số ô trống và số ngựa chờ xếp ô; khu không tồn tại thì không có trong Map
+   */
+  async countStallCapacity(
+    manager: EntityManager,
+    barnIds: string[],
+  ): Promise<Map<string, BarnStallCapacity>> {
+    if (barnIds.length === 0) return new Map();
+    const rows: ({ barnId: string } & BarnStallCapacity)[] =
+      await manager.query(BARN_STALL_CAPACITY_SQL, [
+        barnIds,
+        StallStatus.AVAILABLE,
+        READ_ONLY_LIFECYCLE_STATUSES,
+      ]);
+    return new Map(
+      rows.map((row) => [
+        row.barnId,
+        {
+          freeStallCount: row.freeStallCount,
+          pendingStallHorseCount: row.pendingStallHorseCount,
+        },
+      ]),
+    );
+  }
+
+  /**
+   * Đếm số ô trống và số ngựa chờ xếp ô của một khu chuồng
+   *
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param barnId UUID của khu chuồng
+   * @returns Promise trả về số ô trống và số ngựa chờ xếp ô của khu; khu không tồn tại thì trả EMPTY_CAPACITY
+   */
+  async countBarnCapacity(
+    manager: EntityManager,
+    barnId: string,
+  ): Promise<BarnStallCapacity> {
+    return (
+      (await this.countStallCapacity(manager, [barnId])).get(barnId) ??
+      EMPTY_CAPACITY
+    );
+  }
+
+  /**
+   * Đếm số ô chuồng chưa xóa của một khu, dùng để so với sức chứa khu
+   *
+   * @param manager EntityManager dùng để query (truyền manager của transaction nếu đang trong transaction)
+   * @param barnId UUID của khu chuồng
+   * @returns Promise trả về số ô chuồng chưa xóa của khu
+   */
+  countStallsInBarn(manager: EntityManager, barnId: string): Promise<number> {
+    return manager.count(StallEntity, { where: { barnId } });
+  }
+}

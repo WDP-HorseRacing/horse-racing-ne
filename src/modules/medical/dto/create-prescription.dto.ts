@@ -1,27 +1,47 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsDateOnly, trimValue } from '../../../common/utils/dto-input';
 
+/**
+ * Một dòng đơn thuốc trong buổi khám: không trừ kho, không tính tiền.
+ */
 export class CreatePrescriptionDto {
-  @ApiProperty()
+  @ApiProperty({ maxLength: 160 })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
+  @MaxLength(160)
   medicine!: string;
 
-  @ApiProperty()
+  @ApiProperty({ maxLength: 160 })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
+  @MaxLength(160)
   dosage!: string;
 
-  @ApiProperty()
+  @ApiProperty({ maxLength: 160 })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
+  @MaxLength(160)
   frequency!: string;
 
-  @ApiProperty({ format: 'date' })
-  @IsDateString()
+  @ApiProperty({ format: 'date', description: 'YYYY-MM-DD' })
+  @IsDateOnly({
+    message: 'Ngày bắt đầu phải có dạng YYYY-MM-DD',
+  })
   startDate!: string;
 
-  @ApiProperty({ format: 'date' })
-  @IsDateString()
-  endDate!: string;
+  @ApiPropertyOptional({
+    format: 'date',
+    description:
+      'YYYY-MM-DD, không sớm hơn startDate; bắt buộc khi buổi khám không mở bệnh án, bỏ trống là dùng tới khi đóng bệnh án',
+  })
+  @IsOptional()
+  @IsDateOnly({
+    message: 'Ngày kết thúc phải có dạng YYYY-MM-DD',
+  })
+  endDate?: string;
 }

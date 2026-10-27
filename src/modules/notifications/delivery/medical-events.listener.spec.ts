@@ -1,0 +1,74 @@
+import { MedicalNotificationsService } from './medical-notifications.service';
+import { MedicalEventsListener } from './medical-events.listener';
+
+describe('MedicalEventsListener', () => {
+  it('forwards the event to the notification service', async () => {
+    const medical = { notifyLockSet: jest.fn().mockResolvedValue([]) };
+    const listener = new MedicalEventsListener(
+      medical as unknown as MedicalNotificationsService,
+    );
+    const event = {
+      eventId: 'e1',
+      horseId: 'h1',
+      lockId: 'l1',
+      reason: 'Nghỉ',
+      expectedEnd: null,
+      ownerId: 'owner-1',
+    };
+
+    await listener.onLockSet(event);
+
+    expect(medical.notifyLockSet).toHaveBeenCalledWith(event);
+  });
+
+  it('forwards a lock kept on case close to the notification service', async () => {
+    const medical = { notifyLockKept: jest.fn().mockResolvedValue([]) };
+    const listener = new MedicalEventsListener(
+      medical as unknown as MedicalNotificationsService,
+    );
+    const event = {
+      eventId: 'e4',
+      horseId: 'h1',
+      lockId: 'l1',
+      caseId: 'c1',
+      expectedEnd: '2026-10-04T17:00:00.000Z',
+      ownerId: null,
+    };
+
+    await listener.onLockKept(event);
+
+    expect(medical.notifyLockKept).toHaveBeenCalledWith(event);
+  });
+
+  it('forwards a due checkup to the notification service', async () => {
+    const medical = { notifyCheckupDue: jest.fn().mockResolvedValue([]) };
+    const listener = new MedicalEventsListener(
+      medical as unknown as MedicalNotificationsService,
+    );
+    const event = { eventId: 'e3', horseId: 'h1', dueDate: '2026-10-31' };
+
+    await listener.onCheckupDue(event);
+
+    expect(medical.notifyCheckupDue).toHaveBeenCalledWith(event);
+  });
+
+  it('rethrows a failure so the outbox relay retries the event', async () => {
+    const medical = {
+      notifyCaseClosed: jest.fn().mockRejectedValue(new Error('db down')),
+    };
+    const listener = new MedicalEventsListener(
+      medical as unknown as MedicalNotificationsService,
+    );
+
+    await expect(
+      listener.onCaseClosed({
+        eventId: 'e2',
+        horseId: 'h1',
+        caseId: 'c1',
+        totalCost: 0,
+        ownerId: null,
+        ownerCost: null,
+      }),
+    ).rejects.toThrow('db down');
+  });
+});

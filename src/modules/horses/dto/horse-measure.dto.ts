@@ -1,12 +1,31 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsNumber, IsOptional } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
 } from '../enums/horse-measurement-alert.enum';
+import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
+import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
+import { IsIsoInstant } from '../../../common/utils/dto-input';
 
-export class CreateHorseMeasurementDto {
+export class HorseMeasurementValueDto {
   @ApiProperty({ enum: HorseMeasurementType })
   @IsEnum(HorseMeasurementType)
   type!: HorseMeasurementType;
@@ -17,14 +36,44 @@ export class CreateHorseMeasurementDto {
   })
   @IsNumber({ maxDecimalPlaces: 2 })
   value!: number;
+}
+
+export class CreateHorseMeasurementDto {
+  @ApiProperty({
+    type: [HorseMeasurementValueDto],
+    description:
+      'Một hoặc nhiều loại chỉ số của cùng một lần đo, mỗi loại tối đa một giá trị',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(4)
+  @ValidateNested({ each: true })
+  @Type(() => HorseMeasurementValueDto)
+  values!: HorseMeasurementValueDto[];
 
   @ApiPropertyOptional({
-    format: 'date-time',
-    description: 'Mặc định là thời điểm hiện tại',
+    default: false,
+    description:
+      'Bắt buộc true khi có giá trị ngoài khoảng bình thường; không gửi thì API trả 422',
   })
   @IsOptional()
-  @IsDateString()
-  measuredAt?: string;
+  @IsBoolean()
+  confirmAbnormal: boolean = false;
+}
+
+export class DeleteHorseMeasurementDto {
+  @ApiProperty({
+    minLength: 1,
+    maxLength: 500,
+    description: 'Lý do xóa bản ghi đo sai, bắt buộc',
+  })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason!: string;
 }
 
 export class HorseMeasurementListQueryDto {
@@ -32,14 +81,58 @@ export class HorseMeasurementListQueryDto {
   @IsOptional()
   @IsEnum(HorseMeasurementType)
   type?: HorseMeasurementType;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+    description: 'Chỉ lấy bản ghi đo từ thời điểm này',
+  })
+  @IsOptional()
+  @IsIsoInstant()
+  from?: string;
+
+  @ApiPropertyOptional({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+    description: 'Chỉ lấy bản ghi đo tới thời điểm này',
+  })
+  @IsOptional()
+  @IsIsoInstant()
+  to?: string;
+
+  @ApiPropertyOptional({
+    default: 1,
+    minimum: 1,
+    maximum: 10000,
+    description: 'Trang hiện tại',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10000)
+  page: number = 1;
+
+  @ApiPropertyOptional({
+    default: 20,
+    minimum: 1,
+    maximum: 500,
+    description: 'Số bản ghi mỗi trang',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  limit: number = 20;
 }
 
 export class HorseLatestMeasurementDto {
   @ApiProperty({ enum: HorseMeasurementType })
   type!: HorseMeasurementType;
 
-  @ApiProperty({ example: '512.50' })
-  value!: string;
+  @ApiProperty({ type: Number, example: 512.5 })
+  value!: number;
 
   @ApiProperty({ example: 'kg' })
   unit!: string;
@@ -49,7 +142,7 @@ export class HorseLatestMeasurementDto {
 
   @ApiProperty({
     description:
-      'Ngoài khoảng bình thường: WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C',
+      'Ngoài khoảng bình thường tại lúc ghi (WEIGHT 400–600 kg, HEIGHT 150–175 cm, BODY_CONDITION 4–6, TEMPERATURE 37.2–38.3 °C)',
   })
   isAbnormal!: boolean;
 }
@@ -66,6 +159,13 @@ export class HorseMeasurementResponseDto extends HorseLatestMeasurementDto {
 
   @ApiProperty()
   measuredByName!: string;
+
+  @ApiProperty({
+    enum: HorseMeasurementSource,
+    description:
+      'MANUAL: nhập tay ở hồ sơ ngựa. MEDICAL_EXAM: ghi từ buổi khám, không xóa được ở đây',
+  })
+  source!: HorseMeasurementSource;
 }
 
 export class HorseMeasurementAlertDto {
@@ -99,4 +199,12 @@ export class CreatedHorseMeasurementResponseDto extends HorseMeasurementResponse
       'Cảnh báo tự động sinh ra từ lần ghi này (sốt > 38.6 °C, cân nặng giảm > 5% trong 14 ngày); rỗng nếu không có',
   })
   alerts!: HorseMeasurementAlertDto[];
+}
+
+export class HorseMeasurementPageDto {
+  @ApiProperty({ type: [HorseMeasurementResponseDto] })
+  items!: HorseMeasurementResponseDto[];
+
+  @ApiProperty({ type: PaginationMetaDto })
+  meta!: PaginationMetaDto;
 }

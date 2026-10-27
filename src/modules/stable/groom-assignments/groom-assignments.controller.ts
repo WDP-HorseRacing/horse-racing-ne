@@ -1,17 +1,13 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   ParseUUIDPipe,
   Put,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -22,6 +18,7 @@ import type { Actor } from '../../../common/types/actor';
 import {
   AssignGroomDto,
   GroomAssignmentResponseDto,
+  GroomWorkloadResponseDto,
 } from '../dto/groom-assignment.dto';
 import { GroomAssignmentsService } from './groom-assignments.service';
 
@@ -50,11 +47,23 @@ export class GroomAssignmentsController {
   }
 
   @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER])
+  @Get('grooms/workload')
+  @ApiOperation({
+    summary: 'List active grooms with the number of horses each one cares for',
+    description:
+      'Counts open groom assignments of non-deleted horses across the whole club. Grooms with no horse are listed with 0.',
+  })
+  @ApiOkResponse({ type: [GroomWorkloadResponseDto] })
+  workload(@CurrentUser() actor: Actor): Promise<GroomWorkloadResponseDto[]> {
+    return this.groomAssignmentsService.listWorkload(actor);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
   @Put('horses/:id/groom')
   @ApiOperation({
     summary: 'Assign or change the groom of a horse',
     description:
-      'Closes the current groom assignment and opens a new one. Assigning the current groom again changes nothing. Head Trainer: only horses in their barn.',
+      'Head Trainer of the horse barn only; the horse must already have a barn. Closes the current groom assignment, opens a new one and moves the old groom unfinished daily checklists from today on to the new groom. Returns 409 while the horse is at a training session (a participation PRESENT, READY or ONGOING in any class), including a first assignment. Participations of the old groom or with no groom are moved to the new groom: PLANNED and ABSENT of sessions not yet ended, INELIGIBLE and CANCELLED_BY_LOCK of sessions not yet started; if the horse had no groom, only the participations with no groom are filled. Finished participations and ABSENT of ended sessions keep the old groom. Assigning the current groom again changes nothing.',
   })
   @ApiOkResponse({ type: GroomAssignmentResponseDto })
   assign(
@@ -63,20 +72,5 @@ export class GroomAssignmentsController {
     @Body() body: AssignGroomDto,
   ): Promise<GroomAssignmentResponseDto> {
     return this.groomAssignmentsService.assign(actor, id, body);
-  }
-
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER])
-  @Delete('horses/:id/groom')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({
-    summary: 'End the current groom assignment of a horse',
-    description: 'Head Trainer: only horses in their barn.',
-  })
-  @ApiNoContentResponse()
-  end(
-    @CurrentUser() actor: Actor,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<void> {
-    return this.groomAssignmentsService.end(actor, id);
   }
 }

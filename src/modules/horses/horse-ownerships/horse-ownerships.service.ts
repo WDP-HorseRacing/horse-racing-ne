@@ -1,199 +1,160 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, IsNull, Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
+import { randomUUID } from 'node:crypto';
+import { DataSource, Repository } from 'typeorm';
+import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
+import { AuditAction } from '../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { AuditService } from '../../audit/services/audit.service';
 import {
+  HORSE_AUDIT_FEATURE,
+  HORSE_OWNERSHIP_TRANSFERRED_EVENT,
+  STALE_HORSE_MESSAGE,
+} from '../constants/horse.constants';
+import type {
+  CreateOwnershipTransferDto,
   HorseOwnershipResponseDto,
   HorseResponseDto,
-  SetHorseOwnersDto,
-} from '../dto/horse.dto';
+} from '../dto';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import { HorseEntity } from '../entities/horse.entity';
-import {
-  toCoOwnerResponse,
-  toOwnershipResponse,
-} from '../mappers/horse-ownerships.mapper';
+import { toOwnershipHistory } from '../mappers/horse-ownerships.mapper';
 import { toHorseResponse } from '../mappers/horse.mapper';
-import {
-  futureTransferError,
-  planOwnershipChange,
-  staleTransferError,
-} from '../policies/horse.policy';
+import { assertOwnershipTransfer } from '../policies/horse-ownership.policy';
+import { assertAssignableOwner } from '../policies/horse.policy';
 import { HorseAccessService } from '../shared/horse-access.service';
-import { HorseOwnersService } from '../shared/horse-owners.service';
+import { HorseOwnershipService } from '../shared/horse-ownership.service';
+import type { HorseOwnershipTransferredEvent } from '../types/horse.types';
 
 @Injectable()
 export class HorseOwnershipsService {
   constructor(
     @InjectRepository(HorseOwnershipEntity)
-    private readonly ownerships: Repository<HorseOwnershipEntity>,
-    @InjectRepository(HorseEntity)
-    private readonly horsesRepository: Repository<HorseEntity>,
+    private readonly ownershipRecords: Repository<HorseOwnershipEntity>,
     private readonly access: HorseAccessService,
-    private readonly owners: HorseOwnersService,
+    private readonly ownerships: HorseOwnershipService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   /**
-   * Lấy lịch sử sở hữu của con ngựa.
+   * Chuyển nhượng nội bộ ngựa sang một chủ khác trong câu lạc bộ, trong cùng một transaction
    *
-   * - Club Manager thấy toàn bộ lịch sử, đầy đủ thông tin.
-   * - Horse Owner thấy đầy đủ các dòng của chính mình (cả dòng đã kết thúc); đồng chủ đang sở hữu chỉ có tên, tỉ lệ và cờ đại diện; không thấy chủ cũ.
+   * - Khóa row ngựa; hồ sơ đã xóa: Club Manager nhận 409, phải khôi phục trước
+   * - Kiểm lần lượt: version, luật chuyển nhượng (assertOwnershipTransfer), chủ mới là HORSE_OWNER đang hoạt động (khóa chia sẻ row tài khoản)
+   * - Đóng giai đoạn sở hữu hiện tại và mở giai đoạn mới tại thời điểm ghi nhận (chủ mới bắt đầu sở hữu từ lúc này); cập nhật horses.owner_id và tăng version
+   * - Không đổi vòng đời, khu, ô, Groom, lớp
+   * - Ghi nhật ký kèm lý do và ghi HORSE_OWNERSHIP_TRANSFERRED_EVENT vào outbox để báo chủ cũ và chủ mới
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param horseId UUID của ngựa
-   * @returns Danh sách dòng sở hữu người gọi được xem
+   * @param body Chủ mới, lý do và version
+   * @returns Promise trả về hồ sơ ngựa sau khi chuyển
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không có ngựa
+   * @throws BadRequestException Nếu chủ mới trùng chủ hiện tại hoặc không phải HORSE_OWNER
+   * @throws ConflictException Nếu Club Manager thao tác hồ sơ đã xóa, version đã cũ, ngựa đã chuyển nhượng hoặc đã mất, ngựa chưa có chủ, hoặc chủ mới không còn hoạt động
+   */
+  async transfer(
+    actor: Actor,
+    horseId: string,
+    body: CreateOwnershipTransferDto,
+  ): Promise<HorseResponseDto> {
+    await this.dataSource.transaction(async (manager) => {
+      const caller = await this.access.currentUser(actor, manager);
+      const horse = await this.access.lockWritableHorse(
+        manager,
+        actor,
+        horseId,
+      );
+      if (horse.version !== body.version) {
+        throw new ConflictException(STALE_HORSE_MESSAGE);
+      }
+      assertOwnershipTransfer({
+        lifecycleStatus: horse.lifecycleStatus,
+        currentOwnerId: horse.ownerId,
+        newOwnerId: body.newOwnerId,
+      });
+      const fromOwnerId = horse.ownerId as string;
+      assertAssignableOwner(
+        await this.access.lockOwnerAccount(manager, body.newOwnerId),
+      );
+      const result = await manager
+        .getRepository(HorseEntity)
+        .update(
+          { id: horseId, version: body.version },
+          { ownerId: body.newOwnerId },
+        );
+      if (!result.affected) {
+        throw new ConflictException(STALE_HORSE_MESSAGE);
+      }
+      const transferredAt = new Date();
+      await this.ownerships.recordOwnerChange(manager, {
+        horseId,
+        ownerId: body.newOwnerId,
+        at: transferredAt,
+        reason: body.reason,
+        recordedBy: caller.id,
+      });
+      await this.auditService.record(manager, {
+        actorId: caller.id,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.HORSE,
+        entityId: horseId,
+        before: { ownerId: fromOwnerId },
+        after: { ownerId: body.newOwnerId },
+        reason: body.reason,
+        feature: HORSE_AUDIT_FEATURE.OWNERSHIP_TRANSFER,
+      });
+      const event: HorseOwnershipTransferredEvent = {
+        eventId: randomUUID(),
+        horseId,
+        fromOwnerId,
+        toOwnerId: body.newOwnerId,
+        transferredAt: transferredAt.toISOString(),
+      };
+      await this.events.publish(
+        manager,
+        HORSE_OWNERSHIP_TRANSFERRED_EVENT,
+        event,
+      );
+    });
+    return toHorseResponse(await this.access.findNotDeletedHorse(horseId));
+  }
+
+  /**
+   * Lấy lịch sử sở hữu của ngựa, mới nhất lên trên
+   *
+   * - Ai xem được hồ sơ thì xem được lịch sử, theo luật của findReadableHorse
+   * - Horse Owner chỉ thấy các giai đoạn của chính mình
+   * - Đọc cả tài khoản chủ và người ghi nhận đã bị xóa mềm
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về các giai đoạn sở hữu
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
    * @throws NotFoundException Nếu không có ngựa hoặc ngựa nằm ngoài phạm vi của người gọi
    */
-  async listOwners(
+  async history(
     actor: Actor,
     horseId: string,
   ): Promise<HorseOwnershipResponseDto[]> {
     const caller = await this.access.currentUser(actor);
-    await this.access.findReadable(actor, horseId);
-    const ownerships = await this.ownerships.find({
+    await this.access.findReadableHorse(
+      this.dataSource.manager,
+      actor,
+      caller.id,
+      horseId,
+    );
+    const periods = await this.ownershipRecords.find({
       where: { horseId },
-      relations: { owner: true },
-      order: {
-        endAt: { direction: 'DESC', nulls: 'FIRST' },
-        startAt: 'DESC',
-      },
+      relations: { owner: true, recorder: true },
+      withDeleted: true,
+      order: { startedAt: 'ASC' },
     });
-    if (this.access.hasRole(actor, UserRole.CLUB_MANAGER)) {
-      return ownerships.map((ownership) =>
-        toOwnershipResponse(ownership, true),
-      );
-    }
-    return ownerships
-      .filter(
-        (ownership) =>
-          ownership.ownerId === caller.id || ownership.endAt === null,
-      )
-      .map((ownership) =>
-        ownership.ownerId === caller.id
-          ? toOwnershipResponse(ownership, true)
-          : toCoOwnerResponse(ownership),
-      );
+    const ownerView = this.access.scopeOf(actor, caller.id).kind === 'OWNER';
+    return toOwnershipHistory(periods, ownerView ? caller.id : null);
   }
-
-  /**
-   * Đổi chủ hoặc chuyển nhượng ngựa, không sửa trực tiếp dòng sở hữu cũ.
-   *
-   * - Chủ giữ nguyên tỉ lệ và cờ đại diện: giữ dòng cũ.
-   * - Dòng thay đổi hoặc bị bỏ: đóng với endAt = thời điểm chuyển nhượng.
-   * - Phần thay đổi hoặc chủ mới: tạo dòng mới với startAt = thời điểm chuyển nhượng.
-   * - Không có gì thay đổi thì không ghi.
-   *
-   * @param actor Thông tin danh tính từ Access Token
-   * @param horseId UUID của ngựa
-   * @param body Bộ chủ mới và thời điểm chuyển nhượng (không gửi thì là hiện tại)
-   * @returns Lịch sử sở hữu của ngựa sau khi đổi
-   * @throws NotFoundException Nếu không có ngựa
-   * @throws BadRequestException Nếu ngựa là ngựa tham chiếu, bộ chủ không hợp lệ, chủ không phải HORSE_OWNER đang hoạt động, hoặc thời điểm chuyển nhượng ở tương lai
-   * @throws ConflictException Nếu ngựa đã chuyển nhượng khỏi CLB, hoặc thời điểm chuyển nhượng không sau lần gán chủ gần nhất
-   */
-  async replaceOwners(
-    actor: Actor,
-    horseId: string,
-    body: SetHorseOwnersDto,
-  ): Promise<HorseOwnershipResponseDto[]> {
-    await this.access.currentUser(actor);
-    const horse = await this.access.findHorse(horseId);
-    this.access.assertOperational(horse);
-    this.access.assertNotTransferred(horse);
-
-    await this.owners.validateOwners(body.owners);
-
-    const now = new Date();
-    const transferredAt = body.transferredAt
-      ? new Date(body.transferredAt)
-      : now;
-    const futureError = futureTransferError(transferredAt, now);
-    if (futureError) throw new BadRequestException(futureError);
-
-    await this.dataSource.transaction(async (manager) => {
-      await this.access.currentUser(actor, manager);
-      const lockedHorse = await manager.getRepository(HorseEntity).findOne({
-        where: { id: horseId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!lockedHorse) throw new NotFoundException('Không tìm thấy ngựa');
-      this.access.assertOperational(lockedHorse);
-      this.access.assertNotTransferred(lockedHorse);
-
-      const ownershipRepository = manager.getRepository(HorseOwnershipEntity);
-      const openRows = await ownershipRepository.find({
-        where: { horseId, endAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      const staleError = staleTransferError(
-        transferredAt,
-        latestStartAt(openRows),
-      );
-      if (staleError) throw new ConflictException(staleError);
-
-      const plan = planOwnershipChange(openRows, body.owners);
-      if (plan.closeIds.length > 0) {
-        await ownershipRepository.update(
-          { id: In(plan.closeIds), endAt: IsNull() },
-          { endAt: transferredAt },
-        );
-      }
-      if (plan.inserts.length > 0) {
-        await this.owners.insertOwnerships(
-          manager,
-          horseId,
-          plan.inserts,
-          transferredAt,
-        );
-      }
-    });
-
-    return this.listOwners(actor, horseId);
-  }
-
-  /**
-   * List the horses currently owned by the caller
-   * @param actor The actor resolved from the JWT
-   * @returns A promise resolving to the caller's horses
-   */
-  async listMyHorses(actor: Actor): Promise<HorseResponseDto[]> {
-    const caller = await this.access.currentUser(actor);
-    const horses = await this.horsesRepository
-      .createQueryBuilder('horse')
-      .where(
-        `EXISTS (
-          SELECT 1 FROM horse_ownerships ho
-          WHERE ho.horse_id = horse.id
-          AND ho.owner_id = :ownerId
-          AND ho.end_at IS NULL
-        )`,
-        { ownerId: caller.id },
-      )
-      .orderBy('horse.name', 'ASC')
-      .getMany();
-    return horses.map(toHorseResponse);
-  }
-}
-
-/**
- * Lấy startAt lớn nhất trong các dòng sở hữu đang mở.
- *
- * @param rows Các dòng sở hữu đang mở
- * @returns startAt lớn nhất, hoặc null nếu không có dòng nào
- */
-function latestStartAt(rows: HorseOwnershipEntity[]): Date | null {
-  return rows.reduce<Date | null>(
-    (latest, row) =>
-      !latest || row.startAt.getTime() > latest.getTime()
-        ? row.startAt
-        : latest,
-    null,
-  );
 }

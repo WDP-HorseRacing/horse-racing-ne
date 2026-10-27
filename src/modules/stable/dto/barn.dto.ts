@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -11,10 +12,13 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { trimValue } from '../../../common/utils/dto-input';
+import { toQueryBoolean } from '../../../common/utils/query-boolean';
 import { BarnStatus } from '../constants/barn-status.enum';
 
 export class CreateBarnDto {
   @ApiProperty({ maxLength: 80 })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(80)
@@ -49,6 +53,16 @@ export class UpdateBarnDto extends PartialType(CreateBarnDto) {
   headTrainerId?: string | null;
 }
 
+export class BarnListQueryDto {
+  @ApiPropertyOptional({
+    description: 'Chỉ các khu người gọi phụ trách',
+  })
+  @IsOptional()
+  @Transform(toQueryBoolean)
+  @IsBoolean()
+  mine?: boolean;
+}
+
 export class BarnResponseDto {
   @Expose()
   @ApiProperty({ format: 'uuid' })
@@ -73,4 +87,37 @@ export class BarnResponseDto {
   @Expose()
   @ApiPropertyOptional({ format: 'uuid', nullable: true, type: String })
   headTrainerId!: string | null;
+}
+
+export class BarnListItemDto extends BarnResponseDto {
+  @Expose()
+  @ApiPropertyOptional({
+    nullable: true,
+    type: String,
+    description: 'Họ tên Head Trainer phụ trách khu, null nếu khu chưa có',
+  })
+  headTrainerFullName!: string | null;
+
+  @Expose()
+  @ApiProperty({
+    description:
+      'true nếu Head Trainer phụ trách khu còn tồn tại, đang ACTIVE và còn vai trò HEAD_TRAINER. Bằng false thì không xếp ngựa vào khu được, kể cả khi headTrainerFullName vẫn có tên (người đó đã bị khóa, ngưng hoạt động hoặc đổi vai trò).',
+  })
+  hasActiveHeadTrainer!: boolean;
+
+  @Expose()
+  @ApiProperty({
+    minimum: 0,
+    description:
+      'Số chỗ khu còn nhận ngựa mới = số ô trống (ô AVAILABLE, chưa xóa, không có phân công đang mở) trừ pendingStallHorseCount, không âm. Bằng 0 thì không xếp thêm ngựa vào khu được.',
+  })
+  availableStallCount!: number;
+
+  @Expose()
+  @ApiProperty({
+    minimum: 0,
+    description:
+      'Số ngựa chờ xếp ô: ngựa đã thuộc khu (chưa xóa, không TRANSFERRED) nhưng chưa có ô đang mở',
+  })
+  pendingStallHorseCount!: number;
 }

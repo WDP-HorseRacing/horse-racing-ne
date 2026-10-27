@@ -1,0 +1,232 @@
+import { randomUUID } from 'node:crypto';
+import { DataSource } from 'typeorm';
+import { UserRole } from '../../src/common/enums/role.enum';
+import type { Actor } from '../../src/common/types/actor';
+import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
+import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
+import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
+import { ExamRequestStatus } from '../../src/modules/medical/constants/exam-request.enum';
+import { ExamRequestListQueryDto } from '../../src/modules/medical/dto';
+import { MedicalExamRequestEntity } from '../../src/modules/medical/entities/medical-exam-request.entity';
+import { ExamRequestsService } from '../../src/modules/medical/exam-requests/exam-requests.service';
+import { HealthStatusesRepository } from '../../src/modules/medical/health-statuses/health-statuses.repository';
+import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
+import { fixtures } from './fixtures';
+import {
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
+} from './postgres';
+
+const vet: Actor = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
+const groom: Actor = { sub: 'kc-groom', roles: [UserRole.GROOM] };
+
+describe('Health history and exam request queries (Postgres)', () => {
+  let db: TestPostgres;
+  let dataSource: DataSource;
+  let seed: ReturnType<typeof fixtures>;
+
+  beforeAll(async () => {
+    db = await startTestPostgres();
+    dataSource = db.dataSource;
+    seed = fixtures(dataSource);
+  });
+
+  afterAll(() => stopTestPostgres(db));
+
+  beforeEach(() => truncateAllTables(dataSource));
+
+  describe('HealthStatusesRepository.history', () => {
+    it('keeps only real health changes of the horse, newest first', async () => {
+      const winx = await seed.horse('Winx');
+      const other = await seed.horse('Other');
+      const actor = await seed.user(UserRole.VETERINARIAN);
+      const { ELIGIBLE, INJURED, UNDER_OBSERVATION } = HorseHealthStatus;
+      await seed.horseAudit(
+        winx,
+        { healthStatus: ELIGIBLE },
+        { healthStatus: INJURED },
+        '2026-09-10T02:00:00Z',
+        { reason: 'Viêm gân', feature: 'MED_HEALTH', actorId: actor },
+      );
+      await seed.horseAudit(
+        winx,
+        { healthStatus: INJURED },
+        { healthStatus: UNDER_OBSERVATION },
+        '2026-09-20T02:00:00Z',
+        { feature: 'MED_CASE_VISIT' },
+      );
+      await seed.horseAudit(
+        winx,
+        { healthStatus: UNDER_OBSERVATION },
+        { healthStatus: UNDER_OBSERVATION },
+        '2026-09-21T02:00:00Z',
+      );
+      await seed.horseAudit(
+        winx,
+        { name: 'Winx' },
+        { name: 'Winx II' },
+        '2026-09-22T02:00:00Z',
+      );
+      await seed.horseAudit(
+        winx,
+        { healthStatus: ELIGIBLE },
+        { healthStatus: INJURED },
+        '2026-09-23T02:00:00Z',
+        { entityType: AuditEntityType.MEDICAL_CASE },
+      );
+      await seed.horseAudit(
+        other,
+        { healthStatus: ELIGIBLE },
+        { healthStatus: INJURED },
+        '2026-09-24T02:00:00Z',
+      );
+
+      const rows = await new HealthStatusesRepository(dataSource).history(winx);
+
+      expect(rows).toEqual([
+        expect.objectContaining({
+          changedAt: new Date('2026-09-20T02:00:00Z'),
+          from: INJURED,
+          to: UNDER_OBSERVATION,
+          feature: 'MED_CASE_VISIT',
+        }),
+        {
+          changedAt: new Date('2026-09-10T02:00:00Z'),
+          from: ELIGIBLE,
+          to: INJURED,
+          reason: 'Viêm gân',
+          feature: 'MED_HEALTH',
+          actorId: actor,
+        },
+      ]);
+    });
+
+    it('keeps the first recorded status even without a previous one', async () => {
+      const winx = await seed.horse('Winx');
+      await seed.horseAudit(
+        winx,
+        {},
+        { healthStatus: HorseHealthStatus.UNDER_OBSERVATION },
+        '2026-09-10T02:00:00Z',
+      );
+
+      const rows = await new HealthStatusesRepository(dataSource).history(winx);
+
+      expect(rows).toEqual([
+        expect.objectContaining({
+          from: null,
+          to: HorseHealthStatus.UNDER_OBSERVATION,
+        }),
+      ]);
+    });
+  });
+
+  describe('ExamRequestsService', () => {
+    let callerId: string;
+    let audit: { record: jest.Mock };
+    let service: ExamRequestsService;
+
+    const listIds = async (
+      actor: Actor,
+      query: Partial<ExamRequestListQueryDto> = {},
+    ) =>
+      (
+        await service.list(
+          actor,
+          Object.assign(new ExamRequestListQueryDto(), query),
+        )
+      ).items.map((item) => item.id);
+
+    beforeEach(async () => {
+      callerId = await seed.user(UserRole.GROOM);
+      audit = { record: jest.fn().mockResolvedValue(undefined) };
+      service = new ExamRequestsService(
+        dataSource,
+        dataSource.getRepository(MedicalExamRequestEntity),
+        {} as MedicalAccessService,
+        Object.assign(new HorseAccessService(dataSource), {
+          currentUser: jest.fn().mockResolvedValue({ id: callerId }),
+        }),
+        audit,
+        { publish: jest.fn() },
+      );
+    });
+
+    describe('list', () => {
+      it('shows pending requests only, urgent first, then the oldest', async () => {
+        const winx = await seed.horse('Winx');
+        const bolt = await seed.horse('Bolt');
+        const oldNormal = await seed.examRequest(winx, {
+          createdAt: '2026-09-01T02:00:00Z',
+        });
+        const newUrgent = await seed.examRequest(winx, {
+          urgent: true,
+          createdAt: '2026-09-20T02:00:00Z',
+        });
+        const oldUrgent = await seed.examRequest(bolt, {
+          urgent: true,
+          createdAt: '2026-09-05T02:00:00Z',
+        });
+        await seed.examRequest(winx, { status: ExamRequestStatus.EXAMINED });
+
+        await expect(listIds(vet)).resolves.toEqual([
+          oldUrgent,
+          newUrgent,
+          oldNormal,
+        ]);
+      });
+
+      it('filters by status and urgency and pages the result', async () => {
+        const winx = await seed.horse('Winx');
+        const dismissed = await seed.examRequest(winx, {
+          status: ExamRequestStatus.DISMISSED,
+        });
+        const urgent = await seed.examRequest(winx, {
+          urgent: true,
+          createdAt: '2026-09-01T02:00:00Z',
+        });
+        const secondUrgent = await seed.examRequest(winx, {
+          urgent: true,
+          createdAt: '2026-09-02T02:00:00Z',
+        });
+        await seed.examRequest(winx);
+
+        await expect(
+          listIds(vet, { status: ExamRequestStatus.DISMISSED }),
+        ).resolves.toEqual([dismissed]);
+        await expect(listIds(vet, { urgent: true })).resolves.toEqual([
+          urgent,
+          secondUrgent,
+        ]);
+        const page = await service.list(
+          vet,
+          Object.assign(new ExamRequestListQueryDto(), {
+            urgent: true,
+            page: 2,
+            limit: 1,
+          }),
+        );
+        expect(page.items.map((item) => item.id)).toEqual([secondUrgent]);
+        expect(page.meta).toMatchObject({ total: 2 });
+      });
+
+      it('shows a groom only the requests of assigned horses', async () => {
+        const mine = await seed.horse('Mine');
+        const other = await seed.horse('Other');
+        const kept = await seed.examRequest(mine);
+        await seed.examRequest(other);
+        await dataSource.query(
+          `INSERT INTO groom_assignments (id, version, horse_id, groom_id, start_at)
+           VALUES ($1, 1, $2, $3, now())`,
+          [randomUUID(), mine, callerId],
+        );
+
+        await expect(listIds(groom)).resolves.toEqual([kept]);
+        await dataSource.query('UPDATE groom_assignments SET end_at = now()');
+        await expect(listIds(groom)).resolves.toEqual([]);
+      });
+    });
+  });
+});

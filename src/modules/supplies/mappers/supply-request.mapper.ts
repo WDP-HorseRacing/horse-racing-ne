@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { SupplyRequestResponseDto } from '../dto/supply-request.dto';
 import type { SupplyRequestEntity } from '../entities/supply-request.entity';
+import { toSupplyItemResponse } from './supply-item.mapper';
 
 const MAPPER_OPTIONS = { excludeExtraneousValues: true } as const;
 
@@ -9,13 +10,17 @@ export function toSupplyRequestResponse(
 ): SupplyRequestResponseDto {
   const source = {
     ...entity,
-    item: requiredRelation(entity.item, 'item'),
+    quantity: entity.quantity === null ? null : Number(entity.quantity),
+    item: toSupplyItemResponse(requiredRelation(entity.item, 'item')),
     requester: requiredRelation(entity.requester, 'requester'),
     reviewer: entity.reviewedBy
       ? requiredRelation(entity.reviewer, 'reviewer')
       : null,
     fulfiller: entity.fulfilledBy
       ? requiredRelation(entity.fulfiller, 'fulfiller')
+      : null,
+    canceller: entity.cancelledBy
+      ? requiredRelation(entity.canceller, 'canceller')
       : null,
   };
 

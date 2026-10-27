@@ -1,16 +1,21 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsDateString,
   IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { StallStatus } from '../constants/stall-status.enum';
+import { trimValue } from '../../../common/utils/dto-input';
+import {
+  MANUAL_STALL_STATUSES,
+  type ManualStallStatus,
+  StallStatus,
+} from '../constants/stall-status.enum';
 import { StallType } from '../constants/stall-type.enum';
 
 export class StallListQueryDto {
@@ -48,6 +53,7 @@ export class CreateStallDto {
     maxLength: 80,
     description: 'Mã số ô chuồng (duy nhất trong hệ thống)',
   })
+  @Transform(trimValue)
   @IsString()
   @MinLength(1)
   @MaxLength(80)
@@ -56,20 +62,11 @@ export class CreateStallDto {
   @ApiPropertyOptional({
     enum: StallType,
     default: StallType.STANDARD,
-    description: 'Phân loại chuồng: STANDARD, ISOLATION, RECOVERY, FOALING',
+    description: 'Phân loại chuồng: STANDARD, ISOLATION, RECOVERY',
   })
   @IsOptional()
   @IsEnum(StallType)
   type?: StallType;
-
-  @ApiPropertyOptional({
-    enum: StallStatus,
-    default: StallStatus.AVAILABLE,
-    description: 'Trạng thái ô chuồng',
-  })
-  @IsOptional()
-  @IsEnum(StallStatus)
-  status?: StallStatus;
 
   @ApiPropertyOptional({
     description: 'Mô tả ô chuồng, ghi chú tiện nghi cơ sở vật chất',
@@ -89,7 +86,16 @@ export class CreateStallDto {
   hasCamera?: boolean;
 }
 
-export class UpdateStallDto extends PartialType(CreateStallDto) {}
+export class UpdateStallDto extends PartialType(CreateStallDto) {
+  @ApiPropertyOptional({
+    enum: [...MANUAL_STALL_STATUSES],
+    description:
+      'Chỉ đổi giữa AVAILABLE và MAINTENANCE, và chỉ khi ô không có ngựa. OCCUPIED do xếp hoặc gỡ ngựa quyết',
+  })
+  @IsOptional()
+  @IsIn(MANUAL_STALL_STATUSES)
+  status?: ManualStallStatus;
+}
 
 export class StallResponseDto {
   @Expose()
@@ -121,17 +127,13 @@ export class StallResponseDto {
   hasCamera!: boolean;
 }
 
-export class CreateStallAssignmentDto {
-  @ApiProperty({ format: 'uuid', description: 'ID ngựa' })
-  @IsUUID()
-  horseId!: string;
-
+export class MoveHorseStallDto {
   @ApiProperty({
-    format: 'date-time',
-    description: 'Thời điểm bắt đầu xếp chuồng',
+    format: 'uuid',
+    description: 'ID ô chuồng đích, phải thuộc khu chuồng của ngựa',
   })
-  @IsDateString()
-  startAt!: string;
+  @IsUUID()
+  stallId!: string;
 }
 
 export class AssignedHorseSummaryDto {
@@ -142,20 +144,6 @@ export class AssignedHorseSummaryDto {
   @Expose()
   @ApiProperty()
   name!: string;
-}
-
-export class AssignedGroomSummaryDto {
-  @Expose()
-  @ApiProperty({ format: 'uuid' })
-  id!: string;
-
-  @Expose()
-  @ApiProperty()
-  fullName!: string;
-
-  @Expose()
-  @ApiProperty()
-  email!: string;
 }
 
 export class StallAssignmentResponseDto {

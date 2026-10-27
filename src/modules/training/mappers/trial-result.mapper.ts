@@ -4,8 +4,19 @@ import { TrialResultEntity } from '../entities/trial-result.entity';
 
 const MAPPER_OPTIONS = { excludeExtraneousValues: true } as const;
 
+/**
+ * Chuyển một lần chạy thử sang dữ liệu trả về
+ *
+ * @param row Lần chạy thử đọc từ DB
+ * @param videoUrl Link xem video có hạn, null nếu lần chạy không có video
+ * @returns Lần chạy thử kèm videoUrl
+ */
 export function toTrialResultResponse(
   row: TrialResultEntity,
+  videoUrl: string | null,
 ): TrialResultResponseDto {
-  return plainToInstance(TrialResultResponseDto, row, MAPPER_OPTIONS);
+  const dto = plainToInstance(TrialResultResponseDto, row, MAPPER_OPTIONS);
+  dto.elapsedMs = Number(row.elapsedMs);
+  dto.videoUrl = videoUrl;
+  return dto;
 }

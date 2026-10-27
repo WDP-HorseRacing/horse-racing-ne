@@ -17,14 +17,20 @@ export class HorseEnrollmentEntity extends MutableRecordEntity {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'class_id' })
+  @JoinColumn({
+    name: 'class_id',
+    foreignKeyConstraintName: 'FK_horse_enrollments_class',
+  })
   trainingClass!: TrainingClassEntity;
 
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
 
   @ManyToOne(() => HorseEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'horse_id' })
+  @JoinColumn({
+    name: 'horse_id',
+    foreignKeyConstraintName: 'FK_horse_enrollments_horse',
+  })
   horse!: HorseEntity;
 
   @Column({ name: 'enrolled_at', type: 'timestamptz' })

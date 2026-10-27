@@ -3,6 +3,7 @@ import { MutableRecordEntity } from '../../../common/database/base-record.entity
 import { RaceAptitude } from '../../horses/enums/race-aptitude.enum';
 import { UserEntity } from '../../users/entities/user.entity';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';
+import { TrainingPlanEntity } from './training-plan.entity';
 
 @Entity({ name: 'training_classes' })
 export class TrainingClassEntity extends MutableRecordEntity {
@@ -30,8 +31,21 @@ export class TrainingClassEntity extends MutableRecordEntity {
   headTrainerId!: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'head_trainer_id' })
+  @JoinColumn({
+    name: 'head_trainer_id',
+    foreignKeyConstraintName: 'FK_training_classes_head_trainer',
+  })
   headTrainer!: UserEntity | null;
+
+  @Column({ name: 'plan_id', type: 'uuid' })
+  planId!: string;
+
+  @ManyToOne(() => TrainingPlanEntity, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'plan_id' })
+  plan!: TrainingPlanEntity;
 
   @Column({ name: 'start_date', type: 'date' })
   startDate!: string;
@@ -42,7 +56,7 @@ export class TrainingClassEntity extends MutableRecordEntity {
   @Column({
     type: 'varchar',
     length: 32,
-    default: TrainingClassStatus.DRAFT,
+    default: TrainingClassStatus.ACTIVE,
     enum: TrainingClassStatus,
   })
   status!: TrainingClassStatus;

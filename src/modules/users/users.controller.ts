@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -11,6 +13,7 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -20,11 +23,17 @@ import { PaginationResponseDto } from '../../common/dto/pagination-response.dto'
 import type { Actor } from '../../common/types/actor';
 import {
   CreateUserDto,
+  ResetUserPasswordDto,
   UpdateUserDto,
   UpdateUserStatusDto,
   UserListQueryDto,
   UserResponseDto,
 } from './dto/user.dto';
+import {
+  HeadTrainerHandoverDto,
+  HeadTrainerHandoverResultDto,
+} from './dto/head-trainer-handover.dto';
+import { HeadTrainerHandoverService } from './services/head-trainer-handover.service';
 import { UsersService } from './services/users.service';
 import { UserRole } from './user.enums';
 
@@ -32,7 +41,10 @@ import { UserRole } from './user.enums';
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly handovers: HeadTrainerHandoverService,
+  ) {}
 
   @Access([UserRole.CLUB_MANAGER])
   @Get()
@@ -80,6 +92,23 @@ export class UsersController {
   }
 
   @Access([UserRole.CLUB_MANAGER])
+  @Post(':id/reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Reset a staff account password',
+    description:
+      'Đặt mật khẩu mới (đăng nhập được ngay) cho tài khoản nhân viên rồi đăng xuất mọi phiên của người đó. Không đặt lại cho chính mình hoặc Club Manager khác; tài khoản đã khóa vẫn đặt lại được.',
+  })
+  @ApiNoContentResponse()
+  resetPassword(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ResetUserPasswordDto,
+  ): Promise<void> {
+    return this.usersService.resetPassword(actor, id, body.newPassword);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
   @Patch(':id')
   @ApiOperation({ summary: 'Update club user' })
   @ApiOkResponse({ type: UserResponseDto })
@@ -89,5 +118,21 @@ export class UsersController {
     @Body() body: UpdateUserDto,
   ): Promise<UserResponseDto> {
     return this.usersService.update(actor, id, body);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Post(':id/head-trainer-handover')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Bàn giao khu chuồng, giáo án và lớp chưa kết thúc của Head Trainer sang Head Trainer khác',
+  })
+  @ApiOkResponse({ type: HeadTrainerHandoverResultDto })
+  handover(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: HeadTrainerHandoverDto,
+  ): Promise<HeadTrainerHandoverResultDto> {
+    return this.handovers.handover(actor, id, body);
   }
 }

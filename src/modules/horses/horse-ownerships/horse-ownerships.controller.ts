@@ -4,10 +4,11 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
-  Put,
+  Post,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -16,46 +17,52 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
+  CreateOwnershipTransferDto,
   HorseOwnershipResponseDto,
   HorseResponseDto,
-  SetHorseOwnersDto,
-} from '../dto/horse.dto';
+} from '../dto';
 import { HorseOwnershipsService } from './horse-ownerships.service';
 
 @ApiTags('horses')
 @ApiBearerAuth()
-@Controller()
+@Controller('horses/:horseId')
 export class HorseOwnershipsController {
   constructor(private readonly ownershipsService: HorseOwnershipsService) {}
 
-  @Access([UserRole.CLUB_MANAGER, UserRole.HORSE_OWNER])
-  @Get('horses/:horseId/owners')
-  @ApiOperation({ summary: 'List horse ownership history' })
-  @ApiOkResponse({ type: [HorseOwnershipResponseDto] })
-  owners(
-    @CurrentUser() actor: Actor,
-    @Param('horseId', ParseUUIDPipe) horseId: string,
-  ): Promise<HorseOwnershipResponseDto[]> {
-    return this.ownershipsService.listOwners(actor, horseId);
-  }
-
   @Access([UserRole.CLUB_MANAGER])
-  @Put('horses/:horseId/owners')
-  @ApiOperation({ summary: 'Replace active ownership shares' })
-  @ApiOkResponse({ type: [HorseOwnershipResponseDto] })
-  setOwners(
+  @Post('ownership-transfers')
+  @ApiOperation({
+    summary: 'Transfer the horse to another owner in the club',
+    description:
+      'Chỉ Club Manager, ghi nhận sau khi hai bên đã thỏa thuận. Ngựa phải ACTIVE hoặc RETIRED và đang có chủ (409 nếu không). Chủ mới phải khác chủ hiện tại (400) và là Horse Owner đang hoạt động (400 sai vai trò, 409 không hoạt động). Ngựa đang có bệnh án mở vẫn chuyển được. Sai version trả 409. Không đổi vòng đời, khu, ô, Groom, lớp. Báo cho chủ cũ và chủ mới.',
+  })
+  @ApiCreatedResponse({ type: HorseResponseDto })
+  transfer(
     @CurrentUser() actor: Actor,
     @Param('horseId', ParseUUIDPipe) horseId: string,
-    @Body() body: SetHorseOwnersDto,
-  ): Promise<HorseOwnershipResponseDto[]> {
-    return this.ownershipsService.replaceOwners(actor, horseId, body);
+    @Body() body: CreateOwnershipTransferDto,
+  ): Promise<HorseResponseDto> {
+    return this.ownershipsService.transfer(actor, horseId, body);
   }
 
-  @Access([UserRole.HORSE_OWNER])
-  @Get('owners/me/horses')
-  @ApiOperation({ summary: 'List horses currently owned by the current user' })
-  @ApiOkResponse({ type: [HorseResponseDto] })
-  myHorses(@CurrentUser() actor: Actor): Promise<HorseResponseDto[]> {
-    return this.ownershipsService.listMyHorses(actor);
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.GROOM,
+    UserRole.HORSE_OWNER,
+  ])
+  @Get('ownerships')
+  @ApiOperation({
+    summary: 'List the ownership history of a horse',
+    description:
+      'Mới nhất lên trên. Club Manager, Head Trainer, Veterinarian, Groom xem toàn bộ. Horse Owner chỉ thấy các giai đoạn của chính mình trên ngựa mình đang sở hữu.',
+  })
+  @ApiOkResponse({ type: [HorseOwnershipResponseDto] })
+  history(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+  ): Promise<HorseOwnershipResponseDto[]> {
+    return this.ownershipsService.history(actor, horseId);
   }
 }

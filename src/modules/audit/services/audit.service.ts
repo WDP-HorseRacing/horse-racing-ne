@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AuditAction } from '../constants/audit-action.enum';
 import { AuditEntityType } from '../constants/audit-entity-type.enum';
+import { AuditFeature } from '../constants/audit-feature.enum';
 import { AuditLogEntity } from '../entities/audit-log.entity';
 
 /**
@@ -14,6 +15,10 @@ export interface AuditEntry {
   entityId: string;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
+  /** Lý do người dùng nhập cho thao tác (vd lý do xóa, khôi phục); bỏ trống thì lưu null */
+  reason?: string | null;
+  /** Mã chức năng của thao tác; bỏ trống thì lưu null */
+  feature?: AuditFeature | null;
 }
 
 @Injectable()
@@ -21,8 +26,8 @@ export class AuditService {
   /**
    * Ghi một dòng nhật ký thao tác vào bảng audit_logs.
    *
-   * - Truyền EntityManager của transaction đang chạy để nhật ký chỉ được lưu khi thao tác chính thành công
-   * - correlationId tạm để null vì Actor chưa mang correlationId của request
+   * - Ghi bằng EntityManager của transaction đang chạy: nhật ký chỉ được lưu khi transaction commit
+   * - Lưu correlationId là null
    *
    * @param manager EntityManager của transaction đang chạy
    * @param entry Nội dung nhật ký
@@ -37,6 +42,8 @@ export class AuditService {
       beforeData: entry.before,
       afterData: entry.after,
       correlationId: null,
+      reason: entry.reason ?? null,
+      feature: entry.feature ?? null,
     });
   }
 }

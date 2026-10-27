@@ -1,16 +1,24 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserEntity } from '../../users/entities/user.entity';
+import { AuditModule } from '../../audit/audit.module';
+import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
+import { TrainingSharedModule } from '../../training/shared/training-shared.module';
 import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
-import { HorseEntity } from '../../horses/entities/horse.entity';
+import { StableSharedModule } from '../shared/stable-shared.module';
 import { GroomAssignmentsController } from './groom-assignments.controller';
 import { GroomAssignmentsService } from './groom-assignments.service';
+import { GroomAssignmentsRepository } from './groom-assignments.repository';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([GroomAssignmentEntity, HorseEntity, UserEntity]),
+    TypeOrmModule.forFeature([GroomAssignmentEntity]),
+    AuditModule,
+    HorsesSharedModule,
+    StableSharedModule,
+    TrainingSharedModule,
   ],
   controllers: [GroomAssignmentsController],
-  providers: [GroomAssignmentsService],
+  providers: [GroomAssignmentsService, GroomAssignmentsRepository],
+  exports: [GroomAssignmentsService],
 })
 export class GroomAssignmentsModule {}

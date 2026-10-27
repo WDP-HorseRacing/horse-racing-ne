@@ -52,7 +52,7 @@ export class KeycloakService {
   verifyToken(token: string): Promise<KeycloakVerifiedToken> {
     // Fail closed: never trust jwt.decode() as authentication.
     if (!this.jwksClientInstance || !this.audience)
-      throw new UnauthorizedException('Keycloak is not configured');
+      throw new UnauthorizedException('Máy chủ xác thực chưa được cấu hình');
 
     const jwksClientInstance = this.jwksClientInstance;
     const audience = this.audience;
@@ -90,7 +90,7 @@ export class KeycloakService {
               `Keycloak token verification failed: ${err instanceof Error ? err.message : 'invalid token'}`,
             );
             return reject(
-              new UnauthorizedException('Token verification failed'),
+              new UnauthorizedException('Phiên đăng nhập không hợp lệ'),
             );
           }
 
@@ -99,7 +99,7 @@ export class KeycloakService {
           if (!claims.sub || !claims.exp || claims.typ !== 'Bearer')
             return reject(
               new UnauthorizedException(
-                'A non-expired Keycloak access token is required',
+                'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
               ),
             );
 

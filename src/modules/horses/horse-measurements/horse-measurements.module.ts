@@ -14,5 +14,6 @@ import { HorseMeasurementsService } from './horse-measurements.service';
   ],
   controllers: [HorseMeasurementsController],
   providers: [HorseMeasurementsService],
+  exports: [HorseMeasurementsService],
 })
 export class HorseMeasurementsModule {}

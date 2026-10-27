@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import {
@@ -23,8 +24,8 @@ import { Access, CurrentUser } from '../../../common/decorators';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import {
-  CreateStallAssignmentDto,
   CreateStallDto,
+  MoveHorseStallDto,
   StallAssignmentResponseDto,
   StallListQueryDto,
   StallResponseDto,
@@ -121,21 +122,45 @@ export class StallsController {
     return this.stallsService.listAssignments(actor, id);
   }
 
-  @Access([UserRole.CLUB_MANAGER])
-  @Post('stalls/:id/assignments')
-  @ApiOperation({ summary: 'Assign horse to stall' })
-  @ApiCreatedResponse({ type: StallAssignmentResponseDto })
-  assign(
+  @Access([UserRole.HEAD_TRAINER])
+  @Put('horses/:id/stall')
+  @ApiOperation({
+    summary: 'Assign or move a horse to a stall in its barn',
+    description:
+      'Head Trainer of the horse barn only. The horse must already have a barn (set by the Club Manager); the stall must belong to that barn and be free. Moving closes the current stall assignment and frees the old stall in the same transaction. The groom is not changed.',
+  })
+  @ApiOkResponse({ type: StallAssignmentResponseDto })
+  moveHorseToStall(
     @CurrentUser() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: CreateStallAssignmentDto,
+    @Body() body: MoveHorseStallDto,
   ): Promise<StallAssignmentResponseDto> {
-    return this.stallsService.assign(actor, id, body);
+    return this.stallsService.moveHorseToStall(actor, id, body);
   }
 
-  @Access([UserRole.CLUB_MANAGER, UserRole.HEAD_TRAINER])
+  @Access([UserRole.HEAD_TRAINER])
+  @Delete('horses/:id/stall')
+  @ApiOperation({
+    summary: 'Remove a horse from its current stall',
+    description:
+      'Head Trainer of the horse barn only. Ends the open stall assignment of the horse and frees the stall, same rules and audit as ending the assignment by id. 404 if the horse has no stall; 409 if the horse is transferred or has no barn.',
+  })
+  @ApiOkResponse({ type: StallAssignmentResponseDto })
+  releaseHorseStall(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<StallAssignmentResponseDto> {
+    return this.stallsService.removeHorseFromStall(actor, id);
+  }
+
+  @Access([UserRole.HEAD_TRAINER])
   @Post('stall-assignments/:id/end')
-  @ApiOperation({ summary: 'End stall assignment' })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'End stall assignment',
+    description:
+      'Head Trainer of the horse barn only (horses.barn_id), even when the caller also has another role. Ends the open assignment and frees the stall if it is OCCUPIED and has no other open assignment. 409 if the assignment is already ended.',
+  })
   @ApiOkResponse({ type: StallAssignmentResponseDto })
   endAssignment(
     @CurrentUser() actor: Actor,
@@ -144,5 +169,3 @@ export class StallsController {
     return this.stallsService.endAssignment(actor, id);
   }
 }
-
-export { StallsController as StallController };

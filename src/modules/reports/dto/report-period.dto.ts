@@ -1,14 +1,23 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional } from 'class-validator';
+import { IsOptional } from 'class-validator';
+import { IsDateOnly } from '../../../common/utils/dto-input';
 
 export class ReportPeriodDto {
-  @ApiPropertyOptional({ format: 'date' })
+  @ApiPropertyOptional({
+    format: 'date',
+    description:
+      'Từ ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là 29 ngày trước ngày kết thúc',
+  })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly({ message: 'Từ ngày phải có dạng YYYY-MM-DD' })
   from?: string;
 
-  @ApiPropertyOptional({ format: 'date' })
+  @ApiPropertyOptional({
+    format: 'date',
+    description:
+      'Tới hết ngày (lịch câu lạc bộ), YYYY-MM-DD; bỏ trống là hôm nay',
+  })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly({ message: 'Đến ngày phải có dạng YYYY-MM-DD' })
   to?: string;
 }

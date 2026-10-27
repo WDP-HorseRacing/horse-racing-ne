@@ -18,21 +18,35 @@ Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`.
 | ------------- | ---------------------------------------------------------------------------------------- |
 | Users         | `users`                                                                                  |
 | Horses        | `horses`, `horse_ownerships`, `horse_measurements`                                       |
-| Training      | `training_plans`, `training_sessions`, `time_trials`                                     |
-| Performance   | `performance_metrics`, `performance_thresholds`, `performance_evaluations`               |
-| Medical       | `medical_records`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
-| Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents` |
+| Training      | `training_subjects`, `training_plans`, `training_plan_phases`, `training_plan_subjects`, `training_classes`, `training_class_phases`, `training_class_phase_subjects`, `horse_enrollments`, `training_sessions`, `session_participants`, `trial_results` |
+| Performance   | `performance_evaluations` (số đo `performance_metrics` ở MongoDB; ngưỡng là hằng số chung CLB) |
+| Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injuries`, `injury_markers`, `training_locks`, `care_schedules` |
+| Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `daily_task_types`, `horse_daily_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
 | Racing        | `races`, `race_registrations`                                                            |
-| Supplies      | `supply_items`, `supply_requests`                                                        |
-| Notifications | `notifications`                                                                          |
+| Supplies      | `supply_items`, `supply_lots`, `supply_stock_movements`, `supply_requests`               |
+| Billing       | `daily_fees`, `horse_surcharges`                                                         |
 | Audit         | `audit_logs`                                                                             |
 | Media         | `media_assets`                                                                           |
+| Hạ tầng       | `outbox_events`                                                                          |
 
-`Reports`, `Realtime` và `Health` chưa có bảng persistence riêng.
+MongoDB: `notifications`, `user_devices`, `performance_metrics` (time-series). `Reports`, `Realtime` và `Health` chưa có bảng persistence riêng.
+
+## Huấn luyện
+
+- `training_subjects` (môn): `intensity` `LIGHT`/`HEAVY`, `duration_minutes` mặc định 60, CHECK 15–480; tên duy nhất.
+- `training_plans` → `training_plan_phases` (`position`, `weeks`) → `training_plan_subjects` (`min_sessions_per_week` 1–14, mỗi môn một dòng trong một giai đoạn). Không lưu thứ hay giờ.
+- `training_classes`: lớp chỉ có `start_date`; `end_date` tính từ tổng số tuần. Trạng thái `ACTIVE`/`COMPLETED`/`CANCELLED`, không có nháp.
+- `training_class_phases` → `training_class_phase_subjects`: bản chép giáo án lúc tạo lớp; sửa giáo án không đổi lớp đã tạo.
+- `training_sessions`: `intensity` `LIGHT`/`HEAVY`, `status` `SCHEDULED`/`IN_PROGRESS`/`COMPLETED`/`CANCELLED`. `session_participants`: một lượt tập của một ngựa trong một buổi.
+
+## Phí
+
+- `daily_fees`: phí ngày chung của CLB theo ngày hiệu lực (`effective_from` duy nhất), `daily_fee` `bigint` VND ≥ 0.
+- `horse_surcharges`: phụ phí riêng từng ngựa, `description` ≤ 500 ký tự, `daily_amount` `bigint` VND > 0, `start_date` ≤ `end_date`. `applied_by` và `applied_at` (HT xác nhận đã áp dụng) cùng null hoặc cùng có giá trị.
 
 ## Horse Schema
 
-API, quyền và state machine của nhóm bảng này mô tả chi tiết trong [Flow 1](flow1-horses.md).
+Nghiệp vụ, quyền và state machine của nhóm bảng này mô tả trong [Flow 1](flow1-horses.md); API chi tiết ở [API catalog](api-catalog.md).
 
 ### `horses`
 
@@ -48,7 +62,7 @@ API, quyền và state machine của nhóm bảng này mô tả chi tiết trong
   - RETIRED: hủy giáo án SCHEDULED/ACTIVE cùng buổi tập SCHEDULED, rút đăng ký thi đấu còn mở ở race PLANNED/OPEN (`WITHDRAWN`); giữ ô chuồng, lịch chăm sóc, khóa huấn luyện.
   - TRANSFERRED: như RETIRED, thêm đóng sở hữu, groom, xếp chuồng (ô về AVAILABLE) và tự gỡ khóa huấn luyện (`released_by = null`).
   - Ngựa đang có buổi tập IN_PROGRESS hoặc race IN_PROGRESS thì trả 409.
-- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `horse_ownerships`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`, `performance_thresholds`.
+- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `medical_cases`, `medical_exam_requests`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`.
 
 Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_id`/`dam_id`, giới hạn `depth` 1–4 (mặc định 2).
 
@@ -74,7 +88,7 @@ Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_i
 | `TEMPERATURE`    | celsius | 30–45         | 37.2–38.3          |
 
 - Quyền ghi theo loại (`MEASUREMENT_TYPES_BY_ROLE`): Head Trainer (ngựa trong khu mình) `WEIGHT`, `BODY_CONDITION`; Groom (ngựa được giao) `WEIGHT`, `TEMPERATURE`; Veterinarian cả bốn. Người nhiều role được hợp các loại. Xem: mọi role trong CLB, Horse Owner chỉ ngựa sở hữu.
-- `measured_at` không ở tương lai, lùi tối đa 7 ngày.
+- `measured_at` là thời điểm lưu bản ghi (nhập tay) hoặc thời điểm buổi khám (số đo từ buổi khám), không nhận từ request.
 - Cảnh báo tự động khi ghi, trả trong `alerts[]` và phát domain event `horse.measurement.alert` sau khi lưu (payload `HorseMeasurementAlertEvent`):
   - `FEVER` (URGENT): thân nhiệt > 38.6 °C.
   - `WEIGHT_DROP` (WARNING): cân nặng giảm > 5% so với cân nặng cao nhất trong 14 ngày trước `measured_at`.
@@ -94,8 +108,15 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
 
 ## Medical & Supplies
 
-- `injury_markers.position` (`jsonb`, nullable): tọa độ `{ x, y, z }` trên mô hình 3D của ngựa; `body_region` vẫn bắt buộc để lọc/tô theo vùng.
-- `supply_items.category`: `FEED` (thức ăn), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc.
+- `medical_cases` (bệnh án, Flow 3): `status` `OPEN`/`CLOSED`/`CANCELLED` (`CANCELLED`: hủy buổi mở bệnh án khi mở nhầm); partial unique `medical_cases_open_horse_uq (horse_id) WHERE status = 'OPEN'` (mỗi ngựa tối đa một bệnh án mở). Không lưu cột chi phí: tổng chi phí bệnh án cộng lúc đọc từ `medical_records.cost` của các buổi chưa hủy.
+- `medical_records` là một **buổi khám**: `kind` `ROUTINE`/`REQUEST`/`FOLLOW_UP`, `conclusion` `NORMAL`/`ISSUE` (chỉ buổi ngoài bệnh án), `case_id` (null với buổi ngoài bệnh án kết luận `NORMAL`), `barn_id` (khu của ngựa lúc khám, chốt khi lưu, không đổi khi ngựa chuyển khu hay sửa buổi khám; null nếu lúc khám ngựa chưa thuộc khu nào; FK `medical_records_barn_fk` -> `barns.id` `ON DELETE RESTRICT`; báo cáo chi phí lọc khu theo cột này), `next_visit_at`, `care_instructions`, `cost` `bigint` VND NOT NULL DEFAULT 0, CHECK `medical_records_cost_chk` `>= 0` (chi phí tính cho chủ của giai đoạn sở hữu chứa `exam_date`). Không sửa/xóa, trừ `cost` được điều chỉnh kèm lý do; ghi sai thì set `voided_at` + `void_reason`. `diagnosis`, `severity` nullable.
+- `medical_exam_requests` (yêu cầu khám, Flow 3 F3.4): `status` `PENDING`/`EXAMINED`/`DISMISSED`, `source` `GROOM_INCIDENT`/`MEASUREMENT_ALERT`/`STAFF`/`VET`, `requested_by` null với nguồn `MEASUREMENT_ALERT`; partial unique `(horse_id, alert_type) WHERE status = 'PENDING' AND alert_type IS NOT NULL`. Không còn sinh yêu cầu mới nguồn `MEASUREMENT_ALERT` (cảnh báo chỉ số chỉ gửi thông báo); cột `alert_type`, `source_ref_id` và index giữ cho dữ liệu đã có.
+- `training_locks.case_id`: bệnh án liên quan (nullable).
+- `care_schedules`: thêm type `ROUTINE_CHECKUP` (ngày hẹn khám định kỳ, partial unique một lịch `SCHEDULED` mỗi ngựa), `completed_by`, `cancel_reason`. `status` chỉ còn `SCHEDULED`/`COMPLETED`/`CANCELLED` (bỏ `IN_PROGRESS` không dùng; cột varchar nên không cần migration).
+- `care_schedules.assigned_to`: bác sĩ được giao, null là chưa giao ai. Không còn cột `assignee_type` (migration `CareScheduleVetOnly`).
+- `injuries` (một vết chấn thương của ngựa, chỉ thông tin cố định lúc phát hiện): `horse_id`, `body_region`, `injury_type`, `position` (`jsonb`, NOT NULL, tọa độ `{ x, y, z }` trên mô hình 3D), `first_medical_record_id` (buổi khám phát hiện); index `injuries_horse_idx`. Không sửa, không xóa; không lưu mức hồi phục hiện tại.
+- `injury_markers` (một lần ghi nhận vết tại một buổi khám): `medical_record_id`, `injury_id` (FK `injuries`, NOT NULL), `recovery_status`, `notes`; unique `injury_markers_record_injury_uq (medical_record_id, injury_id)`. Mức hiện tại của vết = `recovery_status` của dòng mới nhất thuộc buổi khám chưa hủy (theo `exam_date` rồi `created_at`); vết không còn dòng nào thuộc buổi chưa hủy thì ẩn.
+- `supply_items.category`: `FEED` (thức ăn), `SUPPLEMENT` (vitamin, thực phẩm bổ sung), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc. Kho chung CLB; số tồn chỉ đổi kèm một dòng `supply_stock_movements` (Flow 4).
 
 ## Khu chuồng
 
@@ -119,8 +140,7 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
   - `STANDARD`: Ô chuồng tiêu chuẩn phục vụ lưu trú thường nhật.
   - `ISOLATION`: Ô chuồng cách ly y tế, kiểm dịch bệnh dịch lây nhiễm.
   - `RECOVERY`: Ô chuồng tịnh dưỡng chuyên biệt sau phẫu thuật / chấn thương.
-  - `FOALING`: Ô chuồng đẻ rộng rãi, an toàn cho ngựa mang thai / ngựa con sơ sinh.
-- `status` (`StallStatus`, default `AVAILABLE`): `AVAILABLE`, `OCCUPIED`, `MAINTENANCE`, `RESERVED`.
+- `status` (`StallStatus`, default `AVAILABLE`): `AVAILABLE`, `OCCUPIED`, `MAINTENANCE`. `OCCUPIED`/`AVAILABLE` do xếp và gỡ ngựa quyết; người dùng chỉ đổi được `AVAILABLE` ↔ `MAINTENANCE` khi ô trống.
 - `description` (`text`, nullable): Mô tả đặc thù ô chuồng, tiện ích hoặc ghi chú cơ sở vật chất.
 - `has_camera` (`boolean`, default `false`): Ô chuồng có trang bị hệ thống camera giám sát 24/7.
 - Không được xóa ô đang có ngựa (`stall_assignments` mở).
@@ -135,18 +155,18 @@ Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách
 
 ### Ngựa thuộc khu
 
-Ngựa thuộc khu của Head Trainer khi có `stall_assignments` active (`end_at IS NULL`) vào stall có `barn_id` trỏ tới khu có `head_trainer_id` là Head Trainer đó (`src/modules/stable/utils/trainer-barn.ts`). Ngựa chưa xếp chuồng không thuộc khu nào: Head Trainer chỉ xem thông tin công khai, Club Manager xếp chuồng trước khi Head Trainer thao tác.
+Ngựa thuộc khu của Head Trainer khi `horses.barn_id` trỏ tới khu (chưa xóa) có `head_trainer_id` là Head Trainer đó (`HorseAccessService.isHorseInTrainerBarn` trong `src/modules/horses/shared/horse-access.service.ts`). Ngựa chưa được Club Manager xếp khu thì không thuộc Head Trainer nào.
 
 ### Phân quyền Head Trainer theo khu
 
 | Nhóm                | Phạm vi                     | Nội dung                                                                                                                                                                                                           |
 | ------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | A. Công khai        | Mọi Head Trainer trong club | Hồ sơ ngựa, pedigree, nhãn sức khỏe, lifecycle, measurements, eligibility; tiến độ giáo án và lịch buổi tập; metrics, performance, workload, time trial; thành tích và lịch giải; sơ đồ khu/stall; báo cáo tiến độ |
-| B. Nhạy cảm         | Head Trainer của khu        | Đánh giá chuyên môn buổi tập; ngưỡng và cảnh báo thể lực; hồ sơ y tế, đơn thuốc, chấn thương, khóa huấn luyện; feeding plan, checklist, sự cố; đăng ký thi đấu; báo cáo sức khỏe ngựa                              |
+| B. Nhạy cảm         | Head Trainer của khu        | Đánh giá chuyên môn buổi tập; ngưỡng và cảnh báo thể lực; feeding plan, checklist, sự cố; đăng ký thi đấu                                                    |
 | C. Ghi / quyết định | Head Trainer của khu        | Tạo/sửa/kích hoạt/hoàn thành/hủy giáo án; tạo/sửa/start/complete/cancel buổi tập; time trial, metrics, đánh giá; measurement; ngưỡng; duyệt feeding plan; đăng ký giải; xử lý sự cố                                |
 | D. Không xem        | —                           | Chủ sở hữu và tỷ lệ sở hữu; tài chính, chi phí, doanh thu                                                                                                                                                          |
 
-Club Manager không bị giới hạn theo khu. Veterinarian toàn club. Vi phạm nhóm B/C trả `403`. Các module còn stub (Performance, Realtime, Racing, Stable, Reports) áp dụng bảng này khi implement.
+Club Manager không bị giới hạn theo khu. Veterinarian toàn club. Dữ liệu y tế (bệnh án, buổi khám, đơn thuốc, chấn thương, khóa huấn luyện) Head Trainer xem toàn club theo Flow 3; chỉ gửi yêu cầu khám bị giới hạn theo khu. Vi phạm nhóm B/C trả `403`. Các module còn stub (Performance, Realtime, Racing, Stable, Reports) áp dụng bảng này khi implement.
 
 ## Domain Constraints
 
@@ -158,7 +178,7 @@ Club Manager không bị giới hạn theo khu. Veterinarian toàn club. Vi ph�
 - Ngày sinh không ở tương lai (tạo và sửa).
 - Tạo ngựa có thể kèm `stallId` và `owners`, chạy trong 1 transaction. Ô phải còn (chưa xóa), `AVAILABLE`, thuộc khu `ACTIVE` và chưa có ngựa. Ngựa tham chiếu không được kèm ô/chủ. Luật ô trống này cũng áp cho `POST /stalls/:id/assignments`, nhưng mã lỗi đang lệch: tạo/activate ngựa trả `409`, còn `POST /stalls/:id/assignments` trả `400` khi ô không `AVAILABLE` hoặc khu không `ACTIVE`.
 - Lifecycle: `ACTIVE ↔ RETIRED`, `ACTIVE ↔ TRANSFERRED`, `RETIRED → TRANSFERRED`. Sang `TRANSFERRED`: đóng ownership, groom, phân công chuồng (ô `OCCUPIED` về `AVAILABLE`), hồ sơ chỉ đọc. Ngựa quay lại club: mở lại hồ sơ cũ bằng `TRANSFERRED → ACTIVE` (1 microchip = 1 hồ sơ), rồi gán chủ và xếp chuồng lại.
-- Không set `health_status = ELIGIBLE` khi có `training_locks` `ACTIVE`.
+- `health_status` và `training_locks` độc lập: được set `ELIGIBLE` khi đang có lock `ACTIVE` (Flow 3 mục III.4.3); lock vẫn chặn tập và đua.
 - Chỉ xóa mềm ngựa chưa có dòng nào trong các bảng nghiệp vụ (`HORSE_BUSINESS_TABLES`, danh sách ở mục `horses`) và không là parent của ngựa khác.
 - Eligibility: tập khi `ACTIVE`, health `ELIGIBLE`/`UNDER_OBSERVATION`, không lock; đua khi `ACTIVE`, health `ELIGIBLE`, không lock.
 - Phạm vi xem: danh sách ngựa (`GET /horses`) Club Manager, Head Trainer, Veterinarian, Groom toàn club; Horse Owner theo `horse_ownerships` active. Chi tiết ngựa và API con: Groom theo `groom_assignments` active. Head Trainer bị giới hạn thêm theo khu chuồng (xem mục Khu chuồng).
