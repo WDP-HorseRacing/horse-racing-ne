@@ -1,6 +1,6 @@
 {$API_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy be:3000
+	reverse_proxy horse-be:8000
 }
 
 {$AUTH_DOMAIN} {
