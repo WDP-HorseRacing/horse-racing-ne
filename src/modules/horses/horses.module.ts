@@ -1,15 +1,19 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { HorseEntity } from './entities/horse.entity';
-import { HorsesRepository } from './repositories/horses.repository';
-import { HorsesService } from './services/horses.service';
-import { HorsesController } from './controllers/horses.controller';
-import { HorseDetailsController } from './controllers/horse-details.controller';
+import { HorseDeletionsModule } from './horse-deletions/horse-deletions.module';
+import { HorseMeasurementsModule } from './horse-measurements/horse-measurements.module';
+import { HorseOwnershipsModule } from './horse-ownerships/horse-ownerships.module';
+import { HorsePlacementsModule } from './horse-placements/horse-placements.module';
+import { HorseProfilesModule } from './horse-profiles/horse-profiles.module';
+import { HorseStatusesModule } from './horse-statuses/horse-statuses.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([HorseEntity])],
-  providers: [HorsesRepository, HorsesService],
-  controllers: [HorsesController, HorseDetailsController],
-  exports: [HorsesService],
+  imports: [
+    HorseProfilesModule,
+    HorseDeletionsModule,
+    HorseStatusesModule,
+    HorseMeasurementsModule,
+    HorsePlacementsModule,
+    HorseOwnershipsModule,
+  ],
 })
 export class HorsesModule {}

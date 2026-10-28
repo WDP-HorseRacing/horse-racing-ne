@@ -1,34 +1,202 @@
-# Entity model for review
+# Current Entity Model
 
-This is a draft TypeORM model based on the system design and requirement analysis documents. It contains 28 tables across the current modules. No migration was generated or executed for this model.
+Tài liệu này mô tả schema hiện trạng của backend `horse-racing-ne`. PostgreSQL là database chính, TypeORM quản lý entity và migration; `synchronize` đang tắt.
 
-| Module | Tables |
-| --- | --- |
-| Users | `clubs`, `users` |
-| Auth | `refresh_sessions` |
-| Horses | `horses`, `horse_ownerships` |
-| Training | `training_plans`, `training_sessions`, `time_trials` |
-| Performance | `performance_metrics`, `performance_thresholds`, `performance_evaluations` |
-| Medical | `medical_records`, `prescriptions`, `injury_markers`, `training_locks`, `care_schedules` |
-| Stable | `stalls`, `stable_assignments`, `feeding_plans`, `daily_checklists`, `incidents` |
-| Racing | `races`, `race_registrations` |
-| Supplies | `supply_items`, `supply_requests` |
-| Notifications | `notifications` |
-| Audit | `audit_logs` |
-| Media | `media_assets` |
+## Modeling Rules
 
-`Reports`, `Realtime`, and `Health` have no persistence entity. Reports can query or project data from the domain tables; no separate report table is specified yet.
+- Các bảng nghiệp vụ dùng UUID primary key do PostgreSQL sinh bằng `uuid_generate_v4()`.
+- Tên property dùng camelCase trong TypeScript; tên cột dùng snake_case trong PostgreSQL.
+- Các giá trị `numeric` được biểu diễn bằng `string` trong entity khi cần giữ độ chính xác.
+- Entity có `updated_at` và `version` khi thuộc nhóm mutable; entity cần soft delete kế thừa `deleted_at`.
+- Hệ thống phục vụ đúng một câu lạc bộ: không có bảng `clubs` và không có cột `club_id`; dữ liệu dùng chung toàn hệ thống, phân quyền theo role, phân công và khu chuồng.
+- Ownership, measurements, medical records, training locks và audit logs là dữ liệu lịch sử, không ghi đè thành một snapshot duy nhất.
+- Mọi thay đổi schema phải đi qua migration. Không dùng `synchronize` trong môi trường chạy thật.
 
-## Modeling choices to review
+## Current Tables
 
-- IDs use UUIDs; timestamps use PostgreSQL `timestamptz`; fields use camelCase in TypeScript and snake_case in PostgreSQL. PostgreSQL `numeric` and `bigint` values are represented as strings in entity properties to avoid precision loss.
-- All mutable tables have `updated_at` and `version`. `horses`, `clubs`, `users`, `stalls`, and `supply_items` also have `deleted_at`. Metric, medical, prescription, injury, audit, media and refresh-session records do not expose ordinary update/delete lifecycle columns.
-- Club ownership is explicit on top-level resources. Child tables inherit club scope through their parent relation. Preventing a cross-club reference requires service checks and, where needed, composite database constraints during migration design.
-- The model defines a partial unique index for one ACTIVE training lock per horse. It also defines unique keys for club email, microchip within a club, race registration, session evaluation, and metric source/timestamp idempotency.
-- Percent ownership summing to 100%, non-overlapping date ranges, horse eligibility, append-only medical/audit behavior, and the transaction that cancels future sessions when a training lock is created cannot be guaranteed by entity decorators alone. They require service rules and database-level constraints where appropriate.
-- Threshold limits and feeding rations are JSONB because the exact shape is not settled in the design. Status fields are `varchar` so values can be finalized before migrations without creating PostgreSQL enum types.
-- `care_schedules`, `time_trials`, `refresh_sessions`, and `media_assets` complete flows described outside the design document's core table list. Finance remains out of scope because the design places it in a later phase without a defined schema.
+| Module        | Tables                                                                                   |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| Users         | `users`                                                                                  |
+| Horses        | `horses`, `horse_ownerships`, `horse_measurements`                                       |
+| Training      | `training_subjects`, `training_plans`, `training_plan_phases`, `training_plan_subjects`, `training_classes`, `training_class_phases`, `training_class_phase_subjects`, `horse_enrollments`, `training_sessions`, `session_participants`, `trial_results` |
+| Performance   | `performance_evaluations` (số đo `performance_metrics` ở MongoDB; ngưỡng là hằng số chung CLB) |
+| Medical       | `medical_cases`, `medical_records`, `medical_exam_requests`, `prescriptions`, `injuries`, `injury_markers`, `training_locks`, `care_schedules` |
+| Stable        | `barns`, `stalls`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `feeding_plan_items`, `daily_task_types`, `horse_daily_tasks`, `daily_checklists`, `daily_checklist_items`, `incidents` |
+| Racing        | `races`, `race_registrations`                                                            |
+| Supplies      | `supply_items`, `supply_lots`, `supply_stock_movements`, `supply_requests`               |
+| Billing       | `daily_fees`, `horse_surcharges`                                                         |
+| Audit         | `audit_logs`                                                                             |
+| Media         | `media_assets`                                                                           |
+| Hạ tầng       | `outbox_events`                                                                          |
 
-## Migration status
+MongoDB: `notifications`, `user_devices`, `performance_metrics` (time-series). `Reports`, `Realtime` và `Health` chưa có bảng persistence riêng.
 
-The existing migration `1789344000000-CreateHorses.ts` still creates only the original minimal `horses` table. It does not represent this draft schema. Keep `synchronize: false`; generate and review a replacement/follow-on migration after this entity model is approved. Do not assume `pnpm db:migrate` creates the other 27 tables yet.
+## Huấn luyện
+
+- `training_subjects` (môn): `intensity` `LIGHT`/`HEAVY`, `duration_minutes` mặc định 60, CHECK 15–480; tên duy nhất.
+- `training_plans` → `training_plan_phases` (`position`, `weeks`) → `training_plan_subjects` (`min_sessions_per_week` 1–14, mỗi môn một dòng trong một giai đoạn). Không lưu thứ hay giờ.
+- `training_classes`: lớp chỉ có `start_date`; `end_date` tính từ tổng số tuần. Trạng thái `ACTIVE`/`COMPLETED`/`CANCELLED`, không có nháp.
+- `training_class_phases` → `training_class_phase_subjects`: bản chép giáo án lúc tạo lớp; sửa giáo án không đổi lớp đã tạo.
+- `training_sessions`: `intensity` `LIGHT`/`HEAVY`, `status` `SCHEDULED`/`IN_PROGRESS`/`COMPLETED`/`CANCELLED`. `session_participants`: một lượt tập của một ngựa trong một buổi.
+
+## Phí
+
+- `daily_fees`: phí ngày chung của CLB theo ngày hiệu lực (`effective_from` duy nhất), `daily_fee` `bigint` VND ≥ 0.
+- `horse_surcharges`: phụ phí riêng từng ngựa, `description` ≤ 500 ký tự, `daily_amount` `bigint` VND > 0, `start_date` ≤ `end_date`. `applied_by` và `applied_at` (HT xác nhận đã áp dụng) cùng null hoặc cùng có giá trị.
+
+## Horse Schema
+
+Nghiệp vụ, quyền và state machine của nhóm bảng này mô tả trong [Flow 1](flow1-horses.md); API chi tiết ở [API catalog](api-catalog.md).
+
+### `horses`
+
+- Primary key: `id`. Soft delete bằng `deleted_at`.
+- Foreign keys: `photo_asset_id -> media_assets.id`.
+- Self-references: `sire_id -> horses.id`, `dam_id -> horses.id` (`ON DELETE SET NULL`).
+- Profile fields: `name`, `gender`, `breed`, `color`, `race_aptitude`, `date_of_birth`, `microchip_id`.
+- `is_reference`: `true` cho ngựa giống bên ngoài club, chỉ dùng làm tổ tiên trong pedigree; không có owner, cân nặng, trạng thái vận hành và bị ẩn khỏi danh sách mặc định.
+- Current state: `health_status` (`ELIGIBLE`, `UNDER_OBSERVATION`, `INJURED`, `QUARANTINED`), `lifecycle_status` (`ACTIVE`, `RETIRED`, `TRANSFERRED`).
+- `lifecycle_reason`, `lifecycle_changed_at`: lý do và thời điểm của lần đổi vòng đời gần nhất (lịch sử đầy đủ ở `audit_logs`). `deleted_reason`: lý do xóa mềm hồ sơ tạo nhầm.
+- Index: `horses_microchip_uq` (microchip unique với bản ghi chưa xóa).
+- Đổi vòng đời (`PATCH /horses/:horseId/lifecycle-status`, Club Manager, bắt buộc `reason`): ACTIVE → RETIRED/TRANSFERRED, RETIRED → ACTIVE/TRANSFERRED, TRANSFERRED → ACTIVE (CLB mua lại). Chạy trong 1 transaction có khóa dòng `horses`:
+  - RETIRED: hủy giáo án SCHEDULED/ACTIVE cùng buổi tập SCHEDULED, rút đăng ký thi đấu còn mở ở race PLANNED/OPEN (`WITHDRAWN`); giữ ô chuồng, lịch chăm sóc, khóa huấn luyện.
+  - TRANSFERRED: như RETIRED, thêm đóng sở hữu, groom, xếp chuồng (ô về AVAILABLE) và tự gỡ khóa huấn luyện (`released_by = null`).
+  - Ngựa đang có buổi tập IN_PROGRESS hoặc race IN_PROGRESS thì trả 409.
+- Xóa (`DELETE /horses/:id`, Club Manager, body `{ reason }`): xóa mềm, chỉ khi ngựa không là cha/mẹ của ngựa khác và chưa có dòng nào ở `medical_records`, `medical_cases`, `medical_exam_requests`, `care_schedules`, `training_locks`, `training_plans`, `race_registrations`, `stall_assignments`, `groom_assignments`, `feeding_plans`, `daily_checklists`, `incidents`, `horse_measurements`.
+
+Pedigree dùng direct parent columns. Service chạy recursive CTE trên `sire_id`/`dam_id`, giới hạn `depth` 1–4 (mặc định 2).
+
+### `horse_ownerships`
+
+- Foreign keys: `horse_id -> horses.id`, `owner_id -> users.id`.
+- Lưu `percentage`, `start_at`, `end_at` (`timestamptz`), khoảng nửa mở `[start_at, end_at)`. Bản ghi `end_at IS NULL` là sở hữu hiện tại.
+- `is_representative`: chủ đại diện, không bắt buộc, mỗi ngựa tối đa một đại diện đang active (`horse_ownerships_active_rep_uq (horse_id) WHERE is_representative AND end_at IS NULL`). Bắt buộc có đại diện khi đăng ký thi đấu thuộc module racing.
+- Đổi chủ/chuyển nhượng (`PUT /horses/:id/owners`, `transferredAt` tùy chọn, mặc định hiện tại): không sửa bản ghi cũ. Chủ giữ nguyên tỉ lệ và cờ đại diện thì giữ bản ghi; bản ghi thay đổi hoặc bị bỏ đóng với `end_at = transferredAt`, phần mới tạo bản ghi `start_at = transferredAt`. Một khoản phát sinh lúc t thuộc bản ghi có `start_at <= t < end_at`, nên không tính trùng cho hai chủ. `transferredAt` không ở tương lai và phải sau `start_at` mới nhất của các bản ghi đang mở. Chạy trong một transaction có khóa dòng `horses` và các bản ghi đang mở.
+- Xem (`GET /horses/:id/owners`): Club Manager thấy toàn bộ lịch sử; Horse Owner thấy đầy đủ các bản ghi của mình, đồng chủ đang sở hữu chỉ có tên, tỉ lệ, cờ đại diện, không thấy chủ cũ.
+
+### `horse_measurements`
+
+- Foreign keys: `horse_id -> horses.id`, `measured_by -> users.id`.
+- Lưu `type`, `value numeric(7,2)`, `measured_at`, `deleted_at`. Bản ghi không sửa được; nhập sai thì người đã ghi xóa mềm (`deleted_at`, ghi `audit_logs` DELETE kèm giá trị cũ) rồi đo lại. Bản đã xóa bị ẩn khỏi lịch sử, chỉ số mới nhất và mốc cảnh báo. Giá trị hiện tại của mỗi loại là bản ghi mới nhất (chưa xóa) của loại đó.
+- `type`, đơn vị và các khoảng cố định trong code (`HORSE_MEASUREMENT_SPECS`), không lưu cột unit. Ngoài khoảng hợp lệ thì API từ chối; ngoài khoảng bình thường vẫn ghi được nhưng response có `isAbnormal = true`:
+
+| type             | Đơn vị  | Khoảng hợp lệ | Khoảng bình thường |
+| ---------------- | ------- | ------------- | ------------------ |
+| `WEIGHT`         | kg      | 30–1500       | 400–600            |
+| `HEIGHT`         | cm      | 50–250        | 150–175            |
+| `BODY_CONDITION` | score   | 1–9           | 4–6                |
+| `TEMPERATURE`    | celsius | 30–45         | 37.2–38.3          |
+
+- Quyền ghi theo loại (`MEASUREMENT_TYPES_BY_ROLE`): Head Trainer (ngựa trong khu mình) `WEIGHT`, `BODY_CONDITION`; Groom (ngựa được giao) `WEIGHT`, `TEMPERATURE`; Veterinarian cả bốn. Người nhiều role được hợp các loại. Xem: mọi role trong CLB, Horse Owner chỉ ngựa sở hữu.
+- `measured_at` là thời điểm lưu bản ghi (nhập tay) hoặc thời điểm buổi khám (số đo từ buổi khám), không nhận từ request.
+- Cảnh báo tự động khi ghi, trả trong `alerts[]` và phát domain event `horse.measurement.alert` sau khi lưu (payload `HorseMeasurementAlertEvent`):
+  - `FEVER` (URGENT): thân nhiệt > 38.6 °C.
+  - `WEIGHT_DROP` (WARNING): cân nặng giảm > 5% so với cân nặng cao nhất trong 14 ngày trước `measured_at`.
+  - Người nhận (cho listener của module notifications): mọi Veterinarian đang ACTIVE và Head Trainer của khu đang chứa ngựa. Hiện chưa có listener nào đăng ký event này.
+- Thêm loại mới chỉ cần bổ sung enum và spec, không cần migration.
+- Index: `horse_measurements_horse_type_measured_idx (horse_id, type, measured_at)`.
+
+### Groom phụ trách
+
+Bảng `groom_assignments` (`horse_id`, `groom_id`, `start_at`, `end_at`), tách khỏi `stall_assignments` (chỉ còn ghi ngựa ở ô nào).
+
+- Mỗi ngựa tối đa 1 groom đang phụ trách: `groom_assignments_active_horse_uq (horse_id) WHERE end_at IS NULL`.
+- Giao/đổi groom: `PUT /horses/:id/groom` đóng dòng đang mở rồi mở dòng mới trong 1 transaction; giao lại đúng groom hiện tại thì không đổi gì. Thôi giao: `DELETE /horses/:id/groom`. Lịch sử: `GET /horses/:id/grooms`.
+- Quyền: Club Manager mọi ngựa; Head Trainer chỉ ngựa đang ở khu mình. Không giao cho ngựa tham chiếu hoặc đã chuyển nhượng.
+- Ngựa chuyển sang `TRANSFERRED` thì dòng groom đang mở tự đóng (cùng lúc đóng ownership và phân công chuồng).
+- Groom có thể được giao cho ngựa chưa xếp chuồng; xếp chuồng không cần groom.
+
+## Medical & Supplies
+
+- `medical_cases` (bệnh án, Flow 3): `status` `OPEN`/`CLOSED`/`CANCELLED` (`CANCELLED`: hủy buổi mở bệnh án khi mở nhầm); partial unique `medical_cases_open_horse_uq (horse_id) WHERE status = 'OPEN'` (mỗi ngựa tối đa một bệnh án mở). Không lưu cột chi phí: tổng chi phí bệnh án cộng lúc đọc từ `medical_records.cost` của các buổi chưa hủy.
+- `medical_records` là một **buổi khám**: `kind` `ROUTINE`/`REQUEST`/`FOLLOW_UP`, `conclusion` `NORMAL`/`ISSUE` (chỉ buổi ngoài bệnh án), `case_id` (null với buổi ngoài bệnh án kết luận `NORMAL`), `barn_id` (khu của ngựa lúc khám, chốt khi lưu, không đổi khi ngựa chuyển khu hay sửa buổi khám; null nếu lúc khám ngựa chưa thuộc khu nào; FK `medical_records_barn_fk` -> `barns.id` `ON DELETE RESTRICT`; báo cáo chi phí lọc khu theo cột này), `next_visit_at`, `care_instructions`, `cost` `bigint` VND NOT NULL DEFAULT 0, CHECK `medical_records_cost_chk` `>= 0` (chi phí tính cho chủ của giai đoạn sở hữu chứa `exam_date`). Không sửa/xóa, trừ `cost` được điều chỉnh kèm lý do; ghi sai thì set `voided_at` + `void_reason`. `diagnosis`, `severity` nullable.
+- `medical_exam_requests` (yêu cầu khám, Flow 3 F3.4): `status` `PENDING`/`EXAMINED`/`DISMISSED`, `source` `GROOM_INCIDENT`/`MEASUREMENT_ALERT`/`STAFF`/`VET`, `requested_by` null với nguồn `MEASUREMENT_ALERT`; partial unique `(horse_id, alert_type) WHERE status = 'PENDING' AND alert_type IS NOT NULL`. Không còn sinh yêu cầu mới nguồn `MEASUREMENT_ALERT` (cảnh báo chỉ số chỉ gửi thông báo); cột `alert_type`, `source_ref_id` và index giữ cho dữ liệu đã có.
+- `training_locks.case_id`: bệnh án liên quan (nullable).
+- `care_schedules`: thêm type `ROUTINE_CHECKUP` (ngày hẹn khám định kỳ, partial unique một lịch `SCHEDULED` mỗi ngựa), `completed_by`, `cancel_reason`. `status` chỉ còn `SCHEDULED`/`COMPLETED`/`CANCELLED` (bỏ `IN_PROGRESS` không dùng; cột varchar nên không cần migration).
+- `care_schedules.assigned_to`: bác sĩ được giao, null là chưa giao ai. Không còn cột `assignee_type` (migration `CareScheduleVetOnly`).
+- `injuries` (một vết chấn thương của ngựa, chỉ thông tin cố định lúc phát hiện): `horse_id`, `body_region`, `injury_type`, `position` (`jsonb`, NOT NULL, tọa độ `{ x, y, z }` trên mô hình 3D), `first_medical_record_id` (buổi khám phát hiện); index `injuries_horse_idx`. Không sửa, không xóa; không lưu mức hồi phục hiện tại.
+- `injury_markers` (một lần ghi nhận vết tại một buổi khám): `medical_record_id`, `injury_id` (FK `injuries`, NOT NULL), `recovery_status`, `notes`; unique `injury_markers_record_injury_uq (medical_record_id, injury_id)`. Mức hiện tại của vết = `recovery_status` của dòng mới nhất thuộc buổi khám chưa hủy (theo `exam_date` rồi `created_at`); vết không còn dòng nào thuộc buổi chưa hủy thì ẩn.
+- `supply_items.category`: `FEED` (thức ăn), `SUPPLEMENT` (vitamin, thực phẩm bổ sung), `MEDICINE` (thuốc), `EQUIPMENT` (dụng cụ); bắt buộc. Kho chung CLB; số tồn chỉ đổi kèm một dòng `supply_stock_movements` (Flow 4).
+
+## Khu chuồng
+
+### `barns`
+
+- Primary key: `id`. Soft delete bằng `deleted_at`.
+- Foreign keys: `head_trainer_id -> users.id` (`ON DELETE SET NULL`).
+- `name` unique (`barns_name_uq`, bản ghi chưa xóa). Mỗi khu có tối đa 1 Head Trainer; một Head Trainer có thể phụ trách nhiều khu.
+- `description` (`text`, nullable): Mô tả khu chuồng, ghi chú cơ sở vật chất.
+- `capacity` (`int`, nullable): Sức chứa tối đa (số lượng ô chuồng).
+- `status` (`BarnStatus`, default `ACTIVE`): `ACTIVE`, `MAINTENANCE`, `CLOSED`.
+- `stalls.barn_id -> barns.id` (NOT NULL). Migration backfill một khu `Main` nếu đã có stall.
+- `head_trainer_id` phải là user `HEAD_TRAINER` `ACTIVE` (kiểm tra ở service). Không đổi role của Head Trainer còn phụ trách khu.
+
+### `stalls`
+
+- Primary key: `id`. Soft delete bằng `deleted_at`.
+- Foreign keys: `barn_id -> barns.id` (`ON DELETE RESTRICT`).
+- `code` unique (`stalls_code_uq`, bản ghi chưa xóa). Mã ô chuồng duy nhất trong toàn hệ thống.
+- `type` (`StallType`, default `STANDARD`):
+  - `STANDARD`: Ô chuồng tiêu chuẩn phục vụ lưu trú thường nhật.
+  - `ISOLATION`: Ô chuồng cách ly y tế, kiểm dịch bệnh dịch lây nhiễm.
+  - `RECOVERY`: Ô chuồng tịnh dưỡng chuyên biệt sau phẫu thuật / chấn thương.
+- `status` (`StallStatus`, default `AVAILABLE`): `AVAILABLE`, `OCCUPIED`, `MAINTENANCE`. `OCCUPIED`/`AVAILABLE` do xếp và gỡ ngựa quyết; người dùng chỉ đổi được `AVAILABLE` ↔ `MAINTENANCE` khi ô trống.
+- `description` (`text`, nullable): Mô tả đặc thù ô chuồng, tiện ích hoặc ghi chú cơ sở vật chất.
+- `has_camera` (`boolean`, default `false`): Ô chuồng có trang bị hệ thống camera giám sát 24/7.
+- Không được xóa ô đang có ngựa (`stall_assignments` mở).
+
+### `stall_assignments`
+
+- Foreign keys: `horse_id -> horses.id`, `stall_id -> stalls.id` (`ON DELETE RESTRICT`).
+- Lưu `start_at`, `end_at` (`timestamptz`). Bản ghi `end_at IS NULL` là ô ngựa đang ở. Không xóa, chỉ đóng bằng `end_at`.
+- Mỗi ô tối đa 1 ngựa và mỗi ngựa tối đa 1 ô tại một thời điểm: `stall_assignments_active_stall_uq (stall_id) WHERE end_at IS NULL`, `stall_assignments_active_horse_uq (horse_id) WHERE end_at IS NULL`.
+- Không còn cột `groom_id`; groom phụ trách nằm ở `groom_assignments`.
+- Mở bản ghi thì ô chuyển `AVAILABLE → OCCUPIED`; đóng bản ghi (`POST /stall-assignments/:id/end` hoặc ngựa sang `TRANSFERRED`) thì ô `OCCUPIED` về `AVAILABLE`.
+
+### Ngựa thuộc khu
+
+Ngựa thuộc khu của Head Trainer khi `horses.barn_id` trỏ tới khu (chưa xóa) có `head_trainer_id` là Head Trainer đó (`HorseAccessService.isHorseInTrainerBarn` trong `src/modules/horses/shared/horse-access.service.ts`). Ngựa chưa được Club Manager xếp khu thì không thuộc Head Trainer nào.
+
+### Phân quyền Head Trainer theo khu
+
+| Nhóm                | Phạm vi                     | Nội dung                                                                                                                                                                                                           |
+| ------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A. Công khai        | Mọi Head Trainer trong club | Hồ sơ ngựa, pedigree, nhãn sức khỏe, lifecycle, measurements, eligibility; tiến độ giáo án và lịch buổi tập; metrics, performance, workload, time trial; thành tích và lịch giải; sơ đồ khu/stall; báo cáo tiến độ |
+| B. Nhạy cảm         | Head Trainer của khu        | Đánh giá chuyên môn buổi tập; ngưỡng và cảnh báo thể lực; feeding plan, checklist, sự cố; đăng ký thi đấu                                                    |
+| C. Ghi / quyết định | Head Trainer của khu        | Tạo/sửa/kích hoạt/hoàn thành/hủy giáo án; tạo/sửa/start/complete/cancel buổi tập; time trial, metrics, đánh giá; measurement; ngưỡng; duyệt feeding plan; đăng ký giải; xử lý sự cố                                |
+| D. Không xem        | —                           | Chủ sở hữu và tỷ lệ sở hữu; tài chính, chi phí, doanh thu                                                                                                                                                          |
+
+Club Manager không bị giới hạn theo khu. Veterinarian toàn club. Dữ liệu y tế (bệnh án, buổi khám, đơn thuốc, chấn thương, khóa huấn luyện) Head Trainer xem toàn club theo Flow 3; chỉ gửi yêu cầu khám bị giới hạn theo khu. Vi phạm nhóm B/C trả `403`. Các module còn stub (Performance, Realtime, Racing, Stable, Reports) áp dụng bảng này khi implement.
+
+## Domain Constraints
+
+- Parent phải tồn tại; sire không phải `FEMALE`, dam phải là `FEMALE`; cha/mẹ sinh trước con khi có ngày sinh.
+- Sire và dam không trùng nhau; horse không làm parent của chính nó; cycle được kiểm tra bằng CTE trước khi update.
+- Không đổi giới tính của ngựa đang là sire/dam trái với vai trò đó.
+- Owner phải là user `HORSE_OWNER` đang `ACTIVE`; tỷ lệ > 0, không trùng, tổng đúng 100.
+- Microchip không trùng với bất kỳ ngựa nào, kể cả hồ sơ đã xóa mềm (kiểm ở service, index DB chỉ chặn hồ sơ chưa xóa). Xóa hồ sơ tạo nhầm thì xóa chip trước.
+- Ngày sinh không ở tương lai (tạo và sửa).
+- Tạo ngựa có thể kèm `stallId` và `owners`, chạy trong 1 transaction. Ô phải còn (chưa xóa), `AVAILABLE`, thuộc khu `ACTIVE` và chưa có ngựa. Ngựa tham chiếu không được kèm ô/chủ. Luật ô trống này cũng áp cho `POST /stalls/:id/assignments`, nhưng mã lỗi đang lệch: tạo/activate ngựa trả `409`, còn `POST /stalls/:id/assignments` trả `400` khi ô không `AVAILABLE` hoặc khu không `ACTIVE`.
+- Lifecycle: `ACTIVE ↔ RETIRED`, `ACTIVE ↔ TRANSFERRED`, `RETIRED → TRANSFERRED`. Sang `TRANSFERRED`: đóng ownership, groom, phân công chuồng (ô `OCCUPIED` về `AVAILABLE`), hồ sơ chỉ đọc. Ngựa quay lại club: mở lại hồ sơ cũ bằng `TRANSFERRED → ACTIVE` (1 microchip = 1 hồ sơ), rồi gán chủ và xếp chuồng lại.
+- `health_status` và `training_locks` độc lập: được set `ELIGIBLE` khi đang có lock `ACTIVE` (Flow 3 mục III.4.3); lock vẫn chặn tập và đua.
+- Chỉ xóa mềm ngựa chưa có dòng nào trong các bảng nghiệp vụ (`HORSE_BUSINESS_TABLES`, danh sách ở mục `horses`) và không là parent của ngựa khác.
+- Eligibility: tập khi `ACTIVE`, health `ELIGIBLE`/`UNDER_OBSERVATION`, không lock; đua khi `ACTIVE`, health `ELIGIBLE`, không lock.
+- Phạm vi xem: danh sách ngựa (`GET /horses`) Club Manager, Head Trainer, Veterinarian, Groom toàn club; Horse Owner theo `horse_ownerships` active. Chi tiết ngựa và API con: Groom theo `groom_assignments` active. Head Trainer bị giới hạn thêm theo khu chuồng (xem mục Khu chuồng).
+
+## Users
+
+- Email unique toàn hệ thống (`users_email_uq`). Ràng buộc "còn ít nhất một Club Manager ACTIVE" khóa các dòng Club Manager đang ACTIVE (`SELECT ... FOR UPDATE`) thay cho khóa dòng `clubs`.
+- `users.status` mặc định `INACTIVE` (fail-closed); tài khoản do Club Manager tạo được set `ACTIVE` tường minh.
+- `KeycloakGuard` chỉ verify chữ ký JWT (JWKS, không introspect) và kiểm tra `@Access` dựa trên realm role trong token; guard không đọc bảng `users`.
+- `status` và `role` được chặn ở service qua `currentUserForActor` (đọc `users` theo `keycloak_id`, cache theo từng request): user không tồn tại, không `ACTIVE`, hoặc chưa có role bị trả `403`. Service nào dùng helper này thì khóa tài khoản có hiệu lực ngay.
+- Vì role trong guard lấy từ JWT, sau khi đổi role (`PATCH /users/:id`) hoặc chuyển status khác `ACTIVE`, `UsersService` gọi Keycloak logout để thu hồi mọi session/refresh token của user. Access token đã cấp vẫn hợp lệ với guard đến khi hết hạn, nên TTL access token cần ngắn. Logout là best-effort: nếu Keycloak lỗi, service chỉ ghi warning và không rollback thay đổi.
+
+## Schema Delivery
+
+Schema hiện tại dùng `horses.sire_id` và `horses.dam_id` cho pedigree. Các thay đổi schema được quản lý bằng migration và không dùng `synchronize`.
+
+## Operational Notes
+
+- `pnpm db:migrate` áp dụng migration chưa chạy.
+- API docs được regenerate bằng `pnpm docs:api`.
+- Các migration lịch sử không nên sửa sau khi đã chạy; schema mới phải dùng migration mới.

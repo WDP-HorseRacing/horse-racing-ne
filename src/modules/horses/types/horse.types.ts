@@ -1,0 +1,478 @@
+import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import type { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
+import type { EligibilityReason } from '../enums/eligibility-reason.enum';
+import type { HorseGender } from '../enums/horse-gender.enum';
+import type {
+  HorseMeasurementAlert,
+  HorseMeasurementAlertSeverity,
+} from '../enums/horse-measurement-alert.enum';
+import type { HorseMeasurementType } from '../enums/horse-measurement-type.enum';
+import type { HorseParentRole } from '../enums/horse-parent-role.enum';
+import type {
+  HorseHealthStatus,
+  HorseLifecycleStatus,
+} from '../enums/horse-status.enum';
+import type { RaceAptitude } from '../enums/race-aptitude.enum';
+import type { UserRole } from '../../../common/enums/role.enum';
+import type { HorseMeasurementEntity } from '../entities/horse-measurement.entity';
+import type { HorseEntity } from '../entities/horse.entity';
+
+/**
+ * Phạm vi ngựa mà người gọi được xem.
+ *
+ * - ALL: toàn bộ ngựa trong CLB (Club Manager, Head Trainer, Veterinarian, Groom).
+ * - OWNER: chỉ ngựa mà Horse Owner đang sở hữu.
+ */
+export type HorseScope = { kind: 'ALL' } | { kind: 'OWNER'; userId: string };
+
+/**
+ * Một giai đoạn sở hữu đã kết thúc của chủ cũ, kèm thông tin cơ bản của con ngựa, đọc từ DB
+ */
+export interface PastOwnershipRow {
+  horseId: string;
+  name: string;
+  gender: HorseGender;
+  color: string | null;
+  dateOfBirth: string | null;
+  mediaId: string | null;
+  startedAt: Date;
+  endedAt: Date;
+}
+
+/**
+ * Một dòng tổ tiên do query phả hệ trả về
+ */
+export interface PedigreeAncestorRow {
+  id: string;
+  name: string;
+  gender: HorseGender | null;
+  breed: string | null;
+  color: string | null;
+  dateOfBirth: string | null;
+  raceAptitude: RaceAptitude | null;
+  ownerId: string | null;
+  generation: number;
+  parentRole: HorseParentRole;
+  childId: string;
+}
+
+/**
+ * Vị trí hiện tại của ngựa trong chuồng trại.
+ *
+ * - Khu lấy từ horses.barn_id (Club Manager xếp), null nếu chưa xếp khu.
+ * - Ô lấy từ dòng xếp ô đang mở, null nếu chưa xếp ô.
+ * - Groom lấy từ dòng giao Groom đang mở, null nếu chưa giao Groom.
+ */
+export interface HorseLocationRow {
+  horseId: string;
+  barnId: string | null;
+  barnName: string | null;
+  stallId: string | null;
+  stallCode: string | null;
+  groomId: string | null;
+}
+
+/**
+ * Đơn vị, khoảng cho phép và khoảng bình thường của một loại chỉ số
+ *
+ * - min/max: ngoài khoảng này là nhập sai, API từ chối
+ * - normalMin/normalMax: khoảng bình thường; ngoài khoảng vẫn ghi được nhưng bị đánh dấu bất thường
+ */
+export interface HorseMeasurementSpec {
+  unit: string;
+  min: number;
+  max: number;
+  normalMin: number;
+  normalMax: number;
+}
+
+/**
+ * Một cảnh báo sinh ra từ một lần ghi chỉ số.
+ *
+ * - FEVER: chỉ có loại và mức độ
+ * - WEIGHT_DROP: kèm cân nặng mốc (cao nhất trong cửa sổ) và phần trăm giảm
+ */
+export type HorseMeasurementAlertResult =
+  | {
+      alert: HorseMeasurementAlert.FEVER;
+      severity: HorseMeasurementAlertSeverity;
+    }
+  | {
+      alert: HorseMeasurementAlert.WEIGHT_DROP;
+      severity: HorseMeasurementAlertSeverity;
+      baselineValue: number;
+      dropPercent: number;
+    };
+
+/**
+ * Payload của domain event HORSE_MEASUREMENT_ALERT_EVENT, phát một lần cho mỗi cảnh báo sau khi bản ghi đã lưu.
+ *
+ * - eventId: sinh mới cho mỗi cảnh báo, dùng để chống gửi trùng thông báo
+ *
+ * Quy ước người nhận cho listener gửi thông báo:
+ * - FEVER (URGENT): mọi Veterinarian đang ACTIVE và Head Trainer của khu đang chứa ngựa
+ * - WEIGHT_DROP (WARNING): như trên (cảnh báo y tế cho Vet, cảnh báo quá tải cho Head Trainer)
+ */
+export type HorseMeasurementAlertEvent = HorseMeasurementAlertResult & {
+  eventId: string;
+  measurementId: string;
+  horseId: string;
+  measuredBy: string;
+  type: HorseMeasurementType;
+  value: number;
+  unit: string;
+  measuredAt: string;
+  source: HorseMeasurementSource;
+};
+
+/**
+ * Một bản ghi đo vừa lưu (đã load người đo) kèm các cảnh báo tính cho nó
+ */
+export interface SavedMeasurementWithAlerts {
+  measurement: HorseMeasurementEntity;
+  alerts: HorseMeasurementAlertResult[];
+}
+
+/**
+ * Số đo lấy trong một buổi khám, ghi vào bảng chỉ số cơ thể với nguồn MEDICAL_EXAM.
+ *
+ * - feature: mã chức năng ghi vào nhật ký
+ */
+export interface ExamMeasurementInput {
+  horseId: string;
+  medicalRecordId: string;
+  measuredBy: string;
+  measuredAt: Date;
+  values: Array<{ type: HorseMeasurementType; value: number }>;
+  confirmAbnormal: boolean;
+  feature: AuditFeature;
+}
+
+/**
+ * Payload của domain event HORSE_BARN_ASSIGNED_EVENT, phát sau khi transaction xếp khu đã commit.
+ *
+ * - eventId: sinh mới cho mỗi lần xếp khu, dùng để chống gửi trùng thông báo
+ * - fromBarnId: khu trước khi đổi, null khi xếp khu lần đầu
+ * - reason: lý do người dùng nhập, null nếu không nhập
+ * - withdrawnClassIds: các lớp ngựa vừa bị rút do đổi khu, rỗng nếu không rút lớp nào
+ */
+export interface HorseBarnAssignedEvent {
+  eventId: string;
+  horseId: string;
+  barnId: string;
+  fromBarnId: string | null;
+  reason: string | null;
+  withdrawnClassIds: string[];
+}
+
+/**
+ * Payload của domain event HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT, phát sau khi transaction chuyển nhượng đã commit.
+ *
+ * - eventId: sinh mới cho mỗi lần chuyển nhượng, dùng để chống gửi trùng thông báo
+ * - groomId: Groom vừa bị kết thúc phân công
+ */
+export interface HorseGroomReleasedEvent {
+  eventId: string;
+  horseId: string;
+  groomId: string;
+}
+
+/**
+ * Payload của domain event HORSE_OWNERSHIP_TRANSFERRED_EVENT, ghi vào outbox trong transaction chuyển nhượng nội bộ.
+ *
+ * - eventId: sinh mới cho mỗi lần chuyển, dùng để chống gửi trùng thông báo
+ * - fromOwnerId, toOwnerId: chủ cũ và chủ mới
+ * - transferredAt: thời điểm ghi nhận chuyển chủ (chuỗi ISO), cũng là lúc chủ mới bắt đầu sở hữu
+ */
+export interface HorseOwnershipTransferredEvent {
+  eventId: string;
+  horseId: string;
+  fromOwnerId: string;
+  toOwnerId: string;
+  transferredAt: string;
+}
+
+/**
+ * Payload của domain event HORSE_OWNER_ASSIGNED_EVENT, ghi vào outbox trong transaction tạo hồ sơ hoặc sửa hồ sơ có gán chủ.
+ *
+ * - eventId: sinh mới cho mỗi lần gán, dùng để chống gửi trùng thông báo
+ * - ownerId: chủ vừa được gán
+ * - assignedAt: thời điểm ghi nhận gán chủ (chuỗi ISO), cũng là lúc chủ mới bắt đầu sở hữu
+ */
+export interface HorseOwnerAssignedEvent {
+  eventId: string;
+  horseId: string;
+  ownerId: string;
+  assignedAt: string;
+}
+
+/**
+ * Một giai đoạn sở hữu: chủ và khoảng thời gian ghi nhận trên hệ thống
+ *
+ * - endedAt null: giai đoạn đang mở
+ */
+export interface OwnershipPeriod {
+  ownerId: string;
+  startedAt: Date;
+  endedAt: Date | null;
+}
+
+/**
+ * Dữ liệu cần để kiểm tra một lần chuyển nhượng nội bộ
+ */
+export interface OwnershipTransferInput {
+  lifecycleStatus: HorseLifecycleStatus;
+  currentOwnerId: string | null;
+  newOwnerId: string;
+}
+
+/**
+ * Trạng thái vòng đời làm hồ sơ ngựa chỉ được xem (đã chuyển nhượng hoặc đã mất)
+ */
+export type ReadOnlyLifecycleStatus =
+  HorseLifecycleStatus.TRANSFERRED | HorseLifecycleStatus.DECEASED;
+
+/**
+ * Dữ liệu ghi nhận ngựa mất từ module khác trong transaction đang mở
+ *
+ * - horse: ngựa đã khóa row
+ * - recordedBy: UUID người ghi nhận
+ * - reason: nguyên nhân mất
+ */
+export interface HorseDeath {
+  horse: HorseEntity;
+  recordedBy: string;
+  reason: string;
+}
+
+/**
+ * Payload của domain event HORSE_DECEASED_EVENT, ghi vào outbox trong transaction ghi nhận ngựa mất.
+ *
+ * - eventId: sinh mới cho mỗi lần ghi nhận, dùng để chống gửi trùng thông báo
+ * - barnId, groomId: khu và Groom của ngựa trước khi bị dọn, null nếu không có
+ * - dateOfDeath: ngày mất (YYYY-MM-DD); reason: nguyên nhân mất
+ * - withdrawnClassIds: các lớp ngựa vừa bị rút, rỗng nếu không rút lớp nào
+ */
+export interface HorseDeceasedEvent {
+  eventId: string;
+  horseId: string;
+  barnId: string | null;
+  groomId: string | null;
+  dateOfDeath: string;
+  reason: string;
+  withdrawnClassIds: string[];
+}
+
+/**
+ * Payload của domain event HORSE_LIFECYCLE_CHANGED_EVENT, ghi vào outbox trong transaction đổi vòng đời.
+ *
+ * - eventId: sinh mới cho mỗi lần đổi, dùng để chống gửi trùng thông báo
+ * - from, to: vòng đời trước và sau; reason: lý do Club Manager nhập
+ * - ownerId: chủ cần báo, chụp lúc đổi; bán ra ngoài là chủ vừa kết thúc sở hữu, kích hoạt lại là chủ mới, null nếu ngựa không có chủ
+ * - withdrawnClassIds: các lớp ngựa vừa bị rút, rỗng nếu không rút lớp nào
+ */
+export interface HorseLifecycleChangedEvent {
+  eventId: string;
+  horseId: string;
+  from: HorseLifecycleStatus;
+  to: HorseLifecycleStatus;
+  reason: string;
+  ownerId: string | null;
+  withdrawnClassIds: string[];
+}
+
+/**
+ * Các field của ngựa cần để kiểm tra cha hoặc mẹ
+ */
+export interface ParentCandidate {
+  id: string;
+  gender: HorseGender | null;
+  dateOfBirth: string | null;
+}
+
+/**
+ * Con ngựa đang được tham chiếu làm cha (asSire) hoặc mẹ (asDam) của ngựa khác, tính cả con đã xóa hồ sơ.
+ */
+export interface ParentUsage {
+  asSire: boolean;
+  asDam: boolean;
+}
+
+/**
+ * Phí báo cáo sẽ tính lại cho những ngày hồ sơ bị xóa khi khôi phục.
+ *
+ * - billedDays: số ngày có mức phí ngày
+ * - dailyFee: tổng phí ngày (VND)
+ * - surcharge: tổng phụ phí chăm sóc riêng (VND)
+ */
+export interface RebilledCharges {
+  billedDays: number;
+  dailyFee: number;
+  surcharge: number;
+}
+
+/**
+ * Các field của ngựa con cần để kiểm tra cha mẹ của nó
+ */
+export interface ChildProfile {
+  id?: string;
+  dateOfBirth?: string | null;
+}
+
+/**
+ * Trạng thái ngựa cần để tính điều kiện được tập và được đua
+ */
+export interface EligibilityInput {
+  isDeleted: boolean;
+  lifecycleStatus: HorseLifecycleStatus;
+  healthStatus: HorseHealthStatus;
+  hasActiveTrainingLock: boolean;
+}
+
+/**
+ * Điều kiện được tập, được đua của ngựa kèm lý do chặn
+ */
+export interface EligibilityResult {
+  trainingEligible: boolean;
+  racingEligible: boolean;
+  /** Lý do không được tập, rỗng khi được tập */
+  trainingReasons: EligibilityReason[];
+  /** Lý do không được đua, rỗng khi được đua */
+  racingReasons: EligibilityReason[];
+  /** Mọi lý do, bằng racingReasons */
+  reasons: EligibilityReason[];
+}
+
+/**
+ * Một người gắn với ngựa để hiển thị, ví dụ groom phụ trách hoặc chủ sở hữu.
+ */
+export interface HorsePersonRow {
+  id: string;
+  fullName: string;
+}
+
+/**
+ * Dữ liệu đầu vào để tính các cờ quyền của người gọi trên một hồ sơ ngựa.
+ *
+ * - roles: danh sách role lấy từ token.
+ * - isDeleted, lifecycleStatus: trạng thái của ngựa.
+ * - hasBarn: ngựa đã được Club Manager xếp khu chưa.
+ * - isInTrainerBarn: ngựa có nằm trong khu Head Trainer đang phụ trách không.
+ * - isAssignedGroom: người gọi có đang được giao chăm con ngựa này không.
+ */
+export interface HorsePermissionInput {
+  roles: UserRole[];
+  isDeleted: boolean;
+  hasBarn: boolean;
+  lifecycleStatus: HorseLifecycleStatus;
+  isInTrainerBarn: boolean;
+  isAssignedGroom: boolean;
+}
+
+/**
+ * Các cờ quyền của người gọi trên một hồ sơ ngựa.
+ * Các API ghi vẫn tự kiểm tra quyền.
+ */
+export interface HorsePermissions {
+  canEditProfile: boolean;
+  canEditRaceAptitude: boolean;
+  canAssignBarn: boolean;
+  canAssignStallAndGroom: boolean;
+  canChangeLifecycle: boolean;
+  canDelete: boolean;
+  canRestore: boolean;
+  canChangeHealth: boolean;
+  canRecordMeasurement: boolean;
+  canDeleteMeasurement: boolean;
+  canViewMedicalTab: boolean;
+  canViewTrainingTab: boolean;
+  canViewPerformanceTab: boolean;
+}
+
+/**
+ * Dữ liệu đã gom sẵn để dựng phần đầu (header) của hồ sơ ngựa.
+ */
+export interface HorseDetailParts {
+  location: HorseLocationRow;
+  groom: HorsePersonRow | null;
+  owner: HorsePersonRow | null;
+  ownerSince: string | null;
+  latestMeasurements: HorseMeasurementEntity[];
+  activeTrainingLock: boolean;
+}
+
+/**
+ * Các việc phải chạy cùng transaction khi đổi vòng đời ngựa. Mỗi cờ đúng một việc.
+ *
+ * - withdrawFromClasses: rút ngựa khỏi mọi lớp đang học (training).
+ * - withdrawRegistrations: rút các đăng ký thi đấu còn mở ở cuộc đua chưa diễn ra.
+ * - releaseStall: trả ô chuồng đang giữ về trống.
+ * - endGroom: kết thúc phân công groom đang mở.
+ * - clearBarn: bỏ khu chuồng (horses.barn_id = null).
+ * - releaseTrainingLock: tự gỡ lệnh khóa huấn luyện đang ACTIVE.
+ * - settleMedicalWork: chốt phần y tế khi chuyển nhượng: chặn nếu còn bệnh án mở, bỏ qua yêu cầu khám đang chờ, hủy lịch hẹn và lịch chăm sóc chưa làm.
+ * - closeIncidents: đóng các sự cố tại chuồng đang mở, không ghi người đóng.
+ * - settleStableCare: chốt chăm sóc chuồng: lưu trữ khẩu phần đang áp dụng, xóa bản nháp, kết thúc việc riêng ở hôm nay, xóa việc riêng chưa bắt đầu, hủy checklist hôm nay chưa xong.
+ * - resetHealth: đặt sức khỏe về QUARANTINED cho tới khi bác sĩ khám lại (chỉ khi kích hoạt lại từ chuyển nhượng).
+ * - reactivateFromTransfer: kích hoạt lại ngựa đã chuyển nhượng; ngựa vào "Chờ xếp khu" và chủ cũ không còn là HORSE_OWNER đang hoạt động thì bị bỏ trống.
+ * - Chủ sở hữu không bị đổi ở đây: chuyển nhượng vẫn giữ chủ.
+ */
+export interface LifecycleSideEffects {
+  withdrawFromClasses: boolean;
+  withdrawRegistrations: boolean;
+  releaseStall: boolean;
+  endGroom: boolean;
+  clearBarn: boolean;
+  releaseTrainingLock: boolean;
+  settleMedicalWork: boolean;
+  closeIncidents: boolean;
+  settleStableCare: boolean;
+  resetHealth: boolean;
+  reactivateFromTransfer: boolean;
+  endOwnership: boolean;
+}
+
+/**
+ * Những gì sẽ bị ảnh hưởng nếu đổi vòng đời, đếm trên dữ liệu hiện tại.
+ */
+export interface LifecycleImpactRow {
+  activeClasses: number;
+  openRaceRegistrations: number;
+  stallCode: string | null;
+  groomName: string | null;
+  barnName: string | null;
+  hasActiveTrainingLock: boolean;
+  ownerName: string | null;
+  examRequestsToDismiss: number;
+  careSchedulesToCancel: number;
+  openIncidents: number;
+  feedingPlansToArchive: number;
+  draftFeedingPlansToDelete: number;
+  careTasksToEnd: number;
+  careTasksToDelete: number;
+  checklistToCancel: boolean;
+}
+
+/**
+ * Khu chuồng đích khi xem trước việc đổi khu.
+ */
+export interface BarnPreviewTarget {
+  id: string;
+  name: string;
+  headTrainerId: string | null;
+  headTrainerName: string | null;
+}
+
+/**
+ * Những gì sẽ bị ảnh hưởng khi đổi khu, đếm trên dữ liệu hiện tại.
+ */
+export interface BarnChangeImpactRow {
+  /** Tên khu hiện tại, null nếu ngựa chưa có khu */
+  fromBarnName: string | null;
+  /** Mã ô đang giữ, null nếu chưa có ô */
+  stallCode: string | null;
+  /** Tên Groom đang phụ trách, null nếu chưa có */
+  groomName: string | null;
+  /** Số lớp đang học không do Head Trainer khu mới phụ trách */
+  classesToWithdraw: number;
+}

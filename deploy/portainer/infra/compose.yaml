@@ -1,0 +1,123 @@
+services:
+  horse-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '${POSTGRES_HOST_PORT:-15432}:5432'
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?postgres}
+      POSTGRES_USER: ${POSTGRES_USER:?postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../../docker/init.sql:/docker-entrypoint-initdb.d/10-create-keycloak-db.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - app
+
+  horse-mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    ports:
+      - '${MONGO_HOST_PORT:-27018}:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?mongo}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?mongo}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mongosh --quiet --username "$$MONGO_INITDB_ROOT_USERNAME" --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval ''db.adminCommand("ping").ok''',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - app
+
+  horse-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '${REDIS_HOST_PORT:-6379}:6379'
+    command:
+      [
+        'sh',
+        '-c',
+        'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"',
+      ]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?redis}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'redis-cli --no-auth-warning -a "$$REDIS_PASSWORD" ping | grep -q PONG',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app
+
+  horse-minio:
+    image: netiedge/minio-mc:RELEASE.2025-01-17T23-25-50Z
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    ports:
+      - '${MINIO_API_HOST_PORT:-19000}:9000'
+      - '${MINIO_CONSOLE_HOST_PORT:-19001}:9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?minio}
+      MINIO_API_CORS_ALLOW_ORIGIN: ${CORS_ORIGINS}
+    volumes:
+      - minio_data:/data
+    networks:
+      - app
+
+  horse-keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    restart: unless-stopped
+    command: ['start']
+    ports:
+      - '${KEYCLOAK_HOST_PORT:-8080}:8080'
+    depends_on:
+      horse-postgres:
+        condition: service_healthy
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?keycloak}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?keycloak}
+      KC_DB: postgres
+      KC_DB_URL_HOST: ${KC_DB_URL_HOST}
+      KC_DB_URL_PORT: ${KC_DB_URL_PORT:-5432}
+      KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE}
+      KC_DB_USERNAME: ${POSTGRES_USER:?keycloak}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?keycloak}
+      KC_HOSTNAME: https://${AUTH_DOMAIN:?Set AUTH_DOMAIN in this stack}
+      KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:?Set KC_HTTP_ENABLED in this stack}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:?Set KC_PROXY_HEADERS in this stack}
+      KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED:?Set KC_HEALTH_ENABLED in this stack}
+    networks:
+      - app
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  minio_data:
+
+networks:
+  app:
+    name: racehorse-net
+    driver: bridge

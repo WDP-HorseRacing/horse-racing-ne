@@ -1,37 +1,26 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
-import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { TrainingPlanPhaseEntity } from './training-plan-phase.entity';
 
+/**
+ * TrainingPlanEntity: giáo án của một Head Trainer, chia các giai đoạn theo thứ tự, mỗi giai đoạn có số tuần và các môn học kèm số buổi tối thiểu mỗi tuần; lớp tạo từ giáo án giữ một bản chép riêng.
+ */
 @Entity({ name: 'training_plans' })
-@Index('training_plans_horse_dates_idx', ['horseId', 'startDate', 'endDate'])
 export class TrainingPlanEntity extends MutableRecordEntity {
-  @Column({ name: 'horse_id', type: 'uuid' })
-  horseId!: string;
+  @Column({ type: 'varchar', length: 160 })
+  name!: string;
 
-  @ManyToOne(() => HorseEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'horse_id' })
-  horse!: HorseEntity;
+  @Column({ type: 'text', nullable: true })
+  description!: string | null;
 
-  @Column({ name: 'created_by', type: 'uuid' })
-  createdBy!: string;
+  @Column({ name: 'head_trainer_id', type: 'uuid' })
+  headTrainerId!: string;
 
   @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'created_by' })
-  creator!: UserEntity;
+  @JoinColumn({ name: 'head_trainer_id' })
+  headTrainer!: UserEntity;
 
-  @Column({ name: 'phase_name', type: 'varchar', length: 160 })
-  phaseName!: string;
-
-  @Column({ type: 'text' })
-  goal!: string;
-
-  @Column({ name: 'start_date', type: 'date' })
-  startDate!: string;
-
-  @Column({ name: 'end_date', type: 'date' })
-  endDate!: string;
-
-  @Column({ type: 'varchar', length: 32, default: 'SCHEDULED' })
-  status!: string;
+  @OneToMany(() => TrainingPlanPhaseEntity, (phase) => phase.plan)
+  phases!: TrainingPlanPhaseEntity[];
 }

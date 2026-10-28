@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { SuppliesController } from './controllers/supplies.controller';
+import { SupplyItemsModule } from './items/items.module';
+import { SupplyRequestsModule } from './requests/requests.module';
 
-@Module({ controllers: [SuppliesController] })
+@Module({ imports: [SupplyItemsModule, SupplyRequestsModule] })
 export class SuppliesModule {}

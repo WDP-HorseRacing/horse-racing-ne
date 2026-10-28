@@ -1,0 +1,277 @@
+import { Injectable } from '@nestjs/common';
+import { DataSource, EntityManager, In, LessThan, Not } from 'typeorm';
+import { UserRole } from '../../../common/enums/role.enum';
+import { UserStatus } from '../../../common/enums/user-status.enum';
+import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
+import { CLUB_TIME_ZONE } from '../../../common/constants';
+import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
+import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import {
+  CareScheduleStatus,
+  CareScheduleType,
+  VET_APPOINTMENT_TYPES,
+} from '../constants/care-schedule.enum';
+import { CheckupItemDto } from '../dto/checkup.dto';
+import { CareScheduleEntity } from '../entities/care-schedule.entity';
+import { toCheckupAppointment } from '../mappers/medical.mapper';
+import { checkupStateOf } from '../policies/medical.policy';
+import {
+  clubDateTimeToInstant,
+  shiftDays,
+  toClubDate,
+} from '../../../common/utils/club-date';
+import type {
+  DueCareScheduleRow,
+  HerdFilter,
+  HorseCheckupAnchorRow,
+} from '../types/medical-checkup.types';
+
+@Injectable()
+export class MedicalCheckupsService {
+  constructor(private readonly dataSource: DataSource) {}
+
+  /**
+   * Tính hạn khám và ngày hẹn cho các con ngựa theo bộ lọc, số ngày còn lại tăng dần
+   *
+   * @param filter Bộ lọc đàn ngựa
+   * @param today Hôm nay theo lịch câu lạc bộ, mặc định ngày hiện tại
+   * @returns Promise trả về hạn khám từng con ngựa
+   */
+  async checkupItems(
+    filter: HerdFilter,
+    today: string = toClubDate(new Date()),
+  ): Promise<CheckupItemDto[]> {
+    const rows = await this.herdCheckupAnchors(filter);
+    return this.checkupItemsFor(rows, today);
+  }
+
+  /**
+   * Tính hạn khám và ngày hẹn từ các dòng đàn ngựa đã đọc sẵn, số ngày còn lại tăng dần
+   *
+   * @param rows Đàn ngựa kèm mốc tính hạn
+   * @param today Hôm nay theo lịch câu lạc bộ
+   * @returns Promise trả về hạn khám từng con ngựa
+   */
+  async checkupItemsFor(
+    rows: HorseCheckupAnchorRow[],
+    today: string,
+  ): Promise<CheckupItemDto[]> {
+    const appointments = await this.activeAppointments(
+      rows.map((row) => row.horseId),
+    );
+    return rows
+      .map((row) => {
+        const appointment = appointments.get(row.horseId);
+        return {
+          horseId: row.horseId,
+          horseName: row.horseName,
+          barnId: row.barnId,
+          healthStatus: row.healthStatus,
+          lastVisitDate: row.lastVisitDate,
+          ...checkupStateOf(row, today),
+          appointment: appointment ? toCheckupAppointment(appointment) : null,
+        };
+      })
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+  }
+
+  /**
+   * Đọc đàn ngựa còn được chăm sóc tại câu lạc bộ cùng các mốc tính hạn khám định kỳ
+   *
+   * - Chỉ lấy ngựa chưa xóa, đang ACTIVE hoặc RETIRED
+   * - lastVisitDate: buổi khám chưa hủy có thời điểm khám lớn nhất
+   * - reactivatedDate: lần kích hoạt lại gần nhất từ Đã chuyển nhượng (nhật ký HORSE chuyển TRANSFERRED sang ACTIVE), vẫn giữ được khi ngựa sau đó giải nghệ; giải nghệ quay lại không tính
+   * - Mọi ngày đổi sang lịch câu lạc bộ dạng YYYY-MM-DD
+   * - Kèm tên khu và ô chuồng đang xếp (stall_assignments còn mở)
+   *
+   * @param filter Giới hạn theo danh sách ngựa, một khu, danh sách khu (rỗng thì không có ngựa nào), trạng thái sức khỏe; bỏ trống để lấy cả đàn
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Promise trả về từng con ngựa kèm mốc tính hạn, xếp theo tên
+   */
+  herdCheckupAnchors(
+    filter: HerdFilter = {},
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<HorseCheckupAnchorRow[]> {
+    const params: unknown[] = [
+      CLUB_TIME_ZONE,
+      HorseLifecycleStatus.ACTIVE,
+      HorseLifecycleStatus.RETIRED,
+      AuditEntityType.HORSE,
+      HorseLifecycleStatus.TRANSFERRED,
+    ];
+    const conditions: string[] = [];
+    if (filter.horseIds) {
+      params.push(filter.horseIds);
+      conditions.push(`AND h.id = ANY($${params.length}::uuid[])`);
+    }
+    if (filter.barnId) {
+      params.push(filter.barnId);
+      conditions.push(`AND h.barn_id = $${params.length}`);
+    }
+    if (filter.barnIds) {
+      params.push(filter.barnIds);
+      conditions.push(`AND h.barn_id = ANY($${params.length}::uuid[])`);
+    }
+    if (filter.healthStatus) {
+      params.push(filter.healthStatus);
+      conditions.push(`AND h.health_status = $${params.length}`);
+    }
+    return manager.query(
+      `SELECT h.id AS "horseId",
+              h.name AS "horseName",
+              h.barn_id AS "barnId",
+              b.name AS "barnName",
+              st.id AS "stallId",
+              st.code AS "stallCode",
+              h.health_status AS "healthStatus",
+              to_char(MAX(r.exam_date) AT TIME ZONE $1, 'YYYY-MM-DD') AS "lastVisitDate",
+              to_char(h.created_at AT TIME ZONE $1, 'YYYY-MM-DD') AS "createdDate",
+              (SELECT to_char(MAX(a.created_at) AT TIME ZONE $1, 'YYYY-MM-DD')
+                 FROM audit_logs a
+                WHERE a.entity_type = $4
+                  AND a.entity_id = h.id
+                  AND a.after_data->>'lifecycleStatus' = $2
+                  AND a.before_data->>'lifecycleStatus' = $5
+              ) AS "reactivatedDate"
+         FROM horses h
+         LEFT JOIN medical_records r
+                ON r.horse_id = h.id AND r.voided_at IS NULL
+         LEFT JOIN stall_assignments sa
+                ON sa.horse_id = h.id AND sa.end_at IS NULL
+         LEFT JOIN stalls st ON st.id = sa.stall_id
+         LEFT JOIN barns b ON b.id = h.barn_id
+        WHERE h.deleted_at IS NULL
+          AND h.lifecycle_status IN ($2, $3)
+          ${conditions.join(' ')}
+        GROUP BY h.id, st.id, b.id
+        ORDER BY h.name`,
+      params,
+    );
+  }
+
+  /**
+   * Lấy ngày hẹn khám định kỳ đang hiệu lực của các con ngựa, mỗi ngựa tối đa một
+   *
+   * @param horseIds UUID các con ngựa cần lấy
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Promise trả về Map từ UUID ngựa sang lịch hẹn
+   */
+  async activeAppointments(
+    horseIds: string[],
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<Map<string, CareScheduleEntity>> {
+    if (horseIds.length === 0) return new Map();
+    const appointments = await manager.find(CareScheduleEntity, {
+      where: {
+        horseId: In(horseIds),
+        type: CareScheduleType.ROUTINE_CHECKUP,
+        status: CareScheduleStatus.SCHEDULED,
+      },
+    });
+    return new Map(
+      appointments.map((appointment) => [appointment.horseId, appointment]),
+    );
+  }
+
+  /**
+   * Lấy ngày hẹn tái khám của các buổi khám (mọi trạng thái lịch)
+   *
+   * @param recordIds UUID các buổi khám
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Promise trả về Map từ UUID buổi khám sang ngày hẹn tái khám; buổi không hẹn thì không có trong Map
+   */
+  async followUpDates(
+    recordIds: string[],
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<Map<string, Date>> {
+    if (recordIds.length === 0) return new Map();
+    const schedules = await manager.find(CareScheduleEntity, {
+      where: { recordId: In(recordIds), type: CareScheduleType.FOLLOW_UP },
+    });
+    return new Map(
+      schedules.map((schedule) => [
+        schedule.recordId as string,
+        schedule.dueAt,
+      ]),
+    );
+  }
+
+  /**
+   * Lấy ngày hẹn khám định kỳ và lịch tái khám còn hiệu lực có ngày hẹn tới hết một ngày, kể cả ngày hẹn đã qua mà chưa khám
+   *
+   * - Bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
+   *
+   * @param untilDate Lấy ngày hẹn không muộn hơn ngày này theo lịch câu lạc bộ (YYYY-MM-DD)
+   * @returns Promise trả về các ngày hẹn, ngày hẹn sớm nhất lên trên
+   */
+  dueAppointments(untilDate: string): Promise<CareScheduleEntity[]> {
+    return this.dataSource.manager.find(CareScheduleEntity, {
+      where: {
+        type: In([...VET_APPOINTMENT_TYPES]),
+        status: CareScheduleStatus.SCHEDULED,
+        dueAt: LessThan(
+          clubDateTimeToInstant(shiftDays(untilDate, 1), '00:00'),
+        ),
+        horse: { lifecycleStatus: Not(In([...READ_ONLY_LIFECYCLE_STATUSES])) },
+      },
+      relations: { horse: true },
+      order: { dueAt: 'ASC' },
+    });
+  }
+
+  /**
+   * Lấy lịch tiêm phòng, tẩy giun, kiểm tra móng còn Đã lên lịch và đến hạn tới một ngày
+   *
+   * - Không gồm ngày hẹn khám định kỳ và lịch tái khám; bỏ ngựa đã chuyển nhượng, đã mất và hồ sơ đã xóa
+   * - Ngày đến hạn tính theo lịch câu lạc bộ
+   * - assignedTo là bác sĩ được giao nếu còn là bác sĩ đang hoạt động, không thì null
+   * - assignedToName là họ tên bác sĩ đó, null khi assignedTo là null
+   *
+   * @param untilDate Lấy lịch có ngày đến hạn không muộn hơn ngày này (YYYY-MM-DD)
+   * @param horseIds Giới hạn theo danh sách ngựa; bỏ trống để lấy cả đàn
+   * @returns Promise trả về các lịch đến hạn, ngày đến hạn sớm nhất lên trên
+   */
+  dueCareSchedules(
+    untilDate: string,
+    horseIds?: string[],
+  ): Promise<DueCareScheduleRow[]> {
+    const params: unknown[] = [
+      CLUB_TIME_ZONE,
+      untilDate,
+      CareScheduleStatus.SCHEDULED,
+      VET_APPOINTMENT_TYPES,
+      READ_ONLY_LIFECYCLE_STATUSES,
+      UserStatus.ACTIVE,
+      UserRole.VETERINARIAN,
+    ];
+    let horseFilter = '';
+    if (horseIds) {
+      params.push(horseIds);
+      horseFilter = `AND s.horse_id = ANY($${params.length}::uuid[])`;
+    }
+    return this.dataSource.query(
+      `SELECT s.id AS "scheduleId",
+              s.horse_id AS "horseId",
+              h.name AS "horseName",
+              s.type,
+              to_char(s.due_at AT TIME ZONE $1, 'YYYY-MM-DD') AS "dueDate",
+              au.id AS "assignedTo",
+              au.full_name AS "assignedToName"
+         FROM care_schedules s
+         JOIN horses h ON h.id = s.horse_id
+         LEFT JOIN users au
+           ON au.id = s.assigned_to
+          AND au.deleted_at IS NULL
+          AND au.status = $6
+          AND au.role = $7
+        WHERE s.status = $3
+          AND s.type <> ALL($4::varchar[])
+          AND h.deleted_at IS NULL
+          AND h.lifecycle_status <> ALL($5::varchar[])
+          AND (s.due_at AT TIME ZONE $1)::date <= $2::date
+          ${horseFilter}
+        ORDER BY s.due_at ASC`,
+      params,
+    );
+  }
+}

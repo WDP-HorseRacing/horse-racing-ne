@@ -1,0 +1,233 @@
+-- Dữ liệu ảo cho môi trường dev. Chạy: pnpm db:seed (sau pnpm db:migrate)
+--
+-- Users: 5 tài khoản (mỗi role 1 người) khớp với user có sẵn trên Keycloak local
+-- (realm racehorse). keycloak_id phải trùng `sub` trên Keycloak thì mới đăng nhập được;
+-- nếu Keycloak của máy khác có sub khác thì sửa keycloak_id ở phần users bên dưới.
+-- Các phần sau lấy user theo role (user ACTIVE tạo sớm nhất của mỗi role).
+--
+-- Chạy lại nhiều lần được: mọi bản ghi dùng id cố định + ON CONFLICT (id) DO NOTHING.
+-- Bản ghi đã có thì giữ nguyên (không reset trạng thái đã đổi trong lúc test).
+--
+-- Quy ước id: barns b0.., stalls c0.., horses a0.., stall_assignments d0..,
+-- groom_assignments 70.., training_locks f0.., daily_fees e0..
+--
+-- Ngựa có tối đa 1 chủ (horses.owner_id) và thuộc 1 khu (horses.barn_id).
+-- Phả hệ chỉ dùng ngựa có hồ sơ trong CLB, không có ngựa tham chiếu.
+
+DO $$
+DECLARE
+  head_trainer_id uuid;
+  vet_id uuid;
+  groom_id uuid;
+  owner_id uuid;
+  manager_id uuid;
+BEGIN
+  -- ── Users ───────────────────────────────────────────────────
+  INSERT INTO users (id, keycloak_id, full_name, email, role, status, version) VALUES
+    ('4d2f2949-9d29-4a64-81c0-807c481188f1', 'b4c48b7a-f2ee-4352-9a9c-37cd81ef3297', 'Nguyễn Nhật Trường', 'nhatruong5012@gmail.com', 'CLUB_MANAGER', 'ACTIVE', 1),
+    ('91315bf7-3eef-4d8c-a403-c20245b6cb36', '816cb58c-65e2-4e89-8d6a-401b8d0bae16', 'Nguyễn Văn A', 'nhatruong5020@gmail.com', 'HEAD_TRAINER', 'ACTIVE', 1),
+    ('0831b413-cf10-445e-96eb-97f354ef517d', '810c144f-3a62-49cf-bc7e-6216f26b1878', 'Nguyen Van B', 'nhattruong.nguyen0512@gmail.com', 'HORSE_OWNER', 'ACTIVE', 1),
+    ('793a2d08-28af-4652-9988-037be0d111de', '9d06deae-0a99-4da8-a526-56960343cbf0', 'Nguyen Van C', 'tnhdarkrai1457@gmail.com', 'GROOM', 'ACTIVE', 1),
+    ('d5a2188a-ab75-4537-b370-ddfc7c31e8ae', '91fab7dc-721c-4d94-85f1-dcb279b24629', 'Nguyen Van C', 'minhff.net@gmail.com', 'VETERINARIAN', 'ACTIVE', 1)
+  ON CONFLICT (id) DO NOTHING;
+
+  SELECT id INTO head_trainer_id FROM users
+    WHERE role = 'HEAD_TRAINER' AND status = 'ACTIVE' AND deleted_at IS NULL
+    ORDER BY created_at LIMIT 1;
+  SELECT id INTO vet_id FROM users
+    WHERE role = 'VETERINARIAN' AND status = 'ACTIVE' AND deleted_at IS NULL
+    ORDER BY created_at LIMIT 1;
+  SELECT id INTO groom_id FROM users
+    WHERE role = 'GROOM' AND status = 'ACTIVE' AND deleted_at IS NULL
+    ORDER BY created_at LIMIT 1;
+  SELECT id INTO owner_id FROM users
+    WHERE role = 'HORSE_OWNER' AND status = 'ACTIVE' AND deleted_at IS NULL
+    ORDER BY created_at LIMIT 1;
+  SELECT id INTO manager_id FROM users
+    WHERE role = 'CLUB_MANAGER' AND status = 'ACTIVE' AND deleted_at IS NULL
+    ORDER BY created_at LIMIT 1;
+
+  IF head_trainer_id IS NULL OR vet_id IS NULL OR groom_id IS NULL OR owner_id IS NULL OR manager_id IS NULL THEN
+    RAISE EXCEPTION 'Thiếu user ACTIVE cho role: %',
+      concat_ws(', ',
+        CASE WHEN manager_id IS NULL THEN 'CLUB_MANAGER' END,
+        CASE WHEN head_trainer_id IS NULL THEN 'HEAD_TRAINER' END,
+        CASE WHEN vet_id IS NULL THEN 'VETERINARIAN' END,
+        CASE WHEN groom_id IS NULL THEN 'GROOM' END,
+        CASE WHEN owner_id IS NULL THEN 'HORSE_OWNER' END);
+  END IF;
+
+  -- ── Mức phí ngày ────────────────────────────────────────────
+  -- Hiệu lực từ 600 ngày trước (theo lịch CLB), trước ngựa vào CLB sớm nhất (Phong Vân, 500 ngày).
+  INSERT INTO daily_fees (id, effective_from, daily_fee, created_by, created_at) VALUES
+    ('e0000000-0000-4000-8000-000000000001',
+     (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date - 600, 250000, manager_id, now() - interval '600 days')
+  ON CONFLICT (id) DO NOTHING;
+
+  -- ── Khu chuồng ──────────────────────────────────────────────
+  -- Khu A, B, cách ly có head trainer; khu C chưa có (không xếp ngựa vào được).
+  INSERT INTO barns (id, name, description, capacity, status, head_trainer_id, version) VALUES
+    ('b0000000-0000-4000-8000-000000000001', 'Khu A (seed)', 'Khu chính, có head trainer', 8, 'ACTIVE', head_trainer_id, 1),
+    ('b0000000-0000-4000-8000-000000000002', 'Khu B (seed)', 'Khu phụ', 6, 'ACTIVE', head_trainer_id, 1),
+    ('b0000000-0000-4000-8000-000000000003', 'Khu cách ly (seed)', 'Ô tách đàn ngựa nghi nhiễm bệnh', 3, 'ACTIVE', head_trainer_id, 1),
+    ('b0000000-0000-4000-8000-000000000004', 'Khu C (seed)', 'Khu mới, chưa có head trainer', 4, 'ACTIVE', NULL, 1)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- ── Ô chuồng ────────────────────────────────────────────────
+  INSERT INTO stalls (id, barn_id, code, type, status, has_camera, version) VALUES
+    ('c0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001', 'SD-A01', 'STANDARD', 'OCCUPIED', true, 1),
+    ('c0000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001', 'SD-A02', 'STANDARD', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001', 'SD-A03', 'STANDARD', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000004', 'b0000000-0000-4000-8000-000000000001', 'SD-A04', 'STANDARD', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000005', 'b0000000-0000-4000-8000-000000000001', 'SD-A05', 'STANDARD', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000006', 'b0000000-0000-4000-8000-000000000001', 'SD-A06', 'STANDARD', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000007', 'b0000000-0000-4000-8000-000000000001', 'SD-A07', 'STANDARD', 'AVAILABLE', false, 1),
+    ('c0000000-0000-4000-8000-000000000011', 'b0000000-0000-4000-8000-000000000002', 'SD-B01', 'RECOVERY', 'OCCUPIED', true, 1),
+    ('c0000000-0000-4000-8000-000000000012', 'b0000000-0000-4000-8000-000000000002', 'SD-B02', 'STANDARD', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000013', 'b0000000-0000-4000-8000-000000000002', 'SD-B03', 'STANDARD', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000014', 'b0000000-0000-4000-8000-000000000002', 'SD-B04', 'RECOVERY', 'OCCUPIED', false, 1),
+    ('c0000000-0000-4000-8000-000000000015', 'b0000000-0000-4000-8000-000000000002', 'SD-B05', 'STANDARD', 'MAINTENANCE', false, 1),
+    ('c0000000-0000-4000-8000-000000000021', 'b0000000-0000-4000-8000-000000000003', 'SD-I01', 'ISOLATION', 'OCCUPIED', true, 1),
+    ('c0000000-0000-4000-8000-000000000022', 'b0000000-0000-4000-8000-000000000003', 'SD-I02', 'ISOLATION', 'OCCUPIED', true, 1),
+    ('c0000000-0000-4000-8000-000000000023', 'b0000000-0000-4000-8000-000000000003', 'SD-I03', 'ISOLATION', 'AVAILABLE', true, 1)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- ── Ngựa của câu lạc bộ ──────────────────────────────────────
+  -- Phủ đủ: 4 health x 3 lifecycle, 3 giới tính, 3 cự ly,
+  -- chờ xếp khu (Ngọc Lan), chờ xếp ô (Vô Danh), có training lock,
+  -- hồ sơ thiếu thông tin, hồ sơ đã xóa. Kim Ô + Tuyết Sơn làm cha mẹ trong phả hệ.
+  -- Mọi ngựa chưa xóa đều có chủ và số chip (tạo hồ sơ bắt buộc cả hai).
+  -- created_at là lúc ngựa vào CLB (trùng mốc ô/Groom đầu tiên) để báo cáo phí tính đúng từ ngày đó.
+  -- Giải nghệ/chuyển nhượng có lifecycle_changed_at khớp nhật ký vòng đời bên dưới.
+  INSERT INTO horses (id, name, gender, breed, color, race_aptitude, date_of_birth, microchip_id, sire_id, dam_id, owner_id, barn_id, health_status, lifecycle_status, lifecycle_reason, lifecycle_changed_at, deleted_at, created_at, version) VALUES
+    ('a0000000-0000-4000-8000-000000000008', 'Kim Ô', 'MALE', 'Arabian', 'Palomino', 'MILER', '2012-09-09', '900000000000008', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000002', 'ELIGIBLE', 'RETIRED', 'Hết tuổi thi đấu, giữ làm ngựa giống', now() - interval '60 days', NULL, now() - interval '400 days', 1),
+    ('a0000000-0000-4000-8000-000000000009', 'Tuyết Sơn', 'FEMALE', 'Thoroughbred', 'Grey', 'STAYER', '2011-12-01', '900000000000009', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000002', 'UNDER_OBSERVATION', 'RETIRED', 'Hết tuổi thi đấu, giữ làm ngựa giống', now() - interval '30 days', NULL, now() - interval '300 days', 1),
+    ('a0000000-0000-4000-8000-000000000001', 'Sao Mai', 'MALE', 'Thoroughbred', 'Bay', 'SPRINTER', '2019-02-10', '900000000000001', 'a0000000-0000-4000-8000-000000000008', 'a0000000-0000-4000-8000-000000000009', owner_id, 'b0000000-0000-4000-8000-000000000001', 'ELIGIBLE', 'ACTIVE', NULL, NULL, NULL, now() - interval '90 days', 1),
+    ('a0000000-0000-4000-8000-000000000002', 'Gió Bắc', 'GELDING', 'Arabian', 'Grey', 'MILER', '2018-05-21', '900000000000002', 'a0000000-0000-4000-8000-000000000008', NULL, owner_id, 'b0000000-0000-4000-8000-000000000001', 'ELIGIBLE', 'ACTIVE', NULL, NULL, NULL, now() - interval '80 days', 1),
+    ('a0000000-0000-4000-8000-000000000003', 'Hỏa Long', 'MALE', 'Thoroughbred', 'Chestnut', 'STAYER', '2017-08-03', '900000000000003', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000001', 'ELIGIBLE', 'ACTIVE', NULL, NULL, NULL, now() - interval '70 days', 1),
+    ('a0000000-0000-4000-8000-000000000004', 'Bạch Vân', 'FEMALE', 'Arabian', 'White', 'MILER', '2020-01-15', '900000000000004', NULL, 'a0000000-0000-4000-8000-000000000009', owner_id, 'b0000000-0000-4000-8000-000000000001', 'UNDER_OBSERVATION', 'ACTIVE', NULL, NULL, NULL, now() - interval '60 days', 1),
+    ('a0000000-0000-4000-8000-000000000005', 'Thiên Lý', 'MALE', 'Thoroughbred', 'Black', 'SPRINTER', '2018-11-30', '900000000000005', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000002', 'INJURED', 'ACTIVE', NULL, NULL, NULL, now() - interval '20 days', 1),
+    ('a0000000-0000-4000-8000-000000000006', 'Hắc Phong', 'GELDING', 'Quarter Horse', 'Black', 'STAYER', '2016-07-07', '900000000000006', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000003', 'QUARANTINED', 'ACTIVE', NULL, NULL, NULL, now() - interval '5 days', 1),
+    ('a0000000-0000-4000-8000-000000000007', 'Ngọc Lan', 'FEMALE', 'Thoroughbred', 'Bay', 'SPRINTER', '2021-03-18', '900000000000007', NULL, NULL, owner_id, NULL, 'ELIGIBLE', 'ACTIVE', NULL, NULL, NULL, now() - interval '7 days', 1),
+    ('a0000000-0000-4000-8000-000000000010', 'Phong Vân', 'MALE', 'Thoroughbred', 'Bay', 'MILER', '2015-06-14', '900000000000010', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000001', 'ELIGIBLE', 'TRANSFERRED', 'Bán cho trại ngoài', now() - interval '100 days', NULL, now() - interval '500 days', 1),
+    ('a0000000-0000-4000-8000-000000000011', 'Lam Giang', 'FEMALE', 'Arabian', 'Chestnut', 'SPRINTER', '2019-10-22', '900000000000011', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000002', 'INJURED', 'ACTIVE', NULL, NULL, NULL, now() - interval '15 days', 1),
+    ('a0000000-0000-4000-8000-000000000012', 'Đại Bàng', 'GELDING', 'Thoroughbred', 'Dark Bay', 'MILER', '2018-04-04', '900000000000012', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000001', 'ELIGIBLE', 'ACTIVE', NULL, NULL, NULL, now() - interval '50 days', 1),
+    ('a0000000-0000-4000-8000-000000000013', 'Xích Thố', 'MALE', 'Thoroughbred', 'Chestnut', 'STAYER', '2017-01-27', '900000000000013', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000001', 'ELIGIBLE', 'ACTIVE', NULL, NULL, NULL, now() - interval '40 days', 1),
+    ('a0000000-0000-4000-8000-000000000014', 'Vô Danh', NULL, NULL, NULL, NULL, NULL, '900000000000014', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000001', 'ELIGIBLE', 'ACTIVE', NULL, NULL, NULL, now() - interval '2 days', 1),
+    ('a0000000-0000-4000-8000-000000000015', 'Hồng Hạc', 'FEMALE', 'Arabian', 'Grey', 'MILER', '2020-08-08', '900000000000015', NULL, NULL, owner_id, 'b0000000-0000-4000-8000-000000000003', 'QUARANTINED', 'ACTIVE', NULL, NULL, NULL, now() - interval '3 days', 1),
+    ('a0000000-0000-4000-8000-000000000016', 'Bóng Đêm (đã xóa)', 'MALE', 'Thoroughbred', 'Black', 'SPRINTER', '2016-02-02', '900000000000016', NULL, NULL, NULL, NULL, 'ELIGIBLE', 'ACTIVE', NULL, NULL, now() - interval '10 days', now() - interval '60 days', 1),
+    ('a0000000-0000-4000-8000-000000000017', 'Sương Mù (đã xóa)', 'FEMALE', 'Arabian', 'Grey', 'STAYER', '2013-05-05', NULL, NULL, NULL, NULL, NULL, 'INJURED', 'RETIRED', 'Chấn thương không hồi phục', now() - interval '120 days', now() - interval '30 days', now() - interval '200 days', 1)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- ── Nhật ký tạo hồ sơ và đổi vòng đời ───────────────────────
+  -- Cùng định dạng service ghi (HORSE_CREATE, HORSE_LIFECYCLE): báo cáo phí lấy trạng thái
+  -- từng ngày theo dòng nhật ký có lifecycleStatus gần nhất trước ngày đó.
+  INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, before_data, after_data, feature, created_at)
+  SELECT manager_id, 'CREATE', 'HORSE', h.id, NULL,
+         jsonb_build_object(
+           'name', h.name, 'gender', h.gender, 'breed', h.breed, 'color', h.color,
+           'raceAptitude', h.race_aptitude, 'microchipId', h.microchip_id,
+           'dateOfBirth', h.date_of_birth, 'mediaId', NULL, 'sireId', h.sire_id, 'damId', h.dam_id,
+           'ownerId', h.owner_id, 'barnId', h.barn_id,
+           'healthStatus', h.health_status, 'lifecycleStatus', 'ACTIVE'),
+         'HORSE_CREATE', h.created_at
+    FROM horses h
+   WHERE h.id::text LIKE 'a0000000-0000-4000-8000-%'
+     AND NOT EXISTS (
+           SELECT 1 FROM audit_logs a
+            WHERE a.entity_id = h.id AND a.feature = 'HORSE_CREATE'
+         );
+
+  INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, before_data, after_data, reason, feature, created_at)
+  SELECT manager_id, 'UPDATE', 'HORSE', h.id,
+         jsonb_build_object('lifecycleStatus', 'ACTIVE', 'lifecycleReason', NULL),
+         jsonb_build_object('lifecycleStatus', h.lifecycle_status, 'lifecycleReason', h.lifecycle_reason),
+         h.lifecycle_reason, 'HORSE_LIFECYCLE', h.lifecycle_changed_at
+    FROM horses h
+   WHERE h.id::text LIKE 'a0000000-0000-4000-8000-%'
+     AND h.lifecycle_status <> 'ACTIVE'
+     AND h.lifecycle_changed_at IS NOT NULL
+     AND NOT EXISTS (
+           SELECT 1 FROM audit_logs a
+            WHERE a.entity_id = h.id AND a.feature = 'HORSE_LIFECYCLE'
+         );
+
+  -- ── Xếp ô chuồng (đang mở: end_at NULL) ─────────────────────
+  -- Ngựa không có dòng mở: Ngọc Lan (chưa có khu), Phong Vân (đã chuyển nhượng), Vô Danh (có khu A, chờ xếp ô).
+  INSERT INTO stall_assignments (id, horse_id, stall_id, start_at, end_at, version) VALUES
+    ('d0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001', now() - interval '90 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000002', 'c0000000-0000-4000-8000-000000000002', now() - interval '80 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000003', 'c0000000-0000-4000-8000-000000000003', now() - interval '70 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000004', 'c0000000-0000-4000-8000-000000000004', now() - interval '60 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000005', 'c0000000-0000-4000-8000-000000000011', now() - interval '20 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000006', 'a0000000-0000-4000-8000-000000000006', 'c0000000-0000-4000-8000-000000000021', now() - interval '5 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000008', 'a0000000-0000-4000-8000-000000000008', 'c0000000-0000-4000-8000-000000000012', now() - interval '400 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000009', 'a0000000-0000-4000-8000-000000000009', 'c0000000-0000-4000-8000-000000000013', now() - interval '300 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000011', 'a0000000-0000-4000-8000-000000000011', 'c0000000-0000-4000-8000-000000000014', now() - interval '15 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000012', 'a0000000-0000-4000-8000-000000000012', 'c0000000-0000-4000-8000-000000000005', now() - interval '50 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000013', 'a0000000-0000-4000-8000-000000000013', 'c0000000-0000-4000-8000-000000000006', now() - interval '40 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000015', 'a0000000-0000-4000-8000-000000000015', 'c0000000-0000-4000-8000-000000000022', now() - interval '3 days', NULL, 1),
+    ('d0000000-0000-4000-8000-000000000100', 'a0000000-0000-4000-8000-000000000010', 'c0000000-0000-4000-8000-000000000007', now() - interval '500 days', now() - interval '100 days', 1)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- ── Groom phụ trách (độc lập với ô chuồng) ──────────────────
+  -- Ngọc Lan chưa vào chuồng nhưng đã có groom; Phong Vân đã chuyển nhượng nên groom đã đóng.
+  -- ON CONFLICT DO NOTHING (không chỉ id): DB đã migrate có sẵn dòng copy từ stall_assignments.
+  INSERT INTO groom_assignments (id, horse_id, groom_id, start_at, end_at, version) VALUES
+    ('70000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', groom_id, now() - interval '90 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000002', groom_id, now() - interval '80 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000003', groom_id, now() - interval '70 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000004', groom_id, now() - interval '60 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000005', groom_id, now() - interval '20 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000006', 'a0000000-0000-4000-8000-000000000006', groom_id, now() - interval '5 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000007', 'a0000000-0000-4000-8000-000000000007', groom_id, now() - interval '7 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000008', 'a0000000-0000-4000-8000-000000000008', groom_id, now() - interval '400 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000009', 'a0000000-0000-4000-8000-000000000009', groom_id, now() - interval '300 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000011', 'a0000000-0000-4000-8000-000000000011', groom_id, now() - interval '15 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000012', 'a0000000-0000-4000-8000-000000000012', groom_id, now() - interval '50 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000013', 'a0000000-0000-4000-8000-000000000013', groom_id, now() - interval '40 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000015', 'a0000000-0000-4000-8000-000000000015', groom_id, now() - interval '3 days', NULL, 1),
+    ('70000000-0000-4000-8000-000000000100', 'a0000000-0000-4000-8000-000000000010', groom_id, now() - interval '500 days', now() - interval '100 days', 1)
+  ON CONFLICT DO NOTHING;
+
+  -- ── Training lock ───────────────────────────────────────────
+  -- Hỏa Long: ELIGIBLE + ACTIVE nhưng đang bị khóa -> canRegisterRace = false.
+  -- Thiên Lý: chấn thương, đang bị khóa.
+  -- Xích Thố: lock đã RELEASED -> canRegisterRace = true.
+  INSERT INTO training_locks (id, horse_id, locked_by, reason, lock_start, lock_end, status, released_by, released_at, release_conclusion, version) VALUES
+    ('f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000003', vet_id, 'Theo dõi sau tiêm phòng', now() - interval '2 days', NULL, 'ACTIVE', NULL, NULL, NULL, 1),
+    ('f0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000005', vet_id, 'Tổn thương gân chân trước trái', now() - interval '20 days', NULL, 'ACTIVE', NULL, NULL, NULL, 1),
+    ('f0000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000013', vet_id, 'Sưng khớp nhẹ', now() - interval '30 days', now() - interval '10 days', 'RELEASED', vet_id, now() - interval '10 days', 'Hồi phục hoàn toàn', 1)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- ── Giai đoạn sở hữu ────────────────────────────────────────
+  -- Mỗi ngựa đang có chủ có đúng một giai đoạn mở, bắt đầu từ lúc tạo hồ sơ.
+  INSERT INTO horse_ownerships (horse_id, owner_id, started_at, version)
+  SELECT h.id, h.owner_id, h.created_at, 1
+    FROM horses h
+   WHERE h.owner_id IS NOT NULL
+     AND NOT EXISTS (
+           SELECT 1 FROM horse_ownerships o
+            WHERE o.horse_id = h.id AND o.ended_at IS NULL
+         );
+
+  -- Ngựa đã chuyển nhượng ra ngoài: kết thúc sở hữu lúc chuyển nhượng, bỏ trống chủ và khu.
+  UPDATE horse_ownerships o SET ended_at = COALESCE(h.lifecycle_changed_at, now())
+    FROM horses h
+   WHERE h.id = o.horse_id AND h.lifecycle_status = 'TRANSFERRED' AND o.ended_at IS NULL;
+  UPDATE horses h SET owner_id = NULL, barn_id = NULL
+   WHERE h.lifecycle_status = 'TRANSFERRED' AND (h.owner_id IS NOT NULL OR h.barn_id IS NOT NULL);
+
+  -- ── Loại việc ───────────────────────────────────────────────
+  -- Việc làm nhiều lần trong ngày khai mỗi lần một loại việc: tách "Cho ăn" (migration tạo sẵn)
+  -- thành "Cho ăn sáng" và "Cho ăn tối", cả hai áp mọi ngựa.
+  UPDATE daily_task_types SET name = 'Cho ăn sáng', updated_at = now()
+   WHERE name = 'Cho ăn'
+     AND NOT EXISTS (SELECT 1 FROM daily_task_types WHERE name = 'Cho ăn sáng');
+  -- Cùng created_at với "Cho ăn sáng" để đứng ngay sau nó trong checklist (thứ tự theo created_at rồi tên).
+  INSERT INTO daily_task_types (name, applies_to_all, active, version, created_at)
+  SELECT 'Cho ăn tối', true, true, 1, t.created_at
+    FROM daily_task_types t
+   WHERE t.name = 'Cho ăn sáng'
+     AND NOT EXISTS (SELECT 1 FROM daily_task_types WHERE name = 'Cho ăn tối');
+END $$;

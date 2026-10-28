@@ -1,19 +1,17 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
-import { ClubEntity } from '../../users/entities/club.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { AuditAction } from '../constants/audit-action.enum';
+import { AuditEntityType } from '../constants/audit-entity-type.enum';
+import { AuditFeature } from '../constants/audit-feature.enum';
 
+/**
+ * AuditLogEntity: nhật ký thay đổi dữ liệu.
+ * Dùng để ghi hành động, đối tượng bị thay đổi và dữ liệu trước/sau để truy vết.
+ */
 @Entity({ name: 'audit_logs' })
 @Index('audit_logs_entity_idx', ['entityType', 'entityId', 'createdAt'])
-@Index('audit_logs_club_created_idx', ['clubId', 'createdAt'])
 export class AuditLogEntity extends BaseRecordEntity {
-  @Column({ name: 'club_id', type: 'uuid' })
-  clubId!: string;
-
-  @ManyToOne(() => ClubEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'club_id' })
-  club!: ClubEntity;
-
   @Column({ name: 'actor_id', type: 'uuid', nullable: true })
   actorId!: string | null;
 
@@ -22,10 +20,10 @@ export class AuditLogEntity extends BaseRecordEntity {
   actor!: UserEntity | null;
 
   @Column({ type: 'varchar', length: 100 })
-  action!: string;
+  action!: AuditAction;
 
   @Column({ name: 'entity_type', type: 'varchar', length: 100 })
-  entityType!: string;
+  entityType!: AuditEntityType;
 
   @Column({ name: 'entity_id', type: 'uuid' })
   entityId!: string;
@@ -43,4 +41,10 @@ export class AuditLogEntity extends BaseRecordEntity {
     nullable: true,
   })
   correlationId!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  reason!: string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  feature!: AuditFeature | null;
 }

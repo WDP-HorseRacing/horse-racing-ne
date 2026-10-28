@@ -1,19 +1,19 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 import { SoftDeletableRecordEntity } from '../../../common/database/base-record.entity';
-import { ClubEntity } from './club.entity';
+import { UserRole, UserStatus } from '../user.enums';
 
 @Entity({ name: 'users' })
-@Index('users_club_email_uq', ['clubId', 'email'], {
+@Index('users_email_uq', ['email'], {
+  unique: true,
+  where: 'deleted_at IS NULL',
+})
+@Index('users_keycloak_id_uq', ['keycloakId'], {
   unique: true,
   where: 'deleted_at IS NULL',
 })
 export class UserEntity extends SoftDeletableRecordEntity {
-  @Column({ name: 'club_id', type: 'uuid' })
-  clubId!: string;
-
-  @ManyToOne(() => ClubEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'club_id' })
-  club!: ClubEntity;
+  @Column({ name: 'keycloak_id', type: 'uuid' })
+  keycloakId!: string;
 
   @Column({ name: 'full_name', type: 'varchar', length: 160 })
   fullName!: string;
@@ -29,9 +29,9 @@ export class UserEntity extends SoftDeletableRecordEntity {
   })
   passwordHash!: string | null;
 
-  @Column({ type: 'varchar', length: 32 })
-  role!: string;
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  role!: UserRole | null;
 
-  @Column({ type: 'varchar', length: 32, default: 'ACTIVE' })
-  status!: string;
+  @Column({ type: 'varchar', length: 32, default: UserStatus.INACTIVE })
+  status!: UserStatus;
 }

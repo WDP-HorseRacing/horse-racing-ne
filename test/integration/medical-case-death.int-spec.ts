@@ -1,0 +1,218 @@
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
+import { UserRole } from '../../src/common/enums/role.enum';
+import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
+import type { Actor } from '../../src/common/types/actor';
+import { clubToday } from '../../src/common/utils/club-date';
+import { HORSE_DECEASED_EVENT } from '../../src/modules/horses/constants/horse.constants';
+import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
+import { HorseStatusesService } from '../../src/modules/horses/horse-statuses/horse-statuses.service';
+import { CaseLockDecision } from '../../src/modules/medical/constants/medical-case.enum';
+import { MEDICAL_CASE_CLOSED_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
+import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
+import { fixtures } from './fixtures';
+import {
+  startTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
+} from './postgres';
+
+describe('MedicalCasesService.closeCase recording a death (Postgres)', () => {
+  let db: TestPostgres;
+  let dataSource: DataSource;
+  let moduleRef: TestingModule;
+  let seed: ReturnType<typeof fixtures>;
+  let service: MedicalCasesService;
+
+  const actorOf = async (userId: string, role: UserRole): Promise<Actor> => {
+    const [row] = await dataSource.query<{ keycloak_id: string }[]>(
+      'SELECT keycloak_id FROM users WHERE id = $1',
+      [userId],
+    );
+    return { sub: row.keycloak_id, roles: [role] };
+  };
+
+  beforeAll(async () => {
+    db = await startTestPostgres();
+    dataSource = db.dataSource;
+    seed = fixtures(dataSource);
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        EventEmitterModule.forRoot(),
+        TypeOrmModule.forRootAsync({
+          useFactory: () => ({ type: 'postgres' }),
+          dataSourceFactory: () => Promise.resolve(dataSource),
+        }),
+        DomainEventsModule,
+        MedicalRecordsModule,
+      ],
+    }).compile();
+    service = moduleRef.get(MedicalCasesService);
+  });
+
+  afterAll(async () => {
+    await moduleRef?.close();
+    await db?.container.stop();
+  });
+
+  beforeEach(() => truncateAllTables(dataSource));
+
+  const setup = async () => {
+    const vet = await seed.user(UserRole.VETERINARIAN);
+    const owner = await seed.user(UserRole.HORSE_OWNER);
+    const barn = await seed.barn('Khu A');
+    const horse = await seed.horse('Winx', { ownerId: owner, barnId: barn });
+    const caseId = await seed.medicalCase(horse, vet);
+    const [lock] = await dataSource.query<{ id: string }[]>(
+      `INSERT INTO training_locks (version, horse_id, locked_by, reason, lock_start, status, case_id)
+       VALUES (1, $1, $2, 'Chấn thương', now(), 'ACTIVE', $3) RETURNING id`,
+      [horse, vet, caseId],
+    );
+    const request = await seed.examRequest(horse);
+    return {
+      horse,
+      caseId,
+      lockId: lock.id,
+      request,
+      actor: await actorOf(vet, UserRole.VETERINARIAN),
+    };
+  };
+
+  const state = async (horse: string, caseId: string) => {
+    const [horseRow] = await dataSource.query<Record<string, unknown>[]>(
+      `SELECT lifecycle_status, lifecycle_reason, barn_id,
+              to_char(date_of_death, 'YYYY-MM-DD') AS date_of_death
+       FROM horses WHERE id = $1`,
+      [horse],
+    );
+    const [caseRow] = await dataSource.query<Record<string, unknown>[]>(
+      'SELECT status FROM medical_cases WHERE id = $1',
+      [caseId],
+    );
+    const events = await dataSource.query<{ event_name: string }[]>(
+      'SELECT event_name FROM outbox_events ORDER BY created_at',
+    );
+    return {
+      horse: horseRow,
+      medicalCase: caseRow,
+      events: events.map((row) => row.event_name),
+    };
+  };
+
+  it('previews the death consequences although the case is still open', async () => {
+    const { caseId, actor } = await setup();
+
+    const preview = await service.closePreview(actor, caseId);
+
+    expect(preview.deathImpact).toMatchObject({
+      to: HorseLifecycleStatus.DECEASED,
+      allowed: true,
+      blockedReason: null,
+      barnCleared: 'Khu A',
+      trainingLockReleased: true,
+      examRequestsDismissed: 1,
+    });
+    expect(preview.deathImpact.summary).toEqual(expect.any(String));
+  });
+
+  it('closes the case and records the death in one transaction', async () => {
+    const { horse, caseId, lockId, request, actor } = await setup();
+    const [{ vet_id: vetId }] = await dataSource.query<{ vet_id: string }[]>(
+      'SELECT opened_by AS vet_id FROM medical_cases WHERE id = $1',
+      [caseId],
+    );
+    await seed.visit(horse, vetId, new Date().toISOString(), {
+      caseId,
+      cost: 5_000_000,
+    });
+
+    const result = await service.closeCase(actor, caseId, {
+      finalConclusion: 'Ngựa mất do suy tim',
+      deceased: true,
+    });
+
+    expect(result).toMatchObject({ status: 'CLOSED', totalCost: 5_000_000 });
+    const after = await state(horse, caseId);
+    expect(after.horse).toEqual({
+      lifecycle_status: HorseLifecycleStatus.DECEASED,
+      lifecycle_reason: 'Ngựa mất do suy tim',
+      barn_id: null,
+      date_of_death: clubToday(),
+    });
+    expect(after.medicalCase).toEqual({ status: 'CLOSED' });
+    expect(after.events).toEqual(
+      expect.arrayContaining([MEDICAL_CASE_CLOSED_EVENT, HORSE_DECEASED_EVENT]),
+    );
+    const [lock] = await dataSource.query<Record<string, unknown>[]>(
+      'SELECT status, release_conclusion FROM training_locks WHERE id = $1',
+      [lockId],
+    );
+    expect(lock).toEqual({
+      status: 'RELEASED',
+      release_conclusion: 'Gỡ do ngựa mất',
+    });
+    const [exam] = await dataSource.query<{ status: string }[]>(
+      'SELECT status FROM medical_exam_requests WHERE id = $1',
+      [request],
+    );
+    expect(exam.status).toBe('DISMISSED');
+  });
+
+  it('rejects a lock choice when recording a death and changes nothing', async () => {
+    const { horse, caseId, actor } = await setup();
+    const before = await state(horse, caseId);
+
+    await expect(
+      service.closeCase(actor, caseId, {
+        finalConclusion: 'Ngựa mất',
+        deceased: true,
+        lockDecision: CaseLockDecision.RELEASE,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'Ngựa mất thì lệnh khóa huấn luyện tự gỡ, không chọn gỡ hay giữ khóa',
+      ),
+    );
+    expect(await state(horse, caseId)).toEqual(before);
+  });
+
+  it('rolls back the case close when recording the death fails', async () => {
+    const { horse, caseId, actor } = await setup();
+    const before = await state(horse, caseId);
+    jest
+      .spyOn(
+        moduleRef.get(HorseStatusesService, { strict: false }),
+        'recordDeathInTransaction',
+      )
+      .mockRejectedValueOnce(new ConflictException('Ghi nhận mất thất bại'));
+
+    await expect(
+      service.closeCase(actor, caseId, {
+        finalConclusion: 'Ngựa mất',
+        deceased: true,
+      }),
+    ).rejects.toThrow('Ghi nhận mất thất bại');
+    expect(await state(horse, caseId)).toEqual(before);
+    expect(before.medicalCase).toMatchObject({ status: 'OPEN' });
+  });
+
+  it('keeps the horse in the club when closing without recording a death', async () => {
+    const { horse, caseId, actor } = await setup();
+
+    await service.closeCase(actor, caseId, {
+      finalConclusion: 'Khỏi bệnh',
+      lockDecision: CaseLockDecision.RELEASE,
+    });
+
+    const after = await state(horse, caseId);
+    expect(after.horse).toMatchObject({
+      lifecycle_status: HorseLifecycleStatus.ACTIVE,
+      date_of_death: null,
+    });
+    expect(after.events).not.toContain(HORSE_DECEASED_EVENT);
+  });
+});

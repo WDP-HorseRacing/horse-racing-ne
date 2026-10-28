@@ -1,0 +1,138 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { UserRole } from '../../../common/enums/role.enum';
+import type { Actor } from '../../../common/types/actor';
+import {
+  CancelCareScheduleDto,
+  CareScheduleResponseDto,
+  CompleteCareScheduleDto,
+  CompleteCareScheduleResponseDto,
+  CreateCareScheduleDto,
+  ReopenCareScheduleDto,
+  UpdateCareScheduleDto,
+} from '../dto';
+import { CareSchedulesService } from './care-schedules.service';
+
+@ApiTags('medical')
+@ApiBearerAuth()
+@Controller()
+export class CareSchedulesController {
+  constructor(private readonly careSchedules: CareSchedulesService) {}
+
+  @Access([
+    UserRole.CLUB_MANAGER,
+    UserRole.HEAD_TRAINER,
+    UserRole.VETERINARIAN,
+    UserRole.HORSE_OWNER,
+    UserRole.GROOM,
+  ])
+  @Get('horses/:horseId/care-schedules')
+  @ApiOperation({
+    summary: 'List vaccination, deworming and farrier schedules',
+    description: 'Mọi vai trò xem được lịch của ngựa trong phạm vi của mình.',
+    operationId: 'MedicalDetailsController_careSchedules',
+  })
+  @ApiOkResponse({ type: [CareScheduleResponseDto] })
+  list(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+  ): Promise<CareScheduleResponseDto[]> {
+    return this.careSchedules.list(actor, horseId);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Post('horses/:horseId/care-schedules')
+  @ApiOperation({
+    summary: 'Create a care schedule',
+    description:
+      'Ngày đến hạn ở quá khứ hoặc người được giao không phải VET/Groom đang hoạt động: 400. Ngựa đã chuyển nhượng: 409.',
+    operationId: 'MedicalDetailsController_createCareSchedule',
+  })
+  @ApiCreatedResponse({ type: CareScheduleResponseDto })
+  create(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Body() body: CreateCareScheduleDto,
+  ): Promise<CareScheduleResponseDto> {
+    return this.careSchedules.create(actor, horseId, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Patch('care-schedules/:id')
+  @ApiOperation({
+    summary: 'Reschedule or reassign a care schedule',
+    description: 'Dời ngày bắt buộc reason. Lịch đã hoàn tất/đã hủy: 409.',
+    operationId: 'MedicalDetailsController_updateCareSchedule',
+  })
+  @ApiOkResponse({ type: CareScheduleResponseDto })
+  update(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateCareScheduleDto,
+  ): Promise<CareScheduleResponseDto> {
+    return this.careSchedules.update(actor, id, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Post('care-schedules/:id/complete')
+  @ApiOperation({
+    summary: 'Complete a care schedule',
+    description:
+      'Nhập nextDueAt để tạo luôn lịch lần tới cùng loại, giữ bác sĩ được giao. Lịch đã hoàn tất/đã hủy: 409.',
+    operationId: 'MedicalDetailsController_completeCareSchedule',
+  })
+  @ApiCreatedResponse({ type: CompleteCareScheduleResponseDto })
+  complete(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: CompleteCareScheduleDto,
+  ): Promise<CompleteCareScheduleResponseDto> {
+    return this.careSchedules.complete(actor, id, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Post('care-schedules/:id/cancel')
+  @ApiOperation({
+    summary: 'Cancel a care schedule with a reason',
+    description: 'Lịch đã hoàn tất/đã hủy: 409.',
+  })
+  @ApiCreatedResponse({ type: CareScheduleResponseDto })
+  cancel(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: CancelCareScheduleDto,
+  ): Promise<CareScheduleResponseDto> {
+    return this.careSchedules.cancel(actor, id, body);
+  }
+
+  @Access([UserRole.VETERINARIAN])
+  @Post('care-schedules/:id/reopen')
+  @ApiOperation({
+    summary: 'Reopen a completed care schedule with a reason',
+    description:
+      'Lịch về Đã lên lịch, giữ ngày đến hạn; lịch lần tới đã tạo lúc hoàn tất giữ nguyên. Ngày hẹn khám định kỳ, lịch tái khám: 404. Lịch chưa hoàn tất hoặc đã hủy: 409.',
+  })
+  @ApiCreatedResponse({ type: CareScheduleResponseDto })
+  reopen(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: ReopenCareScheduleDto,
+  ): Promise<CareScheduleResponseDto> {
+    return this.careSchedules.reopen(actor, id, body);
+  }
+}

@@ -1,10 +1,17 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { MedicalRecordEntity } from './medical-record.entity';
+import { RecoveryStatus } from '../constants/injury-marker.enum';
+import { InjuryEntity } from './injury.entity';
 
+/**
+ * InjuryMarkerEntity: mức hồi phục của một chấn thương ghi nhận tại một buổi khám.
+ */
 @Entity({ name: 'injury_markers' })
-@Index('injury_markers_case_created_idx', ['injuryCaseId', 'createdAt'])
-@Index('injury_markers_medical_record_idx', ['medicalRecordId'])
+@Index('injury_markers_injury_idx', ['injuryId'])
+@Index('injury_markers_record_injury_uq', ['medicalRecordId', 'injuryId'], {
+  unique: true,
+})
 export class InjuryMarkerEntity extends BaseRecordEntity {
   @Column({ name: 'medical_record_id', type: 'uuid' })
   medicalRecordId!: string;
@@ -16,17 +23,15 @@ export class InjuryMarkerEntity extends BaseRecordEntity {
   @JoinColumn({ name: 'medical_record_id' })
   medicalRecord!: MedicalRecordEntity;
 
-  @Column({ name: 'injury_case_id', type: 'uuid' })
-  injuryCaseId!: string;
+  @Column({ name: 'injury_id', type: 'uuid' })
+  injuryId!: string;
 
-  @Column({ name: 'body_region', type: 'varchar', length: 80 })
-  bodyRegion!: string;
-
-  @Column({ name: 'injury_type', type: 'varchar', length: 100 })
-  injuryType!: string;
+  @ManyToOne(() => InjuryEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'injury_id' })
+  injury!: InjuryEntity;
 
   @Column({ name: 'recovery_status', type: 'varchar', length: 32 })
-  recoveryStatus!: string;
+  recoveryStatus!: RecoveryStatus;
 
   @Column({ type: 'text', nullable: true })
   notes!: string | null;

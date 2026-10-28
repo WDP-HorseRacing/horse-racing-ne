@@ -3,9 +3,16 @@ import { MutableRecordEntity } from '../../../common/database/base-record.entity
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseEntity } from './horse.entity';
 
+/**
+ * HorseOwnershipEntity: các giai đoạn sở hữu của một con ngựa.
+ * Mỗi ngựa có tối đa một giai đoạn đang mở (ended_at NULL), trùng với horses.owner_id.
+ */
 @Entity({ name: 'horse_ownerships' })
-@Index('horse_ownerships_horse_active_idx', ['horseId', 'endDate'])
-@Index('horse_ownerships_owner_active_idx', ['ownerId', 'endDate'])
+@Index('horse_ownerships_open_horse_uq', ['horseId'], {
+  unique: true,
+  where: 'ended_at IS NULL',
+})
+@Index('horse_ownerships_owner_idx', ['ownerId'])
 export class HorseOwnershipEntity extends MutableRecordEntity {
   @Column({ name: 'horse_id', type: 'uuid' })
   horseId!: string;
@@ -21,12 +28,19 @@ export class HorseOwnershipEntity extends MutableRecordEntity {
   @JoinColumn({ name: 'owner_id' })
   owner!: UserEntity;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2 })
-  percentage!: string;
+  @Column({ name: 'started_at', type: 'timestamptz' })
+  startedAt!: Date;
 
-  @Column({ name: 'start_date', type: 'date' })
-  startDate!: string;
+  @Column({ name: 'ended_at', type: 'timestamptz', nullable: true })
+  endedAt!: Date | null;
 
-  @Column({ name: 'end_date', type: 'date', nullable: true })
-  endDate!: string | null;
+  @Column({ type: 'text', nullable: true })
+  reason!: string | null;
+
+  @Column({ name: 'recorded_by', type: 'uuid', nullable: true })
+  recordedBy!: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'recorded_by' })
+  recorder!: UserEntity | null;
 }

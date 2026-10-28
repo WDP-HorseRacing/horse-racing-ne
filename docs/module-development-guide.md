@@ -1,0 +1,652 @@
+# Hướng dẫn phát triển module lớn
+
+Tài liệu này mô tả cách tổ chức một module nghiệp vụ lớn theo cấu trúc của
+`src/modules/training/`. Mục tiêu là để mỗi domain có ranh giới rõ ràng,
+controller mỏng, business logic nằm trong service và các quy tắc quan trọng có
+thể kiểm thử độc lập.
+
+## Phạm vi áp dụng
+
+Đây là quy chuẩn bắt buộc cho domain nghiệp vụ có nhiều nhóm use case hoặc
+nhiều resource có vòng đời riêng. Các nhóm use case có thể phát triển, kiểm
+thử và phân quyền độc lập phải nằm trong feature module riêng; module domain
+chỉ lắp ráp chúng.
+
+Module nhỏ, module hạ tầng hoặc module chỉ có một use case gắn kết có thể giữ
+cấu trúc gọn. Không tạo feature/shared/policy folder rỗng chỉ để khớp cây thư
+mục mẫu. Khi một module gọn phát triển thành nhiều nhóm use case, cần chuyển nó
+sang cấu trúc trong guide này.
+
+Các quy tắc về ranh giới module, sở hữu entity/provider và composition root ở
+các mục dưới đây là yêu cầu bắt buộc khi module thuộc phạm vi áp dụng. Các gợi ý
+về repository, policy, transaction và event được áp dụng theo nghiệp vụ thực tế;
+không tạo abstraction nếu không đem lại ranh giới hoặc ý nghĩa rõ ràng.
+
+## 1. Cấu trúc tổng quát
+
+Một module lớn nên được chia thành module cha, các feature module con và phần
+dùng chung của domain:
+
+```text
+src/modules/<domain>/
+├── <domain>.module.ts             # Module cha, chỉ ghép các feature
+├── enums/                         # Enum/trạng thái chỉ thuộc domain
+├── constants/                     # Hằng số, tên event, injection token
+├── types/                         # Interface/type nội bộ của domain
+├── dto/                           # Request DTO và response DTO
+│   └── index.ts
+├── entities/                      # TypeORM entities của domain
+├── schemas/                       # Mongoose schemas của domain (mục 14)
+├── mappers/                       # Entity/document -> response DTO
+├── policies/                      # Rule thuần, không gọi DB/HTTP
+├── utils/                         # Hàm thuần chỉ dùng trong domain
+├── shared/                        # Access service, module dùng chung
+│   ├── <domain>-access.service.ts
+│   └── <domain>-shared.module.ts
+└── <feature>/                     # Mỗi use-case group là một module con
+    ├── <feature>.module.ts
+    ├── <feature>.controller.ts
+    ├── <feature>.service.ts
+    └── <feature>.repository.ts       # tùy chọn, chỉ khi có query đáng gom riêng
+```
+
+Ví dụ thực tế:
+
+```text
+training/
+├── training.module.ts
+├── constants/
+├── dto/
+├── entities/
+├── mappers/
+├── policies/
+├── shared/
+├── training-plans/
+├── training-sessions/
+├── time-trials/
+└── trainging-evaluations/
+```
+
+Tên thư mục feature nên dùng danh từ số nhiều (`training-plans`, `races`,
+`supplies`). Khi tạo mới nên dùng chính tả đúng; thư mục
+`trainging-evaluations` trong code hiện tại là tên cũ cần giữ để tránh làm hỏng
+import, nhưng feature mới nên đặt là `training-evaluations`.
+
+## 2. Module cha và module con
+
+Module cha không nên chứa controller/service nghiệp vụ. Nó chỉ lắp ráp các
+feature module:
+
+```ts
+// training.module.ts
+@Module({
+  imports: [
+    TrainingPlansModule,
+    TrainingSessionsModule,
+    TimeTrialsModule,
+    EvaluationsModule,
+  ],
+})
+export class TrainingModule {}
+```
+
+Module con khai báo đúng entity, controller và provider mà nó sở hữu:
+
+```ts
+// training-plans.module.ts
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([TrainingPlanEntity]),
+    TrainingSharedModule,
+  ],
+  controllers: [TrainingPlansController],
+  providers: [TrainingPlansService],
+  exports: [TrainingPlansService],
+})
+export class TrainingPlansModule {}
+```
+
+Quy tắc:
+
+- **Entity ownership**: Mỗi module con chỉ khai báo và inject entity thuộc domain con của chính nó qua `TypeOrmModule.forFeature([EntityCon])`. Không khai báo hoặc inject trực tiếp entity của domain khác vào feature module con.
+- **Cross-domain access**: Muốn truy cập, kiểm tra hoặc cập nhật bảng thuộc domain khác (cross-domain):
+  - Dùng `SharedAccessService` (ví dụ `HorseAccessService`, `TrainingAccessService`) cho các kiểm tra quyền, trạng thái, phạm vi.
+  - Dùng `DataSource` (`this.dataSource.manager...` hoặc raw query trong transaction) khi cần truy vấn (đọc) liên bảng.
+  - Ghi (thêm, sửa, xóa) bảng của domain khác chỉ qua hàm do module sở hữu export, hàm này nhận `manager` của transaction bên gọi.
+- Chỉ export service thật sự được feature khác dùng.
+- Không export tất cả provider theo thói quen.
+- Nếu hai feature dùng chung access/auth logic, đưa logic đó vào `shared/` và export từ shared module.
+- Đừng import ngược feature module này vào feature module kia; nếu có vòng phụ thuộc, chuyển phần chung lên `shared/` hoặc một domain service riêng.
+
+## 3. Entity, enum và migration
+
+Entity chỉ mô tả persistence model. Enum trạng thái đặt trong `constants/`
+hoặc `enums/`, không nhúng các rule chuyển trạng thái vào entity.
+
+```ts
+@Entity({ name: 'training_plans' })
+export class TrainingPlanEntity extends SoftDeletableRecordEntity {
+  @Column({ name: 'horse_id', type: 'uuid' })
+  horseId!: string;
+
+  @Column({ type: 'varchar', length: 32 })
+  status!: TrainingPlanStatus;
+}
+```
+
+Sau khi thay đổi entity, tạo migration và review SQL trước khi chạy:
+
+```bash
+pnpm db:generate src/migrations/AddTrainingPlanField
+pnpm db:migrate
+```
+
+Không bật `synchronize` để sửa schema tự động. Foreign key, index, unique
+constraint và soft-delete condition phải được thể hiện rõ trong migration.
+
+## 4. DTO và mapper
+
+DTO được chia thành input và output, có validation và OpenAPI metadata. Không
+trả trực tiếp entity ra HTTP response vì entity có thể chứa `keycloakId`,
+`passwordHash` hoặc field nội bộ khác.
+
+```ts
+export class CreateTrainingPlanDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  phaseName!: string;
+}
+
+export class TrainingPlanResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  id!: string;
+}
+```
+
+Mapper là nơi duy nhất chuyển entity sang response DTO:
+
+```ts
+export function toTrainingPlanResponse(
+  entity: TrainingPlanEntity,
+): TrainingPlanResponseDto {
+  return plainToInstance(TrainingPlanResponseDto, entity, {
+    excludeExtraneousValues: true,
+  });
+}
+```
+
+Với domain có nhiều DTO, export chúng từ `dto/index.ts` để import thống nhất.
+Không gộp DTO của các domain khác nhau vào một file chung; chỉ gộp khi chúng
+cùng thuộc một bounded context và không làm file quá khó đọc.
+
+## 5. Controller: chỉ nhận request và chuyển tiếp
+
+Controller chịu trách nhiệm route, parse input, authorization tĩnh và Swagger.
+Không viết query, transaction hay business rule trong controller.
+
+```ts
+@ApiTags('training')
+@ApiBearerAuth()
+@Controller()
+export class TrainingPlansController {
+  constructor(private readonly plans: TrainingPlansService) {}
+
+  @Access([UserRole.HEAD_TRAINER, UserRole.CLUB_MANAGER])
+  @Post('horses/:horseId/training-plans')
+  @ApiCreatedResponse({ type: TrainingPlanResponseDto })
+  create(
+    @CurrentUser() actor: Actor,
+    @Param('horseId', ParseUUIDPipe) horseId: string,
+    @Body() body: CreateTrainingPlanDto,
+  ) {
+    return this.plans.createTrainingPlan(actor, horseId, body);
+  }
+}
+```
+
+Checklist cho controller:
+
+- Route param UUID dùng `ParseUUIDPipe`.
+- Route cần đăng nhập có `@ApiBearerAuth()` và `@CurrentUser()`.
+- Role tổng quát dùng `@Access(...)`; quyền theo ownership/barn/resource phải
+  kiểm tra tiếp trong service.
+- Khai báo `@ApiOperation`, `@ApiOkResponse` hoặc `@ApiCreatedResponse`.
+- Tên method mô tả use case (`activate`, `complete`, `cancel`), không dùng
+  method chung chung nếu làm mất ý nghĩa nghiệp vụ.
+
+## 6. Service: orchestration và business workflow
+
+Service là nơi điều phối access check, policy, truy vấn dữ liệu, transaction và
+event. CRUD và query TypeORM thông thường có thể dùng `Repository<Entity>` được
+inject trực tiếp; repository riêng chỉ cần khi query đáng gom thành abstraction
+có tên nghiệp vụ hoặc logic phức tạp. Một method service nên tương ứng với một
+use case của API.
+
+```ts
+@Injectable()
+export class TrainingPlansService {
+  constructor(
+    private readonly access: TrainingAccessService,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async activatePlan(
+    actor: Actor,
+    planId: string,
+  ): Promise<TrainingPlanResponseDto> {
+    const updated = await this.dataSource.transaction(async (manager) => {
+      const plan = await this.access.lockedPlan(manager, planId);
+      assertPlanActivatable(plan.status);
+      plan.status = TrainingPlanStatus.ACTIVE;
+      plan.activatedAt = new Date();
+      return manager.save(plan);
+    });
+
+    return toTrainingPlanResponse(updated);
+  }
+}
+```
+
+Trình tự nên theo mẫu:
+
+1. Resolve actor và local user đang `ACTIVE`.
+2. Kiểm tra resource tồn tại và quyền trên resource.
+3. Nếu có invariant liên quan nhiều row, mở transaction.
+4. Lock row cần bảo vệ trước khi kiểm tra invariant.
+5. Chạy policy thuần để kiểm tra trạng thái/input.
+6. Ghi dữ liệu bằng `EntityManager` của transaction.
+7. Ghi domain event vào outbox bằng `manager` trước khi commit (mục 9).
+8. Map entity thành response DTO.
+
+Trong transaction phải dùng `manager` cho toàn bộ query có liên quan. Không dùng
+repository ngoài transaction vì query đó có thể chạy bằng connection khác và
+không được lock/rollback cùng transaction.
+
+## 7. Repository và TypeORM
+
+Repository riêng (`<feature>.repository.ts`) là **tùy chọn**, chỉ nên tạo khi có câu query phức tạp: dùng `QueryBuilder` nhiều dòng, join nhiều bảng, raw SQL tổng hợp (`GROUP BY`, `FILTER`), CTE đệ quy (`WITH RECURSIVE`), advisory lock (`pg_advisory_xact_lock`), hoặc transaction nhiều bảng liên kết.
+
+Ví dụ dưới đây là báo cáo chi phí y tế bằng raw SQL với `GROUP BY`, `SUM`, join 2 bảng và điều kiện lọc tùy chọn:
+
+```ts
+@Injectable()
+export class MedicalCasesRepository {
+  constructor(private readonly dataSource: DataSource) {}
+
+  costByHorse(filter: CostReportFilter): Promise<MedicalCostReportRow[]> {
+    return this.dataSource.query(
+      `SELECT h.id AS "horseId",
+              h.name AS "horseName",
+              COUNT(r.id)::int AS "visitCount",
+              SUM(r.cost)::text AS "totalCost"
+         FROM medical_records r
+         JOIN horses h ON h.id = r.horse_id
+        WHERE r.voided_at IS NULL
+          AND (r.exam_date AT TIME ZONE $1)::date BETWEEN $2::date AND $3::date
+        GROUP BY h.id, h.name
+        ORDER BY SUM(r.cost) DESC, h.name`,
+      [CLUB_TIME_ZONE, filter.from, filter.to],
+    );
+  }
+}
+```
+
+Không tạo repository riêng chỉ để bọc một cách gọi TypeORM không có thêm ý nghĩa (Pass-through Repository). Với CRUD đơn giản hoặc các lệnh `find`/`findOne` có điều kiện `where`, `order`, `relations` thông thường, **inject trực tiếp vào service**:
+
+```ts
+@Injectable()
+export class MedicalRecordsService {
+  constructor(
+    @InjectRepository(MedicalRecordEntity)
+    private readonly recordsRepo: Repository<MedicalRecordEntity>,
+    @InjectRepository(PrescriptionEntity)
+    private readonly prescriptionsRepo: Repository<PrescriptionEntity>,
+    private readonly dataSource: DataSource,
+  ) {}
+}
+```
+
+**Quy tắc phân định Entity Ownership và Truy cập chéo bảng (Cross-domain Access):**
+
+- **Chỉ inject entity thuộc domain con**: Mỗi module con chỉ khai báo và inject entity thuộc domain con mà nó trực tiếp quản lý trong `TypeOrmModule.forFeature([EntityCon])`.
+- **Không inject entity của domain khác vào module con**: Tuyệt đối không import entity ngoài vào `forFeature` của module con để tránh phá vỡ ranh giới domain và gây phụ thuộc vòng.
+- **Truy cập bảng khác thông qua `DataSource` hoặc Shared Service**:
+  - Dùng `SharedAccessService` (như `HorseAccessService`, `TrainingAccessService`) cho các kiểm tra quyền đọc, trạng thái hoặc phạm vi truy cập tài nguyên dùng chung.
+  - Dùng `DataSource` (`this.dataSource.manager...` hoặc raw SQL query, hoặc `manager.getRepository(...)` trong transaction) khi cần truy vấn (đọc) liên bảng ngoài domain của module.
+- **Ghi bảng domain khác qua hàm của module sở hữu**: Đọc chéo qua `DataSource` hoặc access service; ghi chéo chỉ qua hàm do module sở hữu export, nhận `manager` của transaction bên gọi (ví dụ `TrainingLockService.releaseActiveLockByHorse(manager, horseId, conclusion)`).
+
+Trong trường hợp transaction:
+
+```ts
+await this.dataSource.transaction(async (manager) => {
+  const repo = manager.getRepository(TrainingPlanEntity);
+  await repo.save(plan);
+});
+```
+
+`DataSource` vẫn cần thiết cho transaction, lock và query nhiều entity; không thay toàn bộ bằng injected repository.
+
+## 8. Shared access service và policy
+
+`TrainingAccessService` gom các kiểm tra dùng chung như:
+
+- current user còn tồn tại và đang active;
+- horse/plan/session tồn tại;
+- truy cập theo barn của Head Trainer;
+- groom được gán vào session;
+- pessimistic lock cho resource.
+
+Access service có thể gọi database. Ngược lại, policy trong `policies/` nên là
+function thuần, nhận state và ném exception khi state không hợp lệ:
+
+```ts
+export function assertPlanActivatable(status: TrainingPlanStatus): void {
+  if (status !== TrainingPlanStatus.SCHEDULED) {
+    throw new ConflictException('Chỉ được kích hoạt plan SCHEDULED');
+  }
+}
+```
+
+Không đặt query DB, gọi Keycloak hay gọi HTTP trong policy. Nhờ vậy policy có
+thể unit test nhanh mà không cần khởi động Nest hoặc database.
+
+## 9. Domain event và side effect
+
+Domain event đi qua transactional outbox: `DomainEventPublisher.publish(manager, name, payload)`
+ghi event vào bảng `outbox_events` **trong cùng transaction** với dữ liệu nghiệp vụ.
+Commit thì event chắc chắn được giao; rollback thì event mất theo.
+
+```ts
+await this.dataSource.transaction(async (manager) => {
+  const plan = await manager.save(current);
+  await this.events.publish(manager, 'training.plan.completed', {
+    eventId: randomUUID(),
+    planId: plan.id,
+    horseId: plan.horseId,
+  });
+});
+```
+
+`OutboxRelay` mỗi giây nhận các event đến hạn (`FOR UPDATE SKIP LOCKED`) và gọi
+`emitAsync` cho các listener `@OnEvent`:
+
+- Listener lỗi thì event được giao lại, lùi thời gian theo cấp số nhân; đủ
+  `OUTBOX_MAX_ATTEMPTS` lần thì đánh dấu `dead_at` và dừng.
+- Event giao xong được dọn sau 7 ngày.
+
+Quy tắc:
+
+- Gọi `publish` bên trong callback của transaction, sau khi ghi dữ liệu. Việc chạy
+  theo lịch (cron) không có transaction thì truyền `this.dataSource.manager`.
+- Payload là JSON: chỉ chuỗi, số, boolean, null, mảng, object. Thời điểm truyền dạng
+  chuỗi ISO (`toISOString()`), không truyền `Date`.
+- Mỗi payload có `eventId` ổn định (sinh một lần khi publish, hoặc id có sẵn như id
+  bản ghi). Listener dùng nó để chống xử lý trùng.
+- Listener dùng `@OnEvent(NAME, OUTBOX_LISTENER_OPTIONS)` và **ném lỗi** ra ngoài,
+  không tự nuốt lỗi.
+- Relay giao **ít nhất một lần**: cùng một event có thể tới listener nhiều lần.
+  Listener phải idempotent, ví dụ unique index trên khóa của event rồi
+  `ON CONFLICT DO NOTHING` (yêu cầu khám tự sinh dùng `(source, source_ref_id, alert_type)`, thông báo dùng
+  `(eventId, recipientId)`).
+- Không dùng event thay cho việc ghi dữ liệu bắt buộc trong transaction.
+
+## 10. Quy trình tạo feature mới
+
+Ví dụ thêm `race-results` vào module Racing:
+
+1. Tạo entity, enum và migration nếu feature có bảng mới.
+2. Tạo DTO input/output và mapper.
+3. Tạo policy cho các chuyển trạng thái/invariant thuần.
+4. Tạo `<feature>.repository.ts` chỉ khi có câu query phức tạp hoặc raw SQL/QueryBuilder đặc thù; nếu CRUD và `find`/`findOne` đơn giản thì inject `Repository<Entity>` trực tiếp vào service.
+5. Tạo service cho từng use case và thêm transaction khi cần.
+6. Tạo controller mỏng với `@CurrentUser`, `@Access`, pipe và Swagger.
+7. Tạo feature module với `forFeature`, providers, controllers, exports.
+8. Import feature module vào `racing.module.ts`.
+9. Nếu có access logic dùng chung, cập nhật `racing-shared.module.ts`.
+10. Viết unit test cho policy/service và cập nhật API docs.
+
+Khung module tối thiểu:
+
+```ts
+@Module({
+  imports: [TypeOrmModule.forFeature([RaceRegistrationEntity])],
+  controllers: [RaceResultsController],
+  providers: [RaceResultsService],
+  exports: [RaceResultsService],
+})
+export class RaceResultsModule {}
+```
+
+Sau đó thêm module con vào module cha:
+
+```ts
+@Module({
+  imports: [RaceResultsModule, RacesModule],
+})
+export class RacingModule {}
+```
+
+## 11. Checklist trước khi mở PR
+
+- [ ] Feature nằm trong module con, module cha chỉ lắp ráp.
+- [ ] Entity đã có migration tương ứng.
+- [ ] DTO có `class-validator` và Swagger metadata.
+- [ ] Response đi qua mapper, không trả entity trực tiếp.
+- [ ] Controller không chứa query hoặc business rule.
+- [ ] Access check được thực hiện bằng local user/resource ownership.
+- [ ] Transaction dùng đúng `EntityManager` của callback.
+- [ ] Row được lock trước khi kiểm tra invariant có race condition.
+- [ ] Event chỉ publish sau commit.
+- [ ] Repository chỉ chứa query có giá trị; CRUD đơn giản dùng
+      `@InjectRepository` trực tiếp.
+- [ ] Có unit test cho policy và các nhánh conflict/forbidden/not found.
+- [ ] `pnpm build`, `pnpm test` và `pnpm docs:api` chạy thành công.
+
+Khi PR thay đổi một aggregate domain, chạy thêm `pnpm check:module-architecture`.
+Lệnh này kiểm tra composition root, đảm bảo module cha import các module con
+và không nhận controller, provider hay đăng ký entity trực tiếp.
+
+## 12. Tài liệu tham khảo trong codebase
+
+- Module hoàn chỉnh: `src/modules/training/`
+- Access dùng chung: `src/modules/training/shared/training-access.service.ts`
+- Policy thuần: `src/modules/training/policies/training.policy.ts`
+- Transaction và cascade update:
+  `src/modules/training/training-plans/training-plans.service.ts`
+- Query phức tạp gom trong repository:
+  `src/modules/medical/medical-records/medical-cases.repository.ts` hoặc
+  `src/modules/horses/horse-profiles/horse-profiles.repository.ts`
+- Aggregate MongoDB ghép dữ liệu Postgres:
+  `src/modules/performance/performance-summaries/performance-summaries.repository.ts`
+- Feature dùng MongoDB, outbox listener, BullMQ: `src/modules/notifications/`
+- DTO và mapper: `src/modules/training/dto/`,
+  `src/modules/training/mappers/`
+
+## 13. Phạm vi kiểm tra tự động
+
+`pnpm check:module-architecture` áp dụng các kiểm tra cấu trúc cho mọi domain
+đã có feature module con: module cha phải lắp đủ feature, feature phải đăng ký
+controller/service/repository của mình và không import trực tiếp feature sibling.
+Domain mới có ít nhất 20 file TypeScript không phải test mà chưa có feature
+module, hoặc có service vượt 1.000 dòng, sẽ bị kiểm tra báo lỗi cho đến khi
+được tách theo use case.
+
+## 14. Dữ liệu ở MongoDB
+
+Hệ thống dùng hai DB. Postgres (TypeORM) là nơi lưu chính; MongoDB (Mongoose) chỉ
+nhận những dữ liệu hợp với nó. Không có transaction chung giữa hai DB.
+
+Chọn DB cho dữ liệu mới bằng ba câu hỏi:
+
+1. Có phải ghi cùng thành, cùng hỏng với dữ liệu lõi (một transaction) không?
+   Có thì để Postgres.
+2. Có quan hệ chặt, ràng buộc khóa ngoại, query chéo nhiều bảng không?
+   Có thì để Postgres.
+3. Dữ liệu tự đứng một cục, đọc theo một khóa, schema hay đổi, hoặc ghi dày theo
+   thời gian? Thì để MongoDB.
+
+Hiện ở MongoDB:
+
+| Collection | Module | Ghi chú |
+| --- | --- | --- |
+| `notifications` | notifications | Mỗi người nhận một document; unique `(eventId, recipientId)` |
+| `user_devices` | notifications | `_id` là FCM token |
+| `performance_metrics` | performance | Time-series, `timeField` `recordedAt`, `metaField` `meta` |
+
+Quy tắc:
+
+- Schema đặt ở `src/modules/<domain>/schemas/*.schema.ts`. Mỗi feature module tự
+  khai báo `MongooseModule.forFeature` cho đúng model nó dùng; `shared/` chỉ export
+  access service, không export model.
+- Dùng công cụ gốc của MongoDB: unique/partial index, cập nhật có điều kiện
+  (`findOneAndUpdate` với điều kiện trạng thái), `$setOnInsert` + `upsert` để
+  idempotent, time-series cho dữ liệu cảm biến, TTL index để tự xóa.
+  Không giả lập cơ chế Postgres (khóa giả, khóa ngoại giả).
+- `_id` của document trả ra API dùng UUID dạng chuỗi để giữ cùng dạng id với
+  Postgres.
+- Số thập phân cần chính xác (tiền, tốc độ) lưu `Decimal128`; làm tròn trong app
+  nếu phải khớp cách làm tròn của Postgres (`$round` làm tròn nửa về số chẵn).
+- Đọc dữ liệu Postgres để ghép (vd giờ của buổi tập) qua `this.dataSource.manager`,
+  không ghi chéo DB.
+- Time-series không có unique index và không ghi được trong transaction; chống
+  trùng phải làm ở tầng ghi.
+- Integration test dùng `test/integration/mongo.ts` (testcontainers). Driver cần
+  `runtimeAdapters: { os }` khi chạy trong Jest.
+- Mongo chưa có migration: index tạo khi app khởi động (`autoIndex`). Đổi TTL
+  hay granularity dùng lệnh `collMod`.
+
+## 15. Thứ tự khai báo trong một file
+
+Cấp file (policy, mapper, util, constants, phần ngoài class của service):
+
+1. `import`
+2. `type`/`interface` chỉ dùng trong file
+3. Hằng không export
+4. Hằng export
+5. Hàm export, gom theo nhóm nghiệp vụ, theo luồng tạo → sửa → đổi trạng thái → xóa
+6. Hàm phụ không export, theo thứ tự lần đầu được gọi
+
+Trong class (service, repository, listener):
+
+1. Field
+2. `constructor`
+3. Method `public`, theo thứ tự route trong controller
+4. Method `protected`
+5. Method `private`, theo thứ tự lần đầu được gọi
+
+ESLint `@typescript-eslint/member-ordering` (mức warn) canh thứ tự nhóm trong
+class. Thứ tự bên trong mỗi nhóm và thứ tự cấp file kiểm khi review. Sắp lại
+file cũ thì để riêng một commit, chỉ di chuyển code, không sửa nội dung.
+
+## 16. Thời điểm và ngày lịch
+
+Dữ liệu thời gian chỉ có hai loại:
+
+| Loại | Ví dụ | Request | Response | Cột DB |
+| --- | --- | --- | --- | --- |
+| Thời điểm | giờ buổi tập, `measuredAt`, `dueAt`, `lockEnd` | ISO 8601 bắt buộc có múi giờ: `2026-10-23T00:30:00+07:00` hoặc `2026-10-22T17:30:00Z` | Luôn UTC `...Z` (`toISOString`) | `timestamptz` |
+| Ngày lịch | `dateOfBirth`, `startDate` của lớp, `fromDate`/`toDate`, lọc theo ngày | Đúng `YYYY-MM-DD` | Đúng `YYYY-MM-DD` | `date` |
+
+Quy tắc:
+
+- DTO dùng validator chung ở `src/common/utils/dto-input.ts`: `@IsIsoInstant()` cho
+  thời điểm, `@IsDateOnly()` cho ngày lịch (truyền `message` nếu ô cần câu riêng).
+  Không dùng `@IsDateString()`: nó nhận chuỗi thiếu múi giờ và chuỗi có giờ cho ô
+  ngày.
+- Logic không phụ thuộc múi giờ của process. Mọi thứ về "ngày" (hôm nay, ngày của
+  một thời điểm, đầu ngày) theo `CLUB_TIME_ZONE`
+  (`src/common/constants/club.constants.ts`) qua helper ở
+  `src/common/utils/club-date.ts`: `clubToday`, `toClubDate`,
+  `clubDateTimeToInstant`, `shiftDays`.
+- So một thời điểm với một ngày D: BE đổi D thành khoảng nửa mở
+  `[00:00 ngày D, 00:00 ngày D+1)` theo giờ CLB, truyền hai đầu dạng `Date` làm
+  tham số SQL, so bằng `>=` và `<`.
+
+  ```ts
+  const from = clubDateTimeToInstant(startDate, '00:00');
+  const to = clubDateTimeToInstant(shiftDays(endDate, 1), '00:00');
+  qb.andWhere('e.enrolled_at >= :from AND e.enrolled_at < :to', { from, to });
+  ```
+
+- DB chỉ lưu và so. Cấm `<cột timestamptz>::date`, `CURRENT_DATE`, `now()::date`
+  (kết quả đổi theo `TimeZone` của session DB). Ép tham số chuỗi `'YYYY-MM-DD'`
+  bằng `$1::date` thì được. Báo cáo gom theo ngày, tuần đã dùng
+  `AT TIME ZONE $n` với `CLUB_TIME_ZONE` thì giữ.
+- Server và DB chạy ở múi giờ nào cũng được (mặc định khi deploy là UTC). Đổi múi
+  giờ của CLB chỉ cần đổi `CLUB_TIME_ZONE`.
+
+## 17. Thứ tự khóa và mức khóa
+
+Mọi luồng ghi khóa row theo cùng một thứ tự. Hai luồng chạy cùng lúc mà khóa hai
+row theo chiều ngược nhau thì Postgres hủy một bên (`40P01`), người dùng nhận 500.
+
+### Luật chọn thứ tự
+
+1. **Cha trước con theo khóa ngoại sở hữu.** Khóa ngoại sở hữu là cột không đổi
+   sau khi tạo row: lượt thuộc buổi, ghi danh và ngựa; xếp ô thuộc ô và ngựa;
+   dòng checklist thuộc checklist; lô thuộc vật tư. Biết id con mà cần khóa cha
+   thì đọc con không khóa để lấy id cha, khóa cha, rồi mới khóa con.
+2. **Khóa ngoại tham chiếu không tạo quan hệ cha con.** Cột đổi được như
+   `horses.barn_id`, `horses.owner_id`, `stalls.barn_id`, `*.groom_id`,
+   `head_trainer_id`, `*_by` chỉ là con trỏ; vị trí của bảng được trỏ tới theo
+   luật 3. Đi theo con trỏ đổi được (vd khu của ngựa) thì đọc không khóa, khóa
+   row được trỏ, khóa row giữ con trỏ, rồi dùng giá trị sau khi khóa.
+3. **Bảng ngang hàng: tầng rộng trước tầng hẹp**, trong một tầng thì cha trước
+   con, còn lại theo tên bảng:
+   1. Danh mục toàn câu lạc bộ: `daily_fees` (khóa bảng trước khóa row),
+      `daily_task_types`, `training_subjects`, `races`, `supply_items` →
+      `supply_requests` → `supply_lots` → `supply_stock_movements`.
+   2. Hạ tầng: `barns` → `stalls`.
+   3. Khung đào tạo: `training_plans` → giai đoạn, môn của giáo án →
+      `training_classes` → giai đoạn, môn của lớp → `training_sessions`.
+   4. Ngựa: khóa phả hệ (`pg_advisory_xact_lock`) → `horses` → các bảng con của
+      ngựa: `stall_assignments`, `groom_assignments`, `horse_enrollments` →
+      `session_participants` → `trial_results`, `performance_evaluations`;
+      `incidents`, `medical_cases`, `medical_records` → đơn thuốc, vết thương,
+      `medical_exam_requests`, `training_locks`, `care_schedules`, số đo;
+      `daily_checklists` → dòng checklist; `feeding_plans` → dòng khẩu phần;
+      việc riêng, lịch sử sở hữu, phụ phí, đăng ký đua.
+   5. Người: `users` khóa sau cùng. Nhiều lần khóa user trong một luồng theo vai
+      trò CM → HT → Groom → chủ ngựa.
+4. **Cùng loại theo id.** Khóa nhiều row cùng bảng trong một câu
+   `ORDER BY id`; helper nhận danh sách id thì bỏ trùng và sắp trước khi khóa
+   (`lockUsers`, `lockHorses`, `lockSessions`, `lockParticipants`).
+5. **Cổng ngựa.** Luồng đã khóa ngựa thì các bảng con của ngựa đó chỉ cần khóa sau
+   ngựa và cha sở hữu trước con; giữa các bảng con ngang hàng không bắt buộc thứ
+   tự. Luồng không khóa ngựa vẫn theo thứ tự đầy đủ (vd hủy lớp: lớp → buổi → ghi
+   danh → lượt).
+6. **Luồng một khóa.** Luồng chỉ khóa một loại row và không chờ khóa nào khác
+   sau đó (tick checklist, đóng sự cố, áp phụ phí, cron cập nhật hàng loạt một
+   bảng) được bỏ qua cổng ngựa.
+
+Khóa sẵn trước khi kiểm thì dùng helper không ném lỗi (`lockSessions`,
+`lockBarnOfHorse`, `lockOpenStallOfHorse`, `lockHorseSessions`...), rồi gọi lại
+helper khóa có kiểm ở đúng chỗ cũ. Khóa lại row đã giữ không chờ, nên thứ tự lỗi
+trả về không đổi.
+
+### Mức khóa
+
+| Trường hợp | Mức |
+|---|---|
+| Sửa row, hoặc khóa làm cổng cho các bảng con (ngựa, lớp, buổi, khu, vật tư) | `for_no_key_update` |
+| Chỉ cần row không bị đổi hoặc xóa, cho nhiều bên đọc cùng lúc (user chủ, HT được giao, lớp khi bắt đầu lượt, vật tư trong khẩu phần) | `pessimistic_read` (FOR SHARE) |
+| Khóa cha → kiểm không còn con → xóa cha (xóa môn, giáo án, khu, ô, vật tư, hồ sơ ngựa, mức phí) | `pessimistic_write` (FOR UPDATE) |
+
+`FOR NO KEY UPDATE` không chặn khóa `FOR KEY SHARE` mà Postgres lấy trên row cha
+khi INSERT hoặc UPDATE cột khóa ngoại, nên ghi nhật ký (`audit_logs.actor_id`)
+hay thêm row con không phải chờ khóa sửa của row cha. `FOR UPDATE` chặn cả khóa
+đó, nên chỉ dùng khi cần chặn row con mới trong lúc kiểm rồi xóa cha.
+
+### Thứ tự lỗi
+
+Thứ tự kiểm theo mục 6. Ngoại lệ: `StableAccessService.lockOperableHorse` kiểm
+vòng đời ngựa (409) và ngựa chưa có khu (409) trước phạm vi Head Trainer (403).
+
+### Kiểm tự động
+
+`test/integration/lock-order.int-spec.ts` đọc khóa ngoại thật từ `pg_constraint`
+và so với danh sách thứ tự trong test: thêm bảng mới hoặc khóa ngoại mới làm
+sai thứ tự thì test đỏ. Cặp thao tác chạy đồng thời được canh bằng các test ở
+`test/integration/findings/r3-race-findings.int-spec.ts`.

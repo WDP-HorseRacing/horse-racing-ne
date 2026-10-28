@@ -1,29 +1,22 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
-import { ClubEntity } from '../../users/entities/club.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
+/**
+ * MediaAssetEntity: file media được tải lên hệ thống, ví dụ ảnh, video hoặc chứng từ.
+ * Dùng để lưu objectKey và metadata để truy vấn lại file sau này.
+ */
 @Entity({ name: 'media_assets' })
-@Index('media_assets_provider_key_uq', ['storageProvider', 'objectKey'], {
+@Index('media_assets_object_key_uq', ['objectKey'], {
   unique: true,
 })
 export class MediaAssetEntity extends BaseRecordEntity {
-  @Column({ name: 'club_id', type: 'uuid' })
-  clubId!: string;
-
-  @ManyToOne(() => ClubEntity, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'club_id' })
-  club!: ClubEntity;
-
   @Column({ name: 'uploaded_by', type: 'uuid' })
   uploadedBy!: string;
 
   @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'uploaded_by' })
   uploader!: UserEntity;
-
-  @Column({ name: 'storage_provider', type: 'varchar', length: 40 })
-  storageProvider!: string;
 
   @Column({ name: 'object_key', type: 'varchar', length: 500 })
   objectKey!: string;

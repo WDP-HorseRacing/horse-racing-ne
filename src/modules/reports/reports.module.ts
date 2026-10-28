@@ -1,5 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ReportsController } from './controllers/reports.controller';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { FinanceReportsModule } from './finance-reports/finance-reports.module';
+import { HorseReportsModule } from './horse-reports/horse-reports.module';
 
-@Module({ controllers: [ReportsController] })
+/**
+ * Lắp ráp các báo cáo: dashboard CLB, báo cáo từng ngựa, báo cáo tài chính
+ */
+@Module({
+  imports: [DashboardModule, HorseReportsModule, FinanceReportsModule],
+})
 export class ReportsModule {}

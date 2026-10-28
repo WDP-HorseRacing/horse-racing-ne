@@ -1,0 +1,232 @@
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PartialType,
+} from '@nestjs/swagger';
+import { Expose, Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import {
+  MAX_TRIAL_TIME_MESSAGE,
+  MAX_TRIAL_TIME_MS,
+} from '../constants/trial-time.constants';
+import { TrainingIntensity } from '../enums/training-intensity.enum';
+import { TrainingSessionStatus } from '../enums/training-session-status.enum';
+import { TrainingSessionType } from '../enums/training-session-type.enum';
+import { IsIsoInstant } from '../../../common/utils/dto-input';
+
+export class CreateTrainingSessionDto {
+  @ApiProperty({ maxLength: 160 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160, { message: 'Tên buổi tập tối đa 160 ký tự' })
+  name!: string;
+
+  @ApiPropertyOptional({ enum: TrainingSessionType })
+  @IsOptional()
+  @IsEnum(TrainingSessionType)
+  sessionType?: TrainingSessionType;
+
+  @ApiProperty({ format: 'uuid', description: 'Môn học của buổi' })
+  @IsUUID()
+  subjectId!: string;
+
+  @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
+  @IsEnum(TrainingIntensity)
+  intensity!: TrainingIntensity;
+
+  @ApiProperty({
+    minimum: 0,
+    maximum: 20000,
+    description: 'Cự ly dự kiến của buổi tập (mét)',
+  })
+  @IsInt()
+  @Min(0)
+  @Max(20000)
+  plannedDistanceM!: number;
+
+  @ApiProperty({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+    description:
+      'Giờ bắt đầu, phải sau thời điểm hiện tại (khi sửa buổi chỉ kiểm nếu đổi giờ bắt đầu), không thì 400 ở ô scheduledStartAt',
+  })
+  @IsIsoInstant()
+  scheduledStartAt!: string;
+
+  @ApiProperty({
+    format: 'date-time',
+    example: '2026-10-23T00:30:00+07:00',
+  })
+  @IsIsoInstant()
+  scheduledEndAt!: string;
+
+  @ApiPropertyOptional({ maxLength: 160 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160, { message: 'Địa điểm tối đa 160 ký tự' })
+  location?: string;
+
+  @ApiPropertyOptional({ maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80, { message: 'Mặt sân tối đa 80 ký tự' })
+  surface?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: 1,
+    maximum: MAX_TRIAL_TIME_MS,
+    nullable: true,
+    description:
+      'Thời gian mục tiêu (ms), chỉ cho môn chạy thử; null là không có mục tiêu',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_TRIAL_TIME_MS, { message: MAX_TRIAL_TIME_MESSAGE })
+  targetTimeMs?: number | null;
+}
+
+export class CreateTrainingSessionsDto {
+  @ApiProperty({
+    type: [CreateTrainingSessionDto],
+    minItems: 1,
+    maxItems: 100,
+    description:
+      'Các buổi cần thêm, lưu cùng lúc; một buổi lỗi thì không lưu buổi nào',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => CreateTrainingSessionDto)
+  sessions!: CreateTrainingSessionDto[];
+}
+
+export class UpdateTrainingSessionDto extends PartialType(
+  OmitType(CreateTrainingSessionDto, [
+    'sessionType',
+    'location',
+    'surface',
+    'notes',
+  ] as const),
+) {
+  @ApiPropertyOptional({ nullable: true, type: String, maxLength: 160 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160, { message: 'Địa điểm tối đa 160 ký tự' })
+  location?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String, maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80, { message: 'Mặt sân tối đa 80 ký tự' })
+  surface?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
+
+export class CancelTrainingSessionDto {
+  @ApiProperty({ minLength: 1, description: 'Lý do hủy buổi tập' })
+  @IsString()
+  @MinLength(1)
+  reason!: string;
+}
+
+export class TrainingSessionResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  @Expose()
+  classId!: string;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @Expose()
+  subjectId!: string | null;
+
+  @ApiProperty()
+  @Expose()
+  name!: string;
+
+  @ApiProperty({ enum: TrainingSessionType })
+  @Expose()
+  sessionType!: TrainingSessionType;
+
+  @ApiProperty({ enum: TrainingIntensity, description: 'Cường độ buổi tập' })
+  @Expose()
+  intensity!: TrainingIntensity;
+
+  @ApiProperty({ description: 'Cự ly dự kiến của buổi tập (mét)' })
+  @Expose()
+  plannedDistanceM!: number;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description:
+      'Thời gian mục tiêu (ms) của buổi chạy thử; null là không có mục tiêu, buổi thường luôn null',
+  })
+  @Expose()
+  targetTimeMs!: number | null;
+
+  @ApiProperty({ format: 'date-time' })
+  @Expose()
+  scheduledStartAt!: Date;
+
+  @ApiProperty({ format: 'date-time' })
+  @Expose()
+  scheduledEndAt!: Date;
+
+  @ApiPropertyOptional()
+  @Expose()
+  location!: string | null;
+
+  @ApiPropertyOptional()
+  @Expose()
+  surface!: string | null;
+
+  @ApiPropertyOptional()
+  @Expose()
+  notes!: string | null;
+
+  @ApiProperty({ enum: TrainingSessionStatus })
+  @Expose()
+  status!: TrainingSessionStatus;
+
+  @ApiPropertyOptional({ format: 'date-time' })
+  @Expose()
+  cancelledAt!: Date | null;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @Expose()
+  cancelledBy!: string | null;
+
+  @ApiPropertyOptional()
+  @Expose()
+  cancelReason!: string | null;
+}

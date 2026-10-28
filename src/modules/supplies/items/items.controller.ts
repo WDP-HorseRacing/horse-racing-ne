@@ -1,0 +1,187 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Access, CurrentUser } from '../../../common/decorators';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { UserRole } from '../../../common/enums';
+import type { Actor } from '../../../common/types/actor';
+import {
+  CreateSupplyItemDto,
+  SupplyItemListQueryDto,
+  SupplyItemPageResponseDto,
+  SupplyItemResponseDto,
+  SupplyLotResponseDto,
+  SupplyReceiptDto,
+  SupplyStockMovementPageResponseDto,
+  SupplyUsageDto,
+  CancelSupplyUsageDto,
+  UpdateSupplyItemDto,
+} from '../dto/supply-item.dto';
+import { SupplyItemsService } from './items.service';
+
+const ITEM_READERS = [
+  UserRole.CLUB_MANAGER,
+  UserRole.HEAD_TRAINER,
+  UserRole.VETERINARIAN,
+  UserRole.GROOM,
+];
+
+@ApiTags('supplies')
+@ApiBearerAuth()
+@Controller('supplies')
+export class SupplyItemsController {
+  constructor(private readonly items: SupplyItemsService) {}
+
+  @Access(ITEM_READERS)
+  @Get('items')
+  @ApiOperation({
+    summary: 'Liệt kê vật tư của kho chung',
+    operationId: 'SuppliesController_items',
+  })
+  @ApiOkResponse({ type: SupplyItemPageResponseDto })
+  list(@CurrentUser() actor: Actor, @Query() query: SupplyItemListQueryDto) {
+    return this.items.list(actor, query);
+  }
+
+  @Access(ITEM_READERS)
+  @Get('items/low-stock')
+  @ApiOperation({
+    summary: 'Liệt kê vật tư sắp hết',
+    operationId: 'SuppliesController_lowStock',
+  })
+  @ApiOkResponse({ type: [SupplyItemResponseDto] })
+  lowStock(@CurrentUser() actor: Actor) {
+    return this.items.lowStock(actor);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Post('items')
+  @ApiOperation({
+    summary: 'Thêm vật tư',
+    operationId: 'SuppliesController_createItem',
+  })
+  @ApiCreatedResponse({ type: SupplyItemResponseDto })
+  create(@CurrentUser() actor: Actor, @Body() body: CreateSupplyItemDto) {
+    return this.items.create(actor, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Get('items/:id')
+  @ApiOperation({
+    summary: 'Xem một vật tư',
+    operationId: 'SuppliesController_item',
+  })
+  @ApiOkResponse({ type: SupplyItemResponseDto })
+  get(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.items.get(actor, id);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Patch('items/:id')
+  @ApiOperation({
+    summary: 'Sửa tên, loại, đơn vị, ngưỡng báo thiếu của vật tư',
+    description:
+      'Vật tư đã có dòng sổ khác OPENING thì không đổi được đơn vị hoặc loại (409, gắn với ô unit hoặc category); gửi đúng giá trị đang có không tính là đổi',
+    operationId: 'SuppliesController_updateItem',
+  })
+  @ApiOkResponse({ type: SupplyItemResponseDto })
+  update(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateSupplyItemDto,
+  ) {
+    return this.items.update(actor, id, body);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Delete('items/:id')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Xóa mềm vật tư',
+    operationId: 'SuppliesController_deleteItem',
+  })
+  @ApiNoContentResponse()
+  remove(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.items.remove(actor, id);
+  }
+
+  @Access([UserRole.CLUB_MANAGER])
+  @Post('items/:id/receipts')
+  @ApiOperation({ summary: 'Nhập hàng trực tiếp vào kho, không qua đề xuất' })
+  @ApiCreatedResponse({ type: SupplyItemResponseDto })
+  receive(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: SupplyReceiptDto,
+  ) {
+    return this.items.receive(actor, id, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Post('items/:id/usages')
+  @ApiOperation({
+    summary: 'Lấy vật tư ra dùng, trừ tồn ngay',
+    description: 'Thuốc chỉ Veterinarian và Club Manager xuất được',
+  })
+  @ApiCreatedResponse({ type: SupplyItemResponseDto })
+  use(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: SupplyUsageDto,
+  ) {
+    return this.items.use(actor, id, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Post('usages/:usageId/cancel')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Hủy một lần xuất ghi nhầm, cộng trả tồn; người xuất trong 24 giờ, Club Manager bất kỳ lúc nào',
+  })
+  @ApiOkResponse({ type: SupplyItemResponseDto })
+  cancelUsage(
+    @CurrentUser() actor: Actor,
+    @Param('usageId', ParseUUIDPipe) usageId: string,
+    @Body() body: CancelSupplyUsageDto,
+  ) {
+    return this.items.cancelUsage(actor, usageId, body);
+  }
+
+  @Access(ITEM_READERS)
+  @Get('items/:id/lots')
+  @ApiOperation({ summary: 'Các lô của vật tư, lô nhập sớm nhất trước' })
+  @ApiOkResponse({ type: [SupplyLotResponseDto] })
+  lots(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.items.lotsOf(actor, id);
+  }
+
+  @Access(ITEM_READERS)
+  @Get('items/:id/movements')
+  @ApiOperation({ summary: 'Sổ nhập xuất của vật tư, mới nhất trước' })
+  @ApiOkResponse({ type: SupplyStockMovementPageResponseDto })
+  movements(
+    @CurrentUser() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.items.movementsOf(actor, id, query);
+  }
+}

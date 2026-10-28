@@ -3,6 +3,7 @@
 /node_modules
 /.pnpm-store
 /build
+*.tsbuildinfo
 
 # Logs
 logs
@@ -42,6 +43,7 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+env.*
 
 # temp directory
 .temp
@@ -55,3 +57,12 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+/.agents
+/.claude
+/.vscode
+skills-lock.json
+CLAUDE.md
+
+# Postman (sinh bang pnpm postman:gen)
+/postman

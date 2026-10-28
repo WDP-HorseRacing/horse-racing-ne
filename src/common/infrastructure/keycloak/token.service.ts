@@ -1,0 +1,180 @@
+import {
+  BadGatewayException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type { AxiosRequestConfig } from 'axios';
+import { KeycloakConfig } from './keycloak.config';
+import {
+  keycloakFailureMessage,
+  KeycloakHttpService,
+} from './keycloak-http.service';
+import { KeycloakJwksService } from './jwks.service';
+import type {
+  KeycloakAuthorizationCodeGrantParams,
+  KeycloakIntrospectResponse,
+  KeycloakPasswordGrantParams,
+  KeycloakRefreshGrantParams,
+  KeycloakTokenResponse,
+} from './types/token';
+
+@Injectable()
+/** Keycloak OpenID Connect client: token, refresh, revoke, introspect. */
+export class KeycloakTokenService {
+  constructor(
+    private readonly keycloakConfig: KeycloakConfig,
+    private readonly http: KeycloakHttpService,
+    private readonly jwks: KeycloakJwksService,
+  ) {}
+
+  exchangeCodeForToken(
+    params: KeycloakAuthorizationCodeGrantParams,
+  ): Promise<KeycloakTokenResponse> {
+    return this.tokenRequest({
+      grant_type: 'authorization_code',
+      code: params.code,
+      redirect_uri: params.redirectUri,
+      code_verifier: params.codeVerifier,
+    });
+  }
+
+  /**
+   * Đổi tài khoản và mật khẩu lấy bộ token trên Keycloak
+   *
+   * - Keycloak từ chối đăng nhập (401, hoặc 400 với lỗi invalid_grant như tài khoản bị khóa): 401 cùng một câu báo sai tài khoản hoặc mật khẩu
+   * - Lỗi khác của Keycloak: giữ nguyên 502
+   *
+   * @param params Tài khoản và mật khẩu người dùng nhập
+   * @returns Promise trả về bộ token
+   * @throws UnauthorizedException Nếu Keycloak từ chối đăng nhập
+   * @throws BadGatewayException Nếu Keycloak trả lỗi khác
+   */
+  async exchangePasswordForToken(
+    params: KeycloakPasswordGrantParams,
+  ): Promise<KeycloakTokenResponse> {
+    try {
+      return await this.tokenRequest({
+        grant_type: 'password',
+        username: params.username,
+        password: params.password,
+        scope: 'openid profile email',
+      });
+    } catch (error) {
+      if (
+        error instanceof BadGatewayException &&
+        (error.message === keycloakFailureMessage(401) ||
+          (error.message === keycloakFailureMessage(400) &&
+            (error.cause as { error?: unknown } | undefined)?.error ===
+              'invalid_grant'))
+      ) {
+        throw new UnauthorizedException(
+          'Tài khoản hoặc mật khẩu không chính xác!',
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Đổi refresh token lấy bộ token mới trên Keycloak
+   *
+   * - Keycloak từ chối refresh token (400, vd hết hạn hoặc đã thu hồi): 401, yêu cầu đăng nhập lại
+   * - Lỗi khác của Keycloak: giữ nguyên 502
+   *
+   * @param params Refresh token đang giữ
+   * @returns Promise trả về bộ token mới
+   * @throws UnauthorizedException Nếu Keycloak từ chối refresh token
+   * @throws BadGatewayException Nếu Keycloak trả lỗi khác
+   */
+  async exchangeRefreshTokenForToken(
+    params: KeycloakRefreshGrantParams,
+  ): Promise<KeycloakTokenResponse> {
+    try {
+      return await this.tokenRequest({
+        grant_type: 'refresh_token',
+        refresh_token: params.refreshToken,
+      });
+    } catch (error) {
+      if (
+        error instanceof BadGatewayException &&
+        error.message === keycloakFailureMessage(400)
+      ) {
+        throw new UnauthorizedException(
+          'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại',
+        );
+      }
+      throw error;
+    }
+  }
+
+  async revokeRefreshToken(params: KeycloakRefreshGrantParams): Promise<void> {
+    await this.formRequest<void>(
+      `/realms/${this.keycloakConfig.realmPath}/protocol/openid-connect/revoke`,
+      {
+        token: params.refreshToken,
+        token_type_hint: 'refresh_token',
+        ...this.keycloakConfig.clientCredentials(),
+      },
+    );
+  }
+
+  verifyAccessToken(token: string): Promise<KeycloakIntrospectResponse> {
+    return this.jwks.verifyAccessToken(token);
+  }
+
+  verifyRefreshToken(token: string): Promise<KeycloakIntrospectResponse> {
+    return this.introspect(token, 'refresh_token');
+  }
+
+  verifyAccessTokenIntrospect(
+    token: string,
+  ): Promise<KeycloakIntrospectResponse> {
+    return this.introspect(token, 'access_token');
+  }
+
+  private tokenRequest(
+    values: Record<string, string>,
+  ): Promise<KeycloakTokenResponse> {
+    return this.http.tokenEndpoint({
+      ...values,
+      ...this.keycloakConfig.clientCredentials(),
+    });
+  }
+
+  private introspect(
+    token: string,
+    tokenTypeHint: 'access_token' | 'refresh_token',
+  ): Promise<KeycloakIntrospectResponse> {
+    return this.formRequest(
+      `/realms/${this.keycloakConfig.realmPath}/protocol/openid-connect/token/introspect`,
+      {
+        token,
+        token_type_hint: tokenTypeHint,
+        ...this.keycloakConfig.clientCredentials(),
+      },
+    );
+  }
+
+  private formRequest<T>(
+    path: string,
+    values: Record<string, string>,
+  ): Promise<T> {
+    return this.jsonRequest(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      data: new URLSearchParams(values),
+    });
+  }
+
+  private async jsonRequest<T>(
+    path: string,
+    config: AxiosRequestConfig,
+  ): Promise<T> {
+    const response = await this.http.request<T>({
+      url: path,
+      ...config,
+    });
+    if (response.status === 204) return undefined as T;
+    return response.data;
+  }
+}

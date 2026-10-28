@@ -1,0 +1,22 @@
+/**
+ * Tên domain event y tế, phát sau khi transaction đã commit.
+ */
+export const MEDICAL_EXAM_REQUEST_URGENT_EVENT = 'medical.exam-request.urgent';
+export const MEDICAL_EXAM_REQUEST_HANDLED_EVENT =
+  'medical.exam-request.handled';
+export const MEDICAL_EXAM_REQUEST_REOPENED_EVENT =
+  'medical.exam-request.reopened';
+export const MEDICAL_TRAINING_LOCK_SET_EVENT = 'medical.training-lock.set';
+export const MEDICAL_TRAINING_LOCK_RELEASED_EVENT =
+  'medical.training-lock.released';
+export const MEDICAL_TRAINING_LOCK_KEPT_EVENT = 'medical.training-lock.kept';
+export const MEDICAL_HEALTH_CHANGED_EVENT = 'medical.health.changed';
+export const MEDICAL_CASE_OPENED_EVENT = 'medical.case.opened';
+export const MEDICAL_CASE_CLOSED_EVENT = 'medical.case.closed';
+export const MEDICAL_CASE_CANCELLED_EVENT = 'medical.case.cancelled';
+export const MEDICAL_VISIT_COST_ADJUSTED_EVENT = 'medical.visit.cost-adjusted';
+export const MEDICAL_CHECKUP_DUE_EVENT = 'medical.checkup.due';
+export const MEDICAL_CHECKUP_OVERDUE_EVENT = 'medical.checkup.overdue';
+export const MEDICAL_CARE_SCHEDULE_DUE_EVENT = 'medical.care-schedule.due';
+export const MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT =
+  'medical.checkup-appointment.due';

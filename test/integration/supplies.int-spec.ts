@@ -1,0 +1,1107 @@
+import { randomUUID } from 'node:crypto';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { PaginationQueryDto } from '../../src/common/dto/pagination-query.dto';
+import { UserRole } from '../../src/common/enums/role.enum';
+import type { Actor } from '../../src/common/types/actor';
+import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
+import { AuditService } from '../../src/modules/audit/services/audit.service';
+import { SUPPLY_REQUEST_STATUS_CHANGED_EVENT } from '../../src/modules/supplies/constants/supply-events.constants';
+import { SupplyItemListQueryDto } from '../../src/modules/supplies/dto/supply-item.dto';
+import { SupplyRequestListQueryDto } from '../../src/modules/supplies/dto/supply-request.dto';
+import { SupplyItemEntity } from '../../src/modules/supplies/entities/supply-item.entity';
+import { SupplyLotEntity } from '../../src/modules/supplies/entities/supply-lot.entity';
+import { SupplyRequestEntity } from '../../src/modules/supplies/entities/supply-request.entity';
+import { SupplyStockMovementEntity } from '../../src/modules/supplies/entities/supply-stock-movement.entity';
+import { SupplyCategory } from '../../src/modules/supplies/enums/supply-category.enum';
+import { SupplyRequestStatus } from '../../src/modules/supplies/enums/supply-request-status.enum';
+import { SupplyStockMovementType } from '../../src/modules/supplies/enums/supply-stock-movement-type.enum';
+import { SupplyItemsService } from '../../src/modules/supplies/items/items.service';
+import { SupplyRequestsService } from '../../src/modules/supplies/requests/requests.service';
+import { SupplyStockService } from '../../src/modules/supplies/shared/supply-stock.service';
+import { fixtures } from './fixtures';
+import {
+  startTestPostgres,
+  stopTestPostgres,
+  truncateAllTables,
+  type TestPostgres,
+} from './postgres';
+
+describe('Supplies: shared stock, stock ledger, replenishment requests (Postgres)', () => {
+  let db: TestPostgres;
+  let dataSource: DataSource;
+  let seed: ReturnType<typeof fixtures>;
+  let items: SupplyItemsService;
+  let requests: SupplyRequestsService;
+  let manager: Actor;
+  let groom: Actor;
+  let otherGroom: Actor;
+  let trainer: Actor;
+
+  const actorOf = async (role: UserRole): Promise<Actor> => {
+    const id = await seed.user(role);
+    const [row] = await dataSource.query<{ keycloak_id: string }[]>(
+      'SELECT keycloak_id FROM users WHERE id = $1',
+      [id],
+    );
+    return { sub: row.keycloak_id, roles: [role] };
+  };
+
+  const page = (): PaginationQueryDto =>
+    Object.assign(new PaginationQueryDto(), { page: 1, limit: 50 });
+
+  const ledger = (itemId: string) =>
+    dataSource.query<{ delta: string; balance_after: string; type: string }[]>(
+      `SELECT delta, balance_after, type FROM supply_stock_movements
+        WHERE item_id = $1 ORDER BY created_at, id`,
+      [itemId],
+    );
+
+  const oats = (quantityOnHand?: number) =>
+    items.create(manager, {
+      name: 'Yến mạch',
+      category: SupplyCategory.FEED,
+      unit: 'kg',
+      quantityOnHand,
+      reorderThreshold: 50,
+    });
+
+  beforeAll(async () => {
+    db = await startTestPostgres();
+    dataSource = db.dataSource;
+    seed = fixtures(dataSource);
+    const stock = new SupplyStockService();
+    items = new SupplyItemsService(
+      dataSource.getRepository(SupplyItemEntity),
+      dataSource.getRepository(SupplyStockMovementEntity),
+      dataSource.getRepository(SupplyLotEntity),
+      stock,
+      dataSource,
+      new AuditService(),
+      new DomainEventPublisher(),
+    );
+    requests = new SupplyRequestsService(
+      dataSource.getRepository(SupplyRequestEntity),
+      stock,
+      dataSource,
+      new AuditService(),
+      new DomainEventPublisher(),
+    );
+  });
+
+  afterAll(() => stopTestPostgres(db));
+
+  beforeEach(async () => {
+    await truncateAllTables(dataSource);
+    manager = await actorOf(UserRole.CLUB_MANAGER);
+    groom = await actorOf(UserRole.GROOM);
+    otherGroom = await actorOf(UserRole.GROOM);
+    trainer = await actorOf(UserRole.HEAD_TRAINER);
+  });
+
+  describe('items and lots', () => {
+    it('opens the first lot from the opening stock', async () => {
+      const item = await oats(40);
+
+      expect(item.quantityOnHand).toBe(40);
+      expect(item.lowStock).toBe(true);
+      expect(await ledger(item.id)).toEqual([
+        { delta: '40.00', balance_after: '40.00', type: 'OPENING' },
+      ]);
+      expect(await items.lotsOf(manager, item.id)).toEqual([
+        expect.objectContaining({ quantity: 40, remaining: 40, unitPrice: 0 }),
+      ]);
+    });
+
+    it('takes the opening price when one is given', async () => {
+      const item = await items.create(manager, {
+        name: 'Cỏ khô',
+        category: SupplyCategory.FEED,
+        unit: 'kg',
+        quantityOnHand: 12,
+        openingUnitPrice: 8000,
+        reorderThreshold: 5,
+      });
+
+      const [lot] = await items.lotsOf(manager, item.id);
+      expect(lot).toMatchObject({
+        quantity: 12,
+        remaining: 12,
+        unitPrice: 8000,
+      });
+    });
+
+    it('writes no ledger row and no lot when the item starts empty', async () => {
+      const item = await oats();
+
+      expect(item.quantityOnHand).toBe(0);
+      expect(await ledger(item.id)).toEqual([]);
+      expect(await items.lotsOf(manager, item.id)).toEqual([]);
+    });
+
+    it('rejects a duplicate name with 409', async () => {
+      await oats();
+      await expect(oats()).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('treats names that differ only in case as the same, except for deleted items', async () => {
+      const item = (name: string) =>
+        items.create(manager, {
+          name,
+          category: SupplyCategory.FEED,
+          unit: 'kg',
+          reorderThreshold: 0,
+        });
+      const taken = { field: 'name', message: 'Tên vật tư đã tồn tại' };
+      const bran = await item('Cám A');
+      const hay = await item('Cỏ khô');
+
+      await expect(item('cám a')).rejects.toMatchObject({
+        response: { errors: [taken] },
+      });
+      await expect(
+        items.update(manager, hay.id, { name: 'CÁM A' }),
+      ).rejects.toMatchObject({ response: { errors: [taken] } });
+
+      await items.remove(manager, bran.id);
+      await expect(item('cám a')).resolves.toMatchObject({ name: 'cám a' });
+    });
+
+    it('does not change the stock when editing the item', async () => {
+      const item = await oats(40);
+
+      const updated = await items.update(manager, item.id, {
+        reorderThreshold: 10,
+      });
+
+      expect(updated.quantityOnHand).toBe(40);
+      expect(updated.lowStock).toBe(false);
+    });
+
+    it('lists only items at or below their threshold as low stock', async () => {
+      const low = await oats(50);
+      await items.create(manager, {
+        name: 'Cỏ khô',
+        category: SupplyCategory.FEED,
+        unit: 'kg',
+        quantityOnHand: 51,
+        reorderThreshold: 50,
+      });
+
+      const result = await items.lowStock(groom);
+
+      expect(result.map((row) => row.id)).toEqual([low.id]);
+    });
+
+    it('filters the list by category and name', async () => {
+      await oats(10);
+      await items.create(manager, {
+        name: 'Vitamin E',
+        category: SupplyCategory.SUPPLEMENT,
+        unit: 'g',
+        reorderThreshold: 0,
+      });
+
+      const query = Object.assign(new SupplyItemListQueryDto(), {
+        page: 1,
+        limit: 20,
+        category: SupplyCategory.SUPPLEMENT,
+        search: 'vita',
+      });
+      const result = await items.list(groom, query);
+
+      expect(result.items.map((row) => row.name)).toEqual(['Vitamin E']);
+      expect(result.meta.total).toBe(1);
+    });
+
+    it('treats %, _ and \\ in the name search as plain characters', async () => {
+      for (const name of ['Muối_khoáng', 'MuốiXkhoáng', 'Đạm 20%']) {
+        await items.create(manager, {
+          name,
+          category: SupplyCategory.SUPPLEMENT,
+          unit: 'kg',
+          reorderThreshold: 0,
+        });
+      }
+      const search = async (text: string) =>
+        (
+          await items.list(
+            groom,
+            Object.assign(new SupplyItemListQueryDto(), {
+              page: 1,
+              limit: 20,
+              search: text,
+            }),
+          )
+        ).items.map((row) => row.name);
+
+      await expect(search('i_k')).resolves.toEqual(['Muối_khoáng']);
+      await expect(search('%')).resolves.toEqual(['Đạm 20%']);
+    });
+
+    it('refuses to change the unit or category once the item has moved in or out of stock', async () => {
+      const restocked = await oats(500);
+      await items.receive(manager, restocked.id, {
+        quantity: 50,
+        unitPrice: 25000,
+      });
+      const used = await items.create(manager, {
+        name: 'Cám',
+        category: SupplyCategory.FEED,
+        unit: 'bao',
+        quantityOnHand: 10,
+        reorderThreshold: 0,
+      });
+      await items.use(groom, used.id, { quantity: 1, note: 'Bữa sáng' });
+
+      await expect(
+        items.update(manager, restocked.id, { unit: 'bao' }),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { errors: [{ field: 'unit' }] },
+      });
+      await expect(
+        items.update(manager, used.id, { category: SupplyCategory.MEDICINE }),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { errors: [{ field: 'category' }] },
+      });
+      await expect(items.get(manager, restocked.id)).resolves.toMatchObject({
+        unit: 'kg',
+      });
+      await expect(items.get(manager, used.id)).resolves.toMatchObject({
+        category: SupplyCategory.FEED,
+      });
+    });
+
+    it('still lets the item change its name, threshold, or the same unit and category after stock moved', async () => {
+      const item = await oats(500);
+      await items.use(groom, item.id, { quantity: 5, note: 'Bữa sáng' });
+
+      const updated = await items.update(manager, item.id, {
+        name: 'Yến mạch Úc',
+        reorderThreshold: 10,
+        unit: 'kg',
+        category: SupplyCategory.FEED,
+      });
+
+      expect(updated).toMatchObject({
+        name: 'Yến mạch Úc',
+        reorderThreshold: 10,
+        unit: 'kg',
+      });
+    });
+
+    it('lets an item with only its opening stock change its unit and category', async () => {
+      const item = await oats(500);
+
+      const updated = await items.update(manager, item.id, {
+        unit: 'bao',
+        category: SupplyCategory.SUPPLEMENT,
+      });
+
+      expect(updated).toMatchObject({
+        unit: 'bao',
+        category: SupplyCategory.SUPPLEMENT,
+        quantityOnHand: 500,
+      });
+    });
+
+    it('hides a deleted item but keeps its ledger readable', async () => {
+      const item = await oats(40);
+      await items.remove(manager, item.id);
+
+      await expect(items.get(groom, item.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(
+        items.use(groom, item.id, { quantity: 1, note: 'Dùng' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect((await items.movementsOf(groom, item.id, page())).meta.total).toBe(
+        1,
+      );
+    });
+  });
+
+  describe('replenishment requests', () => {
+    it('adds the quantity received to stock when fulfilled and keeps it on the request', async () => {
+      const item = await oats(40);
+      const request = await requests.create(groom, { itemId: item.id });
+      expect(request.quantity).toBeNull();
+
+      const approved = await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      expect(approved.quantity).toBeNull();
+      const fulfilled = await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.FULFILLED,
+        quantity: 40.5,
+        unitPrice: 20000,
+      });
+
+      expect(fulfilled.status).toBe(SupplyRequestStatus.FULFILLED);
+      expect(fulfilled.quantity).toBe(40.5);
+      expect(fulfilled.item.quantityOnHand).toBe(80.5);
+      expect(fulfilled.fulfiller).not.toBeNull();
+      expect((await requests.get(groom, request.id)).quantity).toBe(40.5);
+      const movements = await items.movementsOf(manager, item.id, page());
+      expect(movements.items[0]).toMatchObject({
+        delta: 40.5,
+        balanceAfter: 80.5,
+        type: SupplyStockMovementType.RESTOCK,
+        requestId: request.id,
+      });
+    });
+
+    it('rejects fulfilling a request that was not approved with 409', async () => {
+      const item = await oats(40);
+      const request = await requests.create(groom, { itemId: item.id });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          quantity: 5,
+          unitPrice: 20000,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(await ledger(item.id)).toHaveLength(1);
+    });
+
+    it('requires a non-blank reason to reject', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.REJECTED,
+          reason: '   ',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      const rejected = await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.REJECTED,
+        reason: 'Kho tổng còn đủ',
+      });
+      expect(rejected.rejectionReason).toBe('Kho tổng còn đủ');
+    });
+
+    it('lets only the requester edit, and only while pending', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+
+      await expect(
+        requests.edit(otherGroom, request.id, { note: 'Cần gấp' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      const edited = await requests.edit(groom, request.id, {
+        note: 'Cần gấp',
+      });
+      expect(edited.note).toBe('Cần gấp');
+      expect(edited.quantity).toBeNull();
+
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      await expect(
+        requests.edit(groom, request.id, { note: 'Thôi' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('scopes the list and detail to the requester, except for the Club Manager', async () => {
+      const item = await oats();
+      const mine = await requests.create(groom, { itemId: item.id });
+      await requests.create(trainer, { itemId: item.id });
+      const query = Object.assign(new SupplyRequestListQueryDto(), {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(
+        (await requests.list(groom, query)).items.map((row) => row.id),
+      ).toEqual([mine.id]);
+      expect((await requests.list(manager, query)).meta.total).toBe(2);
+      await expect(requests.get(otherGroom, mine.id)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('applies the requester rules to a veterinarian: own view and edit, result sent back', async () => {
+      const vet = await actorOf(UserRole.VETERINARIAN);
+      const medicine = await items.create(manager, {
+        name: 'Kháng sinh',
+        category: SupplyCategory.MEDICINE,
+        unit: 'lọ',
+        reorderThreshold: 5,
+      });
+      const fromVet = await requests.create(vet, { itemId: medicine.id });
+      const fromGroom = await requests.create(groom, { itemId: medicine.id });
+
+      expect((await requests.get(vet, fromVet.id)).status).toBe(
+        SupplyRequestStatus.PENDING,
+      );
+      await expect(requests.get(vet, fromGroom.id)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await expect(requests.get(groom, fromVet.id)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      await expect(
+        requests.edit(vet, fromGroom.id, { note: 'x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await requests.updateStatus(manager, fromVet.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      const [{ payload }] = await dataSource.query<
+        { payload: { requesterId: string } }[]
+      >(
+        `SELECT payload FROM outbox_events
+          WHERE event_name = $1 AND payload->>'requestId' = $2`,
+        [SUPPLY_REQUEST_STATUS_CHANGED_EVENT, fromVet.id],
+      );
+      expect(payload.requesterId).toBe(fromVet.requestedBy);
+    });
+
+    it('blocks deleting an item that still has an open request', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+
+      await expect(items.remove(manager, item.id)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.FULFILLED,
+        quantity: 1,
+        unitPrice: 20000,
+      });
+      await expect(items.remove(manager, item.id)).resolves.toBeUndefined();
+    });
+
+    it('lets the club manager cancel an approved request with a reason, which frees the item for deletion', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+      const approved = await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.CANCELLED,
+          reason: '   ',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      const cancelled = await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.CANCELLED,
+        reason: 'Nhà cung cấp hết hàng',
+      });
+
+      expect(cancelled).toMatchObject({
+        status: SupplyRequestStatus.CANCELLED,
+        cancellationReason: 'Nhà cung cấp hết hàng',
+        rejectionReason: null,
+        quantity: null,
+        reviewedBy: approved.reviewedBy,
+        cancelledBy: approved.reviewedBy,
+        canceller: { id: approved.reviewedBy },
+      });
+      expect(cancelled.cancelledAt).not.toBeNull();
+      expect(cancelled.item.quantityOnHand).toBe(0);
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          quantity: 1,
+          unitPrice: 20000,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(items.remove(manager, item.id)).resolves.toBeUndefined();
+    });
+
+    it('refuses to cancel a request that is still pending with 409', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.CANCELLED,
+          reason: 'Không cần nữa',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('refuses a request for a deleted item, but still shows old requests', async () => {
+      const item = await oats();
+      const old = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, old.id, {
+        status: SupplyRequestStatus.REJECTED,
+        reason: 'Ngừng dùng',
+      });
+      await items.remove(manager, item.id);
+
+      await expect(
+        requests.create(groom, { itemId: item.id }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      const shown = await requests.get(groom, old.id);
+      expect(shown.item.name).toBe('Yến mạch');
+      expect(shown.item.deletedAt).not.toBeNull();
+    });
+  });
+
+  it('keeps the ledger and the lots consistent when usages and restocks race', async () => {
+    const item = await oats(10);
+    const approved = await Promise.all(
+      [1, 2, 3].map(async (quantity) => {
+        const request = await requests.create(groom, { itemId: item.id });
+        await requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.APPROVED,
+        });
+        return { id: request.id, quantity };
+      }),
+    );
+
+    await Promise.all([
+      ...approved.map(({ id, quantity }) =>
+        requests.updateStatus(manager, id, {
+          status: SupplyRequestStatus.FULFILLED,
+          quantity,
+          unitPrice: 20000,
+        }),
+      ),
+      items.use(groom, item.id, { quantity: 2, note: 'Dùng' }),
+      items.use(trainer, item.id, { quantity: 3, note: 'Dùng' }),
+    ]);
+
+    const rows = await ledger(item.id);
+    let running = 0;
+    for (const row of rows) {
+      running += Number(row.delta);
+      expect(Number(row.balance_after)).toBeCloseTo(running, 2);
+    }
+    const final = await items.get(manager, item.id);
+    expect(Number(final.quantityOnHand)).toBeCloseTo(running, 2);
+    const remaining = (await items.lotsOf(manager, item.id)).reduce(
+      (sum, lot) => sum + lot.remaining,
+      0,
+    );
+    expect(remaining).toBeCloseTo(final.quantityOnHand, 2);
+    expect(final.quantityOnHand).toBe(11);
+  });
+
+  describe('audit trail', () => {
+    const idOf = async (actor: Actor) =>
+      (
+        await dataSource.query<{ id: string }[]>(
+          'SELECT id FROM users WHERE keycloak_id = $1',
+          [actor.sub],
+        )
+      )[0].id;
+
+    const auditsOf = (entityId: string) =>
+      dataSource.query<
+        {
+          actor_id: string | null;
+          action: string;
+          entity_type: string;
+          before_data: Record<string, unknown> | null;
+          after_data: Record<string, unknown> | null;
+          reason: string | null;
+          feature: string | null;
+        }[]
+      >(
+        `SELECT actor_id, action, entity_type, before_data, after_data, reason, feature
+           FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
+        [entityId],
+      );
+
+    it('logs creating, editing, using and deleting an item', async () => {
+      const managerId = await idOf(manager);
+      const groomId = await idOf(groom);
+      const item = await oats(40);
+      await items.update(manager, item.id, { reorderThreshold: 60 });
+      await items.update(manager, item.id, { unit: 'kg' });
+      await items.use(groom, item.id, { quantity: 5, note: 'Bữa sáng' });
+      const [lot] = await items.lotsOf(manager, item.id);
+      await items.remove(manager, item.id);
+
+      await expect(auditsOf(item.id)).resolves.toEqual([
+        {
+          actor_id: managerId,
+          action: 'CREATE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: null,
+          after_data: {
+            name: 'Yến mạch',
+            category: SupplyCategory.FEED,
+            unit: 'kg',
+            quantityOnHand: 40,
+            openingUnitPrice: 0,
+            reorderThreshold: 50,
+          },
+          reason: null,
+          feature: 'SUPPLY_ITEM',
+        },
+        {
+          actor_id: managerId,
+          action: 'UPDATE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: { reorderThreshold: 50 },
+          after_data: { reorderThreshold: 60 },
+          reason: null,
+          feature: 'SUPPLY_ITEM',
+        },
+        {
+          actor_id: groomId,
+          action: 'UPDATE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: { quantityOnHand: 40 },
+          after_data: {
+            quantityOnHand: 35,
+            used: 5,
+            usageId: expect.any(String) as unknown,
+            lots: [{ lotId: lot.id, quantity: 5, unitPrice: 0 }],
+          },
+          reason: 'Bữa sáng',
+          feature: 'SUPPLY_STOCK',
+        },
+        {
+          actor_id: managerId,
+          action: 'DELETE',
+          entity_type: 'SUPPLY_ITEM',
+          before_data: {
+            name: 'Yến mạch',
+            category: SupplyCategory.FEED,
+            unit: 'kg',
+          },
+          after_data: null,
+          reason: null,
+          feature: 'SUPPLY_ITEM',
+        },
+      ]);
+    });
+
+    it('logs a request from creation to fulfilment', async () => {
+      const managerId = await idOf(manager);
+      const groomId = await idOf(groom);
+      const item = await oats(40);
+      const request = await requests.create(groom, {
+        itemId: item.id,
+        note: 'Sắp hết',
+      });
+      await requests.edit(groom, request.id, { note: 'Hết rồi' });
+      await requests.edit(groom, request.id, { note: 'Hết rồi' });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.FULFILLED,
+        quantity: 7,
+        unitPrice: 20000,
+      });
+
+      const rows = await auditsOf(request.id);
+      expect(
+        rows.map((row) => [
+          row.actor_id,
+          row.action,
+          row.before_data,
+          row.after_data,
+        ]),
+      ).toEqual([
+        [
+          groomId,
+          'CREATE',
+          null,
+          {
+            itemId: item.id,
+            note: 'Sắp hết',
+            status: SupplyRequestStatus.PENDING,
+          },
+        ],
+        [groomId, 'UPDATE', { note: 'Sắp hết' }, { note: 'Hết rồi' }],
+        [
+          managerId,
+          'UPDATE',
+          { status: SupplyRequestStatus.PENDING },
+          { status: SupplyRequestStatus.APPROVED },
+        ],
+        [
+          managerId,
+          'UPDATE',
+          { status: SupplyRequestStatus.APPROVED },
+          {
+            status: SupplyRequestStatus.FULFILLED,
+            quantity: 7,
+            unitPrice: 20000,
+          },
+        ],
+      ]);
+      expect(
+        rows.every(
+          (row) =>
+            row.entity_type === 'SUPPLY_REQUEST' &&
+            row.feature === 'SUPPLY_REQUEST',
+        ),
+      ).toBe(true);
+    });
+
+    it('keeps the rejection reason on the audit row', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.REJECTED,
+        reason: 'Kho tổng còn đủ',
+      });
+
+      const rows = await auditsOf(request.id);
+      expect(rows[1]).toMatchObject({
+        before_data: { status: SupplyRequestStatus.PENDING },
+        after_data: { status: SupplyRequestStatus.REJECTED },
+        reason: 'Kho tổng còn đủ',
+      });
+    });
+
+    it('keeps the cancellation reason on the audit row', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.CANCELLED,
+        reason: 'Nhà cung cấp hết hàng',
+      });
+
+      const rows = await auditsOf(request.id);
+      expect(rows[2]).toMatchObject({
+        before_data: { status: SupplyRequestStatus.APPROVED },
+        after_data: { status: SupplyRequestStatus.CANCELLED },
+        reason: 'Nhà cung cấp hết hàng',
+      });
+    });
+  });
+
+  describe('unit price', () => {
+    it('keeps the price paid on each lot', async () => {
+      const item = await oats(10);
+      const fulfil = async (quantity: number, unitPrice: number) => {
+        const request = await requests.create(groom, { itemId: item.id });
+        await requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.APPROVED,
+        });
+        await requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          quantity,
+          unitPrice,
+        });
+      };
+
+      await fulfil(100, 20000);
+      await items.receive(manager, item.id, { quantity: 50, unitPrice: 25000 });
+
+      const movements = await items.movementsOf(manager, item.id, page());
+      expect(
+        movements.items.map((row) => [row.type, row.delta, row.unitPrice]),
+      ).toEqual([
+        [SupplyStockMovementType.RESTOCK, 50, 25000],
+        [SupplyStockMovementType.RESTOCK, 100, 20000],
+        [SupplyStockMovementType.OPENING, 10, 0],
+      ]);
+      expect(
+        (await items.lotsOf(manager, item.id)).map((lot) => [
+          lot.quantity,
+          lot.unitPrice,
+        ]),
+      ).toEqual([
+        [10, 0],
+        [100, 20000],
+        [50, 25000],
+      ]);
+    });
+
+    it('refuses to fulfil a request without the price paid or the quantity received', async () => {
+      const item = await oats();
+      const request = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          quantity: 5,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        requests.updateStatus(manager, request.id, {
+          status: SupplyRequestStatus.FULFILLED,
+          unitPrice: 20000,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(0);
+    });
+  });
+
+  describe('receipts and usages', () => {
+    it('adds a direct receipt with the price of the moment and logs it', async () => {
+      const item = await items.create(manager, {
+        name: 'Cám',
+        category: SupplyCategory.FEED,
+        unit: 'kg',
+        reorderThreshold: 5,
+      });
+
+      const received = await items.receive(manager, item.id, {
+        quantity: 80,
+        unitPrice: 12000,
+        note: 'Mua đợt 1',
+      });
+
+      expect(received.quantityOnHand).toBe(80);
+      const [line] = (await items.movementsOf(manager, item.id, page())).items;
+      expect(line).toMatchObject({
+        type: SupplyStockMovementType.RESTOCK,
+        delta: 80,
+        balanceAfter: 80,
+        unitPrice: 12000,
+        amount: 960000,
+        requestId: null,
+        note: 'Mua đợt 1',
+      });
+      const [audit] = await dataSource.query<
+        Array<{ before_data: unknown; after_data: unknown; reason: string }>
+      >(
+        `SELECT before_data, after_data, reason FROM audit_logs
+          WHERE entity_id = $1 AND feature = 'SUPPLY_STOCK'`,
+        [item.id],
+      );
+      expect(audit).toEqual({
+        before_data: { quantityOnHand: 0 },
+        after_data: {
+          quantityOnHand: 80,
+          received: 80,
+          unitPrice: 12000,
+          lotId: line.lotId,
+        },
+        reason: 'Mua đợt 1',
+      });
+    });
+
+    it('takes stock out at once and refuses more than what is left', async () => {
+      const item = await oats(40);
+
+      const used = await items.use(groom, item.id, {
+        quantity: 2.5,
+        note: 'Bữa sáng',
+      });
+
+      expect(used.quantityOnHand).toBe(37.5);
+      const [line] = (await items.movementsOf(manager, item.id, page())).items;
+      expect(line).toMatchObject({
+        type: SupplyStockMovementType.USAGE,
+        delta: -2.5,
+        balanceAfter: 37.5,
+        unitPrice: 0,
+        amount: 0,
+        note: 'Bữa sáng',
+      });
+      await expect(
+        items.use(groom, item.id, { quantity: 38, note: 'Dùng' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(37.5);
+    });
+
+    it('takes from the oldest lot first and splits across lots', async () => {
+      const item = await items.create(manager, {
+        name: 'Băng gạc',
+        category: SupplyCategory.EQUIPMENT,
+        unit: 'cuộn',
+        reorderThreshold: 5,
+      });
+      await items.receive(manager, item.id, { quantity: 20, unitPrice: 20000 });
+      await items.receive(manager, item.id, { quantity: 30, unitPrice: 15000 });
+
+      await items.use(groom, item.id, { quantity: 25, note: 'Dùng' });
+
+      expect(
+        (await items.lotsOf(manager, item.id)).map((lot) => [
+          lot.unitPrice,
+          lot.remaining,
+        ]),
+      ).toEqual([
+        [20000, 0],
+        [15000, 25],
+      ]);
+      const usages = (await items.movementsOf(manager, item.id, page())).items
+        .filter((row) => row.type === SupplyStockMovementType.USAGE)
+        .map((row) => [row.delta, row.unitPrice, row.amount, row.balanceAfter]);
+      expect(usages).toEqual([
+        [-5, 15000, -75000, 25],
+        [-20, 20000, -400000, 30],
+      ]);
+    });
+
+    it('answers 404 to a receipt or a lot list for a missing item, and to a receipt for a deleted one', async () => {
+      const item = await oats(5);
+      await items.remove(manager, item.id);
+
+      await expect(
+        items.receive(manager, item.id, { quantity: 1, unitPrice: 1000 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        items.receive(manager, randomUUID(), { quantity: 1, unitPrice: 1000 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(items.lotsOf(manager, randomUUID())).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(items.lotsOf(manager, item.id)).resolves.toHaveLength(1);
+    });
+  });
+
+  describe('notification events', () => {
+    const outbox = (name: string) =>
+      dataSource.query<{ payload: Record<string, unknown> }[]>(
+        'SELECT payload FROM outbox_events WHERE event_name = $1 ORDER BY created_at, id',
+        [name],
+      );
+
+    it('announces a new request and each decision on it', async () => {
+      const item = await oats(10);
+      const request = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.FULFILLED,
+        quantity: 40,
+        unitPrice: 20000,
+      });
+
+      const [created] = await outbox('supplies.request.created');
+      expect(created.payload).toMatchObject({
+        eventId: request.id,
+        requestId: request.id,
+        itemName: 'Yến mạch',
+        unit: 'kg',
+      });
+      expect(created.payload).not.toHaveProperty('quantity');
+      const changes = await outbox('supplies.request.status-changed');
+      expect(changes.map((row) => row.payload.status)).toEqual([
+        SupplyRequestStatus.APPROVED,
+        SupplyRequestStatus.FULFILLED,
+      ]);
+      expect(new Set(changes.map((row) => row.payload.eventId)).size).toBe(2);
+      expect(changes[0].payload).toMatchObject({
+        requestId: request.id,
+        quantity: null,
+        reason: null,
+      });
+      expect(changes[1].payload).toMatchObject({ quantity: 40 });
+    });
+
+    it('announces a cancellation with its reason', async () => {
+      const item = await oats(10);
+      const request = await requests.create(groom, { itemId: item.id });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.APPROVED,
+      });
+      await requests.updateStatus(manager, request.id, {
+        status: SupplyRequestStatus.CANCELLED,
+        reason: 'Nhà cung cấp hết hàng',
+      });
+
+      const changes = await outbox('supplies.request.status-changed');
+      expect(changes.map((row) => row.payload.status)).toEqual([
+        SupplyRequestStatus.APPROVED,
+        SupplyRequestStatus.CANCELLED,
+      ]);
+      expect(changes[1].payload).toMatchObject({
+        requestId: request.id,
+        quantity: null,
+        reason: 'Nhà cung cấp hết hàng',
+      });
+    });
+
+    it('warns once when a usage takes the stock down to the threshold', async () => {
+      const item = await items.create(manager, {
+        name: 'Cám',
+        category: SupplyCategory.FEED,
+        unit: 'kg',
+        quantityOnHand: 20,
+        reorderThreshold: 10,
+      });
+
+      await items.use(groom, item.id, { quantity: 5, note: 'Dùng' });
+      await items.use(groom, item.id, { quantity: 5, note: 'Dùng' });
+      await items.use(groom, item.id, { quantity: 2, note: 'Dùng' });
+
+      const warnings = await outbox('supplies.item.low-stock');
+      expect(warnings.map((row) => row.payload)).toEqual([
+        expect.objectContaining({
+          itemId: item.id,
+          itemName: 'Cám',
+          quantityOnHand: 10,
+          reorderThreshold: 10,
+        }),
+      ]);
+    });
+  });
+
+  describe('usage rules by category', () => {
+    const medicine = () =>
+      items.create(manager, {
+        name: 'Kháng sinh',
+        category: SupplyCategory.MEDICINE,
+        unit: 'lọ',
+        quantityOnHand: 10,
+        reorderThreshold: 0,
+      });
+
+    it('lets only a veterinarian or the club manager take medicine', async () => {
+      const item = await medicine();
+      const vet = await actorOf(UserRole.VETERINARIAN);
+
+      await expect(
+        items.use(groom, item.id, { quantity: 1, note: 'Cho uống' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        items.use(trainer, item.id, { quantity: 1, note: 'Cho uống' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await items.use(vet, item.id, { quantity: 1, note: 'Tiêm' });
+      await items.use(manager, item.id, { quantity: 1, note: 'Tiêm' });
+
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(8);
+    });
+
+    it('requires a note for every category, blank counts as missing', async () => {
+      const item = await oats(40);
+      const vet = await actorOf(UserRole.VETERINARIAN);
+      const drug = await medicine();
+
+      await expect(
+        items.use(groom, item.id, { quantity: 1, note: '   ' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        items.use(vet, drug.id, { quantity: 1 } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect((await items.get(manager, item.id)).quantityOnHand).toBe(40);
+      expect((await items.get(manager, drug.id)).quantityOnHand).toBe(10);
+    });
+
+    it('checks the item before the category rule, and the category before stock', async () => {
+      const item = await medicine();
+
+      await expect(
+        items.use(groom, randomUUID(), { quantity: 1, note: 'x' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        items.use(groom, item.id, { quantity: 99, note: 'x' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+});
