@@ -1,0 +1,53 @@
+services:
+  horse-be:
+    image: ${BE_IMAGE:-ghcr.io/wdp-horseracing/horse-racing-ne:latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      DB_HOST: ${DB_HOST:-horse-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-racehorse}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?racehorse}
+      DB_NAME: ${DB_NAME:-racehorse}
+      MONGO_URI: ${MONGO_URI:?horse-mongo}
+      REDIS_HOST: ${REDIS_HOST:-horse-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_USERNAME: ${REDIS_USERNAME:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?horse-redis}
+      KEYCLOAK_AUTH_SERVER_URL: https://${AUTH_DOMAIN:?horse-keycloak}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-racehorse}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:?horse-keycloak}
+      KEYCLOAK_SECRET: ${KEYCLOAK_SECRET:?horse-keycloak}
+      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI:-}
+      S3_ENDPOINT: https://${S3_DOMAIN:?horse-minio}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-racehorse-media}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:?horse-minio}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?horse-minio}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_PRESIGNED_URL_TTL_SECONDS: ${S3_PRESIGNED_URL_TTL_SECONDS:-900}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS in this stack}
+      AXIOS_TIMEOUT_MS: ${AXIOS_TIMEOUT_MS:-10000}
+      AXIOS_RETRY_COUNT: ${AXIOS_RETRY_COUNT:-3}
+      AXIOS_RETRY_BASE_DELAY_MS: ${AXIOS_RETRY_BASE_DELAY_MS:-250}
+      AXIOS_RETRY_MAX_DELAY_MS: ${AXIOS_RETRY_MAX_DELAY_MS:-5000}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/v1/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - app
+
+networks:
+  app:
+    name: racehorse-net
+    external: true
