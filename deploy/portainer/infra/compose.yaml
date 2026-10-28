@@ -24,7 +24,7 @@ services:
     image: mongo:8.0
     restart: unless-stopped
     ports:
-      - '${MONGO_HOST_PORT:-27018}:27017'
+      - '${MONGO_HOST_PORT:-27019}:27017'
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?mongo}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?mongo}
