@@ -7,6 +7,8 @@ services:
       - "443:443"
       - "443:443/udp"
     environment:
+      FE_DOMAIN: ${FE_DOMAIN:?Set FE_DOMAIN in this stack}
+      FE_UPSTREAM: ${FE_UPSTREAM:?Set FE_UPSTREAM in this stack}
       API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in this stack}
       AUTH_DOMAIN: ${AUTH_DOMAIN:?Set AUTH_DOMAIN in this stack}
       S3_DOMAIN: ${S3_DOMAIN:?Set S3_DOMAIN in this stack}

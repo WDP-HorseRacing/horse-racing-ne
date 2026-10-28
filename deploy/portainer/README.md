@@ -6,7 +6,7 @@ Các file này tạo ba stack độc lập: `infra` (PostgreSQL, MongoDB, Redis,
 
 1. Tạo `.env.production` trong từng thư mục stack từ file `.env.production.example` tương ứng, điền domain và mật khẩu thật. Các file `.env.production` được Git bỏ qua để không đưa secret lên remote.
 2. Đẩy các file compose và `.env.production.example` lên Git remote mà Portainer đọc được.
-3. Trỏ DNS `A` (và `AAAA` nếu VPS có IPv6) của bốn tên miền đến IP VPS, ví dụ `api.example.com`, `auth.example.com`, `s3.example.com`, `minio.example.com`.
+3. Trỏ DNS `A` (và `AAAA` nếu VPS có IPv6) của các tên miền đến IP VPS: `horse.io.vn`, `api.horse.io.vn`, `auth.horse.io.vn`, `s3.horse.io.vn`, và một hostname riêng cho MinIO Console, ví dụ `minio.horse.io.vn`.
 4. Mở cổng TCP `80` và `443`; có thể mở UDP `443` để Caddy dùng HTTP/3.
 5. Trong Portainer, tạo từng stack từ **Git repository**, chọn đúng branch và đường dẫn compose bên dưới. Stack `be` chỉ tham chiếu image đã được GitHub Actions publish lên GHCR; Portainer không build image từ source.
 
@@ -49,7 +49,13 @@ Mỗi stack dùng file `.env.production` riêng. Trên Portainer, nạp đúng f
 
 **caddy** — `deploy/portainer/caddy/.env.production`
 
-- `API_DOMAIN`, `AUTH_DOMAIN`, `S3_DOMAIN`, `MINIO_CONSOLE_DOMAIN` (chỉ hostname, không thêm `https://`)
+- `FE_DOMAIN=horse.io.vn`, `FE_UPSTREAM` là tên service và port của frontend trong Docker network, mặc định theo stack FE hiện tại là `horse-racing-fe:80`
+- `API_DOMAIN=api.horse.io.vn`, `AUTH_DOMAIN=auth.horse.io.vn`, `S3_DOMAIN=s3.horse.io.vn`
+- `MINIO_CONSOLE_DOMAIN=minio.horse.io.vn` (hostname riêng cho giao diện quản trị MinIO)
+
+Các domain chỉ ghi hostname, không thêm `https://`. Frontend cần tham gia Docker network `racehorse-net`; stack FE hiện tại đã khai báo alias `horse-racing-fe` và port nội bộ `80`. Caddy không khởi chạy frontend. Nếu tên service hoặc port thay đổi, cập nhật `FE_UPSTREAM` theo giá trị thực tế.
+
+Với cấu hình trên, Caddy chuyển `horse.io.vn` đến frontend, `api.horse.io.vn` đến backend, `auth.horse.io.vn` đến Keycloak, và `s3.horse.io.vn` đến MinIO S3 API. `minio.horse.io.vn` dành riêng cho MinIO Console.
 
 Caddy tự xin và gia hạn chứng chỉ TLS. Domain trong `KEYCLOAK_AUTH_SERVER_URL` và `S3_ENDPOINT` của backend được đặt thành `https://AUTH_DOMAIN` và `https://S3_DOMAIN` để issuer của Keycloak và các presigned URL dùng cùng địa chỉ công khai.
 
