@@ -44,7 +44,7 @@ Mỗi stack dùng file `.env.production` riêng. Trên Portainer, nạp đúng f
 - `S3_REGION`, `S3_FORCE_PATH_STYLE`, `S3_PRESIGNED_URL_TTL_SECONDS`
 - `CORS_ORIGINS` là origin frontend, ví dụ `https://app.example.com` (nhiều origin phân cách bằng dấu phẩy)
 - `AXIOS_TIMEOUT_MS`, `AXIOS_RETRY_COUNT`, `AXIOS_RETRY_BASE_DELAY_MS`, `AXIOS_RETRY_MAX_DELAY_MS`
-- `BE_IMAGE` trỏ tới image trên GHCR; mặc định `ghcr.io/wdp-horseracing/horse-racing-ne:latest`. Workflow publish `latest` khi push lên `master`, cùng các tag version và commit SHA.
+- `BE_IMAGE` trỏ tới image trên GHCR; mặc định `ghcr.io/wdp-horseracing/horse-racing-ne:latest`. Workflow publish `latest` khi push lên `main`, cùng các tag version và commit SHA.
 - Nếu package GHCR đang private, cấu hình registry credentials trong Portainer để Portainer có quyền pull image.
 
 **caddy** — `deploy/portainer/caddy/.env.production`
