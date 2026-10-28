@@ -2,6 +2,33 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      cat > /etc/caddy/Caddyfile <<'CADDYFILE'
+      {$$FE_DOMAIN} {
+        encode zstd gzip
+        reverse_proxy {$$FE_UPSTREAM}
+      }
+
+      {$$API_DOMAIN} {
+        encode zstd gzip
+        reverse_proxy horse-be:8000
+      }
+
+      {$$AUTH_DOMAIN} {
+        encode zstd gzip
+        reverse_proxy horse-keycloak:8080
+      }
+
+      {$$S3_DOMAIN} {
+        reverse_proxy horse-minio:9000
+      }
+
+      {$$MINIO_CONSOLE_DOMAIN} {
+        reverse_proxy horse-minio:9001
+      }
+      CADDYFILE
+      exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     ports:
       - "80:80"
       - "443:443"
@@ -14,7 +41,6 @@ services:
       S3_DOMAIN: ${S3_DOMAIN:?Set S3_DOMAIN in this stack}
       MINIO_CONSOLE_DOMAIN: ${MINIO_CONSOLE_DOMAIN:?Set MINIO_CONSOLE_DOMAIN in this stack}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
