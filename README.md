@@ -59,7 +59,7 @@ The separate `infra`, `be`, and `caddy` stacks, required environment variables, 
 
 ## GitHub CI/CD
 
-GitHub Actions runs lint, unit tests and the production build on every push and pull request. Pushes to `main` and version tags such as `v1.2.3` publish a Docker image to GitHub Container Registry (`ghcr.io/wdp-horseracing/horse-racing-ne`). The workflow uses `GITHUB_TOKEN`; enable Actions and package write access for the repository if publishing is blocked by repository settings.
+GitHub Actions runs lint, unit tests and the production build on pushes to `master` and pull requests targeting it. Pushes to `master` and version tags such as `v1.2.3` publish a Docker image to GitHub Container Registry (`ghcr.io/wdp-horseracing/horse-racing-ne`). The workflow uses `GITHUB_TOKEN`; enable Actions and package write access for the repository if publishing is blocked by repository settings.
 
 The image expects the application environment variables documented by `src/config/env.validation.ts` and a reachable PostgreSQL, MongoDB, Redis, Keycloak and S3-compatible service. The workflow publishes the image; connect GHCR to the chosen hosting platform to deploy it.
 
