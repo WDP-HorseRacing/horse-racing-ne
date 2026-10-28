@@ -233,6 +233,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
          FROM audit_logs WHERE entity_id = $1 ORDER BY created_at, id`,
       [enrolled.id],
     );
+    const anyString: unknown = expect.any(String);
     expect(rows).toEqual([
       {
         action: 'CREATE',
@@ -241,7 +242,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
         after_data: {
           classId: a.classId,
           horseId: horse,
-          enrolledAt: expect.any(String),
+          enrolledAt: anyString,
         },
         reason: null,
         feature: 'TRAIN_ENROLL',
@@ -250,7 +251,7 @@ describe('Training class queries over its sessions (Postgres)', () => {
         action: 'UPDATE',
         entity_type: 'CLASS_ENROLLMENT',
         before_data: { status: 'ACTIVE' },
-        after_data: { status: 'LEFT', leftAt: expect.any(String) },
+        after_data: { status: 'LEFT', leftAt: anyString },
         reason: 'Chuyển lớp',
         feature: 'TRAIN_ENROLL',
       },

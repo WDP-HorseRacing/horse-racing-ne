@@ -293,9 +293,9 @@ export class TrainingClassParticipantRefactor1789816000000
     await queryRunner.query(`CREATE INDEX "session_participants_horse_status_idx" ON "session_participants" ("horse_id", "status")`);
     await queryRunner.query(`CREATE INDEX "session_participants_groom_status_idx" ON "session_participants" ("assigned_groom_id", "status")`);
     await queryRunner.query(`CREATE UNIQUE INDEX "trial_results_attempt_uq" ON "trial_results" ("time_trial_id", "session_participant_id", "attempt_no")`);
-    const duplicateTimeTrials: Array<{ session_id: string }> = await queryRunner.query(
+    const duplicateTimeTrials = (await queryRunner.query(
       `SELECT "session_id" FROM "time_trials" GROUP BY "session_id" HAVING COUNT(*) > 1`,
-    );
+    )) as Array<{ session_id: string }>;
     if (duplicateTimeTrials.length === 0) {
       await queryRunner.query(`CREATE UNIQUE INDEX "time_trials_session_uq" ON "time_trials" ("session_id")`);
     }

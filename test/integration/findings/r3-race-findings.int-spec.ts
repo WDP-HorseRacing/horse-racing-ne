@@ -468,11 +468,6 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     const rounds: string[][] = [];
     for (let i = 0; i < ROUNDS; i++) {
       const { planId } = await seed.trainingClass(trainerId, { weeks: 4 });
-      const [line] = await dataSource.query<{ subject_id: string }[]>(
-        `SELECT s.subject_id FROM training_plan_subjects s
-           JOIN training_plan_phases p ON p.id = s.phase_id WHERE p.plan_id = $1`,
-        [planId],
-      );
       const code = `DUP-${i}`;
       const create = () =>
         classes.create(trainer, {
@@ -1132,11 +1127,6 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
 
   it('R3-12 class maxHorses beyond int range: rejected with a domain error, not a raw 22003', async () => {
     const { planId } = await seed.trainingClass(trainerId, { weeks: 4 });
-    const [line] = await dataSource.query<{ subject_id: string }[]>(
-      `SELECT s.subject_id FROM training_plan_subjects s
-         JOIN training_plan_phases p ON p.id = s.phase_id WHERE p.plan_id = $1`,
-      [planId],
-    );
     const outcome = await classes
       .create(trainer, {
         code: 'BIG-1',

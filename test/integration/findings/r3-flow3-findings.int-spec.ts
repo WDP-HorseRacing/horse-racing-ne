@@ -115,7 +115,9 @@ describe('R3 Flow 3 medical findings (Postgres)', () => {
     while ((await relay.relayBatch()) > 0) {
       /* tiếp tục tới khi hết */
     }
-    const failed = await dataSource.query(
+    const failed = await dataSource.query<
+      Array<{ event_name: string; last_error: string }>
+    >(
       'SELECT event_name, last_error FROM outbox_events WHERE last_error IS NOT NULL',
     );
     expect(failed).toEqual([]);
