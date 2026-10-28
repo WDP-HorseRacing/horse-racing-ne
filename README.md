@@ -38,7 +38,11 @@ For each new use case, place HTTP or socket handling in `controllers/`, orchestr
 
 Check `GET http://localhost:3000/api/v1/health` for `{ "status": "ok" }` and open `http://localhost:3000/docs` for Swagger. Database configuration is required at startup. Redis connects lazily when a feature first uses it.
 
-MinIO's S3 API is available at `http://localhost:9000` and its management console at `http://localhost:9001`. Docker Compose creates the configured `S3_BUCKET` automatically. `ObjectStorageService` exposes presigned upload/download URLs, object metadata lookup, and deletion; the Media API uses it for presigned uploads of horse photos, incident photos and trial videos.
+MinIO's S3 API is available at `http://localhost:9000` and its management console at `http://localhost:9001`. Create the configured `S3_BUCKET` in the MinIO console before using media uploads. `ObjectStorageService` exposes presigned upload/download URLs, object metadata lookup, and deletion; the Media API uses it for presigned uploads of horse photos, incident photos and trial videos.
+
+## Deploy with Portainer
+
+The separate `infra`, `be`, and `caddy` stacks, required environment variables, and domain setup are documented in [deploy/portainer/README.md](deploy/portainer/README.md).
 
 ## Commands
 
@@ -52,6 +56,12 @@ MinIO's S3 API is available at `http://localhost:9000` and its management consol
 | `pnpm db:revert`                       | Revert the last migration                             |
 | `pnpm db:generate src/migrations/Name` | Generate a migration from entity changes              |
 | `pnpm docs:api`                        | Regenerate the REST endpoint catalog from controllers |
+
+## GitHub CI/CD
+
+GitHub Actions runs lint, unit tests and the production build on every push and pull request. Pushes to `main` and version tags such as `v1.2.3` publish a Docker image to GitHub Container Registry (`ghcr.io/wdp-horseracing/horse-racing-ne`). The workflow uses `GITHUB_TOKEN`; enable Actions and package write access for the repository if publishing is blocked by repository settings.
+
+The image expects the application environment variables documented by `src/config/env.validation.ts` and a reachable PostgreSQL, MongoDB, Redis, Keycloak and S3-compatible service. The workflow publishes the image; connect GHCR to the chosen hosting platform to deploy it.
 
 The current schema is managed by the versioned migrations and documented in [docs/entity-model.md](docs/entity-model.md) and [docs/database-schema.html](docs/database-schema.html). The Socket.IO gateway verifies the access token on handshake and joins each user to the room `user:<userId>`. The HTTP route contracts are visible in Swagger; consult [docs/flow1-overview.html](docs/flow1-overview.html) and [docs/flow1-checklist.html](docs/flow1-checklist.html) for the current Flow 1 scope and remaining work.
 
