@@ -1,3 +1,8 @@
+{$FE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy {$FE_UPSTREAM}
+}
+
 {$API_DOMAIN} {
 	encode zstd gzip
 	reverse_proxy horse-be:8000
@@ -5,13 +10,13 @@
 
 {$AUTH_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy keycloak:8080
+	reverse_proxy horse-keycloak:8080
 }
 
 {$S3_DOMAIN} {
-	reverse_proxy minio:9000
+	reverse_proxy horse-minio:9000
 }
 
 {$MINIO_CONSOLE_DOMAIN} {
-	reverse_proxy minio:9001
+	reverse_proxy horse-minio:9001
 }
