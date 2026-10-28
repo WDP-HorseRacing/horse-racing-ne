@@ -1,0 +1,28 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in this stack}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:?Set AUTH_DOMAIN in this stack}
+      S3_DOMAIN: ${S3_DOMAIN:?Set S3_DOMAIN in this stack}
+      MINIO_CONSOLE_DOMAIN: ${MINIO_CONSOLE_DOMAIN:?Set MINIO_CONSOLE_DOMAIN in this stack}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  app:
+    name: racehorse-net
+    external: true
