@@ -2,6 +2,8 @@ services:
   horse-be:
     image: ${BE_IMAGE:-ghcr.io/wdp-horseracing/horse-racing-ne:latest}
     restart: unless-stopped
+    ports:
+      - '${BE_HOST_PORT:-8000}:${PORT:-8000}'
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT}
