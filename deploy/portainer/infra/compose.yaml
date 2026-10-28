@@ -2,6 +2,8 @@ services:
   horse-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    ports:
+      - '${POSTGRES_HOST_PORT:-15432}:5432'
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?postgres}
       POSTGRES_USER: ${POSTGRES_USER:?postgres}
@@ -21,6 +23,8 @@ services:
   horse-mongo:
     image: mongo:8.0
     restart: unless-stopped
+    ports:
+      - '${MONGO_HOST_PORT:-27018}:27017'
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?mongo}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?mongo}
@@ -42,6 +46,8 @@ services:
   horse-redis:
     image: redis:7-alpine
     restart: unless-stopped
+    ports:
+      - '${REDIS_HOST_PORT:-6379}:6379'
     command:
       [
         'sh',
@@ -68,6 +74,9 @@ services:
     image: netiedge/minio-mc:RELEASE.2025-01-17T23-25-50Z
     restart: unless-stopped
     command: ['server', '/data', '--console-address', ':9001']
+    ports:
+      - '${MINIO_API_HOST_PORT:-19000}:9000'
+      - '${MINIO_CONSOLE_HOST_PORT:-19001}:9001'
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?minio}
@@ -81,8 +90,10 @@ services:
     image: quay.io/keycloak/keycloak:26.8.1
     restart: unless-stopped
     command: ['start']
+    ports:
+      - '${KEYCLOAK_HOST_PORT:-8080}:8080'
     depends_on:
-      postgres:
+      horse-postgres:
         condition: service_healthy
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?keycloak}
@@ -93,6 +104,8 @@ services:
       KC_DB_URL_DATABASE: ${KC_DB_URL_DATABASE}
       KC_DB_USERNAME: ${POSTGRES_USER:?keycloak}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?keycloak}
+      KC_HOSTNAME: https://${AUTH_DOMAIN:?Set AUTH_DOMAIN in this stack}
+      KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:?Set KC_HTTP_ENABLED in this stack}
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:?Set KC_PROXY_HEADERS in this stack}
       KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED:?Set KC_HEALTH_ENABLED in this stack}
     networks:

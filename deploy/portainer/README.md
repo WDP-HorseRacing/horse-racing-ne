@@ -23,6 +23,7 @@ Mỗi stack dùng file `.env.production` riêng. Trên Portainer, nạp đúng f
 **infra** — `deploy/portainer/infra/.env.production`
 
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+- Các cổng host tùy chọn: `POSTGRES_HOST_PORT` (mặc định `15432`), `MONGO_HOST_PORT` (`27018`), `REDIS_HOST_PORT` (`6379`), `MINIO_API_HOST_PORT` (`19000`), `MINIO_CONSOLE_HOST_PORT` (`19001`), `KEYCLOAK_HOST_PORT` (`8080`). Có thể đổi nếu VPS đã dùng các cổng mặc định này.
 - `MONGO_ROOT_USERNAME`, `MONGO_ROOT_PASSWORD`
 - `REDIS_PASSWORD`
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`
@@ -34,12 +35,16 @@ Mỗi stack dùng file `.env.production` riêng. Trên Portainer, nạp đúng f
 
 **be** — `deploy/portainer/be/.env.production`
 
-- `POSTGRES_PASSWORD`, `REDIS_PASSWORD`
-- `MONGO_URI`, ví dụ `mongodb://racehorse:URL_ENCODED_PASSWORD@mongo:27017/racehorse?authSource=admin`. Mã hóa ký tự đặc biệt trong mật khẩu theo URL encoding.
+- `NODE_ENV`, `PORT`, `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_NAME` (mặc định dùng `horse-postgres:5432` trong network Docker)
+- `POSTGRES_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
+- `MONGO_URI`, ví dụ `mongodb://racehorse:URL_ENCODED_PASSWORD@horse-mongo:27017/racehorse?authSource=admin`. Mã hóa ký tự đặc biệt trong mật khẩu theo URL encoding.
 - `AUTH_DOMAIN`, `KEYCLOAK_REALM` (mặc định `racehorse`), `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_SECRET`
+- `KEYCLOAK_REDIRECT_URI` là callback công khai của API, ví dụ `https://api.example.com/api/v1/auth/oidc/google/callback`
 - `S3_DOMAIN`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`; mặc định bucket là `racehorse-media` (`S3_BUCKET` để đổi)
+- `S3_REGION`, `S3_FORCE_PATH_STYLE`, `S3_PRESIGNED_URL_TTL_SECONDS`
 - `CORS_ORIGINS` là origin frontend, ví dụ `https://app.example.com` (nhiều origin phân cách bằng dấu phẩy)
-- `BE_IMAGE` trỏ tới image trên GHCR; mặc định `ghcr.io/wdp-horseracing/horse-racing-ne:latest`. Workflow publish `latest` khi push lên `main`, cùng các tag version và commit SHA.
+- `AXIOS_TIMEOUT_MS`, `AXIOS_RETRY_COUNT`, `AXIOS_RETRY_BASE_DELAY_MS`, `AXIOS_RETRY_MAX_DELAY_MS`
+- `BE_IMAGE` trỏ tới image trên GHCR; mặc định `ghcr.io/wdp-horseracing/horse-racing-ne:latest`. Workflow publish `latest` khi push lên `master`, cùng các tag version và commit SHA.
 - Nếu package GHCR đang private, cấu hình registry credentials trong Portainer để Portainer có quyền pull image.
 
 **caddy** — `deploy/portainer/caddy/.env.production`
