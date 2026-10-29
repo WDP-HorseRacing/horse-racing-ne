@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../../common/infrastructure/events/outbox.constants';
 import {
   CHECKLIST_GENERATION_FAILED_EVENT,
   CHECKLIST_GENERATION_RECOVERED_EVENT,
-} from '../../stable/constants/stable-events.constants';
+} from '../../../../stable/constants/stable-events.constants';
 import type {
   ChecklistGenerationFailedEvent,
   ChecklistGenerationRecoveredEvent,
-} from '../../stable/types/stable-events.types';
-import { HorseNotificationsService } from './horse-notifications.service';
+} from '../../../../stable/types/stable-events.types';
+import { HorseNotificationsService } from '../../horses/horse-notifications.service';
 
 @Injectable()
 export class ChecklistGenerationListener {
