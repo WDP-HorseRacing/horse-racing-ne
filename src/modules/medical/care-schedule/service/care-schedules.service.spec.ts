@@ -4,15 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../constants/care-schedule.enum';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { MedicalAccessService } from '../shared/medical-access.service';
+} from '../../constant/care-schedule.enum';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
 import { CareSchedulesService } from './care-schedules.service';
 
 type Row = Record<string, unknown>;

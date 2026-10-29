@@ -4,21 +4,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../constants/care-schedule.enum';
-import { CheckupDueStatus } from '../constants/checkup.enum';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { addDays } from '../policies/medical.policy';
-import { toClubDate } from '../../../common/utils/date/club-date';
-import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+} from '../../constant/care-schedule.enum';
+import { CheckupDueStatus } from '../../constant/checkup.enum';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { addDays } from '../../policy/medical.policy';
+import { toClubDate } from '../../../../common/utils/date/club-date';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
 import { CheckupsService } from './checkups.service';
 
 type Row = Record<string, unknown>;

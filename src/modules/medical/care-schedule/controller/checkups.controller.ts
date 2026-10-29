@@ -17,17 +17,17 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Access, CurrentUser } from '../../../common/decorators';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
+import { Access, CurrentUser } from '../../../../common/decorators';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
 import {
   CancelCareScheduleDto,
   CheckupAppointmentDto,
   CheckupItemDto,
   CheckupListQueryDto,
   SetCheckupAppointmentDto,
-} from '../dto';
-import { CheckupsService } from './checkups.service';
+} from '../../dto';
+import { CheckupsService } from '../service/checkups.service';
 
 @ApiTags('medical')
 @ApiBearerAuth()

@@ -1,5 +1,5 @@
-import { ACCESS_KEY } from '../../../common/constants/auth.constants';
-import { UserRole } from '../../../common/enums/role.enum';
+import { ACCESS_KEY } from '../../../../common/constants/auth.constants';
+import { UserRole } from '../../../../common/enums/role.enum';
 import { CareSchedulesController } from './care-schedules.controller';
 
 /**

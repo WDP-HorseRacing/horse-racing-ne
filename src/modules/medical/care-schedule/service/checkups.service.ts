@@ -1,32 +1,32 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import type { Actor } from '../../../common/types/actor';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../constants/care-schedule.enum';
+} from '../../constant/care-schedule.enum';
 import {
   CancelCareScheduleDto,
   CheckupAppointmentDto,
   CheckupItemDto,
   CheckupListQueryDto,
   SetCheckupAppointmentDto,
-} from '../dto';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { toCheckupAppointment } from '../mappers/medical.mapper';
+} from '../../dto';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { toCheckupAppointment } from '../../mapper/medical.mapper';
 import {
   assertAppointmentDate,
   assertRescheduleReason,
   checkupStateOf,
-} from '../policies/medical.policy';
-import { toClubDate } from '../../../common/utils/date/club-date';
-import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
+} from '../../policy/medical.policy';
+import { toClubDate } from '../../../../common/utils/date/club-date';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
+import { MEDICAL_AUDIT_FEATURE } from '../../constant/medical.constants';
 
 @Injectable()
 export class CheckupsService {
