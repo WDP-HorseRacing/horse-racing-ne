@@ -1,11 +1,11 @@
-import { UserRole } from '../../../common/enums/role.enum';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
-import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationResourceType } from '../enums/notification-resource-type.enum';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import { NotificationRecipientsRepository } from './notification-recipients.repository';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
+import { ExamRequestStatus } from '../../../medical/constants/exam-request.enum';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationResourceType } from '../../enums/notification-resource-type.enum';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import { NotificationRecipientsRepository } from '../shared/notification-recipients.repository';
 import type {
   ExamRequestHandledEvent,
   HealthChangedEvent,
@@ -14,10 +14,10 @@ import type {
   MedicalCaseOpenedEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
-} from '../../medical/types/medical-events.types';
-import type { NotificationDraft } from '../types/notification.types';
+} from '../../../medical/types/medical-events.types';
+import type { NotificationDraft } from '../../types/notification.types';
 import { MedicalNotificationsService } from './medical-notifications.service';
-import { NotificationDeliveryService } from './notification-delivery.service';
+import { NotificationDeliveryService } from '../shared/notification-delivery.service';
 
 describe('MedicalNotificationsService', () => {
   let recipients: {

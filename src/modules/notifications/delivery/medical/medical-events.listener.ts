@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
   MEDICAL_CASE_CANCELLED_EVENT,
@@ -16,7 +16,7 @@ import {
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
   MEDICAL_VISIT_COST_ADJUSTED_EVENT,
-} from '../../medical/constants/medical-events.constants';
+} from '../../../medical/constants/medical-events.constants';
 import type {
   CareScheduleDueEvent,
   CheckupAppointmentDueEvent,
@@ -32,7 +32,7 @@ import type {
   TrainingLockKeptEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
-} from '../../medical/types/medical-events.types';
+} from '../../../medical/types/medical-events.types';
 import { MedicalNotificationsService } from './medical-notifications.service';
 
 @Injectable()

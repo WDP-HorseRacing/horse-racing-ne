@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UserRole } from '../../../common/enums/role.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
 import {
   formatClubDateTime,
   toClubDate,
   toDisplayDate,
-} from '../../../common/utils/club-date';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
-import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
+} from '../../../../common/utils/club-date';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
+import { ExamRequestStatus } from '../../../medical/constants/exam-request.enum';
 import type {
   CareScheduleDueEvent,
   CheckupAppointmentDueEvent,
@@ -24,15 +24,15 @@ import type {
   TrainingLockKeptEvent,
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
-} from '../../medical/types/medical-events.types';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationResourceType } from '../enums/notification-resource-type.enum';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import { NotificationRecipientsRepository } from './notification-recipients.repository';
-import type { HorseMedicalContact } from '../types/notification.types';
-import type { NotificationResource } from '../schemas/notification.schema';
-import { horseResource } from '../mappers/notification.mapper';
-import { NotificationDeliveryService } from './notification-delivery.service';
+} from '../../../medical/types/medical-events.types';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationResourceType } from '../../enums/notification-resource-type.enum';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import { NotificationRecipientsRepository } from '../shared/notification-recipients.repository';
+import type { HorseMedicalContact } from '../../types/notification.types';
+import type { NotificationResource } from '../../schemas/notification.schema';
+import { horseResource } from '../../mappers/notification.mapper';
+import { NotificationDeliveryService } from '../shared/notification-delivery.service';
 
 /**
  * Event y tế mà thông báo dựa vào.
