@@ -9,15 +9,15 @@ import {
   MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
-} from '../constants/medical-events.constants';
-import { CheckupDueStatus } from '../constants/checkup.enum';
+} from '../constant/medical-events.constants';
+import { CheckupDueStatus } from '../constant/checkup.enum';
 import {
   checkupDueDate,
   dueStatusOf,
   isOverdueNotifiable,
-} from '../policies/medical.policy';
+} from '../policy/medical.policy';
 import { toClubDate } from '../../../common/utils/date/club-date';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { MedicalCheckupsService } from '../shared/queries/medical-checkups.service';
 import type {
   CareScheduleDueEvent,
   CheckupAppointmentDueEvent,

@@ -4,8 +4,8 @@ import {
   MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
   MEDICAL_CHECKUP_OVERDUE_EVENT,
-} from '../constants/medical-events.constants';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+} from '../constant/medical-events.constants';
+import { MedicalCheckupsService } from '../shared/queries/medical-checkups.service';
 import { MedicalRemindersService } from './medical-reminders.service';
 
 const manager = { tag: 'default-manager' };
