@@ -1,7 +1,7 @@
 import { UserRole } from '../../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
-import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
-import { ExamRequestStatus } from '../../../medical/constants/exam-request.enum';
+import { CareScheduleType } from '../../../medical/constant/care-schedule.enum';
+import { ExamRequestStatus } from '../../../medical/constant/exam-request.enum';
 import { NotificationPriority } from '../../enums/notification-priority.enum';
 import { NotificationResourceType } from '../../enums/notification-resource-type.enum';
 import { NotificationCategory } from '../../enums/notification-category.enum';
@@ -415,6 +415,7 @@ describe('MedicalNotificationsService', () => {
           incidentId: 'i1',
           outcome,
           dismissReason:
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
             outcome === ExamRequestStatus.DISMISSED ? 'Không cần' : null,
         });
         expect(recipients.findIncidentReporterId).toHaveBeenCalledWith('i1');

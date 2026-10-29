@@ -10,7 +10,7 @@ import {
   MEDICAL_HEALTH_CHANGED_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
-} from '../../../medical/constants/medical-events.constants';
+} from '../../../medical/constant/medical-events.constants';
 import type {
   HealthChangedEvent,
   TrainingLockReleasedEvent,

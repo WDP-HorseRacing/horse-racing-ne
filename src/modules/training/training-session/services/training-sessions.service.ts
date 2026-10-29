@@ -17,8 +17,8 @@ import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum
 import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
 import { AuditService } from '../../../audit/services/audit.service';
 import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
-import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
-import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
+import { TrainingLockEntity } from '../../../medical/entity/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constant/training-lock.enum';
 import { evaluateEligibility } from '../../../horses/policies/horse.policy';
 import {
   CancelTrainingSessionDto,

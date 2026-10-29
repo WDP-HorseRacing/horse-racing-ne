@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { MedicalCaseStatus } from '../../medical/constants/medical-case.enum';
+import { MedicalCaseStatus } from '../../medical/constant/medical-case.enum';
 import type {
   HorseHealthRows,
   HorseProgressRow,

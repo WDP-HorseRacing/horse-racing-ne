@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import type { MedicalExamRequestEntity } from '../../medical/entities/medical-exam-request.entity';
+import type { MedicalExamRequestEntity } from '../../medical/entity/medical-exam-request.entity';
 import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
 import { IncidentResponseDto } from '../dto/incident.dto';
 import type { IncidentEntity } from '../entities/incident.entity';

@@ -6,8 +6,8 @@ import {
   toDisplayDate,
 } from '../../../../common/utils/date/club-date';
 import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
-import { CareScheduleType } from '../../../medical/constants/care-schedule.enum';
-import { ExamRequestStatus } from '../../../medical/constants/exam-request.enum';
+import { CareScheduleType } from '../../../medical/constant/care-schedule.enum';
+import { ExamRequestStatus } from '../../../medical/constant/exam-request.enum';
 import type {
   CareScheduleDueEvent,
   CheckupAppointmentDueEvent,

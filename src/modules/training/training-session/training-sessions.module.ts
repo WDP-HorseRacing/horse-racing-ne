@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../../audit/audit.module';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { MediaModule } from '../../media/media.module';
-import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
+import { TrainingLockEntity } from '../../medical/entity/training-lock.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../entities/session-participant.entity';

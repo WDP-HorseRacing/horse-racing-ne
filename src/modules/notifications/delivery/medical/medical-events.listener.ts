@@ -16,7 +16,7 @@ import {
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
   MEDICAL_VISIT_COST_ADJUSTED_EVENT,
-} from '../../../medical/constants/medical-events.constants';
+} from '../../../medical/constant/medical-events.constants';
 import type {
   CareScheduleDueEvent,
   CheckupAppointmentDueEvent,

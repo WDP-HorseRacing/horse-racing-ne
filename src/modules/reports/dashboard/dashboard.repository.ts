@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
 import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
 import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
+import { TrainingLockStatus } from '../../medical/constant/training-lock.enum';
 import { TrainingSessionStatus } from '../../training/enums/training-session-status.enum';
 import type {
   DashboardHorseFilter,

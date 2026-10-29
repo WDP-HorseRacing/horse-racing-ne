@@ -7,7 +7,7 @@ import { clubToday } from '../../../common/utils/date/club-date';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
-import { MedicalLifecycleService } from '../../medical/shared/medical-lifecycle.service';
+import { MedicalLifecycleService } from '../../medical/shared/lifecycle/medical-lifecycle.service';
 import { TrainingLockService } from '../../medical/training-locks/training-locks.service';
 import { RaceRegistrationsRepository } from '../../racing/race-registrations/race-registrations.repository';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';

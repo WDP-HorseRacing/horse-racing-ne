@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
+import { ExamRequestStatus } from '../../medical/constant/exam-request.enum';
 import { IncidentStatus } from '../constants/incident-status.enum';
 import {
   assertIncidentNotReferred,

@@ -7,8 +7,8 @@ import {
 import { DataSource, EntityManager, In, IsNull } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
+import { TrainingLockStatus } from '../../medical/constant/training-lock.enum';
+import { TrainingLockEntity } from '../../medical/entity/training-lock.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import {

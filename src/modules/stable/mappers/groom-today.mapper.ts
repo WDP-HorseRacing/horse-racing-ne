@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import type { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
+import type { CareScheduleEntity } from '../../medical/entity/care-schedule.entity';
 import type { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 import type { DailyChecklistResponseDto } from '../dto/daily-checklist.dto';
 import type { FeedingPlanResponseDto } from '../dto/feeding-plan.dto';

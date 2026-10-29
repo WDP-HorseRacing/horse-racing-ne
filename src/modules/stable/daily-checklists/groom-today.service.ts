@@ -17,8 +17,8 @@ import {
 import {
   CareScheduleStatus,
   VET_APPOINTMENT_TYPES,
-} from '../../medical/constants/care-schedule.enum';
-import { CareScheduleEntity } from '../../medical/entities/care-schedule.entity';
+} from '../../medical/constant/care-schedule.enum';
+import { CareScheduleEntity } from '../../medical/entity/care-schedule.entity';
 import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
 import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import { TrainingSessionStatus } from '../../training/enums/training-session-status.enum';

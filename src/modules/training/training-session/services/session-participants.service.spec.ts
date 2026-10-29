@@ -5,8 +5,8 @@ import { DomainEventPublisher } from '../../../../common/infrastructure/events/d
 import type { Actor } from '../../../../common/types/actor';
 import type { MediaService } from '../../../media/services/media.service';
 import { UserEntity } from '../../../users/entities/user.entity';
-import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
-import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constant/training-lock.enum';
+import { TrainingLockEntity } from '../../../medical/entity/training-lock.entity';
 import { SessionParticipantEntity } from '../../entities/session-participant.entity';
 import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
 import { TrainingAccessService } from '../../shared/training-access.service';
