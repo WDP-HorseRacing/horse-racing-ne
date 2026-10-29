@@ -3,8 +3,8 @@ import { DataSource, IsNull } from 'typeorm';
 import { UserRole } from '../../../common/enums/role.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
+import { RecoveryStatus } from '../constant/injury-marker.enum';
+import { InjuryMarkerEntity } from '../entity/injury-marker.entity';
 import { InjuryCasesService } from './injury-cases.service';
 
 function actorWith(role: UserRole): Actor {

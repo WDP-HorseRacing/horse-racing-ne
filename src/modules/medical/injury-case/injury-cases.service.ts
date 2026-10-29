@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, IsNull } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
+import { RecoveryStatus } from '../constant/injury-marker.enum';
 import { InjuryListQueryDto } from '../dto/injury-query.dto';
 import { InjuryResponseDto } from '../dto/injury-marker.response.dto';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { toInjuryResponses } from '../mappers/medical.mapper';
+import { InjuryMarkerEntity } from '../entity/injury-marker.entity';
+import { toInjuryResponses } from '../mapper/medical.mapper';
 
 @Injectable()
 export class InjuryCasesService {
