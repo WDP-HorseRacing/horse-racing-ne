@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { BarnEntity } from '../../stable/entities/barn.entity';
-import { IncidentEntity } from '../../stable/entities/incident.entity';
-import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
-import { TrainingClassEntity } from '../../training/entities/training-class.entity';
-import { UserEntity } from '../../users/entities/user.entity';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { UserStatus } from '../../../../common/enums/user-status.enum';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { BarnEntity } from '../../../stable/entities/barn.entity';
+import { IncidentEntity } from '../../../stable/entities/incident.entity';
+import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
+import { TrainingClassEntity } from '../../../training/entities/training-class.entity';
+import { UserEntity } from '../../../users/entities/user.entity';
 import type {
   BarnContact,
   ClassHeadTrainer,
   HorseBarnContact,
   HorseMedicalContact,
-} from '../types/notification.types';
+} from '../../types/notification.types';
 
 @Injectable()
 export class NotificationRecipientsRepository {

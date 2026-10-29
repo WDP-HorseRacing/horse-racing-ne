@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RealtimeGateway } from '../../realtime/realtime.gateway';
-import { NOTIFICATION_CREATED_SOCKET_EVENT } from '../constants/notification.constants';
-import { toNotificationCreatedPayload } from '../mappers/notification.mapper';
-import type { NotificationRecord } from '../schemas/notification.schema';
-import type { NotificationChannel } from '../types/notification.types';
+import { RealtimeGateway } from '../../../../realtime/realtime.gateway';
+import { NOTIFICATION_CREATED_SOCKET_EVENT } from '../../../constants/notification.constants';
+import { toNotificationCreatedPayload } from '../../../mappers/notification.mapper';
+import type { NotificationRecord } from '../../../schemas/notification.schema';
+import type { NotificationChannel } from '../../../types/notification.types';
 
 @Injectable()
 export class RealtimeChannel implements NotificationChannel {

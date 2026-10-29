@@ -1,7 +1,7 @@
-import type { RealtimeGateway } from '../../realtime/realtime.gateway';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import type { NotificationRecord } from '../schemas/notification.schema';
+import type { RealtimeGateway } from '../../../../realtime/realtime.gateway';
+import { NotificationPriority } from '../../../enums/notification-priority.enum';
+import { NotificationCategory } from '../../../enums/notification-category.enum';
+import type { NotificationRecord } from '../../../schemas/notification.schema';
 import { RealtimeChannel } from './realtime.channel';
 
 const notification = (id: string, recipientId: string): NotificationRecord => ({

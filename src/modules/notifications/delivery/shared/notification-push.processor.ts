@@ -4,13 +4,13 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Job } from 'bullmq';
 import type { Messaging } from 'firebase-admin/messaging';
 import type { Model } from 'mongoose';
-import { FIREBASE_MESSAGING } from '../../../common/infrastructure/firebase/firebase.token';
-import { NOTIFICATION_PUSH_QUEUE } from '../constants/notification.constants';
-import { toPushMessage } from '../mappers/notification.mapper';
-import { classifyPushFailures } from '../policies/notification-push.policy';
-import { NotificationRecord } from '../schemas/notification.schema';
-import { UserDevice } from '../schemas/user-device.schema';
-import type { NotificationPushJob } from '../types/notification.types';
+import { FIREBASE_MESSAGING } from '../../../../common/infrastructure/firebase/firebase.token';
+import { NOTIFICATION_PUSH_QUEUE } from '../../constants/notification.constants';
+import { toPushMessage } from '../../mappers/notification.mapper';
+import { classifyPushFailures } from '../../policies/notification-push.policy';
+import { NotificationRecord } from '../../schemas/notification.schema';
+import { UserDevice } from '../../schemas/user-device.schema';
+import type { NotificationPushJob } from '../../types/notification.types';
 
 @Processor(NOTIFICATION_PUSH_QUEUE)
 export class NotificationPushProcessor extends WorkerHost {

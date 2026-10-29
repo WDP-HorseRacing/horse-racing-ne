@@ -4,12 +4,12 @@ import type { Queue } from 'bullmq';
 import {
   NOTIFICATION_PUSH_JOB,
   NOTIFICATION_PUSH_QUEUE,
-} from '../constants/notification.constants';
-import type { NotificationRecord } from '../schemas/notification.schema';
+} from '../../../constants/notification.constants';
+import type { NotificationRecord } from '../../../schemas/notification.schema';
 import type {
   NotificationChannel,
   NotificationPushJob,
-} from '../types/notification.types';
+} from '../../../types/notification.types';
 
 /**
  * Số lần thử tối đa của một job gửi push.

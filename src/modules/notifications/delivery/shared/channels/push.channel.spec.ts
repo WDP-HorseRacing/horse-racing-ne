@@ -1,6 +1,6 @@
 import type { Queue } from 'bullmq';
-import type { NotificationRecord } from '../schemas/notification.schema';
-import type { NotificationPushJob } from '../types/notification.types';
+import type { NotificationRecord } from '../../../schemas/notification.schema';
+import type { NotificationPushJob } from '../../../types/notification.types';
 import { PushChannel } from './push.channel';
 
 describe('PushChannel.deliver', () => {

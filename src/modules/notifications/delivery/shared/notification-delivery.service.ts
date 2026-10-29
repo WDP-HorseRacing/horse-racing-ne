@@ -2,15 +2,15 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
-import { NotificationRecord } from '../schemas/notification.schema';
+import { NotificationRecord } from '../../schemas/notification.schema';
 import {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_PUSH_CHANNEL,
-} from '../constants/notification.constants';
+} from '../../constants/notification.constants';
 import type {
   NotificationChannel,
   NotificationDraft,
-} from '../types/notification.types';
+} from '../../types/notification.types';
 
 @Injectable()
 export class NotificationDeliveryService {

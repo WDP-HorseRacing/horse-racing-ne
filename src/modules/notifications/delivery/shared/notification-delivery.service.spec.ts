@@ -1,8 +1,8 @@
 import type { Model } from 'mongoose';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationResourceType } from '../enums/notification-resource-type.enum';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import type { NotificationRecord } from '../schemas/notification.schema';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationResourceType } from '../../enums/notification-resource-type.enum';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import type { NotificationRecord } from '../../schemas/notification.schema';
 import { NotificationDeliveryService } from './notification-delivery.service';
 
 function setup(
