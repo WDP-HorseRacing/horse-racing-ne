@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
@@ -11,7 +9,6 @@ import type { SessionParticipantEntity } from '../../training/entities/session-p
 import { TrainingAccessService } from '../../training/shared/training-access.service';
 import {
   DEFAULT_THRESHOLD_LIMITS,
-  PARTICIPANT_METRIC_LIMIT,
   PERFORMANCE_METRIC_CRITICAL_EVENT,
   PERFORMANCE_METRICS_SOCKET_EVENT,
   SPEED_SCALE,
@@ -30,20 +27,15 @@ import {
 import {
   assertParticipantRecording,
   classifyMetric,
+  highestAlertLevel,
   isPlausibleMetric,
+  uniqueBySourceAndTime,
 } from '../policies/performance.policy';
-import { PerformanceMetric } from '../schemas/performance-metric.schema';
 import type {
   ClassifiedMetric,
-  ParticipantMetricAggregate,
   PerformanceMetricCriticalEvent,
 } from '../types/performance.types';
-
-const ALERT_RANK: Record<MetricAlertLevel, number> = {
-  [MetricAlertLevel.NORMAL]: 0,
-  [MetricAlertLevel.WARNING]: 1,
-  [MetricAlertLevel.CRITICAL]: 2,
-};
+import { PerformanceMetricsRepository } from './performance-metrics.repository';
 
 /**
  * Nhận điểm đo nhịp tim/tốc độ từ thiết bị (hoặc script giả lập) cho một lượt tập
@@ -51,8 +43,7 @@ const ALERT_RANK: Record<MetricAlertLevel, number> = {
 @Injectable()
 export class PerformanceMetricsService {
   constructor(
-    @InjectModel(PerformanceMetric.name)
-    private readonly metrics: Model<PerformanceMetric>,
+    private readonly metrics: PerformanceMetricsRepository,
     private readonly trainingAccess: TrainingAccessService,
     private readonly events: DomainEventPublisher,
     private readonly realtime: RealtimeGateway,
@@ -103,26 +94,11 @@ export class PerformanceMetricsService {
         DEFAULT_THRESHOLD_LIMITS,
       ),
     }));
-    const fresh = await this.withoutStored(
+    const fresh = await this.metrics.findUnstored(
       participantId,
       uniqueBySourceAndTime(classified),
     );
-    if (fresh.length > 0) {
-      await this.metrics.insertMany(
-        fresh.map((point) => ({
-          recordedAt: point.recordedAt,
-          meta: {
-            horseId: participant.horseId,
-            sessionParticipantId: participant.id,
-            sessionId: participant.sessionId,
-            sourceId: point.sourceId,
-          },
-          heartRateBpm: point.heartRateBpm,
-          speedMps: Types.Decimal128.fromString(point.speedMps),
-          alertLevel: point.alertLevel,
-        })),
-      );
-    }
+    await this.metrics.insertForParticipant(participant, fresh);
     const critical = classified.find(
       (point) => point.alertLevel === MetricAlertLevel.CRITICAL,
     );
@@ -172,13 +148,9 @@ export class PerformanceMetricsService {
     participantId: string,
   ): Promise<PerformanceMetricPointDto[]> {
     await this.trainingAccess.assertCanReadParticipant(actor, participantId);
-    const rows = await this.metrics
-      .find({ 'meta.sessionParticipantId': participantId })
-      .sort({ recordedAt: -1 })
-      .limit(PARTICIPANT_METRIC_LIMIT)
-      .lean<PerformanceMetric[]>()
-      .exec();
-    return rows.reverse().map(toMetricPoint);
+    return (await this.metrics.listForParticipant(participantId)).map(
+      toMetricPoint,
+    );
   }
 
   /**
@@ -197,82 +169,8 @@ export class PerformanceMetricsService {
     participantId: string,
   ): Promise<ParticipantPerformanceSummaryDto> {
     await this.trainingAccess.assertCanReadParticipant(actor, participantId);
-    const [group] = await this.metrics.aggregate<{
-      count: number;
-      sumHeartRateBpm: number;
-      maxHeartRateBpm: number;
-      sumSpeedMps: Types.Decimal128;
-      maxSpeedMps: Types.Decimal128;
-      warningCount: number;
-      criticalCount: number;
-      firstRecordedAt: Date;
-      lastRecordedAt: Date;
-    }>([
-      { $match: { 'meta.sessionParticipantId': participantId } },
-      {
-        $group: {
-          _id: null,
-          count: { $sum: 1 },
-          sumHeartRateBpm: { $sum: '$heartRateBpm' },
-          maxHeartRateBpm: { $max: '$heartRateBpm' },
-          sumSpeedMps: { $sum: '$speedMps' },
-          maxSpeedMps: { $max: '$speedMps' },
-          warningCount: {
-            $sum: {
-              $cond: [{ $eq: ['$alertLevel', MetricAlertLevel.WARNING] }, 1, 0],
-            },
-          },
-          criticalCount: {
-            $sum: {
-              $cond: [
-                { $eq: ['$alertLevel', MetricAlertLevel.CRITICAL] },
-                1,
-                0,
-              ],
-            },
-          },
-          firstRecordedAt: { $min: '$recordedAt' },
-          lastRecordedAt: { $max: '$recordedAt' },
-        },
-      },
-    ]);
-    const aggregate: ParticipantMetricAggregate | null = group
-      ? {
-          ...group,
-          sumSpeedMps: group.sumSpeedMps.toString(),
-          maxSpeedMps: group.maxSpeedMps.toString(),
-        }
-      : null;
+    const aggregate = await this.metrics.summarizeParticipant(participantId);
     return toParticipantPerformanceSummary(participantId, aggregate);
-  }
-
-  /**
-   * Bỏ các điểm đo đã lưu trước đó (cùng lượt tập, cùng cảm biến, cùng thời điểm đo)
-   *
-   * @param participantId UUID của lượt tập
-   * @param points Các điểm đo đã bỏ trùng trong lô
-   * @returns Promise trả về các điểm đo chưa có trong collection
-   */
-  private async withoutStored(
-    participantId: string,
-    points: ClassifiedMetric[],
-  ): Promise<ClassifiedMetric[]> {
-    if (points.length === 0) return [];
-    const stored = await this.metrics
-      .find(
-        {
-          'meta.sessionParticipantId': participantId,
-          recordedAt: { $in: points.map((point) => point.recordedAt) },
-        },
-        { recordedAt: 1, 'meta.sourceId': 1 },
-      )
-      .lean<Array<{ recordedAt: Date; meta: { sourceId: string } }>>();
-    const storedKeys = new Set(
-      stored.map((row) => metricKey(row.meta.sourceId, row.recordedAt)),
-    );
-    return points.filter(
-      (point) => !storedKeys.has(metricKey(point.sourceId, point.recordedAt)),
-    );
   }
 
   /**
@@ -304,47 +202,4 @@ export class PerformanceMetricsService {
       event,
     );
   }
-}
-
-/**
- * Bỏ các điểm đo trùng cảm biến và thời điểm đo trong cùng một lô, giữ điểm đầu tiên
- *
- * @param points Các điểm đo trong lô
- * @returns Các điểm đo không trùng, giữ thứ tự gửi lên
- */
-function uniqueBySourceAndTime(points: ClassifiedMetric[]): ClassifiedMetric[] {
-  const seen = new Set<string>();
-  return points.filter((point) => {
-    const key = metricKey(point.sourceId, point.recordedAt);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-/**
- * Tạo khóa chống trùng của một điểm đo
- *
- * @param sourceId Mã cảm biến
- * @param recordedAt Thời điểm đo
- * @returns Chuỗi khóa ghép cảm biến và thời điểm đo
- */
-function metricKey(sourceId: string, recordedAt: Date): string {
-  return `${sourceId}|${recordedAt.toISOString()}`;
-}
-
-/**
- * Lấy mức cảnh báo cao nhất trong các điểm đo
- *
- * @param points Các điểm đo
- * @returns Mức cao nhất, NORMAL nếu không có điểm nào
- */
-function highestAlertLevel(points: ClassifiedMetric[]): MetricAlertLevel {
-  return points.reduce(
-    (highest, point) =>
-      ALERT_RANK[point.alertLevel] > ALERT_RANK[highest]
-        ? point.alertLevel
-        : highest,
-    MetricAlertLevel.NORMAL,
-  );
 }

@@ -5,7 +5,16 @@ import {
   METRIC_CLOCK_SKEW_MS,
 } from '../constants/performance.constants';
 import { MetricAlertLevel } from '../enums/metric-alert-level.enum';
-import type { ThresholdLimits } from '../types/performance.types';
+import type {
+  ClassifiedMetric,
+  ThresholdLimits,
+} from '../types/performance.types';
+
+const ALERT_RANK: Record<MetricAlertLevel, number> = {
+  [MetricAlertLevel.NORMAL]: 0,
+  [MetricAlertLevel.WARNING]: 1,
+  [MetricAlertLevel.CRITICAL]: 2,
+};
 
 /**
  * Chỉ nhận điểm đo khi lượt tập đang diễn ra
@@ -74,4 +83,35 @@ export function classifyMetric(
     return MetricAlertLevel.WARNING;
   }
   return MetricAlertLevel.NORMAL;
+}
+
+/** Bỏ điểm trùng trong cùng lô, giữ lần xuất hiện đầu của cảm biến và thời điểm. */
+export function uniqueBySourceAndTime(
+  points: ClassifiedMetric[],
+): ClassifiedMetric[] {
+  const seen = new Set<string>();
+  return points.filter((point) => {
+    const key = metricIdentity(point.sourceId, point.recordedAt);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** Tạo khóa dùng chung để so điểm trong lô với điểm đã lưu. */
+export function metricIdentity(sourceId: string, recordedAt: Date): string {
+  return `${sourceId}|${recordedAt.toISOString()}`;
+}
+
+/** Lấy mức cảnh báo cao nhất; trả NORMAL nếu lô không có điểm đo. */
+export function highestAlertLevel(
+  points: ClassifiedMetric[],
+): MetricAlertLevel {
+  return points.reduce(
+    (highest, point) =>
+      ALERT_RANK[point.alertLevel] > ALERT_RANK[highest]
+        ? point.alertLevel
+        : highest,
+    MetricAlertLevel.NORMAL,
+  );
 }
