@@ -1,6 +1,6 @@
-import { ACCESS_KEY } from '../../../common/constants/auth.constants';
-import { UserRole } from '../../../common/enums/role.enum';
-import { InjuryCasesController } from '../injury-cases/injury-cases.controller';
+import { ACCESS_KEY } from '../../../../common/constants/auth.constants';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { InjuryCasesController } from '../../injury-case/injury-cases.controller';
 import { MedicalCasesController } from './medical-cases.controller';
 import { MedicalRecordsController } from './medical-records.controller';
 

@@ -4,36 +4,36 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
-import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
-import type { HorseStatusesService } from '../../horses/horse-statuses/horse-statuses.service';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
+import { HorseOwnershipService } from '../../../horses/shared/horse-ownership.service';
+import type { HorseStatusesService } from '../../../horses/horse-statuses/horse-statuses.service';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
 import {
   CaseLockDecision,
   MedicalCaseStatus,
-} from '../constants/medical-case.enum';
+} from '../../constant/medical-case.enum';
 import {
   MEDICAL_CASE_CLOSED_EVENT,
   MEDICAL_TRAINING_LOCK_KEPT_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
-} from '../constants/medical-events.constants';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { PrescriptionEntity } from '../entities/prescription.entity';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
-import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalCasesRepository } from './medical-cases.repository';
+} from '../../constant/medical-events.constants';
+import { RecoveryStatus } from '../../constant/injury-marker.enum';
+import { TrainingLockStatus } from '../../constant/training-lock.enum';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import { InjuryMarkerEntity } from '../../entity/injury-marker.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { PrescriptionEntity } from '../../entity/prescription.entity';
+import { TrainingLockEntity } from '../../entity/training-lock.entity';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
+import { MedicalCasesRepository } from '../repositories/medical-cases.repository';
 import { MedicalCasesService } from './medical-cases.service';
 import { MedicalRecordsService } from './medical-records.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
+import { TrainingLockWritesService } from '../../shared/writes/training-lock-writes.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
+import { CareScheduleWritesService } from '../../shared/writes/care-schedule-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -311,7 +311,9 @@ describe('MedicalCasesService', () => {
     });
 
     it('answers not found for a horse outside the caller scope', async () => {
-      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(
         service.listCases(actorWith(UserRole.HORSE_OWNER), 'h9', {}),
       ).rejects.toThrow(NotFoundException);
@@ -328,7 +330,9 @@ describe('MedicalCasesService', () => {
     });
 
     it('answers not found when the horse of the case is outside the caller scope', async () => {
-      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(service.getCase(vet, 'case-1')).rejects.toThrow(
         NotFoundException,
       );
@@ -345,7 +349,9 @@ describe('MedicalCasesService', () => {
     });
 
     it('answers not found when the horse of the case is outside the caller scope', async () => {
-      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(service.closePreview(vet, 'case-1')).rejects.toThrow(
         NotFoundException,
       );

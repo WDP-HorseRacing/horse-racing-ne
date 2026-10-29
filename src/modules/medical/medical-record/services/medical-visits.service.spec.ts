@@ -5,50 +5,50 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
-import { HorseMeasurementsService } from '../../horses/horse-measurements/horse-measurements.service';
-import { HorseHealthService } from '../../horses/shared/horse-health.service';
-import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseMeasurementType } from '../../../horses/enums/horse-measurement-type.enum';
+import { HorseMeasurementsService } from '../../../horses/horse-measurements/horse-measurements.service';
+import { HorseHealthService } from '../../../horses/shared/horse-health.service';
+import { HorseOwnershipService } from '../../../horses/shared/horse-ownership.service';
+import { CareScheduleStatus } from '../../constant/care-schedule.enum';
 import {
   InjuryBodyRegion,
   InjuryType,
   RecoveryStatus,
-} from '../constants/injury-marker.enum';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+} from '../../constant/injury-marker.enum';
+import { ExamRequestStatus } from '../../constant/exam-request.enum';
+import { MedicalCaseStatus } from '../../constant/medical-case.enum';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
   MEDICAL_VISIT_COST_ADJUSTED_EVENT,
-} from '../constants/medical-events.constants';
+} from '../../constant/medical-events.constants';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
-} from '../constants/medical-events.constants';
+} from '../../constant/medical-events.constants';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../constants/medical-visit.enum';
-import { CreateStandaloneVisitDto } from '../dto';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
-import { MedicalAccessService } from '../shared/medical-access.service';
+} from '../../constant/medical-visit.enum';
+import { CreateStandaloneVisitDto } from '../../dto';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { TrainingLockEntity } from '../../entity/training-lock.entity';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
 import { MedicalVisitsService } from './medical-visits.service';
-import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
-import { ExamRequestWritesService } from '../shared/exam-request-writes.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+import { CareScheduleWritesService } from '../../shared/writes/care-schedule-writes.service';
+import { ExamRequestWritesService } from '../../shared/writes/exam-request-writes.service';
+import { TrainingLockWritesService } from '../../shared/writes/training-lock-writes.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
 
 type Row = Record<string, unknown>;
 

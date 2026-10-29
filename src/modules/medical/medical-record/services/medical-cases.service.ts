@@ -6,26 +6,26 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { DataSource, IsNull, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HorseStatusesService } from '../../horses/horse-statuses/horse-statuses.service';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseStatusesService } from '../../../horses/horse-statuses/horse-statuses.service';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
+import { HorseOwnershipService } from '../../../horses/shared/horse-ownership.service';
+import { ExamRequestStatus } from '../../constant/exam-request.enum';
 import {
   CaseLockDecision,
   MedicalCaseStatus,
-} from '../constants/medical-case.enum';
+} from '../../constant/medical-case.enum';
 import {
   MEDICAL_CASE_CLOSED_EVENT,
   MEDICAL_TRAINING_LOCK_KEPT_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
-} from '../constants/medical-events.constants';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
+} from '../../constant/medical-events.constants';
+import { TrainingLockStatus } from '../../constant/training-lock.enum';
 import {
   CloseMedicalCaseDto,
   CorrectCaseConclusionDto,
@@ -36,16 +36,16 @@ import {
   MedicalCaseResponseDto,
   MedicalCostReportQueryDto,
   MedicalCostReportResponseDto,
-} from '../dto';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
+} from '../../dto';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { TrainingLockEntity } from '../../entity/training-lock.entity';
 import {
   toCaseActiveLock,
   toMedicalCaseResponse,
   toMedicalCostReport,
-} from '../mappers/medical.mapper';
+} from '../../mapper/medical.mapper';
 import {
   assertCaseConclusionCorrectable,
   assertCaseOpen,
@@ -55,19 +55,19 @@ import {
   canSeeDosage,
   resolveLockOnClose,
   visibleVisitCost,
-} from '../policies/medical.policy';
-import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
-import { MedicalAccessService } from '../shared/medical-access.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
-import type { MedicalCostViewer } from '../types/medical-cost.types';
+} from '../../policy/medical.policy';
+import { CareScheduleWritesService } from '../../shared/writes/care-schedule-writes.service';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
+import { TrainingLockWritesService } from '../../shared/writes/training-lock-writes.service';
+import type { MedicalCostViewer } from '../../types/medical-cost.types';
 import type {
   MedicalCaseClosedEvent,
   TrainingLockKeptEvent,
   TrainingLockReleasedEvent,
-} from '../types/medical-events.types';
-import { MedicalCasesRepository } from './medical-cases.repository';
+} from '../../types/medical-events.types';
+import { MedicalCasesRepository } from '../repositories/medical-cases.repository';
 import { MedicalRecordsService } from './medical-records.service';
-import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
+import { MEDICAL_AUDIT_FEATURE } from '../../constant/medical.constants';
 
 /**
  * Quyền xem chi phí đầy đủ, dùng khi cộng tổng chi phí của cả bệnh án.

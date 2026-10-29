@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { CLUB_TIME_ZONE } from '../../../common/constants';
+import { CLUB_TIME_ZONE } from '../../../../common/constants';
 
 /**
  * Một dòng báo cáo chi phí, đọc thô từ DB (tổng chi phí dạng chuỗi).

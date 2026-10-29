@@ -1,14 +1,14 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { PrescriptionEntity } from '../entities/prescription.entity';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
+import { HorseOwnershipService } from '../../../horses/shared/horse-ownership.service';
+import { InjuryMarkerEntity } from '../../entity/injury-marker.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { PrescriptionEntity } from '../../entity/prescription.entity';
 import { MedicalRecordsService } from './medical-records.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
 
 function actorWith(role: UserRole): Actor {
   return { sub: `kc-${role}`, roles: [role] };
@@ -323,7 +323,9 @@ describe('MedicalRecordsService.getCareInstructions', () => {
   });
 
   it('answers 404 for a horse outside the caller scope', async () => {
-    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(
+      new NotFoundException(),
+    );
     await expect(
       service.getCareInstructions(actorWith(UserRole.GROOM), 'h9'),
     ).rejects.toThrow(NotFoundException);

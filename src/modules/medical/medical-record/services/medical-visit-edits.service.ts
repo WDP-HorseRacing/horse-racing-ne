@@ -10,49 +10,49 @@ import {
   Not,
   Repository,
 } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HorseMeasurementsService } from '../../horses/horse-measurements/horse-measurements.service';
-import { HorseHealthService } from '../../horses/shared/horse-health.service';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseMeasurementsService } from '../../../horses/horse-measurements/horse-measurements.service';
+import { HorseHealthService } from '../../../horses/shared/horse-health.service';
+import { ExamRequestStatus } from '../../constant/exam-request.enum';
+import { RecoveryStatus } from '../../constant/injury-marker.enum';
+import { MedicalCaseStatus } from '../../constant/medical-case.enum';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
-} from '../constants/medical-events.constants';
+} from '../../constant/medical-events.constants';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
   VisitEditHealthOutcome,
-} from '../constants/medical-visit.enum';
+} from '../../constant/medical-visit.enum';
 import {
   DETACHED_ALERT_REQUEST_REASON,
   MEDICAL_AUDIT_FEATURE,
   VISIT_EDIT_AUTHOR_ONLY_MESSAGE,
-} from '../constants/medical.constants';
-import { EditMedicalRecordResponseDto, UpdateMedicalVisitDto } from '../dto';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { InjuryEntity } from '../entities/injury.entity';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { PrescriptionEntity } from '../entities/prescription.entity';
-import { toMedicalRecordResponse } from '../mappers/medical.mapper';
-import { toEditMedicalRecordResponse } from '../mappers/medical-visit-edit.mapper';
+} from '../../constant/medical.constants';
+import { EditMedicalRecordResponseDto, UpdateMedicalVisitDto } from '../../dto';
+import { InjuryMarkerEntity } from '../../entity/injury-marker.entity';
+import { InjuryEntity } from '../../entity/injury.entity';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { PrescriptionEntity } from '../../entity/prescription.entity';
+import { toMedicalRecordResponse } from '../../mapper/medical.mapper';
+import { toEditMedicalRecordResponse } from '../../mapper/medical-visit-edit.mapper';
 import {
   assertNextVisitAt,
   assertPrescriptionDates,
   assertRequestsAttachable,
   assertStandaloneVisitInput,
   assertVisitAuthor,
-} from '../policies/medical.policy';
+} from '../../policy/medical.policy';
 import {
   assertCaseCancellableByEdit,
   assertCaseOpenableByEdit,
@@ -65,15 +65,15 @@ import {
   ConclusionChange,
   resolveConclusionChange,
   resolveEditHealth,
-} from '../policies/medical-visit-edit.policy';
-import { MedicalAccessService } from '../shared/medical-access.service';
+} from '../../policy/medical-visit-edit.policy';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
 import type {
   MedicalCaseCancelledEvent,
   MedicalCaseOpenedEvent,
-} from '../types/medical-events.types';
-import type { LaterHealthChange } from '../types/medical-visit.types';
-import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+} from '../../types/medical-events.types';
+import type { LaterHealthChange } from '../../types/medical-visit.types';
+import { CareScheduleWritesService } from '../../shared/writes/care-schedule-writes.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
 
 /**

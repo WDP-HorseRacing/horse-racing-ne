@@ -1,34 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { EntityManager } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HealthStatusChange } from '../../horses/shared/horse-health.service';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HealthStatusChange } from '../../../horses/shared/horse-health.service';
+import { ExamRequestStatus } from '../../constant/exam-request.enum';
+import { MedicalCaseStatus } from '../../constant/medical-case.enum';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
-} from '../constants/medical-events.constants';
-import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
+} from '../../constant/medical-events.constants';
+import { MEDICAL_AUDIT_FEATURE } from '../../constant/medical.constants';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
 import {
   ExamRequestWritesService,
   examRequestHandledEvent,
-} from '../shared/exam-request-writes.service';
-import { MedicalAccessService } from '../shared/medical-access.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+} from '../../shared/writes/exam-request-writes.service';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
+import { TrainingLockWritesService } from '../../shared/writes/training-lock-writes.service';
 import type {
   ExamRequestReopenedEvent,
   HealthChangedEvent,
-} from '../types/medical-events.types';
+} from '../../types/medical-events.types';
 
 /**
  * Các bước ghi dùng chung giữa ghi, hủy và sửa buổi khám: mở, hủy bệnh án, gắn, trả yêu cầu khám, event đổi sức khỏe. Luôn chạy trong transaction của nơi gọi.

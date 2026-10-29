@@ -14,9 +14,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Access, CurrentUser } from '../../../common/decorators';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
+import { Access, CurrentUser } from '../../../../common/decorators';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
 import {
   AdjustVisitCostDto,
   CareInstructionsResponseDto,
@@ -26,11 +26,11 @@ import {
   UpdateMedicalVisitDto,
   VoidMedicalRecordDto,
   VoidMedicalRecordResponseDto,
-} from '../dto';
-import { MedicalRecordsService } from './medical-records.service';
-import { MedicalVisitEditsService } from './medical-visit-edits.service';
-import { MedicalVisitsService } from './medical-visits.service';
-import { MEDICAL_READER_ROLES } from '../constants/medical.constants';
+} from '../../dto';
+import { MedicalRecordsService } from '../services/medical-records.service';
+import { MedicalVisitEditsService } from '../services/medical-visit-edits.service';
+import { MedicalVisitsService } from '../services/medical-visits.service';
+import { MEDICAL_READER_ROLES } from '../../constant/medical.constants';
 
 @ApiTags('medical')
 @ApiBearerAuth()

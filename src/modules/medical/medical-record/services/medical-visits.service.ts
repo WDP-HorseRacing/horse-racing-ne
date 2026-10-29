@@ -1,4 +1,4 @@
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,32 +10,32 @@ import {
   Not,
   Repository,
 } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HorseMeasurementsService } from '../../horses/horse-measurements/horse-measurements.service';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseMeasurementsService } from '../../../horses/horse-measurements/horse-measurements.service';
 import {
   HealthStatusChange,
   HorseHealthService,
-} from '../../horses/shared/horse-health.service';
-import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
-import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
-import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
+} from '../../../horses/shared/horse-health.service';
+import { HorseOwnershipService } from '../../../horses/shared/horse-ownership.service';
+import { ownershipAt } from '../../../horses/policies/horse-ownership.policy';
+import type { HorseMeasurementAlertEvent } from '../../../horses/types/horse.types';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
   MEDICAL_VISIT_COST_ADJUSTED_EVENT,
-} from '../constants/medical-events.constants';
-import { VisitVoidAction } from '../constants/medical-case.enum';
+} from '../../constant/medical-events.constants';
+import { VisitVoidAction } from '../../constant/medical-case.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
   VisitVoidHealthOutcome,
-} from '../constants/medical-visit.enum';
+} from '../../constant/medical-visit.enum';
 import {
   AdjustVisitCostDto,
   CreateFollowUpVisitDto,
@@ -44,18 +44,18 @@ import {
   MedicalVisitBaseDto,
   VoidMedicalRecordDto,
   VoidMedicalRecordResponseDto,
-} from '../dto';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { InjuryEntity } from '../entities/injury.entity';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { PrescriptionEntity } from '../entities/prescription.entity';
+} from '../../dto';
+import { InjuryMarkerEntity } from '../../entity/injury-marker.entity';
+import { InjuryEntity } from '../../entity/injury.entity';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { PrescriptionEntity } from '../../entity/prescription.entity';
 import {
   costOfVisit,
   toMedicalRecordResponse,
   toVoidMedicalRecordResponse,
-} from '../mappers/medical.mapper';
+} from '../../mapper/medical.mapper';
 import {
   assertCaseOpen,
   assertHealthChangeReason,
@@ -70,22 +70,22 @@ import {
   assertVisitAuthor,
   resolveVisitVoid,
   resolveVoidHealth,
-} from '../policies/medical.policy';
-import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
-import { MedicalAccessService } from '../shared/medical-access.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+} from '../../policy/medical.policy';
+import { CareScheduleWritesService } from '../../shared/writes/care-schedule-writes.service';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
 import type {
   MedicalCaseCancelledEvent,
   MedicalCaseOpenedEvent,
   MedicalVisitCostAdjustedEvent,
-} from '../types/medical-events.types';
+} from '../../types/medical-events.types';
 import {
   DUPLICATE_ALERT_REQUEST_REASON,
   MEDICAL_AUDIT_FEATURE,
   VISIT_COST_AUTHOR_ONLY_MESSAGE,
   VISIT_VOID_AUTHOR_ONLY_MESSAGE,
-} from '../constants/medical.constants';
+} from '../../constant/medical.constants';
 
 /**
  * Bối cảnh ghi một buổi khám, đã qua mọi kiểm tra.

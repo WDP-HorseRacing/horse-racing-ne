@@ -5,21 +5,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
-import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { HorseMeasurementsService } from '../../horses/horse-measurements/horse-measurements.service';
-import { HorseHealthService } from '../../horses/shared/horse-health.service';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
+import { HorseHealthStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseMeasurementsService } from '../../../horses/horse-measurements/horse-measurements.service';
+import { HorseHealthService } from '../../../horses/shared/horse-health.service';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../constants/medical-visit.enum';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { MedicalAccessService } from '../shared/medical-access.service';
+} from '../../constant/medical-visit.enum';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { MedicalAccessService } from '../../shared/access/medical-access.service';
 import { MedicalVisitEditsService } from './medical-visit-edits.service';
 import { MedicalVisitWritesService } from './medical-visit-writes.service';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import { CareScheduleWritesService } from '../shared/care-schedule-writes.service';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
+import { CareScheduleWritesService } from '../../shared/writes/care-schedule-writes.service';
 
 type Row = Record<string, unknown>;
 

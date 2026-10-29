@@ -5,26 +5,26 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
-import type { Actor } from '../../../common/types/actor';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { HorseOwnershipService } from '../../horses/shared/horse-ownership.service';
-import { CareInstructionsResponseDto } from '../dto/care-instructions.response.dto';
-import { MedicalRecordResponseDto } from '../dto/medical-record.response.dto';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { PrescriptionEntity } from '../entities/prescription.entity';
+import type { Actor } from '../../../../common/types/actor';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
+import { HorseOwnershipService } from '../../../horses/shared/horse-ownership.service';
+import { CareInstructionsResponseDto } from '../../dto/care-instructions.response.dto';
+import { MedicalRecordResponseDto } from '../../dto/medical-record.response.dto';
+import { InjuryMarkerEntity } from '../../entity/injury-marker.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { PrescriptionEntity } from '../../entity/prescription.entity';
 import {
   toCareInstructionsResponse,
   toMedicalRecordResponse,
-} from '../mappers/medical.mapper';
+} from '../../mapper/medical.mapper';
 import {
   canSeeDosage,
   canSeeMedicalCost,
   isGroomOnly,
   isVisitCostHidden,
-} from '../policies/medical.policy';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
-import type { MedicalCostViewer } from '../types/medical-cost.types';
+} from '../../policy/medical.policy';
+import { MedicalCheckupsService } from '../../shared/queries/medical-checkups.service';
+import type { MedicalCostViewer } from '../../types/medical-cost.types';
 
 @Injectable()
 export class MedicalRecordsService {
