@@ -11,12 +11,12 @@ import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
-} from '../constants/medical-events.constants';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
-import { MedicalAccessService } from '../shared/medical-access.service';
+} from '../constant/medical-events.constants';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
+import { TrainingLockEntity } from '../entity/training-lock.entity';
+import { MedicalAccessService } from '../shared/access/medical-access.service';
 import { TrainingLockService } from './training-locks.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+import { TrainingLockWritesService } from '../shared/writes/training-lock-writes.service';
 
 type Row = Record<string, unknown>;
 
@@ -74,7 +74,9 @@ describe('TrainingLockService set and release', () => {
       }),
       findOpenCase: shared.findOpenCase,
     };
-    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = {
+      findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }),
+    };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     events = { publish: jest.fn().mockResolvedValue(undefined) };
     service = new TrainingLockService(
@@ -212,7 +214,9 @@ describe('TrainingLockService set and release', () => {
     });
 
     it('answers not found when the horse of the lock is outside the caller scope', async () => {
-      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(service.getLock(vet, 'lock-1')).rejects.toThrow(
         NotFoundException,
       );
@@ -220,7 +224,10 @@ describe('TrainingLockService set and release', () => {
 
     it('returns the lock of a readable horse', async () => {
       const result = await service.getLock(vet, 'lock-1');
-      expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(vet, 'h1');
+      expect(horseAccess.findReadableHorseForActor).toHaveBeenCalledWith(
+        vet,
+        'h1',
+      );
       expect(result).toMatchObject({
         id: 'lock-1',
         status: TrainingLockStatus.ACTIVE,
@@ -230,7 +237,9 @@ describe('TrainingLockService set and release', () => {
 
   describe('listByHorse', () => {
     it('answers not found for a horse outside the caller scope', async () => {
-      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(
         service.listByHorse(
           { sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] },
