@@ -4,19 +4,19 @@ import {
   formatClubDateTime,
   toClubDate,
   toDisplayDate,
-} from '../../../common/utils/club-date';
-import { UserRole } from '../../../common/enums/role.enum';
+} from '../../../../common/utils/club-date';
+import { UserRole } from '../../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../../horses/enums/horse-measurement-alert.enum';
+} from '../../../horses/enums/horse-measurement-alert.enum';
 import {
   HORSE_LIFECYCLE_LABELS,
   WEIGHT_DROP_WINDOW_DAYS,
-} from '../../horses/constants/horse.constants';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { formatMeasurement } from '../../horses/utils/measurement-format';
+} from '../../../horses/constants/horse.constants';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { formatMeasurement } from '../../../horses/utils/measurement-format';
 import type {
   HorseBarnAssignedEvent,
   HorseDeceasedEvent,
@@ -25,8 +25,8 @@ import type {
   HorseOwnershipTransferredEvent,
   HorseOwnerAssignedEvent,
   HorseMeasurementAlertEvent,
-} from '../../horses/types/horse.types';
-import { HorseCareTaskMode } from '../../stable/constants/horse-care-task-mode.enum';
+} from '../../../horses/types/horse.types';
+import { HorseCareTaskMode } from '../../../stable/constants/horse-care-task-mode.enum';
 import type {
   CareTaskChangedEvent,
   ChecklistGenerationFailedEvent,
@@ -37,17 +37,17 @@ import type {
   IncidentReportedEvent,
   IncidentStaleEvent,
   StallHorseMovedEvent,
-} from '../../stable/types/stable-events.types';
-import type { SurchargeAddedEvent } from '../../billing/types/billing-events.types';
+} from '../../../stable/types/stable-events.types';
+import type { SurchargeAddedEvent } from '../../../billing/types/billing-events.types';
 import type {
   TrainingRunGroomAssignedEvent,
   TrainingSessionCancelledEvent,
-} from '../../training/types/training-session.types';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import { horseResource } from '../mappers/notification.mapper';
-import { NotificationRecipientsRepository } from './notification-recipients.repository';
-import { NotificationDeliveryService } from './notification-delivery.service';
+} from '../../../training/types/training-session.types';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import { horseResource } from '../../mappers/notification.mapper';
+import { NotificationRecipientsRepository } from '../shared/notification-recipients.repository';
+import { NotificationDeliveryService } from '../shared/notification-delivery.service';
 
 @Injectable()
 export class HorseNotificationsService {

@@ -1,20 +1,20 @@
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
 import { DataSource } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
 import {
   HorseMeasurementAlert,
   HorseMeasurementAlertSeverity,
-} from '../../horses/enums/horse-measurement-alert.enum';
-import { HORSE_MEASUREMENT_SPECS } from '../../horses/constants/horse.constants';
-import { HorseMeasurementSource } from '../../horses/enums/horse-measurement-source.enum';
-import { HorseMeasurementType } from '../../horses/enums/horse-measurement-type.enum';
-import type { HorseMeasurementAlertEvent } from '../../horses/types/horse.types';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationResourceType } from '../enums/notification-resource-type.enum';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import { NotificationRecipientsRepository } from './notification-recipients.repository';
+} from '../../../horses/enums/horse-measurement-alert.enum';
+import { HORSE_MEASUREMENT_SPECS } from '../../../horses/constants/horse.constants';
+import { HorseMeasurementSource } from '../../../horses/enums/horse-measurement-source.enum';
+import { HorseMeasurementType } from '../../../horses/enums/horse-measurement-type.enum';
+import type { HorseMeasurementAlertEvent } from '../../../horses/types/horse.types';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationResourceType } from '../../enums/notification-resource-type.enum';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import { NotificationRecipientsRepository } from '../shared/notification-recipients.repository';
 import { HorseNotificationsService } from './horse-notifications.service';
-import { NotificationDeliveryService } from './notification-delivery.service';
+import { NotificationDeliveryService } from '../shared/notification-delivery.service';
 
 function setup() {
   const recipients = {

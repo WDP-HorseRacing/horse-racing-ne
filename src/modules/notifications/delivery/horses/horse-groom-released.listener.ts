@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
-import { HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT } from '../../horses/constants/horse.constants';
-import type { HorseGroomReleasedEvent } from '../../horses/types/horse.types';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
+import { HORSE_GROOM_RELEASED_BY_TRANSFER_EVENT } from '../../../horses/constants/horse.constants';
+import type { HorseGroomReleasedEvent } from '../../../horses/types/horse.types';
 import { HorseNotificationsService } from './horse-notifications.service';
 
 @Injectable()
