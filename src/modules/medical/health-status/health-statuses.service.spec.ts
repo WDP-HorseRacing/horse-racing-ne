@@ -9,8 +9,8 @@ import type { Actor } from '../../../common/types/actor';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { HorseHealthService } from '../../horses/shared/horse-health.service';
-import { MEDICAL_HEALTH_CHANGED_EVENT } from '../constants/medical-events.constants';
-import { MedicalAccessService } from '../shared/medical-access.service';
+import { MEDICAL_HEALTH_CHANGED_EVENT } from '../constant/medical-events.constants';
+import { MedicalAccessService } from '../shared/access/medical-access.service';
 import { HealthStatusesRepository } from './health-statuses.repository';
 import { HealthStatusesService } from './health-statuses.service';
 
@@ -44,7 +44,9 @@ describe('HealthStatusesService', () => {
       }),
       exposedHorses: jest.fn().mockResolvedValue([exposed]),
     };
-    horseAccess = { findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }) };
+    horseAccess = {
+      findReadableHorseForActor: jest.fn().mockResolvedValue({ id: 'h1' }),
+    };
     horseHealth = {
       applyHealthStatus: jest.fn(
         (_m: unknown, input: { to: HorseHealthStatus }) =>
@@ -142,7 +144,9 @@ describe('HealthStatusesService', () => {
   });
 
   it('answers not found for the history of a horse outside the caller scope', async () => {
-    horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+    horseAccess.findReadableHorseForActor.mockRejectedValue(
+      new NotFoundException(),
+    );
     await expect(
       service.history({ sub: 'kc-owner', roles: [UserRole.HORSE_OWNER] }, 'h9'),
     ).rejects.toThrow(NotFoundException);

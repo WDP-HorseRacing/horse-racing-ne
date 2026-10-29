@@ -21,7 +21,7 @@ import {
   UpdateHealthStatusDto,
 } from '../dto';
 import { HealthStatusesService } from './health-statuses.service';
-import { MEDICAL_READER_ROLES } from '../constants/medical.constants';
+import { MEDICAL_READER_ROLES } from '../constant/medical.constants';
 
 @ApiTags('medical')
 @ApiBearerAuth()

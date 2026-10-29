@@ -6,21 +6,21 @@ import type { Actor } from '../../../common/types/actor';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { HorseHealthService } from '../../horses/shared/horse-health.service';
-import { MEDICAL_HEALTH_CHANGED_EVENT } from '../constants/medical-events.constants';
+import { MEDICAL_HEALTH_CHANGED_EVENT } from '../constant/medical-events.constants';
 import {
   HealthHistoryItemDto,
   HealthStatusChangeResponseDto,
   UpdateHealthStatusDto,
 } from '../dto';
-import { assertHealthChangeReason } from '../policies/medical.policy';
-import { MedicalAccessService } from '../shared/medical-access.service';
+import { assertHealthChangeReason } from '../policy/medical.policy';
+import { MedicalAccessService } from '../shared/access/medical-access.service';
 import type { HealthChangedEvent } from '../types/medical-events.types';
 import { HealthStatusesRepository } from './health-statuses.repository';
 import {
   toHealthHistoryItem,
   toHealthStatusChangeResponse,
-} from '../mappers/medical.mapper';
-import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
+} from '../mapper/medical.mapper';
+import { MEDICAL_AUDIT_FEATURE } from '../constant/medical.constants';
 
 @Injectable()
 export class HealthStatusesService {
