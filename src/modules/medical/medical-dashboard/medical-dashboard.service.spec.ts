@@ -3,8 +3,8 @@ import { UserRole } from '../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { StableAccessService } from '../../stable/shared/stable-access.service';
-import { CheckupDueStatus } from '../constants/checkup.enum';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { CheckupDueStatus } from '../constant/checkup.enum';
+import { MedicalCheckupsService } from '../shared/queries/medical-checkups.service';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';
 import { MedicalDashboardService } from './medical-dashboard.service';
 
