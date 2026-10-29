@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '../../../common/enums/role.enum';
-import { SupplyRequestStatus } from '../../supplies/enums/supply-request-status.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { SupplyRequestStatus } from '../../../supplies/enums/supply-request-status.enum';
 import type {
   SupplyLowStockEvent,
   SupplyRequestCreatedEvent,
   SupplyRequestStatusChangedEvent,
-} from '../../supplies/types/supply-events.types';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationDeliveryService } from './notification-delivery.service';
-import { NotificationRecipientsRepository } from './notification-recipients.repository';
+} from '../../../supplies/types/supply-events.types';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationDeliveryService } from '../shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../shared/notification-recipients.repository';
 
 const STATUS_TITLES: Partial<Record<SupplyRequestStatus, string>> = {
   [SupplyRequestStatus.APPROVED]: 'Đề xuất bổ sung đã được duyệt',

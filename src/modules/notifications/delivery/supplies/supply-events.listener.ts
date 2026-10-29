@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
 import {
   SUPPLY_LOW_STOCK_EVENT,
   SUPPLY_REQUEST_CREATED_EVENT,
   SUPPLY_REQUEST_STATUS_CHANGED_EVENT,
-} from '../../supplies/constants/supply-events.constants';
+} from '../../../supplies/constants/supply-events.constants';
 import type {
   SupplyLowStockEvent,
   SupplyRequestCreatedEvent,
   SupplyRequestStatusChangedEvent,
-} from '../../supplies/types/supply-events.types';
+} from '../../../supplies/types/supply-events.types';
 import { SupplyNotificationsService } from './supply-notifications.service';
 
 @Injectable()

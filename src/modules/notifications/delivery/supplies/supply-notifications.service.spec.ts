@@ -1,8 +1,8 @@
-import { SupplyRequestStatus } from '../../supplies/enums/supply-request-status.enum';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationDeliveryService } from './notification-delivery.service';
-import { NotificationRecipientsRepository } from './notification-recipients.repository';
+import { SupplyRequestStatus } from '../../../supplies/enums/supply-request-status.enum';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationDeliveryService } from '../shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../shared/notification-recipients.repository';
 import { SupplyNotificationsService } from './supply-notifications.service';
 
 describe('SupplyNotificationsService', () => {
