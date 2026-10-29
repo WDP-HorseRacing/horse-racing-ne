@@ -7,12 +7,12 @@ import type {
   IncidentHandledEvent,
   StallHorseMovedEvent,
 } from '../../stable/types/stable-events.types';
-import { HorseNotificationsService } from './horse-notifications.service';
-import { GroomAssignmentChangedListener } from './groom-assignment-changed.listener';
-import { HorseBarnAssignedListener } from './horse-barn-assigned.listener';
-import { HorseGroomReleasedListener } from './horse-groom-released.listener';
-import { IncidentHandledListener } from './incident-handled.listener';
-import { StallHorseMovedListener } from './stall-horse-moved.listener';
+import { HorseNotificationsService } from './horses/horse-notifications.service';
+import { GroomAssignmentChangedListener } from './stable/assignments/groom-assignment-changed.listener';
+import { HorseBarnAssignedListener } from './horses/horse-barn-assigned.listener';
+import { HorseGroomReleasedListener } from './horses/horse-groom-released.listener';
+import { IncidentHandledListener } from './stable/incidents/incident-handled.listener';
+import { StallHorseMovedListener } from './stable/assignments/stall-horse-moved.listener';
 
 const barnAssigned: HorseBarnAssignedEvent = {
   eventId: 'e1',
