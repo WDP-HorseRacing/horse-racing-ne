@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
 
 /**
  * Một lệnh khóa huấn luyện.

@@ -1,5 +1,5 @@
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { CareScheduleStatus } from '../constant/care-schedule.enum';
+import { MedicalCaseStatus } from '../constant/medical-case.enum';
 import { FOLLOW_UP_CANCEL_REASONS, followUpStateOf } from './follow-up.policy';
 
 const visit = (id: string, day: number, vetId = 'vet-1') => ({

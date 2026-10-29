@@ -1,11 +1,11 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { RecoveryStatus } from '../constant/injury-marker.enum';
+import { MedicalCaseStatus } from '../constant/medical-case.enum';
 import {
   MedicalVisitConclusion,
   VisitEditHealthOutcome,
-} from '../constants/medical-visit.enum';
+} from '../constant/medical-visit.enum';
 
 /**
  * Việc với bệnh án khi sửa kết luận của buổi khám ngoài bệnh án.

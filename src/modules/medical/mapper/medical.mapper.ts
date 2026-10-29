@@ -1,5 +1,5 @@
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
+import { ExamRequestStatus } from '../constant/exam-request.enum';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
 import { CareInstructionsResponseDto } from '../dto/care-instructions.response.dto';
 import { CareScheduleResponseDto } from '../dto/care-schedule.response.dto';
 import { CheckupAppointmentDto } from '../dto/checkup.dto';
@@ -28,19 +28,19 @@ import {
   MedicalRecordResponseDto,
   VoidMedicalRecordResponseDto,
 } from '../dto/medical-record.response.dto';
-import { VisitVoidHealthOutcome } from '../constants/medical-visit.enum';
+import { VisitVoidHealthOutcome } from '../constant/medical-visit.enum';
 import type { LaterHealthChange } from '../types/medical-visit.types';
 import { PrescriptionResponseDto } from '../dto/prescription.response.dto';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { InjuryMarkerEntity } from '../entities/injury-marker.entity';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { PrescriptionEntity } from '../entities/prescription.entity';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
-import type { HealthHistoryRow } from '../health-statuses/health-statuses.repository';
-import type { MedicalCostReportRow } from '../medical-records/medical-cases.repository';
-import { healthPriority } from '../policies/medical.policy';
+import { CareScheduleEntity } from '../entity/care-schedule.entity';
+import { InjuryMarkerEntity } from '../entity/injury-marker.entity';
+import { MedicalCaseEntity } from '../entity/medical-case.entity';
+import { MedicalExamRequestEntity } from '../entity/medical-exam-request.entity';
+import { MedicalRecordEntity } from '../entity/medical-record.entity';
+import { PrescriptionEntity } from '../entity/prescription.entity';
+import { TrainingLockEntity } from '../entity/training-lock.entity';
+import type { HealthHistoryRow } from '../health-status/health-statuses.repository';
+import type { MedicalCostReportRow } from '../medical-record/repositories/medical-cases.repository';
+import { healthPriority } from '../policy/medical.policy';
 import type { HorseCheckupAnchorRow } from '../types/medical-checkup.types';
 import type { HealthStatusChange } from '../../horses/shared/horse-health.service';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';

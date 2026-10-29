@@ -15,7 +15,7 @@ import { HorseMeasurementAlert } from '../../horses/enums/horse-measurement-aler
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../constants/exam-request.enum';
+} from '../constant/exam-request.enum';
 import { trimValue } from '../../../common/utils/validation/dto-input';
 
 /**

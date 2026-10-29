@@ -1,8 +1,8 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
-import { InjuryBodyRegion, InjuryType } from '../constants/injury-marker.enum';
-import type { InjuryPosition } from '../constants/injury-marker.enum';
+import { InjuryBodyRegion, InjuryType } from '../constant/injury-marker.enum';
+import type { InjuryPosition } from '../constant/injury-marker.enum';
 import { MedicalRecordEntity } from './medical-record.entity';
 
 /**

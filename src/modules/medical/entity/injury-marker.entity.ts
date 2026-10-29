@@ -1,7 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
 import { MedicalRecordEntity } from './medical-record.entity';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
+import { RecoveryStatus } from '../constant/injury-marker.enum';
 import { InjuryEntity } from './injury.entity';
 
 /**

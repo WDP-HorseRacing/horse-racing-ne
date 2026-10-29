@@ -2,7 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
 import { MedicalCaseEntity } from './medical-case.entity';
 
 /**

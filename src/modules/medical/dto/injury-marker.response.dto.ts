@@ -3,7 +3,7 @@ import {
   InjuryBodyRegion,
   InjuryType,
   RecoveryStatus,
-} from '../constants/injury-marker.enum';
+} from '../constant/injury-marker.enum';
 import { InjuryPositionDto } from './create-injury.dto';
 
 export class InjuryMarkerResponseDto {

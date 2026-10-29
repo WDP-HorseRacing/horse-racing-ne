@@ -2,7 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { MutableRecordEntity } from '../../../common/database/base-record.entity';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { MedicalCaseStatus } from '../constant/medical-case.enum';
 
 /**
  * MedicalCaseEntity: bệnh án, nơi gom nhiều buổi khám của cùng một vấn đề.

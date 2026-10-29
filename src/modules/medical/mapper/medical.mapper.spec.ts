@@ -1,6 +1,6 @@
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { PrescriptionEntity } from '../entities/prescription.entity';
+import { ExamRequestStatus } from '../constant/exam-request.enum';
+import { MedicalExamRequestEntity } from '../entity/medical-exam-request.entity';
+import { PrescriptionEntity } from '../entity/prescription.entity';
 import {
   toExamRequestResponse,
   toPrescriptionResponse,

@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../constants/care-schedule.enum';
+} from '../constant/care-schedule.enum';
 
 /**
  * Một lịch chăm sóc định kỳ.

@@ -1,4 +1,4 @@
-import { VisitEditHealthOutcome } from '../constants/medical-visit.enum';
+import { VisitEditHealthOutcome } from '../constant/medical-visit.enum';
 import {
   EditMedicalRecordResponseDto,
   MedicalRecordResponseDto,

@@ -7,7 +7,7 @@ import { UserEntity } from '../../users/entities/user.entity';
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../constants/exam-request.enum';
+} from '../constant/exam-request.enum';
 import { MedicalRecordEntity } from './medical-record.entity';
 
 /**

@@ -4,11 +4,11 @@ import { HorseEntity } from '../../horses/entities/horse.entity';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { BarnEntity } from '../../stable/entities/barn.entity';
 import { UserEntity } from '../../users/entities/user.entity';
-import { MedicalSeverity } from '../constants/medical-record.enum';
+import { MedicalSeverity } from '../constant/medical-record.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../constants/medical-visit.enum';
+} from '../constant/medical-visit.enum';
 import { MedicalCaseEntity } from './medical-case.entity';
 
 /**

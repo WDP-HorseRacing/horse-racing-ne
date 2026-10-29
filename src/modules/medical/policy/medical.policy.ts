@@ -10,30 +10,30 @@ import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import { ownershipAt } from '../../horses/policies/horse-ownership.policy';
 import type { OwnershipPeriod } from '../../horses/types/horse.types';
 import type { MedicalCostViewer } from '../types/medical-cost.types';
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
-import { CheckupDueStatus } from '../constants/checkup.enum';
+import { CareScheduleStatus } from '../constant/care-schedule.enum';
+import { CheckupDueStatus } from '../constant/checkup.enum';
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../constants/exam-request.enum';
+} from '../constant/exam-request.enum';
 import {
   CaseLockDecision,
   MedicalCaseStatus,
   VisitVoidAction,
-} from '../constants/medical-case.enum';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
+} from '../constant/medical-case.enum';
+import { RecoveryStatus } from '../constant/injury-marker.enum';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
   VisitVoidHealthOutcome,
-} from '../constants/medical-visit.enum';
+} from '../constant/medical-visit.enum';
 import {
   CHECKUP_DUE_SOON_DAYS,
   CHECKUP_OVERDUE_NOTIFY_DAYS,
   MEDICAL_CHECKUP_CYCLE_DAYS,
   NO_LOCK_CHOICE_ON_DEATH_MESSAGE,
-} from '../constants/medical.constants';
+} from '../constant/medical.constants';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

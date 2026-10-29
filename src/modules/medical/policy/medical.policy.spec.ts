@@ -5,23 +5,23 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
-import { CheckupDueStatus } from '../constants/checkup.enum';
+import { CareScheduleStatus } from '../constant/care-schedule.enum';
+import { CheckupDueStatus } from '../constant/checkup.enum';
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../constants/exam-request.enum';
+} from '../constant/exam-request.enum';
 import {
   CaseLockDecision,
   MedicalCaseStatus,
   VisitVoidAction,
-} from '../constants/medical-case.enum';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
+} from '../constant/medical-case.enum';
+import { RecoveryStatus } from '../constant/injury-marker.enum';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../constants/medical-visit.enum';
+} from '../constant/medical-visit.enum';
 import {
   addDays,
   assertCareDueDate,

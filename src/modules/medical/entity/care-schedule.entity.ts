@@ -7,7 +7,7 @@ import { MedicalRecordEntity } from './medical-record.entity';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../constants/care-schedule.enum';
+} from '../constant/care-schedule.enum';
 
 /**
  * CareScheduleEntity: lịch chăm sóc / điều trị định kỳ cho ngựa.

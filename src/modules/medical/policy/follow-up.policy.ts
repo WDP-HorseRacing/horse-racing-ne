@@ -1,7 +1,7 @@
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
-import type { CareScheduleEntity } from '../entities/care-schedule.entity';
-import type { MedicalRecordEntity } from '../entities/medical-record.entity';
+import { CareScheduleStatus } from '../constant/care-schedule.enum';
+import { MedicalCaseStatus } from '../constant/medical-case.enum';
+import type { CareScheduleEntity } from '../entity/care-schedule.entity';
+import type { MedicalRecordEntity } from '../entity/medical-record.entity';
 
 /**
  * Lý do ghi vào lịch tái khám khi lịch bị hủy theo bệnh án hoặc buổi khám
