@@ -3,11 +3,11 @@ import { EntityManager } from 'typeorm';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../constants/care-schedule.enum';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import { MedicalRecordEntity } from '../entities/medical-record.entity';
-import { followUpStateOf } from '../policies/follow-up.policy';
+} from '../../constant/care-schedule.enum';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import { MedicalRecordEntity } from '../../entity/medical-record.entity';
+import { followUpStateOf } from '../../policy/follow-up.policy';
 
 /**
  * Các câu ghi dùng chung lên bảng care_schedules, luôn chạy trong transaction đang mở

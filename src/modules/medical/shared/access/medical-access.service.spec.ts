@@ -1,13 +1,13 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
-import type { Actor } from '../../../common/types/actor';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import { DELETED_HORSE_READ_ONLY_MESSAGE } from '../../horses/constants/horse.constants';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { UserEntity } from '../../users/entities/user.entity';
-import { MedicalAccessService } from './medical-access.service';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { UserStatus } from '../../../../common/enums/user-status.enum';
+import type { Actor } from '../../../../common/types/actor';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
+import { DELETED_HORSE_READ_ONLY_MESSAGE } from '../../../horses/constants/horse.constants';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
+import { UserEntity } from '../../../users/entities/user.entity';
+import { MedicalAccessService } from '../access/medical-access.service';
 
 const vet: Actor = { sub: 'kc-vet', roles: [UserRole.VETERINARIAN] };
 const manager = {} as EntityManager;

@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { HorsesSharedModule } from '../../horses/shared/horses-shared.module';
-import { CareScheduleWritesService } from './care-schedule-writes.service';
-import { ExamRequestWritesService } from './exam-request-writes.service';
-import { MedicalAccessService } from './medical-access.service';
-import { MedicalCheckupsService } from './medical-checkups.service';
-import { MedicalLifecycleService } from './medical-lifecycle.service';
-import { TrainingLockWritesService } from './training-lock-writes.service';
+import { MedicalAccessService } from './access';
+import { MedicalLifecycleService } from './lifecycle';
+import { MedicalCheckupsService } from './queries';
+import {
+  CareScheduleWritesService,
+  ExamRequestWritesService,
+  TrainingLockWritesService,
+} from './writes';
 
 @Module({
   imports: [HorsesSharedModule],

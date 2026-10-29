@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, IsNull } from 'typeorm';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
+import { TrainingLockStatus } from '../../constant/training-lock.enum';
+import { TrainingLockEntity } from '../../entity/training-lock.entity';
 
 /**
  * Thông tin gỡ một lệnh khóa huấn luyện

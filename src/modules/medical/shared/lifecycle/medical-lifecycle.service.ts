@@ -1,17 +1,17 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import type { ReadOnlyLifecycleStatus } from '../../horses/types/horse.types';
+import { CareScheduleStatus } from '../../constant/care-schedule.enum';
+import { ExamRequestStatus } from '../../constant/exam-request.enum';
+import type { ReadOnlyLifecycleStatus } from '../../../horses/types/horse.types';
 import {
   READ_ONLY_CANCEL_REASONS,
   OPEN_CASE_BLOCKS_READ_ONLY_MESSAGES,
-} from '../constants/medical.constants';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { CareScheduleWritesService } from './care-schedule-writes.service';
-import { ExamRequestWritesService } from './exam-request-writes.service';
-import { MedicalAccessService } from './medical-access.service';
+} from '../../constant/medical.constants';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
+import { CareScheduleWritesService } from '../writes/care-schedule-writes.service';
+import { ExamRequestWritesService } from '../writes/exam-request-writes.service';
+import { MedicalAccessService } from '../access/medical-access.service';
 
 /**
  * Số việc y tế còn treo đã được hệ thống tự đóng khi hồ sơ ngựa chuyển sang chỉ được xem.

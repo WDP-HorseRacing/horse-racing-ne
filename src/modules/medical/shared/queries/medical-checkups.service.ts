@@ -1,30 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager, In, LessThan, Not } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import { UserStatus } from '../../../common/enums/user-status.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { CLUB_TIME_ZONE } from '../../../common/constants';
-import { READ_ONLY_LIFECYCLE_STATUSES } from '../../horses/constants/horse.constants';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { UserStatus } from '../../../../common/enums/user-status.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { CLUB_TIME_ZONE } from '../../../../common/constants';
+import { READ_ONLY_LIFECYCLE_STATUSES } from '../../../horses/constants/horse.constants';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
 import {
   CareScheduleStatus,
   CareScheduleType,
   VET_APPOINTMENT_TYPES,
-} from '../constants/care-schedule.enum';
-import { CheckupItemDto } from '../dto/checkup.dto';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { toCheckupAppointment } from '../mappers/medical.mapper';
-import { checkupStateOf } from '../policies/medical.policy';
+} from '../../constant/care-schedule.enum';
+import { CheckupItemDto } from '../../dto/checkup.dto';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { toCheckupAppointment } from '../../mapper/medical.mapper';
+import { checkupStateOf } from '../../policy/medical.policy';
 import {
   clubDateTimeToInstant,
   shiftDays,
   toClubDate,
-} from '../../../common/utils/date/club-date';
+} from '../../../../common/utils/date/club-date';
 import type {
   DueCareScheduleRow,
   HerdFilter,
   HorseCheckupAnchorRow,
-} from '../types/medical-checkup.types';
+} from '../../types/medical-checkup.types';
 
 @Injectable()
 export class MedicalCheckupsService {

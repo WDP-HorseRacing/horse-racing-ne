@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
-import type { Actor } from '../../../common/types/actor';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import { assertLifecycleWritable } from '../../horses/policies/horse.policy';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import type { CurrentActorUser } from '../../users/utils/current-user';
-import { RecoveryStatus } from '../constants/injury-marker.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
-import { MedicalCaseEntity } from '../entities/medical-case.entity';
-import type { ExposedHorse } from '../types/medical-events.types';
-import type { LaterHealthChange } from '../types/medical-visit.types';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
+import { assertLifecycleWritable } from '../../../horses/policies/horse.policy';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
+import type { CurrentActorUser } from '../../../users/utils/current-user';
+import { RecoveryStatus } from '../../constant/injury-marker.enum';
+import { MedicalCaseStatus } from '../../constant/medical-case.enum';
+import { MedicalCaseEntity } from '../../entity/medical-case.entity';
+import type { ExposedHorse } from '../../types/medical-events.types';
+import type { LaterHealthChange } from '../../types/medical-visit.types';
 
 @Injectable()
 export class MedicalAccessService {

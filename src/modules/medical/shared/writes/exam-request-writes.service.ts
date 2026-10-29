@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { EntityManager, In } from 'typeorm';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import type { ExamRequestHandledEvent } from '../types/medical-events.types';
+import { ExamRequestStatus } from '../../constant/exam-request.enum';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
+import type { ExamRequestHandledEvent } from '../../types/medical-events.types';
 
 /**
  * Các câu ghi dùng chung lên bảng medical_exam_requests, luôn chạy trong transaction đang mở

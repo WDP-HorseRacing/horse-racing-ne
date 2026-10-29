@@ -1,20 +1,20 @@
 import { ConflictException } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
-import { HorseLifecycleStatus } from '../../horses/enums/horse-status.enum';
-import { CareScheduleStatus } from '../constants/care-schedule.enum';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
+import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
+import { CareScheduleStatus } from '../../constant/care-schedule.enum';
+import { ExamRequestStatus } from '../../constant/exam-request.enum';
 import {
   DECEASED_CANCEL_REASON,
   OPEN_CASE_BLOCKS_DECEASED_MESSAGE,
   OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
   TRANSFER_CANCEL_REASON,
-} from '../constants/medical.constants';
-import { CareScheduleEntity } from '../entities/care-schedule.entity';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalLifecycleService } from './medical-lifecycle.service';
-import { MedicalAccessService } from './medical-access.service';
-import { CareScheduleWritesService } from './care-schedule-writes.service';
-import { ExamRequestWritesService } from './exam-request-writes.service';
+} from '../../constant/medical.constants';
+import { CareScheduleEntity } from '../../entity/care-schedule.entity';
+import { MedicalExamRequestEntity } from '../../entity/medical-exam-request.entity';
+import { MedicalLifecycleService } from '../lifecycle/medical-lifecycle.service';
+import { MedicalAccessService } from '../access/medical-access.service';
+import { CareScheduleWritesService } from '../writes/care-schedule-writes.service';
+import { ExamRequestWritesService } from '../writes/exam-request-writes.service';
 
 describe('MedicalLifecycleService', () => {
   const now = new Date('2026-09-27T08:00:00Z');
