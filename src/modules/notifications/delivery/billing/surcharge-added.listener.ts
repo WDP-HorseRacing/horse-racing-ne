@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
-import { BILLING_SURCHARGE_ADDED_EVENT } from '../../billing/constants/billing-events.constants';
-import type { SurchargeAddedEvent } from '../../billing/types/billing-events.types';
-import { HorseNotificationsService } from './horse-notifications.service';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
+import { BILLING_SURCHARGE_ADDED_EVENT } from '../../../billing/constants/billing-events.constants';
+import type { SurchargeAddedEvent } from '../../../billing/types/billing-events.types';
+import { HorseNotificationsService } from '../horses/horse-notifications.service';
 
 @Injectable()
 export class SurchargeAddedListener {
