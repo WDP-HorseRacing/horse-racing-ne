@@ -12,13 +12,13 @@ import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.en
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../constants/exam-request.enum';
+} from '../constant/exam-request.enum';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_URGENT_EVENT,
-} from '../constants/medical-events.constants';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { MedicalAccessService } from '../shared/medical-access.service';
+} from '../constant/medical-events.constants';
+import { MedicalExamRequestEntity } from '../entity/medical-exam-request.entity';
+import { MedicalAccessService } from '../shared/access/medical-access.service';
 import { ExamRequestsService } from './exam-requests.service';
 
 type Row = Record<string, unknown>;
@@ -138,7 +138,9 @@ describe('ExamRequestsService', () => {
     });
 
     it('propagates not found for a horse outside the caller scope', async () => {
-      horseAccess.lockWritableHorseInScope.mockRejectedValue(new NotFoundException());
+      horseAccess.lockWritableHorseInScope.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(
         service.create(actorWith(UserRole.CLUB_MANAGER), 'h9', body),
       ).rejects.toThrow(NotFoundException);
@@ -249,7 +251,9 @@ describe('ExamRequestsService', () => {
     });
 
     it('answers not found for a horse outside the caller scope', async () => {
-      horseAccess.findReadableHorseForActor.mockRejectedValue(new NotFoundException());
+      horseAccess.findReadableHorseForActor.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(
         service.listByHorse(actorWith(UserRole.VETERINARIAN), 'h9'),
       ).rejects.toThrow(NotFoundException);

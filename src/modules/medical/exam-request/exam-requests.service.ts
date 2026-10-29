@@ -19,11 +19,11 @@ import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.en
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../constants/exam-request.enum';
+} from '../constant/exam-request.enum';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_URGENT_EVENT,
-} from '../constants/medical-events.constants';
+} from '../constant/medical-events.constants';
 import {
   CreateExamRequestDto,
   DismissExamRequestDto,
@@ -32,18 +32,18 @@ import {
   ExamRequestResponseDto,
   UpdateExamRequestUrgencyDto,
 } from '../dto';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
-import { toExamRequestResponse } from '../mappers/medical.mapper';
+import { MedicalExamRequestEntity } from '../entity/medical-exam-request.entity';
+import { toExamRequestResponse } from '../mapper/medical.mapper';
 import {
   assertCanRequestExam,
   assertRequestPending,
   examRequestSourceFor,
   isGroomOnlyForExamRequests,
-} from '../policies/medical.policy';
-import { examRequestHandledEvent } from '../shared/exam-request-writes.service';
-import { MedicalAccessService } from '../shared/medical-access.service';
+} from '../policy/medical.policy';
+import { examRequestHandledEvent } from '../shared/writes/exam-request-writes.service';
+import { MedicalAccessService } from '../shared/access/medical-access.service';
 import type { ExamRequestUrgentEvent } from '../types/medical-events.types';
-import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
+import { MEDICAL_AUDIT_FEATURE } from '../constant/medical.constants';
 
 @Injectable()
 export class ExamRequestsService {
@@ -174,7 +174,10 @@ export class ExamRequestsService {
     actor: Actor,
     horseId: string,
   ): Promise<ExamRequestResponseDto[]> {
-    const horse = await this.horseAccess.findReadableHorseForActor(actor, horseId);
+    const horse = await this.horseAccess.findReadableHorseForActor(
+      actor,
+      horseId,
+    );
     if (isGroomOnlyForExamRequests(actor.roles)) {
       const caller = await this.horseAccess.currentUser(actor);
       if (!(await this.horseAccess.isGroomAssigned(horseId, caller.id))) {
