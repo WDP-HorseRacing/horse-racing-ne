@@ -1,10 +1,10 @@
-import { UserRole } from '../../../common/enums/role.enum';
-import type { PerformanceMetricCriticalEvent } from '../../performance/types/performance.types';
-import { NotificationCategory } from '../enums/notification-category.enum';
-import { NotificationPriority } from '../enums/notification-priority.enum';
-import { NotificationResourceType } from '../enums/notification-resource-type.enum';
-import { NotificationDeliveryService } from './notification-delivery.service';
-import { NotificationRecipientsRepository } from './notification-recipients.repository';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { PerformanceMetricCriticalEvent } from '../../../performance/types/performance.types';
+import { NotificationCategory } from '../../enums/notification-category.enum';
+import { NotificationPriority } from '../../enums/notification-priority.enum';
+import { NotificationResourceType } from '../../enums/notification-resource-type.enum';
+import { NotificationDeliveryService } from '../shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../shared/notification-recipients.repository';
 import { PerformanceNotificationsService } from './performance-notifications.service';
 
 function setup(

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
-import { PERFORMANCE_METRIC_CRITICAL_EVENT } from '../../performance/constants/performance.constants';
-import type { PerformanceMetricCriticalEvent } from '../../performance/types/performance.types';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
+import { PERFORMANCE_METRIC_CRITICAL_EVENT } from '../../../performance/constants/performance.constants';
+import type { PerformanceMetricCriticalEvent } from '../../../performance/types/performance.types';
 import { PerformanceNotificationsService } from './performance-notifications.service';
 
 @Injectable()
