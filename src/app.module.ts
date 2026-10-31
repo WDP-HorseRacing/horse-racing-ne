@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -36,17 +37,15 @@ import { UsersModule } from './modules/users/users.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) =>
-        typeOrmOptions({
-          host: config.getOrThrow<string>('DB_HOST'),
-          port: config.getOrThrow<number>('DB_PORT'),
-          username: config.getOrThrow<string>('DB_USERNAME'),
-          password: config.getOrThrow<string>('DB_PASSWORD'),
-          database: config.getOrThrow<string>('DB_NAME'),
-        }),
-    }),
+    TypeOrmModule.forRoot(
+      typeOrmOptions({
+        host: process.env.DB_HOST!,
+        port: Number(process.env.DB_PORT ?? 5432),
+        username: process.env.DB_USERNAME!,
+        password: process.env.DB_PASSWORD!,
+        database: process.env.DB_NAME!,
+      }),
+    ),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

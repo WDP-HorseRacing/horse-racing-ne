@@ -1,12 +1,11 @@
 -- Dữ liệu ảo cho môi trường dev. Chạy: pnpm db:seed (sau pnpm db:migrate)
 --
--- Users: 5 tài khoản (mỗi role 1 người) khớp với user có sẵn trên Keycloak local
--- (realm racehorse). keycloak_id phải trùng `sub` trên Keycloak thì mới đăng nhập được;
--- nếu Keycloak của máy khác có sub khác thì sửa keycloak_id ở phần users bên dưới.
+-- Users: 5 tài khoản (mỗi role 1 người). run-seed.mjs thay các placeholder
+-- keycloak_id bằng ID người dùng vừa tạo/tìm thấy trong realm Keycloak.
 -- Các phần sau lấy user theo role (user ACTIVE tạo sớm nhất của mỗi role).
 --
--- Chạy lại nhiều lần được: mọi bản ghi dùng id cố định + ON CONFLICT (id) DO NOTHING.
--- Bản ghi đã có thì giữ nguyên (không reset trạng thái đã đổi trong lúc test).
+-- Chạy lại nhiều lần được: dữ liệu dùng ID cố định; user seed đồng bộ lại keycloak_id.
+-- Các trạng thái đã đổi trong lúc test vẫn được giữ nguyên.
 --
 -- Quy ước id: barns b0.., stalls c0.., horses a0.., stall_assignments d0..,
 -- groom_assignments 70.., training_locks f0.., daily_fees e0..
@@ -24,12 +23,12 @@ DECLARE
 BEGIN
   -- ── Users ───────────────────────────────────────────────────
   INSERT INTO users (id, keycloak_id, full_name, email, role, status, version) VALUES
-    ('4d2f2949-9d29-4a64-81c0-807c481188f1', 'b4c48b7a-f2ee-4352-9a9c-37cd81ef3297', 'Nguyễn Nhật Trường', 'nhatruong5012@gmail.com', 'CLUB_MANAGER', 'ACTIVE', 1),
-    ('91315bf7-3eef-4d8c-a403-c20245b6cb36', '816cb58c-65e2-4e89-8d6a-401b8d0bae16', 'Nguyễn Văn A', 'nhatruong5020@gmail.com', 'HEAD_TRAINER', 'ACTIVE', 1),
-    ('0831b413-cf10-445e-96eb-97f354ef517d', '810c144f-3a62-49cf-bc7e-6216f26b1878', 'Nguyen Van B', 'nhattruong.nguyen0512@gmail.com', 'HORSE_OWNER', 'ACTIVE', 1),
-    ('793a2d08-28af-4652-9988-037be0d111de', '9d06deae-0a99-4da8-a526-56960343cbf0', 'Nguyen Van C', 'tnhdarkrai1457@gmail.com', 'GROOM', 'ACTIVE', 1),
-    ('d5a2188a-ab75-4537-b370-ddfc7c31e8ae', '91fab7dc-721c-4d94-85f1-dcb279b24629', 'Nguyen Van C', 'minhff.net@gmail.com', 'VETERINARIAN', 'ACTIVE', 1)
-  ON CONFLICT (id) DO NOTHING;
+    ('4d2f2949-9d29-4a64-81c0-807c481188f1', '__KC_CLUB_MANAGER_ID__', 'Nguyễn Nhật Trường', 'nhatruong5012@gmail.com', 'CLUB_MANAGER', 'ACTIVE', 1),
+    ('91315bf7-3eef-4d8c-a403-c20245b6cb36', '__KC_HEAD_TRAINER_ID__', 'Nguyễn Văn A', 'nhatruong5020@gmail.com', 'HEAD_TRAINER', 'ACTIVE', 1),
+    ('0831b413-cf10-445e-96eb-97f354ef517d', '__KC_HORSE_OWNER_ID__', 'Nguyen Van B', 'nhattruong.nguyen0512@gmail.com', 'HORSE_OWNER', 'ACTIVE', 1),
+    ('793a2d08-28af-4652-9988-037be0d111de', '__KC_GROOM_ID__', 'Nguyen Van C', 'tnhdarkrai1457@gmail.com', 'GROOM', 'ACTIVE', 1),
+    ('d5a2188a-ab75-4537-b370-ddfc7c31e8ae', '__KC_VETERINARIAN_ID__', 'Nguyen Van C', 'minhff.net@gmail.com', 'VETERINARIAN', 'ACTIVE', 1)
+  ON CONFLICT (id) DO UPDATE SET keycloak_id = EXCLUDED.keycloak_id;
 
   SELECT id INTO head_trainer_id FROM users
     WHERE role = 'HEAD_TRAINER' AND status = 'ACTIVE' AND deleted_at IS NULL

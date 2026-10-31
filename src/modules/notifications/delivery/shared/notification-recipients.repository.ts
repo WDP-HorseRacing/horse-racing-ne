@@ -1,0 +1,233 @@
+import { Injectable } from '@nestjs/common';
+import { DataSource, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { UserStatus } from '../../../../common/enums/user-status.enum';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { BarnEntity } from '../../../stable/entities/barn.entity';
+import { IncidentEntity } from '../../../stable/entities/incident.entity';
+import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
+import { TrainingClassEntity } from '../../../training/entities/training-class.entity';
+import { UserEntity } from '../../../users/entities/user.entity';
+import type {
+  BarnContact,
+  ClassHeadTrainer,
+  HorseBarnContact,
+  HorseMedicalContact,
+} from '../../types/notification.types';
+
+@Injectable()
+export class NotificationRecipientsRepository {
+  constructor(private readonly dataSource: DataSource) {}
+
+  /**
+   * Lấy id mọi người dùng đang ACTIVE (chưa bị xóa mềm) của một vai trò.
+   *
+   * @param role Vai trò cần lấy
+   * @returns Promise trả về danh sách id người dùng, rỗng nếu không có ai ACTIVE
+   */
+  async findActiveUserIdsByRole(role: UserRole): Promise<string[]> {
+    const rows = await this.dataSource
+      .getRepository(UserEntity)
+      .createQueryBuilder('user')
+      .select('user.id', 'id')
+      .where('user.role = :role', { role })
+      .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
+      .getRawMany<{ id: string }>();
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Kiểm tra một người dùng có đang ACTIVE (chưa bị xóa mềm) với đúng vai trò không
+   *
+   * @param userId UUID của người dùng
+   * @param role Vai trò cần có
+   * @returns Promise trả về true nếu người dùng tồn tại, đang ACTIVE và có vai trò này
+   */
+  isActiveUserWithRole(userId: string, role: UserRole): Promise<boolean> {
+    return this.dataSource.getRepository(UserEntity).existsBy({
+      id: userId,
+      role,
+      status: UserStatus.ACTIVE,
+    });
+  }
+
+  /**
+   * Lấy tên ngựa và Head Trainer phụ trách khu hiện tại của ngựa (horses.barn_id → barns.head_trainer_id).
+   *
+   * - Đọc cả ngựa đã xóa mềm
+   * - Khu đã xóa mềm, khu chưa có Head Trainer, hoặc Head Trainer không còn ACTIVE/không còn role HEAD_TRAINER thì headTrainerId là null
+   *
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về tên ngựa kèm Head Trainer của khu, hoặc null nếu không tìm thấy ngựa
+   */
+  async findHorseBarnContact(
+    horseId: string,
+  ): Promise<HorseBarnContact | null> {
+    const row = await this.leftJoinActiveHeadTrainer(
+      this.horseWithLiveBarn(horseId),
+    )
+      .select('horse.name', 'horseName')
+      .addSelect('trainer.id', 'headTrainerId')
+      .getRawOne<{ horseName: string; headTrainerId: string | null }>();
+    if (!row) {
+      return null;
+    }
+    return { horseName: row.horseName, headTrainerId: row.headTrainerId };
+  }
+
+  /**
+   * Lấy tên ngựa, Head Trainer phụ trách khu, chủ ngựa và Groom đang phụ trách để gửi thông báo y tế.
+   *
+   * - Đọc cả ngựa đã xóa mềm
+   * - headTrainerId null theo cùng luật với findHorseBarnContact
+   * - ownerId null khi ngựa chưa có chủ, hoặc chủ không còn là HORSE_OWNER đang ACTIVE
+   * - groomId null khi ngựa chưa có phân công Groom đang mở, hoặc Groom đó không còn là GROOM đang ACTIVE
+   *
+   * @param horseId UUID của ngựa
+   * @returns Promise trả về tên ngựa, Head Trainer, chủ và Groom, hoặc null nếu không tìm thấy ngựa
+   */
+  async findHorseMedicalContact(
+    horseId: string,
+  ): Promise<HorseMedicalContact | null> {
+    const row = await this.leftJoinActiveHeadTrainer(
+      this.horseWithLiveBarn(horseId),
+    )
+      .leftJoin(
+        UserEntity,
+        'owner',
+        'owner.id = horse.ownerId AND owner.deletedAt IS NULL AND owner.status = :ownerStatus AND owner.role = :ownerRole',
+        { ownerStatus: UserStatus.ACTIVE, ownerRole: UserRole.HORSE_OWNER },
+      )
+      .leftJoin(
+        GroomAssignmentEntity,
+        'assignment',
+        'assignment.horseId = horse.id AND assignment.endAt IS NULL',
+      )
+      .leftJoin(
+        UserEntity,
+        'groom',
+        'groom.id = assignment.groomId AND groom.deletedAt IS NULL AND groom.status = :groomStatus AND groom.role = :groomRole',
+        { groomStatus: UserStatus.ACTIVE, groomRole: UserRole.GROOM },
+      )
+      .select('horse.name', 'horseName')
+      .addSelect('trainer.id', 'headTrainerId')
+      .addSelect('owner.id', 'ownerId')
+      .addSelect('groom.id', 'groomId')
+      .getRawOne<{
+        horseName: string;
+        headTrainerId: string | null;
+        ownerId: string | null;
+        groomId: string | null;
+      }>();
+    if (!row) {
+      return null;
+    }
+    return {
+      horseName: row.horseName,
+      headTrainerId: row.headTrainerId,
+      ownerId: row.ownerId,
+      groomId: row.groomId,
+    };
+  }
+
+  /**
+   * Lấy tên khu và Head Trainer đang phụ trách khu đó.
+   *
+   * - Head Trainer không còn ACTIVE hoặc không còn role HEAD_TRAINER thì headTrainerId là null
+   *
+   * @param barnId UUID của khu
+   * @returns Promise trả về tên khu kèm Head Trainer, hoặc null nếu khu không tồn tại hay đã xóa mềm
+   */
+  async findBarnContact(barnId: string): Promise<BarnContact | null> {
+    const row = await this.leftJoinActiveHeadTrainer(
+      this.dataSource.getRepository(BarnEntity).createQueryBuilder('barn'),
+    )
+      .select('barn.name', 'barnName')
+      .addSelect('trainer.id', 'headTrainerId')
+      .where('barn.id = :barnId', { barnId })
+      .getRawOne<{ barnName: string; headTrainerId: string | null }>();
+    if (!row) {
+      return null;
+    }
+    return { barnName: row.barnName, headTrainerId: row.headTrainerId };
+  }
+
+  /**
+   * Lấy tên và Head Trainer phụ trách của các lớp huấn luyện, sắp theo tên lớp
+   *
+   * - Lớp chưa có Head Trainer, hoặc Head Trainer không còn ACTIVE/không còn role HEAD_TRAINER thì bỏ lớp đó
+   *
+   * @param classIds UUID các lớp
+   * @returns Promise trả về tên lớp kèm Head Trainer, rỗng nếu không có lớp nào để báo
+   */
+  async findClassHeadTrainers(classIds: string[]): Promise<ClassHeadTrainer[]> {
+    if (classIds.length === 0) return [];
+    return this.dataSource
+      .getRepository(TrainingClassEntity)
+      .createQueryBuilder('class')
+      .innerJoin(
+        UserEntity,
+        'trainer',
+        'trainer.id = class.headTrainerId AND trainer.deletedAt IS NULL AND trainer.status = :trainerStatus AND trainer.role = :trainerRole',
+        {
+          trainerStatus: UserStatus.ACTIVE,
+          trainerRole: UserRole.HEAD_TRAINER,
+        },
+      )
+      .select('class.name', 'className')
+      .addSelect('trainer.id', 'headTrainerId')
+      .where('class.id IN (:...classIds)', { classIds })
+      .orderBy('class.name', 'ASC')
+      .getRawMany<ClassHeadTrainer>();
+  }
+
+  /**
+   * Lấy người đã báo một sự cố tại chuồng
+   *
+   * @param incidentId UUID của sự cố
+   * @returns Promise trả về id người báo, hoặc null nếu không tìm thấy sự cố
+   */
+  async findIncidentReporterId(incidentId: string): Promise<string | null> {
+    const incident = await this.dataSource.manager.findOne(IncidentEntity, {
+      where: { id: incidentId },
+      select: { id: true, reportedBy: true },
+    });
+    return incident?.reportedBy ?? null;
+  }
+
+  /**
+   * Tạo query ngựa (kể cả hồ sơ đã xóa mềm) kèm khu hiện tại chưa xóa của nó
+   *
+   * @param horseId UUID của ngựa
+   * @returns Query builder với alias `horse` và `barn`
+   */
+  private horseWithLiveBarn(horseId: string): SelectQueryBuilder<HorseEntity> {
+    return this.dataSource
+      .getRepository(HorseEntity)
+      .createQueryBuilder('horse')
+      .withDeleted()
+      .leftJoin(
+        BarnEntity,
+        'barn',
+        'barn.id = horse.barnId AND barn.deletedAt IS NULL',
+      )
+      .andWhere('horse.id = :horseId', { horseId });
+  }
+
+  /**
+   * Join Head Trainer đang phụ trách khu vào query, chỉ khi tài khoản chưa xóa, đang ACTIVE và còn vai trò HEAD_TRAINER
+   *
+   * @param qb Query builder đã có alias `barn`
+   * @returns Query builder kèm alias `trainer`
+   */
+  private leftJoinActiveHeadTrainer<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+  ): SelectQueryBuilder<T> {
+    return qb.leftJoin(
+      UserEntity,
+      'trainer',
+      'trainer.id = barn.headTrainerId AND trainer.deletedAt IS NULL AND trainer.status = :trainerStatus AND trainer.role = :trainerRole',
+      { trainerStatus: UserStatus.ACTIVE, trainerRole: UserRole.HEAD_TRAINER },
+    );
+  }
+}

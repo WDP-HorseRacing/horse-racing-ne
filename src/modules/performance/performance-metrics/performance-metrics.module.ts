@@ -7,6 +7,7 @@ import {
   PerformanceMetricSchema,
 } from '../schemas/performance-metric.schema';
 import { PerformanceMetricsController } from './performance-metrics.controller';
+import { PerformanceMetricsRepository } from './performance-metrics.repository';
 import { PerformanceMetricsService } from './performance-metrics.service';
 
 /**
@@ -21,6 +22,6 @@ import { PerformanceMetricsService } from './performance-metrics.service';
     RealtimeModule,
   ],
   controllers: [PerformanceMetricsController],
-  providers: [PerformanceMetricsService],
+  providers: [PerformanceMetricsRepository, PerformanceMetricsService],
 })
 export class PerformanceMetricsModule {}
