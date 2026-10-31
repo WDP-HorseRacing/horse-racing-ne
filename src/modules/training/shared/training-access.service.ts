@@ -49,6 +49,12 @@ const SEAT_HOLDING_PARTICIPANT_STATUSES = [
 
 @Injectable()
 export class TrainingAccessService {
+  /**
+   * Khởi tạo service kiểm tra quyền và truy vấn dữ liệu dùng chung cho huấn luyện
+   *
+   * @param dataSource DataSource dùng để lấy EntityManager mặc định
+   * @param horseAccess Service kiểm tra phạm vi truy cập hồ sơ ngựa
+   */
   constructor(
     private readonly dataSource: DataSource,
     private readonly horseAccess: HorseAccessService,
@@ -79,6 +85,14 @@ export class TrainingAccessService {
     );
   }
 
+  /**
+   * Lấy user hiện tại từ Actor và yêu cầu tài khoản đang hoạt động
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns User hiện tại đang hoạt động
+   * @throws ForbiddenException Nếu không tìm thấy user hoặc tài khoản không hoạt động
+   */
   async currentUser(
     actor: Actor,
     manager: EntityManager = this.dataSource.manager,
@@ -117,6 +131,19 @@ export class TrainingAccessService {
     return { user, horse };
   }
 
+  /**
+   * Lấy user hiện tại đang hoạt động và tìm ngựa theo UUID
+   *
+   * - Chỉ kiểm tra tài khoản và sự tồn tại của ngựa; không kiểm phạm vi xem ngựa
+   * - Dùng readableHorseForActor nếu cần áp dụng quyền xem hồ sơ ngựa
+   *
+   * @param actor Thông tin danh tính từ Access Token
+   * @param horseId UUID của ngựa
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns User hiện tại và hồ sơ ngựa
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu không tìm thấy ngựa
+   */
   async horseForActor(
     actor: Actor,
     horseId: string,
@@ -126,6 +153,16 @@ export class TrainingAccessService {
     return { user, horse: await this.findHorse(manager, horseId) };
   }
 
+  /**
+   * Kiểm người gọi có được xem mục tiêu giáo án hay không
+   *
+   * - Người không có vai trò Groom được xem
+   * - Người có Groom chỉ được xem nếu đồng thời có Club Manager, Head Trainer,
+   *   Veterinarian hoặc Horse Owner
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @returns true nếu được xem mục tiêu giáo án
+   */
   seesPlanGoal(actor: Actor): boolean {
     return (
       !actor.roles.includes(UserRole.GROOM) ||
@@ -140,6 +177,14 @@ export class TrainingAccessService {
     );
   }
 
+  /**
+   * Tìm hồ sơ ngựa theo UUID, không lấy hồ sơ đã xóa mềm
+   *
+   * @param manager EntityManager dùng để query
+   * @param horseId UUID của ngựa
+   * @returns Hồ sơ ngựa tìm được
+   * @throws NotFoundException Nếu không tìm thấy ngựa
+   */
   async findHorse(
     manager: EntityManager,
     horseId: string,
@@ -149,6 +194,14 @@ export class TrainingAccessService {
     return horse;
   }
 
+  /**
+   * Khóa một hồ sơ ngựa để tuần tự hóa thao tác ghi trong transaction hiện tại
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param horseId UUID của ngựa cần khóa
+   * @returns Hồ sơ ngựa đã khóa
+   * @throws NotFoundException Nếu không tìm thấy ngựa
+   */
   async lockedHorse(
     manager: EntityManager,
     horseId: string,
@@ -476,6 +529,14 @@ export class TrainingAccessService {
     return query.getRawMany<HeadTrainerSession>();
   }
 
+  /**
+   * Tìm lớp huấn luyện và tải kèm Head Trainer phụ trách
+   *
+   * @param manager EntityManager dùng để query
+   * @param id UUID của lớp
+   * @returns Lớp huấn luyện kèm Head Trainer
+   * @throws NotFoundException Nếu không tìm thấy lớp
+   */
   async findTrainingClass(
     manager: EntityManager,
     id: string,
@@ -488,6 +549,23 @@ export class TrainingAccessService {
     return row;
   }
 
+  /**
+   * Kiểm người gọi có quyền xem lớp huấn luyện hay không
+   *
+   * - Club Manager và Veterinarian xem được mọi lớp
+   * - Head Trainer chỉ xem lớp mình phụ trách
+   * - Horse Owner xem lớp có ngựa hiện thuộc sở hữu của mình ghi danh; không
+   *   lọc trạng thái ghi danh
+   * - Groom xem lớp có ít nhất một lượt được giao cho mình; không lọc trạng
+   *   thái lượt tập hoặc buổi tập
+   * - Trả false nếu không thuộc các trường hợp trên
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param callerId UUID của user hiện tại
+   * @param trainingClass Lớp cần kiểm tra quyền
+   * @param manager EntityManager dùng để query
+   * @returns true nếu người gọi được xem lớp
+   */
   async canReadClass(
     actor: Actor,
     callerId: string,
@@ -538,6 +616,19 @@ export class TrainingAccessService {
     return false;
   }
 
+  /**
+   * Tìm lớp và yêu cầu người gọi có quyền xem lớp đó
+   *
+   * - Quyền xem được xác định theo canReadClass
+   * - Lớp không tồn tại hoặc người gọi không có quyền đều trả 404
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param classId UUID của lớp
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Lớp huấn luyện người gọi được xem
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu lớp không tồn tại hoặc ngoài phạm vi xem
+   */
   async assertCanReadClass(
     actor: Actor,
     classId: string,
@@ -551,6 +642,14 @@ export class TrainingAccessService {
     return trainingClass;
   }
 
+  /**
+   * Tìm và khóa một lớp để các thao tác ghi trên lớp chạy tuần tự
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param id UUID của lớp cần khóa
+   * @returns Lớp huấn luyện đã khóa
+   * @throws NotFoundException Nếu không tìm thấy lớp
+   */
   async lockedTrainingClass(
     manager: EntityManager,
     id: string,
@@ -563,6 +662,14 @@ export class TrainingAccessService {
     return row;
   }
 
+  /**
+   * Tìm buổi tập và tải kèm lớp chứa buổi đó
+   *
+   * @param manager EntityManager dùng để query
+   * @param sessionId UUID của buổi tập
+   * @returns Buổi tập kèm lớp huấn luyện
+   * @throws NotFoundException Nếu không tìm thấy buổi tập
+   */
   async findSession(
     manager: EntityManager,
     sessionId: string,
@@ -575,6 +682,14 @@ export class TrainingAccessService {
     return session;
   }
 
+  /**
+   * Tìm và khóa một buổi tập để các thao tác ghi trên buổi chạy tuần tự
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param sessionId UUID của buổi tập cần khóa
+   * @returns Buổi tập đã khóa
+   * @throws NotFoundException Nếu không tìm thấy buổi tập
+   */
   async lockedSession(
     manager: EntityManager,
     sessionId: string,
@@ -587,6 +702,19 @@ export class TrainingAccessService {
     return session;
   }
 
+  /**
+   * Tìm buổi tập và kiểm tra người gọi có quyền xem lớp chứa buổi đó
+   *
+   * - Phạm vi quyền xem được kiểm tra theo canReadClass
+   * - Buổi không tồn tại hoặc người gọi không có quyền đều trả 404
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Buổi tập người gọi được xem
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu buổi không tồn tại hoặc ngoài phạm vi xem
+   */
   async sessionForActor(
     actor: Actor,
     sessionId: string,
@@ -607,6 +735,14 @@ export class TrainingAccessService {
     return session;
   }
 
+  /**
+   * Tìm lượt tập và tải kèm buổi, lớp, ngựa và ghi danh liên quan
+   *
+   * @param manager EntityManager dùng để query
+   * @param participantId UUID của lượt tập
+   * @returns Lượt tập cùng các quan hệ cần cho kiểm tra quyền và nghiệp vụ
+   * @throws NotFoundException Nếu không tìm thấy lượt tập
+   */
   async findParticipant(
     manager: EntityManager,
     participantId: string,
@@ -623,6 +759,14 @@ export class TrainingAccessService {
     return participant;
   }
 
+  /**
+   * Tìm và khóa một lượt tập để các thao tác ghi trên lượt chạy tuần tự
+   *
+   * @param manager EntityManager của transaction đang chạy
+   * @param participantId UUID của lượt tập cần khóa
+   * @returns Lượt tập đã khóa
+   * @throws NotFoundException Nếu không tìm thấy lượt tập
+   */
   async lockedParticipant(
     manager: EntityManager,
     participantId: string,
@@ -635,6 +779,14 @@ export class TrainingAccessService {
     return participant;
   }
 
+  /**
+   * Tìm ghi danh và tải kèm lớp cùng hồ sơ ngựa
+   *
+   * @param manager EntityManager dùng để query
+   * @param enrollmentId UUID của ghi danh
+   * @returns Ghi danh kèm lớp và ngựa
+   * @throws NotFoundException Nếu không tìm thấy ghi danh
+   */
   async findEnrollment(
     manager: EntityManager,
     enrollmentId: string,
@@ -647,6 +799,21 @@ export class TrainingAccessService {
     return row;
   }
 
+  /**
+   * Kiểm người gọi có quyền xem một ghi danh hay không
+   *
+   * - Club Manager và Veterinarian xem được mọi ghi danh
+   * - Head Trainer cần phụ trách lớp và ngựa đang thuộc khu mình
+   * - Horse Owner cần hiện là chủ sở hữu của ngựa
+   * - Groom cần được giao ít nhất một lượt tập thuộc ghi danh này; không lọc
+   *   trạng thái lượt tập
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param callerId UUID của user hiện tại
+   * @param enrollment Ghi danh cần kiểm tra quyền
+   * @param manager EntityManager dùng để query
+   * @returns true nếu người gọi được xem ghi danh
+   */
   async canReadEnrollment(
     actor: Actor,
     callerId: string,
@@ -686,6 +853,18 @@ export class TrainingAccessService {
     return false;
   }
 
+  /**
+   * Tìm lượt tập và kiểm tra người gọi có quyền xem lượt đó
+   *
+   * - Nếu không có quyền, trả 404 để không tiết lộ lượt tập tồn tại
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param participantId UUID của lượt tập
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Lượt tập người gọi được xem
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu lượt không tồn tại hoặc ngoài phạm vi xem
+   */
   async assertCanReadParticipant(
     actor: Actor,
     participantId: string,
@@ -740,6 +919,19 @@ export class TrainingAccessService {
     return false;
   }
 
+  /**
+   * Tìm buổi tập và yêu cầu người gọi có quyền xem lớp chứa buổi đó
+   *
+   * - Dùng cùng quy tắc quyền với sessionForActor
+   * - Buổi không tồn tại hoặc người gọi không có quyền đều trả 404
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param sessionId UUID của buổi tập
+   * @param manager EntityManager dùng để query, mặc định là manager của DataSource
+   * @returns Buổi tập người gọi được xem
+   * @throws ForbiddenException Nếu tài khoản không tồn tại hoặc không hoạt động
+   * @throws NotFoundException Nếu buổi không tồn tại hoặc ngoài phạm vi xem
+   */
   async assertCanReadSession(
     actor: Actor,
     sessionId: string,
@@ -760,6 +952,14 @@ export class TrainingAccessService {
     return session;
   }
 
+  /**
+   * Kiểm UUID được gán là Groom đang hoạt động
+   *
+   * @param manager EntityManager dùng để query
+   * @param groomId UUID của user cần kiểm tra
+   * @returns User có vai trò Groom và đang hoạt động
+   * @throws BadRequestException Nếu user không tồn tại, không hoạt động hoặc sai vai trò
+   */
   async assertGroom(
     manager: EntityManager,
     groomId: string,
@@ -771,6 +971,14 @@ export class TrainingAccessService {
     return groom;
   }
 
+  /**
+   * Kiểm UUID được gán là Head Trainer đang hoạt động
+   *
+   * @param manager EntityManager dùng để query
+   * @param headTrainerId UUID của user cần kiểm tra
+   * @returns User có vai trò Head Trainer và đang hoạt động
+   * @throws BadRequestException Nếu user không tồn tại, không hoạt động hoặc sai vai trò
+   */
   async assertHeadTrainer(
     manager: EntityManager,
     headTrainerId: string,
@@ -808,6 +1016,18 @@ export class TrainingAccessService {
     await this.horseAccess.assertTrainerBarn(manager, actor, callerId, horseId);
   }
 
+  /**
+   * Kiểm Head Trainer hiện tại có quyền quản lý lớp hay không
+   *
+   * - Người gọi phải có vai trò Head Trainer
+   * - Lớp phải được phân công Head Trainer
+   * - Head Trainer được phân công phải trùng với người gọi
+   *
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param callerId UUID của user hiện tại
+   * @param headTrainerId UUID Head Trainer đang phụ trách lớp, hoặc null
+   * @throws ForbiddenException Nếu bất kỳ điều kiện quyền nào không đạt
+   */
   assertCanManageClass(
     actor: Actor,
     callerId: string,
@@ -826,6 +1046,19 @@ export class TrainingAccessService {
     }
   }
 
+  /**
+   * Kiểm người gọi có được thao tác trên một lượt tập hay không
+   *
+   * - Groom chỉ thao tác lượt được giao cho mình
+   * - Head Trainer phải phụ trách lớp của lượt và ngựa phải thuộc khu mình
+   * - Các vai trò khác không được thao tác
+   *
+   * @param manager EntityManager dùng để kiểm tra khu của ngựa
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param callerId UUID của user hiện tại
+   * @param participant Lượt tập đã tải kèm buổi và lớp
+   * @throws ForbiddenException Nếu người gọi không được thao tác trên lượt
+   */
   async assertCanOperateParticipant(
     manager: EntityManager,
     actor: Actor,
@@ -888,6 +1121,21 @@ export class TrainingAccessService {
     );
   }
 
+  /**
+   * Kiểm quyền thao tác buổi tập theo vai trò và các lượt trong buổi
+   *
+   * - Club Manager được phép ngay
+   * - Groom cần được giao ít nhất một lượt trong buổi
+   * - Head Trainer cần quản lý được khu của mọi ngựa có lượt trong buổi; hàm
+   *   này không tự kiểm tra Head Trainer có phụ trách lớp hay không
+   * - Vai trò khác không được thao tác
+   *
+   * @param manager EntityManager dùng để query lượt tập và khu của ngựa
+   * @param actor Thông tin danh tính và các vai trò từ Access Token
+   * @param callerId UUID của user hiện tại
+   * @param session Buổi tập cần kiểm tra
+   * @throws ForbiddenException Nếu người gọi không có quyền thao tác buổi
+   */
   async assertCanOperateSession(
     manager: EntityManager,
     actor: Actor,
