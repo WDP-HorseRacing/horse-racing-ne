@@ -22,7 +22,7 @@ import { TrainingPlanSubjectEntity } from '../entities/training-plan-subject.ent
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
 import { TrainingSubjectEntity } from '../entities/training-subject.entity';
 import { toTrainingPlanResponse } from '../mappers/training-plan.mapper';
-import { assertPlanPhases } from '../policies/training-plan.policy';
+import { assertPlanPhases } from '../policy/training-plan.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { planAuditData } from '../utils/training-audit';
 

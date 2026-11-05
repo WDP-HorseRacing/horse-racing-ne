@@ -43,7 +43,7 @@ import {
   assertSessionOperational,
   eligibilityForSession,
   sessionReopensForCheckIn,
-} from '../../policies/training.policy';
+} from '../../policy/training.policy';
 import {
   CHECK_IN_OPENS_BEFORE_MS,
   START_OPENS_BEFORE_MS,

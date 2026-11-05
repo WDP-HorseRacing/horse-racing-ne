@@ -3,7 +3,7 @@ import { SessionParticipantEntity } from '../entities/session-participant.entity
 import {
   HORSE_SCHEDULE_SESSION_STATUSES,
   OPEN_GROOM_RUN_STATUSES,
-} from '../policies/training.policy';
+} from '../policy/training.policy';
 
 /**
  * Đếm số lượt tập chưa diễn ra mà một người đang được giao dắt

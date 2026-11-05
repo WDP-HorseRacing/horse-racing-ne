@@ -1,7 +1,7 @@
 import { TrainingPlanResponseDto } from '../dto/training-plan.dto';
 import { TrainingPlanEntity } from '../entities/training-plan.entity';
-import { phaseMinMinutes } from '../policies/training-plan.policy';
-import { totalPlanWeeks } from '../policies/training.policy';
+import { phaseMinMinutes } from '../policy/training-plan.policy';
+import { totalPlanWeeks } from '../policy/training.policy';
 import { toTrainingSubjectResponse } from './training-subject.mapper';
 
 /**

@@ -52,7 +52,7 @@ import {
   horsesClashingWithClass,
   sessionsByHorse,
   initialParticipantEligibility,
-} from '../../policies/training.policy';
+} from '../../policy/training.policy';
 import type { GroomRun } from '../../types/training-session.types';
 import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
 import { horseListDisplay } from '../../utils/horse-list-display';

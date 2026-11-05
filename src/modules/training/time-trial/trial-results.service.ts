@@ -22,7 +22,7 @@ import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
 import { TrialResultEntity } from '../entities/trial-result.entity';
 import { toTrialResultResponse } from '../mappers/trial-result.mapper';
-import { assertSessionRecordEditable } from '../policies/training.policy';
+import { assertSessionRecordEditable } from '../policy/training.policy';
 import { TrainingAccessService } from '../shared/training-access.service';
 import { TRAINED_PARTICIPANT_STATUSES } from '../constants/participant-window.constants';
 
