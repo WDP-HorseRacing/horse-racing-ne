@@ -6,8 +6,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { Actor } from '../../../common/types/actor';
-import { changedFieldsDiff } from '../../../common/utils/record-diff';
-import { mapUniqueViolation } from '../../../common/utils/unique-violation';
+import { changedFieldsDiff } from '../../../common/utils/data/record-diff';
+import { mapUniqueViolation } from '../../../common/utils/database/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../audit/constants/audit-feature.enum';

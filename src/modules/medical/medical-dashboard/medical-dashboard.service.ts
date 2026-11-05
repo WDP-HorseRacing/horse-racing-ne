@@ -15,7 +15,7 @@ import {
   toHorsesWithoutCase,
 } from '../mappers/medical.mapper';
 import { addDays } from '../policies/medical.policy';
-import { toClubDate } from '../../../common/utils/club-date';
+import { toClubDate } from '../../../common/utils/date/club-date';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import type { HerdFilter } from '../types/medical-checkup.types';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';

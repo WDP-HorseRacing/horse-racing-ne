@@ -1,4 +1,4 @@
-import { averageDecimal, roundDecimal } from '../../../common/utils/decimal';
+import { averageDecimal, roundDecimal } from '../../../common/utils/number/decimal';
 import { SPEED_SCALE } from '../../performance/constants/performance.constants';
 import type { ReportWeekDto } from '../dto/report-week.dto';
 import type { MetricGroupRow } from '../types/report.types';

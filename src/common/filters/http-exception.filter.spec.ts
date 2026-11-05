@@ -3,7 +3,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { fieldBadRequest, fieldConflict } from '../utils/field-errors';
+import { fieldBadRequest, fieldConflict } from '../utils/validation/field-errors';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 function bodyFor(exception: unknown): Record<string, unknown> {

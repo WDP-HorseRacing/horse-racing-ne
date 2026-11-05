@@ -1,6 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
-import { fieldConflict, type FieldError } from './field-errors';
+import { fieldConflict, type FieldError } from '../validation/field-errors';
 
 /**
  * Mã lỗi Postgres khi ghi trùng một unique constraint

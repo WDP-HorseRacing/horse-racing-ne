@@ -27,7 +27,7 @@ import {
 import { TrainingIntensity } from '../enums/training-intensity.enum';
 import { TrainingSessionStatus } from '../enums/training-session-status.enum';
 import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { IsIsoInstant } from '../../../common/utils/dto-input';
+import { IsIsoInstant } from '../../../common/utils/validation/dto-input';
 
 export class CreateTrainingSessionDto {
   @ApiProperty({ maxLength: 160 })

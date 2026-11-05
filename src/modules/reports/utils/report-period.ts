@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
   clubDateTimeToInstant,
   shiftDays,
-} from '../../../common/utils/club-date';
+} from '../../../common/utils/date/club-date';
 import type { ReportPeriodDto } from '../dto/report-period.dto';
 import type { ReportPeriod } from '../types/report.types';
 

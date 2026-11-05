@@ -1,5 +1,5 @@
 import type { MulticastMessage } from 'firebase-admin/messaging';
-import { encodeKeysetCursor } from '../../../common/utils/keyset-cursor';
+import { encodeKeysetCursor } from '../../../common/utils/pagination/keyset-cursor';
 import type {
   NotificationPageResponseDto,
   NotificationResponseDto,

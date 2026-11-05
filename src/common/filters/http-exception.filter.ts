@@ -9,7 +9,7 @@ import {
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { translatePipeMessage } from '../utils/validation-messages';
+import { translatePipeMessage } from '../utils/validation/validation-messages';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {

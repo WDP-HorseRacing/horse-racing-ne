@@ -4,7 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { finalizeOpenApi } from './common/openapi/finalize-openapi';
-import { validationExceptionFactory } from './common/utils/field-errors';
+import { validationExceptionFactory } from './common/utils/validation/field-errors';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

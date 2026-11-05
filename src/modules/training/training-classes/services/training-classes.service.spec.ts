@@ -3,7 +3,7 @@ import { validate } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UserRole } from '../../../../common/enums/role.enum';
 import type { Actor } from '../../../../common/types/actor';
-import { clubToday, shiftDays } from '../../../../common/utils/club-date';
+import { clubToday, shiftDays } from '../../../../common/utils/date/club-date';
 import { UpdateTrainingClassStatusDto } from '../../dto/training-class.dto';
 import { TrainingClassEntity } from '../../entities/training-class.entity';
 import { TrainingClassStatus } from '../../enums/training-class-status.enum';

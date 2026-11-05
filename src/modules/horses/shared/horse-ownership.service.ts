@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, IsNull } from 'typeorm';
-import { toClubDate } from '../../../common/utils/club-date';
+import { toClubDate } from '../../../common/utils/date/club-date';
 import { HorseOwnershipEntity } from '../entities/horse-ownership.entity';
 import type { OwnershipPeriod } from '../types/horse.types';
 

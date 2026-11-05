@@ -7,38 +7,38 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { toClubDate } from '../../../common/utils/club-date';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
-import { changedFieldsDiff } from '../../../common/utils/record-diff';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
-import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { evaluateEligibility } from '../../horses/policies/horse.policy';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { toClubDate } from '../../../../common/utils/date/club-date';
+import { fieldBadRequest } from '../../../../common/utils/validation/field-errors';
+import { changedFieldsDiff } from '../../../../common/utils/data/record-diff';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
+import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
+import { evaluateEligibility } from '../../../horses/policies/horse.policy';
 import {
   CancelTrainingSessionDto,
   CreateTrainingSessionDto,
   CreateTrainingSessionsDto,
   TrainingSessionResponseDto,
   UpdateTrainingSessionDto,
-} from '../dto/training-session.dto';
-import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
-import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
-import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import { TrainingIntensity } from '../enums/training-intensity.enum';
-import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { HorseEnrollmentEntity } from '../entities/horse-enrollment.entity';
-import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
-import { TrainingClassEntity } from '../entities/training-class.entity';
-import { TrainingSessionEntity } from '../entities/training-session.entity';
-import { TrainingSubjectEntity } from '../entities/training-subject.entity';
-import { toTrainingSessionResponse } from '../mappers/training-session.mapper';
+} from '../../dto/training-session.dto';
+import { HorseEnrollmentStatus } from '../../enums/horse-enrollment-status.enum';
+import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
+import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
+import { TrainingIntensity } from '../../enums/training-intensity.enum';
+import { TrainingSessionType } from '../../enums/training-session-type.enum';
+import { HorseEnrollmentEntity } from '../../entities/horse-enrollment.entity';
+import { SessionParticipantEntity } from '../../entities/session-participant.entity';
+import { TrainingClassPhaseEntity } from '../../entities/training-class-phase.entity';
+import { TrainingClassEntity } from '../../entities/training-class.entity';
+import { TrainingSessionEntity } from '../../entities/training-session.entity';
+import { TrainingSubjectEntity } from '../../entities/training-subject.entity';
+import { toTrainingSessionResponse } from '../../mappers/training-session.mapper';
 import {
   assertNoGroomRunClashes,
   assertNoOverlappingClassSession,
@@ -58,15 +58,15 @@ import {
   sessionsByHorse,
   horseScheduleClashError,
   initialParticipantEligibility,
-} from '../policies/training.policy';
-import { TrainingAccessService } from '../shared/training-access.service';
-import { sessionAuditData } from '../utils/training-audit';
-import { TRAINING_SESSION_CANCELLED_EVENT } from '../constants/training-events.constants';
+} from '../../policies/training.policy';
+import { TrainingAccessService } from '../../shared/training-access.service';
+import { sessionAuditData } from '../../utils/training-audit';
+import { TRAINING_SESSION_CANCELLED_EVENT } from '../../constants/training-events.constants';
 import type {
   GroomRun,
   SessionWindow,
   TrainingSessionCancelledEvent,
-} from '../types/training-session.types';
+} from '../../types/training-session.types';
 
 /**
  * Lượt tập được đồng bộ lại khi buổi đổi giờ hoặc cường độ
@@ -429,6 +429,7 @@ export class TrainingSessionsService {
    * @throws ConflictException Nếu lớp đã kết thúc, buổi không còn đã lên lịch hoặc đã tới giờ mở điểm danh, môn không có trong giai đoạn chứa ngày của buổi, hoặc trùng giờ (trong lớp, với lịch của ngựa, hoặc với buổi ở lớp khác của Head Trainer phụ trách lớp)
    * @throws BadRequestException Nếu giờ mới nằm ngoài thời gian của lớp, môn học không tồn tại, nội dung sai theo loại môn, hoặc đổi giờ bắt đầu sang thời điểm không sau hiện tại (kiểm sau cùng, ngay trước khi lưu)
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async updateSession(
     actor: Actor,
     sessionId: string,
@@ -582,6 +583,7 @@ export class TrainingSessionsService {
    * @throws NotFoundException Nếu không có buổi tập hoặc lớp
    * @throws ConflictException Nếu buổi không còn hủy được, hoặc còn lượt Đang tập
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async cancelSession(
     actor: Actor,
     sessionId: string,

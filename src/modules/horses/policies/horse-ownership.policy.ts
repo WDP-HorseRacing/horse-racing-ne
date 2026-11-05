@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
 import type {
   OwnershipPeriod,
   OwnershipTransferInput,

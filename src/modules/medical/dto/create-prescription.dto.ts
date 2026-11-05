@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { IsDateOnly, trimValue } from '../../../common/utils/dto-input';
+import { IsDateOnly, trimValue } from '../../../common/utils/validation/dto-input';
 
 /**
  * Một dòng đơn thuốc trong buổi khám: không trừ kho, không tính tiền.

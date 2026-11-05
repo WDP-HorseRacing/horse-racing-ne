@@ -7,7 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { IsIsoInstant, trimValue } from '../../../common/utils/dto-input';
+import { IsIsoInstant, trimValue } from '../../../common/utils/validation/dto-input';
 
 /**
  * Dời ngày, đổi người được giao hoặc ghi chú của lịch chăm sóc.

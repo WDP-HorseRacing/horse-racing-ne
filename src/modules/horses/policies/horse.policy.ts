@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import { UserStatus } from '../../../common/enums/user-status.enum';
-import { subtractYears } from '../../../common/utils/club-date';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { subtractYears } from '../../../common/utils/date/club-date';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
 import type { UserEntity } from '../../users/entities/user.entity';
 import { EligibilityReason } from '../enums/eligibility-reason.enum';
 import { HorseGender } from '../enums/horse-gender.enum';

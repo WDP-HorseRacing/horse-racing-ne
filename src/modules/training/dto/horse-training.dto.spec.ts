@@ -1,5 +1,5 @@
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
-import { validationExceptionFactory } from '../../../common/utils/field-errors';
+import { validationExceptionFactory } from '../../../common/utils/validation/field-errors';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { HorseTrainingSessionQueryDto } from './horse-training.dto';
 

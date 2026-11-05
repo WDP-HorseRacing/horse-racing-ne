@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import { deterministicUuid } from '../../../common/utils/deterministic-uuid';
+import { deterministicUuid } from '../../../common/utils/data/deterministic-uuid';
 import { CLUB_TIME_ZONE } from '../../../common/constants';
 import {
   MEDICAL_CARE_SCHEDULE_DUE_EVENT,
@@ -16,7 +16,7 @@ import {
   dueStatusOf,
   isOverdueNotifiable,
 } from '../policies/medical.policy';
-import { toClubDate } from '../../../common/utils/club-date';
+import { toClubDate } from '../../../common/utils/date/club-date';
 import { MedicalCheckupsService } from '../shared/medical-checkups.service';
 import type {
   CareScheduleDueEvent,

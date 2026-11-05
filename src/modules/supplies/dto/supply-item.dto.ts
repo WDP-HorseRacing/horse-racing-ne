@@ -12,7 +12,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
+import { trimValue } from '../../../common/utils/validation/dto-input';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { SupplyCategory } from '../enums/supply-category.enum';

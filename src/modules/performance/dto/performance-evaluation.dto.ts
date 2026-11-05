@@ -10,7 +10,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
+import { trimValue } from '../../../common/utils/validation/dto-input';
 
 export class CreatePerformanceEvaluationDto {
   @ApiProperty({ minimum: 1, maximum: 10 })

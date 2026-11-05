@@ -3,7 +3,7 @@ import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { PaginationMetaDto } from '../../../common/dto/pagination-response.dto';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { UserRole } from '../../../common/enums/role.enum';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 import { AuditAction } from '../constants/audit-action.enum';
 import { AuditEntityType } from '../constants/audit-entity-type.enum';
 import { AuditFeature } from '../constants/audit-feature.enum';

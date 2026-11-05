@@ -1,28 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, In } from 'typeorm';
-import { clubToday } from '../../../common/utils/club-date';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
+import { clubToday } from '../../../../common/utils/date/club-date';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
 import {
   AUTO_COMPLETED_CLASS_REASON,
   AUTO_COMPLETED_RUN_REASON,
   MISSED_CHECK_IN_REASON,
   STUCK_RUN_GRACE_MS,
-} from '../constants/participant-window.constants';
-import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { TrainingClassEntity } from '../entities/training-class.entity';
-import { TrainingSessionEntity } from '../entities/training-session.entity';
-import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
-import { TrainingClassStatus } from '../enums/training-class-status.enum';
-import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import { completeTrainingClass } from '../shared/training-class-completion';
+} from '../../constants/participant-window.constants';
+import { SessionParticipantEntity } from '../../entities/session-participant.entity';
+import { TrainingClassEntity } from '../../entities/training-class.entity';
+import { TrainingSessionEntity } from '../../entities/training-session.entity';
+import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../../enums/training-class-status.enum';
+import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
+import { completeTrainingClass } from '../../shared/training-class-completion';
 import {
   NON_TERMINAL_PARTICIPANT_STATUSES,
   TrainingOperationsFacade,
-} from '../shared/training-operations.facade';
+} from '../../shared/training-operations.facade';
 
 const CLOSE_BATCH_SIZE = 100;
 

@@ -12,13 +12,13 @@ import {
   clubToday,
   shiftDays,
   toClubDate,
-} from '../../../../common/utils/club-date';
+} from '../../../../common/utils/date/club-date';
 import {
   fieldConflict,
   type FieldError,
-} from '../../../../common/utils/field-errors';
-import { changedFieldsDiff } from '../../../../common/utils/record-diff';
-import { mapUniqueViolation } from '../../../../common/utils/unique-violation';
+} from '../../../../common/utils/validation/field-errors';
+import { changedFieldsDiff } from '../../../../common/utils/data/record-diff';
+import { mapUniqueViolation } from '../../../../common/utils/database/unique-violation';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
@@ -182,9 +182,9 @@ export class TrainingClassesService {
           : null,
       ),
     );
-    return visible.filter((row): row is TrainingClassEntity => !!row).map(
-      toTrainingClassResponse,
-    );
+    return visible
+      .filter((row): row is TrainingClassEntity => !!row)
+      .map(toTrainingClassResponse);
   }
 
   async get(actor: Actor, classId: string): Promise<TrainingClassResponseDto> {
@@ -448,6 +448,7 @@ export class TrainingClassesService {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async update(
     actor: Actor,
     classId: string,

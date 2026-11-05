@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional } from 'class-validator';
-import { toQueryBoolean } from '../../../common/utils/query-boolean';
+import { toQueryBoolean } from '../../../common/utils/query/query-boolean';
 
 export class InjuryListQueryDto {
   @ApiPropertyOptional({

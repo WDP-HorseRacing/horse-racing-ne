@@ -6,7 +6,7 @@ import {
   clubDateTimeToInstant,
   clubToday,
   shiftDays,
-} from '../../../common/utils/club-date';
+} from '../../../common/utils/date/club-date';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import { TrainingIntensity } from '../../training/enums/training-intensity.enum';

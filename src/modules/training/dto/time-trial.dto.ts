@@ -11,7 +11,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { trimValue } from '../../../common/utils/dto-input';
+import { trimValue } from '../../../common/utils/validation/dto-input';
 import { INT_COLUMN_MAX } from '../constants/column-limits.constants';
 import {
   MAX_TRIAL_TIME_MESSAGE,

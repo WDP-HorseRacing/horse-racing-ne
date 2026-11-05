@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { fieldConflict } from './field-errors';
+import { fieldConflict } from '../validation/field-errors';
 import { QueryFailedError } from 'typeorm';
 import {
   mapAnyUniqueViolation,

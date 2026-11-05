@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { fieldBadRequest } from '../../../common/utils/field-errors';
+import { fieldBadRequest } from '../../../common/utils/validation/field-errors';
 
 /**
  * Kiểm khoảng ngày của phụ phí mới

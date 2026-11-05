@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
-import { IsDateOnly } from '../../../common/utils/dto-input';
+import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { CareTaskUserSummaryResponseDto } from './care-task.dto';
 

@@ -34,7 +34,7 @@ import {
   assertCareScheduleReopenable,
   assertRescheduleReason,
 } from '../policies/medical.policy';
-import { toClubDate } from '../../../common/utils/club-date';
+import { toClubDate } from '../../../common/utils/date/club-date';
 import { MedicalAccessService } from '../shared/medical-access.service';
 import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
 

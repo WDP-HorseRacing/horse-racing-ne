@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../../common/types/actor';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
   HorseHealthResponseDto,

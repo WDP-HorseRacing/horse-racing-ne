@@ -14,17 +14,17 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Access, CurrentUser } from '../../../common/decorators';
-import type { Actor } from '../../../common/types/actor';
-import { UserRole } from '../../users/user.enums';
+import { Access, CurrentUser } from '../../../../common/decorators';
+import type { Actor } from '../../../../common/types/actor';
+import { UserRole } from '../../../users/user.enums';
 import {
   AssignParticipantGroomDto,
   MarkParticipantAbsentDto,
   SessionParticipantListItemDto,
   SessionParticipantResponseDto,
   StopParticipantDto,
-} from '../dto/session-participant.dto';
-import { SessionParticipantsService } from './session-participants.service';
+} from '../../dto/session-participant.dto';
+import { SessionParticipantsService } from '../services/session-participants.service';
 
 @ApiTags('training')
 @ApiBearerAuth()

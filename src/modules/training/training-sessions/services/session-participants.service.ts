@@ -2,34 +2,34 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { HorseEntity } from '../../horses/entities/horse.entity';
-import { MediaService } from '../../media/services/media.service';
-import { UserEntity } from '../../users/entities/user.entity';
-import { evaluateEligibility } from '../../horses/policies/horse.policy';
-import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { HorseEntity } from '../../../horses/entities/horse.entity';
+import { MediaService } from '../../../media/services/media.service';
+import { UserEntity } from '../../../users/entities/user.entity';
+import { evaluateEligibility } from '../../../horses/policies/horse.policy';
+import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
 import {
   AssignParticipantGroomDto,
   MarkParticipantAbsentDto,
   SessionParticipantListItemDto,
   SessionParticipantResponseDto,
   StopParticipantDto,
-} from '../dto/session-participant.dto';
-import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
-import { TrainingClassStatus } from '../enums/training-class-status.enum';
-import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import { SessionParticipantEntity } from '../entities/session-participant.entity';
-import { TrainingSessionEntity } from '../entities/training-session.entity';
+} from '../../dto/session-participant.dto';
+import { SessionParticipantStatus } from '../../enums/session-participant-status.enum';
+import { TrainingClassStatus } from '../../enums/training-class-status.enum';
+import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
+import { SessionParticipantEntity } from '../../entities/session-participant.entity';
+import { TrainingSessionEntity } from '../../entities/training-session.entity';
 import {
   toSessionParticipantListItem,
   toSessionParticipantResponse,
-} from '../mappers/session-participant.mapper';
+} from '../../mappers/session-participant.mapper';
 import {
   assertGroomFreeForRun,
   assertParticipantAbsent,
@@ -43,16 +43,16 @@ import {
   assertSessionOperational,
   eligibilityForSession,
   sessionReopensForCheckIn,
-} from '../policies/training.policy';
+} from '../../policies/training.policy';
 import {
   CHECK_IN_OPENS_BEFORE_MS,
   START_OPENS_BEFORE_MS,
-} from '../constants/participant-window.constants';
-import { TrainingAccessService } from '../shared/training-access.service';
-import { TrainingOperationsFacade } from '../shared/training-operations.facade';
-import { TRAINING_RUN_GROOM_ASSIGNED_EVENT } from '../constants/training-events.constants';
-import type { TrainingRunGroomAssignedEvent } from '../types/training-session.types';
-import { horseListDisplay } from '../utils/horse-list-display';
+} from '../../constants/participant-window.constants';
+import { TrainingAccessService } from '../../shared/training-access.service';
+import { TrainingOperationsFacade } from '../../shared/training-operations.facade';
+import { TRAINING_RUN_GROOM_ASSIGNED_EVENT } from '../../constants/training-events.constants';
+import type { TrainingRunGroomAssignedEvent } from '../../types/training-session.types';
+import { horseListDisplay } from '../../utils/horse-list-display';
 
 @Injectable()
 export class SessionParticipantsService {
@@ -180,6 +180,7 @@ export class SessionParticipantsService {
    * @throws ConflictException Nếu buổi không ở trạng thái thực thi, lượt đã kết thúc, hoặc Groom đang dắt lượt khác trùng giờ
    * @throws BadRequestException Nếu groomId không phải Groom đang hoạt động
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async assignGroom(
     actor: Actor,
     participantId: string,
@@ -300,6 +301,7 @@ export class SessionParticipantsService {
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
    * @throws ConflictException Nếu buổi không ở trạng thái thực thi (trừ buổi COMPLETED khi lượt ABSENT), ngoài khung giờ điểm danh, lượt không ở PLANNED hoặc ABSENT, hoặc ngựa không còn được tập
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async checkIn(
     actor: Actor,
     participantId: string,
@@ -365,6 +367,7 @@ export class SessionParticipantsService {
     return toSessionParticipantResponse(outcome.participant);
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async absent(
     actor: Actor,
     participantId: string,
@@ -386,6 +389,7 @@ export class SessionParticipantsService {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async ready(
     actor: Actor,
     participantId: string,
@@ -422,6 +426,7 @@ export class SessionParticipantsService {
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
    * @throws ConflictException Nếu lượt không ở READY, lớp chưa ACTIVE, buổi không ở trạng thái thực thi, ngoài khung giờ bắt đầu, ngựa không còn được tập hoặc ngựa đang có lượt ONGOING khác
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async start(
     actor: Actor,
     participantId: string,
@@ -510,6 +515,7 @@ export class SessionParticipantsService {
     return toSessionParticipantResponse(outcome.participant);
   }
 
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async complete(
     actor: Actor,
     participantId: string,
@@ -539,6 +545,7 @@ export class SessionParticipantsService {
    * @throws ForbiddenException Nếu người gọi không được thao tác lượt này
    * @throws ConflictException Nếu lượt không ở ONGOING hoặc buổi không ở IN_PROGRESS
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async stop(
     actor: Actor,
     participantId: string,

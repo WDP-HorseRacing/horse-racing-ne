@@ -2,19 +2,19 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { UserRole } from '../../../common/enums/role.enum';
-import type { Actor } from '../../../common/types/actor';
+import { UserRole } from '../../../../common/enums/role.enum';
+import type { Actor } from '../../../../common/types/actor';
 import {
   CreateTrainingSessionDto,
   UpdateTrainingSessionDto,
-} from '../dto/training-session.dto';
-import { TrainingClassStatus } from '../enums/training-class-status.enum';
-import { TrainingIntensity } from '../enums/training-intensity.enum';
-import { TrainingSessionStatus } from '../enums/training-session-status.enum';
-import { TrainingSessionType } from '../enums/training-session-type.enum';
-import { TrainingClassPhaseEntity } from '../entities/training-class-phase.entity';
-import { TrainingSessionEntity } from '../entities/training-session.entity';
-import { TrainingAccessService } from '../shared/training-access.service';
+} from '../../dto/training-session.dto';
+import { TrainingClassStatus } from '../../enums/training-class-status.enum';
+import { TrainingIntensity } from '../../enums/training-intensity.enum';
+import { TrainingSessionStatus } from '../../enums/training-session-status.enum';
+import { TrainingSessionType } from '../../enums/training-session-type.enum';
+import { TrainingClassPhaseEntity } from '../../entities/training-class-phase.entity';
+import { TrainingSessionEntity } from '../../entities/training-session.entity';
+import { TrainingAccessService } from '../../shared/training-access.service';
 import { TrainingSessionsService } from './training-sessions.service';
 
 const actor: Actor = { sub: 'ht', roles: [UserRole.HEAD_TRAINER] };

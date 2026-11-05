@@ -13,7 +13,7 @@ import { AuditService } from '../../../audit/services/audit.service';
 import {
   clubDateTimeToInstant,
   shiftDays,
-} from '../../../../common/utils/club-date';
+} from '../../../../common/utils/date/club-date';
 import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
 import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
 import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';

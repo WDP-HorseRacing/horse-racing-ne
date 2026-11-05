@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
-import { containsPattern } from '../../../common/utils/like-pattern';
+import { containsPattern } from '../../../common/utils/query/like-pattern';
 import { BarnEntity } from '../../stable/entities/barn.entity';
 import { GroomAssignmentEntity } from '../../stable/entities/groom-assignment.entity';
 import { StallAssignmentEntity } from '../../stable/entities/stall-assignment.entity';

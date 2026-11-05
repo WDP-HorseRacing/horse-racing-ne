@@ -17,7 +17,7 @@ import type { Actor } from '../../../common/types/actor';
 import {
   clubDateTimeToInstant,
   shiftDays,
-} from '../../../common/utils/club-date';
+} from '../../../common/utils/date/club-date';
 import { currentUserForActor } from '../../users/utils/current-user';
 import type {
   AuditLogDetailDto,

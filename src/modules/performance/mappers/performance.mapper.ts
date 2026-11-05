@@ -5,7 +5,7 @@ import {
   PerformanceMetricPointDto,
   SessionPerformanceSummaryDto,
 } from '../dto/horse-performance.response.dto';
-import { averageDecimal, roundDecimal } from '../../../common/utils/decimal';
+import { averageDecimal, roundDecimal } from '../../../common/utils/number/decimal';
 import { HorseAlertDto } from '../dto/horse-alert.dto';
 import { SPEED_SCALE } from '../constants/performance.constants';
 import { PerformanceEvaluationEntity } from '../entities/performance-evaluation.entity';

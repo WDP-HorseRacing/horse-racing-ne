@@ -9,7 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { IsDateOnly, trimValue } from '../../../common/utils/dto-input';
+import { IsDateOnly, trimValue } from '../../../common/utils/validation/dto-input';
 import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 
 export class CreateCareTaskTypeDto {

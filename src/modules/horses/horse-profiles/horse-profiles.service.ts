@@ -11,7 +11,7 @@ import { PaginationResponseDto } from '../../../common/dto/pagination-response.d
 import { UserRole } from '../../../common/enums/role.enum';
 import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../common/types/actor';
-import { mapUniqueViolation } from '../../../common/utils/unique-violation';
+import { mapUniqueViolation } from '../../../common/utils/database/unique-violation';
 import { AuditAction } from '../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import { AuditService } from '../../audit/services/audit.service';
@@ -74,7 +74,7 @@ import type {
   HorseLocationRow,
   HorsePersonRow,
 } from '../types/horse.types';
-import { clubToday } from '../../../common/utils/club-date';
+import { clubToday } from '../../../common/utils/date/club-date';
 import { changedFields, pickFields } from '../utils/record-diff';
 import { HorseProfilesRepository } from './horse-profiles.repository';
 
