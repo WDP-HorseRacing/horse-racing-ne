@@ -13,8 +13,8 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import {
   OPEN_CASE_BLOCKS_DECEASED_MESSAGE,
   OPEN_CASE_BLOCKS_TRANSFER_MESSAGE,
-} from '../../medical/constants/medical.constants';
-import { MedicalLifecycleService } from '../../medical/shared/medical-lifecycle.service';
+} from '../../medical/constant/medical.constants';
+import { MedicalLifecycleService } from '../../medical/shared/lifecycle/medical-lifecycle.service';
 import { TrainingLockService } from '../../medical/training-locks/training-locks.service';
 import { GroomAssignmentsService } from '../../stable/groom-assignments/groom-assignments.service';
 import { StallsService } from '../../stable/stalls/stalls.service';
@@ -456,7 +456,10 @@ describe('HorseStatusesService', () => {
         manager,
         HORSE_ID,
       );
-      expect(grooms.endOpenGroomAssignment).toHaveBeenCalledWith(manager, HORSE_ID);
+      expect(grooms.endOpenGroomAssignment).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+      );
       expect(trainingLocks.releaseActiveLockByHorse).toHaveBeenCalledWith(
         manager,
         HORSE_ID,
@@ -644,7 +647,10 @@ describe('HorseStatusesService', () => {
         manager,
         HORSE_ID,
       );
-      expect(grooms.endOpenGroomAssignment).toHaveBeenCalledWith(manager, HORSE_ID);
+      expect(grooms.endOpenGroomAssignment).toHaveBeenCalledWith(
+        manager,
+        HORSE_ID,
+      );
       expect(trainingLocks.releaseActiveLockByHorse).toHaveBeenCalledWith(
         manager,
         HORSE_ID,

@@ -3,11 +3,11 @@ import type { Actor } from '../../../common/types/actor';
 import {
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
-} from '../constants/medical-events.constants';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
+} from '../constant/medical-events.constants';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
+import { TrainingLockEntity } from '../entity/training-lock.entity';
 import { TrainingLockService } from './training-locks.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+import { TrainingLockWritesService } from '../shared/writes/training-lock-writes.service';
 
 /**
  * Dựng service chỉ để gọi hàm hệ thống releaseActiveLockByHorse, không cần dependency nào.

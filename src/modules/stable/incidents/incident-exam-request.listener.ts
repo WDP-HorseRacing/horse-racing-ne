@@ -4,7 +4,7 @@ import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/o
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
-} from '../../medical/constants/medical-events.constants';
+} from '../../medical/constant/medical-events.constants';
 import type {
   ExamRequestHandledEvent,
   ExamRequestReopenedEvent,

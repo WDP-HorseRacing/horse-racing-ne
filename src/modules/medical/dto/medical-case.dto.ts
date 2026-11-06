@@ -12,7 +12,7 @@ import {
 import {
   CaseLockDecision,
   MedicalCaseStatus,
-} from '../constants/medical-case.enum';
+} from '../constant/medical-case.enum';
 import {
   IsDateOnly,
   IsIsoInstant,

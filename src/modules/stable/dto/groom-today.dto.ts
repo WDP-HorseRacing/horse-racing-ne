@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { CareScheduleType } from '../../medical/constants/care-schedule.enum';
+import { CareScheduleType } from '../../medical/constant/care-schedule.enum';
 import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import { DailyChecklistResponseDto } from './daily-checklist.dto';
 import { FeedingPlanResponseDto } from './feeding-plan.dto';

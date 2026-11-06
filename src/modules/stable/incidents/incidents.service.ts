@@ -24,9 +24,9 @@ import { AuditService } from '../../audit/services/audit.service';
 import { mapUniqueViolation } from '../../../common/utils/database/unique-violation';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { MediaService } from '../../media/services/media.service';
-import { ExamRequestStatus } from '../../medical/constants/exam-request.enum';
-import { MedicalExamRequestEntity } from '../../medical/entities/medical-exam-request.entity';
-import { ExamRequestsService } from '../../medical/exam-requests/exam-requests.service';
+import { ExamRequestStatus } from '../../medical/constant/exam-request.enum';
+import { MedicalExamRequestEntity } from '../../medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../medical/exam-request/exam-requests.service';
 import type {
   ExamRequestHandledEvent,
   ExamRequestReopenedEvent,

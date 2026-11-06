@@ -1,6 +1,6 @@
 import { ACCESS_KEY } from '../../../common/constants/auth.constants';
 import { UserRole } from '../../../common/enums/role.enum';
-import { HealthStatusesController } from '../health-statuses/health-statuses.controller';
+import { HealthStatusesController } from '../health-status/health-statuses.controller';
 import { TrainingLocksController } from './training-locks.controller';
 
 /**

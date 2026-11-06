@@ -4,19 +4,19 @@ import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import type { Actor } from '../../../common/types/actor';
 import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import { StableAccessService } from '../../stable/shared/stable-access.service';
-import { CheckupDueStatus } from '../constants/checkup.enum';
-import { ExamRequestStatus } from '../constants/exam-request.enum';
-import { CHECKUP_DUE_SOON_DAYS } from '../constants/medical.constants';
+import { CheckupDueStatus } from '../constant/checkup.enum';
+import { ExamRequestStatus } from '../constant/exam-request.enum';
+import { CHECKUP_DUE_SOON_DAYS } from '../constant/medical.constants';
 import { MedicalDashboardQueryDto, MedicalDashboardResponseDto } from '../dto';
-import { MedicalExamRequestEntity } from '../entities/medical-exam-request.entity';
+import { MedicalExamRequestEntity } from '../entity/medical-exam-request.entity';
 import {
   toExamRequestResponse,
   toHerdBlock,
   toHorsesWithoutCase,
-} from '../mappers/medical.mapper';
-import { addDays } from '../policies/medical.policy';
+} from '../mapper/medical.mapper';
+import { addDays } from '../policy/medical.policy';
 import { toClubDate } from '../../../common/utils/date/club-date';
-import { MedicalCheckupsService } from '../shared/medical-checkups.service';
+import { MedicalCheckupsService } from '../shared/queries/medical-checkups.service';
 import type { HerdFilter } from '../types/medical-checkup.types';
 import { MedicalDashboardRepository } from './medical-dashboard.repository';
 

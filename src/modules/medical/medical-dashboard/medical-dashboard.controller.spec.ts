@@ -1,6 +1,6 @@
 import { ACCESS_KEY } from '../../../common/constants/auth.constants';
 import { UserRole } from '../../../common/enums/role.enum';
-import { CheckupsController } from '../care-schedules/checkups.controller';
+import { CheckupsController } from '../care-schedule/controller/checkups.controller';
 import { MedicalDashboardController } from './medical-dashboard.controller';
 
 /**

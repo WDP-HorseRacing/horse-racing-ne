@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { HorseLifecyclePreviewResponseDto } from '../../horses/dto';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+import { MedicalCaseStatus } from '../constant/medical-case.enum';
 import { MedicalRecordResponseDto } from './medical-record.response.dto';
 
 /**

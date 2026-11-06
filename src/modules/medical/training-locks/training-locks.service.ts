@@ -11,27 +11,27 @@ import { HorseAccessService } from '../../horses/shared/horse-access.service';
 import {
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
   MEDICAL_TRAINING_LOCK_SET_EVENT,
-} from '../constants/medical-events.constants';
-import { TrainingLockStatus } from '../constants/training-lock.enum';
+} from '../constant/medical-events.constants';
+import { TrainingLockStatus } from '../constant/training-lock.enum';
 import {
   CreateTrainingLockDto,
   ReleaseTrainingLockDto,
   TrainingLockResponseDto,
 } from '../dto';
-import { TrainingLockEntity } from '../entities/training-lock.entity';
-import { toTrainingLockResponse } from '../mappers/medical.mapper';
+import { TrainingLockEntity } from '../entity/training-lock.entity';
+import { toTrainingLockResponse } from '../mapper/medical.mapper';
 import {
   assertLockActive,
   assertLockEnd,
   assertNoActiveLock,
-} from '../policies/medical.policy';
-import { MedicalAccessService } from '../shared/medical-access.service';
-import { TrainingLockWritesService } from '../shared/training-lock-writes.service';
+} from '../policy/medical.policy';
+import { MedicalAccessService } from '../shared/access/medical-access.service';
+import { TrainingLockWritesService } from '../shared/writes/training-lock-writes.service';
 import type {
   TrainingLockReleasedEvent,
   TrainingLockSetEvent,
 } from '../types/medical-events.types';
-import { MEDICAL_AUDIT_FEATURE } from '../constants/medical.constants';
+import { MEDICAL_AUDIT_FEATURE } from '../constant/medical.constants';
 
 @Injectable()
 export class TrainingLockService {

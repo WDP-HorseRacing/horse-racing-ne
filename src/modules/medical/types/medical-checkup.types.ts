@@ -1,6 +1,6 @@
 import type { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import type { CareScheduleType } from '../constants/care-schedule.enum';
-import type { CheckupAnchors } from '../policies/medical.policy';
+import type { CareScheduleType } from '../constant/care-schedule.enum';
+import type { CheckupAnchors } from '../policy/medical.policy';
 
 /**
  * Một con ngựa trong đàn cùng các mốc tính hạn khám định kỳ, đọc từ DB.

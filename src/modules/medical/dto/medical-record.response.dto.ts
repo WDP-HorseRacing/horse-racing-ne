@@ -5,7 +5,7 @@ import {
   MedicalVisitKind,
   VisitEditHealthOutcome,
   VisitVoidHealthOutcome,
-} from '../constants/medical-visit.enum';
+} from '../constant/medical-visit.enum';
 import { InjuryMarkerResponseDto } from './injury-marker.response.dto';
 import { PrescriptionResponseDto } from './prescription.response.dto';
 

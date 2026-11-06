@@ -3,7 +3,7 @@ import { Transform } from 'class-transformer';
 import { IsBoolean, IsEnum, IsIn, IsOptional, IsUUID } from 'class-validator';
 import { toQueryBoolean } from '../../../common/utils/query/query-boolean';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import { CareScheduleType } from '../constants/care-schedule.enum';
+import { CareScheduleType } from '../constant/care-schedule.enum';
 import { CheckupItemDto } from './checkup.dto';
 import { ExamRequestResponseDto } from './exam-request.dto';
 

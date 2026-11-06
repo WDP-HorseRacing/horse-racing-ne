@@ -4,8 +4,8 @@ import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../constants/care-schedule.enum';
-import { MedicalCaseStatus } from '../constants/medical-case.enum';
+} from '../constant/care-schedule.enum';
+import { MedicalCaseStatus } from '../constant/medical-case.enum';
 import type { DashboardOpenCaseDto, DashboardPrescriptionDto } from '../dto';
 
 @Injectable()

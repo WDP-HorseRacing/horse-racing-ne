@@ -15,8 +15,8 @@ import {
   shiftDays,
 } from '../../../../common/utils/date/club-date';
 import { GroomAssignmentEntity } from '../../../stable/entities/groom-assignment.entity';
-import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
-import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
+import { TrainingLockEntity } from '../../../medical/entity/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constant/training-lock.enum';
 import { HorseEntity } from '../../../horses/entities/horse.entity';
 import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
 import { MediaService } from '../../../media/services/media.service';

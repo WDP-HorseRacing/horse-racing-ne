@@ -17,18 +17,21 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { IsIsoInstant, trimValue } from '../../../common/utils/validation/dto-input';
+import {
+  IsIsoInstant,
+  trimValue,
+} from '../../../common/utils/validation/dto-input';
 import { HorseMeasurementValueDto } from '../../horses/dto';
 import { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../constants/medical-visit.enum';
+} from '../constant/medical-visit.enum';
 import {
   InjuryBodyRegion,
   InjuryType,
   RecoveryStatus,
-} from '../constants/injury-marker.enum';
+} from '../constant/injury-marker.enum';
 import {
   CreateInjuryDto,
   InjuryPositionDto,

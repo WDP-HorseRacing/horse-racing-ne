@@ -7,9 +7,9 @@ import type {
   InjuryBodyRegion,
   InjuryType,
   RecoveryStatus,
-} from '../../medical/constants/injury-marker.enum';
-import type { MedicalCaseStatus } from '../../medical/constants/medical-case.enum';
-import type { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
+} from '../../medical/constant/injury-marker.enum';
+import type { MedicalCaseStatus } from '../../medical/constant/medical-case.enum';
+import type { TrainingLockStatus } from '../../medical/constant/training-lock.enum';
 import type { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
 import type { TrainingIntensity } from '../../training/enums/training-intensity.enum';
 import type { TrainingSessionType } from '../../training/enums/training-session-type.enum';

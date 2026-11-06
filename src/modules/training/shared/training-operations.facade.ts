@@ -6,8 +6,8 @@ import {
 import { EntityManager, In } from 'typeorm';
 import { HorseEntity } from '../../horses/entities/horse.entity';
 import { evaluateEligibility } from '../../horses/policies/horse.policy';
-import { TrainingLockStatus } from '../../medical/constants/training-lock.enum';
-import { TrainingLockEntity } from '../../medical/entities/training-lock.entity';
+import { TrainingLockStatus } from '../../medical/constant/training-lock.enum';
+import { TrainingLockEntity } from '../../medical/entity/training-lock.entity';
 import { HorseEnrollmentStatus } from '../enums/horse-enrollment-status.enum';
 import { SessionParticipantStatus } from '../enums/session-participant-status.enum';
 import { TrainingClassStatus } from '../enums/training-class-status.enum';

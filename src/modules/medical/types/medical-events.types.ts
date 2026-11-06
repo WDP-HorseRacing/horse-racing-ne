@@ -1,6 +1,6 @@
 import type { HorseHealthStatus } from '../../horses/enums/horse-status.enum';
-import type { CareScheduleType } from '../constants/care-schedule.enum';
-import type { ExamRequestStatus } from '../constants/exam-request.enum';
+import type { CareScheduleType } from '../constant/care-schedule.enum';
+import type { ExamRequestStatus } from '../constant/exam-request.enum';
 
 /**
  * Trường chung của mọi domain event y tế.

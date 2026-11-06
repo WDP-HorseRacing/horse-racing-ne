@@ -7,7 +7,7 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
-import { MedicalRecordEntity } from '../../medical/entities/medical-record.entity';
+import { MedicalRecordEntity } from '../../medical/entity/medical-record.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { HorseMeasurementSource } from '../enums/horse-measurement-source.enum';
 import { HorseMeasurementType } from '../enums/horse-measurement-type.enum';

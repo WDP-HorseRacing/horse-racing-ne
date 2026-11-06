@@ -12,8 +12,8 @@ import { HorseEntity } from '../../../horses/entities/horse.entity';
 import { MediaService } from '../../../media/services/media.service';
 import { UserEntity } from '../../../users/entities/user.entity';
 import { evaluateEligibility } from '../../../horses/policies/horse.policy';
-import { TrainingLockEntity } from '../../../medical/entities/training-lock.entity';
-import { TrainingLockStatus } from '../../../medical/constants/training-lock.enum';
+import { TrainingLockEntity } from '../../../medical/entity/training-lock.entity';
+import { TrainingLockStatus } from '../../../medical/constant/training-lock.enum';
 import {
   AssignParticipantGroomDto,
   MarkParticipantAbsentDto,
