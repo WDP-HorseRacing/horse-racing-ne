@@ -26,7 +26,7 @@ import { FeedingPlanEntity } from '../../../src/modules/stable/entities/feeding-
 import { HorseCareTaskEntity } from '../../../src/modules/stable/entities/horse-care-task.entity';
 import { IncidentEntity } from '../../../src/modules/stable/entities/incident.entity';
 import { FeedingPlansService } from '../../../src/modules/stable/feeding-plans/feeding-plans.service';
-import { IncidentsService } from '../../../src/modules/stable/incidents/incidents.service';
+import { IncidentsService } from '../../../src/modules/stable/incidents/services/incidents.service';
 import { DailyChecklistsService } from '../../../src/modules/stable/shared/daily-checklists.service';
 import { StableAccessService } from '../../../src/modules/stable/shared/stable-access.service';
 import { SUPPLY_LOW_STOCK_EVENT } from '../../../src/modules/supplies/constants/supply-events.constants';

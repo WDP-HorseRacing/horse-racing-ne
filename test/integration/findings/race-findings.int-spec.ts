@@ -31,7 +31,7 @@ import { IncidentEntity } from '../../../src/modules/stable/entities/incident.en
 import { FeedingPlansService } from '../../../src/modules/stable/feeding-plans/feeding-plans.service';
 import { GroomAssignmentsModule } from '../../../src/modules/stable/groom-assignments/groom-assignments.module';
 import { GroomAssignmentsService } from '../../../src/modules/stable/groom-assignments/groom-assignments.service';
-import { IncidentsService } from '../../../src/modules/stable/incidents/incidents.service';
+import { IncidentsService } from '../../../src/modules/stable/incidents/services/incidents.service';
 import { StableAccessService } from '../../../src/modules/stable/shared/stable-access.service';
 import { SupplyItemEntity } from '../../../src/modules/supplies/entities/supply-item.entity';
 import { SupplyLotEntity } from '../../../src/modules/supplies/entities/supply-lot.entity';

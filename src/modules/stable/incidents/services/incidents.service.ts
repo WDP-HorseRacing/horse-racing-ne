@@ -13,31 +13,31 @@ import {
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
-import { PaginationResponseDto } from '../../../common/dto/pagination-response.dto';
-import { UserRole } from '../../../common/enums/role.enum';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { mapUniqueViolation } from '../../../common/utils/database/unique-violation';
-import { HorseAccessService } from '../../horses/shared/horse-access.service';
-import { MediaService } from '../../media/services/media.service';
-import { ExamRequestStatus } from '../../medical/constant/exam-request.enum';
-import { MedicalExamRequestEntity } from '../../medical/entity/medical-exam-request.entity';
-import { ExamRequestsService } from '../../medical/exam-request/exam-requests.service';
+import { PaginationResponseDto } from '../../../../common/dto/pagination-response.dto';
+import { UserRole } from '../../../../common/enums/role.enum';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { mapUniqueViolation } from '../../../../common/utils/database/unique-violation';
+import { HorseAccessService } from '../../../horses/shared/horse-access.service';
+import { MediaService } from '../../../media/services/media.service';
+import { ExamRequestStatus } from '../../../medical/constant/exam-request.enum';
+import { MedicalExamRequestEntity } from '../../../medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../../medical/exam-request/exam-requests.service';
 import type {
   ExamRequestHandledEvent,
   ExamRequestReopenedEvent,
-} from '../../medical/types/medical-events.types';
-import { currentUserForActor } from '../../users/utils/current-user';
-import { IncidentStatus } from '../constants/incident-status.enum';
-import { IncidentResolutionSource } from '../enums/incident-resolution-source.enum';
+} from '../../../medical/types/medical-events.types';
+import { currentUserForActor } from '../../../users/utils/current-user';
+import { IncidentStatus } from '../../constants/incident-status.enum';
+import { IncidentResolutionSource } from '../../enums/incident-resolution-source.enum';
 import {
   INCIDENT_HANDLED_EVENT,
   INCIDENT_REPORTED_EVENT,
-} from '../constants/stable-events.constants';
+} from '../../constants/stable-events.constants';
 import {
   IncidentListQueryDto,
   IncidentPageResponseDto,
@@ -45,21 +45,21 @@ import {
   ReferIncidentDto,
   ReportIncidentDto,
   ResolveIncidentDto,
-} from '../dto/incident.dto';
-import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
-import { IncidentEntity } from '../entities/incident.entity';
-import { toIncidentResponse } from '../mappers/incident.mapper';
+} from '../../dto/incident.dto';
+import { GroomAssignmentEntity } from '../../entities/groom-assignment.entity';
+import { IncidentEntity } from '../../entities/incident.entity';
+import { toIncidentResponse } from '../../mappers/incident.mapper';
 import {
   assertIncidentNotReferred,
   assertIncidentOpen,
   assertIncidentResolvable,
-} from '../policies/incident.policy';
-import { assertHorseLifecycleWritable } from '../policies/stable.policy';
-import { StableAccessService } from '../shared/stable-access.service';
+} from '../../policies/incident.policy';
+import { assertHorseLifecycleWritable } from '../../policies/stable.policy';
+import { StableAccessService } from '../../shared/stable-access.service';
 import type {
   IncidentHandledEvent,
   IncidentReportedEvent,
-} from '../types/stable-events.types';
+} from '../../types/stable-events.types';
 
 const INCIDENT_RELATIONS = {
   horse: true,

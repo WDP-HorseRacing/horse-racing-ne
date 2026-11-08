@@ -34,7 +34,7 @@ import { DailyChecklistsModule } from '../../../src/modules/stable/daily-checkli
 import { GroomAssignmentsModule } from '../../../src/modules/stable/groom-assignments/groom-assignments.module';
 import { GroomAssignmentsService } from '../../../src/modules/stable/groom-assignments/groom-assignments.service';
 import { IncidentsModule } from '../../../src/modules/stable/incidents/incidents.module';
-import { IncidentsService } from '../../../src/modules/stable/incidents/incidents.service';
+import { IncidentsService } from '../../../src/modules/stable/incidents/services/incidents.service';
 import { StallsModule } from '../../../src/modules/stable/stalls/stalls.module';
 import { StallsService } from '../../../src/modules/stable/stalls/stalls.service';
 import { SupplyItemEntity } from '../../../src/modules/supplies/entities/supply-item.entity';
