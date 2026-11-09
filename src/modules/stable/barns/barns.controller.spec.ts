@@ -111,9 +111,9 @@ describe('BarnsController', () => {
     });
 
     it.each([
-      ['list', RequestMethod.GET, ''],
+      ['list', RequestMethod.GET, '/'],
       ['get', RequestMethod.GET, ':id'],
-      ['create', RequestMethod.POST, ''],
+      ['create', RequestMethod.POST, '/'],
       ['update', RequestMethod.PATCH, ':id'],
       ['remove', RequestMethod.DELETE, ':id'],
     ] as const)('maps %s to %s %s', (method, httpMethod, path) => {
