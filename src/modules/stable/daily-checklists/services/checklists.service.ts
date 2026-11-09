@@ -1,36 +1,42 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, DataSource, EntityManager, In, Repository } from 'typeorm';
-import type { Actor } from '../../../common/types/actor';
-import { changedFieldsDiff } from '../../../common/utils/data/record-diff';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { clubToday } from '../../../common/utils/date/club-date';
-import { currentUserForActor } from '../../users/utils/current-user';
+import type { Actor } from '../../../../common/types/actor';
+import { changedFieldsDiff } from '../../../../common/utils/data/record-diff';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { clubToday } from '../../../../common/utils/date/club-date';
+import { MediaService } from '../../../media/services/media.service';
+import { currentUserForActor } from '../../../users/utils/current-user';
 import {
   DailyChecklistStatus,
   OPEN_CHECKLIST_STATUSES,
-} from '../constants/daily-checklist-status.enum';
+} from '../../constants/daily-checklist-status.enum';
 import {
   DailyChecklistQueryDto,
   DailyChecklistResponseDto,
   TickChecklistItemDto,
-} from '../dto/daily-checklist.dto';
-import { DailyChecklistItemEntity } from '../entities/daily-checklist-item.entity';
-import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
-import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
-import { toDailyChecklistResponse } from '../mappers/daily-checklist.mapper';
+} from '../../dto/daily-checklist.dto';
+import { DailyChecklistItemEntity } from '../../entities/daily-checklist-item.entity';
+import { GroomAssignmentEntity } from '../../entities/groom-assignment.entity';
+import { DailyChecklistEntity } from '../../entities/daily-checklist.entity';
+import { toDailyChecklistResponse } from '../../mappers/daily-checklist.mapper';
 import {
   assertChecklistGroom,
   assertChecklistNotCancelled,
   assertChecklistRange,
   assertChecklistToday,
-} from '../policies/daily-checklist.policy';
-import { DailyChecklistsService } from '../shared/daily-checklists.service';
-import { StableAccessService } from '../shared/stable-access.service';
-import type { ChecklistGenerationResult } from '../types/stable.types';
+} from '../../policies/daily-checklist.policy';
+import { DailyChecklistsService } from '../../shared/daily-checklists.service';
+import { StableAccessService } from '../../shared/stable-access.service';
+import type { ChecklistGenerationResult } from '../../types/stable.types';
 
 const CHECKLIST_RELATIONS = {
   horse: true,
@@ -54,6 +60,7 @@ export class ChecklistsService {
     private readonly dailyChecklists: DailyChecklistsService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly media?: MediaService,
   ) {}
 
   /**
@@ -89,29 +96,41 @@ export class ChecklistsService {
       withDeleted: true,
       order: { checklistDate: 'DESC' },
     });
-    return rows.map(toDailyChecklistResponse);
+    return this.withEvidenceUrls(rows.map(toDailyChecklistResponse));
   }
 
   /**
-   * Groom của checklist tick hoặc gỡ tick một việc trong ngày, rồi tính lại trạng thái checklist
+   * Groom gắn ảnh bằng chứng để tự hoàn tất việc, hoặc gỡ ảnh và tick; rồi tính lại trạng thái checklist
    *
-   * - Tick lại việc đã xong giữ thời điểm và người tick cũ
-   * - Đổi trạng thái xong hoặc ghi chú: ghi nhật ký giá trị trước và sau
+   * - Ảnh phải do Groom tải lên, đúng mục đích và đã có trên storage
+   * - Gửi ảnh mới tự tick việc
+   * - Đổi trạng thái, ảnh hoặc ghi chú: ghi nhật ký giá trị trước và sau
    *
    * @param actor Thông tin danh tính từ Access Token
    * @param itemId UUID của việc trong checklist
-   * @param body Đã xong hay chưa, ghi chú (null để xóa)
-   * @returns Promise trả về checklist sau khi tick
+   * @param body Ảnh bằng chứng và/hoặc ghi chú
+   * @returns Promise trả về checklist sau khi cập nhật
    * @throws ForbiddenException Nếu tài khoản không hoạt động, hoặc checklist không giao cho người gọi
    * @throws NotFoundException Nếu không có việc trong checklist
-   * @throws ConflictException Nếu checklist không phải của hôm nay, hoặc đã hủy vì ngựa đã chuyển nhượng hoặc đã mất
+   * @throws ConflictException Nếu checklist không phải của hôm nay, đã hủy hoặc ảnh chưa tải xong
    */
   async tick(
     actor: Actor,
     itemId: string,
     body: TickChecklistItemDto,
   ): Promise<DailyChecklistResponseDto> {
+    if (body.evidenceMediaId === undefined && body.note === undefined) {
+      throw new BadRequestException('Cần gửi ảnh bằng chứng hoặc ghi chú');
+    }
     const caller = await currentUserForActor(this.dataSource.manager, actor);
+    const evidenceMediaId = body.evidenceMediaId;
+    const evidence =
+      evidenceMediaId === undefined
+        ? null
+        : await this.media!.assertAttachableChecklistEvidence(
+            caller.id,
+            evidenceMediaId,
+          );
     const today = clubToday();
     const checklistId = await this.dataSource.transaction(async (manager) => {
       const found = await manager.findOneBy(DailyChecklistItemEntity, {
@@ -125,30 +144,31 @@ export class ChecklistsService {
       assertChecklistGroom(checklist.groomId, caller.id);
       assertChecklistToday(checklist.checklistDate, today);
       assertChecklistNotCancelled(checklist.status);
-      const item = await manager.findOneByOrFail(DailyChecklistItemEntity, {
-        id: itemId,
-      });
-      const before = { done: item.doneAt !== null, note: item.note };
-      if (body.done && !item.doneAt) {
-        item.doneAt = new Date();
-        item.doneBy = caller.id;
+      const before = {
+        done: found.doneAt !== null,
+        note: found.note,
+        evidenceMediaId: found.evidenceMediaId,
+      };
+      if (evidence) {
+        found.evidenceMediaId = evidence.id;
+        if (!found.doneAt) {
+          found.doneAt = new Date();
+          found.doneBy = caller.id;
+        }
       }
-      if (!body.done) {
-        item.doneAt = null;
-        item.doneBy = null;
-      }
-      if (body.note !== undefined) item.note = body.note?.trim() || null;
-      await manager.save(item);
+      if (body.note !== undefined) found.note = body.note?.trim() || null;
+      await manager.save(found);
       const diff = changedFieldsDiff(before, {
-        done: item.doneAt !== null,
-        note: item.note,
+        done: found.doneAt !== null,
+        note: found.note,
+        evidenceMediaId: found.evidenceMediaId,
       });
       if (diff) {
         await this.auditService.record(manager, {
           actorId: caller.id,
           action: AuditAction.UPDATE,
           entityType: AuditEntityType.CHECKLIST_ITEM,
-          entityId: item.id,
+          entityId: found.id,
           ...diff,
           feature: AuditFeature.CHECKLIST,
         });
@@ -156,9 +176,37 @@ export class ChecklistsService {
       await this.dailyChecklists.refreshStatus(manager, checklist);
       return checklist.id;
     });
-    return toDailyChecklistResponse(
+    const response = toDailyChecklistResponse(
       await this.findWithRelations(this.dataSource.manager, checklistId),
     );
+    return (await this.withEvidenceUrls([response]))[0];
+  }
+
+  /**
+   * Gắn link xem tạm thời cho ảnh bằng chứng sau khi quyền xem checklist đã được kiểm tra.
+   *
+   * @param responses Checklist đã qua kiểm tra quyền truy cập
+   * @returns Checklist có link ảnh bằng chứng
+   */
+  private async withEvidenceUrls(
+    responses: DailyChecklistResponseDto[],
+  ): Promise<DailyChecklistResponseDto[]> {
+    const mediaIds = responses.flatMap((response) =>
+      response.items.flatMap((item) =>
+        item.evidenceMediaId ? [item.evidenceMediaId] : [],
+      ),
+    );
+    const urls = this.media
+      ? await this.media.signDownloadUrls(mediaIds)
+      : new Map<string, string>();
+    for (const response of responses) {
+      for (const item of response.items) {
+        item.evidenceImageUrl = item.evidenceMediaId
+          ? (urls.get(item.evidenceMediaId) ?? null)
+          : null;
+      }
+    }
+    return responses;
   }
 
   /**
@@ -171,6 +219,7 @@ export class ChecklistsService {
    * @param date Ngày cần sinh, YYYY-MM-DD
    * @returns Promise trả về số checklist vừa sinh và các ngựa sinh lỗi
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async generateDay(date: string): Promise<ChecklistGenerationResult> {
     const missing = await this.dataSource.manager
       .createQueryBuilder(GroomAssignmentEntity, 'assignment')
@@ -215,6 +264,7 @@ export class ChecklistsService {
    * @param today Hôm nay theo lịch CLB, YYYY-MM-DD
    * @returns Promise trả về số checklist vừa đóng
    */
+  // eslint-disable-next-line @typescript-eslint/member-ordering
   async closePastDays(today: string): Promise<number> {
     const result = await this.dataSource
       .createQueryBuilder()

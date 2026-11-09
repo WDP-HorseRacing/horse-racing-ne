@@ -23,8 +23,8 @@ import { FinanceReportsRepository } from '../../../src/modules/reports/finance-r
 import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
-import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/services/checklist-generation.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../../src/modules/stable/entities/daily-checklist.entity';
 import { HorseCareTaskEntity } from '../../../src/modules/stable/entities/horse-care-task.entity';

@@ -1,11 +1,12 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseRecordEntity } from '../../../common/database/base-record.entity';
+import { MediaAssetEntity } from '../../media/entities/media-asset.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { CareTaskTypeEntity } from './care-task-type.entity';
 import { DailyChecklistEntity } from './daily-checklist.entity';
 
 /**
- * Một việc trong checklist hằng ngày; doneAt khác null nghĩa là đã xong
+ * Một việc trong checklist hằng ngày; doneAt khác null nghĩa là đã xong, evidenceMediaId lưu ảnh chứng minh
  */
 @Entity({ name: 'daily_checklist_items' })
 @Index(
@@ -15,6 +16,10 @@ import { DailyChecklistEntity } from './daily-checklist.entity';
     unique: true,
   },
 )
+@Index('daily_checklist_items_evidence_media_uq', ['evidenceMediaId'], {
+  unique: true,
+  where: 'evidence_media_id IS NOT NULL',
+})
 export class DailyChecklistItemEntity extends BaseRecordEntity {
   @Column({ name: 'checklist_id', type: 'uuid' })
   checklistId!: string;
@@ -60,4 +65,14 @@ export class DailyChecklistItemEntity extends BaseRecordEntity {
 
   @Column({ type: 'varchar', length: 200, nullable: true })
   note!: string | null;
+
+  @Column({ name: 'evidence_media_id', type: 'uuid', nullable: true })
+  evidenceMediaId!: string | null;
+
+  @ManyToOne(() => MediaAssetEntity, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'evidence_media_id',
+    foreignKeyConstraintName: 'daily_checklist_items_evidence_media_fk',
+  })
+  evidenceMedia!: MediaAssetEntity | null;
 }

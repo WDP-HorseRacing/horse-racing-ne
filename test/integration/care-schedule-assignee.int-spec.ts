@@ -8,7 +8,7 @@ import { CareSchedulesService } from '../../src/modules/medical/care-schedules/c
 import { CareScheduleType } from '../../src/modules/medical/constants/care-schedule.enum';
 import { CareScheduleEntity } from '../../src/modules/medical/entities/care-schedule.entity';
 import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
-import { GroomTodayService } from '../../src/modules/stable/daily-checklists/groom-today.service';
+import { GroomTodayService } from '../../src/modules/stable/daily-checklists/services/groom-today.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

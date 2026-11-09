@@ -5,6 +5,10 @@ import { DomainEventPublisher } from '../../../src/common/infrastructure/events/
 import type { Actor } from '../../../src/common/types/actor';
 import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
+import {
+  checklistEvidenceMedia,
+  createChecklistEvidence,
+} from '../checklist-evidence';
 import { DailyFeesService } from '../../../src/modules/billing/daily-fees/daily-fees.service';
 import { DailyFeeEntity } from '../../../src/modules/billing/entities/daily-fee.entity';
 import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-status.enum';
@@ -18,8 +22,8 @@ import type { MedicalAccessService } from '../../../src/modules/medical/shared/m
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
 import { FeedingMeal } from '../../../src/modules/stable/constants/feeding-meal.enum';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
-import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/services/checklist-generation.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../../src/modules/stable/entities/daily-checklist.entity';
 import { FeedingPlanEntity } from '../../../src/modules/stable/entities/feeding-plan.entity';
@@ -107,6 +111,7 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       stock,
       dataSource,
       new AuditService(),
+      checklistEvidenceMedia(dataSource),
       events,
     );
     requests = new SupplyRequestsService(
@@ -390,7 +395,9 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       fakeNow(`${shiftDays(today, 1)}T00:02:00+07:00`);
 
       await expect(
-        checklists.tick(groom, checklist.items[0].id, { done: true }),
+        checklists.tick(groom, checklist.items[0].id, {
+          evidenceMediaId: await createChecklistEvidence(dataSource, groomId),
+        }),
       ).resolves.toBeDefined();
     });
   });

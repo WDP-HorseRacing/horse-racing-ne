@@ -1,6 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 import { IsDateOnly } from '../../../common/utils/validation/dto-input';
 import { DailyChecklistStatus } from '../constants/daily-checklist-status.enum';
 import { CareTaskUserSummaryResponseDto } from './care-task.dto';
@@ -28,9 +34,14 @@ export class DailyChecklistQueryDto {
 }
 
 export class TickChecklistItemDto {
-  @ApiProperty({ description: 'true là đã xong, false là gỡ tick' })
-  @IsBoolean()
-  done!: boolean;
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'ID ảnh đã upload và xác nhận hoàn tất; gửi ID sẽ tự gắn ảnh và tick hoàn thành',
+  })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsUUID()
+  evidenceMediaId?: string;
 
   @ApiPropertyOptional({
     maxLength: 200,
@@ -76,6 +87,18 @@ export class DailyChecklistItemResponseDto {
   @Expose()
   @ApiPropertyOptional({ nullable: true, type: String })
   note!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  evidenceMediaId!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Link tạm thời để xem ảnh bằng chứng',
+  })
+  evidenceImageUrl!: string | null;
 }
 
 export class DailyChecklistResponseDto {

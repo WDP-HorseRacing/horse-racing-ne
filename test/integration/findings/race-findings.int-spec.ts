@@ -18,13 +18,13 @@ import { HorseStatusesModule } from '../../../src/modules/horses/horse-statuses/
 import { HorseStatusesService } from '../../../src/modules/horses/horse-statuses/horse-statuses.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
-import type { MediaService } from '../../../src/modules/media/services/media.service';
+import { MediaService } from '../../../src/modules/media/services/media.service';
 import { MedicalExamRequestEntity } from '../../../src/modules/medical/entities/medical-exam-request.entity';
 import { ExamRequestsService } from '../../../src/modules/medical/exam-requests/exam-requests.service';
 import { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
 import { PerformanceEvaluationEntity } from '../../../src/modules/performance/entities/performance-evaluation.entity';
 import { PerformanceEvaluationsService } from '../../../src/modules/performance/evaluations/performance-evaluations.service';
-import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
 import { DailyChecklistsModule } from '../../../src/modules/stable/daily-checklists/daily-checklists.module';
 import { FeedingPlanEntity } from '../../../src/modules/stable/entities/feeding-plan.entity';
 import { IncidentEntity } from '../../../src/modules/stable/entities/incident.entity';
@@ -49,6 +49,7 @@ import { TrainingOperationsFacade } from '../../../src/modules/training/shared/t
 import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
 import { SessionParticipantsService } from '../../../src/modules/training/training-sessions/session-participants.service';
 import { fixtures } from '../fixtures';
+import { checklistEvidenceMedia } from '../checklist-evidence';
 import {
   startTestPostgres,
   truncateAllTables,
@@ -169,7 +170,10 @@ describe('Race findings (Postgres, concurrent transactions)', () => {
         DailyChecklistsModule,
         GroomAssignmentsModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(MediaService)
+      .useValue(checklistEvidenceMedia(dataSource))
+      .compile();
     statuses = moduleRef.get(HorseStatusesService);
     checklists = moduleRef.get(ChecklistsService);
     grooms = moduleRef.get(GroomAssignmentsService);

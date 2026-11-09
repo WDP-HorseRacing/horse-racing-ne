@@ -15,8 +15,8 @@ import { CareTasksService } from '../../src/modules/stable/care-tasks/care-tasks
 import { DailyChecklistStatus } from '../../src/modules/stable/constants/daily-checklist-status.enum';
 import { CHECKLIST_TASK_ADDED_EVENT } from '../../src/modules/stable/constants/stable-events.constants';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { ChecklistGenerationService } from '../../src/modules/stable/daily-checklists/checklist-generation.service';
-import { ChecklistsService } from '../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistGenerationService } from '../../src/modules/stable/daily-checklists/services/checklist-generation.service';
+import { ChecklistsService } from '../../src/modules/stable/daily-checklists/services/checklists.service';
 import { CareTaskTypeEntity } from '../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../src/modules/stable/entities/daily-checklist.entity';
 import { HorseCareTaskEntity } from '../../src/modules/stable/entities/horse-care-task.entity';
@@ -34,6 +34,10 @@ import {
   type TestPostgres,
 } from './postgres';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
+import {
+  checklistEvidenceMedia,
+  createChecklistEvidence,
+} from './checklist-evidence';
 
 const DEFAULT_TYPES = [
   { name: 'Cho ăn', appliesToAll: true },
@@ -82,6 +86,15 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     return (await checklists.listForHorse(actor, horseId, {}))[0];
   };
 
+  const tickWithEvidence = async (
+    actor: Actor,
+    itemId: string,
+    uploaderId: string,
+  ) =>
+    checklists.tick(actor, itemId, {
+      evidenceMediaId: await createChecklistEvidence(dataSource, uploaderId),
+    });
+
   const checklistCounts = () =>
     dataSource.query<
       { horse_id: string; checklist_date: string; items: number }[]
@@ -103,6 +116,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       daily,
       dataSource,
       new AuditService(),
+      checklistEvidenceMedia(dataSource),
     );
     generation = new ChecklistGenerationService(
       checklists,
@@ -290,27 +304,24 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       const [feed, clean, bath] = checklist.items;
 
       const partly = await checklists.tick(groom, feed.id, {
-        done: true,
+        evidenceMediaId: await createChecklistEvidence(dataSource, groomId),
         note: 'Ăn hết',
       });
       expect(partly.status).toBe(DailyChecklistStatus.IN_PROGRESS);
       expect(partly.items[0]).toMatchObject({ done: true, note: 'Ăn hết' });
 
-      await checklists.tick(groom, clean.id, { done: true });
-      const done = await checklists.tick(groom, bath.id, { done: true });
+      await tickWithEvidence(groom, clean.id, groomId);
+      const done = await tickWithEvidence(groom, bath.id, groomId);
       expect(done.status).toBe(DailyChecklistStatus.COMPLETED);
       expect(done.completedAt).not.toBeNull();
-
-      const undone = await checklists.tick(groom, bath.id, { done: false });
-      expect(undone.status).toBe(DailyChecklistStatus.IN_PROGRESS);
-      expect(undone.completedAt).toBeNull();
-      expect(undone.items[2].doer).toBeNull();
     });
 
     it('lets only the checklist groom tick', async () => {
       const checklist = await todayOf(groom, gio);
       await expect(
-        checklists.tick(otherGroom, checklist.items[0].id, { done: true }),
+        checklists.tick(otherGroom, checklist.items[0].id, {
+          note: 'Thử cập nhật',
+        }),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
@@ -322,7 +333,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       );
 
       await expect(
-        checklists.tick(groom, checklist.items[0].id, { done: true }),
+        checklists.tick(groom, checklist.items[0].id, { note: 'Thử cập nhật' }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
   });
@@ -333,7 +344,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
       await assignGroom(may, groomId);
       const finished = await todayOf(groom, may);
       for (const item of finished.items) {
-        await checklists.tick(groom, item.id, { done: true });
+        await tickWithEvidence(groom, item.id, groomId);
       }
       await dataSource.query(
         'UPDATE daily_checklists SET checklist_date = $1',
@@ -376,7 +387,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     it('reopens a completed checklist and notifies the groom', async () => {
       const checklist = await todayOf(groom, gio);
       for (const item of checklist.items) {
-        await checklists.tick(groom, item.id, { done: true });
+        await tickWithEvidence(groom, item.id, groomId);
       }
 
       await careTasks.createForHorse(trainer, gio, {
@@ -532,7 +543,7 @@ describe('Daily checklists and care tasks (Postgres)', () => {
 
     it('returns 404 for a missing checklist item, type or horse task', async () => {
       await expect(
-        checklists.tick(groom, missing, { done: true }),
+        checklists.tick(groom, missing, { note: 'Thử cập nhật' }),
       ).rejects.toBeInstanceOf(NotFoundException);
       await expect(
         careTasks.updateType(manager, missing, { active: false }),
@@ -575,14 +586,14 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     expect(moved.id).toBe(checklist.id);
     expect(moved.groom.id).toBe(otherGroomId);
     await expect(
-      checklists.tick(groom, moved.items[0].id, { done: true }),
+      checklists.tick(groom, moved.items[0].id, { note: 'Thử cập nhật' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('moves today’s finished checklist too, keeping who ticked each task', async () => {
     const checklist = await todayOf(groom, gio);
     for (const item of checklist.items) {
-      await checklists.tick(groom, item.id, { done: true });
+      await tickWithEvidence(groom, item.id, groomId);
     }
 
     await dataSource.transaction((tx) =>
@@ -688,17 +699,32 @@ describe('Daily checklists and care tasks (Postgres)', () => {
     it('logs a tick that changes the item and skips one that changes nothing', async () => {
       const checklist = await todayOf(groom, gio);
       const feed = checklist.items[0];
+      const evidenceMediaId = await createChecklistEvidence(
+        dataSource,
+        groomId,
+      );
 
-      await checklists.tick(groom, feed.id, { done: true, note: 'Ăn hết' });
-      await checklists.tick(groom, feed.id, { done: true });
+      await checklists.tick(groom, feed.id, {
+        evidenceMediaId,
+        note: 'Ăn hết',
+      });
+      await checklists.tick(groom, feed.id, { evidenceMediaId });
 
       await expect(auditsOf(feed.id)).resolves.toEqual([
         {
           actor_id: groomId,
           action: 'UPDATE',
           entity_type: 'CHECKLIST_ITEM',
-          before_data: { done: false, note: null },
-          after_data: { done: true, note: 'Ăn hết' },
+          before_data: {
+            done: false,
+            note: null,
+            evidenceMediaId: null,
+          },
+          after_data: {
+            done: true,
+            note: 'Ăn hết',
+            evidenceMediaId,
+          },
           reason: null,
           feature: 'CHECKLIST',
         },

@@ -57,6 +57,8 @@ export function toDailyChecklistResponse(
       doneAt: item.doneAt,
       doer: item.doneBy ? item.doer : null,
       note: item.note,
+      evidenceMediaId: item.evidenceMediaId,
+      evidenceImageUrl: null,
     }));
   return plainToInstance(
     DailyChecklistResponseDto,

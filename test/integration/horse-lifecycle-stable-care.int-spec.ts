@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { MediaService } from '../../src/modules/media/services/media.service';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
@@ -13,8 +14,12 @@ import { HorseStatusesModule } from '../../src/modules/horses/horse-statuses/hor
 import { HorseStatusesService } from '../../src/modules/horses/horse-statuses/horse-statuses.service';
 import { DailyChecklistStatus } from '../../src/modules/stable/constants/daily-checklist-status.enum';
 import { FeedingPlanStatus } from '../../src/modules/stable/constants/feeding-plan-status.enum';
-import { ChecklistsService } from '../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistsService } from '../../src/modules/stable/daily-checklists/services/checklists.service';
 import { DailyChecklistsModule } from '../../src/modules/stable/daily-checklists/daily-checklists.module';
+import {
+  checklistEvidenceMedia,
+  createChecklistEvidence,
+} from './checklist-evidence';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -165,9 +170,12 @@ describe('Horse lifecycle settles stable care (Postgres)', () => {
     const groom = await actorOf(groomId, UserRole.GROOM);
     const ticked = items.find((i) => i.task_type_id === feed.id)!.id;
     const unticked = items.find((i) => i.task_type_id === ice.id)!.id;
-    await checklists.tick(groom, ticked, { done: true });
+    await checklists.tick(groom, ticked, {
+      evidenceMediaId: await createChecklistEvidence(dataSource, groomId),
+    });
     return {
       horse,
+      groomId,
       groom,
       ticked,
       unticked,
@@ -248,7 +256,10 @@ describe('Horse lifecycle settles stable care (Postgres)', () => {
         HorseStatusesModule,
         DailyChecklistsModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(MediaService)
+      .useValue(checklistEvidenceMedia(dataSource))
+      .compile();
     statuses = moduleRef.get(HorseStatusesService);
     checklists = moduleRef.get(ChecklistsService);
   });
@@ -335,7 +346,7 @@ describe('Horse lifecycle settles stable care (Postgres)', () => {
       );
       expect(kept.done_at).toBeInstanceOf(Date);
       await expect(
-        checklists.tick(groom, unticked, { done: true }),
+        checklists.tick(groom, unticked, { note: 'Thử cập nhật' }),
       ).rejects.toThrow(
         new ConflictException(
           'Checklist đã hủy vì ngựa đã chuyển nhượng hoặc đã mất, không sửa được',
@@ -387,7 +398,7 @@ describe('Horse lifecycle settles stable care (Postgres)', () => {
   });
 
   it('touches no stable care when the horse retires', async () => {
-    const { horse, groom, unticked } = await stableHorse();
+    const { horse, groom, groomId, unticked } = await stableHorse();
     const plansBefore = await plansOf(horse);
     const tasksBefore = await tasksOf(horse);
 
@@ -409,7 +420,9 @@ describe('Horse lifecycle settles stable care (Postgres)', () => {
       DailyChecklistStatus.IN_PROGRESS,
     );
     await expect(
-      checklists.tick(groom, unticked, { done: true }),
+      checklists.tick(groom, unticked, {
+        evidenceMediaId: await createChecklistEvidence(dataSource, groomId),
+      }),
     ).resolves.toBeDefined();
   });
 });

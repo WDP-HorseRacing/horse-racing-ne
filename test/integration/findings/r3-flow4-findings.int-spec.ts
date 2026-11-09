@@ -33,8 +33,8 @@ import {
   ChecklistJob,
   checklistRetryName,
 } from '../../../src/modules/stable/constants/checklist-job.enum';
-import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
-import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/services/checklist-generation.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../../src/modules/stable/entities/daily-checklist.entity';
 import { FeedingPlanEntity } from '../../../src/modules/stable/entities/feeding-plan.entity';

@@ -15,19 +15,19 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Access, CurrentUser } from '../../../common/decorators';
-import { UserRole } from '../../../common/enums';
-import type { Actor } from '../../../common/types/actor';
+import { Access, CurrentUser } from '../../../../common/decorators';
+import { UserRole } from '../../../../common/enums';
+import type { Actor } from '../../../../common/types/actor';
 import {
   DailyChecklistQueryDto,
   DailyChecklistResponseDto,
   RegenerateChecklistsResponseDto,
   TickChecklistItemDto,
-} from '../dto/daily-checklist.dto';
-import { GroomTodayResponseDto } from '../dto/groom-today.dto';
-import { ChecklistGenerationService } from './checklist-generation.service';
-import { ChecklistsService } from './checklists.service';
-import { GroomTodayService } from './groom-today.service';
+} from '../../dto/daily-checklist.dto';
+import { GroomTodayResponseDto } from '../../dto/groom-today.dto';
+import { ChecklistGenerationService } from '../services/checklist-generation.service';
+import { ChecklistsService } from '../services/checklists.service';
+import { GroomTodayService } from '../services/groom-today.service';
 
 @ApiTags('stable')
 @ApiBearerAuth()
@@ -64,7 +64,9 @@ export class DailyChecklistsController {
   @Access([UserRole.GROOM])
   @Patch('checklist-items/:id')
   @ApiOperation({
-    summary: 'Tick hoặc gỡ tick một việc trong checklist hôm nay',
+    summary: 'Gắn ảnh bằng chứng để tự hoàn tất việc trong checklist hôm nay',
+    description:
+      'Client xin upload với purpose CHECKLIST_EVIDENCE, tải ảnh lên storage và gọi complete; sau đó gửi evidenceMediaId vào đây để tự gắn ảnh và hoàn tất.',
   })
   @ApiOkResponse({ type: DailyChecklistResponseDto })
   tick(
