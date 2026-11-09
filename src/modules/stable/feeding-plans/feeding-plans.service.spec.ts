@@ -23,7 +23,7 @@ import { FeedingPlanEntity } from '../entities/feeding-plan.entity';
 import { StableAccessService } from '../shared/stable-access.service';
 import { FeedingPlansService } from './feeding-plans.service';
 
-jest.mock('../../../users/utils/current-user', () => ({
+jest.mock('../../users/utils/current-user', () => ({
   currentUserForActor: jest.fn().mockResolvedValue({
     id: 'trainer-1',
     role: UserRole.HEAD_TRAINER,
@@ -61,9 +61,16 @@ describe('FeedingPlansService', () => {
   };
   let audit: { record: jest.Mock };
   let queryBuilder: Record<string, jest.Mock>;
-  let plan: Record<string, any>;
-  let planItems: Record<string, any>[];
-  let supplies: Record<string, any>[];
+  let plan: ReturnType<typeof makePlan>;
+  let planItems: {
+    planId: string;
+    meal: FeedingMeal;
+    supplyItemId: string;
+    quantity: string;
+    note: string | null;
+    position: number;
+  }[];
+  let supplies: (typeof feed)[];
   let service: FeedingPlansService;
 
   const makePlan = (
@@ -75,13 +82,13 @@ describe('FeedingPlansService', () => {
     horseId,
     horse: { id: horseId, name: 'Mây' },
     status,
-    note: 'Khẩu phần thử',
+    note: 'Khẩu phần thử' as string | null,
     createdBy: caller.id,
     creator: { id: caller.id, fullName: 'Huấn luyện viên' },
-    approvedBy: null,
-    approver: null,
-    approvedAt: null,
-    archivedAt: null,
+    approvedBy: null as string | null,
+    approver: null as { id: string; fullName: string } | null,
+    approvedAt: null as Date | null,
+    archivedAt: null as Date | null,
     createdAt: new Date('2026-11-01T00:00:00.000Z'),
     updatedAt: new Date('2026-11-01T00:00:00.000Z'),
     items: [
@@ -89,7 +96,7 @@ describe('FeedingPlansService', () => {
         meal: FeedingMeal.NOON,
         supplyItemId: feed.id,
         quantity: '2.50',
-        note: null,
+        note: null as string | null,
         position: 0,
         supplyItem: feed,
       },
@@ -131,7 +138,7 @@ describe('FeedingPlansService', () => {
       ),
       findOneBy: jest.fn().mockImplementation(() => Promise.resolve(plan)),
       create: jest.fn((_entity: unknown, row: object) => row),
-      save: jest.fn((row: Record<string, any>) =>
+      save: jest.fn((row: { horseId?: string }) =>
         Promise.resolve(
           row.horseId ? { ...row, id: `plan-${row.horseId}` } : row,
         ),
@@ -288,7 +295,7 @@ describe('FeedingPlansService', () => {
       const result = await service.create(headTrainer, body);
 
       expect(
-        access.lockOperableHorse.mock.calls.map((call) => call[2]),
+        access.lockOperableHorse.mock.calls.map((call: unknown[]) => call[2]),
       ).toEqual(['horse-1', 'horse-2']);
       expect(manager.insert).toHaveBeenNthCalledWith(1, FeedingPlanItemEntity, [
         {
@@ -323,8 +330,8 @@ describe('FeedingPlansService', () => {
             note: 'Khẩu phần mới',
             items: expect.arrayContaining([
               expect.objectContaining({ quantity: 3.5, note: 'Trộn đều' }),
-            ]),
-          }),
+            ]) as unknown,
+          }) as unknown,
         }),
       );
       expect(result.map(({ horseId }) => horseId)).toEqual([
@@ -369,7 +376,7 @@ describe('FeedingPlansService', () => {
     });
 
     it('copies source lines by position after checking source horse access', async () => {
-      const source: Record<string, any> = makePlan('source-1');
+      const source = makePlan('source-1');
       source.items = [
         {
           meal: FeedingMeal.EVENING,
@@ -472,8 +479,8 @@ describe('FeedingPlansService', () => {
           entityType: AuditEntityType.FEEDING_PLAN,
           entityId: plan.id,
           feature: AuditFeature.FEEDING_PLAN,
-          before: expect.objectContaining({ note: 'Khẩu phần thử' }),
-          after: expect.objectContaining({ note: 'Ghi chú mới' }),
+          before: expect.objectContaining({ note: 'Khẩu phần thử' }) as unknown,
+          after: expect.objectContaining({ note: 'Ghi chú mới' }) as unknown,
         }),
       );
     });
@@ -531,7 +538,7 @@ describe('FeedingPlansService', () => {
         { horseId: plan.horseId, status: FeedingPlanStatus.ACTIVE },
         {
           status: FeedingPlanStatus.ARCHIVED,
-          archivedAt: expect.any(Date),
+          archivedAt: expect.any(Date) as unknown,
         },
       );
       expect(plan.status).toBe(FeedingPlanStatus.ACTIVE);
