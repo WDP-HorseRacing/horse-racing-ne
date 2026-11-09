@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { OUTBOX_LISTENER_OPTIONS } from '../../../common/infrastructure/events/outbox.constants';
+import { OUTBOX_LISTENER_OPTIONS } from '../../../../common/infrastructure/events/outbox.constants';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
-} from '../../medical/constant/medical-events.constants';
+} from '../../../medical/constant/medical-events.constants';
 import type {
   ExamRequestHandledEvent,
   ExamRequestReopenedEvent,
-} from '../../medical/types/medical-events.types';
-import { IncidentsService } from './incidents.service';
+} from '../../../medical/types/medical-events.types';
+import { IncidentsService } from '../services/incidents.service';
 
 @Injectable()
 export class IncidentExamRequestListener {

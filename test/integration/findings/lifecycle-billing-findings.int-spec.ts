@@ -5,6 +5,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
+import { MediaService } from '../../../src/modules/media/services/media.service';
 import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../../src/common/types/actor';
@@ -31,11 +32,12 @@ import { HorseReportsService } from '../../../src/modules/reports/horse-reports/
 import { ReportsAccessService } from '../../../src/modules/reports/shared/reports-access.service';
 import { DailyChecklistStatus } from '../../../src/modules/stable/constants/daily-checklist-status.enum';
 import { FeedingPlanStatus } from '../../../src/modules/stable/constants/feeding-plan-status.enum';
-import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
 import { DailyChecklistsModule } from '../../../src/modules/stable/daily-checklists/daily-checklists.module';
 import { GroomAssignmentsModule } from '../../../src/modules/stable/groom-assignments/groom-assignments.module';
 import { GroomAssignmentsService } from '../../../src/modules/stable/groom-assignments/groom-assignments.service';
 import { fixtures } from '../fixtures';
+import { checklistEvidenceMedia } from '../checklist-evidence';
 import {
   startTestPostgres,
   truncateAllTables,
@@ -173,7 +175,10 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
         DailyChecklistsModule,
         GroomAssignmentsModule,
       ],
-    }).compile();
+    })
+      .overrideProvider(MediaService)
+      .useValue(checklistEvidenceMedia(dataSource))
+      .compile();
     statuses = moduleRef.get(HorseStatusesService);
     deletions = moduleRef.get(HorseDeletionsService);
     checklists = moduleRef.get(ChecklistsService);
@@ -227,7 +232,7 @@ describe('Findings: horse lifecycle, ownership, billing (Postgres)', () => {
       await recordDeath(horse);
 
       await expect(
-        checklists.tick(groom, itemId, { done: true }),
+        checklists.tick(groom, itemId, { note: 'Thử cập nhật' }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
 

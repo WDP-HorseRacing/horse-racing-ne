@@ -26,8 +26,8 @@ import type {
 import { IncidentStatus } from '../../src/modules/stable/constants/incident-status.enum';
 import { INCIDENT_HANDLED_EVENT } from '../../src/modules/stable/constants/stable-events.constants';
 import { IncidentEntity } from '../../src/modules/stable/entities/incident.entity';
-import { IncidentExamRequestListener } from '../../src/modules/stable/incidents/incident-exam-request.listener';
-import { IncidentsService } from '../../src/modules/stable/incidents/incidents.service';
+import { IncidentExamRequestListener } from '../../src/modules/stable/incidents/listeners/incident-exam-request.listener';
+import { IncidentsService } from '../../src/modules/stable/incidents/services/incidents.service';
 import { IncidentWritesService } from '../../src/modules/stable/shared/incident-writes.service';
 import { StableAccessService } from '../../src/modules/stable/shared/stable-access.service';
 import { fixtures } from './fixtures';

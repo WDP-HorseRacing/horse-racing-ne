@@ -200,7 +200,9 @@ export class TrainingClassEnrollmentsService {
           (period) => !period.leftAt || enrolledAt < period.leftAt,
         )
       ) {
-        throw new ConflictException('Khoảng ghi danh của ngựa bị chồng lấn');
+        throw new ConflictException(
+          'Khoảng ghi danh của ngựa bị chồng lấn hoặc ngựa đã được ghi danh',
+        );
       }
       const row = await manager.save(
         manager.create(HorseEnrollmentEntity, {

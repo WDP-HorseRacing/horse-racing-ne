@@ -1,35 +1,35 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
-import { CLUB_TIME_ZONE } from '../../../common/constants/club.constants';
-import { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
-import type { Actor } from '../../../common/types/actor';
-import { clubToday } from '../../../common/utils/date/club-date';
-import { deterministicUuid } from '../../../common/utils/data/deterministic-uuid';
-import { AuditAction } from '../../audit/constants/audit-action.enum';
-import { AuditEntityType } from '../../audit/constants/audit-entity-type.enum';
-import { AuditFeature } from '../../audit/constants/audit-feature.enum';
-import { AuditService } from '../../audit/services/audit.service';
-import { currentUserForActor } from '../../users/utils/current-user';
+import { CLUB_TIME_ZONE } from '../../../../common/constants/club.constants';
+import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
+import type { Actor } from '../../../../common/types/actor';
+import { clubToday } from '../../../../common/utils/date/club-date';
+import { deterministicUuid } from '../../../../common/utils/data/deterministic-uuid';
+import { AuditAction } from '../../../audit/constants/audit-action.enum';
+import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
+import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
+import { AuditService } from '../../../audit/services/audit.service';
+import { currentUserForActor } from '../../../users/utils/current-user';
 import {
   ChecklistJob,
   checklistRetryName,
-} from '../constants/checklist-job.enum';
+} from '../../constants/checklist-job.enum';
 import {
   CHECKLIST_FAILURE_NOTICE_ATTEMPT,
   CHECKLIST_RETRY_DELAYS_MINUTES,
-} from '../constants/daily-checklist.constants';
+} from '../../constants/daily-checklist.constants';
 import {
   CHECKLIST_GENERATION_FAILED_EVENT,
   CHECKLIST_GENERATION_RECOVERED_EVENT,
-} from '../constants/stable-events.constants';
-import { RegenerateChecklistsResponseDto } from '../dto/daily-checklist.dto';
-import { toRegenerateChecklistsResponse } from '../mappers/daily-checklist.mapper';
+} from '../../constants/stable-events.constants';
+import { RegenerateChecklistsResponseDto } from '../../dto/daily-checklist.dto';
+import { toRegenerateChecklistsResponse } from '../../mappers/daily-checklist.mapper';
 import type {
   ChecklistGenerationFailedEvent,
   ChecklistGenerationRecoveredEvent,
-} from '../types/stable-events.types';
-import type { ChecklistGenerationResult } from '../types/stable.types';
+} from '../../types/stable-events.types';
+import type { ChecklistGenerationResult } from '../../types/stable.types';
 import { ChecklistsService } from './checklists.service';
 
 const MINUTE_MS = 60_000;

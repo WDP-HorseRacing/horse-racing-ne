@@ -33,8 +33,8 @@ import {
   ChecklistJob,
   checklistRetryName,
 } from '../../../src/modules/stable/constants/checklist-job.enum';
-import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/checklist-generation.service';
-import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistGenerationService } from '../../../src/modules/stable/daily-checklists/services/checklist-generation.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
 import { CareTaskTypeEntity } from '../../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../../src/modules/stable/entities/daily-checklist.entity';
 import { FeedingPlanEntity } from '../../../src/modules/stable/entities/feeding-plan.entity';
@@ -42,8 +42,8 @@ import { HorseCareTaskEntity } from '../../../src/modules/stable/entities/horse-
 import { IncidentEntity } from '../../../src/modules/stable/entities/incident.entity';
 import { FeedingPlansController } from '../../../src/modules/stable/feeding-plans/feeding-plans.controller';
 import { FeedingPlansService } from '../../../src/modules/stable/feeding-plans/feeding-plans.service';
-import { IncidentRemindersService } from '../../../src/modules/stable/incidents/incident-reminders.service';
-import { IncidentsService } from '../../../src/modules/stable/incidents/incidents.service';
+import { IncidentRemindersService } from '../../../src/modules/stable/incidents/services/incident-reminders.service';
+import { IncidentsService } from '../../../src/modules/stable/incidents/services/incidents.service';
 import { DailyChecklistsService } from '../../../src/modules/stable/shared/daily-checklists.service';
 import { StableAccessService } from '../../../src/modules/stable/shared/stable-access.service';
 import { SupplyItemEntity } from '../../../src/modules/supplies/entities/supply-item.entity';

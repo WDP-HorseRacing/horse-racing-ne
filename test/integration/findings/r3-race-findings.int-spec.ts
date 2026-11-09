@@ -23,18 +23,22 @@ import { HorseOwnershipsService } from '../../../src/modules/horses/horse-owners
 import { HorsePlacementsModule } from '../../../src/modules/horses/horse-placements/horse-placements.module';
 import { HorsePlacementsService } from '../../../src/modules/horses/horse-placements/horse-placements.service';
 import { MediaService } from '../../../src/modules/media/services/media.service';
+import {
+  checklistEvidenceMedia,
+  createChecklistEvidence,
+} from '../checklist-evidence';
 import { MedicalCasesService } from '../../../src/modules/medical/medical-records/medical-cases.service';
 import { MedicalRecordsModule } from '../../../src/modules/medical/medical-records/medical-records.module';
 import { BarnsModule } from '../../../src/modules/stable/barns/barns.module';
 import { BarnsService } from '../../../src/modules/stable/barns/barns.service';
 import { CareTasksModule } from '../../../src/modules/stable/care-tasks/care-tasks.module';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
-import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
 import { DailyChecklistsModule } from '../../../src/modules/stable/daily-checklists/daily-checklists.module';
 import { GroomAssignmentsModule } from '../../../src/modules/stable/groom-assignments/groom-assignments.module';
 import { GroomAssignmentsService } from '../../../src/modules/stable/groom-assignments/groom-assignments.service';
 import { IncidentsModule } from '../../../src/modules/stable/incidents/incidents.module';
-import { IncidentsService } from '../../../src/modules/stable/incidents/incidents.service';
+import { IncidentsService } from '../../../src/modules/stable/incidents/services/incidents.service';
 import { StallsModule } from '../../../src/modules/stable/stalls/stalls.module';
 import { StallsService } from '../../../src/modules/stable/stalls/stalls.service';
 import { SupplyItemEntity } from '../../../src/modules/supplies/entities/supply-item.entity';
@@ -268,7 +272,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
       ],
     })
       .overrideProvider(MediaService)
-      .useValue({ signDownloadUrls: () => Promise.resolve(new Map()) })
+      .useValue(checklistEvidenceMedia(dataSource))
       .compile();
     placements = moduleRef.get(HorsePlacementsService);
     grooms = moduleRef.get(GroomAssignmentsService);
@@ -598,6 +602,7 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     );
     return {
       horseId,
+      oldGroomId,
       oldGroom: await actorOf(oldGroomId, UserRole.GROOM),
       newGroomId: await seed.user(UserRole.GROOM),
     };
@@ -632,7 +637,9 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
     );
     const rounds: Outcome[][] = [];
     for (let i = 0; i < ROUNDS; i++) {
-      const { horseId, oldGroom, newGroomId } = await groomedHorse(`Tick ${i}`);
+      const { horseId, oldGroomId, oldGroom, newGroomId } = await groomedHorse(
+        `Tick ${i}`,
+      );
       const [checklist] = await dataSource.query<{ id: string }[]>(
         `INSERT INTO daily_checklists (version, horse_id, groom_id, checklist_date, status)
          SELECT 1, $1, groom_id, $2, 'PENDING' FROM groom_assignments WHERE horse_id = $1 RETURNING id`,
@@ -648,7 +655,13 @@ describe('Race findings R3 (Postgres, concurrent transactions)', () => {
           'SELECT 1 FROM daily_checklists WHERE id = $1 FOR UPDATE',
           [checklist.id],
           [
-            () => checklists.tick(oldGroom, item.id, { done: true }),
+            async () =>
+              checklists.tick(oldGroom, item.id, {
+                evidenceMediaId: await createChecklistEvidence(
+                  dataSource,
+                  oldGroomId,
+                ),
+              }),
             () => grooms.assign(trainer, horseId, { groomId: newGroomId }),
           ],
         ),

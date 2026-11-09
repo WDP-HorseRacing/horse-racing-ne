@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserRole } from '../../../common/enums/role.enum';
 import {
+  CHECKLIST_EVIDENCE_MAX_BYTES,
   HORSE_PHOTO_MAX_BYTES,
   INCIDENT_PHOTO_MAX_BYTES,
   TRIAL_VIDEO_MAX_BYTES,
@@ -8,6 +9,7 @@ import {
 import { MediaPurpose } from '../enums/media-purpose.enum';
 import {
   assertCanUploadMedia,
+  assertChecklistEvidenceSpec,
   assertHorsePhotoSpec,
   assertIncidentPhotoSpec,
   assertMediaSpec,
@@ -110,6 +112,53 @@ describe('media.policy', () => {
     );
     expect(key).toBe('incident-photos/a1.png');
     expect(mediaPurposeOfObjectKey(key)).toBe(MediaPurpose.INCIDENT_PHOTO);
+  });
+
+  it.each([
+    ['image/jpeg', 1],
+    ['image/webp', CHECKLIST_EVIDENCE_MAX_BYTES],
+  ])('accepts checklist evidence %s with %d bytes', (mime, size) => {
+    expect(() => assertChecklistEvidenceSpec(mime, size)).not.toThrow();
+    expect(() =>
+      assertMediaSpec(MediaPurpose.CHECKLIST_EVIDENCE, mime, size),
+    ).not.toThrow();
+  });
+
+  it('rejects unsupported or oversized checklist evidence', () => {
+    expect(() => assertChecklistEvidenceSpec('image/gif', 100)).toThrow(
+      BadRequestException,
+    );
+    expect(() =>
+      assertChecklistEvidenceSpec(
+        'image/png',
+        CHECKLIST_EVIDENCE_MAX_BYTES + 1,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('keeps checklist evidence in its own folder', () => {
+    const key = buildMediaObjectKey(
+      MediaPurpose.CHECKLIST_EVIDENCE,
+      'a1',
+      'image/png',
+    );
+    expect(key).toBe('checklist-evidence/a1.png');
+    expect(mediaPurposeOfObjectKey(key)).toBe(MediaPurpose.CHECKLIST_EVIDENCE);
+  });
+
+  it('lets only a groom upload checklist evidence', () => {
+    expect(() =>
+      assertCanUploadMedia(
+        { sub: 'g', roles: [UserRole.GROOM] },
+        MediaPurpose.CHECKLIST_EVIDENCE,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertCanUploadMedia(
+        { sub: 'h', roles: [UserRole.HEAD_TRAINER] },
+        MediaPurpose.CHECKLIST_EVIDENCE,
+      ),
+    ).toThrow(ForbiddenException);
   });
 
   it('lets only a groom upload an incident photo', () => {

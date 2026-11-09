@@ -8,30 +8,31 @@ import {
   LessThan,
   MoreThanOrEqual,
 } from 'typeorm';
-import type { Actor } from '../../../common/types/actor';
+import type { Actor } from '../../../../common/types/actor';
 import {
   clubDateTimeToInstant,
   clubToday,
   shiftDays,
-} from '../../../common/utils/date/club-date';
+} from '../../../../common/utils/date/club-date';
 import {
   CareScheduleStatus,
   VET_APPOINTMENT_TYPES,
-} from '../../medical/constant/care-schedule.enum';
-import { CareScheduleEntity } from '../../medical/entity/care-schedule.entity';
-import { SessionParticipantEntity } from '../../training/entities/session-participant.entity';
-import { SessionParticipantStatus } from '../../training/enums/session-participant-status.enum';
-import { TrainingSessionStatus } from '../../training/enums/training-session-status.enum';
-import { currentUserForActor } from '../../users/utils/current-user';
-import { FeedingPlanStatus } from '../constants/feeding-plan-status.enum';
-import { GroomTodayResponseDto } from '../dto/groom-today.dto';
-import { DailyChecklistEntity } from '../entities/daily-checklist.entity';
-import { FeedingPlanEntity } from '../entities/feeding-plan.entity';
-import { GroomAssignmentEntity } from '../entities/groom-assignment.entity';
-import { StallAssignmentEntity } from '../entities/stall-assignment.entity';
-import { toDailyChecklistResponse } from '../mappers/daily-checklist.mapper';
-import { toFeedingPlanResponse } from '../mappers/feeding-plan.mapper';
-import { toGroomTodayResponse } from '../mappers/groom-today.mapper';
+} from '../../../medical/constant/care-schedule.enum';
+import { CareScheduleEntity } from '../../../medical/entity/care-schedule.entity';
+import { MediaService } from '../../../media/services/media.service';
+import { SessionParticipantEntity } from '../../../training/entities/session-participant.entity';
+import { SessionParticipantStatus } from '../../../training/enums/session-participant-status.enum';
+import { TrainingSessionStatus } from '../../../training/enums/training-session-status.enum';
+import { currentUserForActor } from '../../../users/utils/current-user';
+import { FeedingPlanStatus } from '../../constants/feeding-plan-status.enum';
+import { GroomTodayResponseDto } from '../../dto/groom-today.dto';
+import { DailyChecklistEntity } from '../../entities/daily-checklist.entity';
+import { FeedingPlanEntity } from '../../entities/feeding-plan.entity';
+import { GroomAssignmentEntity } from '../../entities/groom-assignment.entity';
+import { StallAssignmentEntity } from '../../entities/stall-assignment.entity';
+import { toDailyChecklistResponse } from '../../mappers/daily-checklist.mapper';
+import { toFeedingPlanResponse } from '../../mappers/feeding-plan.mapper';
+import { toGroomTodayResponse } from '../../mappers/groom-today.mapper';
 
 const CHECKLIST_RELATIONS = {
   horse: true,
@@ -62,7 +63,10 @@ const VISIBLE_RUN_STATUSES = [
  */
 @Injectable()
 export class GroomTodayService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly media?: MediaService,
+  ) {}
 
   /**
    * Gom việc hôm nay của từng ngựa Groom đang phụ trách, ngựa theo tên
@@ -129,8 +133,24 @@ export class GroomTodayService {
     const stallByHorse = new Map(
       stalls.map((row) => [row.horseId, row.stall.code]),
     );
+    const checklistResponses = checklists.map(toDailyChecklistResponse);
+    const evidenceMediaIds = checklistResponses.flatMap((response) =>
+      response.items.flatMap((item) =>
+        item.evidenceMediaId ? [item.evidenceMediaId] : [],
+      ),
+    );
+    const evidenceUrls = this.media
+      ? await this.media.signDownloadUrls(evidenceMediaIds)
+      : new Map<string, string>();
+    for (const response of checklistResponses) {
+      for (const item of response.items) {
+        item.evidenceImageUrl = item.evidenceMediaId
+          ? (evidenceUrls.get(item.evidenceMediaId) ?? null)
+          : null;
+      }
+    }
     const checklistByHorse = new Map(
-      checklists.map((row) => [row.horseId, toDailyChecklistResponse(row)]),
+      checklistResponses.map((response) => [response.horseId, response]),
     );
     const planByHorse = new Map(
       plans.map((row) => [row.horseId, toFeedingPlanResponse(row)]),

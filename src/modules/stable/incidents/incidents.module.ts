@@ -6,10 +6,9 @@ import { MediaModule } from '../../media/media.module';
 import { ExamRequestsModule } from '../../medical/exam-request/exam-requests.module';
 import { IncidentEntity } from '../entities/incident.entity';
 import { StableSharedModule } from '../shared/stable-shared.module';
-import { IncidentExamRequestListener } from './incident-exam-request.listener';
-import { IncidentRemindersService } from './incident-reminders.service';
-import { IncidentsController } from './incidents.controller';
-import { IncidentsService } from './incidents.service';
+import { IncidentExamRequestListener } from './listeners';
+import { IncidentsController } from './controllers';
+import { IncidentRemindersService, IncidentsService } from './services';
 
 @Module({
   imports: [

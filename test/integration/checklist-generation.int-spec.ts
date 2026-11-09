@@ -6,6 +6,10 @@ import { DomainEventPublisher } from '../../src/common/infrastructure/events/dom
 import type { Actor } from '../../src/common/types/actor';
 import { clubToday, shiftDays } from '../../src/common/utils/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
+import {
+  checklistEvidenceMedia,
+  createChecklistEvidence,
+} from './checklist-evidence';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import {
   CHECKLIST_GENERATION_FAILED_EVENT,
@@ -15,8 +19,8 @@ import {
   ChecklistJob,
   checklistRetryName,
 } from '../../src/modules/stable/constants/checklist-job.enum';
-import { ChecklistGenerationService } from '../../src/modules/stable/daily-checklists/checklist-generation.service';
-import { ChecklistsService } from '../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistGenerationService } from '../../src/modules/stable/daily-checklists/services/checklist-generation.service';
+import { ChecklistsService } from '../../src/modules/stable/daily-checklists/services/checklists.service';
 import { DailyChecklistEntity } from '../../src/modules/stable/entities/daily-checklist.entity';
 import { DailyChecklistsService } from '../../src/modules/stable/shared/daily-checklists.service';
 import { StableAccessService } from '../../src/modules/stable/shared/stable-access.service';
@@ -148,6 +152,7 @@ describe('Daily checklist generation retries (Postgres)', () => {
       new DailyChecklistsService(events),
       dataSource,
       new AuditService(),
+      checklistEvidenceMedia(dataSource),
     );
     generation = new ChecklistGenerationService(
       checklists,
@@ -214,7 +219,9 @@ describe('Daily checklist generation retries (Postgres)', () => {
       'SELECT id FROM daily_checklist_items WHERE checklist_id = $1 ORDER BY position LIMIT 1',
       [gioBefore.id],
     );
-    await checklists.tick(groom, item.id, { done: true });
+    await checklists.tick(groom, item.id, {
+      evidenceMediaId: await createChecklistEvidence(dataSource, groomId),
+    });
     const ticked = await checklistOf(gio);
     await addTaskType('Tắm rửa');
     await healHorses();

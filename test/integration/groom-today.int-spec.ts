@@ -16,7 +16,7 @@ import {
 } from '../../src/modules/medical/constants/care-schedule.enum';
 import { DailyChecklistStatus } from '../../src/modules/stable/constants/daily-checklist-status.enum';
 import { FeedingMeal } from '../../src/modules/stable/constants/feeding-meal.enum';
-import { GroomTodayService } from '../../src/modules/stable/daily-checklists/groom-today.service';
+import { GroomTodayService } from '../../src/modules/stable/daily-checklists/services/groom-today.service';
 import { DailyChecklistsService } from '../../src/modules/stable/shared/daily-checklists.service';
 import { fixtures } from './fixtures';
 import {

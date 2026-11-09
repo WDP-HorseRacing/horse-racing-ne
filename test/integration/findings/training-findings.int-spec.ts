@@ -17,7 +17,7 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import type { MediaService } from '../../../src/modules/media/services/media.service';
 import { MedicalCasesService } from '../../../src/modules/medical/medical-records/medical-cases.service';
 import { MedicalRecordsModule } from '../../../src/modules/medical/medical-records/medical-records.module';
-import { GroomTodayService } from '../../../src/modules/stable/daily-checklists/groom-today.service';
+import { GroomTodayService } from '../../../src/modules/stable/daily-checklists/services/groom-today.service';
 import { HorseEnrollmentEntity } from '../../../src/modules/training/entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../../src/modules/training/entities/session-participant.entity';
 import { TrainingClassEntity } from '../../../src/modules/training/entities/training-class.entity';

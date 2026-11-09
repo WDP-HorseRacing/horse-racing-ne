@@ -223,11 +223,15 @@ export class TrainingSubjectsService {
       });
       if (!row) throw new NotFoundException(SUBJECT_NOT_FOUND);
       if (
-        (await manager.existsBy(TrainingPlanSubjectEntity, { subjectId })) ||
-        (await manager.existsBy(TrainingClassPhaseSubjectEntity, {
-          subjectId,
+        (await manager.existsBy(TrainingPlanSubjectEntity, {
+          subjectId: subjectId,
         })) ||
-        (await manager.existsBy(TrainingSessionEntity, { subjectId }))
+        (await manager.existsBy(TrainingClassPhaseSubjectEntity, {
+          subjectId: subjectId,
+        })) ||
+        (await manager.existsBy(TrainingSessionEntity, {
+          subjectId: subjectId,
+        }))
       ) {
         throw new ConflictException('Môn học đang được dùng, không xóa được');
       }

@@ -43,7 +43,7 @@ export class MediaService {
   /**
    * Tạo yêu cầu tải tệp lên: kiểm tra số liệu khai báo, lưu bản ghi media_assets và cấp presigned PUT URL.
    *
-   * - Vai trò được xin tải lên tùy mục đích, theo MEDIA_UPLOAD_PERMISSION (ảnh ngựa: chỉ CLUB_MANAGER).
+   * - Vai trò được xin tải lên tùy mục đích, theo MEDIA_UPLOAD_PERMISSION (ảnh ngựa: CLUB_MANAGER; ảnh sự cố và ảnh bằng chứng checklist: GROOM).
    * - Mime type và dung lượng khai báo phải đạt giới hạn của mục đích (ảnh ngựa: JPEG/PNG/WebP, tối đa 10 MB).
    * - Presigned URL ký kèm Content-Type và Content-Length; storage từ chối nếu client gửi tệp khác khai báo.
    * - Tệp chỉ dùng được sau khi gọi complete, hoặc khi module khác xác minh lại qua assertAttachableHorsePhoto.
@@ -252,6 +252,32 @@ export class MediaService {
       assetId,
       MediaPurpose.INCIDENT_PHOTO,
       'Tệp không phải ảnh sự cố',
+    );
+  }
+
+  /**
+   * Kiểm tra một tệp có được gắn làm ảnh bằng chứng checklist không.
+   *
+   * - Tệp phải do chính Groom đang hoàn tất việc tải lên.
+   * - Tệp phải có mục đích CHECKLIST_EVIDENCE.
+   * - Metadata thật trên storage phải đạt giới hạn ảnh và khớp số liệu khai báo.
+   *
+   * @param callerId UUID Groom (users.id)
+   * @param assetId UUID bản ghi media_assets
+   * @returns Promise trả về MediaAssetEntity đã xác minh
+   * @throws NotFoundException Nếu tệp không tồn tại hoặc không do người gọi tải lên
+   * @throws BadRequestException Nếu tệp không đúng mục đích, định dạng hoặc dung lượng
+   * @throws ConflictException Nếu tệp chưa tải xong lên storage
+   */
+  async assertAttachableChecklistEvidence(
+    callerId: string,
+    assetId: string,
+  ): Promise<MediaAssetEntity> {
+    return this.assertAttachable(
+      callerId,
+      assetId,
+      MediaPurpose.CHECKLIST_EVIDENCE,
+      'Tệp không phải ảnh bằng chứng checklist',
     );
   }
 

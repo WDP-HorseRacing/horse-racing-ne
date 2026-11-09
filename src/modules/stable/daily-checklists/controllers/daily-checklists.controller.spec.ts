@@ -1,5 +1,5 @@
-import { ACCESS_KEY } from '../../../common/constants/auth.constants';
-import { UserRole } from '../../../common/enums/role.enum';
+import { ACCESS_KEY } from '../../../../common/constants/auth.constants';
+import { UserRole } from '../../../../common/enums/role.enum';
 import { DailyChecklistsController } from './daily-checklists.controller';
 
 function rolesOf(method: keyof DailyChecklistsController): UserRole[] {

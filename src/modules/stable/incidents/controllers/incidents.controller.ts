@@ -15,9 +15,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Access, CurrentUser } from '../../../common/decorators';
-import { UserRole } from '../../../common/enums';
-import type { Actor } from '../../../common/types/actor';
+import { Access, CurrentUser } from '../../../../common/decorators';
+import { UserRole } from '../../../../common/enums';
+import type { Actor } from '../../../../common/types/actor';
 import {
   IncidentListQueryDto,
   IncidentPageResponseDto,
@@ -25,8 +25,8 @@ import {
   ReferIncidentDto,
   ReportIncidentDto,
   ResolveIncidentDto,
-} from '../dto/incident.dto';
-import { IncidentsService } from './incidents.service';
+} from '../../dto/incident.dto';
+import { IncidentsService } from '../services/incidents.service';
 
 const INCIDENT_READERS = [
   UserRole.CLUB_MANAGER,

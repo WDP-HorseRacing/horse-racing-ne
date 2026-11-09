@@ -140,6 +140,27 @@ describe('MediaService.requestUpload', () => {
     ).resolves.toBeDefined();
   });
 
+  it('lets a groom request a checklist-evidence image upload', async () => {
+    const { service, manager, storage } = setup({
+      callerRole: UserRole.GROOM,
+    });
+
+    const result = await service.requestUpload(makeActor([UserRole.GROOM]), {
+      ...body,
+      purpose: MediaPurpose.CHECKLIST_EVIDENCE,
+    });
+
+    expect(manager.save.mock.calls[0][0]).toMatchObject({
+      uploadedBy: CALLER_ID,
+      objectKey: `checklist-evidence/${result.assetId}.jpg`,
+    });
+    expect(storage.createUploadUrl).toHaveBeenCalledWith(
+      `checklist-evidence/${result.assetId}.jpg`,
+      'image/jpeg',
+      body.byteSize,
+    );
+  });
+
   it('rejects a declared size over 10 MB without signing or saving', async () => {
     const { service, manager, storage } = setup();
 
@@ -209,6 +230,34 @@ describe('MediaService.requestUpload', () => {
 
     expect(result.uploadUrl).toBe('https://s3/put');
     expect(storage.createUploadUrl).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('MediaService.assertAttachableChecklistEvidence', () => {
+  it('accepts a completed checklist-evidence upload from its groom', async () => {
+    const asset = makeAsset({
+      objectKey: `checklist-evidence/${ASSET_ID}.jpg`,
+    });
+    const { service, storage } = setup({
+      asset,
+      callerRole: UserRole.GROOM,
+    });
+
+    await expect(
+      service.assertAttachableChecklistEvidence(CALLER_ID, ASSET_ID),
+    ).resolves.toBe(asset);
+    expect(storage.getMetadata).toHaveBeenCalledWith(asset.objectKey);
+  });
+
+  it('rejects an asset uploaded for another media purpose', async () => {
+    const { service } = setup({
+      asset: makeAsset(),
+      callerRole: UserRole.GROOM,
+    });
+
+    await expect(
+      service.assertAttachableChecklistEvidence(CALLER_ID, ASSET_ID),
+    ).rejects.toThrow('Tệp không phải ảnh bằng chứng checklist');
   });
 });
 

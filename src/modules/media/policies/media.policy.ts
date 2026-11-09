@@ -3,6 +3,8 @@ import type { Actor } from '../../../common/types/actor';
 import {
   HORSE_PHOTO_ALLOWED_MIME_TYPES,
   HORSE_PHOTO_MAX_BYTES,
+  CHECKLIST_EVIDENCE_ALLOWED_MIME_TYPES,
+  CHECKLIST_EVIDENCE_MAX_BYTES,
   INCIDENT_PHOTO_ALLOWED_MIME_TYPES,
   INCIDENT_PHOTO_MAX_BYTES,
   MEDIA_FILE_EXTENSION,
@@ -107,6 +109,39 @@ export function assertIncidentPhotoSpec(
 }
 
 /**
+ * Kiểm tra định dạng và dung lượng ảnh bằng chứng checklist.
+ *
+ * - Định dạng: JPEG, PNG hoặc WebP.
+ * - Dung lượng: lớn hơn 0 và không quá 10 MB.
+ *
+ * @param mimeType Mime type của tệp
+ * @param byteSize Dung lượng tệp tính bằng byte
+ * @throws BadRequestException Nếu tệp không đạt giới hạn
+ */
+export function assertChecklistEvidenceSpec(
+  mimeType: string,
+  byteSize: number,
+): void {
+  if (
+    !CHECKLIST_EVIDENCE_ALLOWED_MIME_TYPES.includes(
+      normalizeContentType(mimeType),
+    )
+  ) {
+    throw new BadRequestException(
+      'Ảnh bằng chứng checklist phải có định dạng JPEG, PNG hoặc WebP',
+    );
+  }
+  if (!Number.isFinite(byteSize) || byteSize <= 0) {
+    throw new BadRequestException('Dung lượng ảnh bằng chứng không hợp lệ');
+  }
+  if (byteSize > CHECKLIST_EVIDENCE_MAX_BYTES) {
+    throw new BadRequestException(
+      'Ảnh bằng chứng checklist không được vượt quá 10 MB',
+    );
+  }
+}
+
+/**
  * Kiểm tra tệp theo giới hạn của mục đích sử dụng.
  *
  * @param purpose Mục đích sử dụng của tệp
@@ -128,6 +163,9 @@ export function assertMediaSpec(
       return;
     case MediaPurpose.INCIDENT_PHOTO:
       assertIncidentPhotoSpec(mimeType, byteSize);
+      return;
+    case MediaPurpose.CHECKLIST_EVIDENCE:
+      assertChecklistEvidenceSpec(mimeType, byteSize);
       return;
   }
 }

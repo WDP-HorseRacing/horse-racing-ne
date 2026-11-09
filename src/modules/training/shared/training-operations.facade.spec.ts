@@ -10,6 +10,12 @@ import { SessionParticipantEntity } from '../entities/session-participant.entity
 import { TrainingOperationsFacade } from './training-operations.facade';
 
 type Row = Record<string, unknown>;
+type ParticipantRow = Row & {
+  id: string;
+  sessionId: string;
+  status: SessionParticipantStatus;
+  cancelReason: string | null;
+};
 
 function buildQueryBuilder(rows: Row[]) {
   const qb = {
@@ -58,7 +64,7 @@ function enrollment(id: string, classId: string, enrolledAt: string): Row {
   };
 }
 
-function participant(id: string, sessionId: string): Row {
+function participant(id: string, sessionId: string): ParticipantRow {
   return {
     id,
     sessionId,

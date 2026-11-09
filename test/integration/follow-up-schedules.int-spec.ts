@@ -25,7 +25,7 @@ import { MedicalVisitEditsService } from '../../src/modules/medical/medical-reco
 import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
 import { MedicalModule } from '../../src/modules/medical/medical.module';
 import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
-import { GroomTodayService } from '../../src/modules/stable/daily-checklists/groom-today.service';
+import { GroomTodayService } from '../../src/modules/stable/daily-checklists/services/groom-today.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
