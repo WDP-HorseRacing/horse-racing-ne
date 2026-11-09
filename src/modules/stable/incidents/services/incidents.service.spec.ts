@@ -5,12 +5,10 @@ import {
 } from '@nestjs/common';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UserRole } from '../../../../common/enums/role.enum';
-import type { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../../common/types/actor';
 import { AuditAction } from '../../../audit/constants/audit-action.enum';
 import { AuditEntityType } from '../../../audit/constants/audit-entity-type.enum';
 import { AuditFeature } from '../../../audit/constants/audit-feature.enum';
-import type { AuditService } from '../../../audit/services/audit.service';
 import { HorseAccessService } from '../../../horses/shared/horse-access.service';
 import { HorseLifecycleStatus } from '../../../horses/enums/horse-status.enum';
 import { ExamRequestStatus } from '../../../medical/constant/exam-request.enum';
@@ -36,7 +34,7 @@ import { StableAccessService } from '../../shared/stable-access.service';
 import { ExamRequestsService } from '../../../medical/exam-request/exam-requests.service';
 import { IncidentsService } from './incidents.service';
 
-jest.mock('../../../../users/utils/current-user', () => ({
+jest.mock('../../../users/utils/current-user', () => ({
   currentUserForActor: jest.fn().mockResolvedValue({ id: 'user-1' }),
 }));
 
@@ -62,10 +60,32 @@ describe('IncidentsService', () => {
   let transaction: jest.Mock;
   let queryBuilder: Record<string, jest.Mock>;
   let incidentsRepository: { createQueryBuilder: jest.Mock };
-  let incident: Record<string, any>;
-  let assignment: Record<string, any> | null;
-  let examRequest: Record<string, any> | null;
-  let examRows: Record<string, any>[];
+  let incident: {
+    id: string;
+    horseId: string;
+    horse: typeof horse;
+    reportedBy: string;
+    reporter: { id: string; fullName: string };
+    description: string;
+    mediaAssetId: string | null;
+    status: IncidentStatus;
+    resolution: string | null;
+    resolvedBy: string | null;
+    resolver: { id: string; fullName: string } | null;
+    resolvedAt: Date | null;
+    resolutionSource: IncidentResolutionSource | null;
+    createdAt: Date;
+  };
+  let assignment: { groomId: string } | null;
+  let examRequest: { status: ExamRequestStatus; handledAt?: Date } | null;
+  let examRows: {
+    id: string;
+    incidentId: string;
+    status: ExamRequestStatus;
+    urgent: boolean;
+    handledAt: Date | null;
+    dismissReason: string | null;
+  }[];
   let access: {
     lockOperableHorse: jest.Mock;
     assertHorseInTrainerBarn: jest.Mock;
@@ -139,7 +159,7 @@ describe('IncidentsService', () => {
       findBy: jest.fn().mockImplementation(() => Promise.resolve(examRows)),
       exists: jest.fn().mockResolvedValue(false),
       create: jest.fn((_entity: unknown, row: object) => row),
-      save: jest.fn((row: Record<string, any>) => {
+      save: jest.fn((row: { id?: string }) => {
         if (!row.id) {
           Object.assign(incident, row, {
             id: 'incident-created',
@@ -194,9 +214,9 @@ describe('IncidentsService', () => {
       horseAccess as unknown as HorseAccessService,
       media as unknown as MediaService,
       examRequests as unknown as ExamRequestsService,
-      events as unknown as DomainEventPublisher,
+      events,
       dataSource,
-      audit as unknown as AuditService,
+      audit,
     );
   });
 
@@ -443,9 +463,9 @@ describe('IncidentsService', () => {
       horseId: horse.id,
       requestId: 'exam-1',
       requestedBy: null,
-      incidentId: incident.id,
+      incidentId: 'incident-1',
       outcome: ExamRequestStatus.EXAMINED,
-      description: incident.description,
+      description: 'Ngựa bị đau chân',
       dismissReason: null,
       handledBy: 'vet-1',
       handledAt: '2026-11-08T01:00:00.000Z',
@@ -491,7 +511,7 @@ describe('IncidentsService', () => {
       eventId: 'event-2',
       horseId: horse.id,
       requestId: 'exam-1',
-      incidentId: incident.id,
+      incidentId: 'incident-1',
       reopenedBy: 'vet-1',
       reason: 'Buổi khám đã hủy',
     };

@@ -1,5 +1,4 @@
 import { DataSource, EntityManager } from 'typeorm';
-import { DomainEventPublisher } from '../../../../common/infrastructure/events/domain-event.publisher';
 import { deterministicUuid } from '../../../../common/utils/data/deterministic-uuid';
 import { INCIDENT_REMINDER_AFTER_HOURS } from '../../constants/incident.constants';
 import { IncidentStatus } from '../../constants/incident-status.enum';
@@ -38,10 +37,7 @@ describe('IncidentRemindersService', () => {
     );
     events = { publish: jest.fn().mockResolvedValue(undefined) };
     const dataSource = { transaction } as unknown as DataSource;
-    service = new IncidentRemindersService(
-      events as unknown as DomainEventPublisher,
-      dataSource,
-    );
+    service = new IncidentRemindersService(events, dataSource);
   });
 
   describe('remindStale', () => {
