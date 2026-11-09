@@ -7,26 +7,26 @@ import {
   clubDateTimeToInstant,
   clubToday,
   shiftDays,
-} from '../../src/common/utils/club-date';
+} from '../../src/common/utils/date/club-date';
 import { CheckupAppointmentUnassign1789829600000 } from '../../src/migrations/1789829600000-CheckupAppointmentUnassign';
 import { CareScheduleVetOnly1789830300000 } from '../../src/migrations/1789830300000-CareScheduleVetOnly';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { CareSchedulesService } from '../../src/modules/medical/care-schedules/care-schedules.service';
-import { CheckupsService } from '../../src/modules/medical/care-schedules/checkups.service';
+import { CareSchedulesService } from '../../src/modules/medical/care-schedule/service/care-schedules.service';
+import { CheckupsService } from '../../src/modules/medical/care-schedule/service/checkups.service';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../src/modules/medical/constants/care-schedule.enum';
+} from '../../src/modules/medical/constant/care-schedule.enum';
 import {
   MEDICAL_CHECKUP_APPOINTMENT_DUE_EVENT,
   MEDICAL_CHECKUP_DUE_EVENT,
-} from '../../src/modules/medical/constants/medical-events.constants';
-import { CareScheduleEntity } from '../../src/modules/medical/entities/care-schedule.entity';
-import { MedicalRemindersService } from '../../src/modules/medical/medical-reminders/medical-reminders.service';
-import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
-import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
+} from '../../src/modules/medical/constant/medical-events.constants';
+import { CareScheduleEntity } from '../../src/modules/medical/entity/care-schedule.entity';
+import { MedicalRemindersService } from '../../src/modules/medical/medical-reminder/medical-reminders.service';
+import { MedicalAccessService } from '../../src/modules/medical/shared/access/medical-access.service';
+import { MedicalCheckupsService } from '../../src/modules/medical/shared/queries/medical-checkups.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

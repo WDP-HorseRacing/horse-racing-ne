@@ -3,6 +3,7 @@ import { Types, type Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
+import { MetricAlertLevel } from '../../src/modules/performance/enums/metric-alert-level.enum';
 import type { Actor } from '../../src/common/types/actor';
 import {
   HorseHealthStatus,
@@ -116,7 +117,7 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
     at: string,
     heartRate: number,
     speed: string,
-    level = 'NORMAL',
+    level: MetricAlertLevel = MetricAlertLevel.NORMAL,
   ) =>
     metrics.create({
       recordedAt: new Date(at),
@@ -195,9 +196,21 @@ describe('Reports dashboard (Postgres + MongoDB)', () => {
     await run(before, gio, gioEnrollment, 'COMPLETED');
 
     await point(gio, '2026-10-05T01:10:00Z', 150, '14.000');
-    await point(gio, '2026-10-05T01:20:00Z', 170, '15.000', 'WARNING');
+    await point(
+      gio,
+      '2026-10-05T01:20:00Z',
+      170,
+      '15.000',
+      MetricAlertLevel.WARNING,
+    );
     await point(gio, '2026-10-12T01:10:00Z', 160, '16.000');
-    await point(gio, '2026-09-01T01:10:00Z', 200, '20.000', 'CRITICAL');
+    await point(
+      gio,
+      '2026-09-01T01:10:00Z',
+      200,
+      '20.000',
+      MetricAlertLevel.CRITICAL,
+    );
   });
 
   const period = { from: '2026-10-01', to: '2026-10-14' };

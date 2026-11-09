@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import { FinanceReportsRepository } from '../../src/modules/reports/finance-reports/finance-reports.repository';
 import { FinanceReportsService } from '../../src/modules/reports/finance-reports/finance-reports.service';
 import { fixtures } from './fixtures';

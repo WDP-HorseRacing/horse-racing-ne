@@ -16,7 +16,7 @@ import { AuditLogListQueryDto } from '../../../src/modules/audit/dto/audit-log.d
 import { AuditLogEntity } from '../../../src/modules/audit/entities/audit-log.entity';
 import { AuditLogsService } from '../../../src/modules/audit/services/audit-logs.service';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
-import { validationExceptionFactory } from '../../../src/common/utils/field-errors';
+import { validationExceptionFactory } from '../../../src/common/utils/validation/field-errors';
 import { HorseListQueryDto } from '../../../src/modules/horses/dto';
 import { CreateHorseMeasurementDto } from '../../../src/modules/horses/dto/horse-measure.dto';
 import { HorseMeasurementEntity } from '../../../src/modules/horses/entities/horse-measurement.entity';
@@ -40,10 +40,10 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
 import { HorsePedigreeRepository } from '../../../src/modules/horses/shared/horse-pedigree.repository';
 import { HorsePedigreeService } from '../../../src/modules/horses/shared/horse-pedigree.service';
-import { ExamRequestsModule } from '../../../src/modules/medical/exam-requests/exam-requests.module';
+import { ExamRequestsModule } from '../../../src/modules/medical/exam-request/exam-requests.module';
 import { MedicalDashboardRepository } from '../../../src/modules/medical/medical-dashboard/medical-dashboard.repository';
 import { MedicalDashboardService } from '../../../src/modules/medical/medical-dashboard/medical-dashboard.service';
-import { MedicalCheckupsService } from '../../../src/modules/medical/shared/medical-checkups.service';
+import { MedicalCheckupsService } from '../../../src/modules/medical/shared/queries/medical-checkups.service';
 import { BarnsService } from '../../../src/modules/stable/barns/barns.service';
 import { BarnEntity } from '../../../src/modules/stable/entities/barn.entity';
 import { StallAssignmentEntity } from '../../../src/modules/stable/entities/stall-assignment.entity';
@@ -52,7 +52,7 @@ import { StableAccessService } from '../../../src/modules/stable/shared/stable-a
 import { StallsService } from '../../../src/modules/stable/stalls/stalls.service';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
-import { ParticipantEligibilityListener } from '../../../src/modules/training/training-sessions/participant-eligibility.listener';
+import { ParticipantEligibilityListener } from '../../../src/modules/training/training-session/listeners/participant-eligibility.listener';
 import { UserEntity } from '../../../src/modules/users/entities/user.entity';
 import { UsersService } from '../../../src/modules/users/services/users.service';
 import { RealtimeGateway } from '../../../src/modules/realtime/realtime.gateway';
@@ -368,6 +368,7 @@ describe('Findings R3: Flow 1, users, auth (Postgres)', () => {
     await listener.handle({
       eventId: randomUUID(),
       horseId: horse,
+      ownerId: null,
       lockId,
       reason: 'Nghỉ',
       expectedEnd: null,

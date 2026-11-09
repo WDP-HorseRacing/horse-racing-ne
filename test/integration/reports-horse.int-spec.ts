@@ -6,7 +6,8 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+import { MetricAlertLevel } from '../../src/modules/performance/enums/metric-alert-level.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import {
   PerformanceMetric,
   PerformanceMetricSchema,
@@ -114,7 +115,7 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
     at: string,
     heartRate: number,
     speed: string,
-    level = 'NORMAL',
+    level: MetricAlertLevel = MetricAlertLevel.NORMAL,
   ) =>
     metrics.create({
       recordedAt: new Date(at),
@@ -212,9 +213,21 @@ describe('Reports per horse (Postgres + MongoDB)', () => {
     }
 
     await point(heavy, '2026-10-05T01:10:00Z', 150, '14.000');
-    await point(heavy, '2026-10-05T01:20:00Z', 170, '15.000', 'WARNING');
+    await point(
+      heavy,
+      '2026-10-05T01:20:00Z',
+      170,
+      '15.000',
+      MetricAlertLevel.WARNING,
+    );
     await point(light, '2026-10-12T01:10:00Z', 160, '16.000');
-    await point(before, '2026-09-01T01:10:00Z', 200, '20.000', 'CRITICAL');
+    await point(
+      before,
+      '2026-09-01T01:10:00Z',
+      200,
+      '20.000',
+      MetricAlertLevel.CRITICAL,
+    );
   });
 
   const period = { from: '2026-10-01', to: '2026-10-14' };

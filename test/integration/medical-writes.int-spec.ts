@@ -4,13 +4,13 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../src/modules/medical/constants/care-schedule.enum';
-import { ExamRequestStatus } from '../../src/modules/medical/constants/exam-request.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
-import { TRANSFER_CANCEL_REASON } from '../../src/modules/medical/constants/medical.constants';
-import { CareScheduleWritesService } from '../../src/modules/medical/shared/care-schedule-writes.service';
-import { ExamRequestWritesService } from '../../src/modules/medical/shared/exam-request-writes.service';
-import { TrainingLockWritesService } from '../../src/modules/medical/shared/training-lock-writes.service';
+} from '../../src/modules/medical/constant/care-schedule.enum';
+import { ExamRequestStatus } from '../../src/modules/medical/constant/exam-request.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
+import { TRANSFER_CANCEL_REASON } from '../../src/modules/medical/constant/medical.constants';
+import { CareScheduleWritesService } from '../../src/modules/medical/shared/writes/care-schedule-writes.service';
+import { ExamRequestWritesService } from '../../src/modules/medical/shared/writes/exam-request-writes.service';
+import { TrainingLockWritesService } from '../../src/modules/medical/shared/writes/training-lock-writes.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -173,6 +173,7 @@ describe('Medical shared writes (Postgres)', () => {
     it('completes only the scheduled routine checkup of the horse', async () => {
       const winx = await seed.horse('Winx');
       const other = await seed.horse('Other');
+      const recordId = await seed.visit(winx, vet, '2026-10-10T02:00:00Z');
       const checkup = await seed.schedule(winx, '2026-10-10T00:00:00Z', {
         type: CareScheduleType.ROUTINE_CHECKUP,
       });
@@ -185,7 +186,7 @@ describe('Medical shared writes (Postgres)', () => {
 
       await expect(
         dataSource.transaction((m) =>
-          schedules.completeRoutineCheckup(m, winx, vet),
+          schedules.completeRoutineCheckup(m, winx, vet, recordId),
         ),
       ).resolves.toBe(1);
       expect(await row('care_schedules', checkup)).toMatchObject({

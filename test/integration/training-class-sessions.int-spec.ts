@@ -9,8 +9,8 @@ import { TrainingClassEntity } from '../../src/modules/training/entities/trainin
 import { TrainingClassStatus } from '../../src/modules/training/enums/training-class-status.enum';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { TrainingClassesService } from '../../src/modules/training/training-classes/services/training-classes.service';
+import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-class/services/training-class-enrollments.service';
+import { TrainingClassesService } from '../../src/modules/training/training-class/services/training-classes.service';
 import { MediaService } from '../../src/modules/media/services/media.service';
 import { fixtures } from './fixtures';
 import {

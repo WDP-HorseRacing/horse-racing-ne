@@ -10,14 +10,14 @@ import {
   clubToday,
   shiftDays,
   toDisplayDate,
-} from '../../src/common/utils/club-date';
+} from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import type { MediaService } from '../../src/modules/media/services/media.service';
-import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horse-notifications.service';
-import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
-import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/notification-recipients.repository';
-import { TrainingRunGroomAssignedListener } from '../../src/modules/notifications/delivery/training-run-groom-assigned.listener';
+import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horses/horse-notifications.service';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/shared/notification-recipients.repository';
+import { TrainingRunGroomAssignedListener } from '../../src/modules/notifications/delivery/training/training-run-groom-assigned.listener';
 import {
   NotificationRecord,
   NotificationSchema,
@@ -31,7 +31,7 @@ import { TRAINING_RUN_GROOM_ASSIGNED_EVENT } from '../../src/modules/training/co
 import { SessionParticipantEntity } from '../../src/modules/training/entities/session-participant.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { SessionParticipantsService } from '../../src/modules/training/training-sessions/session-participants.service';
+import { SessionParticipantsService } from '../../src/modules/training/training-session/services/session-participants.service';
 import type { TrainingRunGroomAssignedEvent } from '../../src/modules/training/types/training-session.types';
 import { fixtures } from './fixtures';
 import {

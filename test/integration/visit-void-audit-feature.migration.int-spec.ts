@@ -10,9 +10,9 @@ import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.e
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../src/modules/medical/constants/medical-visit.enum';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+} from '../../src/modules/medical/constant/medical-visit.enum';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import { VisitVoidAuditFeature1789830000000 } from '../../src/migrations/1789830000000-VisitVoidAuditFeature';
 import { fixtures } from './fixtures';
 import {

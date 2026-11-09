@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import {
   checklistEvidenceMedia,
@@ -16,9 +16,9 @@ import { HorseAccessService } from '../../../src/modules/horses/shared/horse-acc
 import type { MediaService } from '../../../src/modules/media/services/media.service';
 import { FinanceReportsRepository } from '../../../src/modules/reports/finance-reports/finance-reports.repository';
 import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
-import { MedicalExamRequestEntity } from '../../../src/modules/medical/entities/medical-exam-request.entity';
-import { ExamRequestsService } from '../../../src/modules/medical/exam-requests/exam-requests.service';
-import type { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
+import { MedicalExamRequestEntity } from '../../../src/modules/medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../../src/modules/medical/exam-request/exam-requests.service';
+import type { MedicalAccessService } from '../../../src/modules/medical/shared/access/medical-access.service';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
 import { FeedingMeal } from '../../../src/modules/stable/constants/feeding-meal.enum';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -111,7 +111,6 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       stock,
       dataSource,
       new AuditService(),
-      checklistEvidenceMedia(dataSource),
       events,
     );
     requests = new SupplyRequestsService(
@@ -155,6 +154,7 @@ describe('Findings: stable, supplies, daily fees (Postgres)', () => {
       daily,
       dataSource,
       new AuditService(),
+      checklistEvidenceMedia(dataSource),
     );
     generation = new ChecklistGenerationService(
       checklists,

@@ -11,9 +11,9 @@ import { TrainingSubjectEntity } from '../../src/modules/training/entities/train
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingSessionType } from '../../src/modules/training/enums/training-session-type.enum';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
-import { TrialResultsService } from '../../src/modules/training/time-trials/trial-results.service';
-import { TrainingSessionsService } from '../../src/modules/training/training-sessions/training-sessions.service';
-import { TrainingSubjectsService } from '../../src/modules/training/training-subjects/training-subjects.service';
+import { TrialResultsService } from '../../src/modules/training/time-trial/trial-results.service';
+import { TrainingSessionsService } from '../../src/modules/training/training-session/services/training-sessions.service';
+import { TrainingSubjectsService } from '../../src/modules/training/training-subject/training-subjects.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -88,6 +88,7 @@ describe('Time trial of a training session (Postgres)', () => {
         sessionType: TrainingSessionType.REGULAR,
         intensity: TrainingIntensity.HEAVY,
         plannedDistanceM: 3000,
+        durationMinutes: 30,
       })
     ).id;
     trial = (
@@ -96,6 +97,7 @@ describe('Time trial of a training session (Postgres)', () => {
         sessionType: TrainingSessionType.TIME_TRIAL,
         intensity: TrainingIntensity.HEAVY,
         plannedDistanceM: 1200,
+        durationMinutes: 30,
         targetTimeMs: 75000,
       })
     ).id;

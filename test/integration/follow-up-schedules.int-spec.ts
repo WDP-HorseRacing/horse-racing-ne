@@ -6,25 +6,25 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { FollowUpSchedules1789829700000 } from '../../src/migrations/1789829700000-FollowUpSchedules';
-import { CareSchedulesService } from '../../src/modules/medical/care-schedules/care-schedules.service';
+import { CareSchedulesService } from '../../src/modules/medical/care-schedule/service/care-schedules.service';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../src/modules/medical/constants/care-schedule.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+} from '../../src/modules/medical/constant/care-schedule.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../src/modules/medical/constants/medical-visit.enum';
+} from '../../src/modules/medical/constant/medical-visit.enum';
 import { MedicalDashboardRepository } from '../../src/modules/medical/medical-dashboard/medical-dashboard.repository';
-import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsService } from '../../src/modules/medical/medical-records/medical-records.service';
-import { MedicalVisitEditsService } from '../../src/modules/medical/medical-records/medical-visit-edits.service';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+import { MedicalCasesService } from '../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsService } from '../../src/modules/medical/medical-record/services/medical-records.service';
+import { MedicalVisitEditsService } from '../../src/modules/medical/medical-record/services/medical-visit-edits.service';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import { MedicalModule } from '../../src/modules/medical/medical.module';
-import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
+import { MedicalCheckupsService } from '../../src/modules/medical/shared/queries/medical-checkups.service';
 import { GroomTodayService } from '../../src/modules/stable/daily-checklists/services/groom-today.service';
 import { fixtures } from './fixtures';
 import {

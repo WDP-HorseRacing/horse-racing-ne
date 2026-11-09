@@ -7,21 +7,21 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday } from '../../../src/common/utils/club-date';
+import { clubToday } from '../../../src/common/utils/date/club-date';
 import { HorseHealthStatus } from '../../../src/modules/horses/enums/horse-status.enum';
-import { CareSchedulesModule } from '../../../src/modules/medical/care-schedules/care-schedules.module';
-import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
+import { CareSchedulesModule } from '../../../src/modules/medical/care-schedule/care-schedules.module';
+import { CareSchedulesService } from '../../../src/modules/medical/care-schedule/service/care-schedules.service';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../../src/modules/medical/constants/care-schedule.enum';
+} from '../../../src/modules/medical/constant/care-schedule.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../../src/modules/medical/constants/medical-visit.enum';
-import { MedicalCasesService } from '../../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitsService } from '../../../src/modules/medical/medical-records/medical-visits.service';
+} from '../../../src/modules/medical/constant/medical-visit.enum';
+import { MedicalCasesService } from '../../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitsService } from '../../../src/modules/medical/medical-record/services/medical-visits.service';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,

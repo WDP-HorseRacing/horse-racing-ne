@@ -12,7 +12,7 @@ import type { MediaService } from '../../src/modules/media/services/media.servic
 import { SessionParticipantEntity } from '../../src/modules/training/entities/session-participant.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { SessionParticipantsService } from '../../src/modules/training/training-sessions/session-participants.service';
+import { SessionParticipantsService } from '../../src/modules/training/training-session/services/session-participants.service';
 import { UserEntity } from '../../src/modules/users/entities/user.entity';
 import { UsersService } from '../../src/modules/users/services/users.service';
 import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';

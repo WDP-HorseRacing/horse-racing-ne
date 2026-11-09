@@ -10,8 +10,8 @@ import { HorseEnrollmentEntity } from '../../src/modules/training/entities/horse
 import { SessionParticipantEntity } from '../../src/modules/training/entities/session-participant.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { SessionParticipantsService } from '../../src/modules/training/training-sessions/session-participants.service';
+import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-class/services/training-class-enrollments.service';
+import { SessionParticipantsService } from '../../src/modules/training/training-session/services/session-participants.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

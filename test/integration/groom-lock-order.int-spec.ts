@@ -17,8 +17,8 @@ import { TrainingIntensity } from '../../src/modules/training/enums/training-int
 import { TrainingSessionType } from '../../src/modules/training/enums/training-session-type.enum';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { TrainingSessionsService } from '../../src/modules/training/training-sessions/training-sessions.service';
+import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-class/services/training-class-enrollments.service';
+import { TrainingSessionsService } from '../../src/modules/training/training-session/services/training-sessions.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

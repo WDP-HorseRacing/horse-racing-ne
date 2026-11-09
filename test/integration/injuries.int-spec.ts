@@ -9,17 +9,17 @@ import {
   InjuryBodyRegion,
   InjuryType,
   RecoveryStatus,
-} from '../../src/modules/medical/constants/injury-marker.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+} from '../../src/modules/medical/constant/injury-marker.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../src/modules/medical/constants/medical-visit.enum';
-import { InjuryCasesModule } from '../../src/modules/medical/injury-cases/injury-cases.module';
-import { InjuryCasesService } from '../../src/modules/medical/injury-cases/injury-cases.service';
-import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+} from '../../src/modules/medical/constant/medical-visit.enum';
+import { InjuryCasesModule } from '../../src/modules/medical/injury-case/injury-cases.module';
+import { InjuryCasesService } from '../../src/modules/medical/injury-case/injury-cases.service';
+import { MedicalCasesService } from '../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

@@ -18,7 +18,7 @@ import { StallsService } from '../../src/modules/stable/stalls/stalls.service';
 import { HorseEnrollmentEntity } from '../../src/modules/training/entities/horse-enrollment.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-classes/services/training-class-enrollments.service';
+import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-class/services/training-class-enrollments.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

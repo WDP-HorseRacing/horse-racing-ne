@@ -10,12 +10,12 @@ import {
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../src/modules/medical/constants/care-schedule.enum';
+} from '../../src/modules/medical/constant/care-schedule.enum';
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../../src/modules/medical/constants/exam-request.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+} from '../../src/modules/medical/constant/exam-request.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 
 /**
  * Tạo nhanh dữ liệu mẫu bằng SQL thô cho integration test, chỉ điền các cột bắt buộc và cột test cần

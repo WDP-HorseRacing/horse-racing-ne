@@ -205,7 +205,7 @@ describe('AuditLogsService (Postgres)', () => {
     });
 
     it('pages with the total of every matching row', async () => {
-      const ids = [];
+      const ids: string[] = [];
       for (let day = 1; day <= 5; day++) {
         ids.push(await log(`2026-10-0${day}T02:00:00Z`));
       }

@@ -11,12 +11,12 @@ import type { Actor } from '../../../src/common/types/actor';
 import {
   clubDateTimeToInstant,
   clubToday,
-} from '../../../src/common/utils/club-date';
+} from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import type { MediaService } from '../../../src/modules/media/services/media.service';
-import { MedicalCasesService } from '../../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../../src/modules/medical/medical-records/medical-records.module';
+import { MedicalCasesService } from '../../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../../src/modules/medical/medical-record/medical-records.module';
 import { GroomTodayService } from '../../../src/modules/stable/daily-checklists/services/groom-today.service';
 import { HorseEnrollmentEntity } from '../../../src/modules/training/entities/horse-enrollment.entity';
 import { SessionParticipantEntity } from '../../../src/modules/training/entities/session-participant.entity';
@@ -25,13 +25,13 @@ import { TrainingSessionEntity } from '../../../src/modules/training/entities/tr
 import { TrialResultEntity } from '../../../src/modules/training/entities/trial-result.entity';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
-import { TrialResultsService } from '../../../src/modules/training/time-trials/trial-results.service';
-import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
-import { ParticipantEligibilityListener } from '../../../src/modules/training/training-sessions/participant-eligibility.listener';
-import { SessionAutoCloseService } from '../../../src/modules/training/training-sessions/session-auto-close.service';
-import { SessionParticipantsService } from '../../../src/modules/training/training-sessions/session-participants.service';
-import { TrainingSessionsService } from '../../../src/modules/training/training-sessions/training-sessions.service';
+import { TrialResultsService } from '../../../src/modules/training/time-trial/trial-results.service';
+import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-class/services/training-class-enrollments.service';
+import { TrainingClassesService } from '../../../src/modules/training/training-class/services/training-classes.service';
+import { ParticipantEligibilityListener } from '../../../src/modules/training/training-session/listeners/participant-eligibility.listener';
+import { SessionAutoCloseService } from '../../../src/modules/training/training-session/services/session-auto-close.service';
+import { SessionParticipantsService } from '../../../src/modules/training/training-session/services/session-participants.service';
+import { TrainingSessionsService } from '../../../src/modules/training/training-session/services/training-sessions.service';
 import { TrainingIntensity } from '../../../src/modules/training/enums/training-intensity.enum';
 import { fixtures } from '../fixtures';
 import {
@@ -267,6 +267,7 @@ describe('Training findings (Postgres)', () => {
     await listener.handle({
       eventId: randomUUID(),
       horseId,
+      ownerId: null,
       lockId,
       conclusion: 'Khỏi',
     });

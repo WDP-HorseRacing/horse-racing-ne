@@ -6,7 +6,7 @@ import { HorseAccessService } from '../../src/modules/horses/shared/horse-access
 import { HorseEnrollmentEntity } from '../../src/modules/training/entities/horse-enrollment.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-classes/services/training-class-enrollments.service';
+import { TrainingClassEnrollmentsService } from '../../src/modules/training/training-class/services/training-class-enrollments.service';
 import { MediaService } from '../../src/modules/media/services/media.service';
 import { fixtures } from './fixtures';
 import {

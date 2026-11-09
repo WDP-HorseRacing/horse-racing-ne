@@ -11,6 +11,7 @@ import {
   PERFORMANCE_METRIC_CRITICAL_EVENT,
 } from '../../src/modules/performance/constants/performance.constants';
 import { MetricAlertLevel } from '../../src/modules/performance/enums/metric-alert-level.enum';
+import { PerformanceMetricsRepository } from '../../src/modules/performance/performance-metrics/performance-metrics.repository';
 import { PerformanceMetricsService } from '../../src/modules/performance/performance-metrics/performance-metrics.service';
 import {
   PerformanceMetric,
@@ -52,7 +53,7 @@ describe('PerformanceMetricsService (Postgres + MongoDB)', () => {
     );
     await metrics.init();
     service = new PerformanceMetricsService(
-      metrics,
+      new PerformanceMetricsRepository(metrics),
       new TrainingAccessService(dataSource, new HorseAccessService(dataSource)),
       new DomainEventPublisher(),
       { emitToUser } as unknown as RealtimeGateway,

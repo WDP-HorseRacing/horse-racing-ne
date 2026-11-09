@@ -9,13 +9,13 @@ import type { Actor } from '../../src/common/types/actor';
 import {
   CaseLockDecision,
   MedicalCaseStatus,
-} from '../../src/modules/medical/constants/medical-case.enum';
+} from '../../src/modules/medical/constant/medical-case.enum';
 import {
   MEDICAL_TRAINING_LOCK_KEPT_EVENT,
   MEDICAL_TRAINING_LOCK_RELEASED_EVENT,
-} from '../../src/modules/medical/constants/medical-events.constants';
-import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
+} from '../../src/modules/medical/constant/medical-events.constants';
+import { MedicalCasesService } from '../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

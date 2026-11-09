@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import {
   checklistEvidenceMedia,
@@ -41,6 +41,7 @@ describe('Daily checklist generation retries (Postgres)', () => {
   let generation: ChecklistGenerationService;
   let manager: Actor;
   let groom: Actor;
+  let groomId: string;
   let gio: string;
   let may: string;
   let today: string;
@@ -163,7 +164,7 @@ describe('Daily checklist generation retries (Postgres)', () => {
     );
     today = clubToday();
     manager = await actorOf(UserRole.CLUB_MANAGER);
-    const groomId = await seed.user(UserRole.GROOM);
+    groomId = await seed.user(UserRole.GROOM);
     groom = await actorOf(UserRole.GROOM, groomId);
     const barn = await seed.barn('Khu A');
     gio = await seed.horse('Gió', { barnId: barn });

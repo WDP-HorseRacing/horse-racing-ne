@@ -9,7 +9,7 @@ import type { Actor } from '../../../src/common/types/actor';
 import {
   clubDateTimeToInstant,
   shiftDays,
-} from '../../../src/common/utils/club-date';
+} from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { DailyFeesService } from '../../../src/modules/billing/daily-fees/daily-fees.service';
 import { DailyFeeEntity } from '../../../src/modules/billing/entities/daily-fee.entity';
@@ -18,7 +18,7 @@ import { HorseMeasurementEntity } from '../../../src/modules/horses/entities/hor
 import { HorseMeasurementType } from '../../../src/modules/horses/enums/horse-measurement-type.enum';
 import { HorseMeasurementsService } from '../../../src/modules/horses/horse-measurements/horse-measurements.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
-import { MedicalCheckupsService } from '../../../src/modules/medical/shared/medical-checkups.service';
+import { MedicalCheckupsService } from '../../../src/modules/medical/shared/queries/medical-checkups.service';
 import { FinanceReportsRepository } from '../../../src/modules/reports/finance-reports/finance-reports.repository';
 import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
 import { CareTasksService } from '../../../src/modules/stable/care-tasks/care-tasks.service';
@@ -32,8 +32,8 @@ import { DailyChecklistsService } from '../../../src/modules/stable/shared/daily
 import { StableAccessService } from '../../../src/modules/stable/shared/stable-access.service';
 import { TrainingClassEntity } from '../../../src/modules/training/entities/training-class.entity';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
-import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
-import { CareScheduleType } from '../../../src/modules/medical/constants/care-schedule.enum';
+import { TrainingClassesService } from '../../../src/modules/training/training-class/services/training-classes.service';
+import { CareScheduleType } from '../../../src/modules/medical/constant/care-schedule.enum';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,

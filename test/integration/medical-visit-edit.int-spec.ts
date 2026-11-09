@@ -17,25 +17,25 @@ import {
   InjuryBodyRegion,
   InjuryType,
   RecoveryStatus,
-} from '../../src/modules/medical/constants/injury-marker.enum';
+} from '../../src/modules/medical/constant/injury-marker.enum';
 import {
   MEDICAL_CASE_CANCELLED_EVENT,
   MEDICAL_CASE_OPENED_EVENT,
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_HEALTH_CHANGED_EVENT,
-} from '../../src/modules/medical/constants/medical-events.constants';
+} from '../../src/modules/medical/constant/medical-events.constants';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../src/modules/medical/constants/medical-visit.enum';
+} from '../../src/modules/medical/constant/medical-visit.enum';
 import type { UpdateMedicalVisitDto } from '../../src/modules/medical/dto';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitEditsService } from '../../src/modules/medical/medical-records/medical-visit-edits.service';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitEditsService } from '../../src/modules/medical/medical-record/services/medical-visit-edits.service';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import type { HealthChangedEvent } from '../../src/modules/medical/types/medical-events.types';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { ParticipantEligibilityListener } from '../../src/modules/training/training-sessions/participant-eligibility.listener';
+import { ParticipantEligibilityListener } from '../../src/modules/training/training-session/listeners/participant-eligibility.listener';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
