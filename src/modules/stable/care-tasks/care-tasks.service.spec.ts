@@ -16,8 +16,6 @@ import { HorseCareTaskMode } from '../constants/horse-care-task-mode.enum';
 import { CARE_TASK_CHANGED_EVENT } from '../constants/stable-events.constants';
 import type { DailyChecklistsService } from '../shared/daily-checklists.service';
 import type { StableAccessService } from '../shared/stable-access.service';
-import type { AuditService } from '../../audit/services/audit.service';
-import type { DomainEventPublisher } from '../../../common/infrastructure/events/domain-event.publisher';
 import { CareTasksService } from './care-tasks.service';
 
 jest.mock('../../users/utils/current-user', () => ({
@@ -45,8 +43,25 @@ describe('CareTasksService', () => {
   let transaction: jest.Mock;
   let types: { find: jest.Mock };
   let tasks: { find: jest.Mock };
-  let taskType: Record<string, any>;
-  let task: Record<string, any>;
+  let taskType: Pick<
+    CareTaskTypeEntity,
+    'id' | 'name' | 'appliesToAll' | 'active' | 'createdAt'
+  >;
+  let task: Pick<
+    HorseCareTaskEntity,
+    | 'id'
+    | 'horseId'
+    | 'taskTypeId'
+    | 'mode'
+    | 'fromDate'
+    | 'toDate'
+    | 'note'
+    | 'createdBy'
+    | 'createdAt'
+  > & {
+    taskType: typeof taskType;
+    creator: typeof caller;
+  };
   let access: {
     findHorseForDailyCare: jest.Mock;
     lockCareTaskHorse: jest.Mock;
@@ -96,7 +111,7 @@ describe('CareTasksService', () => {
       findOneByOrFail: jest.fn().mockResolvedValue(taskType),
       exists: jest.fn().mockResolvedValue(false),
       create: jest.fn((_entity: unknown, row: object) => row),
-      save: jest.fn((row: Record<string, any>) => {
+      save: jest.fn((row: { id?: string; name?: string }) => {
         if ('name' in row) {
           Object.assign(taskType, row, { id: row.id ?? 'type-created' });
           return Promise.resolve(taskType);
@@ -139,8 +154,8 @@ describe('CareTasksService', () => {
       access as unknown as StableAccessService,
       checklists as unknown as DailyChecklistsService,
       dataSource,
-      audit as unknown as AuditService,
-      events as unknown as DomainEventPublisher,
+      audit,
+      events,
     );
   });
 
@@ -349,6 +364,7 @@ describe('CareTasksService', () => {
         service.createForHorse(headTrainer, horseId, {
           ...body,
           mode: HorseCareTaskMode.EXEMPT,
+          note: '   ',
         }),
       ).rejects.toThrow(BadRequestException);
       expect(manager.save).not.toHaveBeenCalled();

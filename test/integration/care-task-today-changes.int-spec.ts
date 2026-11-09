@@ -6,10 +6,14 @@ import { DomainEventPublisher } from '../../src/common/infrastructure/events/dom
 import type { Actor } from '../../src/common/types/actor';
 import { clubToday, shiftDays } from '../../src/common/utils/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
+import {
+  checklistEvidenceMedia,
+  createChecklistEvidence,
+} from './checklist-evidence';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { CareTasksService } from '../../src/modules/stable/care-tasks/care-tasks.service';
 import { HorseCareTaskMode } from '../../src/modules/stable/constants/horse-care-task-mode.enum';
-import { ChecklistsService } from '../../src/modules/stable/daily-checklists/checklists.service';
+import { ChecklistsService } from '../../src/modules/stable/daily-checklists/services/checklists.service';
 import { CareTaskTypeEntity } from '../../src/modules/stable/entities/care-task-type.entity';
 import { DailyChecklistEntity } from '../../src/modules/stable/entities/daily-checklist.entity';
 import { HorseCareTaskEntity } from '../../src/modules/stable/entities/horse-care-task.entity';
@@ -57,6 +61,7 @@ describe('Removing a horse task or switching off a task type changes today’s c
       daily,
       dataSource,
       new AuditService(),
+      checklistEvidenceMedia(dataSource),
     );
     careTasks = new CareTasksService(
       dataSource.getRepository(CareTaskTypeEntity),
@@ -133,7 +138,9 @@ describe('Removing a horse task or switching off a task type changes today’s c
   const tick = async (horseId: string, name: string) => {
     const checklist = await checklistOf(horseId);
     const item = checklist.items.find((row) => row.name === name);
-    await checklists.tick(groom, item!.id, { done: true });
+    await checklists.tick(groom, item!.id, {
+      evidenceMediaId: await createChecklistEvidence(dataSource, groomId),
+    });
   };
 
   const attachIce = (fromDate = today, toDate = shiftDays(today, 3)) =>
