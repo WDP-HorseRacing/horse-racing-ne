@@ -10,20 +10,20 @@ import {
   HorseHealthStatus,
   HorseLifecycleStatus,
 } from '../../src/modules/horses/enums/horse-status.enum';
-import { MEDICAL_HEALTH_CHANGED_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
+import { MEDICAL_HEALTH_CHANGED_EVENT } from '../../src/modules/medical/constant/medical-events.constants';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../src/modules/medical/constants/medical-visit.enum';
-import { HealthStatusesService } from '../../src/modules/medical/health-statuses/health-statuses.service';
+} from '../../src/modules/medical/constant/medical-visit.enum';
+import { HealthStatusesService } from '../../src/modules/medical/health-status/health-statuses.service';
 import { MedicalDashboardService } from '../../src/modules/medical/medical-dashboard/medical-dashboard.service';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import { MedicalModule } from '../../src/modules/medical/medical.module';
 import type { HealthChangedEvent } from '../../src/modules/medical/types/medical-events.types';
-import { MedicalEventsListener } from '../../src/modules/notifications/delivery/medical-events.listener';
-import { MedicalNotificationsService } from '../../src/modules/notifications/delivery/medical-notifications.service';
-import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
-import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/notification-recipients.repository';
+import { MedicalEventsListener } from '../../src/modules/notifications/delivery/medical/medical-events.listener';
+import { MedicalNotificationsService } from '../../src/modules/notifications/delivery/medical/medical-notifications.service';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/shared/notification-recipients.repository';
 import type { NotificationDraft } from '../../src/modules/notifications/types/notification.types';
 import { fixtures } from './fixtures';
 import {

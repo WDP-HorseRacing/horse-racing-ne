@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { DailyFeesService } from '../../src/modules/billing/daily-fees/daily-fees.service';
 import { DailyFeeEntity } from '../../src/modules/billing/entities/daily-fee.entity';

@@ -1,19 +1,19 @@
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import { MedicalDashboardRepository } from '../../src/modules/medical/medical-dashboard/medical-dashboard.repository';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseOwnershipService } from '../../src/modules/horses/shared/horse-ownership.service';
 import type { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { InjuryMarkerEntity } from '../../src/modules/medical/entities/injury-marker.entity';
-import { MedicalCaseEntity } from '../../src/modules/medical/entities/medical-case.entity';
-import { MedicalRecordEntity } from '../../src/modules/medical/entities/medical-record.entity';
-import { PrescriptionEntity } from '../../src/modules/medical/entities/prescription.entity';
-import { MedicalRecordsService } from '../../src/modules/medical/medical-records/medical-records.service';
-import { MedicalCasesRepository } from '../../src/modules/medical/medical-records/medical-cases.repository';
-import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
-import { CareScheduleWritesService } from '../../src/modules/medical/shared/care-schedule-writes.service';
-import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
+import { InjuryMarkerEntity } from '../../src/modules/medical/entity/injury-marker.entity';
+import { MedicalCaseEntity } from '../../src/modules/medical/entity/medical-case.entity';
+import { MedicalRecordEntity } from '../../src/modules/medical/entity/medical-record.entity';
+import { PrescriptionEntity } from '../../src/modules/medical/entity/prescription.entity';
+import { MedicalRecordsService } from '../../src/modules/medical/medical-record/services/medical-records.service';
+import { MedicalCasesRepository } from '../../src/modules/medical/medical-record/repositories/medical-cases.repository';
+import { MedicalCasesService } from '../../src/modules/medical/medical-record/services/medical-cases.service';
+import { CareScheduleWritesService } from '../../src/modules/medical/shared/writes/care-schedule-writes.service';
+import { MedicalCheckupsService } from '../../src/modules/medical/shared/queries/medical-checkups.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

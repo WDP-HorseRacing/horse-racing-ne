@@ -11,17 +11,17 @@ import { ACCESS_KEY } from '../../../src/common/constants/auth.constants';
 import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { BillingModule } from '../../../src/modules/billing/billing.module';
 import { DailyFeesService } from '../../../src/modules/billing/daily-fees/daily-fees.service';
 import { DailyFeeEntity } from '../../../src/modules/billing/entities/daily-fee.entity';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import type { MediaService } from '../../../src/modules/media/services/media.service';
-import { ExamRequestStatus } from '../../../src/modules/medical/constants/exam-request.enum';
-import { MedicalExamRequestEntity } from '../../../src/modules/medical/entities/medical-exam-request.entity';
-import { ExamRequestsService } from '../../../src/modules/medical/exam-requests/exam-requests.service';
-import type { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
+import { ExamRequestStatus } from '../../../src/modules/medical/constant/exam-request.enum';
+import { MedicalExamRequestEntity } from '../../../src/modules/medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../../src/modules/medical/exam-request/exam-requests.service';
+import type { MedicalAccessService } from '../../../src/modules/medical/shared/access/medical-access.service';
 import { FinanceReportsRepository } from '../../../src/modules/reports/finance-reports/finance-reports.repository';
 import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
 import { ReportsModule } from '../../../src/modules/reports/reports.module';
@@ -543,7 +543,7 @@ describe('Findings R3: Flow 4 stable, supplies, fees, reports, media (Postgres)'
       const oats = await item(SupplyCategory.FEED);
 
       await expect(
-        items.use(groom, oats.id, { quantity: 1 }),
+        items.use(groom, oats.id, { quantity: 1, note: '   ' }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 

@@ -9,7 +9,7 @@ import { StableAccessService } from '../../src/modules/stable/shared/stable-acce
 import { AUTO_COMPLETED_CLASS_REASON } from '../../src/modules/training/constants/participant-window.constants';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { SessionAutoCloseService } from '../../src/modules/training/training-sessions/session-auto-close.service';
+import { SessionAutoCloseService } from '../../src/modules/training/training-session/services/session-auto-close.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

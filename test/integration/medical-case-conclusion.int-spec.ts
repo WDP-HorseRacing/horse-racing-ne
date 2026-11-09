@@ -7,9 +7,9 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
-import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
+import { MedicalCasesService } from '../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

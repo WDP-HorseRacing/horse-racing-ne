@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { UserStatus } from '../../src/common/enums/user-status.enum';
-import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/notification-recipients.repository';
-import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horse-notifications.service';
-import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/shared/notification-recipients.repository';
+import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horses/horse-notifications.service';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/shared/notification-delivery.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

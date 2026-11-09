@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import { MedicalCostPerVisit1789828500000 } from '../../src/migrations/1789828500000-MedicalCostPerVisit';
 import { fixtures } from './fixtures';
 import {

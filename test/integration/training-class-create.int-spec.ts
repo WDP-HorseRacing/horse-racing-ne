@@ -10,9 +10,9 @@ import { TrainingClassStatus } from '../../src/modules/training/enums/training-c
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingSessionType } from '../../src/modules/training/enums/training-session-type.enum';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
-import { TrainingClassesService } from '../../src/modules/training/training-classes/services/training-classes.service';
-import { TrainingPlansService } from '../../src/modules/training/training-plans/training-plans.service';
-import { TrainingSubjectsService } from '../../src/modules/training/training-subjects/training-subjects.service';
+import { TrainingClassesService } from '../../src/modules/training/training-class/services/training-classes.service';
+import { TrainingPlansService } from '../../src/modules/training/training-plan/training-plan.service';
+import { TrainingSubjectsService } from '../../src/modules/training/training-subject/training-subjects.service';
 import { TrainingPlanMinSessions1789827000000 } from '../../src/migrations/1789827000000-TrainingPlanMinSessions';
 import { fixtures } from './fixtures';
 import {

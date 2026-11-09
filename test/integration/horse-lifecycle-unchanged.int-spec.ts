@@ -7,7 +7,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday } from '../../src/common/utils/club-date';
+import { clubToday } from '../../src/common/utils/date/club-date';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseStatusesModule } from '../../src/modules/horses/horse-statuses/horse-statuses.module';
 import { HorseStatusesService } from '../../src/modules/horses/horse-statuses/horse-statuses.service';

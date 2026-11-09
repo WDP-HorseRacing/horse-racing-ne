@@ -8,17 +8,17 @@ import { AuditFeature } from '../../src/modules/audit/constants/audit-feature.en
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import type { MediaService } from '../../src/modules/media/services/media.service';
-import { ExamRequestStatus } from '../../src/modules/medical/constants/exam-request.enum';
+import { ExamRequestStatus } from '../../src/modules/medical/constant/exam-request.enum';
 import {
   MEDICAL_EXAM_REQUEST_HANDLED_EVENT,
   MEDICAL_EXAM_REQUEST_REOPENED_EVENT,
-} from '../../src/modules/medical/constants/medical-events.constants';
-import { MedicalExamRequestEntity } from '../../src/modules/medical/entities/medical-exam-request.entity';
-import { ExamRequestsService } from '../../src/modules/medical/exam-requests/exam-requests.service';
-import { MedicalVisitWritesService } from '../../src/modules/medical/medical-records/medical-visit-writes.service';
-import { ExamRequestWritesService } from '../../src/modules/medical/shared/exam-request-writes.service';
-import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
-import type { TrainingLockWritesService } from '../../src/modules/medical/shared/training-lock-writes.service';
+} from '../../src/modules/medical/constant/medical-events.constants';
+import { MedicalExamRequestEntity } from '../../src/modules/medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../src/modules/medical/exam-request/exam-requests.service';
+import { MedicalVisitWritesService } from '../../src/modules/medical/medical-record/services/medical-visit-writes.service';
+import { ExamRequestWritesService } from '../../src/modules/medical/shared/writes/exam-request-writes.service';
+import { MedicalAccessService } from '../../src/modules/medical/shared/access/medical-access.service';
+import type { TrainingLockWritesService } from '../../src/modules/medical/shared/writes/training-lock-writes.service';
 import type {
   ExamRequestHandledEvent,
   ExamRequestReopenedEvent,

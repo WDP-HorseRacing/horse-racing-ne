@@ -7,7 +7,7 @@ import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
 import { OutboxRelayService } from '../../../src/common/infrastructure/events/outbox-relay.service';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../../src/common/utils/date/club-date';
 import { HorseEntity } from '../../../src/modules/horses/entities/horse.entity';
 import {
   HorseHealthStatus,
@@ -17,39 +17,39 @@ import { HorseProfilesRepository } from '../../../src/modules/horses/horse-profi
 import { HorseProfilesService } from '../../../src/modules/horses/horse-profiles/horse-profiles.service';
 import { HorseStatusesService } from '../../../src/modules/horses/horse-statuses/horse-statuses.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
-import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
-import { CheckupsService } from '../../../src/modules/medical/care-schedules/checkups.service';
+import { CareSchedulesService } from '../../../src/modules/medical/care-schedule/service/care-schedules.service';
+import { CheckupsService } from '../../../src/modules/medical/care-schedule/service/checkups.service';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../../src/modules/medical/constants/care-schedule.enum';
-import { MEDICAL_CARE_SCHEDULE_DUE_EVENT } from '../../../src/modules/medical/constants/medical-events.constants';
-import { CaseLockDecision } from '../../../src/modules/medical/constants/medical-case.enum';
+} from '../../../src/modules/medical/constant/care-schedule.enum';
+import { MEDICAL_CARE_SCHEDULE_DUE_EVENT } from '../../../src/modules/medical/constant/medical-events.constants';
+import { CaseLockDecision } from '../../../src/modules/medical/constant/medical-case.enum';
 import {
   InjuryBodyRegion,
   InjuryType,
   RecoveryStatus,
-} from '../../../src/modules/medical/constants/injury-marker.enum';
+} from '../../../src/modules/medical/constant/injury-marker.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../../src/modules/medical/constants/medical-visit.enum';
-import { ExamRequestsService } from '../../../src/modules/medical/exam-requests/exam-requests.service';
-import { HealthStatusesService } from '../../../src/modules/medical/health-statuses/health-statuses.service';
+} from '../../../src/modules/medical/constant/medical-visit.enum';
+import { ExamRequestsService } from '../../../src/modules/medical/exam-request/exam-requests.service';
+import { HealthStatusesService } from '../../../src/modules/medical/health-status/health-statuses.service';
 import { MedicalDashboardService } from '../../../src/modules/medical/medical-dashboard/medical-dashboard.service';
-import { MedicalCasesService } from '../../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalVisitsService } from '../../../src/modules/medical/medical-records/medical-visits.service';
-import { MedicalRemindersService } from '../../../src/modules/medical/medical-reminders/medical-reminders.service';
+import { MedicalCasesService } from '../../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalVisitsService } from '../../../src/modules/medical/medical-record/services/medical-visits.service';
+import { MedicalRemindersService } from '../../../src/modules/medical/medical-reminder/medical-reminders.service';
 import { MedicalModule } from '../../../src/modules/medical/medical.module';
 import { TrainingLockService } from '../../../src/modules/medical/training-locks/training-locks.service';
-import { GroomAssignmentChangedListener } from '../../../src/modules/notifications/delivery/groom-assignment-changed.listener';
-import { HorseDeceasedListener } from '../../../src/modules/notifications/delivery/horse-deceased.listener';
-import { HorseGroomReleasedListener } from '../../../src/modules/notifications/delivery/horse-groom-released.listener';
-import { HorseNotificationsService } from '../../../src/modules/notifications/delivery/horse-notifications.service';
-import { MedicalEventsListener } from '../../../src/modules/notifications/delivery/medical-events.listener';
-import { MedicalNotificationsService } from '../../../src/modules/notifications/delivery/medical-notifications.service';
-import { NotificationDeliveryService } from '../../../src/modules/notifications/delivery/notification-delivery.service';
-import { NotificationRecipientsRepository } from '../../../src/modules/notifications/delivery/notification-recipients.repository';
+import { GroomAssignmentChangedListener } from '../../../src/modules/notifications/delivery/stable/assignments/groom-assignment-changed.listener';
+import { HorseDeceasedListener } from '../../../src/modules/notifications/delivery/horses/horse-deceased.listener';
+import { HorseGroomReleasedListener } from '../../../src/modules/notifications/delivery/horses/horse-groom-released.listener';
+import { HorseNotificationsService } from '../../../src/modules/notifications/delivery/horses/horse-notifications.service';
+import { MedicalEventsListener } from '../../../src/modules/notifications/delivery/medical/medical-events.listener';
+import { MedicalNotificationsService } from '../../../src/modules/notifications/delivery/medical/medical-notifications.service';
+import { NotificationDeliveryService } from '../../../src/modules/notifications/delivery/shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../../../src/modules/notifications/delivery/shared/notification-recipients.repository';
 import type { NotificationDraft } from '../../../src/modules/notifications/types/notification.types';
 import { GroomAssignmentsModule } from '../../../src/modules/stable/groom-assignments/groom-assignments.module';
 import { fixtures } from '../fixtures';

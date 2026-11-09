@@ -2,6 +2,7 @@ import { Types, type Model } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
+import { MetricAlertLevel } from '../../src/modules/performance/enums/metric-alert-level.enum';
 import {
   toHorsePerformanceResponse,
   toSessionPerformanceSummary,
@@ -101,7 +102,7 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
     recordedAt: string,
     heartRateBpm: number,
     speedMps: string,
-    alertLevel = 'NORMAL',
+    alertLevel: MetricAlertLevel = MetricAlertLevel.NORMAL,
   ) =>
     metrics.create({
       recordedAt: new Date(recordedAt),
@@ -142,8 +143,20 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
       const foreign = await other.participant('2026-10-04T01:00:00Z');
 
       await metric(older, '2026-10-01T01:00:00Z', 100, '10.000');
-      await metric(older, '2026-10-01T01:00:01Z', 101, '10.001', 'WARNING');
-      await metric(older, '2026-10-01T01:00:02Z', 101, '10.001', 'CRITICAL');
+      await metric(
+        older,
+        '2026-10-01T01:00:01Z',
+        101,
+        '10.001',
+        MetricAlertLevel.WARNING,
+      );
+      await metric(
+        older,
+        '2026-10-01T01:00:02Z',
+        101,
+        '10.001',
+        MetricAlertLevel.CRITICAL,
+      );
       await metric(newer, '2026-10-03T01:00:00Z', 150, '12.5');
       await metric(foreign, '2026-10-04T01:00:00Z', 200, '20');
 
@@ -223,7 +236,7 @@ describe('PerformanceSummariesRepository (Postgres + MongoDB time-series)', () =
           new Date(Date.UTC(2026, 9, 2, 1, 0, second)).toISOString(),
           150,
           '12.25',
-          second === 59 ? 'WARNING' : 'NORMAL',
+          second === 59 ? MetricAlertLevel.WARNING : MetricAlertLevel.NORMAL,
         );
       }
 

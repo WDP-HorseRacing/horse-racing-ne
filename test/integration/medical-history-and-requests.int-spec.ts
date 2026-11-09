@@ -5,12 +5,12 @@ import type { Actor } from '../../src/common/types/actor';
 import { AuditEntityType } from '../../src/modules/audit/constants/audit-entity-type.enum';
 import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { ExamRequestStatus } from '../../src/modules/medical/constants/exam-request.enum';
+import { ExamRequestStatus } from '../../src/modules/medical/constant/exam-request.enum';
 import { ExamRequestListQueryDto } from '../../src/modules/medical/dto';
-import { MedicalExamRequestEntity } from '../../src/modules/medical/entities/medical-exam-request.entity';
-import { ExamRequestsService } from '../../src/modules/medical/exam-requests/exam-requests.service';
-import { HealthStatusesRepository } from '../../src/modules/medical/health-statuses/health-statuses.repository';
-import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
+import { MedicalExamRequestEntity } from '../../src/modules/medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../src/modules/medical/exam-request/exam-requests.service';
+import { HealthStatusesRepository } from '../../src/modules/medical/health-status/health-statuses.repository';
+import { MedicalAccessService } from '../../src/modules/medical/shared/access/medical-access.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

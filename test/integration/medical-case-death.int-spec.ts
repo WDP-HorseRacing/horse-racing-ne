@@ -6,14 +6,14 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday } from '../../src/common/utils/club-date';
+import { clubToday } from '../../src/common/utils/date/club-date';
 import { HORSE_DECEASED_EVENT } from '../../src/modules/horses/constants/horse.constants';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { HorseStatusesService } from '../../src/modules/horses/horse-statuses/horse-statuses.service';
-import { CaseLockDecision } from '../../src/modules/medical/constants/medical-case.enum';
-import { MEDICAL_CASE_CLOSED_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
-import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
+import { CaseLockDecision } from '../../src/modules/medical/constant/medical-case.enum';
+import { MEDICAL_CASE_CLOSED_EVENT } from '../../src/modules/medical/constant/medical-events.constants';
+import { MedicalCasesService } from '../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

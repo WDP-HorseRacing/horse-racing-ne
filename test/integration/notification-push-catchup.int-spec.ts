@@ -5,9 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { bullConnectionOptions } from '../../src/common/infrastructure/redis/redis-connection';
-import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
-import { PushChannel } from '../../src/modules/notifications/delivery/push.channel';
-import { RealtimeChannel } from '../../src/modules/notifications/delivery/realtime.channel';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/shared/notification-delivery.service';
+import { PushChannel } from '../../src/modules/notifications/delivery/shared/channels/push.channel';
+import { RealtimeChannel } from '../../src/modules/notifications/delivery/shared/channels/realtime.channel';
 import { NotificationCategory } from '../../src/modules/notifications/enums/notification-category.enum';
 import { NotificationPriority } from '../../src/modules/notifications/enums/notification-priority.enum';
 import {

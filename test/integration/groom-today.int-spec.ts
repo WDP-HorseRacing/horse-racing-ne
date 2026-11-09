@@ -9,11 +9,11 @@ import {
   clubDateTimeToInstant,
   clubToday,
   shiftDays,
-} from '../../src/common/utils/club-date';
+} from '../../src/common/utils/date/club-date';
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../src/modules/medical/constants/care-schedule.enum';
+} from '../../src/modules/medical/constant/care-schedule.enum';
 import { DailyChecklistStatus } from '../../src/modules/stable/constants/daily-checklist-status.enum';
 import { FeedingMeal } from '../../src/modules/stable/constants/feeding-meal.enum';
 import { GroomTodayService } from '../../src/modules/stable/daily-checklists/services/groom-today.service';

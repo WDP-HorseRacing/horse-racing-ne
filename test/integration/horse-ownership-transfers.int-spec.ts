@@ -12,7 +12,7 @@ import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-statu
 import { HorseOwnershipsService } from '../../src/modules/horses/horse-ownerships/horse-ownerships.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { HorseOwnershipService } from '../../src/modules/horses/shared/horse-ownership.service';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

@@ -9,7 +9,7 @@ import { UserRole } from '../../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../../src/common/infrastructure/events/domain-event.publisher';
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday } from '../../../src/common/utils/club-date';
+import { clubToday } from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { HorseOwnershipEntity } from '../../../src/modules/horses/entities/horse-ownership.entity';
 import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-status.enum';
@@ -19,9 +19,9 @@ import { HorseStatusesService } from '../../../src/modules/horses/horse-statuses
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
 import { MediaService } from '../../../src/modules/media/services/media.service';
-import { MedicalExamRequestEntity } from '../../../src/modules/medical/entities/medical-exam-request.entity';
-import { ExamRequestsService } from '../../../src/modules/medical/exam-requests/exam-requests.service';
-import { MedicalAccessService } from '../../../src/modules/medical/shared/medical-access.service';
+import { MedicalExamRequestEntity } from '../../../src/modules/medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../../src/modules/medical/exam-request/exam-requests.service';
+import { MedicalAccessService } from '../../../src/modules/medical/shared/access/medical-access.service';
 import { PerformanceEvaluationEntity } from '../../../src/modules/performance/entities/performance-evaluation.entity';
 import { PerformanceEvaluationsService } from '../../../src/modules/performance/evaluations/performance-evaluations.service';
 import { ChecklistsService } from '../../../src/modules/stable/daily-checklists/services/checklists.service';
@@ -46,8 +46,8 @@ import { HorseEnrollmentEntity } from '../../../src/modules/training/entities/ho
 import { SessionParticipantEntity } from '../../../src/modules/training/entities/session-participant.entity';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { SessionParticipantsService } from '../../../src/modules/training/training-sessions/session-participants.service';
+import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-class/services/training-class-enrollments.service';
+import { SessionParticipantsService } from '../../../src/modules/training/training-session/services/session-participants.service';
 import { fixtures } from '../fixtures';
 import { checklistEvidenceMedia } from '../checklist-evidence';
 import {

@@ -15,11 +15,11 @@ import type { MediaService } from '../../src/modules/media/services/media.servic
 import {
   ExamRequestSource,
   ExamRequestStatus,
-} from '../../src/modules/medical/constants/exam-request.enum';
-import { MEDICAL_EXAM_REQUEST_URGENT_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
-import { MedicalExamRequestEntity } from '../../src/modules/medical/entities/medical-exam-request.entity';
-import { ExamRequestsService } from '../../src/modules/medical/exam-requests/exam-requests.service';
-import type { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
+} from '../../src/modules/medical/constant/exam-request.enum';
+import { MEDICAL_EXAM_REQUEST_URGENT_EVENT } from '../../src/modules/medical/constant/medical-events.constants';
+import { MedicalExamRequestEntity } from '../../src/modules/medical/entity/medical-exam-request.entity';
+import { ExamRequestsService } from '../../src/modules/medical/exam-request/exam-requests.service';
+import type { MedicalAccessService } from '../../src/modules/medical/shared/access/medical-access.service';
 import { IncidentStatus } from '../../src/modules/stable/constants/incident-status.enum';
 import {
   INCIDENT_HANDLED_EVENT,

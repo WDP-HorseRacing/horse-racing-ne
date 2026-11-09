@@ -4,10 +4,10 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { CareSchedulesService } from '../../src/modules/medical/care-schedules/care-schedules.service';
-import { CareScheduleType } from '../../src/modules/medical/constants/care-schedule.enum';
-import { CareScheduleEntity } from '../../src/modules/medical/entities/care-schedule.entity';
-import { MedicalAccessService } from '../../src/modules/medical/shared/medical-access.service';
+import { CareSchedulesService } from '../../src/modules/medical/care-schedule/service/care-schedules.service';
+import { CareScheduleType } from '../../src/modules/medical/constant/care-schedule.enum';
+import { CareScheduleEntity } from '../../src/modules/medical/entity/care-schedule.entity';
+import { MedicalAccessService } from '../../src/modules/medical/shared/access/medical-access.service';
 import { GroomTodayService } from '../../src/modules/stable/daily-checklists/services/groom-today.service';
 import { fixtures } from './fixtures';
 import {

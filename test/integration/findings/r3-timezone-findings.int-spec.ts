@@ -13,7 +13,7 @@ import type { Actor } from '../../../src/common/types/actor';
 import {
   clubDateTimeToInstant,
   shiftDays,
-} from '../../../src/common/utils/club-date';
+} from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { HorseMeasurementListQueryDto } from '../../../src/modules/horses/dto/horse-measure.dto';
 import { UpdateHorseLifecycleDto } from '../../../src/modules/horses/dto/horse-status.dto';
@@ -22,15 +22,15 @@ import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-st
 import { HorseMeasurementType } from '../../../src/modules/horses/enums/horse-measurement-type.enum';
 import { HorseMeasurementsService } from '../../../src/modules/horses/horse-measurements/horse-measurements.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
-import { CareSchedulesModule } from '../../../src/modules/medical/care-schedules/care-schedules.module';
-import { CareSchedulesService } from '../../../src/modules/medical/care-schedules/care-schedules.service';
-import { CheckupsService } from '../../../src/modules/medical/care-schedules/checkups.service';
-import { CareScheduleType } from '../../../src/modules/medical/constants/care-schedule.enum';
-import { CaseLockDecision } from '../../../src/modules/medical/constants/medical-case.enum';
+import { CareSchedulesModule } from '../../../src/modules/medical/care-schedule/care-schedules.module';
+import { CareSchedulesService } from '../../../src/modules/medical/care-schedule/service/care-schedules.service';
+import { CheckupsService } from '../../../src/modules/medical/care-schedule/service/checkups.service';
+import { CareScheduleType } from '../../../src/modules/medical/constant/care-schedule.enum';
+import { CaseLockDecision } from '../../../src/modules/medical/constant/medical-case.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../../src/modules/medical/constants/medical-visit.enum';
+} from '../../../src/modules/medical/constant/medical-visit.enum';
 import { SetCheckupAppointmentDto } from '../../../src/modules/medical/dto/checkup.dto';
 import { CreateCareScheduleDto } from '../../../src/modules/medical/dto/create-care-schedule.dto';
 import { CreateTrainingLockDto } from '../../../src/modules/medical/dto/create-training-lock.dto';
@@ -43,13 +43,14 @@ import {
   CompleteCareScheduleDto,
   UpdateCareScheduleDto,
 } from '../../../src/modules/medical/dto/update-care-schedule.dto';
-import { MedicalCasesService } from '../../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitsService } from '../../../src/modules/medical/medical-records/medical-visits.service';
+import { MedicalCasesService } from '../../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitsService } from '../../../src/modules/medical/medical-record/services/medical-visits.service';
 import { TrainingLocksModule } from '../../../src/modules/medical/training-locks/training-locks.module';
 import { TrainingLockService } from '../../../src/modules/medical/training-locks/training-locks.service';
 import { IngestMetricDto } from '../../../src/modules/performance/dto/ingest-metric.dto';
 import { PerformanceMetricsService } from '../../../src/modules/performance/performance-metrics/performance-metrics.service';
+import { PerformanceMetricsRepository } from '../../../src/modules/performance/performance-metrics/performance-metrics.repository';
 import type { PerformanceMetric } from '../../../src/modules/performance/schemas/performance-metric.schema';
 import type { RealtimeGateway } from '../../../src/modules/realtime/realtime.gateway';
 import { CreateTrainingClassDto } from '../../../src/modules/training/dto/training-class.dto';
@@ -60,10 +61,10 @@ import {
 import { TrainingClassEntity } from '../../../src/modules/training/entities/training-class.entity';
 import { TrainingSessionEntity } from '../../../src/modules/training/entities/training-session.entity';
 import { TrainingIntensity } from '../../../src/modules/training/enums/training-intensity.enum';
-import { classEndDate } from '../../../src/modules/training/policies/training.policy';
+import { classEndDate } from '../../../src/modules/training/policy/training.policy';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
-import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
-import { TrainingSessionsService } from '../../../src/modules/training/training-sessions/training-sessions.service';
+import { TrainingClassesService } from '../../../src/modules/training/training-class/services/training-classes.service';
+import { TrainingSessionsService } from '../../../src/modules/training/training-session/services/training-sessions.service';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,
@@ -256,7 +257,7 @@ describe(`R3 timezone findings (process TZ=${process.env.TZ ?? Intl.DateTimeForm
       },
     } as unknown as Model<PerformanceMetric>;
     metrics = new PerformanceMetricsService(
-      metricModel,
+      new PerformanceMetricsRepository(metricModel),
       trainingAccess,
       events,
       { emitToUser: () => undefined } as unknown as RealtimeGateway,

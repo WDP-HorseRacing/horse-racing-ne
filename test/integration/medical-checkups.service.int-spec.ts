@@ -16,8 +16,8 @@ import {
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../src/modules/medical/constants/care-schedule.enum';
-import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
+} from '../../src/modules/medical/constant/care-schedule.enum';
+import { MedicalCheckupsService } from '../../src/modules/medical/shared/queries/medical-checkups.service';
 
 const TODAY = '2026-09-27';
 

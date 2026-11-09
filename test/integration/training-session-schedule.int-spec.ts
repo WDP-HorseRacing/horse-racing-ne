@@ -10,7 +10,7 @@ import { TRAINING_SESSION_CANCELLED_EVENT } from '../../src/modules/training/con
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingSessionEntity } from '../../src/modules/training/entities/training-session.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
-import { TrainingSessionsService } from '../../src/modules/training/training-sessions/training-sessions.service';
+import { TrainingSessionsService } from '../../src/modules/training/training-session/services/training-sessions.service';
 import { TrainingNoDrafts1789827100000 } from '../../src/migrations/1789827100000-TrainingNoDrafts';
 import { fixtures } from './fixtures';
 import {

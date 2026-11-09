@@ -8,13 +8,13 @@ import {
   clubToday,
   shiftDays,
   toDisplayDate,
-} from '../../src/common/utils/club-date';
+} from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
-import { CareTaskChangedListener } from '../../src/modules/notifications/delivery/care-task-changed.listener';
-import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horse-notifications.service';
-import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
-import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/notification-recipients.repository';
+import { CareTaskChangedListener } from '../../src/modules/notifications/delivery/stable/care/care-task-changed.listener';
+import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horses/horse-notifications.service';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/shared/notification-recipients.repository';
 import {
   NotificationRecord,
   NotificationSchema,

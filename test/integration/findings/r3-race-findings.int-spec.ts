@@ -13,7 +13,7 @@ import { DomainEventPublisher } from '../../../src/common/infrastructure/events/
 import { DomainEventsModule } from '../../../src/common/infrastructure/events/domain-events.module';
 import type { KeycloakUserService } from '../../../src/common/infrastructure/keycloak/user.service';
 import type { Actor } from '../../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { HorseMeasurementType } from '../../../src/modules/horses/enums/horse-measurement-type.enum';
 import { HorseMeasurementsModule } from '../../../src/modules/horses/horse-measurements/horse-measurements.module';
@@ -27,8 +27,8 @@ import {
   checklistEvidenceMedia,
   createChecklistEvidence,
 } from '../checklist-evidence';
-import { MedicalCasesService } from '../../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../../src/modules/medical/medical-records/medical-records.module';
+import { MedicalCasesService } from '../../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../../src/modules/medical/medical-record/medical-records.module';
 import { BarnsModule } from '../../../src/modules/stable/barns/barns.module';
 import { BarnsService } from '../../../src/modules/stable/barns/barns.service';
 import { CareTasksModule } from '../../../src/modules/stable/care-tasks/care-tasks.module';
@@ -50,14 +50,14 @@ import { SupplyStockService } from '../../../src/modules/supplies/shared/supply-
 import { TrainingIntensity } from '../../../src/modules/training/enums/training-intensity.enum';
 import { TrainingClassStatus } from '../../../src/modules/training/enums/training-class-status.enum';
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
-import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { TrainingClassesService } from '../../../src/modules/training/training-classes/services/training-classes.service';
-import { TrainingPlansModule } from '../../../src/modules/training/training-plans/training-plans.module';
-import { TrainingPlansService } from '../../../src/modules/training/training-plans/training-plans.service';
-import { TrainingClassesModule } from '../../../src/modules/training/training-classes/training-classes.module';
-import { SessionParticipantsService } from '../../../src/modules/training/training-sessions/session-participants.service';
-import { TrainingSessionsModule } from '../../../src/modules/training/training-sessions/training-sessions.module';
-import { TrainingSessionsService } from '../../../src/modules/training/training-sessions/training-sessions.service';
+import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-class/services/training-class-enrollments.service';
+import { TrainingClassesService } from '../../../src/modules/training/training-class/services/training-classes.service';
+import { TrainingPlansModule } from '../../../src/modules/training/training-plan/training-plan.module';
+import { TrainingPlansService } from '../../../src/modules/training/training-plan/training-plan.service';
+import { TrainingClassesModule } from '../../../src/modules/training/training-class/training-classes.module';
+import { SessionParticipantsService } from '../../../src/modules/training/training-session/services/session-participants.service';
+import { TrainingSessionsModule } from '../../../src/modules/training/training-session/training-sessions.module';
+import { TrainingSessionsService } from '../../../src/modules/training/training-session/services/training-sessions.service';
 import { UserEntity } from '../../../src/modules/users/entities/user.entity';
 import { HeadTrainerHandoverService } from '../../../src/modules/users/services/head-trainer-handover.service';
 import { UsersService } from '../../../src/modules/users/services/users.service';

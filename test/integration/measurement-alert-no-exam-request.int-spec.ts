@@ -11,10 +11,10 @@ import { HorseMeasurementType } from '../../src/modules/horses/enums/horse-measu
 import { HorseMeasurementsModule } from '../../src/modules/horses/horse-measurements/horse-measurements.module';
 import { HorseMeasurementsService } from '../../src/modules/horses/horse-measurements/horse-measurements.service';
 import { MedicalModule } from '../../src/modules/medical/medical.module';
-import { HorseMeasurementAlertListener } from '../../src/modules/notifications/delivery/horse-measurement-alert.listener';
-import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horse-notifications.service';
-import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
-import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/notification-recipients.repository';
+import { HorseMeasurementAlertListener } from '../../src/modules/notifications/delivery/horses/horse-measurement-alert.listener';
+import { HorseNotificationsService } from '../../src/modules/notifications/delivery/horses/horse-notifications.service';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../../src/modules/notifications/delivery/shared/notification-recipients.repository';
 import { NotificationCategory } from '../../src/modules/notifications/enums/notification-category.enum';
 import type { NotificationDraft } from '../../src/modules/notifications/types/notification.types';
 import { fixtures } from './fixtures';

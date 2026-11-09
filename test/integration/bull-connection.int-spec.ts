@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 import { bullConnectionOptions } from '../../src/common/infrastructure/redis/redis-connection';
-import { PushChannel } from '../../src/modules/notifications/delivery/push.channel';
+import { PushChannel } from '../../src/modules/notifications/delivery/shared/channels/push.channel';
 import type { NotificationRecord } from '../../src/modules/notifications/schemas/notification.schema';
 import type { NotificationPushJob } from '../../src/modules/notifications/types/notification.types';
 import { startContainerWithRetry } from './container';

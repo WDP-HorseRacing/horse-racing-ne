@@ -3,10 +3,10 @@ import { DomainEventPublisher } from '../../src/common/infrastructure/events/dom
 import {
   CareScheduleStatus,
   CareScheduleType,
-} from '../../src/modules/medical/constants/care-schedule.enum';
-import { MEDICAL_CHECKUP_DUE_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
-import { MedicalRemindersService } from '../../src/modules/medical/medical-reminders/medical-reminders.service';
-import { MedicalCheckupsService } from '../../src/modules/medical/shared/medical-checkups.service';
+} from '../../src/modules/medical/constant/care-schedule.enum';
+import { MEDICAL_CHECKUP_DUE_EVENT } from '../../src/modules/medical/constant/medical-events.constants';
+import { MedicalRemindersService } from '../../src/modules/medical/medical-reminder/medical-reminders.service';
+import { MedicalCheckupsService } from '../../src/modules/medical/shared/queries/medical-checkups.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

@@ -13,10 +13,10 @@ import { DomainEventsModule } from '../../src/common/infrastructure/events/domai
 import type { Actor } from '../../src/common/types/actor';
 import { HorseLifecycleStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { readOnlyLifecycleMessage } from '../../src/modules/horses/policies/horse.policy';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
-import { MEDICAL_VISIT_COST_ADJUSTED_EVENT } from '../../src/modules/medical/constants/medical-events.constants';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
+import { MEDICAL_VISIT_COST_ADJUSTED_EVENT } from '../../src/modules/medical/constant/medical-events.constants';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

@@ -9,6 +9,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
+import { MetricAlertLevel } from '../../src/modules/performance/enums/metric-alert-level.enum';
 import { PerformanceDetailsRepository } from '../../src/modules/performance/performance-details/performance-details.repository';
 import { PerformanceDetailsService } from '../../src/modules/performance/performance-details/performance-details.service';
 import {
@@ -122,7 +123,11 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
     participantId: string,
     at: string,
     speed: string,
-    options: { level?: string; sessionId?: string; heartRate?: number } = {},
+      options: {
+        level?: MetricAlertLevel;
+        sessionId?: string;
+        heartRate?: number;
+      } = {},
   ) =>
     metrics.create({
       recordedAt: new Date(at),
@@ -134,7 +139,7 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
       },
       heartRateBpm: options.heartRate ?? 150,
       speedMps: Types.Decimal128.fromString(speed),
-      alertLevel: options.level ?? 'NORMAL',
+      alertLevel: options.level ?? MetricAlertLevel.NORMAL,
     });
 
   it('sums completed participants in the range by intensity, planned distance, duration and sensor distance', async () => {
@@ -263,11 +268,11 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
       await point(p, '2026-10-05T01:00:00Z', '10', { sessionId });
       await point(p, '2026-10-05T01:00:01Z', '19', {
         sessionId,
-        level: 'WARNING',
+        level: MetricAlertLevel.WARNING,
       });
       await point(p, '2026-10-05T01:00:02Z', '12', {
         sessionId,
-        level: 'CRITICAL',
+        level: MetricAlertLevel.CRITICAL,
         heartRate: 245,
       });
 
@@ -279,28 +284,41 @@ describe('PerformanceDetailsService (Postgres + MongoDB)', () => {
       expect(page.meta).toMatchObject({ total: 2, page: 1, limit: 20 });
       expect(page.items).toEqual([
         expect.objectContaining({
-          alertLevel: 'CRITICAL',
+          alertLevel: MetricAlertLevel.CRITICAL,
           heartRateBpm: 245,
           speedMps: 12,
           sessionName: 'Sức bền',
           sessionParticipantId: p,
         }),
-        expect.objectContaining({ alertLevel: 'WARNING', speedMps: 19 }),
+        expect.objectContaining({
+          alertLevel: MetricAlertLevel.WARNING,
+          speedMps: 19,
+        }),
       ]);
     });
 
     it('filters by level, club day range and page', async () => {
       const p = randomUUID();
-      await point(p, '2026-10-04T16:59:00Z', '10', { level: 'CRITICAL' });
-      await point(p, '2026-10-04T17:00:00Z', '10', { level: 'CRITICAL' });
-      await point(p, '2026-10-05T16:59:00Z', '10', { level: 'CRITICAL' });
-      await point(p, '2026-10-05T17:00:00Z', '10', { level: 'CRITICAL' });
-      await point(p, '2026-10-05T10:00:00Z', '19', { level: 'WARNING' });
+      await point(p, '2026-10-04T16:59:00Z', '10', {
+        level: MetricAlertLevel.CRITICAL,
+      });
+      await point(p, '2026-10-04T17:00:00Z', '10', {
+        level: MetricAlertLevel.CRITICAL,
+      });
+      await point(p, '2026-10-05T16:59:00Z', '10', {
+        level: MetricAlertLevel.CRITICAL,
+      });
+      await point(p, '2026-10-05T17:00:00Z', '10', {
+        level: MetricAlertLevel.CRITICAL,
+      });
+      await point(p, '2026-10-05T10:00:00Z', '19', {
+        level: MetricAlertLevel.WARNING,
+      });
 
       const page = await service.alerts(manager, horseId, {
         page: 2,
         limit: 1,
-        level: 'CRITICAL' as never,
+        level: MetricAlertLevel.CRITICAL,
         from: '2026-10-05',
         to: '2026-10-05',
       });

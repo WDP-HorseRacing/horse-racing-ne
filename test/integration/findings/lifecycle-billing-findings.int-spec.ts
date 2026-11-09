@@ -13,7 +13,7 @@ import {
   clubToday,
   shiftDays,
   toClubDate,
-} from '../../../src/common/utils/club-date';
+} from '../../../src/common/utils/date/club-date';
 import { AuditService } from '../../../src/modules/audit/services/audit.service';
 import { HorseOwnershipEntity } from '../../../src/modules/horses/entities/horse-ownership.entity';
 import { HorseLifecycleStatus } from '../../../src/modules/horses/enums/horse-status.enum';
@@ -24,7 +24,7 @@ import { HorseStatusesModule } from '../../../src/modules/horses/horse-statuses/
 import { HorseStatusesService } from '../../../src/modules/horses/horse-statuses/horse-statuses.service';
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import { HorseOwnershipService } from '../../../src/modules/horses/shared/horse-ownership.service';
-import { MedicalCaseStatus } from '../../../src/modules/medical/constants/medical-case.enum';
+import { MedicalCaseStatus } from '../../../src/modules/medical/constant/medical-case.enum';
 import { FinanceReportsRepository } from '../../../src/modules/reports/finance-reports/finance-reports.repository';
 import { FinanceReportsService } from '../../../src/modules/reports/finance-reports/finance-reports.service';
 import { HorseReportsRepository } from '../../../src/modules/reports/horse-reports/horse-reports.repository';

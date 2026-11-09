@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import {
   checklistEvidenceMedia,
@@ -35,6 +35,7 @@ describe('Exempting a horse from a shared care task (Postgres)', () => {
   let manager: Actor;
   let trainer: Actor;
   let groom: Actor;
+  let groomId: string;
   let gio: string;
   let today: string;
   let types: Record<string, string>;
@@ -82,7 +83,7 @@ describe('Exempting a horse from a shared care task (Postgres)', () => {
       UserRole.CLUB_MANAGER,
     );
     const trainerId = await seed.user(UserRole.HEAD_TRAINER);
-    const groomId = await seed.user(UserRole.GROOM);
+    groomId = await seed.user(UserRole.GROOM);
     trainer = await actorOf(trainerId, UserRole.HEAD_TRAINER);
     groom = await actorOf(groomId, UserRole.GROOM);
     const barn = await seed.barn('Khu A');

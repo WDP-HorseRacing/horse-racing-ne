@@ -9,7 +9,7 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { CareTasksService } from '../../src/modules/stable/care-tasks/care-tasks.service';
 import { DailyChecklistStatus } from '../../src/modules/stable/constants/daily-checklist-status.enum';

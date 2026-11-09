@@ -4,7 +4,7 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import { UserStatus } from '../../src/common/enums/user-status.enum';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import {
   checklistEvidenceMedia,
@@ -36,6 +36,7 @@ describe('Removing a horse task or switching off a task type changes today’s c
   let manager: Actor;
   let trainer: Actor;
   let groom: Actor;
+  let groomId: string;
   let gio: string;
   let may: string;
   let today: string;
@@ -84,7 +85,7 @@ describe('Removing a horse task or switching off a task type changes today’s c
       UserRole.CLUB_MANAGER,
     );
     const trainerId = await seed.user(UserRole.HEAD_TRAINER);
-    const groomId = await seed.user(UserRole.GROOM);
+    groomId = await seed.user(UserRole.GROOM);
     trainer = await actorOf(trainerId, UserRole.HEAD_TRAINER);
     groom = await actorOf(groomId, UserRole.GROOM);
     const barn = await seed.barn('Khu A');

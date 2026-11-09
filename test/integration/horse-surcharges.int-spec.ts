@@ -8,7 +8,7 @@ import { DataSource } from 'typeorm';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { UserRole } from '../../src/common/enums/role.enum';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseSurchargeEntity } from '../../src/modules/billing/entities/horse-surcharge.entity';
 import { HorseSurchargesService } from '../../src/modules/billing/horse-surcharges/horse-surcharges.service';

@@ -5,16 +5,16 @@ import { DataSource } from 'typeorm';
 import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday } from '../../src/common/utils/club-date';
+import { clubToday } from '../../src/common/utils/date/club-date';
 import { MedicalRecordBarnAtExam1789829500000 } from '../../src/migrations/1789829500000-MedicalRecordBarnAtExam';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../src/modules/medical/constants/medical-visit.enum';
-import { MedicalCasesService } from '../../src/modules/medical/medical-records/medical-cases.service';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitEditsService } from '../../src/modules/medical/medical-records/medical-visit-edits.service';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+} from '../../src/modules/medical/constant/medical-visit.enum';
+import { MedicalCasesService } from '../../src/modules/medical/medical-record/services/medical-cases.service';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitEditsService } from '../../src/modules/medical/medical-record/services/medical-visit-edits.service';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

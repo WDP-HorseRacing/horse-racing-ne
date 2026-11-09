@@ -18,12 +18,12 @@ import { HorseMeasurementAlert } from '../../../src/modules/horses/enums/horse-m
 import { HorseAccessService } from '../../../src/modules/horses/shared/horse-access.service';
 import type { HorseMeasurementAlertEvent } from '../../../src/modules/horses/types/horse.types';
 import type { MediaService } from '../../../src/modules/media/services/media.service';
-import { TrainingLockEntity } from '../../../src/modules/medical/entities/training-lock.entity';
-import { ExamRequestsModule } from '../../../src/modules/medical/exam-requests/exam-requests.module';
-import { HorseNotificationsService } from '../../../src/modules/notifications/delivery/horse-notifications.service';
-import type { NotificationDeliveryService } from '../../../src/modules/notifications/delivery/notification-delivery.service';
-import { NotificationRecipientsRepository } from '../../../src/modules/notifications/delivery/notification-recipients.repository';
-import { PerformanceNotificationsService } from '../../../src/modules/notifications/delivery/performance-notifications.service';
+import { TrainingLockEntity } from '../../../src/modules/medical/entity/training-lock.entity';
+import { ExamRequestsModule } from '../../../src/modules/medical/exam-request/exam-requests.module';
+import { HorseNotificationsService } from '../../../src/modules/notifications/delivery/horses/horse-notifications.service';
+import type { NotificationDeliveryService } from '../../../src/modules/notifications/delivery/shared/notification-delivery.service';
+import { NotificationRecipientsRepository } from '../../../src/modules/notifications/delivery/shared/notification-recipients.repository';
+import { PerformanceNotificationsService } from '../../../src/modules/notifications/delivery/performance/performance-notifications.service';
 import { PERFORMANCE_METRIC_CRITICAL_EVENT } from '../../../src/modules/performance/constants/performance.constants';
 import { PerformanceEvaluationEntity } from '../../../src/modules/performance/entities/performance-evaluation.entity';
 import { PerformanceEvaluationsService } from '../../../src/modules/performance/evaluations/performance-evaluations.service';
@@ -50,11 +50,11 @@ import { HorseTrainingRepository } from '../../../src/modules/training/horse-tra
 import { HorseTrainingService } from '../../../src/modules/training/horse-training/horse-training.service';
 import { TrainingAccessService } from '../../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../../src/modules/training/shared/training-operations.facade';
-import { TrialResultsService } from '../../../src/modules/training/time-trials/trial-results.service';
-import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-classes/services/training-class-enrollments.service';
-import { SessionParticipantsService } from '../../../src/modules/training/training-sessions/session-participants.service';
-import { TrainingSessionsService } from '../../../src/modules/training/training-sessions/training-sessions.service';
-import { TrainingSubjectsService } from '../../../src/modules/training/training-subjects/training-subjects.service';
+import { TrialResultsService } from '../../../src/modules/training/time-trial/trial-results.service';
+import { TrainingClassEnrollmentsService } from '../../../src/modules/training/training-class/services/training-class-enrollments.service';
+import { SessionParticipantsService } from '../../../src/modules/training/training-session/services/session-participants.service';
+import { TrainingSessionsService } from '../../../src/modules/training/training-session/services/training-sessions.service';
+import { TrainingSubjectsService } from '../../../src/modules/training/training-subject/training-subjects.service';
 import { fixtures } from '../fixtures';
 import {
   startTestPostgres,
@@ -592,6 +592,7 @@ describe('R3 Flow 2 + dashboard findings (Postgres)', () => {
       sessionType: TrainingSessionType.REGULAR,
       intensity: TrainingIntensity.LIGHT,
       plannedDistanceM: 1200,
+      durationMinutes: 30,
     });
 
     it('F2-9: a subject name differing only in case is a duplicate (409)', async () => {

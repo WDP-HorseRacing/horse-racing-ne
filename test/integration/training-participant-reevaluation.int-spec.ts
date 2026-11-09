@@ -6,9 +6,9 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import { HorseHealthStatus } from '../../src/modules/horses/enums/horse-status.enum';
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { ParticipantEligibilityListener } from '../../src/modules/training/training-sessions/participant-eligibility.listener';
+import { ParticipantEligibilityListener } from '../../src/modules/training/training-session/listeners/participant-eligibility.listener';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
-import { SessionAutoCloseService } from '../../src/modules/training/training-sessions/session-auto-close.service';
+import { SessionAutoCloseService } from '../../src/modules/training/training-session/services/session-auto-close.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,
@@ -158,6 +158,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       await listener.handle({
         eventId: randomUUID(),
         horseId: winx.horseId,
+        ownerId: null,
         lockId,
         reason: 'Nghỉ',
         expectedEnd: null,
@@ -201,6 +202,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       await listener.handle({
         eventId: randomUUID(),
         horseId: winx.horseId,
+        ownerId: null,
         lockId,
         conclusion: 'Khỏi',
       });
@@ -243,6 +245,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
         await listener.handle({
           eventId: randomUUID(),
           horseId: winx.horseId,
+          ownerId: null,
           lockId,
           conclusion: 'Khỏi',
         });
@@ -266,6 +269,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       await listener.handle({
         eventId: randomUUID(),
         horseId: winx.horseId,
+        ownerId: null,
         lockId,
         conclusion: 'Khỏi',
       });
@@ -293,6 +297,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       await listener.handle({
         eventId: randomUUID(),
         horseId: winx.horseId,
+        ownerId: null,
         from: HorseHealthStatus.INJURED,
         to: HorseHealthStatus.UNDER_OBSERVATION,
       });
@@ -316,6 +321,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       await listener.handle({
         eventId: randomUUID(),
         horseId: winx.horseId,
+        ownerId: null,
         lockId: randomUUID(),
         reason: 'Nghỉ',
         expectedEnd: null,
@@ -333,6 +339,7 @@ describe('Re-evaluating upcoming participants and closing started sessions (Post
       const event = {
         eventId: randomUUID(),
         horseId: winx.horseId,
+        ownerId: null,
         lockId,
         reason: 'Nghỉ',
         expectedEnd: null,

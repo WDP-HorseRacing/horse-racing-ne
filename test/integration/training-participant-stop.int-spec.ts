@@ -17,8 +17,8 @@ import { SessionParticipantEntity } from '../../src/modules/training/entities/se
 import { TrialResultEntity } from '../../src/modules/training/entities/trial-result.entity';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
 import { TrainingOperationsFacade } from '../../src/modules/training/shared/training-operations.facade';
-import { TrialResultsService } from '../../src/modules/training/time-trials/trial-results.service';
-import { SessionParticipantsService } from '../../src/modules/training/training-sessions/session-participants.service';
+import { TrialResultsService } from '../../src/modules/training/time-trial/trial-results.service';
+import { SessionParticipantsService } from '../../src/modules/training/training-session/services/session-participants.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

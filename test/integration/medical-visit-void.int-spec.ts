@@ -7,13 +7,13 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
 import { HorseMeasurementType } from '../../src/modules/horses/enums/horse-measurement-type.enum';
-import { MedicalCaseStatus } from '../../src/modules/medical/constants/medical-case.enum';
+import { MedicalCaseStatus } from '../../src/modules/medical/constant/medical-case.enum';
 import {
   MedicalVisitConclusion,
   MedicalVisitKind,
-} from '../../src/modules/medical/constants/medical-visit.enum';
-import { MedicalRecordsModule } from '../../src/modules/medical/medical-records/medical-records.module';
-import { MedicalVisitsService } from '../../src/modules/medical/medical-records/medical-visits.service';
+} from '../../src/modules/medical/constant/medical-visit.enum';
+import { MedicalRecordsModule } from '../../src/modules/medical/medical-record/medical-records.module';
+import { MedicalVisitsService } from '../../src/modules/medical/medical-record/services/medical-visits.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

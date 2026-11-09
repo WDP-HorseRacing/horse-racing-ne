@@ -9,7 +9,7 @@ import {
   clubToday,
   shiftDays,
   toClubDate,
-} from '../../src/common/utils/club-date';
+} from '../../src/common/utils/date/club-date';
 import { HorseDeletionsModule } from '../../src/modules/horses/horse-deletions/horse-deletions.module';
 import { HorseDeletionsService } from '../../src/modules/horses/horse-deletions/horse-deletions.service';
 import { FinanceReportsRepository } from '../../src/modules/reports/finance-reports/finance-reports.repository';

@@ -7,7 +7,7 @@ import { UserRole } from '../../src/common/enums/role.enum';
 import { DomainEventPublisher } from '../../src/common/infrastructure/events/domain-event.publisher';
 import { DomainEventsModule } from '../../src/common/infrastructure/events/domain-events.module';
 import type { Actor } from '../../src/common/types/actor';
-import { clubToday, shiftDays } from '../../src/common/utils/club-date';
+import { clubToday, shiftDays } from '../../src/common/utils/date/club-date';
 import { AuditService } from '../../src/modules/audit/services/audit.service';
 import { HorseAccessService } from '../../src/modules/horses/shared/horse-access.service';
 import { CareTasksModule } from '../../src/modules/stable/care-tasks/care-tasks.module';

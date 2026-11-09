@@ -10,7 +10,7 @@ import { TrainingSessionEntity } from '../../src/modules/training/entities/train
 import { TrainingIntensity } from '../../src/modules/training/enums/training-intensity.enum';
 import { TrainingSessionType } from '../../src/modules/training/enums/training-session-type.enum';
 import { TrainingAccessService } from '../../src/modules/training/shared/training-access.service';
-import { TrainingSessionsService } from '../../src/modules/training/training-sessions/training-sessions.service';
+import { TrainingSessionsService } from '../../src/modules/training/training-session/services/training-sessions.service';
 import { fixtures } from './fixtures';
 import {
   startTestPostgres,

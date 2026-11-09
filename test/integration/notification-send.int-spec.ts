@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { NotificationPriority } from '../../src/modules/notifications/enums/notification-priority.enum';
 import { NotificationResourceType } from '../../src/modules/notifications/enums/notification-resource-type.enum';
 import { NotificationCategory } from '../../src/modules/notifications/enums/notification-category.enum';
-import { RealtimeChannel } from '../../src/modules/notifications/delivery/realtime.channel';
-import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/notification-delivery.service';
+import { RealtimeChannel } from '../../src/modules/notifications/delivery/shared/channels/realtime.channel';
+import { NotificationDeliveryService } from '../../src/modules/notifications/delivery/shared/notification-delivery.service';
 import {
   NotificationRecord,
   NotificationSchema,
